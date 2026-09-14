@@ -30,9 +30,17 @@ const TerminalPane = forwardRef(function TerminalPane(_, ref) {
   const socketRef = useRef(null)
   const termRef = useRef(null)
 
+  const sendPacket = (packet) => {
+    if (socketRef.current?.readyState === WebSocket.OPEN) {
+      socketRef.current.send(JSON.stringify(packet))
+      return true
+    }
+    return false
+  }
+
   useImperativeHandle(ref, () => ({
     send(text) {
-      if (socketRef.current?.readyState === WebSocket.OPEN) socketRef.current.send(text)
+      sendPacket({ type: 'input', data: text })
     },
     focus() {
       termRef.current?.focus()
@@ -61,16 +69,30 @@ const TerminalPane = forwardRef(function TerminalPane(_, ref) {
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
     const socket = new WebSocket(`${protocol}//${window.location.host}/ws/terminal`)
     socketRef.current = socket
-    socket.onopen = () => term.writeln('\r\n\x1b[38;5;214mQuest terminal connected.\x1b[0m')
+
+    const syncSize = () => {
+      fit.fit()
+      if (socket.readyState === WebSocket.OPEN && term.cols > 0 && term.rows > 0) {
+        socket.send(JSON.stringify({ type: 'resize', cols: term.cols, rows: term.rows }))
+      }
+    }
+
+    socket.onopen = () => {
+      term.writeln('\r\n\x1b[38;5;214mQuest terminal connected.\x1b[0m')
+      syncSize()
+      term.focus()
+    }
     socket.onmessage = (event) => term.write(event.data)
     socket.onclose = () => term.writeln('\r\n\x1b[31mTerminal disconnected. Restart Quest Lab to reconnect.\x1b[0m')
     socket.onerror = () => term.writeln('\r\n\x1b[31mTerminal connection error.\x1b[0m')
 
     const disposable = term.onData((data) => {
-      if (socket.readyState === WebSocket.OPEN) socket.send(data)
+      if (socket.readyState === WebSocket.OPEN) {
+        socket.send(JSON.stringify({ type: 'input', data }))
+      }
     })
 
-    const observer = new ResizeObserver(() => fit.fit())
+    const observer = new ResizeObserver(() => syncSize())
     observer.observe(hostRef.current)
 
     return () => {
@@ -309,7 +331,7 @@ function App() {
         <section className="terminal-panel panel">
           <div className="panel-title">
             <span>TERMINAL</span>
-            <span className="terminal-hint">real shell · workspace scoped</span>
+            <span className="terminal-hint">real local shell · starts in workspace</span>
           </div>
           <TerminalPane ref={terminalRef} />
         </section>
