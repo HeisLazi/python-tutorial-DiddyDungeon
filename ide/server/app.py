@@ -20,6 +20,7 @@ from pydantic import BaseModel
 REPO_ROOT = Path(os.getenv("QUESTLAB_REPO_ROOT", Path(__file__).resolve().parents[2])).resolve()
 WORKSPACE = Path(os.getenv("QUESTLAB_WORKSPACE", REPO_ROOT)).resolve()
 PROGRESS_PATH = REPO_ROOT / "progress.json"
+TUTOR_PATH = WORKSPACE / "tutor.py"
 MAX_TEXT_BYTES = 2_000_000
 IGNORED_DIRS = {
     ".git",
@@ -33,7 +34,20 @@ IGNORED_DIRS = {
     "build",
 }
 
-app = FastAPI(title="Python Quest Lab Local Server", version="0.2.0")
+TUTOR_TEMPLATE = '''"""Quest Lab Tutor Notebook.
+
+PYR and the player may edit this file together for examples, drills, and tiny
+experiments. Required project source stays player-authored. Examples here
+should teach the concept without becoming a paste-ready solution for the
+current project.
+"""
+
+# PYR can place unrelated teaching examples below this line.
+# You can freely change, run, break, and rebuild them.
+
+'''
+
+app = FastAPI(title="Python Quest Lab Local Server", version="0.3.0")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://127.0.0.1:5173", "http://localhost:5173"],
@@ -45,6 +59,10 @@ app.add_middleware(
 
 class FileWrite(BaseModel):
     path: str
+    content: str
+
+
+class TutorWrite(BaseModel):
     content: str
 
 
@@ -92,6 +110,17 @@ def load_progress() -> dict:
     if not progress:
         raise HTTPException(status_code=500, detail="progress.json could not be loaded")
     return progress
+
+
+def ensure_tutor_file() -> Path:
+    try:
+        TUTOR_PATH.relative_to(WORKSPACE)
+    except ValueError as exc:
+        raise HTTPException(status_code=500, detail="Tutor notebook path escaped the workspace") from exc
+
+    if not TUTOR_PATH.exists():
+        TUTOR_PATH.write_text(TUTOR_TEMPLATE, encoding="utf-8")
+    return TUTOR_PATH
 
 
 def homestead_catalog(progress: dict) -> dict[str, dict]:
@@ -188,6 +217,24 @@ def campaign():
         "workspace": str(WORKSPACE),
         "repo_root": str(REPO_ROOT),
     }
+
+
+@app.get("/api/tutor")
+def read_tutor_notebook():
+    target = ensure_tutor_file()
+    if target.stat().st_size > MAX_TEXT_BYTES:
+        raise HTTPException(status_code=413, detail="Tutor notebook is too large")
+    return {"path": "tutor.py", "content": target.read_text(encoding="utf-8")}
+
+
+@app.put("/api/tutor")
+def write_tutor_notebook(payload: TutorWrite):
+    encoded = payload.content.encode("utf-8")
+    if len(encoded) > MAX_TEXT_BYTES:
+        raise HTTPException(status_code=413, detail="Tutor notebook is too large")
+    target = ensure_tutor_file()
+    target.write_text(payload.content, encoding="utf-8")
+    return {"ok": True, "path": "tutor.py", "bytes": len(encoded)}
 
 
 @app.post("/api/homestead/purchase")
