@@ -122,20 +122,16 @@ The activity rail is always visible. The center switches between the editor and 
 - Save / Pretty / Run;
 - normal PTY terminal;
 - draggable explorer / terminal / AI splitters;
-- current branch + dirty count;
+- current git branch + dirty count;
 - persistent layout.
 
 ## Tutor Notebook
 
-- opens `tutor.py` in a dedicated collaborative editor;
-- Run Tutor button executes only `tutor.py`;
-- clear visual badge that this is **safe scratch space, not project source**;
-- PYR can write here through a dedicated controlled API;
-- player can edit the same file between tutor turns;
-- later: snapshots/history so useful examples can be pinned into the Codex;
-- later: “send this example to Tutor Notebook” from PYR chat.
-
-The notebook should default to a short header explaining the boundary. If a workspace does not have `tutor.py`, Quest Lab creates it automatically.
+- dedicated `tutor.py` editor surface;
+- PYR-writable badge and boundary explanation;
+- Save / Pretty / Run Tutor actions;
+- output goes through the normal shell terminal;
+- project source remains player-authored.
 
 ## Quest Journal
 
@@ -216,27 +212,6 @@ Cosmetic selection comes from owned Homestead items.
 
 ---
 
-# Trusted tutor write boundary
-
-The integrated PYR tutor should not receive a generic workspace-write tool.
-
-Allowed write surface:
-
-```text
-GET  /api/tutor
-PUT  /api/tutor
-```
-
-Those routes always resolve to `QUESTLAB_WORKSPACE/tutor.py`; callers cannot supply another path.
-
-Project review may use read-only endpoints/context for files like `blackjack.py`, but project writes remain player-controlled.
-
-The normal Forge editor still lets the **player** save any workspace file. The restriction applies to the integrated tutor agent's toolset, not to the human.
-
-Third-party CLIs launched in the raw AI terminal have normal local-user shell power, so they cannot be honestly described as technically sandboxed. Until the in-app controlled PYR adapter exists, they should be treated as manual tools and instructed to respect the tutor contract.
-
----
-
 # Homestead economy
 
 ## Starter cosmetics
@@ -276,10 +251,6 @@ Purchases spend existing campaign coins. They grant no learning or competitive p
 
 This makes purchases portable across clones/forks once committed/pushed.
 
-## Workspace teaching state
-
-`tutor.py` lives in the active quest workspace. It is deliberately separate from canonical player progression so examples can change freely without pretending to be mastery evidence.
-
 ## Local IDE preferences
 
 Browser `localStorage` stores device-specific usability preferences:
@@ -293,9 +264,21 @@ Those preferences are not gameplay progression and should not create Git noise.
 
 ---
 
+# AI terminal providers
+
+The quick-launch bar reflects the tools actually used in the local setup:
+
+- Codex (`codex`)
+- Claude (`claude`)
+- AGY (`agy`)
+
+The AI pane is still a raw local shell, not the trusted tutor sandbox. The future controlled PYR layer sits above these providers and keeps write access limited to `tutor.py`.
+
+---
+
 # Delivery roadmap
 
-## Phase 1 — RPG Shell Foundation
+## Phase 1 — RPG Shell Foundation — IMPLEMENTED / TESTING
 
 - activity rail;
 - Forge / Tutor / Quest / Codex / Character / Homestead / Settings screens;
@@ -305,14 +288,16 @@ Those preferences are not gameplay progression and should not create Git noise.
 - Homestead catalog visible;
 - functional cosmetic purchase/equip API;
 - first theme variants;
-- dedicated `tutor.py` read/write API and Tutor Notebook surface.
+- independent AI and Forge terminals;
+- terminal reconnect/status UX;
+- stable PTY launcher with backend reload off by default.
 
 ## Phase 2 — Quest-aware tutor UX
 
 - Teach Me / Quick Refresher / Test Me entry choice;
 - current mob/concept visible to PYR;
 - context bridge for active file, selection, terminal tail, git diff and quest state;
-- controlled PYR toolset: read project, write only `tutor.py`;
+- controlled PYR writes only to `tutor.py`;
 - encounter banners and clear celebrations.
 
 ## Phase 3 — Living Codex
@@ -322,8 +307,7 @@ Those preferences are not gameplay progression and should not create Git noise.
 - discovered mob variants;
 - boss archive;
 - interview history;
-- mastery progression animations;
-- pin useful Tutor Notebook examples into concept entries.
+- mastery progression animations.
 
 ## Phase 4 — Homestead becomes a place
 
@@ -347,7 +331,6 @@ Those preferences are not gameplay progression and should not create Git noise.
 # Non-negotiables
 
 - Quest Lab remains fully usable without Boot.dev or any external course.
-- The integrated PYR tutor can write `tutor.py`; required project source stays read-only to PYR.
 - Cosmetics never determine whether the player can learn, code, format, run, debug or access PYR.
 - Exact project solutions remain governed by Reference Mode.
 - The public activity score remains separate from learning mastery.
