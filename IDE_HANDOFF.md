@@ -6,20 +6,27 @@ The public dashboard still lives on `main`. The IDE is **local-first**: your bro
 
 ## Milestone 1 — implemented on this branch
 
-The first usable slice contains:
+The first usable slice now contains:
 
 - RPG / character stats loaded from `progress.json` and `activity.json`;
 - Monaco editor (the editor core used by VS Code);
 - file explorer scoped to one workspace;
 - save + `Ctrl+S`;
 - create-file flow;
-- a **real PTY terminal** through xterm.js;
+- **Pretty / Format Document** support:
+  - Python uses **Ruff formatter**;
+  - JS/TS/JSON/CSS/HTML/Markdown/YAML uses **Prettier**;
+  - `Shift+Alt+F` matches the familiar VS Code format-document shortcut;
+- two independent real PTY terminals through xterm.js:
+  - normal workspace shell below the editor;
+  - dedicated AI CLI terminal on the right;
+- quick AI-terminal launch buttons for `codex`, `claude`, and `gemini` if those CLIs are installed;
+- draggable VS Code-style panel dividers for explorer width, AI width and terminal height;
 - Run button for the current Python file;
 - current git branch / dirty-file count;
-- quick terminal launch buttons for `codex`, `claude`, and `gemini` if those CLIs are installed;
 - path sandboxing so the editor API cannot browse outside the selected workspace.
 
-The terminal is intentionally real. Anything you type there runs with your local user permissions, just like opening your normal terminal. Keep the server bound to localhost.
+The terminals are intentionally real. Anything you type there runs with your local user permissions, just like opening your normal terminal. Keep the server bound to localhost.
 
 ---
 
@@ -30,14 +37,15 @@ From the repo checkout containing this branch:
 ```bash
 git switch feature/quest-lab-ide
 
-python -m venv .venv
-source .venv/bin/activate
-pip install -r ide/server/requirements.txt
+python3 -m venv .venv
+.venv/bin/python -m pip install -r ide/server/requirements.txt
 
 cd ide/frontend
 npm install
 cd ../..
 ```
+
+The `npm install` step installs the IDE frontend plus Prettier. The Python requirements install FastAPI/Uvicorn/Pydantic plus Ruff for Python formatting.
 
 ## Recommended quest workspace: git worktree
 
@@ -47,16 +55,16 @@ For Blackjack:
 
 ```bash
 git fetch --all
-git worktree add ../questlab-blackjack 01-blackjack
+git branch blackjack-workspace origin/01-blackjack
+git worktree add ../questlab-blackjack blackjack-workspace
 ```
 
-If that worktree already exists, skip the command and use its existing path.
+If that worktree already exists, skip those commands and use its existing path.
 
 Then launch:
 
 ```bash
-source .venv/bin/activate
-python ide/quest.py --workspace ../questlab-blackjack
+.venv/bin/python ide/quest.py --workspace ../questlab-blackjack
 ```
 
 Quest Lab opens at:
@@ -65,7 +73,27 @@ Quest Lab opens at:
 http://127.0.0.1:5173
 ```
 
-The editor and terminal now operate inside `../questlab-blackjack`, while character/activity state is read from this platform checkout.
+The editor and terminals now operate inside `../questlab-blackjack`, while character/activity state is read from this platform checkout.
+
+---
+
+# Layout
+
+```text
+┌─────────────┬───────────────────────────────┬──────────────────────┐
+│ FILES       │ EDITOR                        │ PYR / AI TERMINAL    │
+│             │                               │                      │
+│ resizable   │ Monaco                        │ Codex / Claude /     │
+│             │                               │ Gemini CLI           │
+│             ├───────────────────────────────┤                      │
+│             │ NORMAL TERMINAL               │                      │
+│             │ shell / run / git             │                      │
+└─────────────┴───────────────────────────────┴──────────────────────┘
+```
+
+Drag the dividers between Files ↔ Editor, Editor ↔ AI, and Editor ↔ Terminal to resize them like an IDE.
+
+The two terminal sessions are independent. Running Codex in the AI pane no longer steals the terminal you use for Python, Git, `pwd`, tests, etc.
 
 ---
 
@@ -73,20 +101,12 @@ The editor and terminal now operate inside `../questlab-blackjack`, while charac
 
 1. Start Quest Lab with the worktree for the project you want to train on.
 2. Open `HANDOFF.md` / `SESSION_NOTES.md` in the editor.
-3. Let PYR teach the next rusty concept.
-4. Enter Forge phase and code in Monaco.
-5. Press **Run**, or use the terminal for fully interactive programs.
-6. Launch your AI CLI inside the built-in terminal when needed:
-
-```bash
-codex
-# or
-claude
-# or
-gemini
-```
-
-7. Use normal git commands in the same terminal:
+3. Use the right AI terminal for Codex / Claude / Gemini.
+4. Let PYR teach the next rusty concept.
+5. Enter Forge phase and code in Monaco.
+6. Use **Pretty** / `Shift+Alt+F` when you want the current document formatted.
+7. Press **Run**, or use the bottom terminal for fully interactive programs.
+8. Use normal git commands in the bottom terminal:
 
 ```bash
 git status
@@ -94,7 +114,22 @@ git add .
 git commit -m "clear blackjack mob 1"
 ```
 
-Because the terminal's working directory is the quest worktree, those commits land on the quest branch.
+Because the terminals' working directory is the quest worktree, those commands act on the quest branch.
+
+---
+
+# Formatting vs VS Code extensions
+
+Monaco is the editor core used by VS Code, but it is **not the VS Code extension host**. Normal `.vsix` extensions cannot simply be installed into this app.
+
+For the formatter behaviour we want, Quest Lab integrates the underlying tools directly:
+
+- `Ruff format` for Python;
+- `Prettier` for web/text formats.
+
+This gives the same practical "format my document" workflow without pulling the full VS Code extension runtime into Quest Lab.
+
+If we eventually need arbitrary VS Code extensions, that becomes a different architecture choice such as embedding `code-server` / OpenVSCode Server rather than extending Monaco manually.
 
 ---
 
@@ -105,7 +140,8 @@ Browser — http://127.0.0.1:5173
 │
 ├─ React + Vite
 ├─ Monaco editor
-├─ xterm.js
+├─ xterm.js × 2
+├─ resizable layout
 └─ RPG HUD
       │
       │ /api + /ws
@@ -113,9 +149,10 @@ Browser — http://127.0.0.1:5173
 FastAPI — http://127.0.0.1:7331
 │
 ├─ safe file read/write
+├─ format endpoint (Ruff / Prettier)
 ├─ git status / branch info
 ├─ progress/activity reader
-└─ PTY shell
+└─ PTY shell per terminal connection
       │
       ▼
 Selected quest worktree
@@ -137,7 +174,7 @@ The FastAPI server:
 - ignores `.git`, `node_modules`, virtual environments and build folders in the tree;
 - limits editor reads/writes to UTF-8 text files under 2 MB.
 
-The **terminal is different**: it is intentionally a real shell. It has the same permissions as the user who launched Quest Lab. Do not expose port `7331` or the Vite dev server to untrusted networks.
+The **terminals are different**: they are intentionally real shells. They have the same permissions as the user who launched Quest Lab. Do not expose port `7331` or the Vite dev server to untrusted networks.
 
 ---
 
