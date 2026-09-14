@@ -1,0 +1,742 @@
+import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react'
+import Editor from '@monaco-editor/react'
+import { Terminal } from '@xterm/xterm'
+import { FitAddon } from '@xterm/addon-fit'
+import { ActivityRail, ContextPanel, GameScreen } from './RpgViews'
+
+const api = async (url, options = {}) => {
+  const response = await fetch(url, {
+    headers: { 'Content-Type': 'application/json', ...(options.headers || {}) },
+    ...options,
+  })
+  if (!response.ok) {
+    const body = await response.text()
+    let message = body || `${response.status} ${response.statusText}`
+    try {
+      const parsed = JSON.parse(body)
+      if (parsed?.detail) message = parsed.detail
+    } catch {
+      // Raw text is still useful when the backend is not returning JSON.
+    }
+    throw new Error(message)
+  }
+  return response.json()
+}
+
+const languageFor = (path = '') => {
+  if (path.endsWith('.py')) return 'python'
+  if (path.endsWith('.json')) return 'json'
+  if (path.endsWith('.md')) return 'markdown'
+  if (path.endsWith('.ts') || path.endsWith('.tsx')) return 'typescript'
+  if (path.endsWith('.js') || path.endsWith('.jsx')) return 'javascript'
+  if (path.endsWith('.html')) return 'html'
+  if (path.endsWith('.css') || path.endsWith('.scss')) return 'css'
+  if (path.endsWith('.yaml') || path.endsWith('.yml')) return 'yaml'
+  return 'plaintext'
+}
+
+const clamp = (value, min, max) => Math.max(min, Math.min(max, value))
+
+function usePersistentState(key, initialValue) {
+  const [value, setValue] = useState(() => {
+    try {
+      const stored = window.localStorage.getItem(key)
+      return stored === null ? initialValue : JSON.parse(stored)
+    } catch {
+      return initialValue
+    }
+  })
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(key, JSON.stringify(value))
+    } catch {
+      // Device preferences should never break the IDE.
+    }
+  }, [key, value])
+
+  return [value, setValue]
+}
+
+const terminalPalette = (skin) => {
+  if (skin === 'terminal-emberglass') {
+    return {
+      background: '#100b09',
+      foreground: '#f0e2d4',
+      cursor: '#f0a45d',
+      selectionBackground: '#4a2b1e',
+    }
+  }
+  return {
+    background: '#090b0a',
+    foreground: '#e9e4d8',
+    cursor: '#d8a657',
+    selectionBackground: '#3b4035',
+  }
+}
+
+const TerminalPane = forwardRef(function TerminalPane(
+  {
+    role,
+    banner,
+    fontSize = 13,
+    skin = 'terminal-charcoal',
+    onStateChange,
+  },
+  ref,
+) {
+  const hostRef = useRef(null)
+  const socketRef = useRef(null)
+  const termRef = useRef(null)
+  const fitRef = useRef(null)
+  const reconnectTimerRef = useRef(null)
+  const pendingRef = useRef([])
+  const disposedRef = useRef(false)
+  const [state, setState] = useState('connecting')
+
+  const reportState = (next) => {
+    setState(next)
+    onStateChange?.(next)
+  }
+
+  const fitAndSync = () => {
+    const term = termRef.current
+    const fit = fitRef.current
+    const socket = socketRef.current
+    if (!term || !fit || !hostRef.current) return
+    try {
+      fit.fit()
+      if (socket?.readyState === WebSocket.OPEN && term.cols > 0 && term.rows > 0) {
+        socket.send(JSON.stringify({ type: 'resize', cols: term.cols, rows: term.rows }))
+      }
+    } catch {
+      // Hidden/resizing terminal surfaces can briefly have zero geometry.
+    }
+  }
+
+  const connect = () => {
+    if (disposedRef.current) return
+    const current = socketRef.current
+    if (current && (current.readyState === WebSocket.OPEN || current.readyState === WebSocket.CONNECTING)) return
+
+    reportState('connecting')
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+    const socket = new WebSocket(`${protocol}//${window.location.host}/ws/terminal/${role}`)
+    socketRef.current = socket
+
+    socket.onopen = () => {
+      if (disposedRef.current) return
+      reportState('connected')
+      termRef.current?.writeln(`\r\n\x1b[38;5;214m${banner}\x1b[0m`)
+      fitAndSync()
+      while (pendingRef.current.length && socket.readyState === WebSocket.OPEN) {
+        socket.send(JSON.stringify({ type: 'input', data: pendingRef.current.shift() }))
+      }
+    }
+
+    socket.onmessage = (event) => termRef.current?.write(event.data)
+
+    socket.onerror = () => {
+      if (!disposedRef.current) reportState('error')
+    }
+
+    socket.onclose = () => {
+      if (disposedRef.current) return
+      reportState('reconnecting')
+      termRef.current?.writeln('\r\n\x1b[38;5;203m[Quest Lab] Terminal link dropped. Reconnecting…\x1b[0m')
+      clearTimeout(reconnectTimerRef.current)
+      reconnectTimerRef.current = setTimeout(connect, 1200)
+    }
+  }
+
+  useImperativeHandle(ref, () => ({
+    send(text) {
+      const socket = socketRef.current
+      if (socket?.readyState === WebSocket.OPEN) {
+        socket.send(JSON.stringify({ type: 'input', data: text }))
+        return true
+      }
+      pendingRef.current.push(text)
+      connect()
+      return false
+    },
+    focus() {
+      termRef.current?.focus()
+    },
+    clear() {
+      termRef.current?.clear()
+    },
+    reconnect() {
+      const socket = socketRef.current
+      if (socket && socket.readyState < WebSocket.CLOSING) socket.close()
+      clearTimeout(reconnectTimerRef.current)
+      reconnectTimerRef.current = setTimeout(connect, 80)
+    },
+    fit() {
+      fitAndSync()
+    },
+  }))
+
+  useEffect(() => {
+    disposedRef.current = false
+    const term = new Terminal({
+      cursorBlink: true,
+      convertEol: false,
+      scrollback: 8000,
+      fontFamily: 'JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, monospace',
+      fontSize,
+      theme: terminalPalette(skin),
+    })
+    const fit = new FitAddon()
+    term.loadAddon(fit)
+    term.open(hostRef.current)
+    termRef.current = term
+    fitRef.current = fit
+
+    const input = term.onData((data) => {
+      const socket = socketRef.current
+      if (socket?.readyState === WebSocket.OPEN) {
+        socket.send(JSON.stringify({ type: 'input', data }))
+      }
+    })
+
+    const observer = new ResizeObserver(() => fitAndSync())
+    observer.observe(hostRef.current)
+    connect()
+
+    return () => {
+      disposedRef.current = true
+      clearTimeout(reconnectTimerRef.current)
+      observer.disconnect()
+      input.dispose()
+      const socket = socketRef.current
+      if (socket && socket.readyState < WebSocket.CLOSING) socket.close()
+      socketRef.current = null
+      term.dispose()
+      termRef.current = null
+      fitRef.current = null
+    }
+  }, [role, banner, fontSize, skin])
+
+  return (
+    <div className="terminal-v2-wrap">
+      <div className="terminal-host" ref={hostRef} />
+      {state !== 'connected' && (
+        <button className={`terminal-reconnect state-${state}`} onClick={connect} title="Reconnect terminal">
+          {state === 'connecting' ? 'connecting…' : state === 'reconnecting' ? 'reconnecting…' : 'reconnect'}
+        </button>
+      )}
+    </div>
+  )
+})
+
+function AppV2() {
+  const shellTerminalRef = useRef(null)
+  const aiTerminalRef = useRef(null)
+  const [campaign, setCampaign] = useState(null)
+  const [runtime, setRuntime] = useState(null)
+  const [files, setFiles] = useState([])
+  const [activePath, setActivePath] = useState('')
+  const [code, setCode] = useState('')
+  const [dirty, setDirty] = useState(false)
+  const [tutorCode, setTutorCode] = useState('')
+  const [tutorDirty, setTutorDirty] = useState(false)
+  const [busy, setBusy] = useState(false)
+  const [notice, setNotice] = useState('')
+  const [shellState, setShellState] = useState('connecting')
+  const [aiState, setAiState] = useState('connecting')
+
+  const [activeView, setActiveView] = usePersistentState('questlab.activeView', 'forge')
+  const [leftWidth, setLeftWidth] = usePersistentState('questlab.leftWidth', 220)
+  const [rightWidth, setRightWidth] = usePersistentState('questlab.rightWidth', 410)
+  const [terminalHeight, setTerminalHeight] = usePersistentState('questlab.terminalHeight', 245)
+  const [editorFontSize, setEditorFontSize] = usePersistentState('questlab.editorFontSize', 14)
+  const [terminalFontSize, setTerminalFontSize] = usePersistentState('questlab.terminalFontSize', 13)
+  const [hudDensity, setHudDensity] = usePersistentState('questlab.hudDensity', 'full')
+  const [animations, setAnimations] = usePersistentState('questlab.animations', true)
+
+  const progress = campaign?.progress || {}
+  const player = progress.player || {}
+  const stats = progress.stats || {}
+  const streak = progress.streak || {}
+  const companion = progress.companion || {}
+  const activity = campaign?.activity || {}
+  const git = campaign?.git || {}
+  const homestead = progress.homestead || {}
+  const equipped = homestead.equipped || {}
+  const theme = (equipped.theme || 'theme-ember-forge').replace('theme-', '')
+  const terminalSkin = equipped.terminal || 'terminal-charcoal'
+  const showEditor = activeView === 'forge' || activeView === 'tutor'
+
+  const shields = useMemo(
+    () => (progress.skills || []).filter((skill) => skill.shield?.tier && skill.shield.tier !== 'none').length,
+    [progress.skills],
+  )
+
+  const refreshCampaign = async () => {
+    try {
+      setCampaign(await api('/api/campaign'))
+    } catch (error) {
+      setNotice(`Campaign load failed: ${error.message}`)
+    }
+  }
+
+  const refreshRuntime = async () => {
+    try {
+      setRuntime(await api('/api/runtime'))
+    } catch (error) {
+      setNotice(`Runtime check failed: ${error.message}`)
+    }
+  }
+
+  const refreshFiles = async () => {
+    try {
+      const result = await api('/api/tree')
+      setFiles(result.items || [])
+      if (!activePath) {
+        const preferred = (result.items || []).find(
+          (item) => item.type === 'file' && item.path.endsWith('.py') && item.path !== 'tutor.py',
+        )
+        if (preferred) await openFile(preferred.path, false)
+      }
+    } catch (error) {
+      setNotice(`File tree failed: ${error.message}`)
+    }
+  }
+
+  const refreshTutor = async () => {
+    try {
+      const result = await api('/api/tutor')
+      setTutorCode(result.content ?? '')
+      setTutorDirty(false)
+    } catch (error) {
+      setNotice(`Tutor notebook failed: ${error.message}`)
+    }
+  }
+
+  useEffect(() => {
+    refreshCampaign()
+    refreshRuntime()
+    refreshFiles()
+    refreshTutor()
+  }, [])
+
+  useEffect(() => {
+    const onKey = (event) => {
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 's') {
+        event.preventDefault()
+        if (activeView === 'tutor') saveTutor()
+        if (activeView === 'forge') saveFile()
+      }
+      if (event.shiftKey && event.altKey && event.key.toLowerCase() === 'f') {
+        event.preventDefault()
+        if (activeView === 'tutor') formatTutor()
+        if (activeView === 'forge') formatCurrent()
+      }
+      if ((event.ctrlKey || event.metaKey) && event.key === '`') {
+        event.preventDefault()
+        setActiveView('forge')
+        setTimeout(() => shellTerminalRef.current?.focus(), 30)
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  })
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      shellTerminalRef.current?.fit()
+      aiTerminalRef.current?.fit()
+    }, 40)
+    return () => clearTimeout(timer)
+  }, [activeView, leftWidth, rightWidth, terminalHeight])
+
+  const startResize = (kind, event) => {
+    event.preventDefault()
+    const startX = event.clientX
+    const startY = event.clientY
+    const startLeft = leftWidth
+    const startRight = rightWidth
+    const startTerminal = terminalHeight
+
+    const move = (moveEvent) => {
+      if (kind === 'left') setLeftWidth(clamp(startLeft + moveEvent.clientX - startX, 170, 430))
+      if (kind === 'right') setRightWidth(clamp(startRight - (moveEvent.clientX - startX), 300, 780))
+      if (kind === 'terminal') setTerminalHeight(clamp(startTerminal - (moveEvent.clientY - startY), 140, 580))
+    }
+    const stop = () => {
+      window.removeEventListener('pointermove', move)
+      window.removeEventListener('pointerup', stop)
+      document.body.classList.remove('resizing')
+    }
+
+    document.body.classList.add('resizing')
+    window.addEventListener('pointermove', move)
+    window.addEventListener('pointerup', stop)
+  }
+
+  const openFile = async (path, confirmDiscard = true) => {
+    if (confirmDiscard && dirty && path !== activePath && !window.confirm('Discard unsaved changes?')) return
+    try {
+      setBusy(true)
+      const result = await api(`/api/file?path=${encodeURIComponent(path)}`)
+      setActivePath(path)
+      setCode(result.content ?? '')
+      setDirty(false)
+      setNotice('')
+    } catch (error) {
+      setNotice(`Open failed: ${error.message}`)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const saveFile = async () => {
+    if (!activePath) return false
+    try {
+      setBusy(true)
+      await api('/api/file', {
+        method: 'PUT',
+        body: JSON.stringify({ path: activePath, content: code }),
+      })
+      setDirty(false)
+      setNotice(`Saved ${activePath}`)
+      refreshCampaign()
+      refreshFiles()
+      return true
+    } catch (error) {
+      setNotice(`Save failed: ${error.message}`)
+      return false
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const saveTutor = async () => {
+    try {
+      setBusy(true)
+      await api('/api/tutor', {
+        method: 'PUT',
+        body: JSON.stringify({ content: tutorCode }),
+      })
+      setTutorDirty(false)
+      setNotice('Saved collaborative tutor.py')
+      refreshFiles()
+      return true
+    } catch (error) {
+      setNotice(`Tutor save failed: ${error.message}`)
+      return false
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const formatCurrent = async () => {
+    if (!activePath) return
+    try {
+      setBusy(true)
+      const result = await api('/api/format', {
+        method: 'POST',
+        body: JSON.stringify({ path: activePath, content: code }),
+      })
+      setCode(result.content ?? code)
+      setDirty(false)
+      setNotice(`Formatted ${activePath} with ${result.formatter}`)
+    } catch (error) {
+      setNotice(`Format failed: ${error.message}`)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const formatTutor = async () => {
+    try {
+      setBusy(true)
+      const result = await api('/api/format', {
+        method: 'POST',
+        body: JSON.stringify({ path: 'tutor.py', content: tutorCode }),
+      })
+      setTutorCode(result.content ?? tutorCode)
+      setTutorDirty(false)
+      setNotice(`Formatted tutor.py with ${result.formatter}`)
+    } catch (error) {
+      setNotice(`Tutor format failed: ${error.message}`)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const newFile = async () => {
+    const path = window.prompt('New file path relative to the quest workspace, e.g. scratch.py')
+    if (!path) return
+    try {
+      await api('/api/file', { method: 'PUT', body: JSON.stringify({ path, content: '' }) })
+      await refreshFiles()
+      await openFile(path, false)
+    } catch (error) {
+      setNotice(`Create failed: ${error.message}`)
+    }
+  }
+
+  const runCurrent = async () => {
+    if (!activePath) return
+    if (dirty && !(await saveFile())) return
+    setActiveView('forge')
+    shellTerminalRef.current?.send(`python3 ${JSON.stringify(activePath)}\n`)
+    shellTerminalRef.current?.focus()
+  }
+
+  const runTutor = async () => {
+    if (tutorDirty && !(await saveTutor())) return
+    setActiveView('tutor')
+    shellTerminalRef.current?.send('python3 tutor.py\n')
+    shellTerminalRef.current?.focus()
+  }
+
+  const summon = (command) => {
+    aiTerminalRef.current?.send(`${command}\n`)
+    aiTerminalRef.current?.focus()
+  }
+
+  const purchaseCosmetic = async (itemId) => {
+    try {
+      setBusy(true)
+      const result = await api('/api/homestead/purchase', {
+        method: 'POST',
+        body: JSON.stringify({ item_id: itemId }),
+      })
+      await refreshCampaign()
+      setNotice(result.already_owned ? 'Already owned.' : `Homestead purchase complete. ${result.coins}c remain.`)
+    } catch (error) {
+      setNotice(`Purchase failed: ${error.message}`)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const equipCosmetic = async (itemId) => {
+    try {
+      setBusy(true)
+      const result = await api('/api/homestead/equip', {
+        method: 'POST',
+        body: JSON.stringify({ item_id: itemId }),
+      })
+      await refreshCampaign()
+      setNotice(`Equipped ${result.item?.name || itemId}.`)
+    } catch (error) {
+      setNotice(`Equip failed: ${error.message}`)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const resetLayout = () => {
+    setLeftWidth(220)
+    setRightWidth(410)
+    setTerminalHeight(245)
+    setNotice('Forge panel layout reset.')
+  }
+
+  const gridStyle = {
+    gridTemplateColumns: `48px ${leftWidth}px 5px minmax(420px, 1fr) 5px ${rightWidth}px`,
+    gridTemplateRows: `minmax(220px, 1fr) 5px ${terminalHeight}px`,
+  }
+  const preferences = { editorFontSize, terminalFontSize, hudDensity, animations }
+  const setters = { setEditorFontSize, setTerminalFontSize, setHudDensity, setAnimations }
+  const xpPercent = clamp(((player.xp ?? 0) / Math.max(1, player.xp_next ?? 100)) * 100, 0, 100)
+  const commands = runtime?.commands || {}
+
+  return (
+    <div
+      className={`app-shell forge-v2 ${hudDensity === 'compact' ? 'hud-compact' : ''} ${animations ? '' : 'no-animations'}`}
+      data-theme={theme}
+      data-cursor={equipped.cursor || 'cursor-basic'}
+      data-hud={equipped.hud || 'hud-forge'}
+      data-terminal={terminalSkin}
+    >
+      <header className="topbar">
+        <div className="brand-lockup">
+          <div className="eyebrow">PYTHON QUEST LAB</div>
+          <h1>Forge</h1>
+        </div>
+        <div className="hud-xp">
+          <div><strong>LV {player.level ?? 1}</strong><span>{player.title || 'Apprentice Coder'}</span></div>
+          <div className="hud-xp-track"><span style={{ width: `${xpPercent}%` }} /></div>
+          <small>{player.xp ?? 0}/{player.xp_next ?? 100} XP</small>
+        </div>
+        <div className="top-stats">
+          <span className="hp-stat">♥ {player.hp ?? 100}</span>
+          <span>◈ {player.coins ?? 0}c</span>
+          <span>🔥 {streak.current ?? 0}</span>
+          <span className="optional-stat">🛡 {shields}</span>
+          <span className="optional-stat">⚔ {stats.bosses_defeated ?? 0}</span>
+          <span className="optional-stat">DEV {activity.activity_score ?? 0}</span>
+          <span className="rank-stat">RANK {player.rank || 'F'}</span>
+        </div>
+      </header>
+
+      <div className="quest-banner">
+        <div><strong>{companion.name || 'PYR'}</strong> · {companion.form || 'Tiny Code-Flame'}</div>
+        <div className="quest-text">{progress.current_quest || 'Choose a quest.'}</div>
+        <div className="git-pill">{git.branch || 'no branch'} · {git.dirty_count ?? 0} changes</div>
+      </div>
+
+      <main className="workspace-grid" style={gridStyle}>
+        <ActivityRail activeView={activeView} setActiveView={setActiveView} player={player} />
+
+        <aside className="left-panel panel">
+          <ContextPanel
+            activeView={activeView}
+            campaign={campaign}
+            files={files}
+            activePath={activePath}
+            openFile={openFile}
+            newFile={newFile}
+            setActiveView={setActiveView}
+          />
+        </aside>
+
+        <div className="resize-handle vertical left-resizer" onPointerDown={(event) => startResize('left', event)} />
+
+        <section className={`editor-panel panel ${showEditor ? '' : 'surface-hidden'} ${activeView === 'tutor' ? 'tutor-editor-panel' : ''}`}>
+          <div className="editor-toolbar">
+            <div className="active-file">
+              {activeView === 'tutor' ? (
+                <><span className="safe-badge">PYR WRITABLE</span> tutor.py{tutorDirty ? ' •' : ''}</>
+              ) : (
+                <>{activePath || 'No file selected'}{dirty ? ' •' : ''}</>
+              )}
+            </div>
+            <div className="toolbar-actions">
+              {activeView === 'tutor' ? (
+                <>
+                  <button onClick={saveTutor} disabled={busy}>Save Tutor</button>
+                  <button onClick={formatTutor} disabled={busy}>Pretty</button>
+                  <button className="primary" onClick={runTutor} disabled={busy}>▶ Run Tutor</button>
+                </>
+              ) : (
+                <>
+                  <button onClick={saveFile} disabled={!activePath || busy}>Save</button>
+                  <button onClick={formatCurrent} disabled={!activePath || busy}>Pretty</button>
+                  <button className="primary" onClick={runCurrent} disabled={!activePath || !activePath.endsWith('.py')}>▶ Run</button>
+                </>
+              )}
+            </div>
+          </div>
+          {activeView === 'tutor' && (
+            <div className="tutor-boundary-banner">
+              <strong>Collaborative notebook:</strong> PYR may write examples here. Required project source remains yours.
+            </div>
+          )}
+          <div className="editor-wrap">
+            <Editor
+              path={activeView === 'tutor' ? 'tutor.py' : (activePath || 'untitled.txt')}
+              language={activeView === 'tutor' ? 'python' : languageFor(activePath)}
+              value={activeView === 'tutor' ? tutorCode : code}
+              onChange={(value) => {
+                if (activeView === 'tutor') {
+                  setTutorCode(value ?? '')
+                  setTutorDirty(true)
+                } else {
+                  setCode(value ?? '')
+                  setDirty(true)
+                }
+              }}
+              theme="vs-dark"
+              options={{
+                minimap: { enabled: false },
+                fontSize: editorFontSize,
+                fontFamily: 'JetBrains Mono, ui-monospace, monospace',
+                lineHeight: Math.round(editorFontSize * 1.55),
+                padding: { top: 14 },
+                smoothScrolling: true,
+                automaticLayout: true,
+                tabSize: 4,
+              }}
+            />
+          </div>
+        </section>
+
+        <div className={`resize-handle horizontal terminal-resizer ${showEditor ? '' : 'surface-hidden'}`} onPointerDown={(event) => startResize('terminal', event)} />
+
+        <section className={`terminal-panel panel ${showEditor ? '' : 'surface-hidden'}`}>
+          <div className="panel-title terminal-title-v2">
+            <span>{activeView === 'tutor' ? 'TUTOR OUTPUT / TERMINAL' : 'TERMINAL'}</span>
+            <div className="terminal-title-actions">
+              <span className={`connection-pill ${shellState}`}>{shellState}</span>
+              <button onClick={() => shellTerminalRef.current?.reconnect()}>↻</button>
+            </div>
+          </div>
+          <TerminalPane
+            ref={shellTerminalRef}
+            role="shell"
+            banner="Forge shell connected."
+            fontSize={terminalFontSize}
+            skin={terminalSkin}
+            onStateChange={setShellState}
+          />
+        </section>
+
+        {!showEditor && (
+          <section className="game-screen panel">
+            <GameScreen
+              activeView={activeView}
+              progress={progress}
+              purchaseCosmetic={purchaseCosmetic}
+              equipCosmetic={equipCosmetic}
+              busy={busy}
+              preferences={preferences}
+              setters={setters}
+              resetLayout={resetLayout}
+            />
+          </section>
+        )}
+
+        <div className="resize-handle vertical right-resizer" onPointerDown={(event) => startResize('right', event)} />
+
+        <aside className="ai-panel panel">
+          <div className="ai-toolbar">
+            <div>
+              <span className="panel-title-inline">PYR / AI</span>
+              <span className="ai-subtitle"> {companion.form || 'Tiny Code-Flame'}</span>
+            </div>
+            <div className="ai-actions">
+              <button disabled={runtime && !commands.codex} onClick={() => summon('codex')} title={commands.codex === false ? 'Codex CLI not found' : 'Launch Codex'}>Codex</button>
+              <button disabled={runtime && !commands.claude} onClick={() => summon('claude')} title={commands.claude === false ? 'Claude CLI not found' : 'Launch Claude'}>Claude</button>
+              <button disabled={runtime && !commands.agy} onClick={() => summon('agy')} title={commands.agy === false ? 'AGY CLI not found' : 'Launch AGY'}>AGY</button>
+              <button onClick={() => aiTerminalRef.current?.clear()}>Clear</button>
+            </div>
+          </div>
+          <div className="ai-note ai-note-v2">
+            <span>Raw CLI terminal · not sandboxed</span>
+            <span className={`connection-pill ${aiState}`}>{aiState}</span>
+            <button onClick={() => aiTerminalRef.current?.reconnect()}>Reconnect</button>
+          </div>
+          <TerminalPane
+            ref={aiTerminalRef}
+            role="ai"
+            banner="PYR channel ready. Choose Codex, Claude, or AGY above."
+            fontSize={terminalFontSize}
+            skin={terminalSkin}
+            onStateChange={setAiState}
+          />
+        </aside>
+      </main>
+
+      <footer className="statusbar">
+        <span>{notice || `Runtime: ${runtime?.shell || 'checking shell…'}`}</span>
+        <span>
+          {busy
+            ? 'working…'
+            : activeView === 'tutor'
+              ? 'tutor.py · Ctrl+S save · Shift+Alt+F format'
+              : activePath
+                ? `${languageFor(activePath)} · Ctrl+S save · Shift+Alt+F format`
+                : 'select a file'}
+        </span>
+      </footer>
+    </div>
+  )
+}
+
+export default AppV2
