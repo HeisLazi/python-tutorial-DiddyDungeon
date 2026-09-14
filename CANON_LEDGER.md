@@ -6,7 +6,7 @@ PYR is allowed to be creative, but the campaign should not slowly mutate into co
 
 ## Ruleset
 
-**Current ruleset:** `1.1.0`
+**Current ruleset:** `1.2.0`
 
 ## Source priority
 
@@ -16,8 +16,10 @@ When files disagree, use this order:
 2. `TUTOR_CONTRACT.md` — how PYR must behave
 3. `LEARNING_PROTOCOL.md` — teaching, Forge phase, Reference Mode and creativity rules
 4. `GAME_SYSTEM.md` — RPG mechanics and progression
-5. current branch `HANDOFF.md` — project-specific requirements/rewards
-6. `progress.json` — current player state, not a rules document
+5. `ACTIVITY_SYSTEM.md` — Git-derived dev activity and rival scoring rules
+6. current branch `HANDOFF.md` — project-specific requirements/rewards
+7. `progress.json` — current player state, not a rules document
+8. `activity.json` — generated dev-activity state, not a rules document
 
 A branch may make a challenge stricter, but it should not silently weaken global learning rules.
 
@@ -40,6 +42,11 @@ A branch may make a challenge stricter, but it should not silently weaken global
 | SYS-011 | PYR may invent hidden cosmetic/lore rewards when earned, but must log them here after reveal. | CANON |
 | SYS-012 | New mechanics that change XP, coins, shields, streaks or rival scoring are PROVISIONAL until explicitly approved. | CANON |
 | SYS-013 | Rival competition uses evidence-backed stats; invented cosmetic rarity does not increase competitive power. | CANON |
+| SYS-014 | Dev Activity is machine-derived from Git history and stored separately from learning progression. | CANON |
+| SYS-015 | Commit activity cannot directly grant XP, coins, Mastery Shields, boss clears or concept mastery. | CANON |
+| SYS-016 | Activity Score rewards active days/streaks and caps effective commits per day to discourage commit spam. | CANON |
+| SYS-017 | Learning streak and Dev streak are separate metrics with separate meanings. | CANON |
+| SYS-018 | PYR may read activity stats and celebrate them, but must not manually edit or award machine-derived activity values. | CANON |
 
 ---
 
@@ -111,6 +118,16 @@ PYR may add rows here, but **must not silently activate them**.
 ---
 
 # Ruleset changelog
+
+## 1.2.0 — Dev Activity League
+
+- added machine-derived `activity.json` from Git commit history;
+- added separate Learning Streak and Dev Streak meanings;
+- added Activity Score with active-day weighting and per-day commit caps;
+- added activity automation via GitHub Actions;
+- added rival competition fields for commits, active days, streaks and Activity Score;
+- explicitly prevented commit volume from granting learning XP/mastery;
+- added `ACTIVITY_SYSTEM.md` as the portable/forkable activity rules document.
 
 ## 1.1.0 — Teach / Forge update
 
