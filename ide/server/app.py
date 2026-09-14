@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 import asyncio
+import fcntl
 import json
 import os
 import pty
-import shlex
 import signal
+import struct
 import subprocess
+import termios
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
@@ -28,7 +30,7 @@ IGNORED_DIRS = {
     "build",
 }
 
-app = FastAPI(title="Python Quest Lab Local Server", version="0.1.0")
+app = FastAPI(title="Python Quest Lab Local Server", version="0.1.1")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://127.0.0.1:5173", "http://localhost:5173"],
@@ -116,6 +118,21 @@ def build_tree() -> list[dict]:
     return items
 
 
+def set_pty_size(fd: int, cols: int, rows: int) -> None:
+    cols = max(20, min(int(cols), 500))
+    rows = max(5, min(int(rows), 200))
+    packed = struct.pack("HHHH", rows, cols, 0, 0)
+    fcntl.ioctl(fd, termios.TIOCSWINSZ, packed)
+
+
+def child_exited(pid: int) -> bool:
+    try:
+        finished, _ = os.waitpid(pid, os.WNOHANG)
+        return finished == pid
+    except ChildProcessError:
+        return True
+
+
 @app.get("/api/health")
 def health():
     return {"ok": True, "workspace": str(WORKSPACE), "repo_root": str(REPO_ROOT)}
@@ -168,45 +185,67 @@ def write_file(payload: FileWrite):
 async def terminal(websocket: WebSocket):
     await websocket.accept()
     shell = os.getenv("SHELL", "/bin/bash")
-    master_fd, slave_fd = pty.openpty()
     env = os.environ.copy()
-    env["TERM"] = env.get("TERM", "xterm-256color")
+    env["TERM"] = "xterm-256color"
+    env["COLORTERM"] = "truecolor"
     env["QUESTLAB_WORKSPACE"] = str(WORKSPACE)
 
     try:
-        process = subprocess.Popen(
-            [shell, "-l"],
-            cwd=str(WORKSPACE),
-            stdin=slave_fd,
-            stdout=slave_fd,
-            stderr=slave_fd,
-            env=env,
-            start_new_session=True,
-            close_fds=True,
-        )
+        pid, master_fd = pty.fork()
     except OSError as exc:
-        os.close(master_fd)
-        os.close(slave_fd)
-        await websocket.send_text(f"\r\nFailed to start shell {shlex.quote(shell)}: {exc}\r\n")
+        await websocket.send_text(f"\r\nFailed to create terminal PTY: {exc}\r\n")
         await websocket.close(code=1011)
         return
 
-    os.close(slave_fd)
+    if pid == 0:
+        try:
+            os.chdir(WORKSPACE)
+            os.execvpe(shell, [shell, "-l"], env)
+        except Exception as exc:
+            message = f"Quest Lab could not start shell {shell}: {exc}\n"
+            os.write(2, message.encode("utf-8", errors="replace"))
+            os._exit(127)
+
+    try:
+        set_pty_size(master_fd, 120, 30)
+    except OSError:
+        pass
 
     async def pump_output():
-        while process.poll() is None:
+        while True:
             try:
                 data = await asyncio.to_thread(os.read, master_fd, 4096)
             except OSError:
                 break
             if not data:
                 break
-            await websocket.send_text(data.decode("utf-8", errors="replace"))
+            try:
+                await websocket.send_text(data.decode("utf-8", errors="replace"))
+            except (WebSocketDisconnect, RuntimeError):
+                break
 
     async def pump_input():
-        while process.poll() is None:
+        while True:
             text = await websocket.receive_text()
-            await asyncio.to_thread(os.write, master_fd, text.encode("utf-8"))
+            message = None
+            if text.startswith("{"):
+                try:
+                    candidate = json.loads(text)
+                    if isinstance(candidate, dict) and candidate.get("type") in {"input", "resize"}:
+                        message = candidate
+                except json.JSONDecodeError:
+                    pass
+
+            if message and message.get("type") == "resize":
+                try:
+                    set_pty_size(master_fd, message.get("cols", 120), message.get("rows", 30))
+                except (OSError, TypeError, ValueError):
+                    pass
+                continue
+
+            payload = message.get("data", "") if message and message.get("type") == "input" else text
+            if payload:
+                await asyncio.to_thread(os.write, master_fd, payload.encode("utf-8"))
 
     output_task = asyncio.create_task(pump_output())
     input_task = asyncio.create_task(pump_input())
@@ -229,16 +268,21 @@ async def terminal(websocket: WebSocket):
         for task in (output_task, input_task):
             if not task.done():
                 task.cancel()
+
         try:
             os.close(master_fd)
         except OSError:
             pass
-        if process.poll() is None:
+
+        if not child_exited(pid):
             try:
-                os.killpg(process.pid, signal.SIGTERM)
+                os.killpg(pid, signal.SIGTERM)
             except OSError:
-                process.terminate()
-        try:
-            process.wait(timeout=2)
-        except subprocess.TimeoutExpired:
-            process.kill()
+                try:
+                    os.kill(pid, signal.SIGTERM)
+                except OSError:
+                    pass
+            try:
+                await asyncio.to_thread(os.waitpid, pid, 0)
+            except ChildProcessError:
+                pass
