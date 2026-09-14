@@ -7,11 +7,22 @@
 - `Ctrl+S` — save the active project file or Tutor Notebook.
 - `Ctrl+Enter` — run the current Python file / `tutor.py`.
 - `Ctrl+Shift+Enter` — submit the recent Forge terminal output to the currently launched AI terminal.
+- `Ctrl+Shift+P` — open the Forge command palette.
 - `Shift+Alt+F` — Pretty / format.
 - `Ctrl+\`` — focus the Forge terminal.
 - `Ctrl+Shift+\`` — focus the AI terminal.
 
 The Settings screen exposes the shortcut reference.
+
+### Forge command palette
+
+`Ctrl+Shift+P` opens a VS Code-style command palette with actions for:
+
+- Run / Save / Pretty / Submit Run;
+- Forge / Tutor / Quest / Codex / Character / Homestead / Settings navigation;
+- Forge and AI terminal focus;
+- Codex / Claude / AGY launch;
+- terminal reconnect actions.
 
 ### Submit Run
 
@@ -48,22 +59,6 @@ RPG navigation and major HUD/game icons now use monochrome inline SVG marks inst
 ---
 
 # Next QOL work
-
-## Command palette
-
-Add a VS Code-like command palette, likely `Ctrl+Shift+P`, for:
-
-- Run current file;
-- Save;
-- Pretty;
-- Submit run;
-- open Tutor Notebook;
-- focus Forge terminal;
-- focus AI terminal;
-- switch Quest / Codex / Character / Homestead;
-- launch Codex / Claude / AGY;
-- reconnect terminals;
-- reset layout.
 
 ## Better Submit Context
 
