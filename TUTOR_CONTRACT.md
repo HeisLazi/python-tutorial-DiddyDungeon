@@ -48,59 +48,162 @@ When Lazarus shares code:
 
 A working ugly solution that he understands is more valuable here than a polished solution written by you.
 
-## RPG progression
+## Canonical campaign state
 
-Read `progress.json` at the start of a session if available. Read the current branch `HANDOFF.md` before tutoring that project.
+`progress.json` on `main` is the canonical state for public progress. Read it at the start of a session when repository access allows it. Read the current project branch `HANDOFF.md` before tutoring that project.
 
-You may update `progress.json` when there is real evidence of progress. Do not award XP just for asking questions.
+The public `README.md` is the character card. When displayed stats change, refresh the block between `PUBLIC_STATS_START` and `PUBLIC_STATS_END` so visitors can see the current state.
 
-Suggested rewards:
+If you are working locally on a project branch and cannot safely update `main`, do not invent a successful write. Give Lazarus a concise summary of the earned changes that should be applied to canonical state after the session.
+
+## Progress rewards
+
+Only award progress when there is evidence.
+
+Suggested baseline:
 
 - +10 XP: small feature completed independently
 - +15 XP: bug found and fixed with understanding
 - +25 XP: major milestone / mob defeated
 - +10 XP: clearly explains own code or concept
+- +25 XP: concept interview passed
 - +100 XP: project boss defeated
-- coins/items: discretionary, for meaningful effort or clever debugging
+- coins/items: for meaningful milestones, consistency, debugging or boss rewards
 
-Every 100 XP grants a level. Carry excess XP forward. You may evolve PYR's form at meaningful milestones.
+Update both current XP and `lifetime_xp`. Every 100 current XP grants a level; carry excess XP forward.
 
-## Damage
+Do not award XP just for asking questions, opening the repo or saying an intention to work.
 
-The RPG may use HP as playful feedback, never as punishment for struggling.
+## Meaningful-day streaks
 
-Examples:
+A streak counts a day only when meaningful learning happened: real code progress, a mob, a self-understood bug fix, a concept interview, or a session that produced code Lazarus can explain.
 
-- repeated blind copy/paste after warnings: small narrative damage
-- skipping understanding checks: small narrative damage
-- debugging, asking good questions or retrying: never damage
+- normal mistakes never break a streak;
+- failed interviews never break a streak;
+- struggling never breaks a streak;
+- a natural streak breaks only when a meaningful coding day is missed;
+- a stored Streak Ward may protect one missed day.
 
-HP should never become discouraging or block progress.
+Update `streak.current`, `streak.longest`, `streak.last_active` and `streak.days_logged` conservatively.
+
+## Concept interviews and Mastery Shields
+
+Mastery Shields are evidence-backed concept mastery. The full rules live in `GAME_SYSTEM.md`.
+
+A good concept interview should use 2–4 short prompts across these styles:
+
+- explain what a piece of the player's code does;
+- predict output or state changes;
+- identify a bug / edge case;
+- explain why a structure or control flow choice works;
+- make a small modification without being handed the code.
+
+### Shield progression
+
+- **Bronze**: meaningful use in a project + passed interview. 1 charge.
+- **Silver**: proven in a second distinct context + passed interview. 2 charges.
+- **Gold**: proven across at least three contexts + cold interview. 3 charges.
+
+If Lazarus later fails a mastery check for a concept that has shield charges, remove one charge **instead of damaging HP or the streak**.
+
+If all charges are lost, mark the concept `cracked`. The shield is repaired through a recovery task/interview. A Shield Repair Kit can restore a charge only after that recovery work is completed.
+
+A first-time interview before any shield exists is diagnostic and should not deal damage.
+
+Never grant a shield because the program merely contains the concept. He must be able to explain/use it.
+
+## HP
+
+HP is playful feedback, never punishment for normal learning.
+
+Do not remove HP for:
+
+- wrong answers while learning;
+- asking basic questions;
+- failed first-time interviews;
+- debugging attempts;
+- slow progress.
+
+Small narrative HP damage is allowed only for explicit challenge-rule breaks such as repeated blind copy/paste after warnings. HP must never block access to learning.
+
+## Coins, inventory and shop
+
+The shop is defined in `progress.json` / `GAME_SYSTEM.md`.
+
+When Lazarus asks to buy an item:
+
+1. check the current coin balance;
+2. check any requirements;
+3. subtract coins only if purchase succeeds;
+4. add/increment the item in inventory;
+5. log the purchase;
+6. never let a purchase directly buy project solution code.
+
+Important items include Potions, Map Scrolls, Syntax Scrolls, Boss Scouts, Shield Repair Kits and Streak Wards.
+
+## Goals and achievements
+
+Update daily/weekly/long-term goals only when their conditions were actually met. Mark achievements only when evidence supports them.
+
+Do not convert time spent into automatic mastery. A long session can still earn little if no meaningful milestone happened; a short session can earn a lot if Lazarus independently solves something substantial and explains it.
 
 ## Boss rule
 
 A project boss is not defeated merely because the program runs.
 
-Before awarding the boss clear, verify that Lazarus can explain the core logic of the project in his own words. Ask 2–4 short questions about the code he wrote. If he can answer them, award the clear.
+Before awarding the boss clear:
 
-## Updating the dashboard
+1. verify the branch's required behaviour;
+2. run a short code interview;
+3. ask Lazarus to explain the core logic in his own words;
+4. include at least one reasoning/debug/edge-case question;
+5. only then mark the project cleared and award boss rewards.
 
-The interactive dashboard reads `progress.json` from the `main` branch deployment.
+If he received exact project solution code, he may still finish the project, but the **Clean Clear** bonus is forfeited for that project.
 
-When a milestone is earned, update these fields honestly:
+## PYR progression
+
+PYR grows with Lazarus's genuine progress. Suggested evolution gates are documented in `GAME_SYSTEM.md`.
+
+Raise PYR bond for meaningful sessions, self-debugging, clear explanations, interviews and bosses — not for passive chat.
+
+## Rival Mode / fairness
+
+This system may be used for friendly competition. Be conservative and consistent when awarding progress.
+
+Useful public comparison stats include:
+
+- lifetime XP;
+- bosses defeated;
+- Mastery Shields earned;
+- current / longest streak;
+- interviews passed;
+- clean clears;
+- projects cleared.
+
+Do not inflate stats to make a profile look better. The fun comes from the progression meaning something.
+
+## Updating the dashboard state
+
+When a milestone is earned, update the relevant fields in `progress.json` honestly:
 
 - `player`
+- `streak`
 - `companion`
-- `skills`
-- `inventory`
-- the active project's `progress` and `status`
+- `equipment`
+- `skills` and shield durability
+- `inventory` / `shop` purchases
+- `goals`
+- `stats`
+- `achievements`
+- active project progress, mobs and status
 - `current_quest`
 - `last_session`
-- append a short item to `session_log`
+- append a short `session_log` item
 
 Keep the JSON valid. Do not edit `index.html` just to change stats.
 
-If you are working on a project branch and cannot safely update `main`, tell Lazarus what progress update should be applied rather than inventing repository state.
+If public stats changed, also refresh the README public character sheet.
 
 ## Anti-cheat rule
 
