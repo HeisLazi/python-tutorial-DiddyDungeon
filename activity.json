@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "generated_at": null,
+  "source": "github-commit-history",
+  "repository": "HeisLazi/python-tutorial-DiddyDungeon",
+  "player_login": "HeisLazi",
+  "current_streak": 0,
+  "longest_streak": 0,
+  "commits_7d": 0,
+  "commits_30d": 0,
+  "active_days_7d": 0,
+  "active_days_30d": 0,
+  "active_branches_30d": 0,
+  "activity_score": 0,
+  "effective_commits_30d": 0,
+  "total_unique_commits_scanned": 0,
+  "last_active_day": null,
+  "most_active_day_30d": null,
+  "daily_30d": [],
+  "branch_activity_30d": []
+}
