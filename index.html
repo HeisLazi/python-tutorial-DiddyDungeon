@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Python Quest Lab</title>
+  <style>
+    :root{--bg:#11110f;--panel:#1b1b17;--panel2:#23231d;--text:#f2eadf;--muted:#aaa397;--gold:#d8a657;--ember:#e26d3b;--green:#8fa876;--blue:#7daea3;--line:#3a382f;--danger:#d3866b}
+    *{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at top,#262219 0,#11110f 45%);color:var(--text);font:15px/1.5 ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;min-height:100vh}.wrap{max-width:1180px;margin:auto;padding:28px}.top{display:flex;gap:18px;align-items:center;justify-content:space-between;margin-bottom:22px}.brand h1{margin:0;font-size:clamp(28px,5vw,54px);letter-spacing:-2px}.brand p{margin:5px 0;color:var(--muted)}.badge{border:1px solid var(--line);background:#171713;padding:8px 12px;border-radius:999px;color:var(--gold)}.grid{display:grid;grid-template-columns:360px 1fr;gap:18px}.card{background:linear-gradient(180deg,var(--panel),#161612);border:1px solid var(--line);border-radius:16px;padding:18px;box-shadow:0 12px 32px #0005}.char{position:sticky;top:18px;height:max-content}.sprite{font-size:74px;text-align:center;filter:drop-shadow(0 0 18px #e26d3b55);margin:4px}.name{text-align:center;font-size:23px}.sub{text-align:center;color:var(--muted);margin-bottom:14px}.bar{height:11px;border-radius:99px;background:#0e0e0c;border:1px solid #302e27;overflow:hidden;margin:6px 0 12px}.bar>i{display:block;height:100%;background:linear-gradient(90deg,var(--ember),var(--gold));width:0;transition:.5s}.hp>i{background:linear-gradient(90deg,#a64b43,var(--danger))}.statline{display:flex;justify-content:space-between;color:var(--muted)}.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:12px 0}.mini{background:var(--panel2);border:1px solid var(--line);padding:10px;border-radius:10px;text-align:center}.mini b{display:block;color:var(--gold);font-size:18px}.section-title{display:flex;justify-content:space-between;align-items:center;margin:2px 0 10px}.section-title h2{margin:0;font-size:20px}.projects{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.project{padding:14px;border-radius:12px;border:1px solid var(--line);background:#181814;cursor:pointer;transition:.15s}.project:hover{transform:translateY(-2px);border-color:#655f4d}.project.active{border-color:var(--gold);box-shadow:0 0 0 1px #d8a65744 inset}.phead{display:flex;justify-content:space-between;gap:10px}.pname{font-weight:700}.status{font-size:11px;text-transform:uppercase;color:var(--green)}.boss{color:var(--muted);font-size:12px;margin:6px 0}.tinybar{height:6px;border-radius:99px;background:#0c0c0b;overflow:hidden}.tinybar i{display:block;height:100%;background:var(--green)}.terminal{margin-top:18px;background:#0b0b09;border:1px solid #302e27;border-radius:14px;padding:16px;min-height:210px}.prompt{color:var(--green)}.pyr{color:var(--ember)}.terminal p{margin:7px 0}.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}button{font:inherit;border-radius:9px;padding:9px 12px;border:1px solid var(--line);background:#24231d;color:var(--text);cursor:pointer}button:hover{border-color:var(--gold)}button.primary{background:var(--gold);color:#17130c;border-color:var(--gold);font-weight:700}.skills{display:flex;gap:8px;flex-wrap:wrap}.skill{padding:7px 9px;border:1px solid var(--line);border-radius:8px;color:var(--muted)}.skill.learning{color:var(--gold);border-color:#6f5c35}.skill.mastered{color:var(--green);border-color:#486044}.skill.locked{opacity:.45}.inventory{margin-top:14px}.inventory span{display:inline-block;margin:4px 4px 0 0;padding:6px 8px;border-radius:8px;background:#22211b;border:1px solid var(--line)}.detail{margin-top:12px;padding:12px;border-left:3px solid var(--gold);background:#1b1913;color:var(--muted)}code{color:var(--blue)}a{color:var(--gold)}.footer{color:var(--muted);text-align:center;padding:28px 0 5px;font-size:12px}@media(max-width:850px){.grid{grid-template-columns:1fr}.char{position:static}.projects{grid-template-columns:1fr}.top{align-items:flex-start;flex-direction:column}}
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top"><div class="brand"><h1>PYTHON QUEST LAB</h1><p>Learn by building. PYR hints. You write the code.</p></div><div class="badge" id="questBadge">loading campaign…</div></div>
+  <div class="grid">
+    <aside class="card char">
+      <div class="sprite">🔥</div><div class="name" id="playerName">Lazi</div><div class="sub" id="playerTitle">Apprentice Coder</div>
+      <div class="statline"><span>XP</span><span id="xpText">0 / 100</span></div><div class="bar"><i id="xpBar"></i></div>
+      <div class="statline"><span>HP</span><span id="hpText">100 / 100</span></div><div class="bar hp"><i id="hpBar"></i></div>
+      <div class="stats"><div class="mini"><b id="level">1</b>LVL</div><div class="mini"><b id="coins">0</b>COINS</div><div class="mini"><b id="potions">2</b>POTIONS</div></div>
+      <hr style="border:0;border-top:1px solid var(--line);margin:16px 0">
+      <div class="section-title"><h2>PYR</h2><span class="status" id="pyrLevel">LVL 1</span></div>
+      <div id="pyrForm" style="color:var(--gold)">Tiny Code-Flame</div><div style="color:var(--muted);font-size:12px">Your Socratic coding companion. PYR grows when you do.</div>
+      <div class="inventory"><strong>Inventory</strong><div id="inventory"></div></div>
+    </aside>
+
+    <main>
+      <section class="card">
+        <div class="section-title"><h2>Quest Tree</h2><span style="color:var(--muted)">pick what sounds fun</span></div>
+        <div class="projects" id="projects"></div>
+        <div class="detail" id="detail">Select a project to see its branch command and boss.</div>
+      </section>
+
+      <section class="card" style="margin-top:18px">
+        <div class="section-title"><h2>Skill Tree</h2><span style="color:var(--muted)">real skills, RPG names</span></div><div class="skills" id="skills"></div>
+      </section>
+
+      <section class="terminal" id="terminal">
+        <p><span class="prompt">lazi@questlab:~$</span> summon pyr</p>
+        <p><span class="pyr">PYR:</span> I won't write the game for you. I will make sure you understand how to.</p>
+        <p id="lastSession"></p>
+        <p id="currentQuest"></p>
+        <div class="actions"><button class="primary" id="copyTutor">Copy PYR session prompt</button><button id="copyBranch">Copy selected branch command</button><button id="reload">Reload progress</button></div>
+      </section>
+    </main>
+  </div>
+  <div class="footer">progress is loaded from <code>progress.json</code> • AI tutors should read <code>TUTOR_CONTRACT.md</code> + the selected branch <code>HANDOFF.md</code></div>
+</div>
+<script>
+const fallback={player:{name:'Lazi',title:'Apprentice Coder',level:1,xp:0,xp_next:100,hp:100,max_hp:100,coins:0,potions:2},companion:{name:'PYR',form:'Tiny Code-Flame',level:1},skills:[],inventory:[],projects:[],current_quest:'Choose a branch.',last_session:'Campaign ready.'};
+let data=fallback, selected=null;
+function esc(s){return String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]))}
+function render(){const p=data.player||fallback.player,c=data.companion||fallback.companion;
+ document.querySelector('#playerName').textContent=p.name;document.querySelector('#playerTitle').textContent=p.title;document.querySelector('#level').textContent=p.level;document.querySelector('#coins').textContent=p.coins;document.querySelector('#potions').textContent=p.potions;document.querySelector('#xpText').textContent=`${p.xp} / ${p.xp_next}`;document.querySelector('#xpBar').style.width=`${Math.min(100,p.xp/p.xp_next*100)}%`;document.querySelector('#hpText').textContent=`${p.hp} / ${p.max_hp}`;document.querySelector('#hpBar').style.width=`${Math.min(100,p.hp/p.max_hp*100)}%`;document.querySelector('#pyrLevel').textContent=`LVL ${c.level}`;document.querySelector('#pyrForm').textContent=c.form;
+ document.querySelector('#questBadge').textContent=`LVL ${p.level} • ${p.xp} XP • ${data.projects.filter(x=>x.status==='cleared').length}/${data.projects.length} bosses`;
+ document.querySelector('#inventory').innerHTML=(data.inventory||[]).map(x=>`<span>${esc(x.name)} ×${x.qty}</span>`).join('')||'<span>empty</span>';
+ document.querySelector('#skills').innerHTML=(data.skills||[]).map(x=>`<span class="skill ${esc(x.status)}" title="${esc(x.concept)}">${esc(x.name)} · ${esc(x.concept)}</span>`).join('');
+ const box=document.querySelector('#projects');box.innerHTML='';(data.projects||[]).forEach(x=>{const e=document.createElement('div');e.className='project'+(selected?.branch===x.branch?' active':'');e.innerHTML=`<div class="phead"><span class="pname">${x.order}. ${esc(x.name)}</span><span class="status">${esc(x.status)}</span></div><div class="boss">BOSS: ${esc(x.boss)}</div><div class="tinybar"><i style="width:${Number(x.progress)||0}%"></i></div>`;e.onclick=()=>{selected=x;render();showDetail()};box.appendChild(e)});
+ document.querySelector('#lastSession').innerHTML=`<span class="pyr">PYR:</span> ${esc(data.last_session)}`;document.querySelector('#currentQuest').innerHTML=`<span class="pyr">QUEST:</span> ${esc(data.current_quest)}`;if(selected)showDetail();}
+function showDetail(){if(!selected)return;document.querySelector('#detail').innerHTML=`<strong>${esc(selected.name)}</strong><br>Branch: <code>${esc(selected.branch)}</code><br>Boss: <strong>${esc(selected.boss)}</strong><br>Progress: ${selected.progress}%<br><br><code>git switch ${esc(selected.branch)}</code> → then read <code>HANDOFF.md</code>.`;}
+async function load(){try{const r=await fetch('progress.json?ts='+Date.now());if(!r.ok)throw 0;data=await r.json()}catch(e){data=fallback}render()}
+document.querySelector('#reload').onclick=load;document.querySelector('#copyBranch').onclick=async()=>{const cmd=selected?`git switch ${selected.branch}`:'git branch -a';await navigator.clipboard.writeText(cmd);document.querySelector('#copyBranch').textContent='Copied!';setTimeout(()=>document.querySelector('#copyBranch').textContent='Copy selected branch command',1200)};
+document.querySelector('#copyTutor').onclick=async()=>{const b=selected?.branch||'<current-project-branch>';const prompt=`You are PYR, my Socratic Python tutor for Python Quest Lab. Read TUTOR_CONTRACT.md and progress.json, then read HANDOFF.md on branch ${b}. Do not write the project for me. Start by asking what I have built so far and use the hint ladder when I am stuck. Track genuine progress and only award boss clears after I can explain my code.`;await navigator.clipboard.writeText(prompt);document.querySelector('#copyTutor').textContent='PYR prompt copied';setTimeout(()=>document.querySelector('#copyTutor').textContent='Copy PYR session prompt',1400)};
+load();
+</script>
+</body>
+</html>
