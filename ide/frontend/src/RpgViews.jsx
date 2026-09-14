@@ -467,7 +467,7 @@ function AccountPanel({ account, busy, notice, onSignIn, onSignUp, onSignOut, on
             <label><span>This device</span><input value={deviceLabel} onChange={(event) => setDeviceLabel(event.target.value)} maxLength={80} /></label>
             <button type="submit" disabled={busy}>Save device name</button>
           </form>
-          <button type="button" disabled={busy} onClick={onSignOut}>Sign out</button>
+          <button type="button" disabled={busy} onClick={async () => { try { await onSignOut() } catch {} }}>Sign out</button>
         </div>
       )}
 
