@@ -123,6 +123,11 @@ def main():
     now_local_day = local_day(now_utc, offset_hours)
     cutoff_dt = now_utc - timedelta(days=history_days)
 
+    started_raw = config.get("competition_started_at")
+    competition_started = parse_dt(started_raw).astimezone(timezone.utc) if started_raw else None
+    if competition_started and competition_started > cutoff_dt:
+        cutoff_dt = competition_started
+
     api = f"https://api.github.com/repos/{repo}"
     branches = github_get(f"{api}/branches?per_page=100", token)
 
@@ -142,29 +147,29 @@ def main():
                 message = (commit.get("message") or "").splitlines()[0]
                 if ignored_prefixes and message.startswith(ignored_prefixes):
                     continue
-                if item.get("author") and item["author"].get("login"):
-                    if item["author"]["login"].lower() != player_login.lower():
+
+                linked_author = item.get("author")
+                if linked_author and linked_author.get("login"):
+                    if linked_author["login"].lower() != player_login.lower():
                         continue
+
                 stamp = commit.get("author", {}).get("date") or commit.get("committer", {}).get("date")
                 if not stamp:
                     continue
-                dt = parse_dt(stamp)
+                dt = parse_dt(stamp).astimezone(timezone.utc)
                 if dt < cutoff_dt:
                     should_stop = True
                     continue
+
                 sha = item["sha"]
-                unique[sha] = {
-                    "sha": sha,
-                    "date": dt,
-                    "message": message,
-                }
+                unique[sha] = {"sha": sha, "date": dt, "message": message}
                 branches_for_sha[sha].add(branch_name)
+
             if should_stop or len(commits) < 100:
                 break
 
     by_day = Counter()
     branch_counts_30 = Counter()
-    day_branch_pairs = set()
     cutoff_7 = now_local_day - timedelta(days=6)
     cutoff_30 = now_local_day - timedelta(days=29)
 
@@ -174,7 +179,6 @@ def main():
         if day >= cutoff_30:
             for branch in branches_for_sha[sha]:
                 branch_counts_30[branch] += 1
-                day_branch_pairs.add((day, branch))
 
     active_days = set(by_day)
     current_streak = calc_current_streak(active_days, now_local_day)
@@ -185,7 +189,10 @@ def main():
     active_days_30 = sum(1 for day in active_days if day >= cutoff_30)
     active_branches_30 = len(branch_counts_30)
 
-    effective_commits_30 = sum(min(by_day.get(cutoff_30 + timedelta(days=i), 0), cap_per_day) for i in range(30))
+    effective_commits_30 = sum(
+        min(by_day.get(cutoff_30 + timedelta(days=i), 0), cap_per_day)
+        for i in range(30)
+    )
     branch_bonus_count = min(active_branches_30, int(score_cfg.get("max_branch_bonus", 8)))
     activity_score = (
         active_days_30 * int(score_cfg.get("active_day_points", 12))
@@ -201,7 +208,10 @@ def main():
 
     most_active = None
     if commits_30:
-        day, count = max(((day, count) for day, count in by_day.items() if day >= cutoff_30), key=lambda x: (x[1], x[0]))
+        day, count = max(
+            ((day, count) for day, count in by_day.items() if day >= cutoff_30),
+            key=lambda x: (x[1], x[0]),
+        )
         most_active = {"date": day.isoformat(), "commits": count}
 
     branch_activity = [
@@ -215,6 +225,7 @@ def main():
         "source": "github-commit-history",
         "repository": repo,
         "player_login": player_login,
+        "competition_started_at": started_raw,
         "current_streak": current_streak,
         "longest_streak": longest_streak,
         "commits_7d": commits_7,
