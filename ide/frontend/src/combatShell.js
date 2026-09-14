@@ -10,6 +10,7 @@ const COMBAT_ICON = {
 }
 
 const icon = (name, extra = '') => `<span class="combat-icon ${extra}">${COMBAT_ICON[name] || COMBAT_ICON.relic}</span>`
+const gearIcon = (name) => `<div class="combat-gear-icon">${icon(name)}</div>`
 
 const ARMOR = {
   'Apprentice Coat': { reduction: 10, tier: 'Starter' },
@@ -111,19 +112,19 @@ function renderCharacterGear() {
   list.dataset.combatGear = 'true'
   list.innerHTML = `
     <div class="combat-gear-row">
-      ${icon('shield')}
+      ${gearIcon('shield')}
       <small>Armor</small>
       <strong>${armor.name}</strong>
       <em>${armor.tier} · ${armor.reduction}% Battle damage reduction</em>
     </div>
     <div class="combat-gear-row">
-      ${icon('relic')}
+      ${gearIcon('relic')}
       <small>Trinket</small>
       <strong>${trinket.name}</strong>
       <em>${trinket.effect}</em>
     </div>
     <div class="combat-gear-row">
-      ${icon('crown')}
+      ${gearIcon('crown')}
       <small>Title</small>
       <strong>${title}</strong>
       <em>Identity / achievement slot. No combat power.</em>
@@ -152,8 +153,7 @@ function renderQuestBattleShell() {
   const progress = campaign?.progress
   const hero = document.querySelector('.quest-hero')
   if (!progress || !hero) return
-  const existing = document.querySelector('[data-battle-shell]')
-  if (existing) return
+  if (document.querySelector('[data-battle-shell]')) return
 
   const project = activeProject(progress)
   const { mob, index } = currentMob(project)
