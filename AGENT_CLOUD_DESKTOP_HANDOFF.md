@@ -1,0 +1,194 @@
+# Quest Lab Cloud/Desktop Agent Handoff
+
+Target branch: `feature/cloud-sync-desktop`
+
+Base: current Forge v2 / combat foundation from `feature/quest-lab-ide`.
+
+Read before editing:
+
+1. `CANON_LEDGER.md`
+2. `TUTOR_CONTRACT.md`
+3. `LEARNING_PROTOCOL.md`
+4. `GAME_SYSTEM.md`
+5. `COMBAT_SYSTEM.md`
+6. `FORGE_V2_HANDOFF.md`
+7. `CLOUD_DESKTOP_ARCHITECTURE.md`
+
+## Mission
+
+Add cross-device identity/cloud save and prepare Quest Lab to become an installable desktop application without breaking the working local-first Forge experience.
+
+The current working runtime is valuable. Preserve it.
+
+## Hard boundaries
+
+- GitHub remains source-code authority.
+- Supabase becomes synchronized account/game-state authority.
+- local filesystem remains active coding authority.
+- Vercel is a web/public surface, not the privileged PTY backend.
+- `progress.json` remains available as the offline/local cache during this migration.
+- do not implement weekly raid combat yet.
+- do not redesign the current gameplay or learning protocol.
+- do not let the tutor agent write required project files.
+- never commit secrets.
+- never place a Supabase service-role key in client code.
+- never upload AI tokens, shell history, absolute local paths or terminal logs by default.
+- keep the local shell/backend loopback-only.
+
+## Working style
+
+Make bounded, reviewable milestones. After each milestone:
+
+1. run deterministic checks;
+2. document what changed;
+3. stop and repair failures before moving on;
+4. avoid broad opportunistic refactors.
+
+Use `system:` commit-message prefixes for platform/infrastructure commits so Quest Lab Dev Activity does not score maintenance work.
+
+## Milestone A — Cloud configuration foundation
+
+Goal: add configuration structure without requiring cloud availability to launch Forge.
+
+Expected work:
+- inspect existing package/runtime structure before choosing exact paths;
+- initialize/link Supabase using the installed CLI if the project/account is available;
+- add safe `.env.example` documentation with public client values only;
+- add a dedicated cloud/sync service boundary rather than direct Supabase calls spread across UI components;
+- preserve launch with no Supabase configuration.
+
+Acceptance:
+- existing Forge launches with zero cloud env vars;
+- missing cloud config produces an offline/local state, not a crash;
+- no secrets in Git diff;
+- terminal/editor remain working.
+
+## Milestone B — Authentication + profile/device identity
+
+Goal: the same Quest Lab account can sign into multiple devices.
+
+Expected work:
+- Supabase Auth;
+- `profiles` table;
+- device registration with user-chosen/default-friendly display name;
+- Row Level Security tied to `auth.uid()`;
+- sign in/sign out/session restore surface in Forge or a minimal account surface;
+- keep local anonymous/offline mode working.
+
+Acceptance:
+- User A cannot read/write User B profile/device rows under RLS tests.
+- restarting the app restores a valid signed-in session when appropriate;
+- sign-out leaves local Forge usable;
+- no local absolute path is stored in the cloud device row.
+
+## Milestone C — Cloud save / Sync Engine v1
+
+Goal: sync core player state between two devices without making Supabase calls from random UI components.
+
+Start with a bounded subset:
+- player identity/progression fields;
+- HP/max HP;
+- equipment armor/trinket/title;
+- companion state;
+- Homestead ownership/equipped cosmetics.
+
+Do **not** migrate every state domain at once.
+
+Sync requirements:
+- local cache remains available;
+- offline changes queue locally;
+- reconnect attempts sync;
+- never blindly replace a newer cloud revision with an older local snapshot;
+- log sync status clearly: local / syncing / synced / conflict/error.
+
+Acceptance test with two devices or two isolated local profiles:
+1. sign into same account on A and B;
+2. change an allowed synced field on A;
+3. sync;
+4. B receives the newer state;
+5. take B offline and make a local allowed change;
+6. reconnect;
+7. the sync engine reconciles without corrupting the save;
+8. Forge works throughout offline mode.
+
+Document the conflict policy used in v1.
+
+## Milestone D — Avatar cloud storage
+
+Goal: replace device-only portrait storage when signed in while retaining a local fallback.
+
+Expected:
+- private/user-scoped Supabase Storage bucket/policy;
+- validated image type and bounded size;
+- profile references avatar asset;
+- PC/laptop signed into same account render same avatar;
+- offline cached avatar remains visible after prior sync.
+
+Acceptance:
+- another user cannot overwrite/read private avatar objects unless deliberately public;
+- local fallback still works when unsigned/offline.
+
+## Milestone E — Tauri desktop proof
+
+Only begin after A-D are stable.
+
+Goal: package existing Quest Lab rather than rewrite it.
+
+First Tauri proof must:
+- launch as a desktop window;
+- display the existing Forge UI;
+- start/manage the local privileged backend automatically;
+- load a user-selected workspace;
+- preserve Monaco editing;
+- preserve Forge PTY;
+- preserve AI PTY;
+- preserve `tutor.py` flow;
+- shut child processes down cleanly when the app closes.
+
+Do not implement multiplayer during this milestone.
+
+Prefer retaining the Python/FastAPI backend as a managed sidecar for the first package. Do not rewrite it in Rust unless packaging proves it necessary and document the evidence first.
+
+## Milestone F — Web/Vercel surface
+
+Goal: deploy only the safe web/account layer.
+
+Appropriate web features:
+- landing page;
+- auth/account entry;
+- public profile/character sheet (only explicitly public data);
+- desktop download/help page;
+- future party/raid lobby placeholder.
+
+Do not expose:
+- PTY endpoints;
+- local filesystem APIs;
+- AI credentials;
+- private local code.
+
+## Multiplayer hold point
+
+Stop before implementing real weekly raid mechanics.
+
+At most, after cloud sync + desktop packaging are proven, a later task may add:
+- friends;
+- presence;
+- party create/join;
+- a harmless shared realtime counter/state proof.
+
+Do not let this branch jump straight into raid combat/state authority before cross-device save is trustworthy.
+
+## Required final handoff
+
+Update this file or add a concise implementation report containing:
+- exact milestones completed;
+- files changed;
+- Supabase migrations/tables/RLS policies added;
+- environment variables required and whether each is public/secret;
+- how offline mode behaves;
+- conflict policy;
+- commands used to test/build;
+- known limitations;
+- what remains intentionally unimplemented.
+
+Do not claim completion if PC/laptop-equivalent sync and PTY preservation have not actually been demonstrated.
