@@ -23,6 +23,11 @@ def parse_args():
         help="Folder the editor/terminal may access. A git worktree for the active quest is recommended.",
     )
     parser.add_argument("--no-browser", action="store_true", help="Do not automatically open the browser")
+    parser.add_argument(
+        "--reload-backend",
+        action="store_true",
+        help="Development only: enable uvicorn reload. This intentionally restarts PTY terminals when backend files change.",
+    )
     return parser.parse_args()
 
 
@@ -44,19 +49,22 @@ def main():
         sys.executable,
         "-m",
         "uvicorn",
-        "ide.server.app:app",
+        "ide.server.app_v2:app",
         "--host",
         "127.0.0.1",
         "--port",
         "7331",
-        "--reload",
     ]
+    if args.reload_backend:
+        backend_cmd.append("--reload")
+
     frontend_cmd = ["npm", "run", "dev", "--", "--host", "127.0.0.1"]
 
-    print("\n🔥 Python Quest Lab IDE")
+    print("\n🔥 Python Quest Lab — Forge v2")
     print(f"   platform:  {REPO_ROOT}")
     print(f"   workspace: {workspace}")
-    print("   web:       http://127.0.0.1:5173\n")
+    print("   web:       http://127.0.0.1:5173")
+    print("   terminals: stable PTY mode (backend reload off)\n")
 
     backend = subprocess.Popen(backend_cmd, cwd=REPO_ROOT, env=env)
     frontend = subprocess.Popen(frontend_cmd, cwd=FRONTEND, env=env)
