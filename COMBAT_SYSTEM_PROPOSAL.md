@@ -1,24 +1,26 @@
-# Quest Lab Combat System — PROVISIONAL Design
+# Quest Lab Combat System — PROVISIONAL Design v2
 
-This file is a design proposal only. Nothing here changes XP, HP, gear power, mastery, streaks, rivals, or rewards until it is explicitly approved and added to the Canon Ledger.
+This file is a design proposal only. Nothing here changes XP, HP, gear power, mastery, streaks, rivals, rewards, or weekly raids until it is explicitly approved and added to the Canon Ledger.
 
 ## Design goal
 
-Combat should make learning feel alive without turning normal mistakes into punishment or letting gear replace understanding.
+Combat should make learning feel alive without turning Quest Lab into a damage-calculation simulator.
 
-The player should always know:
+The simplified direction is:
 
-- how much damage an enemy can deal;
-- how much damage their current successful action can deal;
-- what their weapon, armor and trinket are doing;
-- why damage happened;
-- what is required to actually clear the learning objective.
+- **no weapon slot**;
+- **armor = percentage damage reduction**;
+- **trinket = special utility/effect slot**;
+- **offense comes from verified project progress**, not equipped attack stats;
+- normal coding mistakes remain safe;
+- battle damage only happens when the player knowingly submits an answer/checkpoint during an encounter;
+- future weekly bosses can use shared project progress as a party attack against one boss.
 
-No hidden damage formulas.
+The point is to make building software feel like fighting the enemy, not to bolt a separate RPG combat game on top of coding.
 
 ---
 
-# Two learning states
+# 1. Safe learning vs encounter submissions
 
 ## Safe learning state
 
@@ -28,270 +30,468 @@ Used during:
 - Practice;
 - Quick Refresher;
 - normal debugging;
-- ordinary Forge implementation.
+- ordinary Forge implementation;
+- experimenting in `tutor.py`;
+- syntax/runtime errors before the player chooses to submit.
 
-Normal mistakes, syntax errors, runtime errors, asking for help and needing reteaching cause **zero HP damage**.
+These cause **zero HP damage**.
 
-## Battle state
+## Encounter state
 
-Entered intentionally during:
+Used during:
 
 - Test Me;
 - concept interviews;
-- mob challenges;
-- boss phases;
+- mob checkpoints;
+- boss checkpoints;
+- future weekly raid objectives;
 - optional challenge encounters.
 
-Only Battle state can deal combat damage.
+Damage is only considered when the player deliberately presses something equivalent to:
 
-This keeps the game meaningful without making learning anxiety-driven.
+```text
+Submit Answer
+Submit Run
+Submit Checkpoint
+```
+
+and PYR judges that submitted encounter answer/checkpoint as wrong or failed.
+
+This makes the risk explicit. Merely trying code never hurts the character.
 
 ---
 
-# Encounter information
+# 2. Armor: simple percentage protection
 
-Before a battle starts, the HUD should show something like:
+Armor has one mechanical value:
+
+```text
+Damage Reduction %
+```
+
+No defense stat, no armor points, no hidden formula.
+
+Suggested tiers:
+
+| Tier | Example reduction |
+|---|---:|
+| starter / worn | 10% |
+| uncommon | 20% |
+| rare | 30% |
+| epic | 40% |
+| elite | 50% |
+| legendary ceiling | 60% |
+
+The proposed normal cap is **60%** so even the strongest armor cannot remove all consequence from a failed battle submission.
+
+Formula:
+
+```text
+raw encounter damage × (1 - armor reduction) = HP damage taken
+```
+
+Round to the nearest whole HP, with a minimum of 1 HP if an encounter was meant to deal damage.
+
+Example:
+
+```text
+Boss hit                    20 HP
+Elite armor reduction       50%
+--------------------------------
+Damage taken                10 HP
+```
+
+The UI should show this before the player submits:
+
+```text
+Failure damage: 20
+Armor: -50%
+You would take: 10 HP
+```
+
+Armor never changes whether an answer is correct and never manufactures mastery evidence.
+
+---
+
+# 3. Trinkets: the interesting gear slot
+
+Trinkets stay because they can create memorable RPG effects without needing a large stat system.
+
+Good trinket categories:
+
+### Survival
+
+- revive once per day at 1 HP;
+- survive one lethal boss hit at 1 HP;
+- reduce one encounter's damage to zero once per project;
+
+### Information
+
+- reveal the concept family of one hidden mob;
+- reveal one boss phase category;
+- reveal whether the next checkpoint is explanation / debugging / implementation;
+
+### Tutor interaction
+
+- one extra Tutor Notebook hint token;
+- one stronger non-Reference-Mode hint;
+- preserve one attempt before PYR drops the encounter back into Teach mode;
+
+### Combo / raid utility
+
+- preserve one combo after a failed submission;
+- grant a one-time party shield during a weekly boss;
+- revive one downed teammate in a raid;
+
+### XP effects — not yet approved
+
+Straight XP multipliers remain dangerous for rival fairness.
+
+If XP trinkets ever exist, boosted XP must be separated from evidence-backed **Learning Power**, or rival scoring must ignore the boosted portion.
+
+Do not implement XP multipliers before that accounting exists.
+
+---
+
+# 4. Offense: Project Impact instead of weapon damage
+
+The player does **not** deal damage by owning a sword or rolling attack numbers.
+
+The player attacks by completing verified learning/project work.
+
+The combat term is **Impact**.
+
+A mob or boss has **Resolve**. Verified work removes Resolve.
+
+Example:
 
 ```text
 THE COUNT KEEPER
+Resolve: 12
+
+Checkpoint: explain why a hand is stored as a list
+Reward on success: 2 Impact
+
+Checkpoint: implement hand-total logic independently
+Reward on success: 5 Impact
+
+Checkpoint: pass the cold review question
+Reward on success: 5 Impact
+```
+
+Complete all three successfully:
+
+```text
+12 Resolve → 0
+Mob defeated
+```
+
+This means "attacking" is literally progressing through the real challenge.
+
+---
+
+# 5. Impact values are assigned before the work
+
+To prevent gaming the system, PYR should not decide damage *after* seeing how much code was written.
+
+Every encounter/checkpoint receives an Impact value when it is created.
+
+Suggested starting scale:
+
+| Verified contribution | Suggested Impact |
+|---|---:|
+| small concept / prediction checkpoint | 1–2 |
+| explanation / bug diagnosis | 2–3 |
+| independent small feature | 3–5 |
+| meaningful project feature | 5–8 |
+| integration / difficult milestone | 8–12 |
+| boss interview phase | 5–10 |
+
+Impact is earned only when the checkpoint is actually accepted.
+
+Commit count, line count and AI-generated volume do not create Impact.
+
+Reference Mode can still reduce learning rewards exactly as the normal campaign rules require; it should not suddenly become a way to farm boss damage either. Assisted checkpoints can have reduced or zero raid contribution depending on the final raid rules.
+
+---
+
+# 6. Individual mobs
+
+A normal mob is a small set of checkpoints with a total Resolve amount.
+
+Example:
+
+```text
+THE BUST HOUND
+Resolve: 9
 Threat: II
-Enemy Resolve: 6
-Enemy Attack: 4
+Raw failure hit: 8 HP
 
-Lazi
-HP: 82 / 100
-Weapon: Training Blade   +1 on successful attacks
-Armor: Apprentice Coat   Guard 1
-Trinket: None
-
-Current action
-Explain the list traversal correctly
-Potential damage: 2 + weapon bonus
-Failure damage: 4 - armor guard
+[ ] Predict what happens when total > 21       2 Impact
+[ ] Implement bust detection independently     4 Impact
+[ ] Explain the condition back to PYR           3 Impact
 ```
 
-Damage should be deterministic unless an item explicitly states that it contains randomness.
+When a submitted battle checkpoint is wrong:
+
+```text
+Raw hit: 8
+Rare armor: -30%
+Damage taken: 6 HP
+```
+
+PYR should then decide whether the player is still ready for another encounter submission or should return to Teach/Practice.
+
+Repeated wrong guesses should not become an HP-farming death spiral.
 
 ---
 
-# Enemy health: Resolve
+# 7. Bosses
 
-Enemies use **Resolve** instead of ordinary HP.
-
-Resolve represents how much understanding/work is still needed to defeat the encounter.
-
-Suggested starting values:
-
-| Encounter | Resolve |
-|---|---:|
-| tiny diagnostic mob | 2–3 |
-| normal mob | 4–6 |
-| hard mob | 7–9 |
-| project boss phase | 8–12 |
-| full late-game boss | multiple phases |
-
-A mob reaching 0 Resolve does not automatically grant mastery. Required Forge work/interviews still have to be completed.
-
----
-
-# Player attacks
-
-Successful learning actions deal damage.
-
-Suggested base values:
-
-| Successful action | Base damage |
-|---|---:|
-| prediction / small concept answer | 1 |
-| clear explanation / bug diagnosis | 2 |
-| independent code checkpoint | 3 |
-| difficult cold interview answer | 3 |
-| major Forge milestone | phase clear rather than raw damage |
-
-Weapons can modify successful attacks, but **a weapon can never turn an incorrect answer into a correct one**.
+Project bosses are larger Resolve pools split into phases.
 
 Example:
 
 ```text
-Correct explanation     2
-Training Blade bonus   +1
---------------------------
-Damage dealt            3
+THE HOUSE
+Total Resolve: 40
+
+Phase 1 — Rules of the Table       10
+Phase 2 — Dealer Behaviour          10
+Phase 3 — Ace Logic                 10
+Phase 4 — Final Code Interview      10
 ```
 
----
+The code itself remains the battle.
 
-# Enemy attacks and player damage
+Finishing a required phase removes its assigned Resolve.
 
-An enemy can attack after a failed Battle-state action.
-
-Suggested base attack ranges:
-
-| Threat | Damage |
-|---|---:|
-| I | 2–3 |
-| II | 4 |
-| III | 5–6 |
-| IV | 7–8 |
-| Boss | clearly shown per phase |
-
-Normal coding bugs are not enemy attacks.
-
-A failed Test Me / interview response can trigger one enemy turn, but repeated guessing should not create a death spiral. The tutor should switch back toward teaching when the player clearly needs explanation.
+A boss reaching 0 Resolve still does not bypass the normal Boss Rule: required software behaviour, interview, assistance audit and Clean Clear eligibility must all be verified.
 
 ---
 
-# Gear roles
+# 8. Weekly co-op bosses / raids
 
-## Weapons
+This is the long-term multiplayer direction.
 
-Weapons increase **damage after successful learning actions**.
+A weekly boss should be a **shared mini-project or engineering challenge** that several players can join.
 
-Examples:
-
-- Training Blade: +1 damage on a successful attack;
-- Debugger's Knife: +1 extra damage when the player correctly diagnoses a bug;
-- Runic Staff: bonus only during concept/explanation encounters.
-
-Weapons never lower the evidence needed for a clear.
-
-## Armor
-
-Armor reduces incoming Battle-state damage.
-
-Examples:
-
-- Apprentice Coat: reduce the first incoming hit in an encounter by 1;
-- Iron Mantle: flat Guard 1;
-- Scholar Plate: larger reduction during interview encounters, but no help during Forge coding.
-
-Armor never changes whether an answer counts as correct.
-
-## Trinkets
-
-Trinkets are the weird/special slot.
-
-Possible future effects:
-
-- one daily revive at 1 HP;
-- reveal the concept category of one hidden encounter;
-- preserve a combo after one failed attack;
-- add an extra Tutor Notebook hint token;
-- convert one boss hit into Guard once per project;
-- late-game XP effects only if they do not corrupt competitive Learning Power.
-
-### XP-boost warning
-
-A straight official-XP multiplier would make rival comparisons unfair. If XP-boost trinkets are ever added, either:
-
-1. boosted XP must be tracked separately from evidence-backed Learning Power; or
-2. rival scoring must ignore the boosted portion.
-
-Do not activate XP multipliers until that separation exists.
-
----
-
-# Downed / revive state
-
-Reaching 0 HP should never lock the player out of learning.
-
-Proposed behaviour:
-
-```text
-HP reaches 0
-→ character becomes Downed
-→ current battle pauses
-→ choose Recovery / Teach / item revive
-```
-
-Possible recovery paths:
-
-- complete a small recovery explanation;
-- use a revive trinket/item;
-- leave Battle state and return to Teach mode;
-- recover naturally before the next encounter.
-
-A revive does not erase a failed interview or manufacture mastery evidence.
-
----
-
-# Combo / critical system
-
-Potential late addition:
-
-- consecutive successful Battle actions build Combo;
-- Combo may increase visual attack intensity or add small capped damage;
-- a mistake resets Combo but does not damage the learning streak;
-- critical hits should come from demonstrated reasoning, not random luck.
+The boss has a large shared Resolve pool.
 
 Example:
 
 ```text
-3 correct reasoning actions in a row
-→ Focused Strike
-→ +1 combat damage
+THE NULL WYRM — WEEKLY RAID
+Party: 4 players
+Resolve: 120
+Ends: Sunday
+
+Frontend objective        20 Impact
+Core Python feature       25 Impact
+Validation / edge cases   20 Impact
+Tests / debugging         20 Impact
+Integration               20 Impact
+Party code review         15 Impact
 ```
 
-This rewards consistency without replacing correctness.
+Players do not repeatedly answer trivia to attack it.
+
+They defeat it by actually working on the raid project.
+
+Each objective is assigned an Impact value **before** implementation. Once the contribution is reviewed and accepted, that Impact comes off the shared boss Resolve.
+
+This naturally supports friends with different strengths without requiring RPG classes.
 
 ---
 
-# Visibility rules
+# 9. Raid contribution and fairness
 
-The player should see the math before committing an action.
+Each accepted contribution should create an evidence event, conceptually like:
 
-Every encounter card should expose:
+```json
+{
+  "player": "Lazi",
+  "objective": "input-validation",
+  "impact": 12,
+  "evidence": "accepted checkpoint / PR / interview",
+  "assistance": "clean"
+}
+```
+
+The shared raid result can show:
 
 ```text
-Enemy Resolve
-Enemy attack damage
-Your weapon bonus
-Your armor guard
-Your trinket effect
-Current action damage
-Failure damage
+Boss Resolve: 120 → 0
+
+Lazi        34 Impact
+Friend A    31 Impact
+Friend B    28 Impact
+Friend C    27 Impact
 ```
 
-The combat log should explain each result:
+But contribution should not become a toxic damage leaderboard.
+
+The main reward is the **party clear**. Individual Impact exists for transparency, contribution history and optional titles/achievements.
+
+Anti-farming rules:
+
+- no Impact from raw commit count;
+- no Impact from line count;
+- no repeated trivial task farming;
+- one objective cannot be claimed twice;
+- objective values are locked before implementation;
+- AI assistance level is recorded;
+- required review/evidence must pass before Impact is granted.
+
+---
+
+# 10. Boss counterattacks in raids
+
+The boss can fight back without requiring a complicated combat loop.
+
+Possible triggers:
+
+### Failed submitted checkpoint
+
+The player who submitted takes the displayed raw hit after armor mitigation.
+
+### Raid phase mechanic
+
+A boss phase may have a party-wide event such as:
 
 ```text
-Correct bug diagnosis      +2 attack
-Training Blade             +1
-The Bust Hound loses        3 Resolve
+Integration phase failed
+Boss pulse: 12 raw damage to every active party member
+```
 
-Failed cold prediction
-Enemy attack                4
-Apprentice Coat            -1
-Lazi loses                  3 HP
+Each player's armor applies individually.
+
+### Time pressure
+
+Missing a weekly phase deadline could trigger a narrative boss action or reduce an optional bonus, but should not erase genuine learning progress.
+
+The raid should never damage players because someone simply made a normal coding mistake before submitting.
+
+---
+
+# 11. Downed and revival
+
+At 0 HP the player becomes **Downed**, not locked out of Quest Lab.
+
+Possible actions:
+
+```text
+Recovery challenge
+Return to Teach mode
+Use revive trinket
+Receive a teammate revive in a raid
+```
+
+A downed player can continue learning. They simply cannot make another Battle-state submission until recovered/revived.
+
+This gives revive trinkets real value without weapon stats or complex combat maths.
+
+---
+
+# 12. Why this is preferable to weapon damage
+
+This design keeps the RPG loop aligned with coding:
+
+```text
+Learn something
+→ build something
+→ submit a real checkpoint
+→ verified success creates Impact
+→ boss loses Resolve
+```
+
+Instead of:
+
+```text
+Learn something
+→ answer correctly
+→ calculate weapon attack + crit + enemy defense + random roll
+```
+
+Armor and trinkets still make the character build matter, while offense stays directly tied to actual programming progress.
+
+---
+
+# 13. Visibility rules
+
+No hidden combat maths.
+
+Before submitting a battle checkpoint, show:
+
+```text
+Checkpoint Impact on success
+Enemy raw damage on failure
+Armor reduction
+Actual HP at risk
+Trinket effect, if relevant
+Boss/mob Resolve remaining
+```
+
+After submission, log exactly what happened.
+
+Example:
+
+```text
+Checkpoint accepted
+Independent bust detection     +4 Impact
+The Bust Hound                 9 → 5 Resolve
+```
+
+or:
+
+```text
+Checkpoint failed
+Raw enemy hit                  8
+Rare armor                    -30%
+Lazi loses                     6 HP
 ```
 
 ---
 
-# Fairness boundary
+# 14. Proposed equipment model
 
-Gear can change the **RPG combat presentation and survivability**.
+Mechanical character equipment becomes:
 
-Gear must never:
+```text
+Armor      — percentage Battle-state damage reduction
+Trinket    — special conditional effect
+Title      — cosmetic / achievement identity
+```
 
-- mark incorrect code correct;
-- skip required project functionality;
-- skip a boss interview;
-- create Mastery Shield evidence;
-- change Git Dev Activity;
-- fabricate a Clean Clear;
-- hide Reference Mode assistance.
+The old weapon slot should be removed from the mechanical design.
 
-Combat is a layer around learning evidence, not a replacement for it.
+Future character cosmetics may still visually show swords, staffs, tools or trophies, but they do not create attack stats.
 
 ---
 
-# Recommended implementation order
+# 15. Recommended implementation order
 
-1. Battle HUD with visible Resolve / attack / Guard values.
-2. Test Me encounter that can deal HP damage.
-3. Weapon and armor effects with no XP multipliers.
-4. Combat log.
-5. Downed / recovery flow.
-6. Trinket utility effects.
-7. Multi-phase bosses.
-8. Only then evaluate revive items and separated adventure-XP bonuses.
+1. Keep normal learning completely safe.
+2. Add explicit Encounter / Submit state.
+3. Add displayed raw failure damage.
+4. Add percentage-based armor mitigation.
+5. Add combat log and Downed state.
+6. Add basic trinket hooks, starting with one revive-style and one information-style effect.
+7. Add Impact/Resolve to individual mobs and project bosses.
+8. Build raid data model and shared Resolve only after single-player Impact is stable.
+9. Prototype one manual weekly co-op boss with fixed objectives and preassigned Impact values.
+10. Only after that consider party mechanics, special raid trinkets, seasonal bosses and friend leaderboards.
+
+---
+
+# Open decisions before canon
+
+The following still need player approval/testing before implementation:
+
+- exact armor tier percentages;
+- whether minimum encounter damage should always be 1 HP;
+- whether failed submitted mob answers always deal damage or some encounter types remain non-damaging;
+- whether assisted checkpoints can contribute partial raid Impact or zero raid Impact;
+- how often HP naturally restores;
+- whether weekly boss participation requires a minimum contribution to earn the raid trophy/reward;
+- whether individual Impact should affect rewards or remain informational only.
