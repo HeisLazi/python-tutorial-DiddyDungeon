@@ -2,6 +2,7 @@ import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState }
 import Editor from '@monaco-editor/react'
 import { Terminal } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
+import { ActivityRail, ContextPanel, GameScreen } from './RpgViews'
 
 const api = async (url, options = {}) => {
   const response = await fetch(url, {
@@ -10,7 +11,14 @@ const api = async (url, options = {}) => {
   })
   if (!response.ok) {
     const body = await response.text()
-    throw new Error(body || `${response.status} ${response.statusText}`)
+    let message = body || `${response.status} ${response.statusText}`
+    try {
+      const parsed = JSON.parse(body)
+      if (parsed?.detail) message = parsed.detail
+    } catch {
+      // Keep raw response text when it is not JSON.
+    }
+    throw new Error(message)
   }
   return response.json()
 }
@@ -27,7 +35,50 @@ const languageFor = (path = '') => {
   return 'plaintext'
 }
 
-const TerminalPane = forwardRef(function TerminalPane({ banner = 'Quest terminal connected.' }, ref) {
+const clamp = (value, min, max) => Math.max(min, Math.min(max, value))
+
+function usePersistentState(key, initialValue) {
+  const [value, setValue] = useState(() => {
+    try {
+      const stored = window.localStorage.getItem(key)
+      return stored === null ? initialValue : JSON.parse(stored)
+    } catch {
+      return initialValue
+    }
+  })
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(key, JSON.stringify(value))
+    } catch {
+      // Local preferences should never break the IDE.
+    }
+  }, [key, value])
+
+  return [value, setValue]
+}
+
+const terminalPalette = (skin) => {
+  if (skin === 'terminal-emberglass') {
+    return {
+      background: '#100b09',
+      foreground: '#f0e2d4',
+      cursor: '#f0a45d',
+      selectionBackground: '#4a2b1e',
+    }
+  }
+  return {
+    background: '#090b0a',
+    foreground: '#e9e4d8',
+    cursor: '#d8a657',
+    selectionBackground: '#3b4035',
+  }
+}
+
+const TerminalPane = forwardRef(function TerminalPane(
+  { banner = 'Quest terminal connected.', fontSize = 13, skin = 'terminal-charcoal' },
+  ref,
+) {
   const hostRef = useRef(null)
   const socketRef = useRef(null)
   const termRef = useRef(null)
@@ -58,13 +109,8 @@ const TerminalPane = forwardRef(function TerminalPane({ banner = 'Quest terminal
       convertEol: false,
       scrollback: 5000,
       fontFamily: 'JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, monospace',
-      fontSize: 13,
-      theme: {
-        background: '#090b0a',
-        foreground: '#e9e4d8',
-        cursor: '#d8a657',
-        selectionBackground: '#3b4035',
-      },
+      fontSize,
+      theme: terminalPalette(skin),
     })
     const fit = new FitAddon()
     term.loadAddon(fit)
@@ -106,12 +152,10 @@ const TerminalPane = forwardRef(function TerminalPane({ banner = 'Quest terminal
       socket.close()
       term.dispose()
     }
-  }, [banner])
+  }, [banner, fontSize, skin])
 
   return <div className="terminal-host" ref={hostRef} />
 })
-
-const clamp = (value, min, max) => Math.max(min, Math.min(max, value))
 
 function App() {
   const shellTerminalRef = useRef(null)
@@ -121,23 +165,35 @@ function App() {
   const [activePath, setActivePath] = useState('')
   const [code, setCode] = useState('')
   const [dirty, setDirty] = useState(false)
+  const [tutorCode, setTutorCode] = useState('')
+  const [tutorDirty, setTutorDirty] = useState(false)
   const [busy, setBusy] = useState(false)
   const [notice, setNotice] = useState('')
-  const [leftWidth, setLeftWidth] = useState(220)
-  const [rightWidth, setRightWidth] = useState(390)
-  const [terminalHeight, setTerminalHeight] = useState(245)
 
-  const player = campaign?.progress?.player || {}
-  const stats = campaign?.progress?.stats || {}
-  const streak = campaign?.progress?.streak || {}
-  const companion = campaign?.progress?.companion || {}
-  const quest = campaign?.progress?.current_quest || 'Choose a quest.'
+  const [activeView, setActiveView] = usePersistentState('questlab.activeView', 'forge')
+  const [leftWidth, setLeftWidth] = usePersistentState('questlab.leftWidth', 220)
+  const [rightWidth, setRightWidth] = usePersistentState('questlab.rightWidth', 390)
+  const [terminalHeight, setTerminalHeight] = usePersistentState('questlab.terminalHeight', 245)
+  const [editorFontSize, setEditorFontSize] = usePersistentState('questlab.editorFontSize', 14)
+  const [terminalFontSize, setTerminalFontSize] = usePersistentState('questlab.terminalFontSize', 13)
+  const [hudDensity, setHudDensity] = usePersistentState('questlab.hudDensity', 'full')
+  const [animations, setAnimations] = usePersistentState('questlab.animations', true)
+
+  const progress = campaign?.progress || {}
+  const player = progress.player || {}
+  const stats = progress.stats || {}
+  const streak = progress.streak || {}
+  const companion = progress.companion || {}
   const activity = campaign?.activity || {}
   const git = campaign?.git || {}
+  const homestead = progress.homestead || {}
+  const equipped = homestead.equipped || {}
+  const theme = (equipped.theme || 'theme-ember-forge').replace('theme-', '')
+  const terminalSkin = equipped.terminal || 'terminal-charcoal'
 
   const shields = useMemo(
-    () => (campaign?.progress?.skills || []).filter((skill) => skill.shield?.tier && skill.shield.tier !== 'none').length,
-    [campaign],
+    () => (progress.skills || []).filter((skill) => skill.shield?.tier && skill.shield.tier !== 'none').length,
+    [progress.skills],
   )
 
   const refreshCampaign = async () => {
@@ -153,7 +209,7 @@ function App() {
       const result = await api('/api/tree')
       setFiles(result.items || [])
       if (!activePath) {
-        const preferred = (result.items || []).find((item) => item.type === 'file' && item.path.endsWith('.py'))
+        const preferred = (result.items || []).find((item) => item.type === 'file' && item.path.endsWith('.py') && item.path !== 'tutor.py')
         if (preferred) openFile(preferred.path)
       }
     } catch (error) {
@@ -161,20 +217,38 @@ function App() {
     }
   }
 
+  const refreshTutor = async () => {
+    try {
+      const result = await api('/api/tutor')
+      setTutorCode(result.content ?? '')
+      setTutorDirty(false)
+    } catch (error) {
+      setNotice(`Tutor notebook failed: ${error.message}`)
+    }
+  }
+
   useEffect(() => {
     refreshCampaign()
     refreshFiles()
+    refreshTutor()
   }, [])
 
   useEffect(() => {
     const onKey = (event) => {
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 's') {
         event.preventDefault()
-        saveFile()
+        if (activeView === 'tutor') saveTutor()
+        else if (activeView === 'forge') saveFile()
       }
       if (event.shiftKey && event.altKey && event.key.toLowerCase() === 'f') {
         event.preventDefault()
-        formatCurrent()
+        if (activeView === 'tutor') formatTutor()
+        else if (activeView === 'forge') formatCurrent()
+      }
+      if ((event.ctrlKey || event.metaKey) && event.key === '`') {
+        event.preventDefault()
+        setActiveView('forge')
+        shellTerminalRef.current?.focus()
       }
     }
     window.addEventListener('keydown', onKey)
@@ -190,8 +264,8 @@ function App() {
     const startTerminal = terminalHeight
 
     const move = (moveEvent) => {
-      if (kind === 'left') setLeftWidth(clamp(startLeft + (moveEvent.clientX - startX), 150, 420))
-      if (kind === 'right') setRightWidth(clamp(startRight - (moveEvent.clientX - startX), 280, 720))
+      if (kind === 'left') setLeftWidth(clamp(startLeft + (moveEvent.clientX - startX), 170, 420))
+      if (kind === 'right') setRightWidth(clamp(startRight - (moveEvent.clientX - startX), 290, 760))
       if (kind === 'terminal') setTerminalHeight(clamp(startTerminal - (moveEvent.clientY - startY), 140, 560))
     }
     const stop = () => {
@@ -232,9 +306,29 @@ function App() {
       setDirty(false)
       setNotice(`Saved ${activePath}`)
       refreshCampaign()
+      refreshFiles()
       return true
     } catch (error) {
       setNotice(`Save failed: ${error.message}`)
+      return false
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const saveTutor = async () => {
+    try {
+      setBusy(true)
+      await api('/api/tutor', {
+        method: 'PUT',
+        body: JSON.stringify({ content: tutorCode }),
+      })
+      setTutorDirty(false)
+      setNotice('Saved collaborative tutor.py')
+      refreshFiles()
+      return true
+    } catch (error) {
+      setNotice(`Tutor save failed: ${error.message}`)
       return false
     } finally {
       setBusy(false)
@@ -260,6 +354,23 @@ function App() {
     }
   }
 
+  const formatTutor = async () => {
+    try {
+      setBusy(true)
+      const result = await api('/api/format', {
+        method: 'POST',
+        body: JSON.stringify({ path: 'tutor.py', content: tutorCode }),
+      })
+      setTutorCode(result.content ?? tutorCode)
+      setTutorDirty(false)
+      setNotice(`Formatted tutor.py with ${result.formatter}`)
+    } catch (error) {
+      setNotice(`Tutor format failed: ${error.message}`)
+    } finally {
+      setBusy(false)
+    }
+  }
+
   const newFile = async () => {
     const path = window.prompt('New file path relative to the quest workspace, e.g. scratch.py')
     if (!path) return
@@ -278,7 +389,17 @@ function App() {
       const ok = await saveFile()
       if (!ok) return
     }
-    shellTerminalRef.current?.send(`python ${JSON.stringify(activePath)}\n`)
+    setActiveView('forge')
+    shellTerminalRef.current?.send(`python3 ${JSON.stringify(activePath)}\n`)
+    shellTerminalRef.current?.focus()
+  }
+
+  const runTutor = async () => {
+    if (tutorDirty) {
+      const ok = await saveTutor()
+      if (!ok) return
+    }
+    shellTerminalRef.current?.send('python3 tutor.py\n')
     shellTerminalRef.current?.focus()
   }
 
@@ -287,101 +408,194 @@ function App() {
     aiTerminalRef.current?.focus()
   }
 
+  const purchaseCosmetic = async (itemId) => {
+    try {
+      setBusy(true)
+      const result = await api('/api/homestead/purchase', {
+        method: 'POST',
+        body: JSON.stringify({ item_id: itemId }),
+      })
+      await refreshCampaign()
+      setNotice(result.already_owned ? 'Already owned.' : `Homestead purchase complete. ${result.coins}c remain.`)
+    } catch (error) {
+      setNotice(`Purchase failed: ${error.message}`)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const equipCosmetic = async (itemId) => {
+    try {
+      setBusy(true)
+      const result = await api('/api/homestead/equip', {
+        method: 'POST',
+        body: JSON.stringify({ item_id: itemId }),
+      })
+      await refreshCampaign()
+      setNotice(`Equipped ${result.item?.name || itemId}.`)
+    } catch (error) {
+      setNotice(`Equip failed: ${error.message}`)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const resetLayout = () => {
+    setLeftWidth(220)
+    setRightWidth(390)
+    setTerminalHeight(245)
+    setNotice('Forge panel layout reset.')
+  }
+
   const gridStyle = {
-    gridTemplateColumns: `${leftWidth}px 5px minmax(420px, 1fr) 5px ${rightWidth}px`,
+    gridTemplateColumns: `48px ${leftWidth}px 5px minmax(420px, 1fr) 5px ${rightWidth}px`,
     gridTemplateRows: `minmax(220px, 1fr) 5px ${terminalHeight}px`,
   }
 
+  const preferences = { editorFontSize, terminalFontSize, hudDensity, animations }
+  const setters = { setEditorFontSize, setTerminalFontSize, setHudDensity, setAnimations }
+  const xpPercent = clamp(((player.xp ?? 0) / Math.max(1, player.xp_next ?? 100)) * 100, 0, 100)
+  const showEditor = activeView === 'forge' || activeView === 'tutor'
+
   return (
-    <div className="app-shell">
+    <div
+      className={`app-shell ${hudDensity === 'compact' ? 'hud-compact' : ''} ${animations ? '' : 'no-animations'}`}
+      data-theme={theme}
+      data-cursor={equipped.cursor || 'cursor-basic'}
+      data-hud={equipped.hud || 'hud-forge'}
+      data-terminal={terminalSkin}
+    >
       <header className="topbar">
-        <div>
+        <div className="brand-lockup">
           <div className="eyebrow">PYTHON QUEST LAB</div>
-          <h1>Forge IDE</h1>
+          <h1>Forge</h1>
+        </div>
+        <div className="hud-xp">
+          <div><strong>LV {player.level ?? 1}</strong><span>{player.title || 'Apprentice Coder'}</span></div>
+          <div className="hud-xp-track"><span style={{ width: `${xpPercent}%` }} /></div>
+          <small>{player.xp ?? 0}/{player.xp_next ?? 100} XP</small>
         </div>
         <div className="top-stats">
-          <span>LV {player.level ?? 1}</span>
-          <span>{player.xp ?? 0}/{player.xp_next ?? 100} XP</span>
-          <span>HP {player.hp ?? 100}</span>
+          <span className="hp-stat">♥ {player.hp ?? 100}</span>
+          <span>◈ {player.coins ?? 0}c</span>
           <span>🔥 {streak.current ?? 0}</span>
-          <span>🛡 {shields}</span>
-          <span>⚔ {stats.bosses_defeated ?? 0}</span>
-          <span>DEV {activity.activity_score ?? 0}</span>
+          <span className="optional-stat">🛡 {shields}</span>
+          <span className="optional-stat">⚔ {stats.bosses_defeated ?? 0}</span>
+          <span className="optional-stat">DEV {activity.activity_score ?? 0}</span>
+          <span className="rank-stat">RANK {player.rank || 'F'}</span>
         </div>
       </header>
 
       <div className="quest-banner">
         <div><strong>{companion.name || 'PYR'}</strong> · {companion.form || 'Tiny Code-Flame'}</div>
-        <div className="quest-text">{quest}</div>
+        <div className="quest-text">{progress.current_quest || 'Choose a quest.'}</div>
         <div className="git-pill">{git.branch || 'no branch'} · {git.dirty_count ?? 0} changes</div>
       </div>
 
       <main className="workspace-grid" style={gridStyle}>
+        <ActivityRail activeView={activeView} setActiveView={setActiveView} player={player} />
+
         <aside className="left-panel panel">
-          <div className="panel-title">
-            <span>FILES</span>
-            <button onClick={newFile}>+</button>
-          </div>
-          <div className="workspace-label">{campaign?.workspace || 'loading workspace…'}</div>
-          <div className="file-list">
-            {files.map((item) => (
-              <button
-                key={item.path}
-                className={`file-row ${activePath === item.path ? 'active' : ''} ${item.type}`}
-                style={{ paddingLeft: `${10 + item.depth * 14}px` }}
-                onClick={() => item.type === 'file' && openFile(item.path)}
-                disabled={item.type !== 'file'}
-              >
-                <span>{item.type === 'dir' ? '▾' : '·'}</span>
-                <span>{item.name}</span>
-              </button>
-            ))}
-          </div>
+          <ContextPanel
+            activeView={activeView}
+            campaign={campaign}
+            files={files}
+            activePath={activePath}
+            openFile={openFile}
+            newFile={newFile}
+            setActiveView={setActiveView}
+          />
         </aside>
 
         <div className="resize-handle vertical left-resizer" onPointerDown={(event) => startResize('left', event)} />
 
-        <section className="editor-panel panel">
-          <div className="editor-toolbar">
-            <div className="active-file">{activePath || 'No file selected'}{dirty ? ' •' : ''}</div>
-            <div className="toolbar-actions">
-              <button onClick={saveFile} disabled={!activePath || busy}>Save</button>
-              <button onClick={formatCurrent} disabled={!activePath || busy} title="Format document (Shift+Alt+F)">Pretty</button>
-              <button className="primary" onClick={runCurrent} disabled={!activePath || !activePath.endsWith('.py')}>▶ Run</button>
-            </div>
-          </div>
-          <div className="editor-wrap">
-            <Editor
-              path={activePath || 'untitled.txt'}
-              language={languageFor(activePath)}
-              value={code}
-              onChange={(value) => { setCode(value ?? ''); setDirty(true) }}
-              theme="vs-dark"
-              options={{
-                minimap: { enabled: false },
-                fontSize: 14,
-                fontFamily: 'JetBrains Mono, ui-monospace, monospace',
-                lineHeight: 22,
-                padding: { top: 14 },
-                smoothScrolling: true,
-                automaticLayout: true,
-                tabSize: 4,
-                formatOnPaste: false,
-                formatOnType: false,
-              }}
+        {showEditor ? (
+          <>
+            <section className={`editor-panel panel ${activeView === 'tutor' ? 'tutor-editor-panel' : ''}`}>
+              <div className="editor-toolbar">
+                <div className="active-file">
+                  {activeView === 'tutor' ? (
+                    <><span className="safe-badge">PYR WRITABLE</span> tutor.py{tutorDirty ? ' •' : ''}</>
+                  ) : (
+                    <>{activePath || 'No file selected'}{dirty ? ' •' : ''}</>
+                  )}
+                </div>
+                <div className="toolbar-actions">
+                  {activeView === 'tutor' ? (
+                    <>
+                      <button onClick={saveTutor} disabled={busy}>Save Tutor</button>
+                      <button onClick={formatTutor} disabled={busy}>Pretty</button>
+                      <button className="primary" onClick={runTutor} disabled={busy}>▶ Run Tutor</button>
+                    </>
+                  ) : (
+                    <>
+                      <button onClick={saveFile} disabled={!activePath || busy}>Save</button>
+                      <button onClick={formatCurrent} disabled={!activePath || busy} title="Format document (Shift+Alt+F)">Pretty</button>
+                      <button className="primary" onClick={runCurrent} disabled={!activePath || !activePath.endsWith('.py')}>▶ Run</button>
+                    </>
+                  )}
+                </div>
+              </div>
+              {activeView === 'tutor' && (
+                <div className="tutor-boundary-banner">
+                  <strong>Collaborative notebook:</strong> PYR can write examples here. Required project source remains yours to write.
+                </div>
+              )}
+              <div className="editor-wrap">
+                <Editor
+                  path={activeView === 'tutor' ? 'tutor.py' : (activePath || 'untitled.txt')}
+                  language={activeView === 'tutor' ? 'python' : languageFor(activePath)}
+                  value={activeView === 'tutor' ? tutorCode : code}
+                  onChange={(value) => {
+                    if (activeView === 'tutor') {
+                      setTutorCode(value ?? '')
+                      setTutorDirty(true)
+                    } else {
+                      setCode(value ?? '')
+                      setDirty(true)
+                    }
+                  }}
+                  theme="vs-dark"
+                  options={{
+                    minimap: { enabled: false },
+                    fontSize: editorFontSize,
+                    fontFamily: 'JetBrains Mono, ui-monospace, monospace',
+                    lineHeight: Math.round(editorFontSize * 1.55),
+                    padding: { top: 14 },
+                    smoothScrolling: true,
+                    automaticLayout: true,
+                    tabSize: 4,
+                    formatOnPaste: false,
+                    formatOnType: false,
+                  }}
+                />
+              </div>
+            </section>
+
+            <div className="resize-handle horizontal terminal-resizer" onPointerDown={(event) => startResize('terminal', event)} />
+
+            <section className="terminal-panel panel">
+              <div className="panel-title">
+                <span>{activeView === 'tutor' ? 'TUTOR OUTPUT / TERMINAL' : 'TERMINAL'}</span>
+                <span className="terminal-hint">real local shell · starts in workspace</span>
+              </div>
+              <TerminalPane ref={shellTerminalRef} banner="Forge shell connected." fontSize={terminalFontSize} skin={terminalSkin} />
+            </section>
+          </>
+        ) : (
+          <section className="game-screen panel">
+            <GameScreen
+              activeView={activeView}
+              progress={progress}
+              purchaseCosmetic={purchaseCosmetic}
+              equipCosmetic={equipCosmetic}
+              busy={busy}
+              preferences={preferences}
+              setters={setters}
+              resetLayout={resetLayout}
             />
-          </div>
-        </section>
-
-        <div className="resize-handle horizontal terminal-resizer" onPointerDown={(event) => startResize('terminal', event)} />
-
-        <section className="terminal-panel panel">
-          <div className="panel-title">
-            <span>TERMINAL</span>
-            <span className="terminal-hint">real local shell · starts in workspace</span>
-          </div>
-          <TerminalPane ref={shellTerminalRef} banner="Forge shell connected." />
-        </section>
+          </section>
+        )}
 
         <div className="resize-handle vertical right-resizer" onPointerDown={(event) => startResize('right', event)} />
 
@@ -398,14 +612,14 @@ function App() {
               <button onClick={() => aiTerminalRef.current?.clear()}>Clear</button>
             </div>
           </div>
-          <div className="ai-note">Independent terminal session. Launch one AI CLI here; keep your normal shell separate below the editor.</div>
-          <TerminalPane ref={aiTerminalRef} banner="PYR channel ready. Choose Codex, Claude, or Gemini above." />
+          <div className="ai-note">Raw CLI terminal: powerful, not sandboxed. The future controlled PYR tutor will only be able to write tutor.py.</div>
+          <TerminalPane ref={aiTerminalRef} banner="PYR channel ready. Choose Codex, Claude, or Gemini above." fontSize={terminalFontSize} skin={terminalSkin} />
         </aside>
       </main>
 
       <footer className="statusbar">
         <span>{notice || 'Ready.'}</span>
-        <span>{busy ? 'working…' : activePath ? `${languageFor(activePath)} · Ctrl+S save · Shift+Alt+F format` : 'select a file'}</span>
+        <span>{busy ? 'working…' : activeView === 'tutor' ? 'tutor.py · Ctrl+S save · Shift+Alt+F format' : activePath ? `${languageFor(activePath)} · Ctrl+S save · Shift+Alt+F format` : 'select a file'}</span>
       </footer>
     </div>
   )
