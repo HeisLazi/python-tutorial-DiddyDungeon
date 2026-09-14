@@ -1,0 +1,46 @@
+{
+  "player": {
+    "name": "Lazi",
+    "title": "Apprentice Coder",
+    "level": 1,
+    "xp": 0,
+    "xp_next": 100,
+    "hp": 100,
+    "max_hp": 100,
+    "coins": 0,
+    "potions": 2
+  },
+  "companion": {
+    "name": "PYR",
+    "form": "Tiny Code-Flame",
+    "level": 1,
+    "bond": 0,
+    "next_form": "Ember Sprite"
+  },
+  "skills": [
+    {"name": "Ember", "concept": "Conditionals", "status": "learning"},
+    {"name": "Chain Flame", "concept": "Loops", "status": "learning"},
+    {"name": "Firebolt", "concept": "Functions", "status": "learning"},
+    {"name": "Inventory Sight", "concept": "Lists", "status": "learning"},
+    {"name": "Runic Memory", "concept": "Dictionaries", "status": "learning"},
+    {"name": "Inferno", "concept": "Combining systems", "status": "locked"},
+    {"name": "Tactician", "concept": "Program design", "status": "locked"}
+  ],
+  "inventory": [
+    {"name": "Potion", "qty": 2, "effect": "Ask for one stronger hint"},
+    {"name": "Syntax Scroll", "qty": 1, "effect": "Request generic syntax without solution code"}
+  ],
+  "projects": [
+    {"order": 0, "branch": "00-rps-tournament", "name": "Rock Paper Scissors Tournament", "status": "available", "progress": 0, "boss": "The Pattern Warden"},
+    {"order": 1, "branch": "01-blackjack", "name": "Blackjack", "status": "available", "progress": 0, "boss": "The House"},
+    {"order": 2, "branch": "02-detective-game", "name": "Guess Who / Detective Game", "status": "available", "progress": 0, "boss": "The False Alibi"},
+    {"order": 3, "branch": "03-pokemon-battle", "name": "Creature Battle Simulator", "status": "available", "progress": 0, "boss": "The Arena Champion"},
+    {"order": 4, "branch": "04-casino-slots", "name": "Casino / Slots", "status": "available", "progress": 0, "boss": "Lady Luck"},
+    {"order": 5, "branch": "05-dungeon-crawler", "name": "Dungeon Crawler + RPG Shop", "status": "available", "progress": 0, "boss": "The Dungeon Core"},
+    {"order": 6, "branch": "06-gladiator-arena", "name": "Turn-based Gladiator Game", "status": "available", "progress": 0, "boss": "The Unbound"},
+    {"order": 7, "branch": "07-football-manager", "name": "Mini Football Manager", "status": "available", "progress": 0, "boss": "The Invincibles"}
+  ],
+  "current_quest": "Choose a project branch and read its HANDOFF.md",
+  "last_session": "Campaign created. No project started yet.",
+  "session_log": []
+}
