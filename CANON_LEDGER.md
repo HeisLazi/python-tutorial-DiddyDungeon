@@ -6,7 +6,7 @@ PYR is allowed to be creative, but the campaign should not slowly mutate into co
 
 ## Ruleset
 
-**Current ruleset:** `1.2.0`
+**Current ruleset:** `1.3.0`
 
 ## Source priority
 
@@ -47,6 +47,12 @@ A branch may make a challenge stricter, but it should not silently weaken global
 | SYS-016 | Activity Score rewards active days/streaks and caps effective commits per day to discourage commit spam. | CANON |
 | SYS-017 | Learning streak and Dev streak are separate metrics with separate meanings. | CANON |
 | SYS-018 | PYR may read activity stats and celebrate them, but must not manually edit or award machine-derived activity values. | CANON |
+| SYS-019 | Quest Lab is a standalone learning system. External courses may supplement it but are never required campaign dependencies or sources of mastery. | CANON |
+| SYS-020 | The Forge RPG Shell has first-class Quest Journal, Codex, Character, Homestead and Settings screens around the real editor/terminal workflow. | CANON |
+| SYS-021 | Existing campaign coins may be spent on approved cosmetic IDE/Homestead items. Cosmetic ownership gives no XP, hint, shield, streak or rival-score advantage. | CANON |
+| SYS-022 | Functional/accessibility IDE settings remain free; only cosmetic presentation may be coin-gated. | CANON |
+| SYS-023 | The Codex may foreshadow mob names, concepts and encounter styles but must not reveal hidden exact answers or paste-ready project solutions. | CANON |
+| SYS-024 | Cosmetic ownership/equipment is canonical campaign state; device-specific layout preferences are local UI state and do not count as progression. | CANON |
 
 ---
 
@@ -118,6 +124,16 @@ PYR may add rows here, but **must not silently activate them**.
 ---
 
 # Ruleset changelog
+
+## 1.3.0 — Forge RPG Shell & Homestead
+
+- confirmed Quest Lab remains fully standalone from Boot.dev and other external courses;
+- added first-class Forge, Quest Journal, Codex, Character, Homestead and Settings destinations;
+- approved cosmetic IDE/Homestead purchases using existing campaign coins;
+- separated free usability/accessibility settings from coin-gated cosmetics;
+- made cosmetic ownership/equipment portable campaign state while keeping panel/layout preferences device-local;
+- formalized Codex foreshadowing without hidden-answer or exact-solution spoilers;
+- added `RPG_SHELL_PLAN.md` as the implementation roadmap for the living RPG shell.
 
 ## 1.2.0 — Dev Activity League
 
