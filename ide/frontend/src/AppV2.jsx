@@ -217,7 +217,26 @@ const TerminalPane = forwardRef(function TerminalPane(
       termRef.current = null
       fitRef.current = null
     }
-  }, [role, banner, fontSize, skin])
+  }, [role, banner])
+
+  // Cosmetic terminal preferences are applied in place. Keeping this out of
+  // the PTY/WebSocket lifecycle effect lets a live shell survive font-size or
+  // Homestead terminal-skin changes.
+  useEffect(() => {
+    const term = termRef.current
+    if (!term) return
+    term.options.fontSize = fontSize
+    term.options.theme = terminalPalette(skin)
+    try {
+      fitRef.current?.fit()
+      const socket = socketRef.current
+      if (socket?.readyState === WebSocket.OPEN && term.cols > 0 && term.rows > 0) {
+        socket.send(JSON.stringify({ type: 'resize', cols: term.cols, rows: term.rows }))
+      }
+    } catch {
+      // Hidden/resizing terminal surfaces can briefly have zero geometry.
+    }
+  }, [fontSize, skin])
 
   return (
     <div className="terminal-v2-wrap">
@@ -242,6 +261,8 @@ function AppV2() {
   const [dirty, setDirty] = useState(false)
   const [tutorCode, setTutorCode] = useState('')
   const [tutorDirty, setTutorDirty] = useState(false)
+  const [tutorDiskRevision, setTutorDiskRevision] = useState('')
+  const [tutorExternalChange, setTutorExternalChange] = useState(null)
   const [busy, setBusy] = useState(false)
   const [notice, setNotice] = useState('')
   const [shellState, setShellState] = useState('connecting')
@@ -249,6 +270,9 @@ function AppV2() {
   const [cloudState, setCloudState] = useState(syncEngine.getState())
   const [accountBusy, setAccountBusy] = useState(false)
   const [accountNotice, setAccountNotice] = useState('')
+  const tutorDirtyRef = useRef(false)
+  const tutorDiskRevisionRef = useRef('')
+  const tutorExternalChangeRef = useRef(null)
 
   const [activeView, setActiveView] = usePersistentState('questlab.activeView', 'forge')
   const [leftWidth, setLeftWidth] = usePersistentState('questlab.leftWidth', 220)
@@ -311,6 +335,12 @@ function AppV2() {
   const refreshTutor = async () => {
     try {
       const result = await api('/api/tutor')
+      const revision = result.revision ?? ''
+      tutorDiskRevisionRef.current = revision
+      tutorExternalChangeRef.current = null
+      tutorDirtyRef.current = false
+      setTutorDiskRevision(revision)
+      setTutorExternalChange(null)
       setTutorCode(result.content ?? '')
       setTutorDirty(false)
     } catch (error) {
@@ -324,6 +354,63 @@ function AppV2() {
     refreshFiles()
     refreshTutor()
   }, [])
+
+  useEffect(() => {
+    tutorDirtyRef.current = tutorDirty
+  }, [tutorDirty])
+
+  useEffect(() => {
+    tutorDiskRevisionRef.current = tutorDiskRevision
+  }, [tutorDiskRevision])
+
+  // Poll only while the collaborative notebook is visible. A clean editor
+  // follows an external write immediately; a dirty editor keeps its text and
+  // surfaces the external version as an explicit reload/keep decision.
+  useEffect(() => {
+    if (activeView !== 'tutor') return undefined
+    let cancelled = false
+
+    const pollTutor = async () => {
+      try {
+        const result = await api('/api/tutor')
+        if (cancelled) return
+        const revision = result.revision ?? ''
+        const previousRevision = tutorDiskRevisionRef.current
+        if (!previousRevision) {
+          tutorDiskRevisionRef.current = revision
+          setTutorDiskRevision(revision)
+          return
+        }
+        if (revision === previousRevision) return
+
+        tutorDiskRevisionRef.current = revision
+        setTutorDiskRevision(revision)
+        if (tutorDirtyRef.current) {
+          const external = { revision, content: result.content ?? '' }
+          tutorExternalChangeRef.current = external
+          setTutorExternalChange(external)
+          setNotice('tutor.py changed externally. Your edits are preserved; choose Reload or Keep my edits.')
+          return
+        }
+
+        tutorDirtyRef.current = false
+        tutorExternalChangeRef.current = null
+        setTutorExternalChange(null)
+        setTutorCode(result.content ?? '')
+        setTutorDirty(false)
+        setNotice('PYR updated tutor.py')
+      } catch (error) {
+        if (!cancelled) setNotice(`Tutor sync check failed: ${error.message}`)
+      }
+    }
+
+    void pollTutor()
+    const timer = window.setInterval(pollTutor, 1000)
+    return () => {
+      cancelled = true
+      window.clearInterval(timer)
+    }
+  }, [activeView])
 
   useEffect(() => {
     const unsubscribe = syncEngine.subscribe(setCloudState)
@@ -425,10 +512,16 @@ function AppV2() {
   const saveTutor = async () => {
     try {
       setBusy(true)
-      await api('/api/tutor', {
+      const result = await api('/api/tutor', {
         method: 'PUT',
         body: JSON.stringify({ content: tutorCode }),
       })
+      const revision = result.revision ?? ''
+      tutorDiskRevisionRef.current = revision
+      tutorExternalChangeRef.current = null
+      tutorDirtyRef.current = false
+      setTutorDiskRevision(revision)
+      setTutorExternalChange(null)
       setTutorDirty(false)
       setNotice('Saved collaborative tutor.py')
       refreshFiles()
@@ -467,6 +560,13 @@ function AppV2() {
         body: JSON.stringify({ path: 'tutor.py', content: tutorCode }),
       })
       setTutorCode(result.content ?? tutorCode)
+      const disk = await api('/api/tutor')
+      const revision = disk.revision ?? ''
+      tutorDiskRevisionRef.current = revision
+      tutorExternalChangeRef.current = null
+      tutorDirtyRef.current = false
+      setTutorDiskRevision(revision)
+      setTutorExternalChange(null)
       setTutorDirty(false)
       setNotice(`Formatted tutor.py with ${result.formatter}`)
     } catch (error) {
@@ -559,6 +659,26 @@ function AppV2() {
     } finally {
       setAccountBusy(false)
     }
+  }
+
+  const reloadExternalTutor = () => {
+    const external = tutorExternalChangeRef.current
+    if (!external) return
+    tutorDiskRevisionRef.current = external.revision
+    tutorDirtyRef.current = false
+    tutorExternalChangeRef.current = null
+    setTutorDiskRevision(external.revision)
+    setTutorCode(external.content)
+    setTutorDirty(false)
+    setTutorExternalChange(null)
+    setNotice('Reloaded external tutor.py; local edits were discarded.')
+  }
+
+  const keepTutorEdits = () => {
+    if (!tutorExternalChangeRef.current) return
+    tutorExternalChangeRef.current = null
+    setTutorExternalChange(null)
+    setNotice('Kept local tutor.py edits. Save when you are ready to overwrite the external version.')
   }
 
   const signIn = ({ email, password }) => accountAction(() => syncEngine.signIn(email, password), 'Signed in. This device is registered.')
@@ -661,6 +781,14 @@ function AppV2() {
           {activeView === 'tutor' && (
             <div className="tutor-boundary-banner">
               <strong>Collaborative notebook:</strong> PYR may write examples here. Required project source remains yours.
+            </div>
+          )}
+          {activeView === 'tutor' && tutorExternalChange && (
+            <div className="tutor-conflict-banner" role="alert">
+              <strong>External tutor.py change detected.</strong>
+              <span>Your unsaved edits are preserved.</span>
+              <button onClick={reloadExternalTutor}>Reload external version</button>
+              <button onClick={keepTutorEdits}>Keep my edits</button>
             </div>
           )}
           <div className="editor-wrap">

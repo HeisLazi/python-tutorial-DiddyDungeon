@@ -165,7 +165,7 @@ function replaceGameIcons() {
   }
 
   const equipment = [...document.querySelectorAll('.equipment-list > div > span')]
-  const equipmentIcons = ['Sword', 'Shield', 'Gem', 'Crown']
+  const equipmentIcons = ['Shield', 'Gem', 'Crown']
   equipment.forEach((node, index) => {
     if (node.dataset.vectorized) return
     node.dataset.vectorized = 'true'
