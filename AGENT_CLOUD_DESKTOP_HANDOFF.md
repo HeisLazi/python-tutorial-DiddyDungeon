@@ -117,6 +117,42 @@ Acceptance test with two devices or two isolated local profiles:
 
 Document the conflict policy used in v1.
 
+### Live RPG projection requirement
+
+Quest Lab progression is not complete if only the underlying save changes. Every player-facing RPG surface must project the latest validated campaign state continuously without a browser refresh and without restarting either PTY.
+
+Use one shared campaign revision/event source for the HUD and game screens rather than independent stale copies.
+
+At minimum, live updates must cover:
+
+- top HUD: level, XP, XP-to-next, lifetime XP where shown, HP, coins, streak, rank, shields and boss count;
+- Character: current armor, trinket, title, stats, companion form/bond and newly unlocked gear;
+- Homestead: coins, ownership, purchases and equipped cosmetics;
+- Quest Journal: current project, active mob, defeated/unlocked mobs, current encounter status, objective completion, enemy Resolve and available Impact objectives;
+- Codex: newly encountered/defeated mob records, discovered question/encounter archetypes, concept tags, weaknesses/notes, attempts where recorded, interview history and mastery/shield changes;
+- reward/achievement presentation: XP, coins, level-ups, mob clears, next-mob unlocks, gear/trinket unlocks, achievements and mastery/shields.
+
+For combat/encounter state specifically:
+
+- each correctly verified Battle objective/question should apply its predefined Impact and reduce current enemy Resolve immediately;
+- an incorrect submitted Battle action may cause the canonical counterattack/HP update after verification;
+- the Quest Journal must show the new Resolve/HP state as soon as the state service commits it;
+- defeating an encounter must immediately mark the mob defeated, unlock/reveal the next allowed encounter and create/update the related Codex entry;
+- Codex knowledge should grow from completed/observed encounters instead of remaining a static preview. Do not reveal hidden exact future answers.
+
+The frontend must not independently invent rewards, Impact, Resolve changes, Codex discoveries or quest progression. It renders validated state-service events/state.
+
+Implementation may use a local subscription/event stream or lightweight revision polling for v1. If polling is used, prefer checking a cheap revision first and only fetching full campaign state when the revision changes. A normal state update must not remount Monaco, Forge PTY or AI PTY.
+
+Acceptance:
+1. start with an active mob and visible Resolve;
+2. submit/record one valid verified objective;
+3. without browser refresh, observe Resolve decrease in Quest Journal;
+4. complete the mob;
+5. without browser refresh, observe the mob become defeated, the next encounter become available, reward/HUD values update, and a Codex record for the completed mob appear/update;
+6. confirm Character/Homestead/Codex/Journal all agree on the same campaign revision;
+7. confirm shell and AI terminal sessions remain alive throughout.
+
 ## Milestone D — Avatar cloud storage
 
 Goal: replace device-only portrait storage when signed in while retaining a local fallback.
