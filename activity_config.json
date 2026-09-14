@@ -1,0 +1,17 @@
+{
+  "player_login": "HeisLazi",
+  "utc_offset_hours": 2,
+  "history_days": 120,
+  "commit_cap_per_day": 5,
+  "activity_score": {
+    "active_day_points": 12,
+    "effective_commit_points": 2,
+    "current_streak_points": 8,
+    "active_branch_points": 5,
+    "max_branch_bonus": 8
+  },
+  "ignored_commit_prefixes": [
+    "chore(activity):",
+    "chore: sync activity"
+  ]
+}
