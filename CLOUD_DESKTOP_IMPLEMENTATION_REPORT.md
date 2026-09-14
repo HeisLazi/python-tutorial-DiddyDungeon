@@ -1,6 +1,6 @@
 # Cloud/Desktop implementation report
 
-Date: 2026-09-14  
+Date: 2026-09-14
 Branch: `feature/cloud-sync-desktop`
 
 ## Milestones
