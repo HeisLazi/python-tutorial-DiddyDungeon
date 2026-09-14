@@ -48,6 +48,29 @@ begin
   exception when others then
     if sqlstate <> '42501' then raise; end if;
   end;
+
+  -- An ON CONFLICT clause must not turn a hidden User B row into an update
+  -- primitive for User A. Depending on the Postgres planner, the rejected
+  -- path is either an RLS violation or a uniqueness violation; both fail
+  -- closed and leave the protected row unchanged.
+  declare
+    upsert_rejected boolean := false;
+  begin
+    begin
+      insert into public.devices (id, user_id, display_name)
+        values ('00000000-0000-4000-8000-000000000012', '00000000-0000-4000-8000-000000000001', 'A upsert hijack')
+        on conflict (id) do update set display_name = 'A upsert hijack';
+    exception when others then
+      if sqlstate in ('42501', '23505') then
+        upsert_rejected := true;
+      else
+        raise;
+      end if;
+    end;
+    if not upsert_rejected then
+      raise exception 'RLS failure: User A upserted User B device';
+    end if;
+  end;
 end;
 $assert_user_a$;
 

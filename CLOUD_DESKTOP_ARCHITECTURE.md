@@ -78,6 +78,30 @@ Sync Engine
 
 The UI should not scatter direct Supabase writes throughout unrelated components. Cloud access should go through a dedicated sync/service layer.
 
+### Pre-C local state gateway
+
+Before cloud transport is implemented, the local backend exposes one bounded
+command surface at `POST /api/state/apply`. It accepts a named `action`, an
+explicit trust actor and an action-specific payload; arbitrary object paths,
+JSON patches and full `progress.json` snapshots are rejected. Current public
+commands are `homestead_purchase`, `homestead_equip`,
+`record_learning_event` and `record_reference_mode`.
+
+Trust levels are deliberately separate:
+
+- `player` may request player/editor actions such as cosmetic purchase/equip;
+- `pyr` may record bounded learning evidence and irreversible Reference Mode
+  history, but cannot grant XP/coins, manufacture mastery or edit activity;
+- `system` is reserved for trusted in-process game code through
+  `apply_internal` (bounded reward, HP and achievement commands). It is not
+  accepted by the HTTP route or the CLI bridge.
+
+Every changed command loads the latest cache under `PROGRESS_LOCK`, validates
+the command, appends a bounded `state_events` audit record, bumps revision
+metadata and writes atomically. The localhost-only helper
+`python -m ide.state_cli` exposes the public commands for PYR/player tooling;
+system-only commands fail closed without making a request.
+
 ## Data that should sync
 
 - account/profile identity;

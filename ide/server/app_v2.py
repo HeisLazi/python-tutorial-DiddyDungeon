@@ -14,7 +14,6 @@ import subprocess
 import sys
 import termios
 import threading
-from datetime import datetime, timezone
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
@@ -23,6 +22,12 @@ from pydantic import BaseModel
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from ide.server.security import allowed_hosts, allowed_origins, is_allowed_origin
+from ide.server.state import (
+    LocalStateService,
+    StateApplyRequest,
+    StateCommandError,
+    opaque_device_id,
+)
 
 REPO_ROOT = Path(os.getenv("QUESTLAB_REPO_ROOT", Path(__file__).resolve().parents[2])).resolve()
 WORKSPACE = Path(os.getenv("QUESTLAB_WORKSPACE", REPO_ROOT)).resolve()
@@ -56,6 +61,7 @@ current project.
 
 ALLOWED_ORIGINS = allowed_origins()
 PROGRESS_LOCK = threading.RLock()
+STATE_SERVICE = LocalStateService(lambda: PROGRESS_PATH, PROGRESS_LOCK)
 
 app = FastAPI(title="Python Quest Lab Local Server", version="0.4.0")
 app.add_middleware(TrustedHostMiddleware, allowed_hosts=list(allowed_hosts()))
@@ -109,22 +115,8 @@ def read_json(path: Path, fallback):
         return fallback
 
 
-def write_json_atomic(path: Path, value: dict) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    temp = path.with_suffix(path.suffix + ".tmp")
-    temp.write_text(json.dumps(value, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
-    temp.replace(path)
-
-
 def local_device_id() -> str:
-    """Return an opaque local revision source label, never a filesystem path."""
-
-    candidate = os.getenv("QUESTLAB_DEVICE_ID", "local-forge").strip()
-    if not candidate or len(candidate) > 80 or any(character.isspace() for character in candidate):
-        return "local-forge"
-    if any(character in candidate for character in "/\\:\u0000"):
-        return "local-forge"
-    return candidate
+    return opaque_device_id()
 
 
 def tutor_revision(content: str) -> str:
@@ -134,26 +126,7 @@ def tutor_revision(content: str) -> str:
 
 
 def write_progress_atomic(progress: dict) -> dict:
-    """Persist one canonical local mutation with revision metadata.
-
-    Callers hold ``PROGRESS_LOCK`` across their read-modify-write transaction;
-    the re-entrant lock also keeps this helper safe for direct test use.
-    """
-
-    with PROGRESS_LOCK:
-        existing = progress.get("meta") if isinstance(progress.get("meta"), dict) else {}
-        try:
-            revision = max(0, int(existing.get("revision", 0) or 0))
-        except (TypeError, ValueError):
-            revision = 0
-        metadata = {
-            "revision": revision + 1,
-            "updated_at": datetime.now(timezone.utc).isoformat(),
-            "device_id": local_device_id(),
-        }
-        progress["meta"] = metadata
-        write_json_atomic(PROGRESS_PATH, progress)
-        return metadata
+    return STATE_SERVICE.persist(progress)
 
 
 def load_progress() -> dict:
@@ -171,15 +144,6 @@ def ensure_tutor_file() -> Path:
     if not TUTOR_PATH.exists():
         TUTOR_PATH.write_text(TUTOR_TEMPLATE, encoding="utf-8")
     return TUTOR_PATH
-
-
-def homestead_catalog(progress: dict) -> dict[str, dict]:
-    homestead = progress.get("homestead") or {}
-    return {
-        str(item.get("id")): item
-        for item in homestead.get("catalog", [])
-        if isinstance(item, dict) and item.get("id")
-    }
 
 
 def git_info() -> dict:
@@ -345,6 +309,33 @@ def write_file(payload: FileWrite):
     return {"ok": True, "path": target.relative_to(WORKSPACE).as_posix(), "bytes": len(encoded)}
 
 
+def _apply_state_or_http(action: str, payload: dict, actor: str, *, internal: bool = False) -> dict:
+    try:
+        return STATE_SERVICE.apply(action, payload, actor, internal=internal)
+    except StateCommandError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
+
+
+def _flatten_state_result(envelope: dict) -> dict:
+    result = dict(envelope.get("result") or {})
+    result.update(
+        {
+            "ok": envelope.get("ok", True),
+            "action": envelope.get("action"),
+            "changed": envelope.get("changed", False),
+            "revision": envelope.get("revision"),
+        }
+    )
+    if envelope.get("event") is not None:
+        result["event"] = envelope["event"]
+    return result
+
+
+@app.post("/api/state/apply")
+def apply_state_command(payload: StateApplyRequest):
+    return _apply_state_or_http(payload.action, payload.payload, payload.actor)
+
+
 @app.get("/api/tutor")
 def read_tutor():
     target = ensure_tutor_file()
@@ -413,70 +404,14 @@ def format_file(payload: FormatRequest):
 
 @app.post("/api/homestead/purchase")
 def purchase_homestead_item(payload: HomesteadPurchase):
-    with PROGRESS_LOCK:
-        progress = load_progress()
-        homestead = progress.get("homestead")
-        if not isinstance(homestead, dict):
-            raise HTTPException(status_code=409, detail="Homestead state is not initialized")
-
-        catalog = homestead_catalog(progress)
-        item = catalog.get(payload.item_id)
-        if not item:
-            raise HTTPException(status_code=404, detail="Unknown Homestead item")
-
-        owned = homestead.setdefault("owned_cosmetics", [])
-        player = progress.setdefault("player", {})
-        coins = int(player.get("coins", 0) or 0)
-        if payload.item_id in owned:
-            return {"ok": True, "already_owned": True, "item": item, "coins": coins}
-
-        price = max(0, int(item.get("price", 0) or 0))
-        if coins < price:
-            raise HTTPException(
-                status_code=409,
-                detail=f"Not enough coins. {item.get('name', 'This item')} costs {price}c and you have {coins}c.",
-            )
-
-        player["coins"] = coins - price
-        owned.append(payload.item_id)
-        homestead.setdefault("purchase_history", []).append(
-            {
-                "item_id": payload.item_id,
-                "name": item.get("name", payload.item_id),
-                "price": price,
-                "purchased_at": datetime.now(timezone.utc).isoformat(),
-            }
-        )
-        write_progress_atomic(progress)
-        return {"ok": True, "item": item, "coins": player["coins"], "owned_cosmetics": owned}
+    envelope = _apply_state_or_http("homestead_purchase", payload.model_dump(), "player")
+    return _flatten_state_result(envelope)
 
 
 @app.post("/api/homestead/equip")
 def equip_homestead_item(payload: HomesteadEquip):
-    with PROGRESS_LOCK:
-        progress = load_progress()
-        homestead = progress.get("homestead")
-        if not isinstance(homestead, dict):
-            raise HTTPException(status_code=409, detail="Homestead state is not initialized")
-
-        catalog = homestead_catalog(progress)
-        item = catalog.get(payload.item_id)
-        if not item:
-            raise HTTPException(status_code=404, detail="Unknown Homestead item")
-
-        owned = homestead.setdefault("owned_cosmetics", [])
-        if payload.item_id not in owned:
-            raise HTTPException(status_code=409, detail="Buy or unlock this cosmetic before equipping it")
-
-        kind = str(item.get("kind", ""))
-        if kind not in {"theme", "cursor", "hud", "terminal"}:
-            raise HTTPException(status_code=409, detail="This Homestead item cannot be equipped")
-
-        equipped = homestead.setdefault("equipped", {})
-        if equipped.get(kind) != payload.item_id:
-            equipped[kind] = payload.item_id
-            write_progress_atomic(progress)
-        return {"ok": True, "item": item, "equipped": equipped}
+    envelope = _apply_state_or_http("homestead_equip", payload.model_dump(), "player")
+    return _flatten_state_result(envelope)
 
 
 @app.websocket("/ws/terminal/{role}")

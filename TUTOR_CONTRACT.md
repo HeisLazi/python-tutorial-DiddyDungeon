@@ -323,6 +323,12 @@ Before signed-in cloud sync is enabled, `progress.json` on `main` is canonical l
 
 When learning progress is earned, ask the local state/sync service to update the relevant state honestly, then refresh the README learning block when displayed stats change. In offline/anonymous mode that service persists the local `progress.json` cache.
 
+The local state gateway accepts named commands, not object paths or arbitrary
+JSON patches. PYR may submit bounded learning-evidence and Reference Mode
+events; reward, HP and achievement mutations are reserved for trusted
+in-process game code. The gateway records a concise `state_events` audit entry
+without terminal history, source text, secrets or private prompts.
+
 When you invent a reward or propose a mechanic, update `CANON_LEDGER.md` as required.
 
 If you cannot safely write to `main`, do not pretend the update happened. Give the player a concise exact summary of the state/ledger changes earned.

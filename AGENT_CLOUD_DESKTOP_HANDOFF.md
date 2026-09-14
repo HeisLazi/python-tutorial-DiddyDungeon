@@ -35,6 +35,9 @@ The current working runtime is valuable. Preserve it.
 - never upload AI tokens, shell history, absolute local paths or terminal logs by default.
 - keep the local shell/backend loopback-only.
 - route progression mutations through the local state/sync service; do not let PYR independently write a cloud-authoritative `progress.json` snapshot.
+- use named, trust-scoped state commands through `POST /api/state/apply` (or
+  the localhost `python -m ide.state_cli` bridge); never add arbitrary JSON
+  patching or direct snapshot writes.
 
 ## Working style
 
