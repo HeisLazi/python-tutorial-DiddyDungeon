@@ -1,147 +1,82 @@
 # Python Quest Lab
 
-A terminal-first Python training repo built to sharpen fundamentals through small games instead of tutorials.
+A terminal-first Python training campaign built around small games, an RPG progression layer, and a Socratic AI tutor named **PYR**.
 
-The rule is simple: **build the project yourself, use AI as a Socratic tutor, and only move on when you can explain your own code.**
+> GitHub README files cannot run JavaScript, so the actual interactive campaign home is [`index.html`](./index.html). Deploy the `main` branch as a static site on Vercel/GitHub Pages and that becomes the live dashboard. The AI tutor updates [`progress.json`](./progress.json); the dashboard reads that state automatically.
+
+## Start here
+
+Read [`START_HERE.md`](./START_HERE.md) before your first session.
+
+Any AI helping with the projects must read [`TUTOR_CONTRACT.md`](./TUTOR_CONTRACT.md). The core rule is simple:
+
+**PYR helps you think. PYR does not build the project for you.**
+
+## Campaign structure
+
+Every project has its own branch and its own `HANDOFF.md`.
+
+| Order | Branch | Project | Main focus |
+|---|---|---|---|
+| 0 | `00-rps-tournament` | Rock Paper Scissors Tournament | loops, conditionals, score state |
+| 1 | `01-blackjack` | Blackjack | lists, functions, game state |
+| 2 | `02-detective-game` | Guess Who / Detective Game | dictionaries, filtering, branching |
+| 3 | `03-pokemon-battle` | Creature Battle Simulator | nested lists/dictionaries, turn logic |
+| 4 | `04-casino-slots` | Casino / Slots | random, probability thinking, economy state |
+| 5 | `05-dungeon-crawler` | Dungeon Crawler + RPG Shop | inventory, encounters, shops, connected systems |
+| 6 | `06-gladiator-arena` | Turn-based Gladiator Game | combat systems, reusable functions, state |
+| 7 | `07-football-manager` | Mini Football Manager | larger datasets, simulation, interacting systems |
+
+The order is recommended, not mandatory. Pick what sounds fun enough that you actually sit down and code it.
+
+## How to enter a quest
+
+```bash
+git fetch --all
+git switch 01-blackjack
+```
+
+Then read that branch's `HANDOFF.md` and start from an empty Python file.
 
 ## Current training scope
 
-Stay mostly inside the fundamentals until they feel automatic:
+The campaign deliberately stays around:
 
-- variables and input/output
-- `if / elif / else`
-- `for` and `while` loops
+- variables and terminal input/output
+- conditionals
+- `for` / `while` loops
 - functions
 - lists
 - dictionaries
 - strings
 - `random`
 
-Do **not** rush into classes, APIs, databases, frameworks, or agent-written code. Those come later.
+The goal is to make these automatic before moving into files/JSON, exceptions, modules, testing, classes/OOP and APIs.
 
-## The campaign
+## The RPG layer
 
-Each project lives on its own branch. Switch to a branch, read its `HANDOFF.md`, then build the project there.
+You start as **Lazi — Apprentice Coder** with PYR as a tiny code-flame companion. Real coding milestones award XP, coins, items and skill unlocks. Bosses only count as defeated when the project works **and** you can explain the important logic yourself.
 
-| Order | Branch | Project | Main skill focus | Suggested time |
-|---|---|---|---|---|
-| 0 | `00-rps-tournament` | Rock Paper Scissors Tournament | loops, conditionals, score state | 1 evening |
-| 1 | `01-blackjack` | Blackjack | lists, functions, game state | 1–2 days |
-| 2 | `02-detective-game` | Guess Who / Detective Game | dictionaries, filtering, branching | 1–2 days |
-| 3 | `03-pokemon-battle` | Pokémon-style Battle Simulator | nested lists/dictionaries, turn logic | 2–3 days |
-| 4 | `04-casino-slots` | Casino / Slots | random, probability thinking, economy state | 1–2 days |
-| 5 | `05-dungeon-crawler` | Dungeon Crawler + RPG Shop | inventory, encounters, shops, connected systems | 2–3 days |
-| 6 | `06-gladiator-arena` | Turn-based Gladiator Game | combat systems, reusable functions, state | 2–3 days |
-| 7 | `07-football-manager` | Mini Football Manager | larger datasets, simulation, interacting systems | 3+ days |
+The live campaign state is stored in [`progress.json`](./progress.json), not hardcoded into the dashboard.
 
-The order is a recommendation, not a prison. If one sounds fun tonight, play that branch.
+## AI tutor workflow
 
----
+From the dashboard, select a project and press **Copy PYR session prompt**. Paste that into ChatGPT, Claude, Gemini or another repo-aware assistant.
 
-# The meta-RPG
+The tutor should:
 
-Your coding progress is also a text RPG.
-
-You begin as:
-
-```text
-LAZI — APPRENTICE CODER
-Level: 1
-XP: 0 / 100
-HP: 100 / 100
-Coins: 0
-Potions: 2
-
-Companion: PYR
-A tiny code-flame that grows as you learn.
-```
-
-**PYR** is the AI tutor. PYR is not allowed to build the game for you. Its job is to question, hint, explain, challenge and track your progress while staying in character.
-
-### Progression
-
-- Small feature completed: **+10 XP**
-- Major milestone / mob defeated: **+25 XP**
-- Boss defeated: **+100 XP**
-- Explain your own code correctly: **+10 XP**
-- Find and fix a bug yourself: **+15 XP**
-- Complete a project without solution code from AI: **bonus loot**
-
-Every 100 XP = level up. The tutor can award coins and items narratively as you work.
-
-### Items
-
-- **Potion** — one stronger hint without losing boss rewards.
-- **Map Scroll** — tutor breaks the current problem into smaller subproblems.
-- **Syntax Scroll** — tutor may show generic Python syntax unrelated to the exact solution.
-- **Phoenix Feather** — tutor may show one tiny unrelated example when you are completely stuck.
-- **Boss Key** — earned by completing all required project milestones; unlocks the final challenge.
-
-### Skill unlocks
-
-Your character and PYR gain abilities when concepts become reliable:
-
-- **Ember** — basic conditionals
-- **Firebolt** — functions
-- **Chain Flame** — loops
-- **Inventory Sight** — lists
-- **Runic Memory** — dictionaries
-- **Inferno** — combining multiple systems cleanly
-- **Tactician** — designing a larger program before coding it
-
-The names are just flavour. The real unlock is being able to use the concept without needing the answer shown to you.
-
----
-
-# AI tutor contract
-
-When using ChatGPT, Claude, Gemini, Codex, or another AI on these branches, tell it to read the branch `HANDOFF.md` first.
-
-The tutor must use a **Socratic hint ladder**:
-
-1. Ask a question that helps you notice the problem.
-2. Point to the Python concept involved.
-3. Give pseudocode, not Python.
-4. Show generic syntax only if needed.
-5. Show solution code only if you explicitly abandon the challenge after multiple attempts.
-
-The tutor should ask you to explain important code back in your own words before marking a boss as defeated.
-
-**Never paste the project into an AI and ask it to finish it.** This repo exists specifically so you can become the person who understands the implementation.
-
----
-
-# How to play
-
-```bash
-git fetch --all
-git branch -a
-git switch 01-blackjack
-```
-
-Then:
-
-1. Read `HANDOFF.md`.
-2. Create your Python file(s).
-3. Build the smallest working version first.
-4. Run it constantly.
-5. Commit after meaningful milestones.
-6. Ask the tutor for hints, not implementations.
-7. Beat the branch boss.
-8. Move to the next project when you can explain what you built.
+1. read `TUTOR_CONTRACT.md`;
+2. read `progress.json`;
+3. read the current branch `HANDOFF.md`;
+4. use questions → concept hint → pseudocode → generic syntax before exact code;
+5. update `progress.json` only when genuine progress happened.
 
 ## Ground rule
 
-**Google syntax. Do not Google project solutions.**
+**Google syntax. Do not Google finished project solutions.**
 
-Good search: `python random item from list`
+Good: `python random item from list`
 
-Bad search: `blackjack game python source code`
+Bad: `blackjack game python full code`
 
----
-
-## Why this repo exists
-
-The goal is not to collect eight finished games. The goal is to make loops, functions, lists, dictionaries, branching and program state feel natural enough that the next layer of Python — files/JSON, exceptions, modules, classes and larger applications — has a solid foundation underneath it.
-
-Have fun. Break things. Fix them. Make PYR earn its upgrades too.
+The win condition is not eight pretty repositories. It is being able to sit down, write the code, debug it and explain what it does.
