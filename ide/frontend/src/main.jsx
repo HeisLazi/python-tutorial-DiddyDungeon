@@ -3,7 +3,9 @@ import App from './AppV2.jsx'
 import './styles.css'
 import './v2.css'
 import './enhancements.css'
+import './uiPolish.css'
 import './forgeEnhancements.js'
+import './uiPolish.js'
 import '@xterm/xterm/css/xterm.css'
 
 // Quest Lab owns real PTY/WebSocket sessions. React StrictMode intentionally
