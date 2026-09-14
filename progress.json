@@ -32,7 +32,7 @@
   ],
   "projects": [
     {"order": 0, "branch": "00-rps-tournament", "name": "Rock Paper Scissors Tournament", "status": "available", "progress": 0, "boss": "The Pattern Warden"},
-    {"order": 1, "branch": "01-blackjack", "name": "Blackjack", "status": "available", "progress": 0, "boss": "The House"},
+    {"order": 1, "branch": "01-blackjack", "name": "Blackjack", "status": "active", "progress": 0, "boss": "The House"},
     {"order": 2, "branch": "02-detective-game", "name": "Guess Who / Detective Game", "status": "available", "progress": 0, "boss": "The False Alibi"},
     {"order": 3, "branch": "03-pokemon-battle", "name": "Creature Battle Simulator", "status": "available", "progress": 0, "boss": "The Arena Champion"},
     {"order": 4, "branch": "04-casino-slots", "name": "Casino / Slots", "status": "available", "progress": 0, "boss": "Lady Luck"},
@@ -40,7 +40,9 @@
     {"order": 6, "branch": "06-gladiator-arena", "name": "Turn-based Gladiator Game", "status": "available", "progress": 0, "boss": "The Unbound"},
     {"order": 7, "branch": "07-football-manager", "name": "Mini Football Manager", "status": "available", "progress": 0, "boss": "The Invincibles"}
   ],
-  "current_quest": "Choose a project branch and read its HANDOFF.md",
-  "last_session": "Campaign created. No project started yet.",
-  "session_log": []
+  "current_quest": "Blackjack — begin Mob 0: The Empty Table",
+  "last_session": "Blackjack selected as the first active coding quest. No XP awarded yet.",
+  "session_log": [
+    "2026-09-14: Selected Blackjack as the active quest; ready to begin Mob 0."
+  ]
 }
