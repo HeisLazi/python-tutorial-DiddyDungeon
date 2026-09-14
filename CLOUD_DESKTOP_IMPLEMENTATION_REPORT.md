@@ -154,10 +154,15 @@ untracked and player-editable.
 - Windows `npm run build` — passed; 1,343 modules transformed and local
   Monaco worker assets emitted. Vite emitted only the existing large-chunk
   warning (main bundle ~4.8 MB).
+- Windows `npm install` reported two package-audit advisories (one low, one
+  moderate); no force-upgrade was applied during this bounded repair pass.
 - WSL backend:
   `.venv/bin/python -m unittest discover -s ide/server -p "test_*.py" -v`
   — 7 tests passed; `compileall` passed. Python 3.14 emitted only its known
   `pty.forkpty` deprecation warning during the real-Origin test.
+- `ruff check` remains non-clean only for the pre-existing BLE001 catches in
+  the launcher/legacy server paths; no new repair-specific lint failure was
+  introduced.
 - Linked Quest Lab Supabase: `db lint --linked` reported no schema errors and
   `profiles_devices_rls.sql` returned `profiles_devices_rls: PASS`.
 - WSL live Forge smoke: backend health, independent shell/AI PTY markers,
