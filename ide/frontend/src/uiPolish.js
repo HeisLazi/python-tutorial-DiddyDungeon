@@ -49,6 +49,7 @@ function addShortcutHelp() {
       <div><kbd>Ctrl</kbd><span>+</span><kbd>S</kbd><strong>Save</strong></div>
       <div><kbd>Ctrl</kbd><span>+</span><kbd>Enter</kbd><strong>Run current file</strong></div>
       <div><kbd>Ctrl</kbd><span>+</span><kbd>Shift</kbd><span>+</span><kbd>Enter</kbd><strong>Submit recent run to PYR</strong></div>
+      <div><kbd>Ctrl</kbd><span>+</span><kbd>Shift</kbd><span>+</span><kbd>P</kbd><strong>Command palette</strong></div>
       <div><kbd>Shift</kbd><span>+</span><kbd>Alt</kbd><span>+</span><kbd>F</kbd><strong>Pretty / format</strong></div>
       <div><kbd>Ctrl</kbd><span>+</span><kbd>\`</kbd><strong>Focus Forge terminal</strong></div>
       <div><kbd>Ctrl</kbd><span>+</span><kbd>Shift</kbd><span>+</span><kbd>\`</kbd><strong>Focus AI terminal</strong></div>
