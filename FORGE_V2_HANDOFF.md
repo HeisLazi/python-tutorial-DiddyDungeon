@@ -8,7 +8,7 @@ The first Forge shell proved the layout, Monaco editor, real PTY terminal, RPG H
 
 Two development behaviours were especially risky for a PTY-backed app:
 
-1. React `StrictMode` intentionally mounts/unmounts effects twice in development, which can create and immediately kill duplicate WebSocket/PTTY sessions.
+1. React `StrictMode` intentionally mounts/unmounts effects twice in development, which can create and immediately kill duplicate WebSocket/PTY sessions.
 2. Uvicorn `--reload` restarts the backend process whenever watched files change, which necessarily kills every terminal session.
 
 Forge v2 removes both behaviours from the normal launcher.
@@ -25,7 +25,7 @@ Normal launch now starts the backend **without** reload. Use `--reload-backend` 
 
 ## Terminal changes
 
-Forge and AI now use separate WebSocket/PTTY routes:
+Forge and AI now use separate WebSocket/PTY routes:
 
 - `/ws/terminal/shell`
 - `/ws/terminal/ai`
@@ -107,3 +107,7 @@ Test these in order:
 7. Refresh the browser and confirm layout preferences persist.
 
 Report any broken behaviour with the visible connection state plus the launcher-terminal traceback/output when possible.
+
+## Current test boundary
+
+This is a **local-runtime test build**, not a claim that every path is bug-free yet. The next useful input is real desktop usage: terminal stability, panel sizing, game-screen feel, Homestead flow, and Tutor Notebook ergonomics. Fix those before stacking the provider-aware PYR context bridge on top.
