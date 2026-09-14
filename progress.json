@@ -89,7 +89,7 @@
     {"name": "Map Scroll", "price": 30, "effect": "Break the current problem into 3-5 smaller subproblems", "type": "consumable"},
     {"name": "Syntax Scroll", "price": 35, "effect": "Show generic Python syntax using unrelated values", "type": "consumable"},
     {"name": "Boss Scout", "price": 60, "effect": "One non-code hint about the current boss challenge", "type": "consumable"},
-    {"name": "Shield Repair Kit", "price": 80, ""effect": "Restore one shield charge after completing a recovery question", "type": "consumable"},
+    {"name": "Shield Repair Kit", "price": 80, "effect": "Restore one shield charge after completing a recovery question", "type": "consumable"},
     {"name": "Streak Ward", "price": 120, "effect": "Protect one missed day; maximum one stored", "type": "consumable"},
     {"name": "Ember Crown", "price": 250, "effect": "Cosmetic title unlocked after two boss clears", "type": "cosmetic", "requires": "2 bosses"}
   ],
