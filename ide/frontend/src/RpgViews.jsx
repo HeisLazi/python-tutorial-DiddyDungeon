@@ -330,7 +330,6 @@ function CharacterSheet({ progress }) {
         <section className="game-card">
           <div className="card-heading"><span>EQUIPMENT</span></div>
           <div className="equipment-list">
-            <div><span>⚔</span><small>Weapon</small><strong>{equipment.weapon || 'None'}</strong></div>
             <div><span>◈</span><small>Armor</small><strong>{equipment.armor || 'None'}</strong></div>
             <div><span>✦</span><small>Trinket</small><strong>{equipment.trinket || 'None'}</strong></div>
             <div><span>♛</span><small>Title</small><strong>{equipment.title || player.title || 'None'}</strong></div>

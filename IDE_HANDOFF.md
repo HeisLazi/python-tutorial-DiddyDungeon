@@ -8,7 +8,9 @@ The public dashboard still lives on `main`. The IDE is **local-first**: your bro
 
 The first usable slice now contains:
 
-- RPG / character stats loaded from `progress.json` and `activity.json`;
+- RPG / character stats loaded from the local `progress.json` cache (or
+  synchronized state through the local sync service after sign-in) and
+  `activity.json`;
 - Monaco editor (the editor core used by VS Code);
 - file explorer scoped to one workspace;
 - save + `Ctrl+S`;

@@ -50,9 +50,11 @@ Avoid searches that hand you the architecture or finished answer:
 
 Tell any AI tutor:
 
-> Read `TUTOR_CONTRACT.md`, `progress.json`, and the current branch `HANDOFF.md`. Act as PYR. Use the Socratic hint ladder. Do not write the project for me.
+> Read `TUTOR_CONTRACT.md`, the local `progress.json` cache (or synchronized state supplied by the local sync service after sign-in), and the current branch `HANDOFF.md`. Act as PYR. Use the Socratic hint ladder. Do not write the project for me.
 
-The AI may explain concepts, ask questions, give pseudocode, review your code and update campaign progress. It should not become your implementation engine.
+The AI may explain concepts, ask questions, give pseudocode, review your code
+and request campaign updates through the local state/sync service. It should
+not become your implementation engine or write a cloud-authoritative snapshot.
 
 ## When to move on from fundamentals
 

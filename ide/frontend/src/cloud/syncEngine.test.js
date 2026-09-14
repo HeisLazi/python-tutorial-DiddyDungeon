@@ -24,7 +24,7 @@ class MemoryStorage {
   }
 }
 
-function fakeCloudClient(user, { accessToken = 'eyJ-this-must-never-enter-state' } = {}) {
+function fakeCloudClient(user, { accessToken = 'test-access-token' } = {}) {
   const profileRows = new Map()
   const deviceRows = new Map()
   const writes = []

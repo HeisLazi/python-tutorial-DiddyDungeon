@@ -62,7 +62,7 @@ Vercel must not host the privileged local terminal backend.
 
 Quest Lab must continue working when the internet is unavailable.
 
-`progress.json` remains a local cache/snapshot during the migration. Do not delete it during the first cloud-sync milestones.
+Before signed-in cloud sync, `progress.json` is local canonical state. After signed-in cloud sync is enabled, Supabase is synchronized account/game-state authority and `progress.json` remains the local/offline cache and device working copy. Do not delete it during the first cloud-sync milestones. Progression mutations must pass through the local state/sync service so the authority transition is explicit and revision-aware.
 
 Expected flow:
 
@@ -164,6 +164,10 @@ For the first milestone, simple server-authoritative merge rules are acceptable 
 
 Never silently overwrite a newer cloud save with an older device snapshot.
 
+The local Forge backend records revision metadata (`revision`, UTC `updated_at`,
+and an opaque `device_id`) for canonical local mutations. A later Sync Engine
+must compare that metadata before applying cloud changes.
+
 ## Desktop direction
 
 Use Tauri as the target desktop shell unless a concrete blocker is discovered.
@@ -189,6 +193,17 @@ workspace selection works
 Do not combine the first Tauri milestone with multiplayer implementation.
 
 The existing Python/FastAPI service may initially run as a packaged sidecar or managed local child process. Replacing it with Rust is not a goal unless there is a measured packaging/security reason.
+
+### Native Windows PTY decision for Milestone E
+
+The current WSL/Linux runtime intentionally uses Python `pty`, `fcntl` and
+`termios`; those POSIX primitives are not a native Windows desktop contract.
+Milestone E must keep the existing WebSocket terminal protocol and choose a
+Windows PTY adapter (first candidate: ConPTY through `pywinpty`, with a small
+compatibility layer) before packaging. A direct ConPTY proof and shutdown test
+are required before calling the desktop milestone complete. This is a packaging
+decision for E, not a reason to rewrite the backend in Rust, and no Tauri work
+is started in the current repair pass.
 
 ## Multiplayer direction
 
@@ -225,6 +240,14 @@ Never ship:
 - a publicly reachable FastAPI/PTTY backend.
 
 The local privileged backend continues to bind only to loopback unless a future authenticated transport is explicitly designed.
+
+The backend accepts only exact `http://127.0.0.1:<frontend-port>` and
+`http://localhost:<frontend-port>` browser origins, where the port comes from
+`QUESTLAB_FRONTEND_PORT`. A future Tauri webview origin (such as
+`tauri://localhost` or `http://tauri.localhost`) must be explicitly added to
+`QUESTLAB_ALLOWED_ORIGINS` only after packaging verifies the origin; no wildcard
+origin is permitted or enabled by default. Host validation remains restricted
+to `127.0.0.1` and `localhost`.
 
 ## Migration order
 

@@ -26,7 +26,7 @@ The current working runtime is valuable. Preserve it.
 - Supabase becomes synchronized account/game-state authority.
 - local filesystem remains active coding authority.
 - Vercel is a web/public surface, not the privileged PTY backend.
-- `progress.json` remains available as the offline/local cache during this migration.
+- Before signed-in cloud sync, `progress.json` is local canonical state; after signed-in cloud sync, Supabase is synchronized account/game-state authority and `progress.json` remains the offline/local cache and device working copy.
 - do not implement weekly raid combat yet.
 - do not redesign the current gameplay or learning protocol.
 - do not let the tutor agent write required project files.
@@ -34,6 +34,7 @@ The current working runtime is valuable. Preserve it.
 - never place a Supabase service-role key in client code.
 - never upload AI tokens, shell history, absolute local paths or terminal logs by default.
 - keep the local shell/backend loopback-only.
+- route progression mutations through the local state/sync service; do not let PYR independently write a cloud-authoritative `progress.json` snapshot.
 
 ## Working style
 
@@ -148,6 +149,11 @@ First Tauri proof must:
 Do not implement multiplayer during this milestone.
 
 Prefer retaining the Python/FastAPI backend as a managed sidecar for the first package. Do not rewrite it in Rust unless packaging proves it necessary and document the evidence first.
+
+The current WSL PTY implementation uses POSIX `pty`/`fcntl`/`termios`. For a
+future native Windows package, evaluate ConPTY via `pywinpty` behind the same
+WebSocket contract and prove clean shutdown; do not start Tauri or a Rust
+rewrite in this repair pass.
 
 ## Milestone F — Web/Vercel surface
 
