@@ -2,37 +2,52 @@
 
 ## Mission
 
-Build a complete terminal Blackjack game **yourself** using the Python fundamentals you already know.
+Build a complete terminal Blackjack game **yourself** while PYR teaches any rusty concepts before you implement them.
 
-This quest is not about learning fancy Python. It is about making your existing knowledge stop feeling foggy:
+This quest sharpens:
 
-- variables
-- input/output
-- `if / elif / else`
-- `for` / `while`
-- functions
-- lists
-- dictionaries where useful
-- strings
-- `random`
+- variables / input-output;
+- `if / elif / else`;
+- `for` / `while`;
+- functions;
+- lists;
+- dictionaries where useful;
+- strings;
+- `random`.
 
-**Do not search for a finished Blackjack implementation. Do not ask PYR to write the game.**
+Do not search for a finished Blackjack implementation.
 
 ---
 
-# Tonight's win condition
+# How every mob works
 
-A successful first session does **not** require the entire finished game.
+Before a mob asks you to use a concept that feels rusty, PYR runs:
 
-Your minimum victory tonight is:
+**Teach → Practice → Teach-back → Forge**
 
-1. create a deck representation;
-2. deal two cards to the player and dealer;
-3. display the player's cards and only one dealer card;
-4. calculate a normal hand total;
-5. get a basic `hit` / `stand` loop working.
+During teaching, PYR may show examples with things like football squads, spell inventories, shopping lists, dice or other unrelated data.
 
-If you reach that point and can explain the logic, the session counts as a win.
+Once you prove you understand the concept, you enter **Forge phase** and implement the Blackjack version from scratch without a solution sitting in front of you.
+
+If you remain genuinely stuck, you can explicitly choose **Reference Mode**. PYR may then show the smallest exact Blackjack-specific fragment needed, but that mob's XP/coins become **50%**. A later Recovery Trial can raise it to at most 75% of the original reward.
+
+Normal explanations, pseudocode and unrelated examples cost nothing.
+
+---
+
+# First-session win condition
+
+You do not need to finish the whole game tonight.
+
+A strong first session is:
+
+1. get the file running;
+2. understand/review lists + random selection with PYR;
+3. pass a tiny Teach-back;
+4. enter Forge;
+5. create the card/hand representation yourself;
+6. deal two cards to player and dealer;
+7. if energy remains, start hand totals or hit/stand.
 
 ---
 
@@ -40,120 +55,117 @@ If you reach that point and can explain the logic, the session counts as a win.
 
 ## Mob 0 — The Empty Table
 
-**Goal:** get the program running and print a tiny Blackjack welcome screen.
+**Goal:** run the program and print a tiny Blackjack welcome screen.
 
-No game logic yet. Just prove your file runs and you know where you're starting.
+**Clear:** `python blackjack.py` runs without errors.
 
-**Clear condition:** you can run `python blackjack.py` without errors.
+This mob is intentionally tiny. It gets you moving.
 
 ---
 
 ## Mob 1 — The Dealer's Hand
 
-**Goal:** represent the available card values and randomly deal cards into separate player/dealer hands.
+**Concept gate:** lists + `random` + function return values.
 
-Think about:
+PYR should teach/review these first with non-Blackjack examples if needed. Then the examples close and you Forge the real solution.
 
-- What Python structure makes sense for a hand?
-- What should a function that deals one card *return*?
-- Do you actually need suits for this version?
+**Goal:** represent available card values and randomly deal cards into separate player/dealer hands.
 
-**Clear condition:** every run can produce two player cards and two dealer cards.
+Questions to think about:
 
-**Reward:** +25 XP
+- What structure makes sense for a hand?
+- What should a function that deals one card return?
+- Do you need suits yet?
+
+**Clear:** every run can produce two player cards and two dealer cards.
+
+**Base reward:** +25 XP.
 
 ---
 
 ## Mob 2 — The Count Keeper
 
-**Goal:** calculate the value of a hand.
+**Concept gate:** functions + list traversal / totals.
 
-Start simple. Ignore clever Ace handling at first.
+**Goal:** calculate the value of a hand. Ignore clever Ace handling at first.
 
 Think about:
 
-- Does the total belong in a variable or should a function calculate it when needed?
-- Can the same function work for both the player and dealer?
+- should the total be stored or calculated when needed?
+- can the same function work for both hands?
 
-**Clear condition:** both hands can display a correct basic total.
+**Clear:** both hands display a correct basic total.
 
-**Reward:** +25 XP
+**Base reward:** +25 XP.
 
 ---
 
 ## Mob 3 — The Hitman
 
+**Concept gate:** loops + input + changing list state.
+
 **Goal:** let the player repeatedly choose `hit` or `stand`.
 
 Think about:
 
-- What keeps a player's turn running?
-- What event ends that loop?
-- What should happen immediately after drawing another card?
-- How will you stop invalid input from breaking the flow?
+- what keeps the turn running?
+- what ends the loop?
+- what happens immediately after another card is drawn?
+- how do you handle invalid input?
 
-**Clear condition:** the player can draw multiple cards or choose to stop.
+**Clear:** player can draw multiple cards or stop.
 
-**Reward:** +25 XP
+**Base reward:** +25 XP.
 
 ---
 
 ## Mob 4 — The Bust Hound
 
-**Goal:** detect when a hand goes above 21 and end the appropriate turn.
+**Concept gate:** conditionals + reusable total logic.
 
-Do not overcomplicate it.
+**Goal:** detect totals over 21 and end the appropriate turn.
 
-**Clear condition:** a player who exceeds 21 loses the round instead of continuing to draw.
+**Clear:** a player above 21 loses instead of continuing to draw.
 
-**Reward:** +25 XP
+**Base reward:** +25 XP.
 
 ---
 
 ## Mob 5 — The House Clerk
 
-**Goal:** automate the dealer's turn with one simple rule:
+**Concept gate:** reusing loop logic for a different actor.
 
-> Dealer keeps drawing while the dealer total is below 17.
+**Goal:** dealer keeps drawing while total is below 17.
 
-Think about how similar this is to the player's repeated-turn logic.
+**Clear:** after player stands, dealer completes its own turn automatically.
 
-**Clear condition:** once the player stands, the dealer finishes its own turn automatically.
-
-**Reward:** +25 XP
+**Base reward:** +25 XP.
 
 ---
 
 ## Mob 6 — The Judge
 
-**Goal:** compare the final player/dealer totals and declare the correct outcome.
+**Concept gate:** ordered conditionals / edge cases.
 
-Your game needs to distinguish at least:
+**Goal:** correctly distinguish player bust, dealer bust, player higher, dealer higher and draw.
 
-- player bust;
-- dealer bust;
-- player higher;
-- dealer higher;
-- draw.
+**Clear:** normal rounds consistently announce the right result.
 
-**Clear condition:** normal rounds consistently announce the correct result.
-
-**Reward:** +25 XP
+**Base reward:** +25 XP.
 
 ---
 
 ## Mob 7 — The Rematch Shade
 
-**Goal:** allow another round without restarting Python manually.
+**Concept gate:** nested game state / outer-vs-inner loops.
 
-Think about:
+**Goal:** allow another round without manually restarting Python.
 
-- Which variables need to reset each round?
-- Which loop should control the whole game versus one player's turn?
+Think about what resets each round and which loop controls the whole game.
 
-**Clear condition:** you can finish one round and choose to play another cleanly.
+**Clear:** finish one round and choose to play another cleanly.
 
-**Reward:** +25 XP
+**Base reward:** +25 XP.
 
 ---
 
@@ -161,81 +173,64 @@ Think about:
 
 The House introduces **Aces**.
 
-Treat an Ace as 11 normally, but if the hand would bust and changing an Ace from 11 to 1 saves the hand, the game should do so.
+Treat an Ace as 11 normally, but if the hand would bust and changing an Ace from 11 to 1 saves it, your game should do so.
 
-PYR must not hand you the algorithm immediately.
+PYR should teach any missing underlying concept with unrelated examples first, then make you design/implement the Blackjack algorithm yourself in Forge phase.
 
-Before the boss counts as defeated, explain to PYR in your own words:
+Before the boss is defeated, explain:
 
-1. how a hand is represented;
-2. how cards are dealt;
-3. how hand totals are calculated;
-4. what controls the player's loop;
-5. what controls the dealer's loop;
-6. how bust detection works;
-7. how the winner is selected;
-8. how your Ace logic works.
+1. hand representation;
+2. card dealing;
+3. hand total calculation;
+4. player loop;
+5. dealer loop;
+6. bust detection;
+7. winner selection;
+8. Ace handling.
 
-**Boss reward:** +100 XP, bonus coins, and a clean-clear item if no exact solution code was used.
+Then pass at least one reasoning/debug/edge-case question.
 
----
+**Boss base reward:** +100 XP + coins + trophy/loot.
 
-# Optional loot — only after the boss
-
-Do not touch these until the core game works.
-
-- chips and betting;
-- win/loss tracking;
-- Blackjack payout bonus;
-- face-card labels (`J`, `Q`, `K`);
-- ASCII cards;
-- player name;
-- session statistics;
-- difficulty variants;
-- better input validation.
-
-The purpose of optional loot is to keep coding fun after the fundamentals are already working.
+A required-core Reference Mode use removes Clean Clear eligibility, but you can still defeat the boss and keep learning.
 
 ---
 
-# PYR rules for this branch
+# Creativity — optional loot after the required logic works
 
-PYR must follow `TUTOR_CONTRACT.md`.
+Make the game yours.
 
-When you are stuck, PYR uses this order:
+Possible directions include chips/betting, session stats, face-card labels, ASCII cards, player names, difficulty variants, win streaks, achievements, funny dealer dialogue, custom rules or something PYR never suggested.
 
-1. ask a question;
-2. point at the relevant concept;
-3. give pseudocode;
-4. show generic syntax unrelated to the exact Blackjack solution;
-5. only show exact solution code if you explicitly abandon that challenge.
+PYR can award:
 
-If you paste an error, PYR should first help you interpret the error rather than immediately rewriting your code.
+- Wild Spark +5 XP;
+- Embercraft +10 XP;
+- Relic Craft +20 XP;
+- Mythic Discovery up to +30 XP.
 
-If your code works, PYR should occasionally ask **why** it works before awarding the mob clear.
+PYR may also reveal a hidden cosmetic/trophy/lore reward after a genuinely memorable addition or learning moment. Any revealed custom reward must be logged in `CANON_LEDGER.md`.
+
+Do not chase bonus features before the relevant core game works.
 
 ---
 
-# Recommended session rhythm
+# Session rhythm
 
-Work one mob at a time.
-
-After each clear:
+Work one mob at a time. Commit meaningful checkpoints.
 
 ```bash
 git add .
 git commit -m "clear mob 1 dealer hand"
 ```
 
-You do not have to use that exact commit message. The important part is making small checkpoints so you can see the project grow.
+You do not need that exact message.
 
-If you get mentally cooked, stop after a mob. A 60–90 minute session where you actually understood what you wrote is better than four hours of copied code.
+A 60–90 minute session where you understand your code is better than four hours of copied implementation.
 
 ---
 
-# Start command
-
-From the repository:
+# Start
 
 ```bash
 git fetch --all
@@ -243,4 +238,4 @@ git switch 01-blackjack
 python blackjack.py
 ```
 
-Then open `SESSION_NOTES.md`, summon PYR with the prompt in that file, and start with **Mob 0 — The Empty Table**.
+Then open `SESSION_NOTES.md`, summon PYR, and begin. PYR should **teach first when needed, then send you into Forge**.
