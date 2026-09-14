@@ -73,9 +73,13 @@ After reveal, any AI-created reward/mechanic must be recorded in `CANON_LEDGER.m
 
 # Streaks
 
-A streak counts **meaningful coding days**, not days where the repo is merely opened.
+Python Quest Lab intentionally has **two different streaks**.
 
-A day counts when at least one of these happens:
+## Learning streak
+
+Stored in `progress.json` and verified by PYR.
+
+A learning-streak day counts when at least one of these happens:
 
 - real feature/milestone progress;
 - a mob clear;
@@ -83,9 +87,17 @@ A day counts when at least one of these happens:
 - a concept interview;
 - a meaningful session resulting in code the player can explain.
 
-Failed interviews do **not** break streaks. Struggling does **not** break streaks. Only missing a meaningful day breaks the natural streak.
+Failed interviews do **not** break this streak. Struggling does **not** break it. Only missing a meaningful learning day breaks the natural streak.
 
-A `Streak Ward` may protect one missed day. Maximum one stored unless canon changes later.
+A `Streak Ward` may protect one missed learning day. Maximum one stored unless canon changes later.
+
+## Dev streak
+
+Stored in `activity.json` and derived from Git commit history.
+
+A Dev-streak day means qualifying code was committed that day. PYR cannot manually award, remove or repair this streak.
+
+Full rules: [`ACTIVITY_SYSTEM.md`](./ACTIVITY_SYSTEM.md).
 
 ---
 
@@ -113,7 +125,7 @@ Durability: 3 charges.
 
 ## Cracked shields
 
-If a player who already owns a shield fails a later mastery check, remove one shield charge **instead of damaging HP or the streak**.
+If a player who already owns a shield fails a later mastery check, remove one shield charge **instead of damaging HP or the learning streak**.
 
 At zero charges, mark the concept `cracked`. Repair it through a recovery exercise/interview. A Shield Repair Kit can restore a charge only after recovery work is completed.
 
@@ -133,7 +145,7 @@ Small narrative HP damage is only for explicit challenge-rule breaks such as rep
 
 # Coins and shop
 
-Coins come from mobs, goals, bosses, streak milestones, debugging and other canon rewards.
+Coins come from mobs, goals, bosses, learning-streak milestones, debugging and other canon rewards.
 
 Current shop:
 
@@ -144,7 +156,7 @@ Current shop:
 | Syntax Scroll | 35 | show generic Python syntax using unrelated values |
 | Boss Scout | 60 | one non-code boss hint |
 | Shield Repair Kit | 80 | restore one shield charge after recovery work |
-| Streak Ward | 120 | protect one missed day; max one stored |
+| Streak Ward | 120 | protect one missed learning day; max one stored |
 | Ember Crown | 250 | cosmetic title after two boss clears |
 
 The static dashboard cannot safely write to GitHub by itself. Purchases become requests to PYR, who verifies balance/requirements and updates canonical state.
@@ -184,7 +196,7 @@ Ranks are long-term milestones, not raw XP levels.
 
 - **F — Apprentice**: starting rank.
 - **E — Journeyman**: clear 2 projects and master 3 fundamentals.
-- **D — Pathfinder**: clear 4 projects, hold 4 shields and reach a 5-day best streak.
+- **D — Pathfinder**: clear 4 projects, hold 4 shields and reach a 5-day best learning streak.
 - **C — Builder**: clear 6 projects and demonstrate reliable program design.
 - **B — Python Adventurer**: clear all foundation projects and pass a mixed fundamentals gauntlet.
 
@@ -204,7 +216,7 @@ Suggested forms:
 - Forge Wisp — 4 project clears;
 - Pyre Guardian — foundation campaign clear.
 
-Bond rises from meaningful sessions, explanations, self-debugging, interviews, creativity and boss victories — not passive chat.
+Bond rises from meaningful sessions, explanations, self-debugging, interviews, creativity and boss victories — not passive chat or commit volume.
 
 ---
 
@@ -224,24 +236,60 @@ PYR may invent new player-canon cosmetic gear when earned, but must log it in `C
 
 ---
 
+# Dev Activity League
+
+Commit history powers a separate competitive layer documented in [`ACTIVITY_SYSTEM.md`](./ACTIVITY_SYSTEM.md).
+
+Machine-derived metrics include:
+
+- 7-day / 30-day commits;
+- active dev days;
+- current and longest Dev streak;
+- active branches;
+- rolling Activity Score.
+
+The Activity Score rewards **consistency over spam**: effective commits are capped per day for scoring, while raw commits remain visible.
+
+Commit activity never directly grants:
+
+- XP;
+- coins;
+- Mastery Shields;
+- concept evidence;
+- boss clears;
+- Clean Clears.
+
+That keeps the competition useful: one player can be the **most active developer this month** while another can still have stronger proven Python mastery.
+
+---
+
 # Friendly competition / Rival Mode
 
 The campaign is designed to be forkable.
 
-A friend can fork the repo, reset `progress.json`, change `profile.player_id`, and use the same canon rules.
+A friend can fork the repo, reset `progress.json`, change `profile.player_id`, set their GitHub username/start timestamp in `activity_config.json`, and use the same canon rules.
 
-Rival comparison may use:
+Rival comparison can show two score families side by side.
+
+### Learning power
 
 - lifetime XP;
 - bosses defeated;
 - Mastery Shields;
-- current/longest streak;
+- learning streak;
 - interviews passed;
 - clean clears;
-- project completion;
-- creativity/discovery count as a secondary flavour stat.
+- project completion.
 
-Competition should reward **verified learning milestones**, not hours logged or lines of code.
+### Dev activity
+
+- Activity Score;
+- commits 7d / 30d;
+- active dev days;
+- Dev streak;
+- active branches.
+
+Competition should reward **verified learning plus consistent real development**, not hours logged or lines of code.
 
 One-off cosmetic rewards do not affect competitive power.
 
@@ -249,11 +297,11 @@ One-off cosmetic rewards do not affect competitive power.
 
 # Public profile rule
 
-`README.md` is the public campaign card. `progress.json` is canonical player state. `CANON_LEDGER.md` is the public history of custom mechanics/rewards.
+`README.md` is the public campaign card. `progress.json` is canonical learning/player state. `activity.json` is machine-derived development activity. `CANON_LEDGER.md` is the public history of custom mechanics/rewards.
 
-The README should show current character progress, active quest, assistance integrity, creativity/discoveries, streaks, shields and boss progress.
+The README should show current character progress, active quest, assistance integrity, creativity/discoveries, learning streak, Dev Activity League, shields and boss progress.
 
-When PYR changes displayed stats, it should refresh the README public stats block.
+PYR refreshes learning-state blocks. The GitHub activity workflow refreshes machine-derived activity blocks.
 
 ---
 
@@ -261,4 +309,4 @@ When PYR changes displayed stats, it should refresh the README public stats bloc
 
 The exact rules for adding, approving and retiring custom mechanics/rewards live in `CANON_LEDGER.md`.
 
-Do not silently mutate progression rules. Preserve history so future players and AI tutors can reproduce the same system.
+Do not silently mutate progression or activity-scoring rules. Preserve history so future players and AI tutors can reproduce the same system.
