@@ -14,6 +14,10 @@
 .forge-v2 .connection-pill.connecting:before,.forge-v2 .connection-pill.reconnecting:before{background:var(--gold);animation:questlab-pulse 1.1s ease-in-out infinite}
 .forge-v2 .connection-pill.error{color:var(--danger);border-color:color-mix(in srgb,var(--danger) 45%,var(--line))}
 .forge-v2 .connection-pill.error:before{background:var(--danger)}
+.forge-v2 .top-stats .cloud-pill{color:var(--muted)}
+.forge-v2 .top-stats .cloud-pill.ready{color:var(--blue);border-color:color-mix(in srgb,var(--blue) 35%,var(--line))}
+.forge-v2 .top-stats .cloud-pill.local{color:var(--gold2)}
+.forge-v2 .top-stats .cloud-pill.error{color:var(--danger);border-color:color-mix(in srgb,var(--danger) 45%,var(--line))}
 .forge-v2 .ai-note-v2{gap:8px}
 .forge-v2 .ai-note-v2>span:first-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .forge-v2 .ai-note-v2 button{margin-left:auto;padding:3px 6px;font-size:9px}

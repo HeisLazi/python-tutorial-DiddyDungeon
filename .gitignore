@@ -1,0 +1,26 @@
+# Local secrets and environment overrides
+.env
+.env.*
+!.env.example
+ide/frontend/.env
+ide/frontend/.env.*
+!ide/frontend/.env.example
+
+# Python
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+
+# Frontend
+ide/frontend/node_modules/
+ide/frontend/dist/
+
+# Supabase CLI local state
+supabase/.temp/
+
+# Editor and OS metadata
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db

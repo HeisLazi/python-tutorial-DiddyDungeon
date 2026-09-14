@@ -3,6 +3,7 @@ import Editor from '@monaco-editor/react'
 import { Terminal } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
 import { ActivityRail, ContextPanel, GameScreen } from './RpgViews'
+import { syncEngine } from './cloud/syncEngine.js'
 
 const api = async (url, options = {}) => {
   const response = await fetch(url, {
@@ -245,6 +246,7 @@ function AppV2() {
   const [notice, setNotice] = useState('')
   const [shellState, setShellState] = useState('connecting')
   const [aiState, setAiState] = useState('connecting')
+  const [cloudState, setCloudState] = useState(syncEngine.getState())
 
   const [activeView, setActiveView] = usePersistentState('questlab.activeView', 'forge')
   const [leftWidth, setLeftWidth] = usePersistentState('questlab.leftWidth', 220)
@@ -319,6 +321,12 @@ function AppV2() {
     refreshRuntime()
     refreshFiles()
     refreshTutor()
+  }, [])
+
+  useEffect(() => {
+    const unsubscribe = syncEngine.subscribe(setCloudState)
+    syncEngine.initialize()
+    return unsubscribe
   }, [])
 
   useEffect(() => {
@@ -571,6 +579,12 @@ function AppV2() {
           <span className="optional-stat">🛡 {shields}</span>
           <span className="optional-stat">⚔ {stats.bosses_defeated ?? 0}</span>
           <span className="optional-stat">DEV {activity.activity_score ?? 0}</span>
+          <span
+            className={`cloud-pill ${cloudState.error ? 'error' : cloudState.configured ? 'ready' : 'local'}`}
+            title={cloudState.detail}
+          >
+            {cloudState.label}
+          </span>
           <span className="rank-stat">RANK {player.rank || 'F'}</span>
         </div>
       </header>
