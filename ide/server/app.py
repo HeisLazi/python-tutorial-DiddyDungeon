@@ -8,6 +8,7 @@ import pty
 import signal
 import struct
 import subprocess
+import sys
 import termios
 from pathlib import Path
 
@@ -30,7 +31,7 @@ IGNORED_DIRS = {
     "build",
 }
 
-app = FastAPI(title="Python Quest Lab Local Server", version="0.1.1")
+app = FastAPI(title="Python Quest Lab Local Server", version="0.1.2")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://127.0.0.1:5173", "http://localhost:5173"],
@@ -41,6 +42,11 @@ app.add_middleware(
 
 
 class FileWrite(BaseModel):
+    path: str
+    content: str
+
+
+class FormatRequest(BaseModel):
     path: str
     content: str
 
@@ -179,6 +185,58 @@ def write_file(payload: FileWrite):
     target.parent.mkdir(parents=True, exist_ok=True)
     target.write_text(payload.content, encoding="utf-8")
     return {"ok": True, "path": target.relative_to(WORKSPACE).as_posix(), "bytes": len(encoded)}
+
+
+@app.post("/api/format")
+def format_file(payload: FormatRequest):
+    target = safe_path(payload.path)
+    encoded = payload.content.encode("utf-8")
+    if len(encoded) > MAX_TEXT_BYTES:
+        raise HTTPException(status_code=413, detail="File is too large for the learning editor")
+
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text(payload.content, encoding="utf-8")
+    suffix = target.suffix.lower()
+
+    if suffix == ".py":
+        command = [sys.executable, "-m", "ruff", "format", str(target)]
+        formatter = "Ruff"
+    elif suffix in {".js", ".jsx", ".ts", ".tsx", ".json", ".css", ".scss", ".html", ".md", ".yaml", ".yml"}:
+        prettier = REPO_ROOT / "ide" / "frontend" / "node_modules" / ".bin" / "prettier"
+        if not prettier.exists():
+            raise HTTPException(status_code=503, detail="Prettier is not installed. Run npm install in ide/frontend.")
+        command = [str(prettier), "--write", str(target)]
+        formatter = "Prettier"
+    else:
+        raise HTTPException(status_code=415, detail=f"No formatter configured for {suffix or 'this file type'}")
+
+    try:
+        result = subprocess.run(
+            command,
+            cwd=str(WORKSPACE),
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=20,
+        )
+    except (OSError, subprocess.SubprocessError) as exc:
+        raise HTTPException(status_code=500, detail=f"Formatter failed to start: {exc}") from exc
+
+    if result.returncode != 0:
+        detail = (result.stderr or result.stdout or "Formatter failed").strip()
+        raise HTTPException(status_code=422, detail=detail[:4000])
+
+    try:
+        content = target.read_text(encoding="utf-8")
+    except UnicodeDecodeError as exc:
+        raise HTTPException(status_code=415, detail="Formatted file is not valid UTF-8") from exc
+
+    return {
+        "ok": True,
+        "path": target.relative_to(WORKSPACE).as_posix(),
+        "content": content,
+        "formatter": formatter,
+    }
 
 
 @app.websocket("/ws/terminal")
