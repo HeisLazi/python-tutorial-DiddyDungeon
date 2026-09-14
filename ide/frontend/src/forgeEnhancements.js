@@ -16,9 +16,7 @@ const ICONS = {
 }
 
 const icon = (name, className = 'quest-icon') => `<span class="${className}">${ICONS[name] || ICONS.Forge}</span>`
-
 const visible = (element) => Boolean(element && element.offsetParent !== null)
-
 const findButton = (matcher) => [...document.querySelectorAll('button')].find((button) => visible(button) && matcher(button.textContent.trim(), button))
 
 function clickSave() {
@@ -109,8 +107,7 @@ function submitRunToAI() {
     const data = new DataTransfer()
     data.setData('text/plain', `${payload}\n`)
     const event = new ClipboardEvent('paste', { clipboardData: data, bubbles: true, cancelable: true })
-    const dispatched = textarea.dispatchEvent(event)
-    if (!dispatched) throw new Error('paste prevented')
+    textarea.dispatchEvent(event)
     showToast(`Submitted recent run to ${provider}.`, 'success')
   } catch {
     navigator.clipboard?.writeText(payload)
@@ -209,7 +206,7 @@ function setAvatar(dataUrl) {
   } catch {
     showToast('Could not store the avatar in this browser.', 'warn')
   }
-  applyAvatar()
+  applyAvatar(true)
 }
 
 function avatarImage(dataUrl, className) {
@@ -220,8 +217,13 @@ function avatarImage(dataUrl, className) {
   return img
 }
 
-function applyAvatar() {
+function avatarVersion(dataUrl) {
+  return dataUrl ? `${dataUrl.length}:${dataUrl.slice(-24)}` : 'default'
+}
+
+function applyAvatar(force = false) {
   const dataUrl = getAvatar()
+  const version = avatarVersion(dataUrl)
   const activity = document.querySelector('.activity-avatar')
   if (activity) {
     let slot = activity.querySelector('.quest-avatar-slot')
@@ -229,7 +231,8 @@ function applyAvatar() {
       slot = activity.querySelector('span')
       if (slot) slot.classList.add('quest-avatar-slot')
     }
-    if (slot) {
+    if (slot && (force || slot.dataset.avatarVersion !== version)) {
+      slot.dataset.avatarVersion = version
       slot.innerHTML = ''
       if (dataUrl) slot.appendChild(avatarImage(dataUrl, 'quest-avatar-img compact'))
       else slot.textContent = 'L'
@@ -237,7 +240,8 @@ function applyAvatar() {
   }
 
   const sigil = document.querySelector('.character-sigil')
-  if (sigil) {
+  if (sigil && (force || sigil.dataset.avatarVersion !== version)) {
+    sigil.dataset.avatarVersion = version
     sigil.innerHTML = ''
     if (dataUrl) sigil.appendChild(avatarImage(dataUrl, 'quest-avatar-img character'))
     else sigil.textContent = 'L'
@@ -261,30 +265,36 @@ function createAvatarInput() {
       return
     }
 
-    const source = await new Promise((resolve, reject) => {
-      const reader = new FileReader()
-      reader.onload = () => resolve(String(reader.result))
-      reader.onerror = reject
-      reader.readAsDataURL(file)
-    })
+    try {
+      const source = await new Promise((resolve, reject) => {
+        const reader = new FileReader()
+        reader.onload = () => resolve(String(reader.result))
+        reader.onerror = reject
+        reader.readAsDataURL(file)
+      })
 
-    const image = await new Promise((resolve, reject) => {
-      const img = new Image()
-      img.onload = () => resolve(img)
-      img.onerror = reject
-      img.src = source
-    })
+      const image = await new Promise((resolve, reject) => {
+        const img = new Image()
+        img.onload = () => resolve(img)
+        img.onerror = reject
+        img.src = source
+      })
 
-    const canvas = document.createElement('canvas')
-    canvas.width = 256
-    canvas.height = 256
-    const context = canvas.getContext('2d')
-    const side = Math.min(image.naturalWidth, image.naturalHeight)
-    const sx = (image.naturalWidth - side) / 2
-    const sy = (image.naturalHeight - side) / 2
-    context.drawImage(image, sx, sy, side, side, 0, 0, 256, 256)
-    setAvatar(canvas.toDataURL('image/webp', 0.86))
-    showToast('Character portrait updated on this device.', 'success')
+      const canvas = document.createElement('canvas')
+      canvas.width = 256
+      canvas.height = 256
+      const context = canvas.getContext('2d')
+      const side = Math.min(image.naturalWidth, image.naturalHeight)
+      const sx = (image.naturalWidth - side) / 2
+      const sy = (image.naturalHeight - side) / 2
+      context.drawImage(image, sx, sy, side, side, 0, 0, 256, 256)
+      setAvatar(canvas.toDataURL('image/webp', 0.86))
+      document.querySelector('.avatar-controls')?.remove()
+      installAvatarControls()
+      showToast('Character portrait updated on this device.', 'success')
+    } catch {
+      showToast('That image could not be loaded.', 'warn')
+    }
   })
   document.body.appendChild(input)
   return input
