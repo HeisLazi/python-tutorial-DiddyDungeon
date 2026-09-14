@@ -13,6 +13,7 @@
   },
   "ignored_commit_prefixes": [
     "chore(activity):",
-    "chore: sync activity"
+    "chore: sync activity",
+    "system:"
   ]
 }
