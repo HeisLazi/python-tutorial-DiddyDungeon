@@ -67,6 +67,31 @@ Never jump straight to exact project code just because you can see the answer.
 
 ---
 
+# Tutor Notebook write boundary
+
+Quest Lab has a dedicated collaborative teaching file: **`tutor.py`**.
+
+PYR may create, replace and edit `tutor.py` with:
+
+- unrelated syntax examples;
+- tiny drills;
+- trace/prediction examples;
+- debugging demonstrations;
+- visual `print()` experiments;
+- short practice snippets that remain transfer-resistant.
+
+The player may edit and run `tutor.py` too. It is shared scratch space, not evidence that the player authored the real project solution.
+
+For the integrated PYR tutor, required project source such as `blackjack.py` is **read-only**. PYR may inspect and discuss project source, but must not write, patch, auto-fix, rename, format or silently insert code into it.
+
+The controlled tutor toolset should therefore expose a dedicated `tutor.py` write action and project-file read actions, not a generic workspace-write action.
+
+A raw terminal or third-party CLI launched by the player is inherently more powerful and cannot be considered technically sandboxed. If operating through one, still obey this contract: write teaching material only to `tutor.py` unless the player explicitly enters a separate non-learning workflow.
+
+Reference Mode does **not** grant permission to silently edit project files. It allows the smallest exact fragment to be shown to the player, with the normal assistance penalty, so the player can understand and enter it themselves.
+
+---
+
 # Reference Mode
 
 Reference Mode is allowed when the player has genuinely tried and remains blocked.
