@@ -10,6 +10,7 @@ import struct
 import subprocess
 import sys
 import termios
+from datetime import datetime, timezone
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
@@ -18,6 +19,7 @@ from pydantic import BaseModel
 
 REPO_ROOT = Path(os.getenv("QUESTLAB_REPO_ROOT", Path(__file__).resolve().parents[2])).resolve()
 WORKSPACE = Path(os.getenv("QUESTLAB_WORKSPACE", REPO_ROOT)).resolve()
+PROGRESS_PATH = REPO_ROOT / "progress.json"
 MAX_TEXT_BYTES = 2_000_000
 IGNORED_DIRS = {
     ".git",
@@ -31,7 +33,7 @@ IGNORED_DIRS = {
     "build",
 }
 
-app = FastAPI(title="Python Quest Lab Local Server", version="0.1.2")
+app = FastAPI(title="Python Quest Lab Local Server", version="0.2.0")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://127.0.0.1:5173", "http://localhost:5173"],
@@ -51,6 +53,14 @@ class FormatRequest(BaseModel):
     content: str
 
 
+class HomesteadPurchase(BaseModel):
+    item_id: str
+
+
+class HomesteadEquip(BaseModel):
+    item_id: str
+
+
 def safe_path(relative: str) -> Path:
     relative = relative.strip().lstrip("/\\")
     if not relative:
@@ -68,6 +78,29 @@ def read_json(path: Path, fallback):
         return json.loads(path.read_text(encoding="utf-8"))
     except (FileNotFoundError, json.JSONDecodeError, UnicodeDecodeError):
         return fallback
+
+
+def write_json_atomic(path: Path, value: dict) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temp = path.with_suffix(path.suffix + ".tmp")
+    temp.write_text(json.dumps(value, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    temp.replace(path)
+
+
+def load_progress() -> dict:
+    progress = read_json(PROGRESS_PATH, {})
+    if not progress:
+        raise HTTPException(status_code=500, detail="progress.json could not be loaded")
+    return progress
+
+
+def homestead_catalog(progress: dict) -> dict[str, dict]:
+    homestead = progress.get("homestead") or {}
+    return {
+        str(item.get("id")): item
+        for item in homestead.get("catalog", [])
+        if isinstance(item, dict) and item.get("id")
+    }
 
 
 def git_info() -> dict:
@@ -146,7 +179,7 @@ def health():
 
 @app.get("/api/campaign")
 def campaign():
-    progress = read_json(REPO_ROOT / "progress.json", {})
+    progress = read_json(PROGRESS_PATH, {})
     activity = read_json(REPO_ROOT / "activity.json", {})
     return {
         "progress": progress,
@@ -155,6 +188,91 @@ def campaign():
         "workspace": str(WORKSPACE),
         "repo_root": str(REPO_ROOT),
     }
+
+
+@app.post("/api/homestead/purchase")
+def purchase_homestead_item(payload: HomesteadPurchase):
+    progress = load_progress()
+    homestead = progress.get("homestead")
+    if not isinstance(homestead, dict):
+        raise HTTPException(status_code=409, detail="Homestead state is not initialized")
+
+    catalog = homestead_catalog(progress)
+    item = catalog.get(payload.item_id)
+    if not item:
+        raise HTTPException(status_code=404, detail="Unknown Homestead item")
+
+    owned = homestead.setdefault("owned_cosmetics", [])
+    if payload.item_id in owned:
+        return {
+            "ok": True,
+            "already_owned": True,
+            "item": item,
+            "coins": int((progress.get("player") or {}).get("coins", 0)),
+        }
+
+    try:
+        price = max(0, int(item.get("price", 0)))
+    except (TypeError, ValueError) as exc:
+        raise HTTPException(status_code=500, detail="Invalid Homestead item price") from exc
+
+    player = progress.setdefault("player", {})
+    try:
+        coins = int(player.get("coins", 0))
+    except (TypeError, ValueError):
+        coins = 0
+
+    if coins < price:
+        raise HTTPException(
+            status_code=409,
+            detail=f"Not enough coins. {item.get('name', 'This item')} costs {price}c and you have {coins}c.",
+        )
+
+    player["coins"] = coins - price
+    owned.append(payload.item_id)
+    homestead.setdefault("purchase_history", []).append(
+        {
+            "item_id": payload.item_id,
+            "name": item.get("name", payload.item_id),
+            "price": price,
+            "purchased_at": datetime.now(timezone.utc).isoformat(),
+        }
+    )
+    write_json_atomic(PROGRESS_PATH, progress)
+
+    return {
+        "ok": True,
+        "item": item,
+        "coins": player["coins"],
+        "owned_cosmetics": owned,
+    }
+
+
+@app.post("/api/homestead/equip")
+def equip_homestead_item(payload: HomesteadEquip):
+    progress = load_progress()
+    homestead = progress.get("homestead")
+    if not isinstance(homestead, dict):
+        raise HTTPException(status_code=409, detail="Homestead state is not initialized")
+
+    catalog = homestead_catalog(progress)
+    item = catalog.get(payload.item_id)
+    if not item:
+        raise HTTPException(status_code=404, detail="Unknown Homestead item")
+
+    owned = homestead.setdefault("owned_cosmetics", [])
+    if payload.item_id not in owned:
+        raise HTTPException(status_code=409, detail="Buy or unlock this cosmetic before equipping it")
+
+    kind = str(item.get("kind", ""))
+    if kind not in {"theme", "cursor", "hud", "terminal"}:
+        raise HTTPException(status_code=409, detail="This Homestead item cannot be equipped")
+
+    equipped = homestead.setdefault("equipped", {})
+    equipped[kind] = payload.item_id
+    write_json_atomic(PROGRESS_PATH, progress)
+
+    return {"ok": True, "item": item, "equipped": equipped}
 
 
 @app.get("/api/tree")
