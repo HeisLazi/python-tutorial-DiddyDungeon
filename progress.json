@@ -1,5 +1,12 @@
 {
-  "schema_version": 2,
+  "schema_version": 3,
+  "rules": {
+    "version": "1.1.0",
+    "learning_protocol": "teach-practice-teachback-forge-review-interview-record",
+    "reference_mode_multiplier": 0.5,
+    "recovery_trial_max_multiplier": 0.75,
+    "canon_ledger": "CANON_LEDGER.md"
+  },
   "profile": {
     "player_id": "heislazi",
     "public_name": "Lazi",
@@ -18,6 +25,30 @@
     "max_hp": 100,
     "coins": 0,
     "potions": 2
+  },
+  "learning_state": {
+    "project": "01-blackjack",
+    "concept": "Lists and random selection",
+    "phase": "teach",
+    "reference_mode": false,
+    "clean_clear_eligible": true,
+    "last_teachback": null
+  },
+  "assist": {
+    "mode": "clean",
+    "reference_mode_uses": 0,
+    "guided_milestones": 0,
+    "xp_forfeited": 0,
+    "xp_recovered": 0,
+    "recovery_trials_passed": 0,
+    "clean_core_milestones": 0
+  },
+  "creativity": {
+    "bonus_xp": 0,
+    "bonuses_awarded": 0,
+    "discoveries_unlocked": 0,
+    "player_canon_discoveries": [],
+    "provisional_discoveries": []
   },
   "streak": {
     "current": 0,
@@ -58,14 +89,14 @@
     {"name": "Map Scroll", "price": 30, "effect": "Break the current problem into 3-5 smaller subproblems", "type": "consumable"},
     {"name": "Syntax Scroll", "price": 35, "effect": "Show generic Python syntax using unrelated values", "type": "consumable"},
     {"name": "Boss Scout", "price": 60, "effect": "One non-code hint about the current boss challenge", "type": "consumable"},
-    {"name": "Shield Repair Kit", "price": 80, "effect": "Restore one shield charge after completing a recovery question", "type": "consumable"},
+    {"name": "Shield Repair Kit", "price": 80, ""effect": "Restore one shield charge after completing a recovery question", "type": "consumable"},
     {"name": "Streak Ward", "price": 120, "effect": "Protect one missed day; maximum one stored", "type": "consumable"},
     {"name": "Ember Crown", "price": 250, "effect": "Cosmetic title unlocked after two boss clears", "type": "cosmetic", "requires": "2 bosses"}
   ],
   "goals": {
     "daily": [
-      {"id": "open-table", "text": "Open the Blackjack branch and run blackjack.py", "reward_xp": 5, "reward_coins": 5, "done": false},
-      {"id": "first-deal", "text": "Clear The Dealer's Hand: represent and deal cards yourself", "reward_xp": 25, "reward_coins": 10, "done": false},
+      {"id": "learn-before-forge", "text": "Complete one PYR Teach → Practice → Teach-back cycle before implementing the next concept", "reward_xp": 10, "reward_coins": 5, "done": false},
+      {"id": "first-deal", "text": "Clear The Dealer's Hand by implementing the card/hand logic yourself in Forge phase", "reward_xp": 25, "reward_coins": 10, "done": false},
       {"id": "explain-lists", "text": "Explain to PYR why a Blackjack hand is naturally represented as a list", "reward_xp": 10, "reward_coins": 5, "done": false}
     ],
     "weekly": [
@@ -77,6 +108,7 @@
       {"id": "first-boss", "text": "Defeat your first project boss", "done": false},
       {"id": "three-day-streak", "text": "Reach a 3-day coding streak", "done": false},
       {"id": "first-shield", "text": "Earn your first Mastery Shield", "done": false},
+      {"id": "first-discovery", "text": "Unlock your first hidden creativity/discovery reward", "done": false},
       {"id": "journeyman", "text": "Reach Rank E: clear 2 projects and master 3 fundamentals", "done": false}
     ]
   },
@@ -91,7 +123,12 @@
     "bugs_fixed": 0,
     "explanations": 0,
     "clean_clears": 0,
-    "commits_logged": 0
+    "commits_logged": 0,
+    "reference_mode_uses": 0,
+    "guided_milestones": 0,
+    "recovery_trials_passed": 0,
+    "creative_bonuses": 0,
+    "discoveries_unlocked": 0
   },
   "achievements": [
     {"name": "First Blood", "description": "Defeat your first mob", "unlocked": false},
@@ -99,26 +136,33 @@
     {"name": "Three-Day Flame", "description": "Maintain a 3-day coding streak", "unlocked": false},
     {"name": "Bug Hunter", "description": "Find and fix 5 bugs with understanding", "unlocked": false},
     {"name": "Housebreaker", "description": "Defeat The House in Blackjack", "unlocked": false},
-    {"name": "Clean Clear", "description": "Clear a project without receiving exact solution code", "unlocked": false}
+    {"name": "Clean Clear", "description": "Clear a project without Reference Mode on required core milestones", "unlocked": false},
+    {"name": "Maker's Mark", "description": "Earn your first creativity bonus", "unlocked": false},
+    {"name": "From Memory", "description": "Pass your first Recovery Trial after rebuilding assisted logic from scratch", "unlocked": false}
   ],
   "projects": [
-    {"order": 0, "branch": "00-rps-tournament", "name": "Rock Paper Scissors Tournament", "status": "available", "progress": 0, "boss": "The Pattern Warden"},
-    {"order": 1, "branch": "01-blackjack", "name": "Blackjack", "status": "active", "progress": 0, "boss": "The House", "mobs": [
-      {"name": "The Empty Table", "status": "available"},
-      {"name": "The Dealer's Hand", "status": "locked"},
-      {"name": "The Bust Hound", "status": "locked"},
-      {"name": "The Hitman", "status": "locked"},
-      {"name": "The House Clerk", "status": "locked"},
-      {"name": "The Rematch Shade", "status": "locked"}
+    {"order": 0, "branch": "00-rps-tournament", "name": "Rock Paper Scissors Tournament", "status": "available", "progress": 0, "boss": "The Pattern Warden", "clean_clear_eligible": true},
+    {"order": 1, "branch": "01-blackjack", "name": "Blackjack", "status": "active", "progress": 0, "boss": "The House", "clean_clear_eligible": true, "creative_discoveries": [], "mobs": [
+      {"name": "The Empty Table", "status": "available", "assist": "clean"},
+      {"name": "The Dealer's Hand", "status": "locked", "assist": "clean"},
+      {"name": "The Count Keeper", "status": "locked", "assist": "clean"},
+      {"name": "The Hitman", "status": "locked", "assist": "clean"},
+      {"name": "The Bust Hound", "status": "locked", "assist": "clean"},
+      {"name": "The House Clerk", "status": "locked", "assist": "clean"},
+      {"name": "The Judge", "status": "locked", "assist": "clean"},
+      {"name": "The Rematch Shade", "status": "locked", "assist": "clean"}
     ]},
-    {"order": 2, "branch": "02-detective-game", "name": "Guess Who / Detective Game", "status": "available", "progress": 0, "boss": "The False Alibi"},
-    {"order": 3, "branch": "03-pokemon-battle", "name": "Creature Battle Simulator", "status": "available", "progress": 0, "boss": "The Arena Champion"},
-    {"order": 4, "branch": "04-casino-slots", "name": "Casino / Slots", "status": "available", "progress": 0, "boss": "Lady Luck"},
-    {"order": 5, "branch": "05-dungeon-crawler", "name": "Dungeon Crawler + RPG Shop", "status": "available", "progress": 0, "boss": "The Dungeon Core"},
-    {"order": 6, "branch": "06-gladiator-arena", "name": "Turn-based Gladiator Game", "status": "available", "progress": 0, "boss": "The Unbound"},
-    {"order": 7, "branch": "07-football-manager", "name": "Mini Football Manager", "status": "available", "progress": 0, "boss": "The Invincibles"}
+    {"order": 2, "branch": "02-detective-game", "name": "Guess Who / Detective Game", "status": "available", "progress": 0, "boss": "The False Alibi", "clean_clear_eligible": true},
+    {"order": 3, "branch": "03-pokemon-battle", "name": "Creature Battle Simulator", "status": "available", "progress": 0, "boss": "The Arena Champion", "clean_clear_eligible": true},
+    {"order": 4, "branch": "04-casino-slots", "name": "Casino / Slots", "status": "available", "progress": 0, "boss": "Lady Luck", "clean_clear_eligible": true},
+    {"order": 5, "branch": "05-dungeon-crawler", "name": "Dungeon Crawler + RPG Shop", "status": "available", "progress": 0, "boss": "The Dungeon Core", "clean_clear_eligible": true},
+    {"order": 6, "branch": "06-gladiator-arena", "name": "Turn-based Gladiator Game", "status": "available", "progress": 0, "boss": "The Unbound", "clean_clear_eligible": true},
+    {"order": 7, "branch": "07-football-manager", "name": "Mini Football Manager", "status": "available", "progress": 0, "boss": "The Invincibles", "clean_clear_eligible": true}
   ],
-  "current_quest": "Blackjack — enter The Empty Table and get the first terminal output running.",
-  "last_session": "Campaign expanded. Blackjack is selected as the first active project; no learning rewards have been claimed yet.",
-  "session_log": ["2026-09-14: Blackjack selected as the first active quest; campaign systems expanded before the first coding session."]
+  "current_quest": "Blackjack — PYR teaches the next needed concept, then you enter Forge phase and implement it from scratch.",
+  "last_session": "Campaign ruleset upgraded to 1.1.0 with teach-first learning, Forge phase, Reference Mode, creativity bonuses and canon tracking. No learning rewards claimed yet.",
+  "session_log": [
+    "2026-09-14: Blackjack selected as the first active quest; campaign systems expanded before the first coding session.",
+    "2026-09-14: Ruleset 1.1.0 added Teach→Practice→Forge, Reference Mode, Recovery Trials, creativity bonuses and a persistent Canon Ledger."
+  ]
 }
