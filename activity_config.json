@@ -1,6 +1,7 @@
 {
   "player_login": "HeisLazi",
   "utc_offset_hours": 2,
+  "competition_started_at": "2026-09-14T00:00:00+02:00",
   "history_days": 120,
   "commit_cap_per_day": 5,
   "activity_score": {
