@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import fcntl
+import hashlib
 import importlib.util
 import json
 import os
@@ -12,12 +13,16 @@ import struct
 import subprocess
 import sys
 import termios
+import threading
 from datetime import datetime, timezone
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+from starlette.middleware.trustedhost import TrustedHostMiddleware
+
+from ide.server.security import allowed_hosts, allowed_origins, is_allowed_origin
 
 REPO_ROOT = Path(os.getenv("QUESTLAB_REPO_ROOT", Path(__file__).resolve().parents[2])).resolve()
 WORKSPACE = Path(os.getenv("QUESTLAB_WORKSPACE", REPO_ROOT)).resolve()
@@ -49,10 +54,14 @@ current project.
 
 '''
 
+ALLOWED_ORIGINS = allowed_origins()
+PROGRESS_LOCK = threading.RLock()
+
 app = FastAPI(title="Python Quest Lab Local Server", version="0.4.0")
+app.add_middleware(TrustedHostMiddleware, allowed_hosts=list(allowed_hosts()))
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://127.0.0.1:5173", "http://localhost:5173"],
+    allow_origins=list(ALLOWED_ORIGINS),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -105,6 +114,46 @@ def write_json_atomic(path: Path, value: dict) -> None:
     temp = path.with_suffix(path.suffix + ".tmp")
     temp.write_text(json.dumps(value, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     temp.replace(path)
+
+
+def local_device_id() -> str:
+    """Return an opaque local revision source label, never a filesystem path."""
+
+    candidate = os.getenv("QUESTLAB_DEVICE_ID", "local-forge").strip()
+    if not candidate or len(candidate) > 80 or any(character.isspace() for character in candidate):
+        return "local-forge"
+    if any(character in candidate for character in "/\\:\u0000"):
+        return "local-forge"
+    return candidate
+
+
+def tutor_revision(content: str) -> str:
+    """Return a deterministic local revision for external tutor-file polling."""
+
+    return hashlib.sha256(content.encode("utf-8")).hexdigest()
+
+
+def write_progress_atomic(progress: dict) -> dict:
+    """Persist one canonical local mutation with revision metadata.
+
+    Callers hold ``PROGRESS_LOCK`` across their read-modify-write transaction;
+    the re-entrant lock also keeps this helper safe for direct test use.
+    """
+
+    with PROGRESS_LOCK:
+        existing = progress.get("meta") if isinstance(progress.get("meta"), dict) else {}
+        try:
+            revision = max(0, int(existing.get("revision", 0) or 0))
+        except (TypeError, ValueError):
+            revision = 0
+        metadata = {
+            "revision": revision + 1,
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+            "device_id": local_device_id(),
+        }
+        progress["meta"] = metadata
+        write_json_atomic(PROGRESS_PATH, progress)
+        return metadata
 
 
 def load_progress() -> dict:
@@ -286,6 +335,8 @@ def read_file(path: str):
 @app.put("/api/file")
 def write_file(payload: FileWrite):
     target = safe_path(payload.path)
+    if target == PROGRESS_PATH:
+        raise HTTPException(status_code=403, detail="progress.json is managed by the local state service")
     encoded = payload.content.encode("utf-8")
     if len(encoded) > MAX_TEXT_BYTES:
         raise HTTPException(status_code=413, detail="File is too large for the learning editor")
@@ -297,7 +348,8 @@ def write_file(payload: FileWrite):
 @app.get("/api/tutor")
 def read_tutor():
     target = ensure_tutor_file()
-    return {"path": "tutor.py", "content": target.read_text(encoding="utf-8")}
+    content = target.read_text(encoding="utf-8")
+    return {"path": "tutor.py", "content": content, "revision": tutor_revision(content)}
 
 
 @app.put("/api/tutor")
@@ -307,12 +359,14 @@ def write_tutor(payload: TutorWrite):
         raise HTTPException(status_code=413, detail="Tutor notebook is too large")
     target = ensure_tutor_file()
     target.write_text(payload.content, encoding="utf-8")
-    return {"ok": True, "path": "tutor.py", "bytes": len(encoded)}
+    return {"ok": True, "path": "tutor.py", "bytes": len(encoded), "revision": tutor_revision(payload.content)}
 
 
 @app.post("/api/format")
 def format_file(payload: FormatRequest):
     target = safe_path(payload.path)
+    if target == PROGRESS_PATH:
+        raise HTTPException(status_code=403, detail="progress.json is managed by the local state service")
     encoded = payload.content.encode("utf-8")
     if len(encoded) > MAX_TEXT_BYTES:
         raise HTTPException(status_code=413, detail="File is too large for the learning editor")
@@ -359,73 +413,79 @@ def format_file(payload: FormatRequest):
 
 @app.post("/api/homestead/purchase")
 def purchase_homestead_item(payload: HomesteadPurchase):
-    progress = load_progress()
-    homestead = progress.get("homestead")
-    if not isinstance(homestead, dict):
-        raise HTTPException(status_code=409, detail="Homestead state is not initialized")
+    with PROGRESS_LOCK:
+        progress = load_progress()
+        homestead = progress.get("homestead")
+        if not isinstance(homestead, dict):
+            raise HTTPException(status_code=409, detail="Homestead state is not initialized")
 
-    catalog = homestead_catalog(progress)
-    item = catalog.get(payload.item_id)
-    if not item:
-        raise HTTPException(status_code=404, detail="Unknown Homestead item")
+        catalog = homestead_catalog(progress)
+        item = catalog.get(payload.item_id)
+        if not item:
+            raise HTTPException(status_code=404, detail="Unknown Homestead item")
 
-    owned = homestead.setdefault("owned_cosmetics", [])
-    player = progress.setdefault("player", {})
-    coins = int(player.get("coins", 0) or 0)
-    if payload.item_id in owned:
-        return {"ok": True, "already_owned": True, "item": item, "coins": coins}
+        owned = homestead.setdefault("owned_cosmetics", [])
+        player = progress.setdefault("player", {})
+        coins = int(player.get("coins", 0) or 0)
+        if payload.item_id in owned:
+            return {"ok": True, "already_owned": True, "item": item, "coins": coins}
 
-    price = max(0, int(item.get("price", 0) or 0))
-    if coins < price:
-        raise HTTPException(
-            status_code=409,
-            detail=f"Not enough coins. {item.get('name', 'This item')} costs {price}c and you have {coins}c.",
+        price = max(0, int(item.get("price", 0) or 0))
+        if coins < price:
+            raise HTTPException(
+                status_code=409,
+                detail=f"Not enough coins. {item.get('name', 'This item')} costs {price}c and you have {coins}c.",
+            )
+
+        player["coins"] = coins - price
+        owned.append(payload.item_id)
+        homestead.setdefault("purchase_history", []).append(
+            {
+                "item_id": payload.item_id,
+                "name": item.get("name", payload.item_id),
+                "price": price,
+                "purchased_at": datetime.now(timezone.utc).isoformat(),
+            }
         )
-
-    player["coins"] = coins - price
-    owned.append(payload.item_id)
-    homestead.setdefault("purchase_history", []).append(
-        {
-            "item_id": payload.item_id,
-            "name": item.get("name", payload.item_id),
-            "price": price,
-            "purchased_at": datetime.now(timezone.utc).isoformat(),
-        }
-    )
-    write_json_atomic(PROGRESS_PATH, progress)
-    return {"ok": True, "item": item, "coins": player["coins"], "owned_cosmetics": owned}
+        write_progress_atomic(progress)
+        return {"ok": True, "item": item, "coins": player["coins"], "owned_cosmetics": owned}
 
 
 @app.post("/api/homestead/equip")
 def equip_homestead_item(payload: HomesteadEquip):
-    progress = load_progress()
-    homestead = progress.get("homestead")
-    if not isinstance(homestead, dict):
-        raise HTTPException(status_code=409, detail="Homestead state is not initialized")
+    with PROGRESS_LOCK:
+        progress = load_progress()
+        homestead = progress.get("homestead")
+        if not isinstance(homestead, dict):
+            raise HTTPException(status_code=409, detail="Homestead state is not initialized")
 
-    catalog = homestead_catalog(progress)
-    item = catalog.get(payload.item_id)
-    if not item:
-        raise HTTPException(status_code=404, detail="Unknown Homestead item")
+        catalog = homestead_catalog(progress)
+        item = catalog.get(payload.item_id)
+        if not item:
+            raise HTTPException(status_code=404, detail="Unknown Homestead item")
 
-    owned = homestead.setdefault("owned_cosmetics", [])
-    if payload.item_id not in owned:
-        raise HTTPException(status_code=409, detail="Buy or unlock this cosmetic before equipping it")
+        owned = homestead.setdefault("owned_cosmetics", [])
+        if payload.item_id not in owned:
+            raise HTTPException(status_code=409, detail="Buy or unlock this cosmetic before equipping it")
 
-    kind = str(item.get("kind", ""))
-    if kind not in {"theme", "cursor", "hud", "terminal"}:
-        raise HTTPException(status_code=409, detail="This Homestead item cannot be equipped")
+        kind = str(item.get("kind", ""))
+        if kind not in {"theme", "cursor", "hud", "terminal"}:
+            raise HTTPException(status_code=409, detail="This Homestead item cannot be equipped")
 
-    equipped = homestead.setdefault("equipped", {})
-    equipped[kind] = payload.item_id
-    write_json_atomic(PROGRESS_PATH, progress)
-    return {"ok": True, "item": item, "equipped": equipped}
+        equipped = homestead.setdefault("equipped", {})
+        if equipped.get(kind) != payload.item_id:
+            equipped[kind] = payload.item_id
+            write_progress_atomic(progress)
+        return {"ok": True, "item": item, "equipped": equipped}
 
 
 @app.websocket("/ws/terminal/{role}")
 async def terminal(websocket: WebSocket, role: str):
     if role not in {"shell", "ai"}:
         await websocket.close(code=1008)
+        return
+    if not is_allowed_origin(websocket.headers.get("origin")):
+        await websocket.close(code=1008, reason="Origin not allowed")
         return
 
     await websocket.accept()

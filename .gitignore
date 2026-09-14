@@ -13,8 +13,13 @@ __pycache__/
 *.py[cod]
 
 # Frontend
+node_modules/
+dist/
 ide/frontend/node_modules/
 ide/frontend/dist/
+
+# Future desktop packaging output
+src-tauri/target/
 
 # Supabase CLI local state
 supabase/.temp/

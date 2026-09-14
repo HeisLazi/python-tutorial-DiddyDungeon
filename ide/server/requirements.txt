@@ -2,3 +2,5 @@ fastapi>=0.116,<1
 uvicorn[standard]>=0.35,<1
 pydantic>=2.11,<3
 ruff>=0.12,<1
+# Starlette's current TestClient uses the maintained httpx2 compatibility API.
+httpx2>=2.13,<3
