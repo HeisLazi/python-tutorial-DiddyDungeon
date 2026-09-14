@@ -176,3 +176,21 @@ The richer character screen is [`index.html`](./index.html). It reads `progress.
 ---
 
 **Rule:** learn with examples, Forge without a solution, record assistance honestly.
+
+
+## Dev Activity League
+
+<!-- ACTIVITY_STATS_START -->
+
+| Dev activity | Current |
+|---|---:|
+| Activity score | **70** |
+| Commit streak | **1 days** — best: 1 |
+| Commits | **50** / 7d · **50** / 30d |
+| Active dev days | **1** / 7d · **1** / 30d |
+| Active branches (30d) | **10** |
+| Last commit day | **2026-09-14** |
+
+`Activity score` is machine-derived from commit history. It rewards active days and streaks, caps effective commits per day, and does **not** grant learning XP or Mastery Shields.
+
+<!-- ACTIVITY_STATS_END -->
