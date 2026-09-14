@@ -1,7 +1,7 @@
 {
-  "schema_version": 3,
+  "schema_version": 4,
   "rules": {
-    "version": "1.1.0",
+    "version": "1.3.0",
     "learning_protocol": "teach-practice-teachback-forge-review-interview-record",
     "reference_mode_multiplier": 0.5,
     "recovery_trial_max_multiplier": 0.75,
@@ -70,6 +70,104 @@
     "armor": "Apprentice Coat",
     "trinket": "None",
     "title": "Apprentice Coder"
+  },
+  "homestead": {
+    "name": "Lazi's Forge",
+    "owned_cosmetics": [
+      "theme-ember-forge",
+      "cursor-basic",
+      "hud-forge",
+      "terminal-charcoal"
+    ],
+    "equipped": {
+      "theme": "theme-ember-forge",
+      "cursor": "cursor-basic",
+      "hud": "hud-forge",
+      "terminal": "terminal-charcoal"
+    },
+    "purchase_history": [],
+    "catalog": [
+      {
+        "id": "theme-ember-forge",
+        "name": "Ember Forge",
+        "kind": "theme",
+        "price": 0,
+        "rarity": "starter",
+        "description": "The original charcoal, ember and forge-gold palette."
+      },
+      {
+        "id": "theme-deep-forest",
+        "name": "Deep Forest",
+        "kind": "theme",
+        "price": 120,
+        "rarity": "uncommon",
+        "description": "Moss, pine and muted lantern light for long coding sessions."
+      },
+      {
+        "id": "theme-void-scholar",
+        "name": "Void Scholar",
+        "kind": "theme",
+        "price": 250,
+        "rarity": "rare",
+        "description": "Ink-black panels with violet arcane accents."
+      },
+      {
+        "id": "theme-ancient-archive",
+        "name": "Ancient Archive",
+        "kind": "theme",
+        "price": 300,
+        "rarity": "rare",
+        "description": "A dark parchment-and-gold library inspired palette."
+      },
+      {
+        "id": "cursor-basic",
+        "name": "Forge Cursor",
+        "kind": "cursor",
+        "price": 0,
+        "rarity": "starter",
+        "description": "The default clean editor cursor."
+      },
+      {
+        "id": "cursor-golden-spark",
+        "name": "Golden Spark",
+        "kind": "cursor",
+        "price": 80,
+        "rarity": "uncommon",
+        "description": "A warm gold cursor accent for the editor."
+      },
+      {
+        "id": "hud-forge",
+        "name": "Forge HUD",
+        "kind": "hud",
+        "price": 0,
+        "rarity": "starter",
+        "description": "The clean default campaign HUD."
+      },
+      {
+        "id": "hud-adventurer",
+        "name": "Adventurer HUD",
+        "kind": "hud",
+        "price": 150,
+        "rarity": "uncommon",
+        "description": "Heavier RPG framing for stats, cards and quest panels."
+      },
+      {
+        "id": "terminal-charcoal",
+        "name": "Charcoal Terminal",
+        "kind": "terminal",
+        "price": 0,
+        "rarity": "starter",
+        "description": "The default low-glare terminal surface."
+      },
+      {
+        "id": "terminal-emberglass",
+        "name": "Emberglass Terminal",
+        "kind": "terminal",
+        "price": 180,
+        "rarity": "uncommon",
+        "description": "A warmer terminal surface with ember-tinted framing."
+      }
+    ]
   },
   "skills": [
     {"name": "Ember", "concept": "Conditionals", "status": "learning", "evidence": 0, "interview_passes": 0, "shield": {"tier": "none", "charges": 0, "max_charges": 0}},
@@ -143,14 +241,14 @@
   "projects": [
     {"order": 0, "branch": "00-rps-tournament", "name": "Rock Paper Scissors Tournament", "status": "available", "progress": 0, "boss": "The Pattern Warden", "clean_clear_eligible": true},
     {"order": 1, "branch": "01-blackjack", "name": "Blackjack", "status": "active", "progress": 0, "boss": "The House", "clean_clear_eligible": true, "creative_discoveries": [], "mobs": [
-      {"name": "The Empty Table", "status": "available", "assist": "clean"},
-      {"name": "The Dealer's Hand", "status": "locked", "assist": "clean"},
-      {"name": "The Count Keeper", "status": "locked", "assist": "clean"},
-      {"name": "The Hitman", "status": "locked", "assist": "clean"},
-      {"name": "The Bust Hound", "status": "locked", "assist": "clean"},
-      {"name": "The House Clerk", "status": "locked", "assist": "clean"},
-      {"name": "The Judge", "status": "locked", "assist": "clean"},
-      {"name": "The Rematch Shade", "status": "locked", "assist": "clean"}
+      {"name": "The Empty Table", "status": "available", "assist": "clean", "concept": "Variables, input/output and basic program state", "encounter": "Set up the table and explain what information the program must remember."},
+      {"name": "The Dealer's Hand", "status": "locked", "assist": "clean", "concept": "Lists and random selection", "encounter": "Represent hands/decks and reason about selecting cards without revealing project code."},
+      {"name": "The Count Keeper", "status": "locked", "assist": "clean", "concept": "Loops and totals", "encounter": "Trace repeated card values and explain how a running total changes."},
+      {"name": "The Hitman", "status": "locked", "assist": "clean", "concept": "Input loops and control flow", "encounter": "Reason about repeated player choices such as continuing or stopping."},
+      {"name": "The Bust Hound", "status": "locked", "assist": "clean", "concept": "Conditionals", "encounter": "Classify outcomes from changing totals and game conditions."},
+      {"name": "The House Clerk", "status": "locked", "assist": "clean", "concept": "Functions", "encounter": "Break repeated responsibilities into small named behaviors and explain inputs/returns."},
+      {"name": "The Judge", "status": "locked", "assist": "clean", "concept": "Game-state comparison", "encounter": "Compare final states and justify the winner without relying on copy-paste logic."},
+      {"name": "The Rematch Shade", "status": "locked", "assist": "clean", "concept": "Program loops and reset state", "encounter": "Explain how a finished round can restart cleanly without leaking old state."}
     ]},
     {"order": 2, "branch": "02-detective-game", "name": "Guess Who / Detective Game", "status": "available", "progress": 0, "boss": "The False Alibi", "clean_clear_eligible": true},
     {"order": 3, "branch": "03-pokemon-battle", "name": "Creature Battle Simulator", "status": "available", "progress": 0, "boss": "The Arena Champion", "clean_clear_eligible": true},
@@ -160,9 +258,10 @@
     {"order": 7, "branch": "07-football-manager", "name": "Mini Football Manager", "status": "available", "progress": 0, "boss": "The Invincibles", "clean_clear_eligible": true}
   ],
   "current_quest": "Blackjack — PYR teaches the next needed concept, then you enter Forge phase and implement it from scratch.",
-  "last_session": "Campaign ruleset upgraded to 1.1.0 with teach-first learning, Forge phase, Reference Mode, creativity bonuses and canon tracking. No learning rewards claimed yet.",
+  "last_session": "Forge RPG Shell and Homestead were approved as the next IDE evolution. No learning rewards or purchases were claimed.",
   "session_log": [
     "2026-09-14: Blackjack selected as the first active quest; campaign systems expanded before the first coding session.",
-    "2026-09-14: Ruleset 1.1.0 added Teach→Practice→Forge, Reference Mode, Recovery Trials, creativity bonuses and a persistent Canon Ledger."
+    "2026-09-14: Ruleset 1.1.0 added Teach→Practice→Forge, Reference Mode, Recovery Trials, creativity bonuses and a persistent Canon Ledger.",
+    "2026-09-14: Ruleset 1.3.0 approved the standalone RPG Shell, Codex, Character, Quest Journal and coin-funded cosmetic Homestead."
   ]
 }
