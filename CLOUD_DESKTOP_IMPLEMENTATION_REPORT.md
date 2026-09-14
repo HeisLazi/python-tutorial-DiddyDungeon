@@ -1,6 +1,6 @@
 # Cloud/Desktop implementation report
 
-Date: 2026-09-14
+Date: 2026-09-15
 Branch: `feature/cloud-sync-desktop`
 
 ## Milestones
@@ -170,12 +170,50 @@ untracked and player-editable.
   smoke covered offline Monaco, Tutor clean/dirty sync and terminal-session
   preservation.
 
+### Pre-C local state gateway
+
+The final prerequisite slice adds one bounded local mutation authority before
+any player-state Supabase transport begins:
+
+- `POST /api/state/apply` accepts a named command, an explicit `player` or
+  `pyr` actor, and an action-specific payload. Unknown actions, fields,
+  arbitrary object paths and full snapshots are rejected.
+- `python -m ide.state_cli` is a localhost-only bridge. It targets only
+  `http://127.0.0.1:<backend-port>/api/state/apply` and exposes bounded
+  `learning-event`, `reference-mode`, `homestead-purchase` and
+  `homestead-equip` commands. Reward, HP and achievement commands are
+  reserved for trusted in-process game code and fail closed in the CLI/HTTP
+  surface.
+- `player` is limited to player/editor Homestead actions. `pyr` may record
+  bounded learning evidence and Reference Mode history, but cannot grant XP or
+  coins, manufacture mastery/clean clears, edit Dev Activity or unlock
+  achievements. `system` is an internal-only actor for bounded reward, HP and
+  achievement handlers.
+- The shared service loads the latest local JSON under `PROGRESS_LOCK`,
+  validates and mutates only the named action's fields, appends at most 100
+  concise `state_events`, bumps `meta.revision`, refreshes UTC
+  `meta.updated_at`, preserves a safe existing `meta.device_id`, and writes
+  atomically. Homestead routes in both FastAPI entrypoints delegate to it.
+
+Behavioral coverage is now 19 WSL tests plus `compileall`, including bounded
+valid/invalid commands, trust denial, arbitrary-path denial, out-of-scope
+protection, revision/timestamp/device invariants, concurrent serial revisions,
+HTTP behavior, CLI refusal and Homestead delegation. The linked Quest Lab RLS
+query also covers a User A `INSERT ... ON CONFLICT ... DO UPDATE` attempt
+against User B's device and passes with rejection (`profiles_devices_rls:
+PASS`).
+
 ### Status and remaining gates
 
 The branch is still intentionally stopped before Milestone C. A real
 mailbox-backed signed-in session, two-device cloud game-state save, Sync Engine
 v1 outbox/conflict reconciliation, native Windows ConPTY packaging proof and
-Milestones D/E/F remain future work. The repair commits are pushed; the
-verified remote SHA before this report-only update is
-`c0df1e03c0c281543914156089186860b34409ec` on
+Milestones D/E/F remain future work. Auth B remains an automated/fake-boundary
+verification only: email confirmation is enabled, no operator mailbox was
+supplied, and no physical two-device sign-in/restore was claimed. The exact
+manual check remains: sign in with a confirmed account on Device A, register
+it, sign in with the same account in an isolated Device B profile, restore and
+verify the account/device row, sign out, then confirm Forge remains usable
+offline with its local device identity. The gateway checkpoint is pushed at
+`fa6cb70a12e4ae751a3ef594b6e20e9d69a60162` on
 `origin/feature/cloud-sync-desktop`.
