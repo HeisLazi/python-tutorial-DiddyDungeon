@@ -1,3 +1,5 @@
+import { useEffect, useState } from 'react'
+
 export const viewItems = [
   { id: 'forge', icon: '⌘', label: 'Forge' },
   { id: 'tutor', icon: '🧪', label: 'Tutor Notebook' },
@@ -402,7 +404,79 @@ function Homestead({ progress, purchaseCosmetic, equipCosmetic, busy }) {
   )
 }
 
-function SettingsScreen({ preferences, setters, resetLayout, equipped }) {
+function AccountPanel({ account, busy, notice, onSignIn, onSignUp, onSignOut, onDeviceLabelSave }) {
+  const [formMode, setFormMode] = useState('signin')
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [displayName, setDisplayName] = useState('')
+  const [deviceLabel, setDeviceLabel] = useState(account.device?.display_name || 'Quest Lab device')
+  const configured = account.configured && account.configurationValid
+  const signedIn = account.authStatus === 'signed-in' && account.user
+
+  useEffect(() => {
+    if (account.device?.display_name) setDeviceLabel(account.device.display_name)
+  }, [account.device?.display_name])
+
+  const submit = async (event) => {
+    event.preventDefault()
+    if (!email.trim() || !password) return
+    try {
+      if (formMode === 'signup') await onSignUp({ email, password, displayName })
+      else await onSignIn({ email, password })
+      setPassword('')
+    } catch {
+      // The service exposes a safe, user-facing error in account.detail.
+    }
+  }
+
+  return (
+    <section className="game-card settings-card account-card">
+      <div className="card-heading">
+        <span>ACCOUNT &amp; DEVICE</span>
+        <b className={`account-state ${account.error ? 'error' : signedIn ? 'signed-in' : 'local'}`}>{account.label}</b>
+      </div>
+
+      {!configured && (
+        <div className="account-local-state">
+          <strong>Offline / Local Mode</strong>
+          <p>{account.detail || 'Add the public Supabase values to enable account sign-in. Your local Forge is unaffected.'}</p>
+        </div>
+      )}
+
+      {configured && !signedIn && (
+        <>
+          <p className="settings-note">Sign in on each device to share your Quest Lab identity. Progress remains local until Sync Engine v1.</p>
+          <form className="account-form" onSubmit={submit}>
+            {formMode === 'signup' && (
+              <label><span>Display name</span><input value={displayName} onChange={(event) => setDisplayName(event.target.value)} maxLength={80} placeholder="Lazi" autoComplete="nickname" /></label>
+            )}
+            <label><span>Email</span><input type="email" required value={email} onChange={(event) => setEmail(event.target.value)} autoComplete="email" /></label>
+            <label><span>Password</span><input type="password" required minLength={6} value={password} onChange={(event) => setPassword(event.target.value)} autoComplete={formMode === 'signup' ? 'new-password' : 'current-password'} /></label>
+            <div className="account-actions">
+              <button className="primary" type="submit" disabled={busy}>{formMode === 'signup' ? 'Create account' : 'Sign in'}</button>
+              <button type="button" disabled={busy} onClick={() => setFormMode(formMode === 'signup' ? 'signin' : 'signup')}>{formMode === 'signup' ? 'I already have an account' : 'Create an account'}</button>
+            </div>
+          </form>
+        </>
+      )}
+
+      {configured && signedIn && (
+        <div className="account-signed-in">
+          <div className="account-identity"><strong>{account.profile?.display_name || account.user.email}</strong><span>{account.user.email}</span></div>
+          <form className="device-form" onSubmit={async (event) => { event.preventDefault(); try { await onDeviceLabelSave(deviceLabel) } catch {} }}>
+            <label><span>This device</span><input value={deviceLabel} onChange={(event) => setDeviceLabel(event.target.value)} maxLength={80} /></label>
+            <button type="submit" disabled={busy}>Save device name</button>
+          </form>
+          <button type="button" disabled={busy} onClick={onSignOut}>Sign out</button>
+        </div>
+      )}
+
+      {(notice || account.error) && <p className={`account-message ${account.error ? 'error' : ''}`}>{notice || account.error}</p>}
+    </section>
+  )
+}
+
+function SettingsScreen({ preferences, setters, resetLayout, equipped, account, accountBusy, accountNotice, onSignIn, onSignUp, onSignOut, onDeviceLabelSave }) {
   const { editorFontSize, terminalFontSize, hudDensity, animations } = preferences
   return (
     <div className="game-screen-scroll settings-screen">
@@ -411,6 +485,7 @@ function SettingsScreen({ preferences, setters, resetLayout, equipped }) {
       </div>
 
       <div className="screen-grid two">
+        <AccountPanel account={account} busy={accountBusy} notice={accountNotice} onSignIn={onSignIn} onSignUp={onSignUp} onSignOut={onSignOut} onDeviceLabelSave={onDeviceLabelSave} />
         <section className="game-card settings-card">
           <div className="card-heading"><span>EDITOR</span></div>
           <label><span>Editor font size</span><b>{editorFontSize}px</b><input type="range" min="11" max="22" value={editorFontSize} onChange={(event) => setters.setEditorFontSize(Number(event.target.value))} /></label>
@@ -435,11 +510,11 @@ function SettingsScreen({ preferences, setters, resetLayout, equipped }) {
   )
 }
 
-export function GameScreen({ activeView, progress, purchaseCosmetic, equipCosmetic, busy, preferences, setters, resetLayout }) {
+export function GameScreen({ activeView, progress, purchaseCosmetic, equipCosmetic, busy, preferences, setters, resetLayout, account, accountBusy, accountNotice, onSignIn, onSignUp, onSignOut, onDeviceLabelSave }) {
   if (activeView === 'quests') return <QuestJournal progress={progress} />
   if (activeView === 'codex') return <Codex progress={progress} />
   if (activeView === 'character') return <CharacterSheet progress={progress} />
   if (activeView === 'homestead') return <Homestead progress={progress} purchaseCosmetic={purchaseCosmetic} equipCosmetic={equipCosmetic} busy={busy} />
-  if (activeView === 'settings') return <SettingsScreen preferences={preferences} setters={setters} resetLayout={resetLayout} equipped={progress.homestead?.equipped || {}} />
+  if (activeView === 'settings') return <SettingsScreen preferences={preferences} setters={setters} resetLayout={resetLayout} equipped={progress.homestead?.equipped || {}} account={account} accountBusy={accountBusy} accountNotice={accountNotice} onSignIn={onSignIn} onSignUp={onSignUp} onSignOut={onSignOut} onDeviceLabelSave={onDeviceLabelSave} />
   return null
 }

@@ -247,6 +247,8 @@ function AppV2() {
   const [shellState, setShellState] = useState('connecting')
   const [aiState, setAiState] = useState('connecting')
   const [cloudState, setCloudState] = useState(syncEngine.getState())
+  const [accountBusy, setAccountBusy] = useState(false)
+  const [accountNotice, setAccountNotice] = useState('')
 
   const [activeView, setActiveView] = usePersistentState('questlab.activeView', 'forge')
   const [leftWidth, setLeftWidth] = usePersistentState('questlab.leftWidth', 220)
@@ -545,6 +547,25 @@ function AppV2() {
     setNotice('Forge panel layout reset.')
   }
 
+  const accountAction = async (action, successMessage) => {
+    setAccountBusy(true)
+    setAccountNotice('')
+    try {
+      await action()
+      setAccountNotice(successMessage)
+    } catch (error) {
+      setAccountNotice(error.message)
+      throw error
+    } finally {
+      setAccountBusy(false)
+    }
+  }
+
+  const signIn = ({ email, password }) => accountAction(() => syncEngine.signIn(email, password), 'Signed in. This device is registered.')
+  const signUp = ({ email, password, displayName }) => accountAction(() => syncEngine.signUp(email, password, displayName), 'Account created. Check your email if confirmation is required.')
+  const signOut = () => accountAction(() => syncEngine.signOut(), 'Signed out. Forge stays available locally.')
+  const saveDeviceLabel = (label) => accountAction(() => syncEngine.setDeviceLabel(label), 'Device name saved.')
+
   const gridStyle = {
     gridTemplateColumns: `48px ${leftWidth}px 5px minmax(420px, 1fr) 5px ${rightWidth}px`,
     gridTemplateRows: `minmax(220px, 1fr) 5px ${terminalHeight}px`,
@@ -702,6 +723,13 @@ function AppV2() {
               preferences={preferences}
               setters={setters}
               resetLayout={resetLayout}
+              account={cloudState}
+              accountBusy={accountBusy}
+              accountNotice={accountNotice}
+              onSignIn={signIn}
+              onSignUp={signUp}
+              onSignOut={signOut}
+              onDeviceLabelSave={saveDeviceLabel}
             />
           </section>
         )}
