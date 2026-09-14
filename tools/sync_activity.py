@@ -129,10 +129,12 @@ def main():
         cutoff_dt = competition_started
 
     api = f"https://api.github.com/repos/{repo}"
+    repo_meta = github_get(api, token)
+    default_branch = repo_meta.get("default_branch", "main")
     branches = github_get(f"{api}/branches?per_page=100", token)
 
     unique = {}
-    branches_for_sha = defaultdict(set)
+    branch_shas = defaultdict(set)
 
     for branch in branches:
         branch_name = branch["name"]
@@ -163,22 +165,33 @@ def main():
 
                 sha = item["sha"]
                 unique[sha] = {"sha": sha, "date": dt, "message": message}
-                branches_for_sha[sha].add(branch_name)
+                branch_shas[branch_name].add(sha)
 
             if should_stop or len(commits) < 100:
                 break
 
     by_day = Counter()
-    branch_counts_30 = Counter()
     cutoff_7 = now_local_day - timedelta(days=6)
     cutoff_30 = now_local_day - timedelta(days=29)
 
-    for sha, item in unique.items():
-        day = local_day(item["date"], offset_hours)
-        by_day[day] += 1
-        if day >= cutoff_30:
-            for branch in branches_for_sha[sha]:
-                branch_counts_30[branch] += 1
+    for item in unique.values():
+        by_day[local_day(item["date"], offset_hours)] += 1
+
+    # Shared history exists on many project branches. Count main normally, then
+    # count only commits that are not already reachable from main for each
+    # non-default branch. This makes the branch breakdown represent actual
+    # branch-specific work rather than duplicated ancestry.
+    default_shas = branch_shas.get(default_branch, set())
+    branch_counts_30 = Counter()
+    for branch_name, shas in branch_shas.items():
+        candidates = shas if branch_name == default_branch else shas - default_shas
+        count = 0
+        for sha in candidates:
+            item = unique.get(sha)
+            if item and local_day(item["date"], offset_hours) >= cutoff_30:
+                count += 1
+        if count:
+            branch_counts_30[branch_name] = count
 
     active_days = set(by_day)
     current_streak = calc_current_streak(active_days, now_local_day)
