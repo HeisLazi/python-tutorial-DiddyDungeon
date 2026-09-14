@@ -2,16 +2,21 @@
 
 A terminal-first Python training campaign where I build small games myself while **PYR**, a Socratic AI companion, teaches concepts, tests understanding, and turns real progress into an RPG character.
 
-The point is not to speedrun eight repos. The point is to make Python fundamentals feel automatic enough that I can move into larger systems with real understanding.
+The point is not to speedrun eight repos. The point is to make Python fundamentals feel automatic enough that I can move into larger systems with real understanding — while Git history shows whether I am actually showing up and building.
 
 <p align="center">
   <img alt="Level" src="https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fraw.githubusercontent.com%2FHeisLazi%2Fpython-tutorial-DiddyDungeon%2Fmain%2Fprogress.json&query=%24.player.level&label=Level&color=blue" />
   <img alt="Lifetime XP" src="https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fraw.githubusercontent.com%2FHeisLazi%2Fpython-tutorial-DiddyDungeon%2Fmain%2Fprogress.json&query=%24.player.lifetime_xp&label=Lifetime%20XP&color=orange" />
-  <img alt="Streak" src="https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fraw.githubusercontent.com%2FHeisLazi%2Fpython-tutorial-DiddyDungeon%2Fmain%2Fprogress.json&query=%24.streak.current&label=Day%20Streak&color=red" />
+  <img alt="Learning Streak" src="https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fraw.githubusercontent.com%2FHeisLazi%2Fpython-tutorial-DiddyDungeon%2Fmain%2Fprogress.json&query=%24.streak.current&label=Learning%20Streak&color=red" />
   <img alt="Bosses" src="https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fraw.githubusercontent.com%2FHeisLazi%2Fpython-tutorial-DiddyDungeon%2Fmain%2Fprogress.json&query=%24.stats.bosses_defeated&label=Bosses&color=purple" />
   <img alt="Mastery Shields" src="https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fraw.githubusercontent.com%2FHeisLazi%2Fpython-tutorial-DiddyDungeon%2Fmain%2Fprogress.json&query=%24.stats.mastery_shields_earned&label=Mastery%20Shields&color=brightgreen" />
-  <img alt="Reference Mode" src="https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fraw.githubusercontent.com%2FHeisLazi%2Fpython-tutorial-DiddyDungeon%2Fmain%2Fprogress.json&query=%24.stats.reference_mode_uses&label=Reference%20Mode&color=yellow" />
-  <img alt="Discoveries" src="https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fraw.githubusercontent.com%2FHeisLazi%2Fpython-tutorial-DiddyDungeon%2Fmain%2Fprogress.json&query=%24.stats.discoveries_unlocked&label=Discoveries&color=blueviolet" />
+</p>
+
+<p align="center">
+  <img alt="Activity Score" src="https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fraw.githubusercontent.com%2FHeisLazi%2Fpython-tutorial-DiddyDungeon%2Fmain%2Factivity.json&query=%24.activity_score&label=Activity%20Score&color=green" />
+  <img alt="Dev Streak" src="https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fraw.githubusercontent.com%2FHeisLazi%2Fpython-tutorial-DiddyDungeon%2Fmain%2Factivity.json&query=%24.current_streak&label=Dev%20Streak&color=yellowgreen" />
+  <img alt="7 Day Commits" src="https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fraw.githubusercontent.com%2FHeisLazi%2Fpython-tutorial-DiddyDungeon%2Fmain%2Factivity.json&query=%24.commits_7d&label=Commits%207d&color=informational" />
+  <img alt="Active Days" src="https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fraw.githubusercontent.com%2FHeisLazi%2Fpython-tutorial-DiddyDungeon%2Fmain%2Factivity.json&query=%24.active_days_30d&label=Active%20Days%2030d&color=success" />
 </p>
 
 ## Public character sheet
@@ -26,7 +31,7 @@ The point is not to speedrun eight repos. The point is to make Python fundamenta
 | XP | **0 / 100** — 0 lifetime XP |
 | HP | **100 / 100** |
 | Coins | **0** |
-| Coding streak | **0 days** — best: 0 |
+| Learning streak | **0 days** — best: 0 |
 | Mastery Shields | **0** |
 | Bosses defeated | **0 / 8** |
 | Mobs defeated | **0** |
@@ -45,11 +50,35 @@ The point is not to speedrun eight repos. The point is to make Python fundamenta
 
 <!-- PUBLIC_STATS_END -->
 
-`progress.json` is the canonical player state. PYR refreshes this public block when displayed stats change, while the badges above read directly from the live JSON.
+`progress.json` is the canonical learning/player state. PYR refreshes this block only when learning progress is genuinely earned.
+
+## Dev Activity League
+
+<!-- ACTIVITY_STATS_START -->
+
+| Dev activity | Current |
+|---|---:|
+| Activity score | **70** |
+| Commit streak | **1 days** — best: 1 |
+| Commits | **59** / 7d · **59** / 30d |
+| Active dev days | **1** / 7d · **1** / 30d |
+| Active branches (30d) | **9** |
+| Last commit day | **2026-09-14** |
+
+`Activity score` is machine-derived from commit history. It rewards active days and streaks, caps effective commits per day, and does **not** grant learning XP or Mastery Shields.
+
+<!-- ACTIVITY_STATS_END -->
+
+This block is maintained by GitHub Actions from `activity.json`, not by PYR. The full scoring/fairness rules live in [`ACTIVITY_SYSTEM.md`](./ACTIVITY_SYSTEM.md).
+
+**Two streaks, two meanings:**
+
+- **Learning Streak** = PYR verified that I learned/built something I can explain.
+- **Dev Streak** = Git history proves I committed qualifying work that day.
+
+A high commit count cannot fake mastery, and a high mastery score cannot fake activity.
 
 ## The learning loop
-
-PYR is allowed to **teach me properly before I build**.
 
 For a new or rusty concept the flow is:
 
@@ -59,32 +88,13 @@ During **Teach / Practice**, PYR can show code examples, but the examples must u
 
 Once I show that I understand the idea, I enter **Forge phase** and implement the project requirement from scratch.
 
-If I genuinely cannot bridge the gap, I can explicitly enter **Reference Mode** and see the smallest project-specific exact fragment needed. That milestone then earns **50% XP/coins**. A later Recovery Trial can bring it up to at most **75%**, but the assistance stays part of the record.
+If I genuinely cannot bridge the gap, I can explicitly enter **Reference Mode** and see the smallest project-specific exact fragment needed. That milestone then earns **50% XP/coins**. A later Recovery Trial can bring it up to at most **75%**, but the assistance remains part of the record.
 
 Full teaching rules: [`LEARNING_PROTOCOL.md`](./LEARNING_PROTOCOL.md).
-
-## How the RPG works
-
-Real coding progress becomes game progress. Features, self-debugging, code explanations, mobs and bosses earn XP and coins. Coins buy hint tools and cosmetics — never finished solutions.
-
-The deeper systems live in [`GAME_SYSTEM.md`](./GAME_SYSTEM.md), including:
-
-- daily / weekly / long-term quests;
-- meaningful-day coding streaks;
-- Mastery Shields for concepts I can genuinely use and explain;
-- Bronze → Silver → Gold shield progression;
-- failed later mastery checks cracking shields instead of deleting my streak;
-- HP, inventory, equipment, achievements and boss trophies;
-- a coin shop with Potions, Map Scrolls, Syntax Scrolls, Streak Wards and more;
-- PYR evolutions tied to actual learning milestones;
-- creativity bonuses and hidden discoveries;
-- Rival Mode for friends using the same evidence-based rules.
 
 ## Creativity + hidden discoveries
 
 Required features prove the curriculum. Extra ideas prove creativity.
-
-If I independently add useful/fun features beyond the brief, PYR can award bounded creativity XP:
 
 | Discovery tier | Bonus |
 |---|---:|
@@ -93,19 +103,15 @@ If I independently add useful/fun features beyond the brief, PYR can award bound
 | Relic Craft | +20 XP |
 | Mythic Discovery | up to +30 XP |
 
-PYR can also surprise me with **hidden titles, trophies, gear, lore items, companion variations and other rewards** after memorable moments.
+PYR can surprise me with hidden titles, trophies, gear, lore items, companion variations and other rewards after memorable moments.
 
-The important part: PYR cannot just make the rules up differently every week.
-
-Every new reward/mechanic is tracked in [`CANON_LEDGER.md`](./CANON_LEDGER.md). Cosmetics can become player-canon immediately; anything that changes XP, coins, shields, streaks or rival scoring stays **PROVISIONAL** until approved.
-
-That means when somebody forks this campaign later, they can see exactly what became canon and why.
+New custom rewards/mechanics are recorded in [`CANON_LEDGER.md`](./CANON_LEDGER.md), so another AI — or another player — can reconstruct what actually became canon instead of making up a different ruleset every session.
 
 ## Mastery Shields
 
-A concept is not considered mastered because I used it once.
+A concept is not considered mastered because I used it once. I need to **use it in real code and pass an AI interview about it**.
 
-To earn a shield I need to **use the concept in real code and pass an AI interview about it**. Later interviews can test whether the knowledge stuck. If I fail one after earning a shield, a shield charge cracks before HP is touched. The streak is never punished for getting an answer wrong.
+If I later fail a mastery check after earning a shield, a shield charge cracks before HP or my Learning Streak is touched.
 
 | RPG Skill | Python concept | Shield |
 |---|---|---|
@@ -132,13 +138,40 @@ Every project lives on its own branch and has a `HANDOFF.md` containing mobs, re
 | 6 | `06-gladiator-arena` | Turn-based Gladiator Game | combat systems, reusable functions | The Unbound |
 | 7 | `07-football-manager` | Mini Football Manager | larger datasets and simulation | The Invincibles |
 
-## Current training scope
-
 For now I am deliberately sharpening:
 
 `variables` · `input/output` · `if/elif/else` · `for/while` · `functions` · `lists` · `dictionaries` · `strings` · `random`
 
 Files/JSON, exceptions, modules, testing, classes/OOP and APIs come after the foundation feels natural.
+
+## Rival Mode
+
+The repo is designed to be forked by a friend and run under the same rules.
+
+Each player has two public score families:
+
+| Learning | Development |
+|---|---|
+| Lifetime XP | Activity Score |
+| Bosses | 7d / 30d commits |
+| Mastery Shields | Active dev days |
+| Interviews | Dev streak |
+| Clean Clears | Active branches |
+| Project completion | Git activity history |
+
+The dashboard's Rival Board can read both `progress.json` and `activity.json` from each fork. It currently sorts by **Dev Activity** so we can race to be the most consistent builder while still seeing who has stronger demonstrated Python mastery.
+
+The competition intentionally caps effective commits per day. The goal is **more real development days**, not 40 meaningless commits called `update`, `update2`, `update3`.
+
+When a friend joins, their entry in `rivals.json` looks like:
+
+```json
+{
+  "name": "FriendName",
+  "progress_url": "https://raw.githubusercontent.com/OWNER/REPO/main/progress.json",
+  "activity_url": "https://raw.githubusercontent.com/OWNER/REPO/main/activity.json"
+}
+```
 
 ## Enter the current quest
 
@@ -147,50 +180,26 @@ git fetch --all
 git switch 01-blackjack
 ```
 
-Then read `HANDOFF.md`, open `SESSION_NOTES.md`, summon PYR, and let PYR **teach first** before the first real Forge task.
-
-## PYR — the AI companion
-
-Any AI helping on this repo must follow [`TUTOR_CONTRACT.md`](./TUTOR_CONTRACT.md).
-
-PYR teaches first, then protects the build phase. During Forge, the hint ladder is:
-
-1. ask a useful question;
-2. identify the concept;
-3. offer pseudocode;
-4. show unrelated generic syntax;
-5. offer explicit Reference Mode if I remain blocked.
-
-**PYR teaches me. Then I build it.**
-
-## Rival Mode
-
-The system is built so a friend can fork it, reset the campaign and compete using the same canon rules. `rivals.json` can hold public `progress.json` URLs and the dashboard can compare lifetime XP, bosses, shields, streaks, interviews, clean clears and project completion.
-
-Cosmetic hidden loot is for personality and does not inflate competitive power.
+Then read `HANDOFF.md`, open `SESSION_NOTES.md`, summon PYR, and let PYR teach the next rusty concept before the Forge task.
 
 ## Interactive dashboard
 
-The richer character screen is [`index.html`](./index.html). It reads `progress.json` and shows the quest tree, stats, shields, goals, shop, achievements and companion progression. Deploying `main` as a static site turns it into the live campaign dashboard.
+[`index.html`](./index.html) is the richer campaign screen. It reads:
+
+- `progress.json` for character/learning state;
+- `activity.json` for real Git activity;
+- `rivals.json` for competition.
+
+It shows the quest tree, both streaks, 30-day commit heatmap, active branches, Activity Score, Mastery Shields, goals, shop, achievements and the Rival Board.
+
+## Canon / rules
+
+- [`CANON_LEDGER.md`](./CANON_LEDGER.md) — what is actually canon
+- [`TUTOR_CONTRACT.md`](./TUTOR_CONTRACT.md) — how PYR must behave
+- [`LEARNING_PROTOCOL.md`](./LEARNING_PROTOCOL.md) — how concepts are taught and forged
+- [`GAME_SYSTEM.md`](./GAME_SYSTEM.md) — RPG progression
+- [`ACTIVITY_SYSTEM.md`](./ACTIVITY_SYSTEM.md) — commit activity + rival fairness
 
 ---
 
-**Rule:** learn with examples, Forge without a solution, record assistance honestly.
-
-
-## Dev Activity League
-
-<!-- ACTIVITY_STATS_START -->
-
-| Dev activity | Current |
-|---|---:|
-| Activity score | **70** |
-| Commit streak | **1 days** — best: 1 |
-| Commits | **59** / 7d · **59** / 30d |
-| Active dev days | **1** / 7d · **1** / 30d |
-| Active branches (30d) | **9** |
-| Last commit day | **2026-09-14** |
-
-`Activity score` is machine-derived from commit history. It rewards active days and streaks, caps effective commits per day, and does **not** grant learning XP or Mastery Shields.
-
-<!-- ACTIVITY_STATS_END -->
+**Rule:** learn with examples, Forge without a solution, commit meaningful checkpoints, record assistance honestly.
