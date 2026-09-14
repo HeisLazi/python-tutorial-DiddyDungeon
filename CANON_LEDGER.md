@@ -6,7 +6,7 @@ PYR is allowed to be creative, but the campaign should not slowly mutate into co
 
 ## Ruleset
 
-**Current ruleset:** `1.3.0`
+**Current ruleset:** `1.4.0`
 
 ## Source priority
 
@@ -16,10 +16,11 @@ When files disagree, use this order:
 2. `TUTOR_CONTRACT.md` — how PYR must behave
 3. `LEARNING_PROTOCOL.md` — teaching, Forge phase, Reference Mode and creativity rules
 4. `GAME_SYSTEM.md` — RPG mechanics and progression
-5. `ACTIVITY_SYSTEM.md` — Git-derived dev activity and rival scoring rules
-6. current branch `HANDOFF.md` — project-specific requirements/rewards
-7. `progress.json` — current player state, not a rules document
-8. `activity.json` — generated dev-activity state, not a rules document
+5. `COMBAT_SYSTEM.md` — Impact, Resolve, armor, trinkets and future raid rules
+6. `ACTIVITY_SYSTEM.md` — Git-derived dev activity and rival scoring rules
+7. current branch `HANDOFF.md` — project-specific requirements/rewards
+8. `progress.json` — current player state, not a rules document
+9. `activity.json` — generated dev-activity state, not a rules document
 
 A branch may make a challenge stricter, but it should not silently weaken global learning rules.
 
@@ -53,6 +54,16 @@ A branch may make a challenge stricter, but it should not silently weaken global
 | SYS-022 | Functional/accessibility IDE settings remain free; only cosmetic presentation may be coin-gated. | CANON |
 | SYS-023 | The Codex may foreshadow mob names, concepts and encounter styles but must not reveal hidden exact answers or paste-ready project solutions. | CANON |
 | SYS-024 | Cosmetic ownership/equipment is canonical campaign state; device-specific layout preferences are local UI state and do not count as progression. | CANON |
+| SYS-025 | Normal learning/debugging is Safe Mode: mistakes, syntax errors, runtime errors, questions and reteaching never deal HP damage. | CANON |
+| SYS-026 | HP damage can only occur after a deliberate submitted Battle action is judged incorrect/incomplete. The player must know they are entering a risky submission. | CANON |
+| SYS-027 | Offense uses verified objective **Impact** against enemy **Resolve**. There is no mechanical weapon-damage slot. | CANON |
+| SYS-028 | Impact values are tied to meaningful predefined objectives, never raw commits, lines of code, file count or meaningless task splitting. | CANON |
+| SYS-029 | Armor reduces submitted-Battle counterattack damage by an explicit percentage and never changes whether work is correct. Starter Apprentice Coat = 10% reduction. | CANON |
+| SYS-030 | Trinkets are the special-effect equipment slot and may visually be weapons (scythes, swords, staffs, etc.) without creating a separate weapon-stat system. | CANON |
+| SYS-031 | Trinket effects may alter combat pacing/survivability but may not fabricate learning evidence, mastery, Clean Clears or Dev Activity. | CANON |
+| SYS-032 | Competitive learning contribution must distinguish verified Impact from any combat-only bonus Impact created by trinkets or encounter modifiers. | CANON |
+| SYS-033 | 0 HP means Downed, not locked out of learning. Recovery/reteach/revive paths must remain available. | CANON |
+| SYS-034 | Future weekly bosses are shared software-project raids: party objectives have predefined verified Impact and the primary outcome is a party clear, not DPS farming. | CANON |
 
 ---
 
@@ -78,9 +89,9 @@ PYR may immediately create and award a new hidden reward when all of the followi
 - the trigger was real and noteworthy;
 - it is appended to the Discovery Registry below.
 
-Examples: title, trinket, weapon skin/name, companion emote/form variant, badge, lore item, boss trophy.
+Examples: title, trinket skin/name, companion emote/form variant, badge, lore item, boss trophy.
 
-A mechanically powerful reward must be **PROVISIONAL** first.
+A mechanically powerful reward must be **PROVISIONAL** first unless its effect already fits an approved combat-rule envelope in `COMBAT_SYSTEM.md` and is explicitly added to the item catalog.
 
 ---
 
@@ -113,17 +124,31 @@ When PYR invents a reward during play, it should choose the next unused `DISC-##
 
 # Proposed mechanics queue
 
-Use this section for ideas that sound fun but could affect fairness or progression.
+Use this section for ideas that sound fun but still need tuning.
 
 | ID | Proposal | Status | Decision notes |
 |---|---|---|---|
-| — | No pending proposals yet. | — | — |
+| COMBAT-001 | Exact HP recovery cadence between encounters/days | PROVISIONAL | Downed must never block learning; tune after first real Battle tests. |
+| COMBAT-002 | Exact trinket catalog/rarity/economy | PROVISIONAL | Effect classes are approved, individual power levels still need playtesting. |
+| RAID-001 | Weekly online/shared raid transport and party persistence | PROVISIONAL | Core raid philosophy is canon; networking/storage implementation is not yet selected. |
 
 PYR may add rows here, but **must not silently activate them**.
 
 ---
 
 # Ruleset changelog
+
+## 1.4.0 — Impact / Armor / Trinket Combat Foundation
+
+- replaced traditional weapon damage with verified **Impact** against enemy **Resolve**;
+- made ordinary learning and debugging explicitly damage-free Safe Mode;
+- restricted HP loss to deliberate submitted Battle actions that fail verification;
+- made armor percentage-based damage reduction, starting Apprentice Coat at 10%;
+- removed mechanical weapon-stat progression and made weapon-shaped gear valid as trinkets instead;
+- established trinkets as the special-effect slot for revives, guards, reveals, combat-only bonus Impact and future party effects;
+- established Downed as a recoverable state, never a learning lockout;
+- approved the foundation for weekly shared project raids with predefined objective Impact and party-first clears;
+- added `COMBAT_SYSTEM.md` as the canonical combat specification.
 
 ## 1.3.0 — Forge RPG Shell & Homestead
 
