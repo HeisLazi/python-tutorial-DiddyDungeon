@@ -19,13 +19,15 @@ const languageFor = (path = '') => {
   if (path.endsWith('.py')) return 'python'
   if (path.endsWith('.json')) return 'json'
   if (path.endsWith('.md')) return 'markdown'
+  if (path.endsWith('.ts') || path.endsWith('.tsx')) return 'typescript'
   if (path.endsWith('.js') || path.endsWith('.jsx')) return 'javascript'
   if (path.endsWith('.html')) return 'html'
-  if (path.endsWith('.css')) return 'css'
+  if (path.endsWith('.css') || path.endsWith('.scss')) return 'css'
+  if (path.endsWith('.yaml') || path.endsWith('.yml')) return 'yaml'
   return 'plaintext'
 }
 
-const TerminalPane = forwardRef(function TerminalPane(_, ref) {
+const TerminalPane = forwardRef(function TerminalPane({ banner = 'Quest terminal connected.' }, ref) {
   const hostRef = useRef(null)
   const socketRef = useRef(null)
   const termRef = useRef(null)
@@ -45,12 +47,16 @@ const TerminalPane = forwardRef(function TerminalPane(_, ref) {
     focus() {
       termRef.current?.focus()
     },
+    clear() {
+      termRef.current?.clear()
+    },
   }))
 
   useEffect(() => {
     const term = new Terminal({
       cursorBlink: true,
       convertEol: false,
+      scrollback: 5000,
       fontFamily: 'JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, monospace',
       fontSize: 13,
       theme: {
@@ -78,9 +84,8 @@ const TerminalPane = forwardRef(function TerminalPane(_, ref) {
     }
 
     socket.onopen = () => {
-      term.writeln('\r\n\x1b[38;5;214mQuest terminal connected.\x1b[0m')
+      term.writeln(`\r\n\x1b[38;5;214m${banner}\x1b[0m`)
       syncSize()
-      term.focus()
     }
     socket.onmessage = (event) => term.write(event.data)
     socket.onclose = () => term.writeln('\r\n\x1b[31mTerminal disconnected. Restart Quest Lab to reconnect.\x1b[0m')
@@ -101,13 +106,16 @@ const TerminalPane = forwardRef(function TerminalPane(_, ref) {
       socket.close()
       term.dispose()
     }
-  }, [])
+  }, [banner])
 
   return <div className="terminal-host" ref={hostRef} />
 })
 
+const clamp = (value, min, max) => Math.max(min, Math.min(max, value))
+
 function App() {
-  const terminalRef = useRef(null)
+  const shellTerminalRef = useRef(null)
+  const aiTerminalRef = useRef(null)
   const [campaign, setCampaign] = useState(null)
   const [files, setFiles] = useState([])
   const [activePath, setActivePath] = useState('')
@@ -115,6 +123,9 @@ function App() {
   const [dirty, setDirty] = useState(false)
   const [busy, setBusy] = useState(false)
   const [notice, setNotice] = useState('')
+  const [leftWidth, setLeftWidth] = useState(220)
+  const [rightWidth, setRightWidth] = useState(390)
+  const [terminalHeight, setTerminalHeight] = useState(245)
 
   const player = campaign?.progress?.player || {}
   const stats = campaign?.progress?.stats || {}
@@ -161,10 +172,38 @@ function App() {
         event.preventDefault()
         saveFile()
       }
+      if (event.shiftKey && event.altKey && event.key.toLowerCase() === 'f') {
+        event.preventDefault()
+        formatCurrent()
+      }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   })
+
+  const startResize = (kind, event) => {
+    event.preventDefault()
+    const startX = event.clientX
+    const startY = event.clientY
+    const startLeft = leftWidth
+    const startRight = rightWidth
+    const startTerminal = terminalHeight
+
+    const move = (moveEvent) => {
+      if (kind === 'left') setLeftWidth(clamp(startLeft + (moveEvent.clientX - startX), 150, 420))
+      if (kind === 'right') setRightWidth(clamp(startRight - (moveEvent.clientX - startX), 280, 720))
+      if (kind === 'terminal') setTerminalHeight(clamp(startTerminal - (moveEvent.clientY - startY), 140, 560))
+    }
+    const stop = () => {
+      window.removeEventListener('pointermove', move)
+      window.removeEventListener('pointerup', stop)
+      document.body.classList.remove('resizing')
+    }
+
+    document.body.classList.add('resizing')
+    window.addEventListener('pointermove', move)
+    window.addEventListener('pointerup', stop)
+  }
 
   const openFile = async (path) => {
     if (dirty && path !== activePath && !window.confirm('Discard unsaved changes?')) return
@@ -192,10 +231,30 @@ function App() {
       })
       setDirty(false)
       setNotice(`Saved ${activePath}`)
+      refreshCampaign()
       return true
     } catch (error) {
       setNotice(`Save failed: ${error.message}`)
       return false
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const formatCurrent = async () => {
+    if (!activePath) return
+    try {
+      setBusy(true)
+      const result = await api('/api/format', {
+        method: 'POST',
+        body: JSON.stringify({ path: activePath, content: code }),
+      })
+      setCode(result.content ?? code)
+      setDirty(false)
+      setNotice(`Formatted ${activePath} with ${result.formatter}`)
+      refreshCampaign()
+    } catch (error) {
+      setNotice(`Format failed: ${error.message}`)
     } finally {
       setBusy(false)
     }
@@ -219,13 +278,18 @@ function App() {
       const ok = await saveFile()
       if (!ok) return
     }
-    terminalRef.current?.send(`python ${JSON.stringify(activePath)}\n`)
-    terminalRef.current?.focus()
+    shellTerminalRef.current?.send(`python ${JSON.stringify(activePath)}\n`)
+    shellTerminalRef.current?.focus()
   }
 
   const summon = (command) => {
-    terminalRef.current?.send(`${command}\n`)
-    terminalRef.current?.focus()
+    aiTerminalRef.current?.send(`${command}\n`)
+    aiTerminalRef.current?.focus()
+  }
+
+  const gridStyle = {
+    gridTemplateColumns: `${leftWidth}px 5px minmax(420px, 1fr) 5px ${rightWidth}px`,
+    gridTemplateRows: `minmax(220px, 1fr) 5px ${terminalHeight}px`,
   }
 
   return (
@@ -252,7 +316,7 @@ function App() {
         <div className="git-pill">{git.branch || 'no branch'} · {git.dirty_count ?? 0} changes</div>
       </div>
 
-      <main className="workspace-grid">
+      <main className="workspace-grid" style={gridStyle}>
         <aside className="left-panel panel">
           <div className="panel-title">
             <span>FILES</span>
@@ -275,11 +339,14 @@ function App() {
           </div>
         </aside>
 
+        <div className="resize-handle vertical left-resizer" onPointerDown={(event) => startResize('left', event)} />
+
         <section className="editor-panel panel">
           <div className="editor-toolbar">
             <div className="active-file">{activePath || 'No file selected'}{dirty ? ' •' : ''}</div>
             <div className="toolbar-actions">
               <button onClick={saveFile} disabled={!activePath || busy}>Save</button>
+              <button onClick={formatCurrent} disabled={!activePath || busy} title="Format document (Shift+Alt+F)">Pretty</button>
               <button className="primary" onClick={runCurrent} disabled={!activePath || !activePath.endsWith('.py')}>▶ Run</button>
             </div>
           </div>
@@ -299,47 +366,46 @@ function App() {
                 smoothScrolling: true,
                 automaticLayout: true,
                 tabSize: 4,
+                formatOnPaste: false,
+                formatOnType: false,
               }}
             />
           </div>
         </section>
 
-        <aside className="right-panel panel">
-          <div className="panel-title"><span>PYR</span><span className="pyr-dot">●</span></div>
-          <div className="pyr-card">
-            <div className="pyr-avatar">🔥</div>
-            <strong>{companion.form || 'Tiny Code-Flame'}</strong>
-            <p>Your terminal is real. Launch whichever coding AI CLI you already use and keep the repo rules open beside it.</p>
-          </div>
-          <div className="summon-grid">
-            <button onClick={() => summon('codex')}>Summon Codex</button>
-            <button onClick={() => summon('claude')}>Summon Claude</button>
-            <button onClick={() => summon('gemini')}>Summon Gemini</button>
-          </div>
-          <div className="rule-card">
-            <strong>Forge rules</strong>
-            <p>Teach → practice → teach-back → build from scratch. Exact project help only through Reference Mode.</p>
-          </div>
-          <div className="mini-stats">
-            <div><span>Learning streak</span><b>{streak.current ?? 0}</b></div>
-            <div><span>Dev streak</span><b>{activity.current_streak ?? 0}</b></div>
-            <div><span>Commits 7d</span><b>{activity.commits_7d ?? 0}</b></div>
-            <div><span>Clean clears</span><b>{stats.clean_clears ?? 0}</b></div>
-          </div>
-        </aside>
+        <div className="resize-handle horizontal terminal-resizer" onPointerDown={(event) => startResize('terminal', event)} />
 
         <section className="terminal-panel panel">
           <div className="panel-title">
             <span>TERMINAL</span>
             <span className="terminal-hint">real local shell · starts in workspace</span>
           </div>
-          <TerminalPane ref={terminalRef} />
+          <TerminalPane ref={shellTerminalRef} banner="Forge shell connected." />
         </section>
+
+        <div className="resize-handle vertical right-resizer" onPointerDown={(event) => startResize('right', event)} />
+
+        <aside className="ai-panel panel">
+          <div className="ai-toolbar">
+            <div>
+              <span className="panel-title-inline">PYR / AI</span>
+              <span className="ai-subtitle"> {companion.form || 'Tiny Code-Flame'}</span>
+            </div>
+            <div className="ai-actions">
+              <button onClick={() => summon('codex')}>Codex</button>
+              <button onClick={() => summon('claude')}>Claude</button>
+              <button onClick={() => summon('gemini')}>Gemini</button>
+              <button onClick={() => aiTerminalRef.current?.clear()}>Clear</button>
+            </div>
+          </div>
+          <div className="ai-note">Independent terminal session. Launch one AI CLI here; keep your normal shell separate below the editor.</div>
+          <TerminalPane ref={aiTerminalRef} banner="PYR channel ready. Choose Codex, Claude, or Gemini above." />
+        </aside>
       </main>
 
       <footer className="statusbar">
         <span>{notice || 'Ready.'}</span>
-        <span>{busy ? 'working…' : activePath ? `${languageFor(activePath)} · Ctrl+S to save` : 'select a file'}</span>
+        <span>{busy ? 'working…' : activePath ? `${languageFor(activePath)} · Ctrl+S save · Shift+Alt+F format` : 'select a file'}</span>
       </footer>
     </div>
   )
