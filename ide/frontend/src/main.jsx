@@ -5,9 +5,11 @@ import './v2.css'
 import './enhancements.css'
 import './uiPolish.css'
 import './commandPalette.css'
+import './combatShell.css'
 import './forgeEnhancements.js'
 import './uiPolish.js'
 import './commandPalette.js'
+import './combatShell.js'
 import '@xterm/xterm/css/xterm.css'
 
 // Quest Lab owns real PTY/WebSocket sessions. React StrictMode intentionally
