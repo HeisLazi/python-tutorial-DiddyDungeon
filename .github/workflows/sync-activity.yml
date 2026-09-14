@@ -1,0 +1,46 @@
+name: Sync Dev Activity
+
+on:
+  push:
+    paths-ignore:
+      - activity.json
+      - README.md
+  schedule:
+    - cron: "17 22 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: sync-dev-activity
+  cancel-in-progress: true
+
+jobs:
+  sync:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout canonical main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Build activity state
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: python tools/sync_activity.py
+
+      - name: Publish activity state
+        run: |
+          git config user.name "python-quest-activity-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add activity.json README.md
+          if git diff --cached --quiet; then
+            echo "No activity changes to publish."
+            exit 0
+          fi
+          git commit -m "chore(activity): sync public dev activity"
+          git push origin HEAD:main
