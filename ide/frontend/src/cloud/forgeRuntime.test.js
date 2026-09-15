@@ -100,6 +100,7 @@ test('Dungeon checkpoints and Practice remain separate learning modes', () => {
   assert.match(views, /id: 'tutor', icon: '🧪', label: 'Tutor Notebook'/)
   assert.doesNotMatch(views, /<option value="python-basics">python-basics<\/option>/)
   assert.match(app, /Tutor Notebook is a Campaign surface/)
+  assert.match(app, /\/api\/tutor\/format/)
 })
 
 test('top HUD stat pills style only direct stats and reset nested SVG content', () => {

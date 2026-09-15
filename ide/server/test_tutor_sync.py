@@ -30,6 +30,21 @@ class TutorSyncTests(unittest.TestCase):
                 )
                 self.assertEqual(second.status_code, 200)
                 self.assertNotEqual(second.json()["revision"], first_payload["revision"])
+
+                formatted = client.post(
+                    "/api/tutor/format",
+                    headers={"host": "127.0.0.1"},
+                    json={"content": "print( 'formatted' )\n"},
+                )
+                self.assertEqual(formatted.status_code, 200)
+                self.assertEqual(formatted.json()["path"], "tutor.py")
+
+                generic = client.post(
+                    "/api/format",
+                    headers={"host": "127.0.0.1"},
+                    json={"path": "tutor.py", "content": "print('blocked')\n"},
+                )
+                self.assertEqual(generic.status_code, 403)
             finally:
                 app_v2.TUTOR_PATH = original_path
                 app_v2.WORKSPACE = original_workspace

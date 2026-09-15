@@ -237,7 +237,7 @@ def reject_state_file_access(target: Path, *, allow_dungeon_projection: bool = F
         if kind == "tutor_legacy":
             raise HTTPException(
                 status_code=403,
-                detail="tutor.py is legacy-only; use Practice for provider-assisted learning",
+                detail="tutor.py is managed by the Campaign Tutor Notebook; use its dedicated endpoint",
             )
         raise HTTPException(status_code=403, detail="progress.json is managed by the local state service")
 
@@ -941,16 +941,18 @@ def write_tutor(payload: TutorWrite):
     return {"ok": True, "path": "tutor.py", "bytes": len(encoded), "revision": tutor_revision(payload.content)}
 
 
-@app.post("/api/format")
-def format_file(payload: FormatRequest):
-    target = safe_path(payload.path)
-    reject_state_file_access(target)
-    encoded = payload.content.encode("utf-8")
+def _format_file(target: Path, content: str, *, allow_tutor: bool = False) -> dict:
+    if allow_tutor:
+        if target.resolve() != TUTOR_PATH.resolve():
+            raise HTTPException(status_code=403, detail="Only the Campaign Tutor Notebook may use this endpoint")
+    else:
+        reject_state_file_access(target)
+    encoded = content.encode("utf-8")
     if len(encoded) > MAX_TEXT_BYTES:
         raise HTTPException(status_code=413, detail="File is too large for the learning editor")
 
     target.parent.mkdir(parents=True, exist_ok=True)
-    target.write_text(payload.content, encoding="utf-8")
+    target.write_text(content, encoding="utf-8")
     suffix = target.suffix.lower()
 
     if suffix == ".py":
@@ -987,6 +989,16 @@ def format_file(payload: FormatRequest):
         "content": target.read_text(encoding="utf-8"),
         "formatter": formatter,
     }
+
+
+@app.post("/api/tutor/format")
+def format_tutor(payload: TutorWrite):
+    return _format_file(ensure_tutor_file(), payload.content, allow_tutor=True)
+
+
+@app.post("/api/format")
+def format_file(payload: FormatRequest):
+    return _format_file(safe_path(payload.path), payload.content)
 
 
 @app.post("/api/homestead/purchase")

@@ -1060,7 +1060,7 @@ function AppV2() {
   const formatTutor = async () => {
     try {
       setBusy(true)
-      const result = await api('/api/format', {
+      const result = await api('/api/tutor/format', {
         method: 'POST',
         body: JSON.stringify({ path: 'tutor.py', content: tutorCode }),
       })
