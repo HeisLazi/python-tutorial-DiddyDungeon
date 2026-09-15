@@ -284,7 +284,7 @@ reports source/destination revisions and exact digests, and distinguishes
 
 | ID | Severity | Area | Finding | Status |
 |---|---|---|---|---|
-| F-043 | P2 | Custody migration safety | The roadmap needed a way to inspect the proposed per-device destination without accidentally moving or merging the live save. | Fixed locally as a read-only preview: no copy, merge, revision increment, event, source deletion or default-launch behavior occurs. Actual migration remains explicitly approval-gated. |
+| F-043 | P2 | Custody migration safety | The roadmap needed a way to inspect the proposed per-device destination without accidentally moving or merging the live save. | Fixed locally: the read-only preview and the separately invoked gateway migration are copy-once, revision-stable and conflict-safe. The real player's migration and default-launch switch remain explicitly approval-gated. |
 
 The new endpoint/CLI and existing state-authority tests pass in the WSL suite
 (58 backend tests, 31 frontend tests);
@@ -321,3 +321,22 @@ successful Python compilation. No Playwright was used.
 A real WSL invocation from the shared OneDrive checkout produced the same
 fail-fast message and exited before attempting the disposable ports requested
 for that check; no backend/frontend process was spawned by the guard.
+
+## Verification update — 2026-09-15 — opt-in custody gateway
+
+The bounded migration half of Slice 7 is now implemented behind
+`POST /api/state/custody/migrate` and `questlab-state custody-migrate`. The
+caller must provide the reviewed source revision and the exact
+`MIGRATE_LOCAL_STATE` confirmation token; the server derives the destination
+from the configured opaque checkout namespace and accepts no arbitrary path.
+The gateway copies the canonical bytes atomically, writes a local custody
+marker, preserves the source revision/events, and returns `already-local` on
+an identical retry. Symlinks, divergent destinations, stale revisions,
+workspace/legacy destinations and missing markers fail closed. No real save
+was migrated in this checkpoint.
+
+Temporary-fixture tests cover route authorization, copy-once/idempotent
+retries, marker integrity, revision races and symlink rejection. The full WSL
+backend suite is now 63 tests; the frontend suite remains 31 tests and the
+Windows Vite build remains green. Launcher opt-in and the real-save approval
+gate remain open; hosted Supabase transport is unchanged.

@@ -861,3 +861,16 @@ compilation, and a green Windows Vite production build transforming 1,344
 modules. A real WSL invocation against the shared OneDrive checkout emitted
 the same actionable message and exited before spawning its requested ports.
 No Playwright was used.
+
+### Opt-in custody gateway — 2026-09-15
+
+The read-only custody preview now has a separately invoked migration command:
+`questlab-state custody-migrate --expected-revision N --confirm
+MIGRATE_LOCAL_STATE`. The gateway derives the opaque per-device destination,
+copies the canonical bytes atomically, writes a bounded marker and leaves the
+source JSON, campaign revision and event history unchanged. It refuses
+arbitrary paths, symlinks, stale source revisions, divergent destinations and
+workspace/legacy paths; identical retries are reported as `already-local`.
+The operation is not called by the default launcher, and no real player save
+was migrated. Full backend coverage is now 63 tests; frontend remains 31 and
+the Windows Vite build remains green.

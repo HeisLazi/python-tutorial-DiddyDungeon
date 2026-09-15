@@ -80,6 +80,18 @@ legacy path, expected branch, upstream SHA/freshness and available CLI
 commands. `authority` reports the canonical revision. `campaign` is the
 player-facing projection. These are read-only reports; they do not edit a save.
 
+After reviewing `questlab-state custody`, an approved local-only migration can
+be invoked with the reported revision:
+
+```bash
+questlab-state custody-migrate --expected-revision 4 --confirm MIGRATE_LOCAL_STATE
+```
+
+This copies the canonical snapshot once to the derived per-device cache and
+never merges or deletes the workspace/legacy file. Do not run it for a real
+save until the source/destination/revision preview has been reviewed; it does
+not enable cloud sync or move the default launcher automatically.
+
 On a Linux filesystem, keep the executable bit on `questlab-state`; a clone
 that reports `Permission denied` should run `chmod +x questlab-state` once.
 

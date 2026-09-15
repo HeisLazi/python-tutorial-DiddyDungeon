@@ -71,7 +71,7 @@ invented. The workspace/legacy save remains evidence only.
 
 ## Latest verification evidence
 
-- WSL backend suite: 59 tests passing.
+- WSL backend suite: 63 tests passing.
 - Frontend source/runtime suite: 31 tests passing.
 - Windows Vite production build: passed.
 - Clean ext4 archive: WSL `npm ci` plus Vite build passed after 1,344 modules.

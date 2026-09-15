@@ -50,16 +50,19 @@ provide cross-device sync before hosted transport is accepted.
 
 ### B. Gateway migration command
 
-- Add one named, system-only state-gateway operation with no arbitrary path
-  input; the server derives the destination from its configured local-state
-  root and namespace.
-- Require an expected source revision and an explicit confirmation token.
-- Write a temporary file beside the destination, fsync/replace atomically,
-  then write the bounded marker. No campaign reward/event is invented and the
-  campaign revision remains unchanged because the snapshot contents are not
-  changed.
-- Refuse workspace/legacy paths, symlink destinations, non-empty divergent
-  destinations, and any source revision race.
+- Implemented behind `POST /api/state/custody/migrate` and
+  `questlab-state custody-migrate`; there is no arbitrary path input. The
+  server derives the destination from its configured local-state root and
+  opaque namespace.
+- The operation requires the reviewed source revision and the explicit
+  `MIGRATE_LOCAL_STATE` confirmation token.
+- It writes a temporary file beside the destination, fsyncs/replaces it
+  atomically, then writes a bounded marker. No campaign reward/event is
+  invented and the campaign revision remains unchanged because the snapshot
+  contents are copied without mutation.
+- It refuses workspace/legacy paths, symlink destinations, non-empty
+  divergent destinations, and any source revision race. Identical retries
+  return `already-local` and never overwrite the destination.
 
 ### C. Opt-in launcher and onboarding
 
@@ -93,4 +96,3 @@ provide cross-device sync before hosted transport is accepted.
 - F-001/F-009/F-010 remain open until provider-authenticated adjudication and
   tab/account challenge isolation are proven; no Supabase seed is part of this
   local custody gate.
-
