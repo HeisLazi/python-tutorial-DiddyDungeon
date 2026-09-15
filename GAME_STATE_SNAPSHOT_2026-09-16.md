@@ -44,6 +44,9 @@ increment the canonical revision or enter the event/cloud projection.
   purchase and local leaderboard.
 - `tools/questlab-package.ps1` now creates a committed-HEAD-only friend
   folder/ZIP and excludes dirty `progress.json`/untracked `tutor.py`.
+- Fresh K&M projection acceptance also covered a validated reward, live
+  Resolve reduction, mob defeat/next unlock, Codex growth, Homestead purchase,
+  Campaign Tutor and Practice boundaries with both PTYs connected.
 
 ## Gates still open
 

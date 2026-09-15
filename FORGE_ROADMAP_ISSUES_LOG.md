@@ -305,6 +305,7 @@ The mutation was disposable and both backends were stopped afterward.
 | F-044 | P2 | Two-device local isolation | Slice 7 needed evidence that separate local roots do not share a save before hosted sync is attempted. | Verified locally with two disposable state services and K&M on the clean runtime. This proves isolation only; hosted mailbox synchronization and real save-custody migration remain open. |
 
 | F-046 | P2 | Friend bundle custody | A friend-facing bundle could accidentally be made from the dirty OneDrive working tree, carrying the player's uncommitted save or Campaign `tutor.py` into distribution. | Fixed locally: `tools/questlab-package.ps1` archives committed `HEAD` only, refuses unrelated dirty source files, emits a manifest/zip, and leaves the live save and untracked tutor notebook out. Clean-install launch and Tauri desktop proof remain separate gates. |
+| F-047 | P2 | Live RPG projection acceptance | The shared revision/event architecture needed a fresh end-to-end K&M proof that rewards, Resolve, mob unlocks, Codex, Homestead economy, Tutor and Practice all stay coherent without a refresh. | Fixed locally: the disposable current-branch runtime passed the campaign reward/Resolve/mob-clear/Codex/Homestead/Tutor/Practice sequence below with both PTYs connected. Hosted transport remains gated by F-018/Milestone C. |
 
 ## Verification update — 2026-09-15 — WSL launcher dependency preflight
 
@@ -425,3 +426,31 @@ the committed baseline `progress.json` from `HEAD`, but did not contain the
 untracked root `tutor.py` or any uncommitted player-state bytes. The temporary
 bundle was removed afterward. This is distribution-custody evidence, not a
 claim that a Windows installer or Tauri desktop window has been proven.
+
+## Verification update — 2026-09-16 — live RPG projection and mode boundaries
+
+Using the clean ext4 frontend and a disposable copy of the reconciled save, a
+browser K&M run (click, scroll and type only; no Playwright) loaded Level 2 /
+50 XP / 55 coins, The Hitman at 8/8 Resolve and both terminal panes
+`CONNECTED`. Codex navigation showed the searchable book/page projection;
+typing and saving a field note produced `CODEX NOTE SAVED`. A validated
+state-service learning reward on the disposable cache changed the HUD and
+Homestead purse to 105 coins without refresh. Clicking the enabled Golden
+Spark purchase then showed `NEW ITEM`, 25 coins and an Equip action; equipping
+it updated the Homestead projection live.
+
+The Campaign Tutor Notebook remained a distinct `tutor.py` surface, while the
+Practice destination exposed its independent concept/question controls and
+explicit no-Campaign-cost boundary. In Quest Journal, a validated
+`choice_flow` objective changed The Hitman from 8/8 to 4/8 Resolve and emitted
+`OBJECTIVE VERIFIED`. A second validated `stop_condition` objective immediately
+showed `MOB DEFEATED`, `+30 XP`, `+15 Coins`, The Bust Hound unlocked, and a
+second Codex encounter observation with two recorded question types. Further
+disposable objective mutations cleared the remaining mobs; the browser showed
+level-up feedback and `BOSS GATE UNLOCKED The House` with all three bounded
+requirements, without revealing future prompts or answers.
+
+The browser never refreshed and neither PTY was remounted. The temporary
+backend/frontend and state copy were stopped and removed after the check; the
+user's canonical `progress.json`, legacy evidence, root `tutor.py`, existing
+runtime processes and hosted state were not touched.

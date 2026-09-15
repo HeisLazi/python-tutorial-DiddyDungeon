@@ -939,3 +939,24 @@ was included and confirmed root `tutor.py` was absent; the temporary artifact
 was deleted afterward. This closes the source-custody portion of the local
 distribution slice. It does not claim a clean-install launcher, Windows
 installer or Tauri desktop acceptance, and no hosted state was seeded.
+
+### Live RPG projection and mode-boundary K&M acceptance — 2026-09-16
+
+The clean ext4 frontend plus a disposable copy of the reconciled save passed a
+fresh click/scroll/type-only acceptance without Playwright. Forge loaded Level
+2 / 50 XP / 55 coins, The Hitman at 8/8 Resolve, and connected shell/AI PTYs.
+Codex search/page navigation and a typed field note produced `CODEX NOTE
+SAVED`. A validated disposable reward moved the shared HUD and Homestead purse
+to 105 coins; a K&M Golden Spark purchase then showed `NEW ITEM`, 25 coins and
+live Equip state.
+
+The Campaign Tutor Notebook remained the dedicated `tutor.py` surface and
+Practice remained an independent no-Campaign-cost mode. A validated
+`choice_flow` objective changed Resolve 8/8 → 4/8 with `OBJECTIVE VERIFIED`;
+`stop_condition` then produced `MOB DEFEATED`, `+30 XP`, `+15 Coins`, the next
+mob unlock and a second Codex observation. Additional disposable objective
+mutations cleared the remaining mobs and visibly opened The House boss gate
+with the three bounded requirements. No refresh occurred, no hidden future
+prompt/answer was exposed, and neither PTY was remounted. The temporary
+runtime/save was removed; user state, legacy evidence and hosted state were
+untouched.
