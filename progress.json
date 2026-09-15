@@ -10,21 +10,21 @@
     "name": "Lazi",
     "title": "Apprentice Coder",
     "rank": "F",
-    "level": 1,
-    "xp": 0,
+    "level": 2,
+    "xp": 70,
     "xp_next": 100,
-    "lifetime_xp": 0,
+    "lifetime_xp": 170,
     "hp": 100,
     "max_hp": 100,
-    "coins": 0,
+    "coins": 55,
     "potions": 2
   },
   "streak": {
-    "current": 0,
-    "longest": 0,
-    "last_active": null,
+    "current": 1,
+    "longest": 1,
+    "last_active": "2026-09-14",
     "freeze_tokens": 0,
-    "days_logged": []
+    "days_logged": ["2026-09-14"]
   },
   "companion": {
     "name": "PYR",
@@ -64,13 +64,13 @@
   ],
   "goals": {
     "daily": [
-      {"id": "open-table", "text": "Open the Blackjack branch and run blackjack.py", "reward_xp": 5, "reward_coins": 5, "done": false},
-      {"id": "first-deal", "text": "Clear The Dealer's Hand: represent and deal cards yourself", "reward_xp": 25, "reward_coins": 10, "done": false},
-      {"id": "explain-lists", "text": "Explain to PYR why a Blackjack hand is naturally represented as a list", "reward_xp": 10, "reward_coins": 5, "done": false}
+      {"id": "open-table", "text": "Open the Blackjack branch and run blackjack.py", "reward_xp": 5, "reward_coins": 5, "done": true},
+      {"id": "first-deal", "text": "Clear The Dealer's Hand: represent and deal cards yourself", "reward_xp": 25, "reward_coins": 10, "done": true},
+      {"id": "explain-lists", "text": "Explain to PYR why a Blackjack hand is naturally represented as a list", "reward_xp": 10, "reward_coins": 5, "done": true}
     ],
     "weekly": [
-      {"id": "three-sessions", "text": "Complete 3 meaningful coding sessions", "target": 3, "progress": 0, "reward_xp": 60, "reward_coins": 40, "done": false},
-      {"id": "two-mobs", "text": "Defeat 2 project mobs", "target": 2, "progress": 0, "reward_xp": 40, "reward_coins": 25, "done": false},
+      {"id": "three-sessions", "text": "Complete 3 meaningful coding sessions", "target": 3, "progress": 1, "reward_xp": 60, "reward_coins": 40, "done": false},
+      {"id": "two-mobs", "text": "Defeat 2 project mobs", "target": 2, "progress": 2, "reward_xp": 40, "reward_coins": 25, "done": true},
       {"id": "first-interview", "text": "Pass your first concept interview", "target": 1, "progress": 0, "reward_xp": 50, "reward_coins": 30, "done": false}
     ],
     "long_term": [
@@ -81,20 +81,20 @@
     ]
   },
   "stats": {
-    "sessions": 0,
+    "sessions": 1,
     "projects_cleared": 0,
     "bosses_defeated": 0,
-    "mobs_defeated": 0,
+    "mobs_defeated": 3,
     "interviews_passed": 0,
     "interviews_failed": 0,
     "mastery_shields_earned": 0,
     "bugs_fixed": 0,
-    "explanations": 0,
+    "explanations": 4,
     "clean_clears": 0,
     "commits_logged": 0
   },
   "achievements": [
-    {"name": "First Blood", "description": "Defeat your first mob", "unlocked": false},
+    {"name": "First Blood", "description": "Defeat your first mob", "unlocked": true},
     {"name": "Shieldbearer", "description": "Earn your first Mastery Shield", "unlocked": false},
     {"name": "Three-Day Flame", "description": "Maintain a 3-day coding streak", "unlocked": false},
     {"name": "Bug Hunter", "description": "Find and fix 5 bugs with understanding", "unlocked": false},
@@ -103,11 +103,11 @@
   ],
   "projects": [
     {"order": 0, "branch": "00-rps-tournament", "name": "Rock Paper Scissors Tournament", "status": "available", "progress": 0, "boss": "The Pattern Warden"},
-    {"order": 1, "branch": "01-blackjack", "name": "Blackjack", "status": "active", "progress": 0, "boss": "The House", "mobs": [
-      {"name": "The Empty Table", "status": "available"},
-      {"name": "The Dealer's Hand", "status": "locked"},
-      {"name": "The Bust Hound", "status": "locked"},
-      {"name": "The Hitman", "status": "locked"},
+    {"order": 1, "branch": "01-blackjack", "name": "Blackjack", "status": "active", "progress": 38, "boss": "The House", "mobs": [
+      {"name": "The Empty Table", "status": "defeated"},
+      {"name": "The Dealer's Hand", "status": "defeated"},
+      {"name": "The Count Keeper", "status": "defeated"},
+      {"name": "The Hitman", "status": "available"},
       {"name": "The House Clerk", "status": "locked"},
       {"name": "The Rematch Shade", "status": "locked"}
     ]},
@@ -118,7 +118,10 @@
     {"order": 6, "branch": "06-gladiator-arena", "name": "Turn-based Gladiator Game", "status": "available", "progress": 0, "boss": "The Unbound"},
     {"order": 7, "branch": "07-football-manager", "name": "Mini Football Manager", "status": "available", "progress": 0, "boss": "The Invincibles"}
   ],
-  "current_quest": "Blackjack — enter The Empty Table and get the first terminal output running.",
-  "last_session": "Campaign expanded. Blackjack is selected as the first active project; no learning rewards have been claimed yet.",
-  "session_log": ["2026-09-14: Blackjack selected as the first active quest; campaign systems expanded before the first coding session."]
+  "current_quest": "Blackjack — Mob 3: The Hitman (repeatedly choose hit or stand).",
+  "last_session": "Reconciled Level 2 progress: cleared Mob 0, Mob 1, and Mob 2 cleanly. Approaching Mob 3.",
+  "session_log": [
+    "2026-09-14: Blackjack selected as the first active quest; campaign systems expanded before the first coding session.",
+    "2026-09-14: Reconciled Level 2 progress (50 XP, 55 coins, 3 mobs defeated)."
+  ]
 }
