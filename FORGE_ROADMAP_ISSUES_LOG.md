@@ -203,7 +203,7 @@ save custody or starting hosted player-state transport.
 
 | ID | Severity | Area | Finding | Status |
 |---|---|---|---|---|
-| F-041 | P2 | Same-origin checkout mailbox | Device IDs, cloud cursors and offline outboxes were keyed by user alone. Two local checkouts sharing a browser origin could therefore reuse recoverable sync metadata even though their state-service caches were separate. | Fixed locally: `/api/runtime` and `/api/campaign` expose an opaque SHA-derived checkout namespace; AppV2 resolves it before cloud auth restoration; `SyncEngine` partitions device IDs, cursors and outboxes by that namespace. Raw filesystem paths never enter device rows or cloud payloads. |
+| F-041 | P2 | Same-origin checkout mailbox | Device IDs, labels, cloud cursors and offline outboxes were keyed by user/browser storage alone. Two local checkouts sharing a browser origin could therefore reuse recoverable sync metadata even though their state-service caches were separate. | Fixed locally: `/api/runtime`, `/api/campaign` and the cheap revision probe expose an opaque SHA-derived checkout namespace; AppV2 resolves it before cloud auth restoration; `SyncEngine` partitions device IDs, labels, cursors and outboxes by that namespace. Raw filesystem paths never enter device rows or cloud payloads. |
 
 The namespace change deliberately does not merge or delete pre-existing
 legacy metadata. If the runtime cannot provide its identity, the engine keeps

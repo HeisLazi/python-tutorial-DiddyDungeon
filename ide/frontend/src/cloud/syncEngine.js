@@ -455,7 +455,7 @@ export class SyncEngine {
       profile = insertedProfile.data
     }
 
-    const label = normalizeDeviceLabel(readStorage(this.storage, DEVICE_LABEL_STORAGE_KEY) || DEFAULT_DEVICE_LABEL)
+    const label = normalizeDeviceLabel(readStorage(this.storage, this._deviceLabelKey()) || DEFAULT_DEVICE_LABEL)
     const devicePayload = {
       id: deviceIdForUser(user.id, this.storage, this.storageNamespace),
       user_id: user.id,
@@ -521,7 +521,7 @@ export class SyncEngine {
 
   async setDeviceLabel(value) {
     const label = normalizeDeviceLabel(value)
-    writeStorage(this.storage, DEVICE_LABEL_STORAGE_KEY, label)
+    writeStorage(this.storage, this._deviceLabelKey(), label)
     if (!this.session?.user || !this.client) {
       this.setState({ device: this.state.device ? { ...this.state.device, display_name: label } : this.state.device })
       return this.state
@@ -657,6 +657,10 @@ export class SyncEngine {
 
   _userId() {
     return typeof this.session?.user?.id === 'string' ? this.session.user.id : ''
+  }
+
+  _deviceLabelKey() {
+    return scopedStorageKey(DEVICE_LABEL_STORAGE_KEY, this.storageNamespace)
   }
 
   _outboxKey(userId = this._userId()) {

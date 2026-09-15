@@ -7,6 +7,7 @@ import {
   CHECKOUT_NAMESPACE_RE,
   DEFAULT_DEVICE_LABEL,
   DEVICE_IDS_STORAGE_KEY,
+  DEVICE_LABEL_STORAGE_KEY,
   SYNC_OUTBOX_STORAGE_KEY,
   SyncEngine,
   checkoutStorageNamespace,
@@ -236,6 +237,8 @@ test('same-user sync metadata is partitioned by an opaque checkout namespace', (
   const engineB = new SyncEngine({ storage, checkoutIdentity: namespaceB })
   assert.equal(engineA._outboxKey(userId), `${SYNC_OUTBOX_STORAGE_KEY}:${namespaceA}:${encodeURIComponent(userId)}`)
   assert.equal(engineB._outboxKey(userId), `${SYNC_OUTBOX_STORAGE_KEY}:${namespaceB}:${encodeURIComponent(userId)}`)
+  assert.equal(engineA._deviceLabelKey(), `${DEVICE_LABEL_STORAGE_KEY}:${namespaceA}`)
+  assert.equal(engineB._deviceLabelKey(), `${DEVICE_LABEL_STORAGE_KEY}:${namespaceB}`)
   assert.notEqual(engineA._outboxKey(userId), engineB._outboxKey(userId))
 })
 

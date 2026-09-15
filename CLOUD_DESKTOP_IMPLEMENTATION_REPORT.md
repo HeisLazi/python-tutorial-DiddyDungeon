@@ -758,13 +758,14 @@ and `CONNECTED` AI/shell surfaces without a browser refresh.
 
 ### Checkout-scoped sync metadata — 2026-09-15
 
-The local cloud-sync mailbox is now partitioned by an opaque checkout namespace.
+The local cloud-sync mailbox and friendly device label are now partitioned by
+an opaque checkout namespace.
 The backend derives a stable SHA-256 namespace from the platform/workspace
-roots and exposes only the `checkout-<hex>` value through `/api/runtime` and
-`/api/campaign`. React resolves that value before `SyncEngine` restores auth;
-the engine uses it for device IDs, cursor rows and offline outboxes. Supabase
-device records receive only the UUID device ID and friendly label, never a
-filesystem path.
+roots and exposes only the `checkout-<hex>` value through `/api/runtime`,
+`/api/campaign` and the cheap revision probe. React resolves that value before
+`SyncEngine` restores auth; the engine uses it for device IDs, labels, cursor
+rows and offline outboxes. Supabase device records receive only the UUID
+device ID and friendly label, never a filesystem path.
 
 This addresses the same-origin two-checkout metadata collision without moving
 or untracking the player's canonical `progress.json`, changing OneDrive

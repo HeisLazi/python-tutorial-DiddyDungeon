@@ -86,8 +86,8 @@ choosing the validated cloud copy or this device’s copy. Do not copy
 `progress.json` between devices by hand. The local gateway performs the
 compare-and-swap update and increments the canonical revision.
 
-The browser’s recoverable sync metadata (device identity, cursor and offline
-outbox) is partitioned by an opaque checkout namespace supplied by the local
+The browser’s recoverable sync metadata (device identity, friendly label,
+cursor and offline outbox) is partitioned by an opaque checkout namespace supplied by the local
 runtime. This keeps two same-origin checkouts from sharing a mailbox while
 keeping filesystem paths out of cloud/device records. Older unscoped browser
 keys are left untouched and are not silently attributed to a new checkout.
