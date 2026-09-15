@@ -929,8 +929,7 @@ export class SyncEngine {
 
   _isConflictError(error) {
     const code = String(error?.code || '').toLowerCase()
-    const message = String(error?.message || '').toLowerCase()
-    return code === '40001' || error?.status === 409 || message.includes('conflict') || message.includes('revision')
+    return code === '40001' || Number(error?.status) === 409
   }
 
   async _syncNow({ silent = false } = {}) {
@@ -1012,10 +1011,6 @@ export class SyncEngine {
       }
       if (local.revision > 0 && cloud.revision > 0 && isStarterProjection(cloud.state) && !isStarterProjection(local.projection)) {
         await pushLocal(cloud.revision, null, 'This device’s validated campaign was published to the starter cloud copy.')
-        return this.state
-      }
-      if (cloud.revision === 0 && local.revision > 0) {
-        await pushLocal(0)
         return this.state
       }
       return this._setConflict('Both local and cloud copies contain independent progress.', local, cloud)

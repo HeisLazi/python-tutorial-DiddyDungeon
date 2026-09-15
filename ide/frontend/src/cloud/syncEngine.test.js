@@ -137,6 +137,10 @@ function fakeCloudClient(user, { accessToken = 'test-access-token', cloudStore =
     from: table,
     async rpc(name, args) {
       if (name !== 'save_player_state') return { data: null, error: { message: 'unknown rpc' } }
+      const sourceDevice = deviceRows.get(args.source_device_id)
+      if (!sourceDevice || sourceDevice.user_id !== user.id) {
+        return { data: null, error: { code: '42501', message: 'source_device_id does not belong to the authenticated account' } }
+      }
       const existing = playerRows.get(user.id)
       const expected = Number(args.expected_revision)
       if (existing && existing.revision !== expected) return { data: null, error: { code: '40001', message: 'Cloud player state revision conflict' } }
@@ -350,7 +354,7 @@ test('player-state projection excludes local projects, Codex and cosmetic catalo
 
 test('two isolated engine instances sync through revision-aware push, pull, offline outbox and explicit conflict resolution', async () => {
   const config = resolveCloudConfig({ VITE_SUPABASE_URL: 'https://example.supabase.co', VITE_SUPABASE_ANON_KEY: 'public-anon-key' })
-  const cloudStore = { playerRows: new Map() }
+  const cloudStore = { playerRows: new Map(), deviceRows: new Map() }
   const userA = { id: '00000000-0000-4000-8000-000000000021', email: 'a@example.test' }
   const userB = { id: userA.id, email: userA.email }
   const storageA = new MemoryStorage()
@@ -445,6 +449,32 @@ test('silent background sync does not flap a settled HUD status', async () => {
   assert.equal(engine.getState().syncStatus, 'synced')
   unsubscribe()
   engine.dispose()
+})
+
+test('cloud writes require an account-owned device provenance row', async () => {
+  const config = resolveCloudConfig({ VITE_SUPABASE_URL: 'https://example.supabase.co', VITE_SUPABASE_ANON_KEY: 'public-anon-key' })
+  const user = { id: '00000000-0000-4000-8000-000000000061', email: 'device-owner@example.test' }
+  const cloudStore = { playerRows: new Map(), deviceRows: new Map() }
+  const local = fakeLocalApi(campaign(0), 0)
+  const client = fakeCloudClient(user, { cloudStore })
+  const engine = new SyncEngine({ config, clientFactory: () => client, storage: new MemoryStorage(), fetchImpl: local.fetch })
+
+  engine.initialize()
+  await engine.restoreSession()
+  const ownedDevice = engine.getState().device.id
+  assert.equal(cloudStore.deviceRows.get(ownedDevice).user_id, user.id)
+
+  engine.state = { ...engine.getState(), device: { ...engine.getState().device, id: '00000000-0000-4000-8000-000000000062' } }
+  await assert.rejects(() => engine._saveCloudState(0, campaign(1)), (error) => error.code === '42501')
+  engine.dispose()
+})
+
+test('only protocol conflict code or status enters conflict handling', () => {
+  const engine = new SyncEngine()
+  assert.equal(engine._isConflictError({ code: '40001' }), true)
+  assert.equal(engine._isConflictError({ status: 409 }), true)
+  assert.equal(engine._isConflictError({ message: 'revision metadata is missing' }), false)
+  assert.equal(engine._isConflictError({ message: 'conflict-looking validation failure' }), false)
 })
 
 test('a validated local cache bootstraps an untouched starter cloud copy', async () => {

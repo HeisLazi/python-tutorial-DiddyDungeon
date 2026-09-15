@@ -308,6 +308,7 @@ The mutation was disposable and both backends were stopped afterward.
 | F-048 | P3 | HUD sync layout stability | Revision polling and the initial campaign load could change stat text widths while nested icon/value spans participated in the pill layout, making the top bar visibly jump even after the SVG ownership fix. | Fixed locally: direct stat pills now reserve a compact minimum width/height, keep their value on one line, and reserve the SVG/value slots. Nested spans remain unstyled as pills; compact/adventurer selectors stay direct-child scoped. |
 | F-049 | P2 | Clean-install launch proof | The friend distribution path had source-custody/build evidence but no fresh checkout proof that the documented backend/frontend setup launches the Forge with both PTYs and live state projection. | Fixed locally for a clean ext4 WSL checkout: cloned pushed `8f4ec71`, installed `.venv` and frontend dependencies, built 1,344 modules, launched the stable-PTY runtime, and observed a gateway reward reach the HUD without refresh. Windows friend-machine packaging/Tauri remain separate gates. |
 | F-050 | P3 | Frontend dependency audit | The locked frontend tree reports two advisories in Monaco's DOMPurify path (one low and one moderate; no high/critical findings). | Decision recorded: retain `monaco-editor` 0.56.0 / DOMPurify 3.4.8 as an accepted low/moderate risk. The 0.53.0 “fix” is rejected because its vendored DOMPurify is older 3.1.7 and merely invisible to npm audit; revisit only when upstream bundles a version above 3.4.12. |
+| F-051 | P2 | Cloud write provenance | The security-definer player-state RPC accepted a caller-supplied device UUID without proving that the device belonged to the authenticated account; the client also classified any error message containing “revision” as a conflict. | Fixed locally: migration `20260916000100_player_state_device_ownership.sql` requires an account-owned `devices` row, the fake-cloud regression enforces the same boundary, conflict handling now accepts only SQLSTATE `40001`/HTTP `409`, and the unreachable cloud-revision-zero branch was removed. The migration is committed but intentionally not applied to Supabase in this checkpoint. |
 
 ## Verification update — 2026-09-15 — WSL launcher dependency preflight
 
@@ -603,3 +604,22 @@ focused launcher suite passed 7 tests and the full WSL backend suite passed
 69 tests. This closes the documentation/regression portion of F-033; the
 shared OneDrive environment remains intentionally bounded by the fail-fast
 launcher.
+
+## Review update — 2026-09-16 — Claude sync provenance follow-up
+
+Claude Sonnet performed a read-only review of the current sync engine, local
+state gateway and Supabase migrations/tests. It found no Milestone C/D scope
+drift and confirmed that the bounded projection allowlist is aligned across
+the JavaScript engine, Python gateway and SQL validator. Three low-severity
+gaps were identified: cloud writes did not bind `source_device_id` to the
+authenticated account, conflict detection relied on loose message text, and
+one revision-zero push branch was unreachable because the RPC creates its
+first row at revision 1.
+
+The provenance migration and frontend fixes were added without signing into
+or mutating Supabase. The frontend suite passed 33 tests after adding fake
+cloud coverage for foreign-device rejection and strict conflict detection.
+The SQL regression now creates account-owned devices and attempts a
+cross-account device UUID before the valid CAS write. The real linked SQL
+test was deliberately not run because applying or seeding hosted state is
+still an explicit Milestone C gate.

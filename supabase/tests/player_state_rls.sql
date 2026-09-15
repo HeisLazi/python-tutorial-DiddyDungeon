@@ -6,6 +6,11 @@ values
   ('00000000-0000-4000-8000-000000000101', 'player-state-a@example.test', '{"display_name":"State A"}'::jsonb),
   ('00000000-0000-4000-8000-000000000102', 'player-state-b@example.test', '{"display_name":"State B"}'::jsonb);
 
+insert into public.devices (id, user_id, display_name)
+values
+  ('00000000-0000-0000-0000-000000000111', '00000000-0000-4000-8000-000000000101', 'State A device'),
+  ('00000000-0000-0000-0000-000000000112', '00000000-0000-4000-8000-000000000102', 'State B device');
+
 insert into public.player_state (user_id, state, revision, device_id)
 values
   ('00000000-0000-4000-8000-000000000101', '{"player":{"level":1,"xp":0,"xp_next":100},"homestead":{"owned_cosmetics":["cursor-basic"],"equipped":{"cursor":"cursor-basic"}}}'::jsonb, 0, '00000000-0000-4000-8000-000000000111'),
@@ -36,6 +41,17 @@ begin
   begin
     update public.player_state set state = '{}'::jsonb where user_id = '00000000-0000-4000-8000-000000000101';
     raise exception 'RLS failure: direct player-state update was accepted';
+  exception when others then
+    if sqlstate <> '42501' then raise; end if;
+  end;
+
+  begin
+    perform public.save_player_state(
+      0,
+      '{"player":{"level":2,"xp":5,"xp_next":100}}'::jsonb,
+      '00000000-0000-0000-0000-000000000112'
+    );
+    raise exception 'Provenance failure: User A used User B device';
   exception when others then
     if sqlstate <> '42501' then raise; end if;
   end;

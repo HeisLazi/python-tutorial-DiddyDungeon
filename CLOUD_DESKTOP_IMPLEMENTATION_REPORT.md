@@ -1086,3 +1086,24 @@ cross-platform `node_modules` tree. The focused launcher suite passed 7 tests;
 the full WSL backend suite passed 69 tests. The shared OneDrive limitation
 remains bounded by the launcher's fail-fast check and was not papered over with
 source changes.
+
+### Cloud write provenance follow-up — 2026-09-16
+
+Claude Sonnet reviewed the current local sync engine, state gateway and
+Supabase migrations read-only. It confirmed the bounded player-state
+projection is aligned across JavaScript, Python and SQL, then identified a
+small provenance gap: the security-definer `save_player_state` RPC accepted a
+caller-supplied `source_device_id` without checking that the UUID belonged to
+the authenticated account. The same pass found loose frontend conflict
+classification based on arbitrary message text and an unreachable revision-
+zero push branch.
+
+The new migration
+`supabase/migrations/20260916000100_player_state_device_ownership.sql` now
+requires an account-owned `public.devices` row before any player-state write.
+The fake-cloud test boundary enforces the same rule, the frontend accepts
+only SQLSTATE `40001` or HTTP `409` as a sync conflict, and the dead branch was
+removed. The Supabase migration is committed for the next approved deploy but
+was not applied or seeded in this checkpoint. The frontend suite passes 33
+tests, including foreign-device rejection and strict conflict handling; the
+SQL test is updated but remains unapplied pending the real Milestone C gate.
