@@ -795,3 +795,25 @@ confirms the committed frontend builds on a Linux filesystem; F-033 remains
 an environment cleanup/onboarding gate only for the shared OneDrive
 `node_modules` tree, which is missing the Linux Rollup optional package. The
 player checkout's dependencies were not replaced.
+
+### Campaign loading guard — 2026-09-15
+
+The live current-branch tab exposed a misleading failure mode when a frontend
+was pointed at a stale or unavailable backend: before `/api/campaign` returned,
+React rendered the starter-looking Level 1 / zero XP / zero coin defaults. That
+could look like lost progress even while the canonical state remained intact.
+
+The Forge now keeps the PTY/editor shell usable but marks the HUD and quest
+banner `SYNCING`, shows an explicit campaign-waiting projection for RPG screens,
+and leaves Settings available for account recovery. Character, Quest Journal,
+Codex, Homestead, Dungeon and Practice do not render starter data until a real
+campaign projection arrives. This is presentation-only; it does not write
+progress, reset a run, or remount either PTY. Issue F-042 is recorded in the
+persistent roadmap issue log.
+
+The focused gate now passes 31 frontend tests, the full WSL backend suite passes
+56 tests, and the Windows Vite build transforms 1,344 modules successfully.
+Manual browser validation used click/scroll/type K&M only (no Playwright): the
+loaded current runtime showed Level 2 / 50 XP / 55 coins, The Hitman at 8/8,
+three cleared mobs, three Codex encounter records, and both shell/AI surfaces
+`CONNECTED` without a refresh or progression mutation.
