@@ -472,8 +472,9 @@ rewards and PTY preservation.
 
 A fresh ext4 WSL clone of pushed `8f4ec71` followed the onboarding setup:
 backend venv requirements, frontend `npm ci`, and Vite production build (1,344
-modules). The stable launcher path started the backend on 7360 and Vite on
-5196 with backend reload disabled. Browser K&M showed the Forge branch identity,
+modules). The delegated `ide/quest.py` launch path (the target of the Windows
+wrapper) started the backend on 7360 and Vite on 5196 with backend reload
+disabled. Browser K&M showed the Forge branch identity,
 both shell/AI PTY labels `CONNECTED`, and the expected starter Level 1 state.
 
 While that tab stayed open, a trusted in-process state-service reward advanced

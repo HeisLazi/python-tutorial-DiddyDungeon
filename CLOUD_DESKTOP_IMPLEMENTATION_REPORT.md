@@ -976,8 +976,9 @@ full WSL backend suite passed 67 tests, and the Windows Vite build transformed
 
 A new ext4 WSL clone of pushed `8f4ec71` followed the friend setup contract:
 backend venv requirements, frontend `npm ci`, and a 1,344-module Vite build.
-The stable launcher path ran the backend on 7360 and Vite on 5196 with reload
-disabled. Browser K&M showed `feature/cloud-sync-desktop`, both shell/AI PTYs
+The delegated `ide/quest.py` launch path (the target of the Windows wrapper)
+ran the backend on 7360 and Vite on 5196 with reload disabled. Browser K&M
+showed `feature/cloud-sync-desktop`, both shell/AI PTYs
 `CONNECTED`, the starter Level 1 projection and Quest Journal. A trusted
 state-service reward then changed the HUD from `0 c` to `1 c` live at revision 1
 without a refresh. The disposable runtime and exact ext4 checkout were removed
