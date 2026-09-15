@@ -4,11 +4,12 @@ import json
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 from fastapi.testclient import TestClient
 
 from ide.server import app_v2
-from ide.server.state import state_custody_report
+from ide.server.state import CUSTODY_CONFIRMATION_TOKEN, state_custody_report
 
 
 class ProgressRevisionTests(unittest.TestCase):
@@ -119,6 +120,55 @@ class ProgressRevisionTests(unittest.TestCase):
             self.assertTrue(conflict["approval_required"])
             self.assertEqual(conflict["source_revision"], 3)
             self.assertEqual(conflict["destination_revision"], 99)
+
+    def test_custody_migration_route_is_opt_in_and_uses_derived_destination(self):
+        original_root = app_v2.REPO_ROOT
+        original_workspace = app_v2.WORKSPACE
+        original_progress = app_v2.PROGRESS_PATH
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory) / "platform"
+            workspace = Path(directory) / "quest"
+            local_root = Path(directory) / "local-state"
+            root.mkdir()
+            workspace.mkdir()
+            canonical = root / "progress.json"
+            canonical.write_text(json.dumps({"meta": {"revision": 3}, "player": {"coins": 55}}), encoding="utf-8")
+            app_v2.REPO_ROOT = root
+            app_v2.WORKSPACE = workspace
+            app_v2.PROGRESS_PATH = canonical
+            try:
+                client = TestClient(app_v2.app, base_url="http://127.0.0.1")
+                headers = {"host": "127.0.0.1"}
+                denied = client.post(
+                    "/api/state/custody/migrate",
+                    headers=headers,
+                    json={"expected_source_revision": 3, "confirmation_token": "NOPE"},
+                )
+                self.assertEqual(denied.status_code, 403)
+
+                with patch.dict("os.environ", {"QUESTLAB_LOCAL_STATE_ROOT": str(local_root)}):
+                    migrated = client.post(
+                        "/api/state/custody/migrate",
+                        headers=headers,
+                        json={
+                            "expected_source_revision": 3,
+                            "confirmation_token": CUSTODY_CONFIRMATION_TOKEN,
+                        },
+                    )
+                body = migrated.json()
+                self.assertEqual(migrated.status_code, 200)
+                self.assertEqual(body["status"], "migrated")
+                self.assertTrue(body["migration_write_performed"])
+                self.assertEqual(body["revision"], 3)
+                marker_path = Path(body["marker_path"])
+                destination_path = marker_path.parent / "progress.json"
+                self.assertNotEqual(destination_path, canonical)
+                self.assertEqual(json.loads(marker_path.read_text(encoding="utf-8"))["source_revision"], 3)
+                self.assertEqual(canonical.read_bytes(), destination_path.read_bytes())
+            finally:
+                app_v2.REPO_ROOT = original_root
+                app_v2.WORKSPACE = original_workspace
+                app_v2.PROGRESS_PATH = original_progress
 
 
 if __name__ == "__main__":

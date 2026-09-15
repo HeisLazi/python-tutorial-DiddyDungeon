@@ -22,7 +22,7 @@ from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
 from ide.server.security import DEFAULT_FRONTEND_PORT
-from ide.server.state import MAX_IDENTIFIER_LENGTH, MAX_REASON_LENGTH
+from ide.server.state import CUSTODY_CONFIRMATION_TOKEN, MAX_IDENTIFIER_LENGTH, MAX_REASON_LENGTH
 
 
 def _port(value: str) -> int:
@@ -83,6 +83,17 @@ def build_parser() -> argparse.ArgumentParser:
     subparsers.add_parser("campaign", help="read the current canonical campaign projection")
     subparsers.add_parser("runtime", help="read checkout, path and command health for the running Forge")
     subparsers.add_parser("custody", help="preview the opt-in per-device state custody destination")
+    custody_migrate = subparsers.add_parser(
+        "custody-migrate",
+        help="copy the reviewed canonical snapshot to the derived per-device cache",
+    )
+    custody_migrate.add_argument("--expected-revision", type=int, required=True)
+    custody_migrate.add_argument(
+        "--confirm",
+        choices=(CUSTODY_CONFIRMATION_TOKEN,),
+        required=True,
+        help=f"explicit confirmation token: {CUSTODY_CONFIRMATION_TOKEN}",
+    )
     return parser
 
 
@@ -148,6 +159,41 @@ def _get(port: int, path: str) -> int:
     return 0
 
 
+def _custody_migrate(port: int, expected_revision: int, confirmation_token: str) -> int:
+    body = json.dumps(
+        {
+            "expected_source_revision": expected_revision,
+            "confirmation_token": confirmation_token,
+        }
+    ).encode("utf-8")
+    request = Request(
+        f"http://127.0.0.1:{port}/api/state/custody/migrate",
+        data=body,
+        headers={
+            "Content-Type": "application/json",
+            "Origin": f"http://127.0.0.1:{os.getenv('QUESTLAB_FRONTEND_PORT', DEFAULT_FRONTEND_PORT)}",
+        },
+        method="POST",
+    )
+    try:
+        with urlopen(request, timeout=5) as response:
+            result = json.loads(response.read().decode("utf-8"))
+    except HTTPError as error:
+        try:
+            body = error.read().decode("utf-8")
+            detail = json.loads(body).get("detail", body)
+        except (OSError, UnicodeDecodeError, json.JSONDecodeError):
+            detail = error.reason
+        print(f"custody migration rejected: {detail}", file=sys.stderr)
+        return 1
+    except (URLError, TimeoutError, ClientHTTPException, OSError) as error:
+        print(f"could not reach local Forge backend: {error}", file=sys.stderr)
+        return 1
+
+    print(json.dumps(result, indent=2, ensure_ascii=False))
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
@@ -191,6 +237,8 @@ def main(argv: list[str] | None = None) -> int:
             return _get(args.backend_port, "/api/runtime")
         if args.command == "custody":
             return _get(args.backend_port, "/api/state/custody")
+        if args.command == "custody-migrate":
+            return _custody_migrate(args.backend_port, args.expected_revision, args.confirm)
     except argparse.ArgumentTypeError as exc:
         parser.error(str(exc))
     return _reserved(args.command)

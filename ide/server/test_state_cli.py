@@ -4,6 +4,7 @@ import unittest
 from unittest.mock import patch
 
 from ide import state_cli
+from ide.server.state import CUSTODY_CONFIRMATION_TOKEN
 
 
 class StateCliTests(unittest.TestCase):
@@ -60,6 +61,24 @@ class StateCliTests(unittest.TestCase):
                 ((7444, "/api/state/custody"), {}),
             ],
         )
+
+    @patch("ide.state_cli._custody_migrate", return_value=0)
+    def test_custody_migration_requires_reviewed_revision_and_token(self, migrate):
+        self.assertEqual(
+            state_cli.main(
+                [
+                    "--backend-port",
+                    "7444",
+                    "custody-migrate",
+                    "--expected-revision",
+                    "4",
+                    "--confirm",
+                    CUSTODY_CONFIRMATION_TOKEN,
+                ]
+            ),
+            0,
+        )
+        migrate.assert_called_once_with(7444, 4, CUSTODY_CONFIRMATION_TOKEN)
 
 
 if __name__ == "__main__":

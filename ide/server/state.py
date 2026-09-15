@@ -48,6 +48,8 @@ MAX_DUNGEON_DIFFICULTY = 10
 DUNGEON_SCORE_BY_DIFFICULTY = (0, 10, 15, 20, 30, 45, 60, 80, 105, 135, 170)
 DUNGEON_COIN_BY_DIFFICULTY = (0, 5, 8, 11, 15, 20, 26, 33, 41, 50, 60)
 DUNGEON_REST_HEAL = 30
+CUSTODY_CONFIRMATION_TOKEN = "MIGRATE_LOCAL_STATE"
+CUSTODY_MARKER_VERSION = 1
 DUNGEON_MARKET_CATALOG: tuple[dict[str, Any], ...] = (
     {"id": "dungeon-heal", "name": "Field Ration", "price": 12, "kind": "heal", "description": "Restore 20 run HP."},
     {"id": "dungeon-ward", "name": "Ember Ward", "price": 24, "kind": "armor", "armor": "Ember Ward", "description": "Reduce the next counterattack."},
@@ -580,6 +582,141 @@ class LocalStateService:
         with self._progress_lock:
             progress = self._load_locked()
             return self._sync_projection(progress), self._metadata_from_progress(progress)
+
+    def migrate_local_state(
+        self,
+        destination_path: Path,
+        *,
+        expected_source_revision: int,
+        confirmation_token: str,
+        forbidden_paths: tuple[Path, ...] = (),
+    ) -> dict[str, Any]:
+        """Copy the canonical snapshot to an explicit, derived local cache.
+
+        This is deliberately not a normal progression mutation: the source
+        JSON is copied byte-for-byte, its revision and events do not change,
+        and the tracked source is never deleted. The caller must supply the
+        fixed confirmation token and the revision it reviewed. A divergent or
+        symlinked destination fails closed; no newest-file heuristic exists.
+        """
+
+        expected = self._integer(expected_source_revision, "expected_source_revision", minimum=0)
+        if confirmation_token != CUSTODY_CONFIRMATION_TOKEN:
+            raise StateCommandError("Explicit custody confirmation is required", status_code=403)
+
+        source = self.progress_path.resolve()
+        raw_destination = Path(destination_path).expanduser()
+        if raw_destination.is_symlink():
+            raise StateCommandError("Custody destination may not be a symlink", status_code=409)
+        destination = raw_destination.resolve(strict=False)
+        forbidden = {Path(path).expanduser().resolve(strict=False) for path in forbidden_paths}
+        if destination == source or destination in forbidden:
+            raise StateCommandError("Custody destination must be separate from canonical and legacy state", status_code=409)
+        if self._path_has_symlink_component(raw_destination.parent):
+            raise StateCommandError("Custody destination parent may not contain a symlink", status_code=409)
+
+        marker = destination.with_name(f".{destination.name}.custody.json")
+        if marker.is_symlink():
+            raise StateCommandError("Custody marker may not be a symlink", status_code=409)
+
+        with self._progress_lock:
+            try:
+                source_bytes = source.read_bytes()
+                source_value = json.loads(source_bytes.decode("utf-8"))
+            except (FileNotFoundError, json.JSONDecodeError, UnicodeDecodeError, OSError) as exc:
+                raise StateCommandError("Canonical progress.json could not be loaded", status_code=500) from exc
+            if not isinstance(source_value, dict) or not source_value:
+                raise StateCommandError("Canonical progress.json must be a non-empty object", status_code=500)
+
+            actual = self._revision(source_value)
+            if actual != expected:
+                raise StateCommandError(
+                    f"Canonical state changed during custody review (expected revision {expected}, found {actual})",
+                    status_code=409,
+                )
+            source_digest = hashlib.sha256(source_bytes).hexdigest()
+
+            if raw_destination.exists():
+                if not raw_destination.is_file():
+                    raise StateCommandError("Custody destination must be a regular file", status_code=409)
+                try:
+                    destination_bytes = raw_destination.read_bytes()
+                except OSError as exc:
+                    raise StateCommandError("Custody destination could not be read", status_code=409) from exc
+                destination_digest = hashlib.sha256(destination_bytes).hexdigest()
+                if destination_digest != source_digest:
+                    raise StateCommandError(
+                        "Custody destination already contains a different snapshot; review it before retrying",
+                        status_code=409,
+                    )
+                marker_written = self._ensure_custody_marker(
+                    marker,
+                    source_digest=source_digest,
+                    source_revision=actual,
+                    destination_digest=destination_digest,
+                    destination_revision=actual,
+                )
+                return {
+                    "ok": True,
+                    "action": "migrate_local_state",
+                    "status": "already-local",
+                    "changed": False,
+                    "revision": actual,
+                    "source_revision": actual,
+                    "destination_revision": actual,
+                    "source_digest": source_digest,
+                    "destination_digest": destination_digest,
+                    "marker_path": str(marker),
+                    "marker_written": marker_written,
+                    "migration_write_performed": False,
+                }
+
+            if marker.exists():
+                raise StateCommandError("Custody marker exists without its destination; review it before retrying", status_code=409)
+
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            temporary = destination.with_name(f".{destination.name}.{uuid.uuid4().hex}.tmp")
+            try:
+                with temporary.open("xb") as handle:
+                    handle.write(source_bytes)
+                    handle.flush()
+                    os.fsync(handle.fileno())
+                temporary.replace(destination)
+            except OSError as exc:
+                try:
+                    temporary.unlink(missing_ok=True)
+                except OSError:
+                    pass
+                raise StateCommandError("Custody destination could not be written atomically", status_code=500) from exc
+
+            destination_digest = hashlib.sha256(source_bytes).hexdigest()
+            try:
+                self._write_custody_marker(
+                    marker,
+                    source_digest=source_digest,
+                    source_revision=actual,
+                    destination_digest=destination_digest,
+                    destination_revision=actual,
+                )
+            except StateCommandError:
+                # Keep the exact copied snapshot recoverable; a subsequent
+                # explicit retry sees it as already-local and can repair the
+                # marker after review.
+                raise
+            return {
+                "ok": True,
+                "action": "migrate_local_state",
+                "status": "migrated",
+                "changed": True,
+                "revision": actual,
+                "source_revision": actual,
+                "destination_revision": actual,
+                "source_digest": source_digest,
+                "destination_digest": destination_digest,
+                "marker_path": str(marker),
+                "marker_written": True,
+                "migration_write_performed": True,
+            }
 
     def apply_cloud_projection(
         self,
@@ -1624,6 +1761,101 @@ class LocalStateService:
         temp = path.with_suffix(path.suffix + ".tmp")
         temp.write_text(json.dumps(progress, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
         temp.replace(path)
+
+    @staticmethod
+    def _path_has_symlink_component(path: Path) -> bool:
+        current = path
+        while True:
+            if current.is_symlink():
+                return True
+            parent = current.parent
+            if parent == current:
+                return False
+            current = parent
+
+    @staticmethod
+    def _custody_marker_payload(
+        *,
+        source_digest: str,
+        source_revision: int,
+        destination_digest: str,
+        destination_revision: int,
+    ) -> dict[str, Any]:
+        return {
+            "schema_version": CUSTODY_MARKER_VERSION,
+            "source_digest": source_digest,
+            "source_revision": source_revision,
+            "destination_digest": destination_digest,
+            "destination_revision": destination_revision,
+            "recorded_at": _utc_now(),
+        }
+
+    @classmethod
+    def _write_custody_marker(
+        cls,
+        marker: Path,
+        *,
+        source_digest: str,
+        source_revision: int,
+        destination_digest: str,
+        destination_revision: int,
+    ) -> None:
+        if marker.is_symlink() or marker.exists():
+            raise StateCommandError("Custody marker already exists; review it before retrying", status_code=409)
+        marker.parent.mkdir(parents=True, exist_ok=True)
+        temporary = marker.with_name(f".{marker.name}.{uuid.uuid4().hex}.tmp")
+        payload = cls._custody_marker_payload(
+            source_digest=source_digest,
+            source_revision=source_revision,
+            destination_digest=destination_digest,
+            destination_revision=destination_revision,
+        )
+        try:
+            with temporary.open("x", encoding="utf-8") as handle:
+                json.dump(payload, handle, indent=2, ensure_ascii=False)
+                handle.write("\n")
+                handle.flush()
+                os.fsync(handle.fileno())
+            temporary.replace(marker)
+        except OSError as exc:
+            try:
+                temporary.unlink(missing_ok=True)
+            except OSError:
+                pass
+            raise StateCommandError("Custody marker could not be written atomically", status_code=500) from exc
+
+    @classmethod
+    def _ensure_custody_marker(
+        cls,
+        marker: Path,
+        *,
+        source_digest: str,
+        source_revision: int,
+        destination_digest: str,
+        destination_revision: int,
+    ) -> bool:
+        if marker.is_symlink():
+            raise StateCommandError("Custody marker may not be a symlink", status_code=409)
+        if marker.exists():
+            existing = _read_state_file(marker)
+            expected = {
+                "schema_version": CUSTODY_MARKER_VERSION,
+                "source_digest": source_digest,
+                "source_revision": source_revision,
+                "destination_digest": destination_digest,
+                "destination_revision": destination_revision,
+            }
+            if not isinstance(existing, dict) or any(existing.get(key) != value for key, value in expected.items()):
+                raise StateCommandError("Custody marker disagrees with the snapshot; review it before retrying", status_code=409)
+            return False
+        cls._write_custody_marker(
+            marker,
+            source_digest=source_digest,
+            source_revision=source_revision,
+            destination_digest=destination_digest,
+            destination_revision=destination_revision,
+        )
+        return True
 
     def _persist_locked(
         self,

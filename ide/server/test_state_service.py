@@ -10,7 +10,7 @@ from pathlib import Path
 from fastapi.testclient import TestClient
 
 from ide.server import app_v2
-from ide.server.state import LocalStateService, StateCommandError, legacy_state_report
+from ide.server.state import CUSTODY_CONFIRMATION_TOKEN, LocalStateService, StateCommandError, legacy_state_report
 
 
 def fixture_progress() -> dict:
@@ -92,6 +92,76 @@ class StateServiceBehaviorTests(unittest.TestCase):
             )
         self.assertEqual(arbitrary.exception.status_code, 422)
         self.assertEqual(self.read(path), before)
+
+    def test_custody_migration_is_copy_once_revision_stable_and_conflict_safe(self):
+        service, path = self.make_service()
+        with tempfile.TemporaryDirectory() as directory:
+            destination = Path(directory) / "device" / "progress.json"
+            source_bytes = path.read_bytes()
+
+            migrated = service.migrate_local_state(
+                destination,
+                expected_source_revision=4,
+                confirmation_token=CUSTODY_CONFIRMATION_TOKEN,
+                forbidden_paths=(Path(directory) / "legacy" / "progress.json",),
+            )
+            self.assertEqual(migrated["status"], "migrated")
+            self.assertTrue(migrated["migration_write_performed"])
+            self.assertEqual(destination.read_bytes(), source_bytes)
+            self.assertEqual(migrated["revision"], 4)
+            self.assertTrue(Path(migrated["marker_path"]).is_file())
+            self.assertEqual(self.read(path)["meta"]["revision"], 4)
+
+            repeated = service.migrate_local_state(
+                destination,
+                expected_source_revision=4,
+                confirmation_token=CUSTODY_CONFIRMATION_TOKEN,
+            )
+            self.assertEqual(repeated["status"], "already-local")
+            self.assertFalse(repeated["migration_write_performed"])
+
+            destination.write_text(json.dumps({"meta": {"revision": 99}}), encoding="utf-8")
+            with self.assertRaises(StateCommandError) as conflict:
+                service.migrate_local_state(
+                    destination,
+                    expected_source_revision=4,
+                    confirmation_token=CUSTODY_CONFIRMATION_TOKEN,
+                )
+            self.assertEqual(conflict.exception.status_code, 409)
+
+            with self.assertRaises(StateCommandError) as stale:
+                service.migrate_local_state(
+                    Path(directory) / "other.json",
+                    expected_source_revision=3,
+                    confirmation_token=CUSTODY_CONFIRMATION_TOKEN,
+                )
+            self.assertEqual(stale.exception.status_code, 409)
+
+    def test_custody_migration_rejects_wrong_token_and_symlink_destination(self):
+        service, path = self.make_service()
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            with self.assertRaises(StateCommandError) as token:
+                service.migrate_local_state(
+                    root / "device" / "progress.json",
+                    expected_source_revision=4,
+                    confirmation_token="NOPE",
+                )
+            self.assertEqual(token.exception.status_code, 403)
+
+            destination = root / "device" / "progress.json"
+            destination.parent.mkdir()
+            try:
+                destination.symlink_to(path)
+            except (OSError, NotImplementedError):
+                self.skipTest("symlinks are unavailable on this filesystem")
+            with self.assertRaises(StateCommandError) as symlink:
+                service.migrate_local_state(
+                    destination,
+                    expected_source_revision=4,
+                    confirmation_token=CUSTODY_CONFIRMATION_TOKEN,
+                )
+            self.assertEqual(symlink.exception.status_code, 409)
 
     def test_system_reward_is_internal_only_and_does_not_grant_from_http_actor(self):
         service, path = self.make_service()

@@ -166,6 +166,13 @@ class TutorWrite(BaseModel):
     content: str
 
 
+class StateCustodyMigrationRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    expected_source_revision: int = Field(ge=0)
+    confirmation_token: str = Field(min_length=1, max_length=64)
+
+
 class FormatRequest(BaseModel):
     path: str
     content: str
@@ -780,6 +787,23 @@ def state_custody():
     """Return a read-only preview of the opt-in local custody destination."""
 
     return local_state_custody_report()
+
+
+@app.post("/api/state/custody/migrate")
+def migrate_state_custody(payload: StateCustodyMigrationRequest):
+    """Copy the reviewed canonical snapshot to the derived local cache."""
+
+    destination = proposed_local_state_path()
+    forbidden_paths = (PROGRESS_PATH, legacy_progress_path())
+    try:
+        return STATE_SERVICE.migrate_local_state(
+            destination,
+            expected_source_revision=payload.expected_source_revision,
+            confirmation_token=payload.confirmation_token,
+            forbidden_paths=forbidden_paths,
+        )
+    except StateCommandError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
 
 
 @app.get("/api/state/sync")
