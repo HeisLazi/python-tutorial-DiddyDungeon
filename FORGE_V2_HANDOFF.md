@@ -69,7 +69,7 @@ The controlled future PYR agent may write examples/exercises there. Required pro
 
 - Forge editor and normal terminal;
 - independent AI terminal;
-- legacy Tutor Notebook endpoint (hidden from normal navigation and file tree);
+- Campaign Tutor Notebook endpoint (dedicated destination; hidden from the normal project file tree);
 - Quest Journal;
 - Codex;
 - Character sheet;
