@@ -844,3 +844,18 @@ typed state-service projection mutation advanced device A to revision 1 while
 device B stayed at revision 0. Both disposable backends were stopped after the
 check. This is an isolation proof, not hosted sync proof, so F-039 and the
 Milestone C mailbox gate remain open.
+
+### WSL launcher dependency preflight — 2026-09-15
+
+The guarded `ide/quest.py` launcher now detects a WSL frontend whose shared
+`node_modules` tree lacks a native `@rollup/rollup-linux-*` optional package.
+It exits before starting the backend/frontend pair with a direct instruction
+to run `npm ci` inside WSL or use a clean Linux filesystem. The check is
+read-only and does not replace dependencies, move `progress.json`, or touch
+existing PTYs. A contract test covers both missing and present native package
+fixtures. This bounds F-033 without pretending that the shared OneDrive tree
+is clean-install safe.
+
+Post-change gates: 59 WSL backend tests, 31 frontend tests, targeted Python
+compilation, and a green Windows Vite production build transforming 1,344
+modules. No Playwright was used.

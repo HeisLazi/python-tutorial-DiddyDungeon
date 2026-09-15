@@ -127,7 +127,7 @@ processes and their PTYs were not restarted.
 | F-030 | P2 | Dungeon progression | The local loop lacked adaptive focus, room transitions, rest/market actions and a bounded leaderboard. | Fixed locally: adaptive focus uses only recorded Codex weakness/incorrect-result evidence; encounters, rest, market, death, banked runs and leaderboard summaries are canonical and answer-free. Hosted transport remains gated. |
 | F-031 | P2 | Runtime checkout | An older long-lived 5173 process can still show a different checkout if it was started before the launcher fix. | Fixed for new launches: `ide/quest.py` exports the expected branch and `/api/runtime` exposes workspace/repo/canonical paths plus branch mismatch health. Existing 5173 is intentionally left running and remains a user restart/launch choice. |
 | F-032 | P3 | Codex usability | The Codex needed a searchable book/page projection with encounter records and bounded player notes. | Fixed: source/route tests and K&M verified search, concept pages, validated encounter records, and a live saved field note (`CODEX NOTE SAVED`) on the disposable copy. |
-| F-033 | P2 | WSL frontend packaging | WSL Vite cannot resolve the Linux Rollup optional package from the shared Windows `node_modules`; this is an environment/dependency-install issue, not a source failure. | Open but narrowed: a clean ext4 archive passed WSL `npm ci` and `npm run build`; install Linux dependencies in a disposable WSL checkout rather than reusing the shared OneDrive tree. |
+| F-033 | P2 | WSL frontend packaging | WSL Vite cannot resolve the Linux Rollup optional package from the shared Windows `node_modules`; this is an environment/dependency-install issue, not a source failure. | Open but bounded: a clean ext4 archive passed WSL `npm ci` and `npm run build`; the launcher now fails early with an actionable Linux Rollup dependency message instead of starting a broken runtime. Install Linux dependencies in a disposable WSL checkout rather than reusing the shared OneDrive tree. |
 | F-034 | P2 | Secondary review | Claude Code was previously unauthenticated in the WSL CLI despite the separate desktop login. | Fixed for this checkpoint: authenticated WSL Claude Code completed a read-only roadmap/source review and returned the next-slice plan. It did not edit files or touch `progress.json`/`tutor.py`; its findings are recorded below and remain secondary review, not approval. |
 | F-035 | P3 | Dev HMR lifecycle | Editing the running Vite source caused one disposable-runtime terminal websocket reconnect; normal revision polling/navigation did not remount it. | Open dev-only limitation: use the built/started runtime for the acceptance gate. The user's existing PTYs were never restarted; the current disposable children remained stable after HMR settled. |
 
@@ -303,3 +303,17 @@ The mutation was disposable and both backends were stopped afterward.
 | ID | Severity | Area | Finding | Status |
 |---|---|---|---|---|
 | F-044 | P2 | Two-device local isolation | Slice 7 needed evidence that separate local roots do not share a save before hosted sync is attempted. | Verified locally with two disposable state services and K&M on the clean runtime. This proves isolation only; hosted mailbox synchronization and real save-custody migration remain open. |
+
+## Verification update — 2026-09-15 — WSL launcher dependency preflight
+
+The guarded launcher now checks for a native `@rollup/rollup-linux-*` optional
+package when it is running under WSL. If the shared OneDrive dependency tree
+was installed on Windows, it exits before spawning either the backend or the
+frontend and explains that `npm ci` must run inside the WSL checkout (or a
+clean Linux filesystem). This is a fail-fast guard only: it does not mutate
+`node_modules`, the canonical save, or any existing PTY.
+
+The updated contract test covers both a missing package and a native package
+using isolated temporary trees. The full gate is now 59 WSL backend tests, 31
+frontend tests, a green Windows Vite production build (1,344 modules), and
+successful Python compilation. No Playwright was used.

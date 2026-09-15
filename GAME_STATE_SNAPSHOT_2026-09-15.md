@@ -7,7 +7,7 @@ remaining release gates. It is a snapshot, not a progression mutation.
 ## Source baseline
 
 - Branch: `feature/cloud-sync-desktop`
-- Local and remote HEAD at snapshot time: `5add443b5e845de4a399cab105727f0d8e06d6bb`
+- Local and remote HEAD at snapshot time: `75a8fe1` (`system: guard WSL launches from incompatible Rollup tree`)
 - Canonical checkout: `/mnt/c/Users/lazar/OneDrive/Documents/ChatGPT/Python Quest Lab`
 - The checkout has user-owned working-tree state in `progress.json` and an
   untracked root `tutor.py`. Neither was staged, overwritten, or used as test
@@ -71,7 +71,7 @@ invented. The workspace/legacy save remains evidence only.
 
 ## Latest verification evidence
 
-- WSL backend suite: 58 tests passing.
+- WSL backend suite: 59 tests passing.
 - Frontend source/runtime suite: 31 tests passing.
 - Windows Vite production build: passed.
 - Clean ext4 archive: WSL `npm ci` plus Vite build passed after 1,344 modules.
@@ -92,7 +92,8 @@ invented. The workspace/legacy save remains evidence only.
 - F-025/F-031: the old 5173 process remains an explicitly user-managed stale
   checkout; new launches use the guarded launcher;
 - F-033: shared OneDrive `node_modules` still needs Linux-local installation,
-  although clean ext4 packaging is proven;
+  although clean ext4 packaging is proven; the guarded launcher now fails
+  early with an actionable native-Rollup message;
 - F-034/F-035: WSL Claude CLI auth and dev-only HMR limitation;
 - F-039: tracked canonical cache plus OneDrive third-writer custody remains an
   explicit migration decision, not a silent move;

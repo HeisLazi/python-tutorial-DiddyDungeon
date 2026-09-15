@@ -189,7 +189,9 @@ Playwright was used.
 A fresh ext4 archive also passed WSL `npm ci` plus `npm run build` (1,344
 modules). The remaining F-033 packaging risk is limited to the shared OneDrive
 `node_modules` tree; friends should install dependencies inside their Linux
-checkout rather than reuse a Windows tree.
+checkout rather than reuse a Windows tree. The guarded launcher now detects a
+missing native Rollup optional package under WSL and exits before spawning a
+broken runtime with that remediation, without touching the save or PTYs.
 
 The current local Slice 7 checkpoint also exposes a read-only custody preview
 (`questlab-state custody`) and has a two-root disposable isolation proof. These
