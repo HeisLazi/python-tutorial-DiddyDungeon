@@ -2,6 +2,9 @@ from __future__ import annotations
 
 import unittest
 from pathlib import Path
+from unittest.mock import patch
+
+from ide import quest
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -33,6 +36,20 @@ class LauncherContractTests(unittest.TestCase):
         self.assertIn("legacy evidence", onboarding)
         self.assertIn("Do not copy", onboarding)
         self.assertIn("two-device sync acceptance", onboarding)
+
+    @patch("ide.quest.running_under_wsl", return_value=True)
+    def test_wsl_launcher_detects_missing_native_rollup_optional_dependency(self, _running):
+        import tempfile
+
+        with self.subTest("missing package"), tempfile.TemporaryDirectory() as directory:
+            frontend = Path(directory)
+            self.assertFalse(quest.linux_rollup_optional_dependency_ready(frontend))
+
+        with self.subTest("clean package"), tempfile.TemporaryDirectory() as directory:
+            frontend = Path(directory)
+            package = frontend / "node_modules" / "@rollup" / "rollup-linux-x64-gnu"
+            package.mkdir(parents=True)
+            self.assertTrue(quest.linux_rollup_optional_dependency_ready(frontend))
 
 
 if __name__ == "__main__":

@@ -72,6 +72,24 @@ def running_under_wsl() -> bool:
         return False
 
 
+def linux_rollup_optional_dependency_ready(frontend: Path) -> bool:
+    """Return whether a WSL frontend has a native Rollup optional package."""
+
+    if not running_under_wsl():
+        return True
+    rollup_root = frontend / "node_modules" / "@rollup"
+    return any(
+        (rollup_root / package).is_dir()
+        for package in (
+            "rollup-linux-x64-gnu",
+            "rollup-linux-x64-musl",
+            "rollup-linux-arm64-gnu",
+            "rollup-linux-arm64-musl",
+            "rollup-linux-riscv64-gnu",
+        )
+    )
+
+
 def open_local_browser(url: str) -> bool:
     """Open the Windows browser when launched from WSL, else use Python's browser helper."""
     if running_under_wsl():
@@ -111,6 +129,11 @@ def main():
         raise SystemExit(f"Workspace does not exist: {workspace}")
     if not (FRONTEND / "node_modules").exists():
         raise SystemExit("Frontend dependencies are missing. Run: cd ide/frontend && npm install")
+    if not linux_rollup_optional_dependency_ready(FRONTEND):
+        raise SystemExit(
+            "WSL frontend dependencies are a Windows node_modules tree without a Linux Rollup optional package. "
+            "Run npm ci inside this WSL checkout (or use a clean Linux filesystem) before launching Forge."
+        )
     if not shutil.which("npm"):
         raise SystemExit("npm is not on PATH")
 
