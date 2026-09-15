@@ -6,6 +6,7 @@ param(
     [ValidateRange(1, 65535)]
     [int]$FrontendPort = 5173,
     [switch]$NoBrowser,
+    [switch]$MigrateLocalState,
     [switch]$AllowOtherBranch,
     [switch]$AllowStaleCheckout
 )
@@ -70,6 +71,7 @@ if (-not $repoWsl -or -not $workspaceWsl) {
 
 $command = "cd $(Quote-BashLiteral $repoWsl) && exec .venv/bin/python ide/quest.py --workspace $(Quote-BashLiteral $workspaceWsl) --backend-port $BackendPort --frontend-port $FrontendPort"
 if ($NoBrowser) { $command += ' --no-browser' }
+if ($MigrateLocalState) { $command += ' --use-local-state' }
 
 Write-Host "Quest Lab checkout: $branch"
 Write-Host "Canonical state:    $repoWsl/progress.json"
@@ -77,6 +79,7 @@ Write-Host "Quest workspace:    $workspaceWsl"
 Write-Host "Expected branch:    $expectedBranch"
 if ($upstreamRef) { Write-Host "Upstream:           $upstreamRef" }
 Write-Host 'PTY mode:            stable (backend reload disabled)'
+if ($MigrateLocalState) { Write-Host 'Local custody:       review preview and type MIGRATE_LOCAL_STATE when prompted' }
 Write-Host ''
 
 & wsl.exe -d Ubuntu -- bash -lc $command

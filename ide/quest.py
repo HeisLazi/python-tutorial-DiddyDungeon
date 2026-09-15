@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import shutil
 import signal
@@ -24,6 +25,16 @@ def parse_args():
         help="Folder the editor/terminal may access. A git worktree for the active quest is recommended.",
     )
     parser.add_argument("--no-browser", action="store_true", help="Do not automatically open the browser")
+    parser.add_argument(
+        "--use-local-state",
+        action="store_true",
+        help="review and explicitly migrate to this checkout's per-device local state before launching",
+    )
+    parser.add_argument(
+        "--confirm-local-state",
+        action="store_true",
+        help="accept the reviewed custody migration without an interactive token prompt",
+    )
     parser.add_argument("--backend-port", type=int, default=7331, help="Preferred backend port (auto-falls forward if busy)")
     parser.add_argument("--frontend-port", type=int, default=5173, help="Preferred frontend port (auto-falls forward if busy)")
     parser.add_argument(
@@ -98,6 +109,65 @@ def linux_rollup_optional_dependency_ready(frontend: Path) -> bool:
     )
 
 
+def prepare_local_state(workspace: Path, *, use_local_state: bool, confirm_local_state: bool) -> Path:
+    """Review and, only when explicitly requested, switch to local custody."""
+
+    canonical = REPO_ROOT / "progress.json"
+    if not use_local_state:
+        return canonical
+
+    # Importing the server here keeps the normal launcher path lightweight and
+    # lets this preflight use exactly the same destination derivation and state
+    # service as the running backend, without starting a second server.
+    from ide.server import app_v2
+    from ide.server.state import CUSTODY_CONFIRMATION_TOKEN, StateCommandError
+
+    original_root = app_v2.REPO_ROOT
+    original_workspace = app_v2.WORKSPACE
+    original_progress = app_v2.PROGRESS_PATH
+    app_v2.REPO_ROOT = REPO_ROOT
+    app_v2.WORKSPACE = workspace
+    app_v2.PROGRESS_PATH = canonical
+    try:
+        report = app_v2.local_state_custody_report()
+        print("\nLocal state custody preview:")
+        print(json.dumps(report, indent=2, ensure_ascii=False))
+        status = report.get("status")
+        if status in {"no-source-found", "conflict"}:
+            raise SystemExit(f"Local custody cannot proceed while preview status is '{status}'.")
+        if status == "current":
+            return canonical
+        if status != "already-local":
+            approved = confirm_local_state
+            if not approved and sys.stdin.isatty():
+                response = input(f"Type {CUSTODY_CONFIRMATION_TOKEN} to copy this snapshot: ").strip()
+                approved = response == CUSTODY_CONFIRMATION_TOKEN
+            if not approved:
+                raise SystemExit(
+                    "Custody migration was not confirmed. Review the preview and rerun with "
+                    "--confirm-local-state or an interactive token prompt."
+                )
+            expected_revision = report.get("source_revision")
+            if not isinstance(expected_revision, int) or expected_revision < 0:
+                raise SystemExit("Custody preview did not contain a valid source revision.")
+            try:
+                result = app_v2.STATE_SERVICE.migrate_local_state(
+                    app_v2.proposed_local_state_path(),
+                    expected_source_revision=expected_revision,
+                    confirmation_token=CUSTODY_CONFIRMATION_TOKEN,
+                    forbidden_paths=(app_v2.PROGRESS_PATH, app_v2.legacy_progress_path()),
+                )
+            except StateCommandError as exc:
+                raise SystemExit(f"Custody migration rejected: {exc.detail}") from exc
+            print("Local state custody result:")
+            print(json.dumps(result, indent=2, ensure_ascii=False))
+        return app_v2.proposed_local_state_path()
+    finally:
+        app_v2.REPO_ROOT = original_root
+        app_v2.WORKSPACE = original_workspace
+        app_v2.PROGRESS_PATH = original_progress
+
+
 def open_local_browser(url: str) -> bool:
     """Open the Windows browser when launched from WSL, else use Python's browser helper."""
     if running_under_wsl():
@@ -132,6 +202,8 @@ def open_local_browser(url: str) -> bool:
 
 def main():
     args = parse_args()
+    if args.confirm_local_state and not args.use_local_state:
+        raise SystemExit("--confirm-local-state requires --use-local-state")
     workspace = Path(args.workspace).expanduser().resolve()
     if not workspace.exists() or not workspace.is_dir():
         raise SystemExit(f"Workspace does not exist: {workspace}")
@@ -157,6 +229,13 @@ def main():
     env["QUESTLAB_BACKEND_PORT"] = str(backend_port)
     env["QUESTLAB_FRONTEND_PORT"] = str(frontend_port)
     env["QUESTLAB_EXPECTED_BRANCH"] = "feature/cloud-sync-desktop"
+    if args.use_local_state:
+        local_state_path = prepare_local_state(
+            workspace,
+            use_local_state=True,
+            confirm_local_state=args.confirm_local_state,
+        )
+        env["QUESTLAB_STATE_PATH"] = str(local_state_path)
 
     backend_cmd = [
         sys.executable,
