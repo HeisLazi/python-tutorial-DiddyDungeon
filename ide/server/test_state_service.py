@@ -246,6 +246,75 @@ class StateServiceBehaviorTests(unittest.TestCase):
         self.assertTrue(report["manual_approval_required"])
         self.assertEqual({item["field"] for item in report["differences"]}, {"level", "xp", "mobs_defeated"})
 
+    def test_sync_projection_is_allowlisted_and_preserves_local_learning_data(self):
+        service, path = self.make_service()
+        state = self.read(path)
+        state["equipment"] = {"armor": "leather-guard", "trinket": "spark", "secret": "local"}
+        state["companion"] = {"name": "PYR", "form": "Tiny Code-Flame", "level": 2, "bond": 3}
+        state["homestead"]["purchase_history"] = [{"item_id": "cursor-basic"}]
+        state["codex"] = {"encounters": [{"mob_name": "The Empty Table"}]}
+        state["skills"] = [{"concept": "Variables", "shield": {"tier": "bronze"}}]
+        service.persist(state)
+
+        projection, metadata = service.sync_snapshot()
+        self.assertEqual(metadata["revision"], 5)
+        self.assertEqual(projection["player"]["coins"], 50)
+        self.assertEqual(projection["equipment"]["armor"], "leather-guard")
+        self.assertNotIn("secret", projection["equipment"])
+        self.assertEqual(projection["companion"]["bond"], 3)
+        self.assertNotIn("purchase_history", projection["homestead"])
+        self.assertNotIn("catalog", projection["homestead"])
+        self.assertNotIn("codex", projection)
+        self.assertNotIn("skills", projection)
+
+    def test_valid_cloud_projection_bumps_revision_and_keeps_non_sync_domains(self):
+        service, path = self.make_service()
+        state = self.read(path)
+        state["codex"] = {"encounters": [{"mob_name": "local note"}]}
+        state["projects"][0]["progress"] = 42
+        path.write_text(json.dumps(state), encoding="utf-8")
+        result = service.apply_cloud_projection(
+            {
+                "player": {"level": 2, "xp": 4, "xp_next": 100, "coins": 75, "hp": 88, "max_hp": 100},
+                "equipment": {"armor": "leather-guard"},
+                "companion": {"name": "PYR", "level": 2},
+                "homestead": {"owned_cosmetics": ["cursor-basic", "hud-forge"], "equipped": {"cursor": "cursor-basic"}},
+            },
+            expected_revision=4,
+            cloud_revision=8,
+        )
+        after = self.read(path)
+        self.assertTrue(result["changed"])
+        self.assertEqual(result["revision"], 5)
+        self.assertEqual(result["cloud_revision"], 8)
+        self.assertEqual(after["player"]["coins"], 75)
+        self.assertEqual(after["equipment"]["armor"], "leather-guard")
+        self.assertEqual(after["homestead"]["owned_cosmetics"], ["cursor-basic", "hud-forge"])
+        self.assertEqual(after["codex"]["encounters"][0]["mob_name"], "local note")
+        self.assertEqual(after["projects"][0]["progress"], 42)
+        self.assertEqual(after["state_events"][-1]["action"], "sync_apply_cloud")
+
+    def test_cloud_projection_rejects_stale_revision_unknown_fields_and_invalid_equipment(self):
+        service, path = self.make_service()
+        before = self.read(path)
+        with self.assertRaises(StateCommandError) as stale:
+            service.apply_cloud_projection({"player": {"coins": 99}}, expected_revision=3, cloud_revision=2)
+        self.assertEqual(stale.exception.status_code, 409)
+        self.assertEqual(self.read(path), before)
+
+        invalid = [
+            {"player": {"coins": 99, "secret": True}},
+            {"player": {"xp": 100, "xp_next": 100}},
+            {"player": {"xp": 100}},
+            {"player": {"hp": 101}},
+            {"homestead": {"owned_cosmetics": ["cursor-basic"], "equipped": {"cursor": "hud-forge"}}},
+            {"unknown": {}},
+        ]
+        for projection in invalid:
+            with self.assertRaises(StateCommandError):
+                service.apply_cloud_projection(projection, expected_revision=4, cloud_revision=2)
+        self.assertEqual(self.read(path), before)
+
 
 class StateGatewayHttpTests(unittest.TestCase):
     def with_temp_progress(self):
@@ -368,6 +437,39 @@ class StateGatewayHttpTests(unittest.TestCase):
         self.assertEqual(report.status_code, 200)
         self.assertIn("revision", revision.json())
         self.assertTrue(report.json()["manual_approval_required"])
+
+    def test_sync_endpoints_expose_allowlisted_projection_and_compare_and_swap(self):
+        path = self.with_temp_progress()
+        client = self.client()
+        snapshot = client.get("/api/state/sync", headers={"host": "127.0.0.1"})
+        self.assertEqual(snapshot.status_code, 200)
+        body = snapshot.json()
+        self.assertEqual(body["revision"], 4)
+        self.assertNotIn("projects", body["projection"])
+        self.assertNotIn("catalog", body["projection"]["homestead"])
+
+        applied = client.post(
+            "/api/state/sync/apply",
+            headers={"host": "127.0.0.1"},
+            json={
+                "expected_revision": 4,
+                "cloud_revision": 3,
+                "projection": {"player": {"coins": 77}},
+            },
+        )
+        self.assertEqual(applied.status_code, 200)
+        self.assertEqual(applied.json()["revision"], 5)
+        stale = client.post(
+            "/api/state/sync/apply",
+            headers={"host": "127.0.0.1"},
+            json={
+                "expected_revision": 4,
+                "cloud_revision": 4,
+                "projection": {"player": {"coins": 88}},
+            },
+        )
+        self.assertEqual(stale.status_code, 409)
+        self.assertEqual(json.loads(path.read_text(encoding="utf-8"))["player"]["coins"], 77)
 
 
 if __name__ == "__main__":

@@ -50,6 +50,22 @@ test('campaign projections use revision polling and state-service events', () =>
   assert.doesNotMatch(views, /mob\.encounter \|\| 'This encounter has not revealed/)
 })
 
+test('bounded player-state sync stays behind one engine with revision/conflict controls', () => {
+  const app = source('../AppV2.jsx')
+  const views = source('../RpgViews.jsx')
+  const engine = source('./syncEngine.js')
+
+  assert.match(app, /syncEngine\.observeCampaign\(next\)/)
+  assert.match(app, /resolveCloudConflict/)
+  assert.match(views, /Use cloud copy/)
+  assert.match(views, /Keep this device/)
+  assert.match(engine, /\/api\/state\/sync/)
+  assert.match(engine, /save_player_state/)
+  assert.match(engine, /SYNC_OUTBOX_STORAGE_KEY/)
+  assert.match(engine, /resolveConflict\(choice\)/)
+  assert.match(engine, /window\.setInterval\(\(\) => \{[\s\S]*void this\.sync\(\)/)
+})
+
 test('top HUD SVG icons are nested content, not nested stat pills', () => {
   const styles = source('../styles.css')
   const v2 = source('../v2.css')

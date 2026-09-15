@@ -8,6 +8,7 @@ import {
   SyncEngine,
   deviceIdForUser,
   normalizeDeviceLabel,
+  projectPlayerState,
 } from './syncEngine.js'
 
 class MemoryStorage {
@@ -24,9 +25,10 @@ class MemoryStorage {
   }
 }
 
-function fakeCloudClient(user, { accessToken = 'test-access-token' } = {}) {
+function fakeCloudClient(user, { accessToken = 'test-access-token', cloudStore = null } = {}) {
   const profileRows = new Map()
   const deviceRows = new Map()
+  const playerRows = cloudStore?.playerRows || new Map()
   const writes = []
   let session = {
     access_token: accessToken,
@@ -46,6 +48,7 @@ function fakeCloudClient(user, { accessToken = 'test-access-token' } = {}) {
         return builder
       },
       maybeSingle: async () => {
+        if (name === 'player_state') return { data: playerRows.get(user.id) ?? null, error: null }
         const rows = name === 'profiles' ? profileRows : deviceRows
         const value = filter ? rows.get(filter.value) ?? null : null
         return { data: value, error: null }
@@ -95,8 +98,66 @@ function fakeCloudClient(user, { accessToken = 'test-access-token' } = {}) {
       },
     },
     from: table,
+    async rpc(name, args) {
+      if (name !== 'save_player_state') return { data: null, error: { message: 'unknown rpc' } }
+      const existing = playerRows.get(user.id)
+      const expected = Number(args.expected_revision)
+      if (existing && existing.revision !== expected) return { data: null, error: { code: '40001', message: 'Cloud player state revision conflict' } }
+      if (!existing && expected !== 0) return { data: null, error: { code: '40001', message: 'Cloud player state revision conflict' } }
+      const now = '2026-09-14T00:00:00.000Z'
+      const row = {
+        user_id: user.id,
+        state: JSON.parse(JSON.stringify(args.next_state)),
+        revision: existing ? existing.revision + 1 : 1,
+        device_id: args.source_device_id,
+        created_at: existing?.created_at || now,
+        updated_at: now,
+      }
+      playerRows.set(user.id, row)
+      return { data: row, error: null }
+    },
   }
 }
+
+const clone = (value) => JSON.parse(JSON.stringify(value))
+
+function fakeLocalApi(initialProgress, initialRevision = 0) {
+  let progress = clone(initialProgress)
+  let revision = initialRevision
+  let unavailable = false
+  return {
+    setCampaign(nextProgress, nextRevision) {
+      progress = clone(nextProgress)
+      revision = nextRevision
+    },
+    setUnavailable(value) {
+      unavailable = value
+    },
+    getProgress() {
+      return clone(progress)
+    },
+    fetch: async (url, options = {}) => {
+      if (unavailable) throw new Error('offline')
+      if (url === '/api/state/sync') return { ok: true, status: 200, json: async () => ({ projection: projectPlayerState(progress), revision, metadata: { revision } }) }
+      if (url !== '/api/state/sync/apply') return { ok: false, status: 404, json: async () => ({ detail: 'not found' }) }
+      const body = JSON.parse(options.body || '{}')
+      if (body.expected_revision !== revision) return { ok: false, status: 409, json: async () => ({ detail: 'local revision conflict' }) }
+      const incoming = projectPlayerState(body.projection)
+      for (const domain of ['player', 'equipment', 'companion']) {
+        if (incoming[domain] && Object.keys(incoming[domain]).length) progress[domain] = { ...(progress[domain] || {}), ...incoming[domain] }
+      }
+      if (incoming.homestead) progress.homestead = { ...(progress.homestead || {}), ...incoming.homestead }
+      revision += 1
+      progress.meta = { ...(progress.meta || {}), revision }
+      return { ok: true, status: 200, json: async () => ({ ok: true, changed: true, revision, projection: projectPlayerState(progress) }) }
+    },
+  }
+}
+
+const campaign = (coins, level = 1) => ({
+  player: { level, xp: coins, xp_next: 100, lifetime_xp: coins, coins, hp: 100, max_hp: 100 },
+  homestead: { owned_cosmetics: ['cursor-basic'], equipped: { cursor: 'cursor-basic' } },
+})
 
 test('device labels are friendly names and per-account IDs never contain filesystem paths', () => {
   const storage = new MemoryStorage()
@@ -159,4 +220,99 @@ test('sign-out returns to local Forge without deleting the local device identity
   assert.equal(engine.getState().authStatus, 'signed-out')
   assert.equal(engine.getState().syncStatus, 'local')
   assert.equal(deviceIdForUser(user.id, storage), deviceId)
+})
+
+test('player-state projection excludes local projects, Codex and cosmetic catalog data', () => {
+  const projection = projectPlayerState({
+    player: { level: 3, coins: 20, secret: 'local' },
+    projects: [{ name: 'Blackjack' }],
+    codex: { encounters: [{ mob_name: 'hidden' }] },
+    skills: [{ concept: 'Variables' }],
+    homestead: {
+      owned_cosmetics: ['cursor-basic', 'cursor-basic', 7],
+      equipped: { cursor: 'cursor-basic', secret: 'local' },
+      catalog: [{ id: 'rare-secret' }],
+      purchase_history: [{ item_id: 'cursor-basic' }],
+    },
+  })
+  assert.deepEqual(projection.player, { level: 3, coins: 20 })
+  assert.deepEqual(projection.homestead, { owned_cosmetics: ['cursor-basic'], equipped: { cursor: 'cursor-basic' } })
+  assert.equal(Object.prototype.hasOwnProperty.call(projection, 'projects'), false)
+  assert.equal(Object.prototype.hasOwnProperty.call(projection, 'codex'), false)
+  assert.equal(Object.prototype.hasOwnProperty.call(projection.homestead, 'catalog'), false)
+})
+
+test('two isolated engine instances sync through revision-aware push, pull, offline outbox and explicit conflict resolution', async () => {
+  const config = resolveCloudConfig({ VITE_SUPABASE_URL: 'https://example.supabase.co', VITE_SUPABASE_ANON_KEY: 'public-anon-key' })
+  const cloudStore = { playerRows: new Map() }
+  const userA = { id: '00000000-0000-4000-8000-000000000021', email: 'a@example.test' }
+  const userB = { id: userA.id, email: userA.email }
+  const storageA = new MemoryStorage()
+  const storageB = new MemoryStorage()
+  const localA = fakeLocalApi(campaign(5), 1)
+  const localB = fakeLocalApi(campaign(0), 0)
+  const clientA = fakeCloudClient(userA, { cloudStore })
+  const clientB = fakeCloudClient(userB, { cloudStore })
+  const engineA = new SyncEngine({ config, clientFactory: () => clientA, storage: storageA, fetchImpl: localA.fetch })
+  const engineB = new SyncEngine({ config, clientFactory: () => clientB, storage: storageB, fetchImpl: localB.fetch })
+
+  engineA.initialize()
+  await engineA.restoreSession()
+  engineA.observeCampaign({ revision: 1, progress: localA.getProgress() })
+  await engineA.sync()
+  assert.equal(engineA.getState().syncStatus, 'synced')
+  assert.equal(cloudStore.playerRows.get(userA.id).state.player.coins, 5)
+
+  engineB.initialize()
+  await engineB.restoreSession()
+  await engineB.sync()
+  assert.equal(engineB.getState().syncStatus, 'synced')
+  assert.equal(localB.getProgress().player.coins, 5)
+
+  const changedA = campaign(12, 2)
+  localA.setCampaign(changedA, 2)
+  engineA.observeCampaign({ revision: 2, progress: changedA })
+  clientA.from = () => { throw new Error('offline') }
+  await engineA.sync()
+  assert.equal(engineA.getState().pendingChanges, 1)
+  assert.equal(engineA.getState().syncStatus, 'error')
+  clientA.from = clientB.from
+  // Restore the original cloud table reader for profile A while retaining the shared row store.
+  const cloudReaderA = fakeCloudClient(userA, { cloudStore })
+  clientA.from = cloudReaderA.from
+  clientA.rpc = cloudReaderA.rpc
+  await engineA.sync()
+  assert.equal(engineA.getState().syncStatus, 'synced')
+  assert.equal(cloudStore.playerRows.get(userA.id).state.player.coins, 12)
+
+  const cloudRevisionAfterPush = cloudStore.playerRows.get(userA.id).revision
+  localA.setCampaign(changedA, 3)
+  engineA.observeCampaign({ revision: 3, progress: changedA })
+  await engineA.sync()
+  assert.equal(cloudStore.playerRows.get(userA.id).revision, cloudRevisionAfterPush)
+
+  const cloudRow = cloudStore.playerRows.get(userA.id)
+  cloudStore.playerRows.set(userA.id, { ...cloudRow, revision: cloudRow.revision + 1, state: { ...cloudRow.state, player: { ...cloudRow.state.player, coins: 99 } } })
+  const localConflict = campaign(20, 3)
+  localA.setCampaign(localConflict, 4)
+  engineA.observeCampaign({ revision: 4, progress: localConflict })
+  await engineA.sync()
+  assert.equal(engineA.getState().syncStatus, 'conflict')
+  await engineA.resolveConflict('cloud')
+  assert.equal(engineA.getState().syncStatus, 'synced')
+  assert.equal(localA.getProgress().player.coins, 99)
+
+  const keepLocal = campaign(77, 4)
+  localA.setCampaign(keepLocal, 6)
+  engineA.observeCampaign({ revision: 6, progress: keepLocal })
+  const newerCloudRow = cloudStore.playerRows.get(userA.id)
+  cloudStore.playerRows.set(userA.id, { ...newerCloudRow, revision: newerCloudRow.revision + 1, state: { ...newerCloudRow.state, player: { ...newerCloudRow.state.player, coins: 66 } } })
+  await engineA.sync()
+  assert.equal(engineA.getState().syncStatus, 'conflict')
+  await engineA.resolveConflict('local')
+  assert.equal(engineA.getState().syncStatus, 'synced')
+  assert.equal(cloudStore.playerRows.get(userA.id).state.player.coins, 77)
+
+  engineA.dispose()
+  engineB.dispose()
 })

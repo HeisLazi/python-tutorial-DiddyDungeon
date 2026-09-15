@@ -333,6 +333,15 @@ React only renders the committed result. The gateway records a concise
 private prompts. Forge polls the canonical revision and refreshes every RPG
 surface without restarting either PTY.
 
+When a confirmed account is signed in, the dedicated `SyncEngine` is the only
+browser cloud-state boundary. Its first transport slice projects player
+progression/HP, armor/trinket/title, companion state and Homestead
+ownership/equipment through the local gateway and the revision-checked
+`save_player_state` RPC. Projects, Codex/encounter history, skills/mastery,
+activity and cosmetic catalogs remain local until separately allowlisted;
+offline changes stay in a bounded per-account outbox and never bypass the
+state service.
+
 When you invent a reward or propose a mechanic, update `CANON_LEDGER.md` as required.
 
 If you cannot safely write to `main`, do not pretend the update happened. Give the player a concise exact summary of the state/ledger changes earned.

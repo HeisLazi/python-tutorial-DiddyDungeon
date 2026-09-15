@@ -439,6 +439,7 @@ function AppV2() {
     }
     campaignRevisionRef.current = nextRevision
     setCampaign(next)
+    syncEngine.observeCampaign(next)
   }
 
   const refreshCampaign = async ({ silent = false } = {}) => {
@@ -874,6 +875,7 @@ function AppV2() {
   const signUp = ({ email, password, displayName }) => accountAction(() => syncEngine.signUp(email, password, displayName), 'Account created. Check your email if confirmation is required.')
   const signOut = () => accountAction(() => syncEngine.signOut(), 'Signed out. Forge stays available locally.')
   const saveDeviceLabel = (label) => accountAction(() => syncEngine.setDeviceLabel(label), 'Device name saved.')
+  const resolveCloudConflict = (choice) => accountAction(() => syncEngine.resolveConflict(choice), choice === 'cloud' ? 'Cloud campaign copy applied.' : 'This device campaign copy published.')
 
   const gridStyle = {
     gridTemplateColumns: `48px ${leftWidth}px 5px minmax(420px, 1fr) 5px ${rightWidth}px`,
@@ -912,7 +914,7 @@ function AppV2() {
           <span className="optional-stat" data-campaign-stat="bosses" data-campaign-stat-value={stats.bosses_defeated ?? 0}>⚔ {stats.bosses_defeated ?? 0}</span>
           <span className="optional-stat">DEV {activity.activity_score ?? 0}</span>
           <span
-            className={`cloud-pill ${cloudState.error ? 'error' : cloudState.configured ? 'ready' : 'local'}`}
+            className={`cloud-pill ${cloudState.error || cloudState.syncStatus === 'conflict' ? 'error' : cloudState.configured ? 'ready' : 'local'}`}
             title={cloudState.detail}
           >
             {cloudState.label}
@@ -1051,6 +1053,7 @@ function AppV2() {
               onSignUp={signUp}
               onSignOut={signOut}
               onDeviceLabelSave={saveDeviceLabel}
+              onResolveConflict={resolveCloudConflict}
             />
           </section>
         )}

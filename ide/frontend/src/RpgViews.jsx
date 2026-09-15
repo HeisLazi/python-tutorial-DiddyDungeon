@@ -446,7 +446,7 @@ function Homestead({ progress, revision, purchaseCosmetic, equipCosmetic, busy }
   )
 }
 
-function AccountPanel({ account, busy, notice, onSignIn, onSignUp, onSignOut, onDeviceLabelSave }) {
+function AccountPanel({ account, busy, notice, onSignIn, onSignUp, onSignOut, onDeviceLabelSave, onResolveConflict }) {
   const [formMode, setFormMode] = useState('signin')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -475,7 +475,7 @@ function AccountPanel({ account, busy, notice, onSignIn, onSignUp, onSignOut, on
     <section className="game-card settings-card account-card">
       <div className="card-heading">
         <span>ACCOUNT &amp; DEVICE</span>
-        <b className={`account-state ${account.error ? 'error' : signedIn ? 'signed-in' : 'local'}`}>{account.label}</b>
+        <b className={`account-state ${account.error || account.syncStatus === 'conflict' ? 'error' : signedIn ? 'signed-in' : 'local'}`}>{account.label}</b>
       </div>
 
       {!configured && (
@@ -487,7 +487,7 @@ function AccountPanel({ account, busy, notice, onSignIn, onSignUp, onSignOut, on
 
       {configured && !signedIn && (
         <>
-          <p className="settings-note">Sign in on each device to share your Quest Lab identity. Progress remains local until Sync Engine v1.</p>
+          <p className="settings-note">Sign in on each device to share your Quest Lab identity. Campaign fields sync through the controlled state gateway.</p>
           <form className="account-form" onSubmit={submit}>
             {formMode === 'signup' && (
               <label><span>Display name</span><input value={displayName} onChange={(event) => setDisplayName(event.target.value)} maxLength={80} placeholder="Lazi" autoComplete="nickname" /></label>
@@ -505,6 +505,17 @@ function AccountPanel({ account, busy, notice, onSignIn, onSignUp, onSignOut, on
       {configured && signedIn && (
         <div className="account-signed-in">
           <div className="account-identity"><strong>{account.profile?.display_name || account.user.email}</strong><span>{account.user.email}</span></div>
+          <p className="settings-note">Campaign sync: <strong>{account.label}</strong>{account.pendingChanges ? ` · ${account.pendingChanges} queued change${account.pendingChanges === 1 ? '' : 's'}` : ''}</p>
+          {account.conflict && (
+            <div className="cloud-conflict-banner" role="alert">
+              <strong>Campaign sync needs a choice.</strong>
+              <span>Local revision {account.conflict.localRevision ?? '—'} and cloud revision {account.conflict.cloudRevision ?? '—'} differ.</span>
+              <div className="account-actions">
+                <button type="button" disabled={busy} onClick={async () => { try { await onResolveConflict('cloud') } catch {} }}>Use cloud copy</button>
+                <button type="button" disabled={busy} onClick={async () => { try { await onResolveConflict('local') } catch {} }}>Keep this device</button>
+              </div>
+            </div>
+          )}
           <form className="device-form" onSubmit={async (event) => { event.preventDefault(); try { await onDeviceLabelSave(deviceLabel) } catch {} }}>
             <label><span>This device</span><input value={deviceLabel} onChange={(event) => setDeviceLabel(event.target.value)} maxLength={80} /></label>
             <button type="submit" disabled={busy}>Save device name</button>
@@ -518,7 +529,7 @@ function AccountPanel({ account, busy, notice, onSignIn, onSignUp, onSignOut, on
   )
 }
 
-function SettingsScreen({ preferences, setters, resetLayout, equipped, account, accountBusy, accountNotice, onSignIn, onSignUp, onSignOut, onDeviceLabelSave, revision }) {
+function SettingsScreen({ preferences, setters, resetLayout, equipped, account, accountBusy, accountNotice, onSignIn, onSignUp, onSignOut, onDeviceLabelSave, onResolveConflict, revision }) {
   const { editorFontSize, terminalFontSize, hudDensity, animations } = preferences
   return (
     <div className="game-screen-scroll settings-screen" data-campaign-revision={revision}>
@@ -527,7 +538,7 @@ function SettingsScreen({ preferences, setters, resetLayout, equipped, account, 
       </div>
 
       <div className="screen-grid two">
-        <AccountPanel account={account} busy={accountBusy} notice={accountNotice} onSignIn={onSignIn} onSignUp={onSignUp} onSignOut={onSignOut} onDeviceLabelSave={onDeviceLabelSave} />
+        <AccountPanel account={account} busy={accountBusy} notice={accountNotice} onSignIn={onSignIn} onSignUp={onSignUp} onSignOut={onSignOut} onDeviceLabelSave={onDeviceLabelSave} onResolveConflict={onResolveConflict} />
         <section className="game-card settings-card">
           <div className="card-heading"><span>EDITOR</span></div>
           <label><span>Editor font size</span><b>{editorFontSize}px</b><input type="range" min="11" max="22" value={editorFontSize} onChange={(event) => setters.setEditorFontSize(Number(event.target.value))} /></label>
@@ -552,11 +563,11 @@ function SettingsScreen({ preferences, setters, resetLayout, equipped, account, 
   )
 }
 
-export function GameScreen({ activeView, progress, revision, encounter, purchaseCosmetic, equipCosmetic, busy, preferences, setters, resetLayout, account, accountBusy, accountNotice, onSignIn, onSignUp, onSignOut, onDeviceLabelSave }) {
+export function GameScreen({ activeView, progress, revision, encounter, purchaseCosmetic, equipCosmetic, busy, preferences, setters, resetLayout, account, accountBusy, accountNotice, onSignIn, onSignUp, onSignOut, onDeviceLabelSave, onResolveConflict }) {
   if (activeView === 'quests') return <QuestJournal progress={progress} revision={revision} encounter={encounter} />
   if (activeView === 'codex') return <Codex progress={progress} revision={revision} />
   if (activeView === 'character') return <CharacterSheet progress={progress} revision={revision} />
   if (activeView === 'homestead') return <Homestead progress={progress} revision={revision} purchaseCosmetic={purchaseCosmetic} equipCosmetic={equipCosmetic} busy={busy} />
-  if (activeView === 'settings') return <SettingsScreen preferences={preferences} setters={setters} resetLayout={resetLayout} equipped={progress.homestead?.equipped || {}} account={account} accountBusy={accountBusy} accountNotice={accountNotice} onSignIn={onSignIn} onSignUp={onSignUp} onSignOut={onSignOut} onDeviceLabelSave={onDeviceLabelSave} revision={revision} />
+  if (activeView === 'settings') return <SettingsScreen preferences={preferences} setters={setters} resetLayout={resetLayout} equipped={progress.homestead?.equipped || {}} account={account} accountBusy={accountBusy} accountNotice={accountNotice} onSignIn={onSignIn} onSignUp={onSignUp} onSignOut={onSignOut} onDeviceLabelSave={onDeviceLabelSave} onResolveConflict={onResolveConflict} revision={revision} />
   return null
 }

@@ -28,6 +28,10 @@ MAX_REWARD_COINS = 100
 MAX_HP_DELTA = 100
 MAX_IMPACT = 8
 MAX_CODEX_RECORDS = 100
+MAX_SYNC_LIST_ITEMS = 100
+MAX_SYNC_TEXT_LENGTH = 120
+MAX_SYNC_LEVEL = 1000
+MAX_SYNC_COUNTER = 1_000_000_000
 
 PUBLIC_ACTORS = frozenset({"player", "pyr"})
 SYSTEM_ACTOR = "system"
@@ -41,6 +45,21 @@ class StateApplyRequest(BaseModel):
     action: str = Field(min_length=1, max_length=80)
     actor: Literal["player", "pyr"]
     payload: dict[str, Any] = Field(default_factory=dict)
+
+
+class StateSyncApplyRequest(BaseModel):
+    """Validated cloud projection applied to the local cache.
+
+    The browser never sends a full progress snapshot.  This envelope is a
+    deliberately small allowlisted projection plus the local revision it read
+    so a concurrent local mutation fails closed instead of being overwritten.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    expected_revision: int = Field(ge=0)
+    cloud_revision: int = Field(ge=0)
+    projection: dict[str, Any] = Field(default_factory=dict)
 
 
 class StateCommandError(Exception):
@@ -157,6 +176,26 @@ MOB_REWARDS: tuple[tuple[int, int], ...] = (
     (45, 30),
     (50, 35),
 )
+
+SYNC_PLAYER_FIELDS = frozenset(
+    {
+        "name",
+        "title",
+        "rank",
+        "level",
+        "xp",
+        "xp_next",
+        "lifetime_xp",
+        "hp",
+        "max_hp",
+        "coins",
+        "potions",
+    }
+)
+SYNC_EQUIPMENT_FIELDS = frozenset({"armor", "trinket", "title"})
+SYNC_COMPANION_FIELDS = frozenset({"name", "form", "level", "bond", "next_form", "next_form_requirement"})
+SYNC_HOMESTEAD_FIELDS = frozenset({"name", "owned_cosmetics", "equipped"})
+SYNC_HOMESTEAD_EQUIPPED_FIELDS = frozenset({"theme", "cursor", "hud", "terminal"})
 
 
 def _is_safe_device_id(value: object) -> bool:
@@ -349,6 +388,267 @@ class LocalStateService:
 
         with self._progress_lock:
             return self._metadata_from_progress(self._load_locked())
+
+    def sync_snapshot(self) -> tuple[dict[str, Any], dict[str, Any]]:
+        """Return only the bounded player-state projection used by cloud sync."""
+
+        with self._progress_lock:
+            progress = self._load_locked()
+            return self._sync_projection(progress), self._metadata_from_progress(progress)
+
+    def apply_cloud_projection(
+        self,
+        projection: Mapping[str, Any],
+        *,
+        expected_revision: int,
+        cloud_revision: int,
+    ) -> dict[str, Any]:
+        """Apply a validated cloud projection to the local cache.
+
+        This is a cache import, not a general state write.  The expected local
+        revision is checked while holding ``PROGRESS_LOCK`` so a cloud pull can
+        never clobber a concurrent local mutation.  Conflict resolution stays
+        explicit in the SyncEngine.
+        """
+
+        expected = self._integer(expected_revision, "expected_revision", minimum=0)
+        cloud = self._integer(cloud_revision, "cloud_revision", minimum=0)
+        with self._progress_lock:
+            progress = self._load_locked()
+            actual = self._revision(progress)
+            if actual != expected:
+                raise StateCommandError(
+                    f"Local state changed during cloud sync (expected revision {expected}, found {actual})",
+                    status_code=409,
+                )
+            validated = self._validate_sync_projection(projection)
+            before = self._sync_projection(progress)
+            changed_domains = self._merge_sync_projection(progress, validated)
+            if not changed_domains:
+                return {
+                    "ok": True,
+                    "action": "sync_apply_cloud",
+                    "actor": "sync",
+                    "changed": False,
+                    "revision": actual,
+                    "cloud_revision": cloud,
+                    "projection": before,
+                }
+            metadata, event = self._persist_locked(
+                progress,
+                action="sync_apply_cloud",
+                actor="sync",
+                event_details={
+                    "cloud_revision": cloud,
+                    "domains": changed_domains,
+                    "reason": "cloud_authoritative_cache_refresh",
+                },
+            )
+            return {
+                "ok": True,
+                "action": "sync_apply_cloud",
+                "actor": "sync",
+                "changed": True,
+                "revision": metadata["revision"],
+                "cloud_revision": cloud,
+                "projection": self._sync_projection(progress),
+                "event": event,
+            }
+
+    @staticmethod
+    def _sync_text(value: object, field: str) -> str:
+        return LocalStateService._text(value, field, max_length=MAX_SYNC_TEXT_LENGTH)
+
+    @staticmethod
+    def _sync_list(value: object, field: str) -> list[str]:
+        if not isinstance(value, list) or len(value) > MAX_SYNC_LIST_ITEMS:
+            raise StateCommandError(f"{field} must be a bounded list")
+        result: list[str] = []
+        for item in value:
+            normalized = LocalStateService._text(item, field, max_length=MAX_IDENTIFIER_LENGTH, identifier=True)
+            if normalized not in result:
+                result.append(normalized)
+        return result
+
+    @classmethod
+    def _validate_sync_projection(cls, projection: Mapping[str, Any]) -> dict[str, Any]:
+        if not isinstance(projection, Mapping):
+            raise StateCommandError("Cloud state projection must be an object")
+        unknown = set(projection) - {"player", "equipment", "companion", "homestead"}
+        if unknown:
+            raise StateCommandError(f"Unsupported cloud state domain(s): {', '.join(sorted(unknown))}")
+
+        validated: dict[str, Any] = {}
+        player = projection.get("player")
+        if player is not None:
+            if not isinstance(player, Mapping):
+                raise StateCommandError("Cloud player projection must be an object")
+            extra = set(player) - SYNC_PLAYER_FIELDS
+            if extra:
+                raise StateCommandError(f"Unsupported cloud player field(s): {', '.join(sorted(extra))}")
+            clean_player: dict[str, Any] = {}
+            text_fields = {"name", "title", "rank"}
+            integer_limits = {
+                "level": (1, MAX_SYNC_LEVEL),
+                "xp": (0, MAX_SYNC_COUNTER),
+                "xp_next": (1, MAX_SYNC_COUNTER),
+                "lifetime_xp": (0, MAX_SYNC_COUNTER),
+                "hp": (0, MAX_SYNC_COUNTER),
+                "max_hp": (1, MAX_SYNC_COUNTER),
+                "coins": (0, MAX_SYNC_COUNTER),
+                "potions": (0, MAX_SYNC_COUNTER),
+            }
+            for field in text_fields:
+                if field in player:
+                    clean_player[field] = cls._sync_text(player[field], f"player.{field}")
+            for field, (minimum, maximum) in integer_limits.items():
+                if field in player:
+                    clean_player[field] = cls._integer(player[field], f"player.{field}", minimum=minimum, maximum=maximum)
+            if "xp" in clean_player and "xp_next" in clean_player and clean_player["xp"] >= clean_player["xp_next"]:
+                raise StateCommandError("player.xp must be below player.xp_next")
+            if "hp" in clean_player and "max_hp" in clean_player and clean_player["hp"] > clean_player["max_hp"]:
+                raise StateCommandError("player.hp must not exceed player.max_hp")
+            validated["player"] = clean_player
+
+        equipment = projection.get("equipment")
+        if equipment is not None:
+            if not isinstance(equipment, Mapping):
+                raise StateCommandError("Cloud equipment projection must be an object")
+            extra = set(equipment) - SYNC_EQUIPMENT_FIELDS
+            if extra:
+                raise StateCommandError(f"Unsupported cloud equipment field(s): {', '.join(sorted(extra))}")
+            validated["equipment"] = {
+                field: cls._sync_text(equipment[field], f"equipment.{field}")
+                for field in SYNC_EQUIPMENT_FIELDS
+                if field in equipment
+            }
+
+        companion = projection.get("companion")
+        if companion is not None:
+            if not isinstance(companion, Mapping):
+                raise StateCommandError("Cloud companion projection must be an object")
+            extra = set(companion) - SYNC_COMPANION_FIELDS
+            if extra:
+                raise StateCommandError(f"Unsupported cloud companion field(s): {', '.join(sorted(extra))}")
+            clean_companion: dict[str, Any] = {}
+            for field in ("name", "form", "next_form", "next_form_requirement"):
+                if field in companion:
+                    clean_companion[field] = cls._sync_text(companion[field], f"companion.{field}")
+            for field in ("level", "bond"):
+                if field in companion:
+                    clean_companion[field] = cls._integer(companion[field], f"companion.{field}", minimum=0, maximum=MAX_SYNC_LEVEL)
+            validated["companion"] = clean_companion
+
+        homestead = projection.get("homestead")
+        if homestead is not None:
+            if not isinstance(homestead, Mapping):
+                raise StateCommandError("Cloud Homestead projection must be an object")
+            extra = set(homestead) - SYNC_HOMESTEAD_FIELDS
+            if extra:
+                raise StateCommandError(f"Unsupported cloud Homestead field(s): {', '.join(sorted(extra))}")
+            clean_homestead: dict[str, Any] = {}
+            if "name" in homestead:
+                clean_homestead["name"] = cls._sync_text(homestead["name"], "homestead.name")
+            owned = cls._sync_list(homestead["owned_cosmetics"], "homestead.owned_cosmetics") if "owned_cosmetics" in homestead else None
+            if owned is not None:
+                clean_homestead["owned_cosmetics"] = owned
+            equipped = homestead.get("equipped")
+            if equipped is not None:
+                if not isinstance(equipped, Mapping):
+                    raise StateCommandError("homestead.equipped must be an object")
+                extra_equipped = set(equipped) - SYNC_HOMESTEAD_EQUIPPED_FIELDS
+                if extra_equipped:
+                    raise StateCommandError(
+                        f"Unsupported cloud equipped field(s): {', '.join(sorted(extra_equipped))}"
+                    )
+                clean_equipped = {
+                    field: cls._text(equipped[field], f"homestead.equipped.{field}", max_length=MAX_IDENTIFIER_LENGTH, identifier=True)
+                    for field in SYNC_HOMESTEAD_EQUIPPED_FIELDS
+                    if field in equipped
+                }
+                clean_homestead["equipped"] = clean_equipped
+                if owned is not None and any(item_id not in owned for item_id in clean_equipped.values()):
+                    raise StateCommandError("Every equipped cosmetic must be owned")
+            validated["homestead"] = clean_homestead
+
+        return validated
+
+    @classmethod
+    def _sync_projection(cls, progress: Mapping[str, Any]) -> dict[str, Any]:
+        """Build a JSON-safe allowlisted projection; static catalogs stay local."""
+
+        def copy_fields(container: object, fields: frozenset[str]) -> dict[str, Any]:
+            if not isinstance(container, Mapping):
+                return {}
+            return {field: container[field] for field in fields if field in container}
+
+        player = copy_fields(progress.get("player"), SYNC_PLAYER_FIELDS)
+        equipment = copy_fields(progress.get("equipment"), SYNC_EQUIPMENT_FIELDS)
+        companion = copy_fields(progress.get("companion"), SYNC_COMPANION_FIELDS)
+        homestead_source = progress.get("homestead")
+        homestead = copy_fields(homestead_source, frozenset({"name", "owned_cosmetics", "equipped"}))
+        if isinstance(homestead.get("owned_cosmetics"), list):
+            homestead["owned_cosmetics"] = [
+                item for item in homestead["owned_cosmetics"] if isinstance(item, str)
+            ][:MAX_SYNC_LIST_ITEMS]
+        else:
+            homestead.pop("owned_cosmetics", None)
+        if isinstance(homestead.get("equipped"), Mapping):
+            homestead["equipped"] = {
+                field: value
+                for field, value in homestead["equipped"].items()
+                if field in SYNC_HOMESTEAD_EQUIPPED_FIELDS and isinstance(value, str)
+            }
+        else:
+            homestead.pop("equipped", None)
+        return {"player": player, "equipment": equipment, "companion": companion, "homestead": homestead}
+
+    @classmethod
+    def _merge_sync_projection(cls, progress: dict[str, Any], projection: Mapping[str, Any]) -> list[str]:
+        validated = cls._validate_sync_projection(projection)
+        changed_domains: list[str] = []
+        for domain, fields in (
+            ("player", SYNC_PLAYER_FIELDS),
+            ("equipment", SYNC_EQUIPMENT_FIELDS),
+            ("companion", SYNC_COMPANION_FIELDS),
+        ):
+            incoming = validated.get(domain)
+            if not isinstance(incoming, Mapping):
+                continue
+            target = cls._dict(progress, domain)
+            if domain == "player":
+                merged_xp = incoming.get("xp", target.get("xp"))
+                merged_xp_next = incoming.get("xp_next", target.get("xp_next"))
+                if isinstance(merged_xp, int) and isinstance(merged_xp_next, int) and merged_xp >= merged_xp_next:
+                    raise StateCommandError("player.xp must be below player.xp_next")
+                merged_hp = incoming.get("hp", target.get("hp"))
+                merged_max_hp = incoming.get("max_hp", target.get("max_hp"))
+                if isinstance(merged_hp, int) and isinstance(merged_max_hp, int) and merged_hp > merged_max_hp:
+                    raise StateCommandError("player.hp must not exceed player.max_hp")
+            changed = False
+            for field in fields:
+                if field in incoming and target.get(field) != incoming[field]:
+                    target[field] = incoming[field]
+                    changed = True
+            if changed:
+                changed_domains.append(domain)
+
+        incoming_home = validated.get("homestead")
+        if isinstance(incoming_home, Mapping):
+            target_home = cls._dict(progress, "homestead")
+            owned_source = incoming_home.get("owned_cosmetics", target_home.get("owned_cosmetics", []))
+            owned = {item for item in owned_source if isinstance(item, str)} if isinstance(owned_source, list) else set()
+            incoming_equipped = incoming_home.get("equipped", target_home.get("equipped", {}))
+            if isinstance(incoming_equipped, Mapping) and any(item_id not in owned for item_id in incoming_equipped.values()):
+                raise StateCommandError("Every equipped cosmetic must be owned")
+            changed = False
+            for field in ("name", "owned_cosmetics", "equipped"):
+                if field in incoming_home and target_home.get(field) != incoming_home[field]:
+                    target_home[field] = incoming_home[field]
+                    changed = True
+            if changed:
+                changed_domains.append("homestead")
+        return changed_domains
 
     def encounter_projection(self, progress: Mapping[str, Any]) -> dict[str, Any] | None:
         """Return the validated, non-secret projection for the active encounter.

@@ -24,6 +24,7 @@ from ide.server.state import (
     LocalStateService,
     StateApplyRequest,
     StateCommandError,
+    StateSyncApplyRequest,
     legacy_state_report,
     opaque_device_id,
     state_authority_info,
@@ -291,6 +292,27 @@ def state_revision():
     except StateCommandError as exc:
         raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
     return {**metadata, "state_authority": state_authority_info(PROGRESS_PATH, WORKSPACE)}
+
+
+@app.get("/api/state/sync")
+def state_sync_snapshot():
+    try:
+        projection, metadata = STATE_SERVICE.sync_snapshot()
+    except StateCommandError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
+    return {"projection": projection, "revision": metadata["revision"], "metadata": metadata}
+
+
+@app.post("/api/state/sync/apply")
+def apply_cloud_state(payload: StateSyncApplyRequest):
+    try:
+        return STATE_SERVICE.apply_cloud_projection(
+            payload.projection,
+            expected_revision=payload.expected_revision,
+            cloud_revision=payload.cloud_revision,
+        )
+    except StateCommandError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
 
 
 @app.get("/api/state/legacy")

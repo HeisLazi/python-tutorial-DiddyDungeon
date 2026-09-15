@@ -24,6 +24,42 @@ Branch: `feature/cloud-sync-desktop`
 
 Hosted Auth is configured to require email confirmation (`mailer_autoconfirm=false`). The automated service tests cover session restoration/sign-in/sign-out with a fake Auth boundary; a real hosted sign-in needs a mailbox the operator controls and was not claimed here.
 
+### Milestone C — bounded Sync Engine v1 implemented and gated
+
+- Added the allowlisted local projection endpoints `GET /api/state/sync` and
+  `POST /api/state/sync/apply`. Cloud pulls therefore enter the same locked
+  state service as PYR/player mutations and cannot write a second
+  `progress.json` authority.
+- Added `supabase/migrations/20260915000100_player_state.sql` plus the
+  corrective `supabase/migrations/20260915000200_player_state_rpc_validation_fix.sql`,
+  bounded-value `supabase/migrations/20260915000300_player_state_value_bounds.sql`,
+  and the executable `supabase/tests/player_state_rls.sql`.
+  `public.player_state` is
+  one RLS-protected row per account; authenticated clients can select only
+  their own row and can write only through the
+  `save_player_state(expected_revision, next_state, source_device_id)`
+  compare-and-swap RPC. Direct table writes are revoked.
+- `SyncEngine` now owns all player-state Supabase reads/writes. It syncs only
+  player progression/HP, armor/trinket/title, companion state and Homestead
+  ownership/equipped cosmetics. Projects, Codex/encounter history,
+  skills/mastery evidence, activity and cosmetic catalog/purchase history
+  remain local in this first transport slice and are preserved by cloud pulls.
+- A per-account cursor and bounded eight-entry local outbox survive offline
+  operation. Reconnect pushes only a revision captured from the local gateway;
+  if the cloud revision moved, the engine fails closed with `conflict`.
+  Missing/decreasing revisions and same-revision projection drift also require
+  an explicit choice. Settings exposes non-blocking **Use cloud copy** and
+  **Keep this device** actions; neither side is selected by timestamp or
+  newest-file heuristics.
+- Account status now reports `local`, `syncing`, `synced`, `conflict` or
+  `error`, including queued-change count. Local Forge remains usable while a
+  cloud request is unavailable, and the existing browser campaign revision
+  polling/reward queue continues to drive every RPG surface without a refresh
+  or PTY remount.
+- A signed-in browser performs a lightweight two-second cloud-row check with
+  in-flight deduplication, so another device's accepted projection is pulled
+  into the same local revision/event stream automatically.
+
 ## Supabase project and schema
 
 - Dedicated project: `Quest Lab` (`ajnxexxcqfbozszwpjpk`) in `HeisLazi's Org`.
@@ -56,21 +92,28 @@ The local `ide/frontend/.env.local` is ignored by Git. No service-role/secret ke
 
 Without both public variables, the service does not construct a Supabase client and reports `Offline / Local Mode`; `progress.json`, the local filesystem, Forge, Monaco and PTYs continue to operate. With cloud variables but no session, the Settings surface reports `Sign in to sync`. After sign-out, the local Forge remains usable and the local device-ID map is retained.
 
-This report intentionally stops before Sync Engine v1. No cloud game-state writes or conflict reconciliation are shipped in Milestones A/B. The later C milestone must retain the local cache/outbox and use revision-aware, domain-specific reconciliation; it must never replace a newer cloud state with an older local snapshot.
+The bounded C slice is now implemented, but it remains gated until a
+confirmed-mailbox account and a hosted two-device run are available. The local
+cache/outbox is authoritative while offline, and a newer cloud revision is
+never replaced by an older device snapshot.
 
 ## Verification commands and results
 
-- `npm test` — 6 cloud configuration/auth/device service tests passed.
+- `npm test` — 14 frontend cloud/runtime/sync tests passed.
 - `npm run build` — Vite production build passed.
 - WSL Forge launch with no cloud variables — backend health returned HTTP 200; both `/ws/terminal/shell` and `/ws/terminal/ai` executed independent markers.
-- WSL `npx --yes supabase db push --linked --yes` — migration applied.
+- WSL `npx --yes supabase db push --linked --yes` — profiles/devices plus all
+  three player-state migrations applied.
 - WSL `npx --yes supabase db query --linked --file supabase/tests/profiles_devices_rls.sql` — `profiles_devices_rls: PASS`.
+- WSL `npx --yes supabase db query --linked --file supabase/tests/player_state_rls.sql` — `player_state_rls: PASS`.
 - WSL `npx --yes supabase db lint --linked` — no schema errors.
 - Browser Settings smoke — cloud-configured Forge showed `Sign in to sync`, account creation toggle and device-account surface with no console errors.
 
 ## Known limitations / intentionally unimplemented
 
-- Sync Engine v1 player-state migration, offline outbox, conflict UI and two-device reconciliation are deferred to Milestone C.
+- Hosted mailbox-backed sign-in and a physical PC/laptop player-state run are
+  still pending; the bounded Sync Engine v1 migration, outbox, conflict UI and
+  isolated two-engine reconciliation are implemented and tested.
 - Avatar Storage (D), Tauri packaging (E), Vercel surface (F), friends/presence and raid mechanics are not implemented.
 - A real hosted sign-in was not claimed because this project requires email confirmation and no operator mailbox was supplied.
 - The local FastAPI/PTy backend remains the existing loopback-only process; no Rust rewrite or desktop wrapper was attempted.
@@ -150,7 +193,7 @@ untracked and player-editable.
 
 ### Repair verification
 
-- Windows `npm test` — 11 tests passed.
+- Windows `npm test` — 14 tests passed.
 - Windows `npm run build` — passed; 1,343 modules transformed and local
   Monaco worker assets emitted. Vite emitted only the existing large-chunk
   warning (main bundle ~4.8 MB).
@@ -158,13 +201,19 @@ untracked and player-editable.
   moderate); no force-upgrade was applied during this bounded repair pass.
 - WSL backend:
   `.venv/bin/python -m unittest discover -s ide/server -p "test_*.py" -v`
-  — 25 tests passed; `compileall` passed. Python 3.14 emitted only its known
+  — 29 tests passed; `compileall` passed. Python 3.14 emitted only its known
   `pty.forkpty` deprecation warning during the real-Origin test.
 - `ruff check` remains non-clean only for the pre-existing BLE001 catches in
   the launcher/legacy server paths; no new repair-specific lint failure was
   introduced.
 - Linked Quest Lab Supabase: `db lint --linked` reported no schema errors and
   `profiles_devices_rls.sql` returned `profiles_devices_rls: PASS`.
+- The linked Quest Lab project accepted both player-state migrations;
+  `db lint --linked` reported no schema errors and
+  `db query --linked --file supabase/tests/player_state_rls.sql` returned
+  `player_state_rls: PASS`. The initial push exposed an unavailable
+  `jsonb_object_length` function; the corrective migration replaced it with
+  compatible JSON-key-loop validation before the final clean lint/test run.
 - WSL live Forge smoke: backend health, independent shell/AI PTY markers,
   real-Origin acceptance and hostile-Origin rejection all passed. Browser
   smoke covered offline Monaco, Tutor clean/dirty sync and terminal-session
@@ -270,16 +319,27 @@ The stray-save proof edited only the disposable workspace copy to Level 99,
 Level 2 and 10 coins, with `legacy_authoritative: false`; the stray file could
 not create a second game state.
 
+### Sync Engine v1 verification
+
+The frontend sync harness uses two isolated engine instances sharing one fake
+account row and separate local caches. It proves initial local push, cloud pull
+to the second cache, an offline local mutation retained in the per-account
+outbox, reconnect push at the expected cloud revision, and a concurrent cloud
+change that surfaces an explicit conflict. Selecting the cloud copy applies it
+through `/api/state/sync/apply`; no direct `progress.json` or React reward
+mutation is used. The source tripwire also checks that `AppV2` observes every
+campaign revision and that Settings exposes both conflict choices.
+
 ### Status and remaining gates
 
-The branch is still intentionally stopped before Milestone C. A real
-mailbox-backed signed-in session, two-device cloud game-state save, Sync Engine
-v1 outbox/conflict reconciliation, native Windows ConPTY packaging proof and
-Milestones D/E/F remain future work. Auth B remains an automated/fake-boundary
-verification only: email confirmation is enabled, no operator mailbox was
-supplied, and no physical two-device sign-in/restore was claimed. The exact
-manual check remains: sign in with a confirmed account on Device A, register
-it, sign in with the same account in an isolated Device B profile, restore and
-verify the account/device row, sign out, then confirm Forge remains usable
-offline with its local device identity. The final remote branch SHA is recorded
-in the implementation handoff after the verification commit.
+The bounded Milestone C slice is implemented and gated. A real
+mailbox-backed signed-in session and hosted two-device game-state save remain
+to be demonstrated; the automated harness is not a claim of that physical
+acceptance. Native Windows ConPTY packaging proof and Milestones D/E/F remain
+future work, as do friends/presence and raid mechanics. Auth B remains an
+automated/fake-boundary verification only because email confirmation is
+enabled and no operator mailbox was supplied. The exact next manual check is:
+sign in with a confirmed account on Device A, register it, sign in with the
+same account in an isolated Device B profile, verify the allowed projection
+arrives and the PTYs remain alive, then exercise an explicit conflict choice.
+The final remote branch SHA is recorded after the verification commit.

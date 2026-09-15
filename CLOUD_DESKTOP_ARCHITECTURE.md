@@ -120,6 +120,45 @@ blocked from editor read/write/format routes. `GET /api/state/legacy` and the
 `legacy-report` CLI command return bounded summaries and field differences;
 there is no timestamp-based merge or automatic migration.
 
+### Bounded Sync Engine v1 (Milestone C slice)
+
+The first cloud-save transport is deliberately smaller than the full campaign
+document. `SyncEngine` is the only frontend module that calls Supabase for
+player state. It projects and validates only these domains:
+
+- player identity/progression, XP/coins, HP/max HP and potions;
+- armor, trinket and title equipment;
+- companion form, level and bond;
+- Homestead name, owned cosmetics and equipped cosmetic IDs.
+
+Projects, encounter/Codex history, skills/mastery evidence, activity and the
+Homestead catalog/purchase history remain local in this gated slice. They still
+update live in Forge from the local campaign revision/event projection; they
+are not silently discarded by a cloud pull.
+
+The local gateway exposes `GET /api/state/sync` and a compare-and-swap
+`POST /api/state/sync/apply`. The browser stores a small per-account cursor
+(`localRevision`, `cloudRevision`) and at most eight bounded latest-projection
+outbox entries in local storage. Supabase stores one RLS-protected
+`public.player_state` row per account. Writes use the security-definer
+`save_player_state(expected_revision, next_state, source_device_id)` RPC; a
+stale expected revision returns a conflict rather than overwriting the newer
+cloud row.
+
+When offline, the local cache continues to work and a newer local revision is
+queued for reconnect. If both copies changed, the engine reports `conflict`
+and the Settings surface offers **Use cloud copy** or **Keep this device**.
+Neither choice is inferred from timestamps: cloud selection applies the
+validated projection through the local gateway, while device selection makes
+an explicit CAS write against the current cloud revision. Statuses are
+`local`, `syncing`, `synced`, `conflict` and `error`.
+
+While a session is signed in, the engine performs a lightweight two-second
+cloud-row check in the browser and reuses its in-flight request guard; the
+existing one-second local campaign revision poll still drives the RPG
+projection. A remote change therefore enters the same local state gateway and
+campaign event stream without a browser refresh or PTY restart.
+
 ## Data that should sync
 
 - account/profile identity;
@@ -135,6 +174,10 @@ there is no timestamp-based merge or automatic migration.
 - discoveries/trophies;
 - avatar asset/reference;
 - future friends/party/raid state.
+
+The items above are the eventual model. The current Milestone C transport is
+limited to the four domains listed in the bounded slice; expanding it requires
+another allowlisted migration and acceptance pass.
 
 ## Data that must remain local by default
 
@@ -205,6 +248,10 @@ At minimum, synced records should carry:
 For the first milestone, simple server-authoritative merge rules are acceptable for non-concurrent single-user device sync, but the sync layer must be structured so field/domain-specific conflict handling can be added later.
 
 Never silently overwrite a newer cloud save with an older device snapshot.
+The v1 compare-and-swap cursor treats a missing/decreasing cloud revision,
+concurrent offline edits and same-revision projection drift as explicit
+conflicts. There is no newest-timestamp merge and no React-side reward or
+progression calculation.
 
 The local Forge backend records revision metadata (`revision`, UTC `updated_at`,
 and an opaque `device_id`) for canonical local mutations. A later Sync Engine
