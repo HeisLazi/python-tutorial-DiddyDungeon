@@ -326,8 +326,12 @@ When learning progress is earned, ask the local state/sync service to update the
 The local state gateway accepts named commands, not object paths or arbitrary
 JSON patches. PYR may submit bounded learning-evidence and Reference Mode
 events; reward, HP and achievement mutations are reserved for trusted
-in-process game code. The gateway records a concise `state_events` audit entry
-without terminal history, source text, secrets or private prompts.
+in-process game code. Verified Battle objectives use the same trusted path to
+apply predefined Impact, Resolve, mob-unlock, reward and Codex projections;
+React only renders the committed result. The gateway records a concise
+`state_events` audit entry without terminal history, source text, secrets or
+private prompts. Forge polls the canonical revision and refreshes every RPG
+surface without restarting either PTY.
 
 When you invent a reward or propose a mechanic, update `CANON_LEDGER.md` as required.
 

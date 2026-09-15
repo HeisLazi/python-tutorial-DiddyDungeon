@@ -10,7 +10,11 @@ const ICON = {
 }
 
 function replaceTopStat(node) {
-  if (node.dataset.iconCleaned) return
+  if (node.dataset.iconCleaned) {
+    const value = node.querySelector('[data-stat-value]')
+    if (value && node.dataset.campaignStatValue !== undefined && value.textContent !== node.dataset.campaignStatValue) value.textContent = node.dataset.campaignStatValue
+    return
+  }
   const text = node.textContent.trim()
   const replacements = [
     ['♥', 'heart'],
@@ -22,9 +26,22 @@ function replaceTopStat(node) {
   for (const [glyph, name] of replacements) {
     if (!text.startsWith(glyph)) continue
     node.dataset.iconCleaned = 'true'
-    node.innerHTML = `${ICON[name]}<span>${text.slice(glyph.length).trim()}</span>`
+    node.innerHTML = `${ICON[name]}<span data-stat-value>${text.slice(glyph.length).trim()}</span>`
     break
   }
+}
+
+function syncCampaignValues() {
+  document.querySelectorAll('[data-campaign-stat]').forEach((node) => {
+    const value = node.querySelector('[data-stat-value]')
+    if (value && node.dataset.campaignStatValue !== undefined) value.textContent = node.dataset.campaignStatValue
+  })
+  document.querySelectorAll('.skill-icon[data-skill-shield]').forEach((node) => {
+    const kind = node.dataset.skillShield !== 'none' ? 'shield' : 'book'
+    if (node.dataset.skillIconKind === kind) return
+    node.innerHTML = ICON[kind]
+    node.dataset.skillIconKind = kind
+  })
 }
 
 function cleanIcons() {
@@ -35,6 +52,7 @@ function cleanIcons() {
     node.dataset.iconCleaned = 'true'
     node.innerHTML = node.textContent.includes('🛡') ? ICON.shield : ICON.book
   })
+  syncCampaignValues()
 }
 
 function addShortcutHelp() {
@@ -64,7 +82,15 @@ function polish() {
   addShortcutHelp()
 }
 
-const observer = new MutationObserver(polish)
+let polishFrame = 0
+const observer = new MutationObserver(() => {
+  if (polishFrame) return
+  polishFrame = requestAnimationFrame(() => {
+    polishFrame = 0
+    polish()
+  })
+})
 observer.observe(document.documentElement, { subtree: true, childList: true })
 window.addEventListener('load', polish)
+window.addEventListener('questlab:campaign-updated', syncCampaignValues)
 queueMicrotask(polish)

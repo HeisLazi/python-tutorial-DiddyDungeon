@@ -40,6 +40,11 @@ class StateCliTests(unittest.TestCase):
         )
         request.assert_not_called()
 
+    @patch("ide.state_cli._get", return_value=0)
+    def test_legacy_report_is_read_only_and_uses_backend_authority(self, get):
+        self.assertEqual(state_cli.main(["--backend-port", "7444", "legacy-report"]), 0)
+        get.assert_called_once_with(7444, "/api/state/legacy")
+
 
 if __name__ == "__main__":
     unittest.main()

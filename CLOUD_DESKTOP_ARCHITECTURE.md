@@ -85,7 +85,10 @@ command surface at `POST /api/state/apply`. It accepts a named `action`, an
 explicit trust actor and an action-specific payload; arbitrary object paths,
 JSON patches and full `progress.json` snapshots are rejected. Current public
 commands are `homestead_purchase`, `homestead_equip`,
-`record_learning_event` and `record_reference_mode`.
+`record_learning_event` and `record_reference_mode`. Trusted in-process game
+code additionally uses bounded `record_battle_objective`, `complete_mob`,
+`record_battle_miss`, reward, HP and achievement commands; these are never
+accepted from the raw AI terminal, HTTP actor or CLI.
 
 Trust levels are deliberately separate:
 
@@ -101,6 +104,21 @@ the command, appends a bounded `state_events` audit record, bumps revision
 metadata and writes atomically. The localhost-only helper
 `python -m ide.state_cli` exposes the public commands for PYR/player tooling;
 system-only commands fail closed without making a request.
+
+The server exposes `GET /api/state/revision` as the cheap polling check and
+`GET /api/campaign` as one locked snapshot containing the same revision,
+validated active-encounter projection and bounded state-event history. Forge
+checks the revision about once per second and reloads the full campaign only
+when it changes. HUD, Character, Homestead, Quest Journal, Codex and the
+combat shell subscribe to that projection without remounting either PTY.
+
+There is exactly one active local state path: the server-configured
+`QUESTLAB_STATE_PATH` (normally the platform repository's `progress.json`,
+anchored to `REPO_ROOT` even when a terminal starts elsewhere). A
+`WORKSPACE/progress.json` is reported as legacy/non-authoritative and is
+blocked from editor read/write/format routes. `GET /api/state/legacy` and the
+`legacy-report` CLI command return bounded summaries and field differences;
+there is no timestamp-based merge or automatic migration.
 
 ## Data that should sync
 

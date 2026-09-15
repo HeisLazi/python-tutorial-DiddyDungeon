@@ -150,7 +150,7 @@ untracked and player-editable.
 
 ### Repair verification
 
-- Windows `npm test` — 9 tests passed.
+- Windows `npm test` — 11 tests passed.
 - Windows `npm run build` — passed; 1,343 modules transformed and local
   Monaco worker assets emitted. Vite emitted only the existing large-chunk
   warning (main bundle ~4.8 MB).
@@ -158,7 +158,7 @@ untracked and player-editable.
   moderate); no force-upgrade was applied during this bounded repair pass.
 - WSL backend:
   `.venv/bin/python -m unittest discover -s ide/server -p "test_*.py" -v`
-  — 7 tests passed; `compileall` passed. Python 3.14 emitted only its known
+  — 25 tests passed; `compileall` passed. Python 3.14 emitted only its known
   `pty.forkpty` deprecation warning during the real-Origin test.
 - `ruff check` remains non-clean only for the pre-existing BLE001 catches in
   the launcher/legacy server paths; no new repair-specific lint failure was
@@ -195,13 +195,80 @@ any player-state Supabase transport begins:
   `meta.updated_at`, preserves a safe existing `meta.device_id`, and writes
   atomically. Homestead routes in both FastAPI entrypoints delegate to it.
 
-Behavioral coverage is now 19 WSL tests plus `compileall`, including bounded
+Behavioral coverage is now 25 WSL tests plus `compileall`, including bounded
 valid/invalid commands, trust denial, arbitrary-path denial, out-of-scope
 protection, revision/timestamp/device invariants, concurrent serial revisions,
 HTTP behavior, CLI refusal and Homestead delegation. The linked Quest Lab RLS
 query also covers a User A `INSERT ... ON CONFLICT ... DO UPDATE` attempt
 against User B's device and passes with rejection (`profiles_devices_rls:
 PASS`).
+
+### Split-brain state repair and live RPG projection
+
+The learning-session bug was a real two-file authority split. Before changing
+state, the candidate files were inspected read-only:
+
+- The WSL platform checkout `/home/lazi/projects/python-tutorial-DiddyDungeon/progress.json`
+  was schema 4/rules 1.3 at Level 1, 0 XP, 0 coins and 0 defeated mobs.
+- The WSL quest workspace `/home/lazi/projects/questlab-blackjack/progress.json`
+  was an older schema 2 save at Level 2, 50 XP (150 lifetime XP), 55 coins,
+  three defeated mobs and 38% project progress. Its session log recorded the
+  first three Blackjack mobs as cleared.
+- The active Windows checkout canonical file
+  `C:\Users\lazar\OneDrive\Documents\ChatGPT\Python Quest Lab\progress.json`
+  is schema 4/rules 1.5 with revision 0 at Level 1, 0 XP and 0 coins.
+
+The workspace copy is therefore treated as legacy evidence, never as a second
+live save. No timestamp or “newest file wins” merge was performed. The bounded
+`/api/state/legacy` report and `python -m ide.state_cli legacy-report` expose
+summaries and field-level differences, mark manual approval as required, and
+do not copy or infer rewards. `/api/file` and `/api/format` reject both the
+canonical and stray workspace `progress.json` paths. The launcher explicitly
+sets `QUESTLAB_STATE_PATH` to `REPO_ROOT/progress.json`; relative overrides are
+anchored to `REPO_ROOT`, so a PYR/CLI terminal cwd cannot create another active
+player save.
+
+The Forge now exposes a cheap `/api/state/revision` endpoint and returns the
+validated encounter projection with each campaign snapshot. React and the
+combat shell poll the revision about once per second and reload the full
+campaign only after a change. State-service events are the sole source for the
+reward queue (objective Impact/Resolve, XP, coins, level-up, mob defeat, next
+encounter, achievements, equipment and mastery fields); React does not
+recalculate rewards or reveal locked future questions. The Quest Journal shows
+only the current encounter's allowed objective metadata, while the Codex grows
+only from recorded encounter evidence.
+
+Live acceptance used a disposable copy of the canonical save and an actual
+WSL-launched FastAPI/Vite Forge page, without refreshing the browser or
+resetting either PTY:
+
+1. Initial projection was revision 0, Level 1, 0/100 XP, 0 coins, The Empty
+   Table and Resolve 4/4.
+2. A trusted in-process `record_battle_objective(table_setup)` mutation moved
+   revision 1 to Resolve 2/4; the HUD and battle shell stayed in place.
+3. `record_battle_objective(state_explanation)` moved revision 2 to 25 XP,
+   10 coins, defeated The Empty Table, unlocked The Dealer's Hand (Resolve
+   6/6), and added the defeated encounter to the Codex. Character showed
+   25/100 XP and 10 coins; Homestead showed a 10-coin purse. The reward queue
+   displayed validated next-encounter and First Blood notices.
+4. A third verified objective moved the live next encounter to Resolve 3/6;
+   the queue displayed `OBJECTIVE VERIFIED` with the service-provided 3 Impact.
+   A bounded reward test then moved revision 4 to Level 2 and 5/100 XP; the
+   queue displayed `LEVEL UP 1 → 2`.
+5. Both shell and AI terminal connection pills remained `connected` throughout,
+   and seeded PTY markers remained present after every projection update.
+
+The live HUD icon regression was also fixed. The stat-pill rule now targets
+only direct `.top-stats > span` children; nested `.quest-icon` SVG wrappers and
+`data-stat-value` spans explicitly keep transparent backgrounds, zero pill
+padding/borders and the existing monochrome stroke sizing. Adventurer and
+compact selectors use the same direct-child boundary, and the batched DOM
+enhancement observers leave the icons intact across revision polling.
+
+The stray-save proof edited only the disposable workspace copy to Level 99,
+9999 coins and revision 999. The canonical API still reported revision 4,
+Level 2 and 10 coins, with `legacy_authoritative: false`; the stray file could
+not create a second game state.
 
 ### Status and remaining gates
 
@@ -214,6 +281,5 @@ supplied, and no physical two-device sign-in/restore was claimed. The exact
 manual check remains: sign in with a confirmed account on Device A, register
 it, sign in with the same account in an isolated Device B profile, restore and
 verify the account/device row, sign out, then confirm Forge remains usable
-offline with its local device identity. The gateway checkpoint is pushed at
-`fa6cb70a12e4ae751a3ef594b6e20e9d69a60162` on
-`origin/feature/cloud-sync-desktop`.
+offline with its local device identity. The final remote branch SHA is recorded
+in the implementation handoff after the verification commit.

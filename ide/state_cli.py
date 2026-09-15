@@ -78,6 +78,7 @@ def build_parser() -> argparse.ArgumentParser:
     achievement.add_argument("--achievement-id", required=True)
     achievement.add_argument("--evidence-id", required=True)
     achievement.add_argument("--reason", required=True)
+    subparsers.add_parser("legacy-report", help="compare canonical state with a non-authoritative workspace progress.json")
     return parser
 
 
@@ -119,6 +120,30 @@ def _request(port: int, action: str, actor: str, payload: dict[str, object]) -> 
     return 0
 
 
+def _get(port: int, path: str) -> int:
+    request = Request(
+        f"http://127.0.0.1:{port}{path}",
+        headers={"Origin": f"http://127.0.0.1:{os.getenv('QUESTLAB_FRONTEND_PORT', DEFAULT_FRONTEND_PORT)}"},
+        method="GET",
+    )
+    try:
+        with urlopen(request, timeout=5) as response:
+            result = json.loads(response.read().decode("utf-8"))
+    except HTTPError as error:
+        try:
+            body = error.read().decode("utf-8")
+            detail = json.loads(body).get("detail", body)
+        except (OSError, UnicodeDecodeError, json.JSONDecodeError):
+            detail = error.reason
+        print(f"state report rejected: {detail}", file=sys.stderr)
+        return 1
+    except (URLError, TimeoutError, ClientHTTPException, OSError) as error:
+        print(f"could not reach local Forge backend: {error}", file=sys.stderr)
+        return 1
+    print(json.dumps(result, indent=2, ensure_ascii=False))
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
@@ -152,6 +177,8 @@ def main(argv: list[str] | None = None) -> int:
                 "player",
                 {"item_id": _bounded_text(args.item_id, "item-id", MAX_IDENTIFIER_LENGTH)},
             )
+        if args.command == "legacy-report":
+            return _get(args.backend_port, "/api/state/legacy")
     except argparse.ArgumentTypeError as exc:
         parser.error(str(exc))
     return _reserved(args.command)

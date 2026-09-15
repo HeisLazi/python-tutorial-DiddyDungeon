@@ -24,12 +24,34 @@ from ide.server.state import (
     LocalStateService,
     StateApplyRequest,
     StateCommandError,
+    legacy_state_report,
     opaque_device_id,
+    state_authority_info,
 )
 
 REPO_ROOT = Path(os.getenv("QUESTLAB_REPO_ROOT", Path(__file__).resolve().parents[2])).resolve()
 WORKSPACE = Path(os.getenv("QUESTLAB_WORKSPACE", REPO_ROOT)).resolve()
-PROGRESS_PATH = REPO_ROOT / "progress.json"
+
+
+def configured_progress_path() -> Path:
+    """Resolve the one canonical state path from server configuration.
+
+    Relative overrides are anchored to ``REPO_ROOT`` rather than the process
+    cwd, so a CLI launched from the quest workspace cannot silently create a
+    second live save.  The normal launcher leaves this unset and uses the
+    platform repository's ``progress.json``.
+    """
+
+    raw = os.getenv("QUESTLAB_STATE_PATH", "").strip()
+    if not raw:
+        return (REPO_ROOT / "progress.json").resolve()
+    candidate = Path(raw).expanduser()
+    if not candidate.is_absolute():
+        candidate = REPO_ROOT / candidate
+    return candidate.resolve()
+
+
+PROGRESS_PATH = configured_progress_path()
 TUTOR_PATH = WORKSPACE / "tutor.py"
 MAX_TEXT_BYTES = 2_000_000
 IGNORED_DIRS = {
@@ -111,6 +133,30 @@ def read_json(path: Path, fallback):
         return json.loads(path.read_text(encoding="utf-8"))
     except (FileNotFoundError, json.JSONDecodeError, UnicodeDecodeError):
         return fallback
+
+
+def legacy_progress_path() -> Path:
+    return (WORKSPACE / "progress.json").resolve()
+
+
+def state_path_kind(target: Path) -> str | None:
+    canonical = PROGRESS_PATH.resolve()
+    if target.resolve() == canonical:
+        return "canonical"
+    if target.resolve() == legacy_progress_path() and target.resolve() != canonical:
+        return "legacy"
+    return None
+
+
+def reject_state_file_access(target: Path) -> None:
+    kind = state_path_kind(target)
+    if kind:
+        if kind == "legacy":
+            raise HTTPException(
+                status_code=403,
+                detail="workspace progress.json is legacy data; use the local state service and canonical repo state",
+            )
+        raise HTTPException(status_code=403, detail="progress.json is managed by the local state service")
 
 
 def local_device_id() -> str:
@@ -221,15 +267,35 @@ def health():
 
 @app.get("/api/campaign")
 def campaign():
-    progress = read_json(PROGRESS_PATH, {})
+    try:
+        progress, metadata = STATE_SERVICE.snapshot_with_metadata()
+    except StateCommandError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
     activity = read_json(REPO_ROOT / "activity.json", {})
     return {
         "progress": progress,
+        "revision": metadata["revision"],
+        "encounter": STATE_SERVICE.encounter_projection(progress),
         "activity": activity,
         "git": git_info(),
         "workspace": str(WORKSPACE),
         "repo_root": str(REPO_ROOT),
+        "state_authority": state_authority_info(PROGRESS_PATH, WORKSPACE),
     }
+
+
+@app.get("/api/state/revision")
+def state_revision():
+    try:
+        metadata = STATE_SERVICE.metadata()
+    except StateCommandError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
+    return {**metadata, "state_authority": state_authority_info(PROGRESS_PATH, WORKSPACE)}
+
+
+@app.get("/api/state/legacy")
+def state_legacy_report():
+    return legacy_state_report(PROGRESS_PATH, legacy_progress_path())
 
 
 @app.get("/api/tutor")
@@ -271,6 +337,7 @@ def tree():
 @app.get("/api/file")
 def read_file(path: str):
     target = safe_path(path)
+    reject_state_file_access(target)
     if not target.exists() or not target.is_file():
         raise HTTPException(status_code=404, detail="File not found")
     if target.stat().st_size > MAX_TEXT_BYTES:
@@ -285,8 +352,7 @@ def read_file(path: str):
 @app.put("/api/file")
 def write_file(payload: FileWrite):
     target = safe_path(payload.path)
-    if target == PROGRESS_PATH:
-        raise HTTPException(status_code=403, detail="progress.json is managed by the local state service")
+    reject_state_file_access(target)
     encoded = payload.content.encode("utf-8")
     if len(encoded) > MAX_TEXT_BYTES:
         raise HTTPException(status_code=413, detail="File is too large for the learning editor")
@@ -325,8 +391,7 @@ def apply_state_command(payload: StateApplyRequest):
 @app.post("/api/format")
 def format_file(payload: FormatRequest):
     target = safe_path(payload.path)
-    if target == PROGRESS_PATH:
-        raise HTTPException(status_code=403, detail="progress.json is managed by the local state service")
+    reject_state_file_access(target)
     encoded = payload.content.encode("utf-8")
     if len(encoded) > MAX_TEXT_BYTES:
         raise HTTPException(status_code=413, detail="File is too large for the learning editor")

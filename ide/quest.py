@@ -119,6 +119,9 @@ def main():
 
     env = os.environ.copy()
     env["QUESTLAB_REPO_ROOT"] = str(REPO_ROOT)
+    # State is always anchored to the platform checkout; PYR/CLI processes do
+    # not infer a save path from their terminal cwd.
+    env["QUESTLAB_STATE_PATH"] = str(REPO_ROOT / "progress.json")
     env["QUESTLAB_WORKSPACE"] = str(workspace)
     env["QUESTLAB_BACKEND_PORT"] = str(backend_port)
     env["QUESTLAB_FRONTEND_PORT"] = str(frontend_port)

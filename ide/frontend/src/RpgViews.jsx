@@ -12,6 +12,21 @@ export const viewItems = [
 
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value))
 
+export function RewardQueue({ items = [] }) {
+  if (!items.length) return null
+  return (
+    <div className="reward-queue" aria-live="polite" aria-label="Recent campaign rewards">
+      {items.map((item) => (
+        <article className={`reward-toast ${item.kind || ''}`} key={item.id}>
+          <span className="reward-toast-kicker">{item.title}</span>
+          <strong>{item.body}</strong>
+          {item.detail && <small>{item.detail}</small>}
+        </article>
+      ))}
+    </div>
+  )
+}
+
 export function ActivityRail({ activeView, setActiveView, player }) {
   return (
     <nav className="activity-rail" aria-label="Quest Lab destinations">
@@ -190,16 +205,21 @@ function ProgressBar({ value, max, label, className = '' }) {
   )
 }
 
-function QuestJournal({ progress }) {
+function QuestJournal({ progress, revision, encounter }) {
   const activeProject = (progress.projects || []).find((project) => project.status === 'active') || {}
   const mobs = activeProject.mobs || []
+  const projectedIndex = encounter?.mob_name ? mobs.findIndex((mob) => mob.name === encounter.mob_name) : -1
   const firstAvailable = mobs.findIndex((mob) => mob.status === 'available')
-  const currentIndex = firstAvailable >= 0 ? firstAvailable : Math.max(0, mobs.length - 1)
+  const currentIndex = projectedIndex >= 0 ? projectedIndex : firstAvailable >= 0 ? firstAvailable : Math.max(0, mobs.length - 1)
   const currentMob = mobs[currentIndex]
   const goals = progress.goals || {}
+  const resolve = encounter?.resolve ?? currentMob?.resolve ?? currentMob?.max_resolve ?? 0
+  const maxResolve = encounter?.max_resolve ?? currentMob?.max_resolve ?? resolve
+  const availableObjectives = encounter?.available_objectives || []
+  const isDefeated = (status) => status === 'defeated' || status === 'cleared'
 
   return (
-    <div className="game-screen-scroll">
+    <div className="game-screen-scroll" data-testid="quest-journal" data-campaign-revision={revision}>
       <div className="screen-hero quest-hero">
         <div>
           <span className="screen-kicker">CURRENT CHAPTER</span>
@@ -218,11 +238,22 @@ function QuestJournal({ progress }) {
           <div className="card-heading"><span>MAIN QUEST</span><b>{activeProject.progress ?? 0}%</b></div>
           <h3>{currentMob ? currentMob.name : `Face ${activeProject.boss || 'the boss'}`}</h3>
           <p>{currentMob?.concept || 'Complete the remaining chapter objectives.'}</p>
+          <div className="encounter-resolve-panel" data-testid="encounter-resolve">
+            <div className="card-heading"><span>ENEMY RESOLVE</span><b>{resolve}/{maxResolve}</b></div>
+            <ProgressBar value={resolve} max={maxResolve} label="Resolve" className="resolve" />
+            {availableObjectives.length > 0 && (
+              <div className="impact-objectives" aria-label="Available verified objectives">
+                {availableObjectives.map((objective) => (
+                  <span key={objective.id}>{objective.question_type} · {objective.impact} Impact</span>
+                ))}
+              </div>
+            )}
+          </div>
           <div className="mob-path">
             {mobs.map((mob, index) => (
               <div key={mob.name} className={`mob-node ${mob.status} ${index === currentIndex ? 'current' : ''}`}>
-                <span>{mob.status === 'defeated' ? '✓' : index + 1}</span>
-                <div><strong>{mob.name}</strong><small>{mob.concept || 'Encounter hidden'}</small></div>
+                <span>{isDefeated(mob.status) ? '✓' : index + 1}</span>
+                <div><strong>{mob.name}</strong><small>{mob.status === 'locked' ? 'Encounter hidden' : mob.concept || 'Encounter details pending'}</small></div>
               </div>
             ))}
           </div>
@@ -253,20 +284,20 @@ function QuestJournal({ progress }) {
   )
 }
 
-function Codex({ progress }) {
+function Codex({ progress, revision }) {
   const activeProject = (progress.projects || []).find((project) => project.status === 'active') || {}
   const skills = progress.skills || []
-  const mobs = activeProject.mobs || []
+  const entries = progress.codex?.encounters || []
 
   return (
-    <div className="game-screen-scroll">
+    <div className="game-screen-scroll" data-testid="codex" data-campaign-revision={revision}>
       <div className="screen-hero">
         <div>
           <span className="screen-kicker">CODEX</span>
           <h2>What you have faced becomes knowledge.</h2>
           <p>Concepts, mastery evidence and encounter styles. Exact hidden answers stay hidden.</p>
         </div>
-        <div className="codex-count"><strong>{skills.length + mobs.length}</strong><span>entries indexed</span></div>
+        <div className="codex-count"><strong>{skills.length + entries.length}</strong><span>entries indexed</span></div>
       </div>
 
       <section className="game-card">
@@ -274,7 +305,7 @@ function Codex({ progress }) {
         <div className="skill-grid">
           {skills.map((skill) => (
             <article key={skill.name} className={`skill-card ${skill.status}`}>
-              <div className="skill-icon">{skill.shield?.tier !== 'none' ? '🛡' : '◇'}</div>
+              <div className="skill-icon" data-skill-shield={skill.shield?.tier || 'none'}>{skill.shield?.tier !== 'none' ? '🛡' : '◇'}</div>
               <div><small>{skill.name}</small><h3>{skill.concept}</h3></div>
               <div className="skill-meta"><span>Evidence {skill.evidence ?? 0}</span><span>Interviews {skill.interview_passes ?? 0}</span></div>
               <div className="shield-line"><span>{skill.shield?.tier || 'none'} shield</span><b>{skill.shield?.charges ?? 0}/{skill.shield?.max_charges ?? 0}</b></div>
@@ -284,24 +315,37 @@ function Codex({ progress }) {
       </section>
 
       <section className="game-card">
-        <div className="card-heading"><span>{activeProject.name || 'PROJECT'} ENCOUNTERS</span><b>{mobs.length}</b></div>
+        <div className="card-heading"><span>{activeProject.name || 'PROJECT'} ENCOUNTERS</span><b>{entries.length}</b></div>
         <div className="encounter-grid">
-          {mobs.map((mob, index) => (
-            <article key={mob.name} className={`encounter-card ${mob.status}`}>
+          {entries.map((entry, index) => {
+            const mastery = entry.mastery || {}
+            const results = entry.results || []
+            return (
+            <article key={entry.id || entry.mob_name} className={`encounter-card ${entry.status || 'observed'}`}>
               <div className="encounter-number">{String(index + 1).padStart(2, '0')}</div>
-              <small>{mob.status.toUpperCase()}</small>
-              <h3>{mob.name}</h3>
-              <strong>{mob.concept || 'Unknown concept'}</strong>
-              <p>{mob.encounter || 'This encounter has not revealed its nature yet.'}</p>
+              <small>{String(entry.status || 'observed').toUpperCase()}</small>
+              <h3>{entry.mob_name || 'Encounter'}</h3>
+              <strong>{entry.concept || 'Concept recorded by campaign'}</strong>
+              <p>{entry.notes?.at(-1) || 'The encounter has been observed through verified learning evidence.'}</p>
+              <div className="codex-entry-meta">
+                <span>{entry.attempts ?? 0} attempts</span>
+                <span>{(entry.question_types || []).join(' · ') || 'type pending'}</span>
+                <span>Mastery {mastery.evidence ?? 0}</span>
+                <span>{(entry.weaknesses || []).length} weaknesses recorded</span>
+                <span>{(entry.interview_history || []).length + (mastery.interview_passes ?? 0)} interviews</span>
+              </div>
+              {results.length > 0 && <small className="codex-last-result">Last result: {results.at(-1).outcome || 'recorded'}</small>}
             </article>
-          ))}
+            )
+          })}
+          {!entries.length && <div className="empty-state">Complete a verified encounter objective to grow the Codex.</div>}
         </div>
       </section>
     </div>
   )
 }
 
-function CharacterSheet({ progress }) {
+function CharacterSheet({ progress, revision }) {
   const player = progress.player || {}
   const stats = progress.stats || {}
   const equipment = progress.equipment || {}
@@ -309,7 +353,7 @@ function CharacterSheet({ progress }) {
   const achievements = progress.achievements || []
 
   return (
-    <div className="game-screen-scroll">
+    <div className="game-screen-scroll" data-testid="character" data-campaign-revision={revision}>
       <div className="character-layout">
         <section className="character-card game-card">
           <div className="character-banner">
@@ -317,7 +361,6 @@ function CharacterSheet({ progress }) {
             <div><span className="screen-kicker">RANK {player.rank || 'F'}</span><h2>{player.name || 'Player'}</h2><p>{player.title || 'Apprentice Coder'}</p></div>
             <div className="level-medallion"><small>LV</small><strong>{player.level ?? 1}</strong></div>
           </div>
-          <ProgressBar value={player.hp ?? 0} max={player.max_hp ?? 100} label="HP" className="hp" />
           <ProgressBar value={player.xp ?? 0} max={player.xp_next ?? 100} label="XP" className="xp" />
           <div className="character-stat-grid">
             <div><small>COINS</small><strong>{player.coins ?? 0}c</strong></div>
@@ -357,7 +400,7 @@ function CharacterSheet({ progress }) {
   )
 }
 
-function Homestead({ progress, purchaseCosmetic, equipCosmetic, busy }) {
+function Homestead({ progress, revision, purchaseCosmetic, equipCosmetic, busy }) {
   const player = progress.player || {}
   const homestead = progress.homestead || {}
   const catalog = homestead.catalog || []
@@ -366,7 +409,7 @@ function Homestead({ progress, purchaseCosmetic, equipCosmetic, busy }) {
   const grouped = ['theme', 'cursor', 'hud', 'terminal']
 
   return (
-    <div className="game-screen-scroll">
+    <div className="game-screen-scroll" data-testid="homestead" data-campaign-revision={revision}>
       <div className="homestead-scene">
         <div className="homestead-window">✦</div>
         <div className="homestead-desk"><span>⌨</span><small>FORGE DESK</small></div>
@@ -475,10 +518,10 @@ function AccountPanel({ account, busy, notice, onSignIn, onSignUp, onSignOut, on
   )
 }
 
-function SettingsScreen({ preferences, setters, resetLayout, equipped, account, accountBusy, accountNotice, onSignIn, onSignUp, onSignOut, onDeviceLabelSave }) {
+function SettingsScreen({ preferences, setters, resetLayout, equipped, account, accountBusy, accountNotice, onSignIn, onSignUp, onSignOut, onDeviceLabelSave, revision }) {
   const { editorFontSize, terminalFontSize, hudDensity, animations } = preferences
   return (
-    <div className="game-screen-scroll settings-screen">
+    <div className="game-screen-scroll settings-screen" data-campaign-revision={revision}>
       <div className="screen-hero">
         <div><span className="screen-kicker">SETTINGS</span><h2>Make the Forge fit you.</h2><p>Usability and accessibility settings are free forever. Homestead coins only unlock cosmetic presentation.</p></div>
       </div>
@@ -509,11 +552,11 @@ function SettingsScreen({ preferences, setters, resetLayout, equipped, account, 
   )
 }
 
-export function GameScreen({ activeView, progress, purchaseCosmetic, equipCosmetic, busy, preferences, setters, resetLayout, account, accountBusy, accountNotice, onSignIn, onSignUp, onSignOut, onDeviceLabelSave }) {
-  if (activeView === 'quests') return <QuestJournal progress={progress} />
-  if (activeView === 'codex') return <Codex progress={progress} />
-  if (activeView === 'character') return <CharacterSheet progress={progress} />
-  if (activeView === 'homestead') return <Homestead progress={progress} purchaseCosmetic={purchaseCosmetic} equipCosmetic={equipCosmetic} busy={busy} />
-  if (activeView === 'settings') return <SettingsScreen preferences={preferences} setters={setters} resetLayout={resetLayout} equipped={progress.homestead?.equipped || {}} account={account} accountBusy={accountBusy} accountNotice={accountNotice} onSignIn={onSignIn} onSignUp={onSignUp} onSignOut={onSignOut} onDeviceLabelSave={onDeviceLabelSave} />
+export function GameScreen({ activeView, progress, revision, encounter, purchaseCosmetic, equipCosmetic, busy, preferences, setters, resetLayout, account, accountBusy, accountNotice, onSignIn, onSignUp, onSignOut, onDeviceLabelSave }) {
+  if (activeView === 'quests') return <QuestJournal progress={progress} revision={revision} encounter={encounter} />
+  if (activeView === 'codex') return <Codex progress={progress} revision={revision} />
+  if (activeView === 'character') return <CharacterSheet progress={progress} revision={revision} />
+  if (activeView === 'homestead') return <Homestead progress={progress} revision={revision} purchaseCosmetic={purchaseCosmetic} equipCosmetic={equipCosmetic} busy={busy} />
+  if (activeView === 'settings') return <SettingsScreen preferences={preferences} setters={setters} resetLayout={resetLayout} equipped={progress.homestead?.equipped || {}} account={account} accountBusy={accountBusy} accountNotice={accountNotice} onSignIn={onSignIn} onSignUp={onSignUp} onSignOut={onSignOut} onDeviceLabelSave={onDeviceLabelSave} revision={revision} />
   return null
 }

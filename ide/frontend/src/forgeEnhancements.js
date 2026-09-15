@@ -368,7 +368,14 @@ window.addEventListener('keydown', (event) => {
   }
 })
 
-const observer = new MutationObserver(enhance)
+let enhanceFrame = 0
+const observer = new MutationObserver(() => {
+  if (enhanceFrame) return
+  enhanceFrame = requestAnimationFrame(() => {
+    enhanceFrame = 0
+    enhance()
+  })
+})
 observer.observe(document.documentElement, { subtree: true, childList: true })
 window.addEventListener('load', enhance)
 queueMicrotask(enhance)

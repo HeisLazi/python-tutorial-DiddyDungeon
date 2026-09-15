@@ -10,13 +10,13 @@ from pathlib import Path
 from fastapi.testclient import TestClient
 
 from ide.server import app_v2
-from ide.server.state import LocalStateService, StateCommandError
+from ide.server.state import LocalStateService, StateCommandError, legacy_state_report
 
 
 def fixture_progress() -> dict:
     return {
         "meta": {"revision": 4, "updated_at": "2026-09-14T00:00:00+00:00", "device_id": "device-alpha"},
-        "player": {"xp": 10, "lifetime_xp": 25, "coins": 50, "hp": 100, "max_hp": 100},
+        "player": {"level": 1, "xp": 10, "xp_next": 100, "lifetime_xp": 25, "coins": 50, "hp": 100, "max_hp": 100},
         "learning_state": {"reference_mode": False},
         "assist": {"mode": "clean", "reference_mode_uses": 0, "guided_milestones": 0, "xp_forfeited": 0},
         "stats": {"reference_mode_uses": 0, "guided_milestones": 0},
@@ -31,6 +31,19 @@ def fixture_progress() -> dict:
         },
         "achievements": [{"name": "First Blood", "unlocked": False}],
         "activity": {"activity_score": 0},
+        "projects": [
+            {
+                "branch": "01-blackjack",
+                "name": "Blackjack",
+                "status": "active",
+                "progress": 0,
+                "mobs": [
+                    {"name": "The Empty Table", "status": "available", "concept": "Variables"},
+                    {"name": "The Dealer's Hand", "status": "locked", "concept": "Lists"},
+                    {"name": "The Count Keeper", "status": "locked", "concept": "Loops"},
+                ],
+            }
+        ],
     }
 
 
@@ -173,6 +186,66 @@ class StateServiceBehaviorTests(unittest.TestCase):
         self.assertEqual(state["homestead"]["equipped"]["cursor"], "cursor-golden-spark")
         self.assertEqual([event["action"] for event in state["state_events"]], ["homestead_purchase", "homestead_equip"])
 
+    def test_verified_objectives_reduce_resolve_and_complete_mob_with_codex_projection(self):
+        service, path = self.make_service()
+        first = service.apply_internal(
+            "record_battle_objective",
+            {"objective_id": "table_setup", "evidence_id": "mob-000-table", "reason": "Verified table state explanation"},
+        )
+        state = self.read(path)
+        self.assertEqual(first["result"]["resolve_before"], 4)
+        self.assertEqual(first["result"]["resolve_after"], 2)
+        self.assertFalse(first["result"]["mob_defeated"])
+        self.assertEqual(state["encounter_state"]["resolve"], 2)
+        self.assertEqual(state["state_events"][-1]["impact"], 2)
+
+        second = service.apply_internal(
+            "record_battle_objective",
+            {"objective_id": "state_explanation", "evidence_id": "mob-000-state", "reason": "Verified state boundary"},
+        )
+        state = self.read(path)
+        self.assertTrue(second["result"]["mob_defeated"])
+        self.assertEqual(second["result"]["reward_xp"], 25)
+        self.assertEqual(second["result"]["reward_coins"], 10)
+        self.assertEqual(state["player"]["xp"], 35)
+        self.assertEqual(state["player"]["coins"], 60)
+        self.assertEqual(state["stats"]["mobs_defeated"], 1)
+        self.assertEqual(state["projects"][0]["mobs"][0]["status"], "defeated")
+        self.assertEqual(state["projects"][0]["mobs"][1]["status"], "available")
+        self.assertEqual(state["encounter_state"]["status"], "defeated")
+        self.assertEqual(state["codex"]["encounters"][0]["status"], "defeated")
+        self.assertEqual(state["codex"]["encounters"][0]["attempts"], 2)
+        self.assertTrue(next(item for item in state["achievements"] if item["name"] == "First Blood")["unlocked"])
+
+    def test_battle_objective_is_internal_and_duplicate_objective_is_bounded(self):
+        service, _ = self.make_service()
+        with self.assertRaises(StateCommandError) as forbidden:
+            service.apply("record_battle_objective", {"objective_id": "table_setup", "evidence_id": "x", "reason": "x"}, "pyr")
+        self.assertEqual(forbidden.exception.status_code, 403)
+        service.apply_internal("record_battle_objective", {"objective_id": "table_setup", "evidence_id": "x", "reason": "x"})
+        with self.assertRaises(StateCommandError) as duplicate:
+            service.apply_internal("record_battle_objective", {"objective_id": "table_setup", "evidence_id": "y", "reason": "y"})
+        self.assertEqual(duplicate.exception.status_code, 409)
+
+    def test_legacy_report_is_read_only_and_surfaces_candidate_differences(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory) / "repo" / "progress.json"
+            workspace = Path(directory) / "workspace" / "progress.json"
+            root.parent.mkdir()
+            workspace.parent.mkdir()
+            canonical = fixture_progress()
+            legacy = fixture_progress()
+            legacy["player"]["level"] = 2
+            legacy["player"]["xp"] = 50
+            legacy["stats"]["mobs_defeated"] = 3
+            root.write_text(json.dumps(canonical), encoding="utf-8")
+            workspace.write_text(json.dumps(legacy), encoding="utf-8")
+            report = legacy_state_report(root, workspace)
+        self.assertTrue(report["legacy_present"])
+        self.assertFalse(report["legacy_authoritative"])
+        self.assertTrue(report["manual_approval_required"])
+        self.assertEqual({item["field"] for item in report["differences"]}, {"level", "xp", "mobs_defeated"})
+
 
 class StateGatewayHttpTests(unittest.TestCase):
     def with_temp_progress(self):
@@ -187,6 +260,28 @@ class StateGatewayHttpTests(unittest.TestCase):
 
     def client(self):
         return TestClient(app_v2.app, base_url="http://127.0.0.1")
+
+    def with_split_state_paths(self):
+        directory = tempfile.TemporaryDirectory()
+        root = Path(directory.name) / "repo"
+        workspace = Path(directory.name) / "workspace"
+        root.mkdir()
+        workspace.mkdir()
+        canonical = root / "progress.json"
+        legacy = workspace / "progress.json"
+        canonical.write_text(json.dumps(fixture_progress()), encoding="utf-8")
+        legacy_value = fixture_progress()
+        legacy_value["player"]["level"] = 99
+        legacy_value["player"]["coins"] = 9999
+        legacy.write_text(json.dumps(legacy_value), encoding="utf-8")
+        original_root = app_v2.PROGRESS_PATH
+        original_workspace = app_v2.WORKSPACE
+        app_v2.PROGRESS_PATH = canonical
+        app_v2.WORKSPACE = workspace
+        self.addCleanup(setattr, app_v2, "PROGRESS_PATH", original_root)
+        self.addCleanup(setattr, app_v2, "WORKSPACE", original_workspace)
+        self.addCleanup(directory.cleanup)
+        return canonical, legacy
 
     def test_valid_command_and_forbidden_payloads_over_http(self):
         path = self.with_temp_progress()
@@ -240,6 +335,39 @@ class StateGatewayHttpTests(unittest.TestCase):
         self.assertEqual(equip.json()["revision"], 6)
         state = json.loads(path.read_text(encoding="utf-8"))
         self.assertEqual(state["homestead"]["equipped"]["cursor"], "cursor-golden-spark")
+
+    def test_revision_and_campaign_ignore_stray_workspace_progress(self):
+        canonical, legacy = self.with_split_state_paths()
+        client = self.client()
+        campaign = client.get("/api/campaign", headers={"host": "127.0.0.1"})
+        self.assertEqual(campaign.status_code, 200)
+        body = campaign.json()
+        self.assertEqual(body["revision"], 4)
+        self.assertEqual(body["progress"]["player"]["level"], 1)
+        self.assertEqual(body["encounter"]["mob_name"], "The Empty Table")
+        self.assertEqual(body["encounter"]["resolve"], 4)
+        self.assertEqual(body["encounter"]["available_objectives"][0]["impact"], 2)
+        self.assertEqual(body["state_authority"]["canonical_path"], str(canonical.resolve()))
+        self.assertFalse(body["state_authority"]["legacy_authoritative"])
+
+        legacy_value = json.loads(legacy.read_text(encoding="utf-8"))
+        legacy_value["player"]["level"] = 100
+        legacy.write_text(json.dumps(legacy_value), encoding="utf-8")
+        revision = client.get("/api/state/revision", headers={"host": "127.0.0.1"})
+        self.assertEqual(revision.status_code, 200)
+        self.assertEqual(revision.json()["revision"], 4)
+        self.assertEqual(client.put("/api/file", headers={"host": "127.0.0.1"}, json={"path": "progress.json", "content": "{}"}).status_code, 403)
+        self.assertEqual(json.loads(canonical.read_text(encoding="utf-8"))["player"]["level"], 1)
+
+    def test_state_revision_endpoint_is_cheap_and_legacy_report_is_explicit(self):
+        self.with_split_state_paths()
+        client = self.client()
+        revision = client.get("/api/state/revision", headers={"host": "127.0.0.1"})
+        report = client.get("/api/state/legacy", headers={"host": "127.0.0.1"})
+        self.assertEqual(revision.status_code, 200)
+        self.assertEqual(report.status_code, 200)
+        self.assertIn("revision", revision.json())
+        self.assertTrue(report.json()["manual_approval_required"])
 
 
 if __name__ == "__main__":

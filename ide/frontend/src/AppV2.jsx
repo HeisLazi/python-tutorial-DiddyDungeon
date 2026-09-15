@@ -2,7 +2,7 @@ import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState }
 import Editor from '@monaco-editor/react'
 import { Terminal } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
-import { ActivityRail, ContextPanel, GameScreen } from './RpgViews'
+import { ActivityRail, ContextPanel, GameScreen, RewardQueue } from './RpgViews'
 import { syncEngine } from './cloud/syncEngine.js'
 
 const api = async (url, options = {}) => {
@@ -254,6 +254,7 @@ function AppV2() {
   const shellTerminalRef = useRef(null)
   const aiTerminalRef = useRef(null)
   const [campaign, setCampaign] = useState(null)
+  const [rewardQueue, setRewardQueue] = useState([])
   const [runtime, setRuntime] = useState(null)
   const [files, setFiles] = useState([])
   const [activePath, setActivePath] = useState('')
@@ -273,6 +274,10 @@ function AppV2() {
   const tutorDirtyRef = useRef(false)
   const tutorDiskRevisionRef = useRef('')
   const tutorExternalChangeRef = useRef(null)
+  const campaignRevisionRef = useRef(null)
+  const campaignInitializedRef = useRef(false)
+  const seenStateEventsRef = useRef(new Set())
+  const campaignRefreshInFlightRef = useRef(null)
 
   const [activeView, setActiveView] = usePersistentState('questlab.activeView', 'forge')
   const [leftWidth, setLeftWidth] = usePersistentState('questlab.leftWidth', 220)
@@ -301,12 +306,157 @@ function AppV2() {
     [progress.skills],
   )
 
-  const refreshCampaign = async () => {
-    try {
-      setCampaign(await api('/api/campaign'))
-    } catch (error) {
-      setNotice(`Campaign load failed: ${error.message}`)
+  const eventNotifications = (event) => {
+    if (!event || typeof event !== 'object') return []
+    const notifications = []
+    const action = String(event.action || '')
+    const mobName = event.mob_name || 'Current encounter'
+    const xp = Number(event.reward_xp ?? event.xp ?? 0)
+    const coins = Number(event.reward_coins ?? event.coins ?? 0)
+    const levelBefore = Number(event.level_before)
+    const levelAfter = Number(event.level_after)
+
+    if (action === 'record_battle_objective') {
+      if (Number(event.impact) > 0 && !event.mob_defeated) {
+        notifications.push({
+          id: `${event.id}:impact`,
+          kind: 'objective',
+          title: 'OBJECTIVE VERIFIED',
+          body: `${mobName} · −${event.impact} Resolve`,
+          detail: event.question_type ? `${event.question_type} checkpoint` : 'Validated Battle objective',
+        })
+      }
+      if (event.mob_defeated) {
+        notifications.push({
+          id: `${event.id}:defeated`,
+          kind: 'defeat',
+          title: 'MOB DEFEATED',
+          body: mobName,
+          detail: [xp > 0 ? `+${xp} XP` : '', coins > 0 ? `+${coins} Coins` : ''].filter(Boolean).join(' · '),
+        })
+        if (event.next_mob) {
+          notifications.push({
+            id: `${event.id}:next`,
+            kind: 'unlock',
+            title: 'NEXT ENCOUNTER',
+            body: event.next_mob,
+            detail: 'Unlocked by the verified clear',
+          })
+        }
+      }
+    } else if (action === 'award_learning_reward' && (xp > 0 || coins > 0)) {
+      notifications.push({
+        id: `${event.id}:reward`,
+        kind: 'reward',
+        title: 'LEARNING REWARD',
+        body: [xp > 0 ? `+${xp} XP` : '', coins > 0 ? `+${coins} Coins` : ''].filter(Boolean).join(' · '),
+        detail: event.reason || 'Validated learning evidence',
+      })
+    } else if (action === 'record_achievement' && event.achievement_id) {
+      notifications.push({
+        id: `${event.id}:achievement`,
+        kind: 'achievement',
+        title: 'ACHIEVEMENT UNLOCKED',
+        body: event.achievement_id,
+        detail: event.reason || 'Validated campaign milestone',
+      })
+    } else if (action === 'homestead_purchase' && event.item_name) {
+      notifications.push({
+        id: `${event.id}:item`,
+        kind: 'item',
+        title: 'NEW ITEM',
+        body: event.item_name,
+        detail: 'Added to Homestead',
+      })
+    } else if (action === 'homestead_equip' && event.item_name) {
+      notifications.push({
+        id: `${event.id}:equip`,
+        kind: 'item',
+        title: 'LOADOUT UPDATED',
+        body: event.item_name,
+        detail: 'Equipment projection updated',
+      })
+    } else if (action === 'record_battle_miss' || action === 'player_hp_change') {
+      const damage = Number(event.damage ?? Math.max(0, -(Number(event.amount) || 0)))
+      if (damage > 0) {
+        notifications.push({
+          id: `${event.id}:hp`,
+          kind: 'warning',
+          title: 'COUNTERATTACK',
+          body: `−${damage} HP`,
+          detail: event.reason || 'Verified Battle miss',
+        })
+      }
     }
+
+    if (Number.isFinite(levelBefore) && Number.isFinite(levelAfter) && levelAfter > levelBefore) {
+      notifications.push({
+        id: `${event.id}:level`,
+        kind: 'level',
+        title: 'LEVEL UP',
+        body: `${levelBefore} → ${levelAfter}`,
+        detail: 'Validated progression milestone',
+      })
+    }
+    if (event.achievement_unlocked) {
+      notifications.push({
+        id: `${event.id}:achievement-extra`,
+        kind: 'achievement',
+        title: 'ACHIEVEMENT UNLOCKED',
+        body: event.achievement_unlocked,
+        detail: 'First verified encounter clear',
+      })
+    }
+    const mastery = event.mastery || event.mastery_shield || event.shield
+    if (mastery && typeof mastery === 'object' && (mastery.tier || mastery.shield || mastery.gained)) {
+      notifications.push({
+        id: `${event.id}:mastery`,
+        kind: 'mastery',
+        title: 'MASTERY SHIELD GAINED',
+        body: mastery.tier || mastery.shield || 'New mastery evidence',
+        detail: event.reason || 'Validated concept evidence',
+      })
+    }
+    return notifications
+  }
+
+  const applyCampaign = (next) => {
+    if (!next || typeof next !== 'object') return
+    const nextRevision = Number(next.revision ?? next.progress?.meta?.revision ?? 0)
+    if (campaignInitializedRef.current && campaignRevisionRef.current !== null && nextRevision < campaignRevisionRef.current) return
+    const events = Array.isArray(next.progress?.state_events) ? next.progress.state_events : []
+    if (!campaignInitializedRef.current) {
+      events.forEach((event) => event?.id && seenStateEventsRef.current.add(event.id))
+      campaignInitializedRef.current = true
+    } else {
+      const fresh = []
+      events.forEach((event) => {
+        if (!event?.id || seenStateEventsRef.current.has(event.id)) return
+        seenStateEventsRef.current.add(event.id)
+        fresh.push(...eventNotifications(event))
+      })
+      if (fresh.length) setRewardQueue((current) => [...current, ...fresh].slice(-8))
+    }
+    campaignRevisionRef.current = nextRevision
+    setCampaign(next)
+  }
+
+  const refreshCampaign = async ({ silent = false } = {}) => {
+    if (campaignRefreshInFlightRef.current) return campaignRefreshInFlightRef.current
+    const request = (async () => {
+      try {
+        const next = await api('/api/campaign')
+        applyCampaign(next)
+        return next
+      } catch (error) {
+        if (!silent || !campaignInitializedRef.current) setNotice(`Campaign load failed: ${error.message}`)
+        return null
+      } finally {
+        campaignRefreshInFlightRef.current = null
+      }
+    })()
+    campaignRefreshInFlightRef.current = request
+    return request
   }
 
   const refreshRuntime = async () => {
@@ -354,6 +504,45 @@ function AppV2() {
     refreshFiles()
     refreshTutor()
   }, [])
+
+  // Campaign state is an external projection: check the cheap revision every
+  // second and fetch the full snapshot only when the state service committed a
+  // new revision. This effect never touches either PTY lifecycle.
+  useEffect(() => {
+    let cancelled = false
+    const pollCampaignRevision = async () => {
+      try {
+        const metadata = await api('/api/state/revision')
+        if (cancelled) return
+        const revision = Number(metadata.revision ?? 0)
+        if (!campaignInitializedRef.current || campaignRevisionRef.current === null) {
+          await refreshCampaign({ silent: true })
+          return
+        }
+        if (revision !== campaignRevisionRef.current) await refreshCampaign({ silent: true })
+      } catch (error) {
+        if (!cancelled && !campaignInitializedRef.current) setNotice(`Campaign sync check failed: ${error.message}`)
+      }
+    }
+    void pollCampaignRevision()
+    const timer = window.setInterval(pollCampaignRevision, 1000)
+    return () => {
+      cancelled = true
+      window.clearInterval(timer)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!rewardQueue.length) return undefined
+    const timer = window.setTimeout(() => setRewardQueue((current) => current.slice(1)), 5200)
+    return () => window.clearTimeout(timer)
+  }, [rewardQueue])
+
+  // Publish after React has committed the new projection so DOM enhancement
+  // layers (combat shell/icon polish) read the same revision and values.
+  useEffect(() => {
+    if (campaign) window.dispatchEvent(new CustomEvent('questlab:campaign-updated', { detail: campaign }))
+  }, [campaign])
 
   useEffect(() => {
     tutorDirtyRef.current = tutorDirty
@@ -702,7 +891,9 @@ function AppV2() {
       data-cursor={equipped.cursor || 'cursor-basic'}
       data-hud={equipped.hud || 'hud-forge'}
       data-terminal={terminalSkin}
+      data-campaign-revision={campaign?.revision ?? ''}
     >
+      <RewardQueue items={rewardQueue} />
       <header className="topbar">
         <div className="brand-lockup">
           <div className="eyebrow">PYTHON QUEST LAB</div>
@@ -714,11 +905,11 @@ function AppV2() {
           <small>{player.xp ?? 0}/{player.xp_next ?? 100} XP</small>
         </div>
         <div className="top-stats">
-          <span className="hp-stat">♥ {player.hp ?? 100}</span>
-          <span>◈ {player.coins ?? 0}c</span>
-          <span>🔥 {streak.current ?? 0}</span>
-          <span className="optional-stat">🛡 {shields}</span>
-          <span className="optional-stat">⚔ {stats.bosses_defeated ?? 0}</span>
+          <span className="hp-stat" data-campaign-stat="hp" data-campaign-stat-value={player.hp ?? 100}>♥ {player.hp ?? 100}</span>
+          <span data-campaign-stat="coins" data-campaign-stat-value={player.coins ?? 0}>◈ {player.coins ?? 0}c</span>
+          <span data-campaign-stat="streak" data-campaign-stat-value={streak.current ?? 0}>🔥 {streak.current ?? 0}</span>
+          <span className="optional-stat" data-campaign-stat="shields" data-campaign-stat-value={shields}>🛡 {shields}</span>
+          <span className="optional-stat" data-campaign-stat="bosses" data-campaign-stat-value={stats.bosses_defeated ?? 0}>⚔ {stats.bosses_defeated ?? 0}</span>
           <span className="optional-stat">DEV {activity.activity_score ?? 0}</span>
           <span
             className={`cloud-pill ${cloudState.error ? 'error' : cloudState.configured ? 'ready' : 'local'}`}
@@ -845,6 +1036,8 @@ function AppV2() {
             <GameScreen
               activeView={activeView}
               progress={progress}
+              revision={campaign?.revision ?? 0}
+              encounter={campaign?.encounter}
               purchaseCosmetic={purchaseCosmetic}
               equipCosmetic={equipCosmetic}
               busy={busy}
