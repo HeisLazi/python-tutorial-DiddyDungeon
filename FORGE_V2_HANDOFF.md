@@ -41,11 +41,13 @@ The right terminal targets:
 
 `/api/runtime` detects whether each command exists and disables missing launch buttons.
 
-## Tutor Notebook boundary (legacy compatibility)
+## Tutor Notebook boundary (Campaign surface)
 
-`tutor.py` remains collaborative scratch space for existing tooling, but it is
-not a normal Campaign destination. The player-facing AI learning surface is
-Practice, which never creates or writes `tutor.py`.
+`tutor.py` is collaborative scratch space in the Campaign shell and has its
+own Tutor Notebook destination. The player may edit, format and run it, and
+the controlled tutor endpoint may write teaching examples there. Practice is
+separate: it provides unlimited provider-assisted drills and never creates or
+writes `tutor.py`.
 
 The controlled future PYR agent may write examples/exercises there. Required project source such as `blackjack.py` remains read-only to the tutor agent. The raw CLI terminal is intentionally powerful and is not a security sandbox.
 

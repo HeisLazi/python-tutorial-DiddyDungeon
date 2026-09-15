@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 
 export const viewItems = [
   { id: 'forge', icon: '⌘', label: 'Forge' },
+  { id: 'tutor', icon: '🧪', label: 'Tutor Notebook' },
   { id: 'quests', icon: '⚔', label: 'Quest Journal' },
   { id: 'codex', icon: '▤', label: 'Codex' },
   { id: 'character', icon: '♙', label: 'Character' },

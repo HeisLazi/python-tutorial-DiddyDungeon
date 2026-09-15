@@ -123,10 +123,10 @@ Hosted Auth is configured to require email confirmation (`mailer_autoconfirm=fal
   difficulty for unlimited provider-assisted drills without Campaign/Dungeon
   rewards or a `tutor.py` file. Adaptive generation, rooms, markets, scoring
   and hosted leaderboards remain later slices.
-- The legacy Tutor Notebook remains available only through its compatibility
-  endpoint for existing tooling. Normal Campaign navigation and the workspace
-  file tree no longer expose `tutor.py`; older persisted Tutor routes redirect
-  to Forge so Practice is the player-facing AI learning mode.
+- Restored Tutor Notebook as a first-class Campaign surface. Its dedicated
+  `/api/tutor` endpoint and editor support collaborative teaching examples;
+  generic project-file routes still reject `tutor.py`, and Practice remains
+  independent and never writes it.
 
 ## Supabase project and schema
 
@@ -590,6 +590,20 @@ The browser acceptance was run with keyboard/mouse automation only (no
 Playwright) against a disposable isolated state copy. It verified live reward
 feedback, Resolve and Codex changes, Character/Homestead projection updates,
 the monochrome SVG HUD icons, checkpoint restoration after a backend restart,
-and `CONNECTED` shell/AI PTYs. WSL backend tests: 39 passed; frontend tests: 23
+and `CONNECTED` shell/AI PTYs. WSL backend tests: 39 passed; frontend tests: 24
 passed; Windows Vite build: passed. No real `progress.json`, legacy evidence,
 user PTY or Supabase state was modified.
+
+### Runtime checkout visibility note — 2026-09-15
+
+The screenshot came from the already-running Forge on port 5173. Its process
+command line points at `/home/lazi/projects/python-tutorial-DiddyDungeon` on
+`feature/quest-lab-ide`, not this `feature/cloud-sync-desktop` checkout. That
+runtime therefore served an older AppV2/CSS bundle (including the broad
+`.top-stats span` rule) and could not show the newer Dungeon/Practice/sync
+surfaces. I applied only the frontend selector/icon-persistence repair to that
+running checkout; its backend, canonical save and connected shell/AI PTYs were
+left alone. A fresh port-5174 tab served this branch and showed the expected
+monochrome SVG stat icons and Campaign Tutor destination. The launcher still
+needs to target this checkout before the new branch features will be visible at
+the user's usual port.

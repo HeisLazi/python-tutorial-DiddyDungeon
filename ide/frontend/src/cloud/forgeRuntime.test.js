@@ -97,9 +97,24 @@ test('Dungeon checkpoints and Practice remain separate learning modes', () => {
   assert.match(views, /dungeon\.py · current room buffer/)
   assert.match(views, /data-testid="practice"/)
   assert.match(views, /Practice is unlimited and separate from Campaign and Dungeon/)
-  assert.doesNotMatch(views, /id: 'tutor',/)
+  assert.match(views, /id: 'tutor', icon: '🧪', label: 'Tutor Notebook'/)
   assert.doesNotMatch(views, /<option value="python-basics">python-basics<\/option>/)
-  assert.match(app, /Tutor Notebook is legacy-only/)
+  assert.match(app, /Tutor Notebook is a Campaign surface/)
+})
+
+test('top HUD stat pills style only direct stats and reset nested SVG content', () => {
+  const styles = source('../styles.css')
+  const v2 = source('../v2.css')
+  const polish = source('../uiPolish.js')
+
+  assert.match(styles, /\.top-stats\s*>\s*span,\.git-pill/)
+  assert.doesNotMatch(styles, /\.top-stats\s+span,\.git-pill/)
+  assert.match(styles, /\.top-stats\s*>\s*span\s+\.quest-icon/)
+  assert.match(styles, /\.top-stats\s*>\s*span\s+\[data-stat-value\]/)
+  assert.match(v2, /data-hud="hud-adventurer"\]\s+\.top-stats\s*>\s*span/)
+  assert.match(v2, /top-stats\s*>\s*span\s+\.quest-icon/)
+  assert.ok(polish.includes("querySelectorAll('.top-stats > span')"))
+  assert.match(polish, /data-stat-value/)
 })
 
 test('combat projection treats legacy cleared mobs as terminal', () => {
@@ -152,8 +167,8 @@ test('top HUD SVG icons are nested content, not nested stat pills', () => {
   assert.match(styles, /\.app-shell\[data-hud="hud-adventurer"\] \.top-stats\s*>\s*span/)
   assert.match(v2, /\.forge-v2\[data-hud="hud-adventurer"\] \.top-stats\s*>\s*span/)
   assert.doesNotMatch(styles, /\.top-stats\s+span,\.git-pill/)
-  assert.match(styles, /\.top-stats\s*>\s*span\s*>\s*\.quest-icon/)
-  assert.match(styles, /\.top-stats\s*>\s*span\s*>\s*\[data-stat-value\]/)
+  assert.match(styles, /\.top-stats\s*>\s*span\s+\.quest-icon/)
+  assert.match(styles, /\.top-stats\s*>\s*span\s+\[data-stat-value\]/)
   assert.match(styles, /\.top-stats\s+\.cloud-pill\{[^}]*min-width:15ch/)
 })
 

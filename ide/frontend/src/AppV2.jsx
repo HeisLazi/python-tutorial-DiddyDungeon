@@ -681,14 +681,9 @@ function AppV2() {
     refreshFiles()
   }, [])
 
-  // Tutor Notebook is retained only as a legacy backend compatibility surface;
-  // normal Campaign navigation now uses Practice for provider-assisted help.
-  // Redirect an older persisted view so a refresh cannot reopen tutor.py.
-  useEffect(() => {
-    if (activeView !== 'tutor') return
-    setActiveView('forge')
-    setNotice('Tutor Notebook is legacy-only. Use Practice for AI-assisted learning.')
-  }, [activeView, setActiveView])
+  // Tutor Notebook is a Campaign surface. It shares the real shell and
+  // controlled /api/tutor boundary; Practice remains a separate provider-only
+  // drill surface and never writes tutor.py.
 
   // The DOM enhancement layer and any local AI client can request this
   // explicitly captured context without knowing React's editor/terminal refs.

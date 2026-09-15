@@ -24,7 +24,7 @@
 .forge-v2 .ai-actions button:disabled{opacity:.32;text-decoration:line-through}
 .forge-v2[data-cursor="cursor-golden-spark"] .monaco-editor .cursor{box-shadow:0 0 10px var(--gold)}
 .forge-v2[data-hud="hud-adventurer"] .topbar{box-shadow:inset 0 -1px color-mix(in srgb,var(--gold) 28%,transparent)}
-.forge-v2[data-hud="hud-adventurer"] .top-stats > span{border-color:color-mix(in srgb,var(--gold) 22%,var(--line))}
+.forge-v2[data-hud="hud-adventurer"] .top-stats > span{border-color:color-mix(in srgb,var(--gold) 22%,var(--line))}.forge-v2[data-hud="hud-adventurer"] .top-stats > span .quest-icon,.forge-v2[data-hud="hud-adventurer"] .top-stats > span [data-stat-value]{border:0;background:transparent;padding:0;box-shadow:none}
 .forge-v2 .game-screen{z-index:2}
 .forge-v2 .editor-panel,.forge-v2 .terminal-panel{z-index:1}
 .forge-v2 .statusbar span:first-child{max-width:60%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}

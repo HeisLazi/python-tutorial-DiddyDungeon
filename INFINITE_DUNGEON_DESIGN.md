@@ -8,7 +8,7 @@ Quest Lab has three separate learning surfaces:
 
 | Mode | State boundary | Purpose |
 | --- | --- | --- |
-| Campaign | Existing canonical campaign state | Permanent Blackjack progression, equipment, Codex and normal encounters. The player-facing Campaign shell does not expose `tutor.py`. |
+| Campaign | Existing canonical campaign state | Permanent Blackjack progression, equipment, Codex, normal encounters and the collaborative `tutor.py` notebook. Tutor is a dedicated Campaign surface, not a normal project file. |
 | Infinite Dungeon | A run-scoped `dungeon_run` projection in the canonical state service | Fresh loadout each run, endless rooms, adaptive questions, run score and run-only currency. An active run survives a Forge/browser/workstation restart and is cleared only by a recorded death or explicit run completion. |
 | Practice | Separate non-competitive practice session | Unlimited concept selection and AI help without Dungeon difficulty, leaderboard or Campaign reward mutation. Practice may record bounded learning evidence, but it never becomes a Dungeon run. |
 
