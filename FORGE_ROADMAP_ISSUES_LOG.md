@@ -307,6 +307,7 @@ The mutation was disposable and both backends were stopped afterward.
 | F-046 | P2 | Friend bundle custody | A friend-facing bundle could accidentally be made from the dirty OneDrive working tree, carrying the player's uncommitted save or Campaign `tutor.py` into distribution. | Fixed locally: `tools/questlab-package.ps1` archives committed `HEAD` only, refuses unrelated dirty source files, emits a manifest/zip, and leaves the live save and untracked tutor notebook out. Clean-install launch and Tauri desktop proof remain separate gates. |
 | F-047 | P2 | Live RPG projection acceptance | The shared revision/event architecture needed a fresh end-to-end K&M proof that rewards, Resolve, mob unlocks, Codex, Homestead economy, Tutor and Practice all stay coherent without a refresh. | Fixed locally: the disposable current-branch runtime passed the campaign reward/Resolve/mob-clear/Codex/Homestead/Tutor/Practice sequence below with both PTYs connected. Hosted transport remains gated by F-018/Milestone C. |
 | F-048 | P3 | HUD sync layout stability | Revision polling and the initial campaign load could change stat text widths while nested icon/value spans participated in the pill layout, making the top bar visibly jump even after the SVG ownership fix. | Fixed locally: direct stat pills now reserve a compact minimum width/height, keep their value on one line, and reserve the SVG/value slots. Nested spans remain unstyled as pills; compact/adventurer selectors stay direct-child scoped. |
+| F-049 | P2 | Clean-install launch proof | The friend distribution path had source-custody/build evidence but no fresh checkout proof that the documented backend/frontend setup launches the Forge with both PTYs and live state projection. | Fixed locally for a clean ext4 WSL checkout: cloned pushed `8f4ec71`, installed `.venv` and frontend dependencies, built 1,344 modules, launched the stable-PTY runtime, and observed a gateway reward reach the HUD without refresh. Windows friend-machine packaging/Tauri remain separate gates. |
 
 ## Verification update — 2026-09-15 — WSL launcher dependency preflight
 
@@ -466,3 +467,18 @@ The WSL frontend suite passed all 31 tests, the full WSL backend suite passed
 This is a source/build contract check; the
 existing disposable K&M projection run remains the live evidence for icons,
 rewards and PTY preservation.
+
+## Verification update — 2026-09-16 — clean-install launch
+
+A fresh ext4 WSL clone of pushed `8f4ec71` followed the onboarding setup:
+backend venv requirements, frontend `npm ci`, and Vite production build (1,344
+modules). The stable launcher path started the backend on 7360 and Vite on
+5196 with backend reload disabled. Browser K&M showed the Forge branch identity,
+both shell/AI PTY labels `CONNECTED`, and the expected starter Level 1 state.
+
+While that tab stayed open, a trusted in-process state-service reward advanced
+the disposable canonical cache from revision 0 to 1; the HUD changed from
+`0 c` to `1 c` on revision polling with no browser refresh. Quest Journal also
+loaded normally. The tab, runtime and exact temporary checkout were then
+closed/removed. The user save, legacy evidence, long-lived runtimes and hosted
+state were not touched.

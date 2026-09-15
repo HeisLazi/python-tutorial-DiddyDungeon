@@ -175,12 +175,11 @@ Campaign surface; it was not removed or merged into Practice.
   types, bounded sessions and provider-validated history. It never writes
   Campaign, Dungeon, rewards, HP, Resolve or `tutor.py`.
 - Slice 7 has local launcher/runtime identity, a guarded Windows/WSL launcher,
-  friend onboarding instructions and offline sync boundaries, but requires a
-  clean-install/two-device acceptance before packaging is called complete. A
-  reproducible committed-source bundle is now available through
-  `tools/questlab-package.ps1`; clean-install/two-device acceptance and the
-  Tauri desktop proof remain open. The old 5173 process is not killed
-  automatically.
+  friend onboarding instructions and offline sync boundaries. A reproducible
+  committed-source bundle is available through `tools/questlab-package.ps1`,
+  and a fresh ext4 clone/install/launch smoke is now verified (F-049). Hosted
+  two-device mailbox acceptance, a Windows friend-machine launch and the Tauri
+  desktop proof remain open. The old 5173 process is not killed automatically.
 - Slice 8 (hosted friends/presence/raids) remains last and is intentionally not
   seeded or claimed complete.
 

@@ -55,8 +55,8 @@ increment the canonical revision or enter the event/cloud projection.
 - Real authenticated two-device Supabase player-state/avatar acceptance,
   provider-authenticated adjudication and hosted Dungeon persistence;
 - non-OneDrive custody migration for the real save (still explicit opt-in);
-- clean-install launch on a friend machine and a native Windows/Tauri desktop
-  proof;
+- Windows friend-machine launch and a native Windows/Tauri desktop proof (the
+  clean ext4 WSL clone/install/launch smoke is now verified);
 - safe web/Vercel account/profile surface and, only after those gates, any
   friends/presence/raid transport.
 
