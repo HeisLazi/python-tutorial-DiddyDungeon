@@ -1034,6 +1034,21 @@ reported zero vulnerabilities. This is a compatibility candidate only; the
 current branch remains on 0.56.0 until the semver-major editor decision is
 reviewed, and npm audit does not inspect Monaco's vendored sanitizer bundle.
 
+### F-050 decision — 2026-09-16
+
+Claude reviewed the actual Monaco tarballs, not only npm metadata. Monaco 0.56.0
+declares and bundles DOMPurify 3.4.8, so its one low and one moderate audit
+finding describes code loaded by the editor. The proposed 0.53.0 downgrade
+passes the suite and build but omits the dependency edge from its metadata; the
+tarball still bundles DOMPurify 3.1.7, older and inside the same vulnerable
+ranges. It is therefore a metadata-clean but security-worse downgrade.
+
+The branch retains 0.56.0 as an explicit accepted low/moderate risk, with no
+high/critical findings. No forced fix or lockfile rewrite was made. Revisit
+only when upstream ships a Monaco bundle with DOMPurify above 3.4.12 or a
+separately reviewed sanitizer patch; the friend bundle is not called
+security-clean before that gate.
+
 ### Claude F-009 follow-up and coverage closure — 2026-09-16
 
 Claude Sonnet reviewed commits `e8094c2` and `fea726e` read-only after the

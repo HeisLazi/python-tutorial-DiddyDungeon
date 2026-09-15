@@ -44,7 +44,7 @@ complete.
 | F-033 | P2 | Shared OneDrive Windows dependencies are unsafe for WSL. | Keep the fail-fast launcher and onboarding instruction to run `npm ci` in a native Linux/WSL checkout. No source workaround is needed. |
 | F-035 | P3 | HMR can reconnect a disposable terminal during edits. | Treat as a development-loop caveat; use the built/started runtime for acceptance. |
 | F-039 | P2 | Tracked `progress.json` plus OneDrive is a third writer. | Keep custody migration explicit and opt-in; never move or merge the player's save silently. |
-| F-050 | P3 | Monaco 0.56.0 reports one low and one moderate DOMPurIFY advisory. | Make an explicit compatibility/security decision. The tested 0.53.0 candidate is not adopted automatically; npm audit does not inspect Monaco's vendored sanitizer bundle. |
+| F-050 | P3 | Monaco 0.56.0 reports one low and one moderate DOMPurIFY advisory. | Decision recorded: retain 0.56.0 as accepted risk; reject 0.53.0 because its vendored DOMPurIFY is older 3.1.7 and only invisible to npm audit. Revisit when upstream bundles >3.4.12 or a reviewed patch is available. |
 
 These are not all bugs to “fix” locally. F-001, F-010, F-018, F-039 and the
 hosted portions of F-025 are approval/acceptance gates. No social, hosted
@@ -154,19 +154,19 @@ coins, and PTY connection evidence.
 native Linux/WSL checkout and run `npm ci` there, never reuse OneDrive's
 Windows `node_modules`. Keep the guarded launcher fail-fast behavior.
 
-**F-050 decision procedure:**
+**F-050 decision record:**
 
-1. Keep a baseline `npm audit --omit=dev`, frontend test and build transcript
+1. The baseline `npm audit --omit=dev`, frontend suite and build were captured
    for Monaco 0.56.0.
-2. In an exact disposable archive only, test the proposed 0.53.0 pin and
-   inspect package and vendored sanitizer contents; do not infer security from
-   npm metadata alone.
-3. If the reviewer approves adoption, update `package.json` and lockfile in a
-   single reviewable commit, rerun all frontend/build gates, and K&M-test the
-   Codex note editor, Campaign Tutor and Battle answer form (typing, save,
-   syntax highlighting, no console errors).
-4. If not approved, retain 0.56.0 and document the accepted advisory; never
-   run `npm audit fix --force`.
+2. A disposable 0.53.0 archive passed tests/build and reported zero audit
+   findings, but tarball inspection found its inline DOMPurIFY at 3.1.7; this
+   is a metadata blind spot, not a fix.
+3. Claude recommended and the branch recorded retaining 0.56.0 as an explicit
+   low/moderate accepted risk. Never run `npm audit fix --force` or downgrade
+   the editor merely to make the scan quiet.
+4. Reopen this gate only for an upstream Monaco bundle above 3.4.12 or a
+   separately reviewed sanitizer patch, then rerun frontend/build/K&M editor
+   acceptance before changing the lockfile.
 
 **Distribution K&M gate:** use the committed-HEAD-only package, clean ext4
 install and guarded launcher. Confirm branch identity, Level/XP/coins, both

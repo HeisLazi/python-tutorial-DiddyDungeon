@@ -49,7 +49,9 @@ The long-lived local runtimes were left untouched:
 - browser interaction policy: click, scroll and type only; no Playwright;
 - remaining roadmap gates: provider-authenticated adjudication, hosted
   two-device state/avatar transport, custody approval, Windows/Tauri proof,
-  safe web surface, and the Monaco/DOMPurify compatibility decision.
+  safe web surface, and the upstream/reviewer Monaco/DOMPurify remediation
+  gate. The current 0.56.0 risk is explicitly accepted; 0.53.0 was rejected
+  after inspecting its older vendored 3.1.7 sanitizer.
 
 This snapshot is evidence for planning only. It is not a migration approval,
 cloud seed, merge of legacy files, or completion claim for the roadmap.

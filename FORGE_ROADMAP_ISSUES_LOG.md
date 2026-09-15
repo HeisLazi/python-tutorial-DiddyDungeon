@@ -307,7 +307,7 @@ The mutation was disposable and both backends were stopped afterward.
 | F-047 | P2 | Live RPG projection acceptance | The shared revision/event architecture needed a fresh end-to-end K&M proof that rewards, Resolve, mob unlocks, Codex, Homestead economy, Tutor and Practice all stay coherent without a refresh. | Fixed locally: the disposable current-branch runtime passed the campaign reward/Resolve/mob-clear/Codex/Homestead/Tutor/Practice sequence below with both PTYs connected. Hosted transport remains gated by F-018/Milestone C. |
 | F-048 | P3 | HUD sync layout stability | Revision polling and the initial campaign load could change stat text widths while nested icon/value spans participated in the pill layout, making the top bar visibly jump even after the SVG ownership fix. | Fixed locally: direct stat pills now reserve a compact minimum width/height, keep their value on one line, and reserve the SVG/value slots. Nested spans remain unstyled as pills; compact/adventurer selectors stay direct-child scoped. |
 | F-049 | P2 | Clean-install launch proof | The friend distribution path had source-custody/build evidence but no fresh checkout proof that the documented backend/frontend setup launches the Forge with both PTYs and live state projection. | Fixed locally for a clean ext4 WSL checkout: cloned pushed `8f4ec71`, installed `.venv` and frontend dependencies, built 1,344 modules, launched the stable-PTY runtime, and observed a gateway reward reach the HUD without refresh. Windows friend-machine packaging/Tauri remain separate gates. |
-| F-050 | P3 | Frontend dependency audit | The locked frontend tree reports two advisories in Monaco's DOMPurify path (one low and one moderate; no high/critical findings). | Audited: `npm audit --json` identifies `monaco-editor` 0.56.0 / bundled DOMPurify 3.4.8 and offers only a semver-major downgrade to 0.53.0. No forced fix, silent editor downgrade or unreviewed lockfile rewrite was made; compatibility review remains open before friend distribution is called security-clean. |
+| F-050 | P3 | Frontend dependency audit | The locked frontend tree reports two advisories in Monaco's DOMPurify path (one low and one moderate; no high/critical findings). | Decision recorded: retain `monaco-editor` 0.56.0 / DOMPurify 3.4.8 as an accepted low/moderate risk. The 0.53.0 “fix” is rejected because its vendored DOMPurify is older 3.1.7 and merely invisible to npm audit; revisit only when upstream bundles a version above 3.4.12. |
 
 ## Verification update — 2026-09-15 — WSL launcher dependency preflight
 
@@ -509,6 +509,23 @@ frontend and state directory were stopped/removed afterward. The user's dirty
 `progress.json`, root `tutor.py`, long-lived runtimes and hosted state were not
 touched. This closes the local F-009 defect; provider-authenticated hosted
 adjudication remains a release gate.
+
+## Decision update — 2026-09-16 — F-050 Monaco sanitizer review
+
+Claude Sonnet reviewed the disposable tarball evidence. The current
+`monaco-editor` 0.56.0 package declares DOMPurify 3.4.8 and bundles that same
+version into `esm/vs/base/browser/dompurify/dompurify.js`; npm audit's one low
+and one moderate advisory therefore describes a real loaded dependency. The
+suggested 0.53.0 downgrade is not a security fix: its package metadata omits a
+DOMPurify dependency, so npm audit reports zero, but the actual tarball vendors
+DOMPurify 3.1.7, older than 3.4.8 and inside the same vulnerable ranges.
+
+Decision: do not adopt 0.53.0, do not run `npm audit fix --force`, and do not
+rewrite the lockfile. Retain 0.56.0 as an explicit accepted low/moderate risk
+with no high/critical findings. Revisit F-050 only when upstream ships a
+Monaco release bundling DOMPurify above 3.4.12 or a separately reviewed
+sanitizer patch. The friend bundle must not be described as security-clean
+until that upstream/reviewer gate changes.
 
 ## Verification update — 2026-09-16 — targeted frontend dependency audit
 
