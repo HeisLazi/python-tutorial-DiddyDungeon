@@ -58,9 +58,9 @@ The point is not to speedrun eight repos. The point is to make Python fundamenta
 
 | Dev activity | Current |
 |---|---:|
-| Activity score | **94** |
+| Activity score | **96** |
 | Commit streak | **2 days** — best: 2 |
-| Commits | **100** / 7d · **100** / 30d |
+| Commits | **101** / 7d · **101** / 30d |
 | Active dev days | **2** / 7d · **2** / 30d |
 | Active branches (30d) | **11** |
 | Last commit day | **2026-09-15** |
