@@ -389,18 +389,24 @@ function AppV2() {
       }
     } else if (action === 'reconcile_legacy_progress') {
       const restoredMobs = Array.isArray(event.restored_mobs) ? event.restored_mobs : []
-      notifications.push({
-        id: `${event.id}:restored`,
-        kind: 'reward',
-        title: 'PROGRESS RESTORED',
-        body: [
-          Number.isFinite(Number(event.restored_level)) ? `Level ${event.restored_level}` : '',
-          Number.isFinite(Number(event.restored_xp)) ? `${event.restored_xp} XP` : '',
-          Number.isFinite(Number(event.restored_coins)) ? `${event.restored_coins} Coins` : '',
-        ].filter(Boolean).join(' · '),
-        detail: `Validated legacy evidence · ${restoredMobs.length} Blackjack mob${restoredMobs.length === 1 ? '' : 's'} cleared`,
-      })
-      if (event.next_mob) {
+      const restoredFields = Array.isArray(event.restored_fields) ? event.restored_fields : []
+      const playerChanged = restoredFields.some((field) => field.startsWith('player.') || field.startsWith('stats.'))
+      const encounterChanged = restoredFields.includes('encounter_state') || restoredFields.some((field) => field.includes('.mobs.') && field.endsWith('.status'))
+      const codexChanged = restoredFields.some((field) => field.startsWith('codex.'))
+      if (playerChanged) {
+        notifications.push({
+          id: `${event.id}:restored`,
+          kind: 'reward',
+          title: 'PROGRESS RESTORED',
+          body: [
+            Number.isFinite(Number(event.restored_level)) ? `Level ${event.restored_level}` : '',
+            Number.isFinite(Number(event.restored_xp)) ? `${event.restored_xp} XP` : '',
+            Number.isFinite(Number(event.restored_coins)) ? `${event.restored_coins} Coins` : '',
+          ].filter(Boolean).join(' · '),
+          detail: `Validated legacy evidence · ${restoredMobs.length} Blackjack mob${restoredMobs.length === 1 ? '' : 's'} cleared`,
+        })
+      }
+      if (event.next_mob && encounterChanged) {
         notifications.push({
           id: `${event.id}:next`,
           kind: 'unlock',
@@ -409,7 +415,7 @@ function AppV2() {
           detail: 'Restored from the verified encounter sequence',
         })
       }
-      if (Array.isArray(event.codex_entries) && event.codex_entries.length > 0) {
+      if (Array.isArray(event.codex_entries) && event.codex_entries.length > 0 && codexChanged) {
         notifications.push({
           id: `${event.id}:codex`,
           kind: 'objective',

@@ -384,8 +384,10 @@ Live Forge acceptance used the current branch source with the canonical WSL
 state service at `http://127.0.0.1:7333` and the Forge tab at
 `http://127.0.0.1:5174/`. While that tab was open, the second audited
 reconciliation committed revision 2. No browser refresh occurred: the
-one-second revision poll delivered `PROGRESS RESTORED`, `NEXT ENCOUNTER` and
-`CODEX UPDATED`, and the same tab then showed:
+one-second revision poll delivered the first event's `PROGRESS RESTORED`,
+`NEXT ENCOUNTER` and `CODEX UPDATED` feedback, then accepted the second
+revision's goal-only update; the renderer now gates each notification on the
+event's changed-field list. The same tab then showed:
 
 1. HUD/Character values Level 2, 50 XP and 55 coins (plus the existing HP,
    streak and starter loadout).

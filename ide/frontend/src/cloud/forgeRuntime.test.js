@@ -58,6 +58,7 @@ test('legacy reconciliation renders validated restoration feedback without inven
   assert.match(app, /restored_xp/)
   assert.match(app, /restored_coins/)
   assert.match(app, /restored_mobs/)
+  assert.match(app, /restored_fields/)
   assert.match(app, /CODEX UPDATED/)
 })
 
