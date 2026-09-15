@@ -270,6 +270,7 @@ export class SyncEngine {
     this.syncTimer = null
     this.syncInterval = null
     this.avatarOperation = 0
+    this.avatarProfilePromise = null
     this.latestLocalSnapshot = null
     this.syncCursor = null
     this.outbox = []
@@ -699,6 +700,28 @@ export class SyncEngine {
     this._scheduleSync()
   }
 
+  _pollAvatarReference() {
+    if (this.avatarProfilePromise || !this.session?.user || !this.client?.from) return this.avatarProfilePromise
+    const sessionNonce = this.sessionNonce
+    const userId = this._userId()
+    this.avatarProfilePromise = (async () => {
+      try {
+        const result = await this.client.from('profiles').select('avatar_path,updated_at').eq('id', userId).maybeSingle()
+        if (sessionNonce !== this.sessionNonce || this._userId() !== userId || result?.error || !result?.data) return
+        const path = result.data.avatar_path ?? null
+        const updatedAt = result.data.updated_at ?? null
+        if (path === (this.state.profile?.avatar_path ?? null) && updatedAt === (this.state.profile?.updated_at ?? null)) return
+        this.setState({ profile: this.state.profile ? { ...this.state.profile, avatar_path: path, updated_at: updatedAt } : this.state.profile })
+        await this._refreshCloudAvatar(path, userId)
+      } catch {
+        // Avatar refresh is optional; the last validated image remains visible.
+      } finally {
+        this.avatarProfilePromise = null
+      }
+    })()
+    return this.avatarProfilePromise
+  }
+
   _startSyncPolling() {
     if (this.syncInterval || typeof window === 'undefined' || typeof window.setInterval !== 'function') return
     this.syncInterval = window.setInterval(() => {
@@ -706,7 +729,10 @@ export class SyncEngine {
       // "Synced" and "Syncing…" every few seconds.  A real mutation,
       // reconnect, conflict, or error still announces itself; an unchanged
       // campaign stays visually stable while the revision check runs.
-      if (this.session?.user && this.client) void this.sync({ silent: true })
+      if (this.session?.user && this.client) {
+        void this.sync({ silent: true })
+        void this._pollAvatarReference()
+      }
     }, 2000)
   }
 

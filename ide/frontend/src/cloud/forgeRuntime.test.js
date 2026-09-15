@@ -115,6 +115,7 @@ test('avatar controls use the account-scoped storage boundary with a local fallb
   assert.match(enhancements, /questlab:avatar-updated/)
   assert.match(engine, /AVATAR_BUCKET/)
   assert.match(engine, /_saveAvatarProfilePath/)
+  assert.match(engine, /_pollAvatarReference/)
   assert.match(engine, /readCachedAvatar\(this\.storage, userId\)/)
   assert.match(avatar, /AVATAR_MAX_BYTES = 1_000_000/)
   assert.match(avatar, /avatarObjectPath\(userId\)/)
