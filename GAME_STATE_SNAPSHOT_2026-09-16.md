@@ -57,6 +57,8 @@ increment the canonical revision or enter the event/cloud projection.
 - non-OneDrive custody migration for the real save (still explicit opt-in);
 - Windows friend-machine launch and a native Windows/Tauri desktop proof (the
   clean ext4 WSL clone/install/launch smoke is now verified);
+- targeted frontend dependency audit/upgrade review (clean `npm ci` reported
+  one low and one moderate advisory; no forced fix was applied);
 - safe web/Vercel account/profile surface and, only after those gates, any
   friends/presence/raid transport.
 

@@ -984,3 +984,7 @@ state-service reward then changed the HUD from `0 c` to `1 c` live at revision 1
 without a refresh. The disposable runtime and exact ext4 checkout were removed
 afterward. This closes the clean ext4 install smoke, not the Windows friend-
 machine, hosted two-device or Tauri proof.
+
+`npm ci` also reported two dependency advisories (one low and one moderate)
+in the clean-install output. This is recorded as F-050 for a targeted audit;
+no forced upgrade or lockfile rewrite was applied.
