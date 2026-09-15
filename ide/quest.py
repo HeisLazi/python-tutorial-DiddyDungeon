@@ -81,11 +81,19 @@ def linux_rollup_optional_dependency_ready(frontend: Path) -> bool:
     return any(
         (rollup_root / package).is_dir()
         for package in (
+            "rollup-linux-arm-gnueabihf",
+            "rollup-linux-arm-musleabihf",
             "rollup-linux-x64-gnu",
             "rollup-linux-x64-musl",
             "rollup-linux-arm64-gnu",
             "rollup-linux-arm64-musl",
+            "rollup-linux-loong64-gnu",
+            "rollup-linux-loong64-musl",
+            "rollup-linux-ppc64-gnu",
+            "rollup-linux-ppc64-musl",
             "rollup-linux-riscv64-gnu",
+            "rollup-linux-riscv64-musl",
+            "rollup-linux-s390x-gnu",
         )
     )
 
