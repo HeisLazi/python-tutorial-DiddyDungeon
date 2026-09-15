@@ -217,6 +217,100 @@ class StateServiceBehaviorTests(unittest.TestCase):
         self.assertEqual(state["codex"]["encounters"][0]["attempts"], 2)
         self.assertTrue(next(item for item in state["achievements"] if item["name"] == "First Blood")["unlocked"])
 
+    def test_approved_legacy_reconciliation_restores_only_reviewed_fields_and_is_idempotent(self):
+        service, path = self.make_service()
+        state = self.read(path)
+        state["current_quest"] = "Blackjack — PYR teaches the next needed concept, then you enter Forge phase and implement it from scratch."
+        state["last_session"] = "Forge RPG Shell and Homestead were approved as the next IDE evolution. No learning rewards or purchases were claimed."
+        state["player"].update({"level": 1, "xp": 0, "xp_next": 100, "lifetime_xp": 0, "coins": 0})
+        state["projects"][0]["mobs"] = [
+            {"name": "The Empty Table", "status": "available", "concept": "Variables, input/output and basic program state"},
+            {"name": "The Dealer's Hand", "status": "locked", "concept": "Lists and random selection"},
+            {"name": "The Count Keeper", "status": "locked", "concept": "Loops and totals"},
+            {"name": "The Hitman", "status": "locked", "concept": "Input loops and control flow"},
+        ]
+        state["projects"][0]["progress"] = 0
+        state["goals"] = {
+            "daily": [{"id": "first-deal", "done": False}, {"id": "explain-lists", "done": False}],
+            "weekly": [{"id": "two-mobs", "target": 2, "progress": 0, "done": False}],
+        }
+        path.write_text(json.dumps(state), encoding="utf-8")
+
+        payload = {
+            "evidence_id": "legacy-blackjack-2026-09-14",
+            "source": "questlab-blackjack-session-2026-09-14",
+            "reason": "Approved reconciliation of the legacy report and session notes",
+            "level": 2,
+            "xp": 50,
+            "xp_next": 100,
+            "lifetime_xp": 150,
+            "coins": 55,
+            "defeated_mobs": ["The Empty Table", "The Dealer's Hand", "The Count Keeper"],
+            "project_progress": 38,
+            "sessions": 1,
+            "explanations": 3,
+            "streak_current": 1,
+            "streak_longest": 1,
+            "streak_last_active": "2026-09-14",
+            "streak_days_logged": ["2026-09-14"],
+            "daily_goal_ids": ["first-deal", "explain-lists"],
+            "weekly_goal_progress": [{"id": "two-mobs", "progress": 2}],
+            "current_quest": "Blackjack — Mob 3: The Hitman (repeatedly choose hit or stand).",
+            "last_session": "Cleared Mob 0, Mob 1, and Mob 2 cleanly. Approaching Mob 3.",
+        }
+
+        result = service.apply_internal("reconcile_legacy_progress", payload)
+        after = self.read(path)
+        self.assertTrue(result["changed"])
+        self.assertEqual(result["revision"], 5)
+        self.assertEqual(after["player"]["level"], 2)
+        self.assertEqual(after["player"]["xp"], 50)
+        self.assertEqual(after["player"]["lifetime_xp"], 150)
+        self.assertEqual(after["player"]["coins"], 55)
+        self.assertEqual(after["stats"]["mobs_defeated"], 3)
+        self.assertEqual(after["projects"][0]["progress"], 38)
+        self.assertEqual([mob["status"] for mob in after["projects"][0]["mobs"]], ["defeated", "defeated", "defeated", "available"])
+        self.assertEqual(after["encounter_state"]["mob_name"], "The Hitman")
+        self.assertEqual(after["encounter_state"]["resolve"], 8)
+        self.assertEqual(after["encounter_state"]["max_resolve"], 8)
+        self.assertEqual([entry["mob_name"] for entry in after["codex"]["encounters"]], ["The Empty Table", "The Dealer's Hand", "The Count Keeper"])
+        self.assertTrue(all(entry["status"] == "defeated" and entry["attempts"] == 0 for entry in after["codex"]["encounters"]))
+        self.assertTrue(next(item for item in after["achievements"] if item["name"] == "First Blood")["unlocked"])
+        self.assertEqual(after["learning_state"]["phase"], "forge")
+        self.assertEqual(after["streak"]["current"], 1)
+        self.assertTrue(next(item for item in after["goals"]["daily"] if item["id"] == "first-deal")["done"])
+        self.assertTrue(next(item for item in after["goals"]["weekly"] if item["id"] == "two-mobs")["done"])
+        self.assertFalse(result["result"]["reward_history_inferred"])
+        self.assertEqual(after["state_events"][-1]["action"], "reconcile_legacy_progress")
+
+        repeated = service.apply_internal("reconcile_legacy_progress", payload)
+        self.assertFalse(repeated["changed"])
+        self.assertEqual(repeated["revision"], 5)
+        self.assertEqual(self.read(path)["meta"]["revision"], 5)
+
+    def test_legacy_reconciliation_refuses_non_default_player_conflicts(self):
+        service, path = self.make_service()
+        state = self.read(path)
+        state["player"]["xp"] = 20
+        path.write_text(json.dumps(state), encoding="utf-8")
+        with self.assertRaises(StateCommandError) as conflict:
+            service.apply_internal(
+                "reconcile_legacy_progress",
+                {
+                    "evidence_id": "legacy-conflict",
+                    "source": "legacy-session",
+                    "reason": "reviewed evidence",
+                    "level": 2,
+                    "xp": 50,
+                    "lifetime_xp": 150,
+                    "coins": 55,
+                    "defeated_mobs": ["The Empty Table"],
+                    "project_progress": 12,
+                },
+            )
+        self.assertEqual(conflict.exception.status_code, 409)
+        self.assertEqual(self.read(path)["player"]["xp"], 20)
+
     def test_battle_objective_is_internal_and_duplicate_objective_is_bounded(self):
         service, _ = self.make_service()
         with self.assertRaises(StateCommandError) as forbidden:
@@ -384,6 +478,20 @@ class StateGatewayHttpTests(unittest.TestCase):
         )
         self.assertEqual(arbitrary.status_code, 422)
         self.assertEqual(json.loads(path.read_text(encoding="utf-8"))["player"]["xp"], 10)
+
+    def test_legacy_reconciliation_is_internal_only_over_http(self):
+        self.with_temp_progress()
+        client = self.client()
+        response = client.post(
+            "/api/state/apply",
+            headers={"host": "127.0.0.1"},
+            json={
+                "action": "reconcile_legacy_progress",
+                "actor": "pyr",
+                "payload": {},
+            },
+        )
+        self.assertEqual(response.status_code, 403)
 
     def test_existing_homestead_routes_delegate_to_gateway(self):
         path = self.with_temp_progress()

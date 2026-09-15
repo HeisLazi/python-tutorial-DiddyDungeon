@@ -50,6 +50,17 @@ test('campaign projections use revision polling and state-service events', () =>
   assert.doesNotMatch(views, /mob\.encounter \|\| 'This encounter has not revealed/)
 })
 
+test('legacy reconciliation renders validated restoration feedback without inventing rewards', () => {
+  const app = source('../AppV2.jsx')
+
+  assert.match(app, /action === 'reconcile_legacy_progress'/)
+  assert.match(app, /PROGRESS RESTORED/)
+  assert.match(app, /restored_xp/)
+  assert.match(app, /restored_coins/)
+  assert.match(app, /restored_mobs/)
+  assert.match(app, /CODEX UPDATED/)
+})
+
 test('bounded player-state sync stays behind one engine with revision/conflict controls', () => {
   const app = source('../AppV2.jsx')
   const views = source('../RpgViews.jsx')

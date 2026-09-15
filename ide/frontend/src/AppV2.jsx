@@ -387,6 +387,37 @@ function AppV2() {
           detail: event.reason || 'Verified Battle miss',
         })
       }
+    } else if (action === 'reconcile_legacy_progress') {
+      const restoredMobs = Array.isArray(event.restored_mobs) ? event.restored_mobs : []
+      notifications.push({
+        id: `${event.id}:restored`,
+        kind: 'reward',
+        title: 'PROGRESS RESTORED',
+        body: [
+          Number.isFinite(Number(event.restored_level)) ? `Level ${event.restored_level}` : '',
+          Number.isFinite(Number(event.restored_xp)) ? `${event.restored_xp} XP` : '',
+          Number.isFinite(Number(event.restored_coins)) ? `${event.restored_coins} Coins` : '',
+        ].filter(Boolean).join(' · '),
+        detail: `Validated legacy evidence · ${restoredMobs.length} Blackjack mob${restoredMobs.length === 1 ? '' : 's'} cleared`,
+      })
+      if (event.next_mob) {
+        notifications.push({
+          id: `${event.id}:next`,
+          kind: 'unlock',
+          title: 'NEXT ENCOUNTER',
+          body: event.next_mob,
+          detail: 'Restored from the verified encounter sequence',
+        })
+      }
+      if (Array.isArray(event.codex_entries) && event.codex_entries.length > 0) {
+        notifications.push({
+          id: `${event.id}:codex`,
+          kind: 'objective',
+          title: 'CODEX UPDATED',
+          body: `${event.codex_entries.length} encounter record${event.codex_entries.length === 1 ? '' : 's'}`,
+          detail: 'Knowledge reconstructed from approved session evidence',
+        })
+      }
     }
 
     if (Number.isFinite(levelBefore) && Number.isFinite(levelAfter) && levelAfter > levelBefore) {

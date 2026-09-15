@@ -98,6 +98,7 @@ ACTION_DEFINITIONS: dict[str, ActionDefinition] = {
     "record_battle_objective": ActionDefinition(frozenset({SYSTEM_ACTOR}), internal=True),
     "complete_mob": ActionDefinition(frozenset({SYSTEM_ACTOR}), internal=True),
     "record_battle_miss": ActionDefinition(frozenset({SYSTEM_ACTOR}), internal=True),
+    "reconcile_legacy_progress": ActionDefinition(frozenset({SYSTEM_ACTOR}), internal=True),
 }
 
 PUBLIC_ACTIONS = frozenset(action for action, definition in ACTION_DEFINITIONS.items() if not definition.internal)
@@ -947,6 +948,7 @@ class LocalStateService:
             "record_battle_objective": self._record_battle_objective,
             "complete_mob": self._complete_mob,
             "record_battle_miss": self._record_battle_miss,
+            "reconcile_legacy_progress": self._reconcile_legacy_progress,
         }
         return handlers[action](payload, progress)
 
@@ -1501,4 +1503,456 @@ class LocalStateService:
             True,
             {"achievement_id": achievement_id, "unlocked": True},
             {"achievement_id": achievement_id, "evidence_id": evidence_id, "reason": reason},
+        )
+
+    @staticmethod
+    def _legacy_text(value: object, field: str, *, max_length: int = MAX_REASON_LENGTH) -> str:
+        """Validate human-readable migration evidence without treating punctuation as a path."""
+
+        if not isinstance(value, str):
+            raise StateCommandError(f"{field} must be text")
+        normalized = value.strip()
+        if not normalized or len(normalized) > max_length or any(ord(character) < 32 for character in normalized):
+            raise StateCommandError(f"{field} must be bounded text without control characters")
+        return normalized
+
+    def _reconcile_codex_entry(
+        self,
+        progress: dict[str, Any],
+        project: Mapping[str, Any],
+        mob: Mapping[str, Any],
+        *,
+        evidence_id: str,
+    ) -> tuple[dict[str, Any], bool]:
+        """Record only that an evidence-backed encounter was reached and cleared.
+
+        Legacy saves did not retain question/attempt histories.  This helper
+        therefore never fabricates those fields or a mastery shield; it only
+        creates the bounded encounter identity/concept and an auditable clear
+        result tied to the supplied evidence id.
+        """
+
+        project_id = self._project_id(project)
+        mob_name = self._text(mob.get("name", ""), "mob_name", max_length=MAX_IDENTIFIER_LENGTH)
+        concept = self._legacy_text(mob.get("concept") or "Unknown concept", "concept")
+        _, entries = self._codex_container(progress)
+        entry = next(
+            (item for item in entries if item.get("project_id") == project_id and item.get("mob_name") == mob_name),
+            None,
+        )
+        changed = False
+        if entry is None:
+            entry = {
+                "id": f"{project_id}-{re.sub(r'[^A-Za-z0-9._-]+', '-', mob_name)[:80]}",
+                "project_id": project_id,
+                "mob_name": mob_name,
+                "concept": concept,
+                "status": "defeated",
+                "question_types": [],
+                "weaknesses": [],
+                "notes": [],
+                "attempts": 0,
+                "results": [],
+                "interview_history": [],
+                "mastery": {"evidence": 0, "interview_passes": 0, "shield": "none"},
+            }
+            entries.append(entry)
+            if len(entries) > MAX_CODEX_RECORDS:
+                del entries[:-MAX_CODEX_RECORDS]
+            changed = True
+        if entry.get("concept") != concept:
+            entry["concept"] = concept
+            changed = True
+        if entry.get("status") != "defeated":
+            entry["status"] = "defeated"
+            changed = True
+
+        results = entry.setdefault("results", [])
+        if not isinstance(results, list):
+            raise StateCommandError("Existing Codex result history is invalid", status_code=500)
+        if not any(isinstance(item, dict) and item.get("evidence_id") == evidence_id for item in results):
+            results.append({"outcome": "defeated", "evidence_id": evidence_id})
+            entry["results"] = results[-20:]
+            changed = True
+
+        note = "Encounter clear confirmed by approved legacy session evidence; attempts and exact rewards were not inferred."
+        notes = entry.setdefault("notes", [])
+        if not isinstance(notes, list):
+            raise StateCommandError("Existing Codex notes are invalid", status_code=500)
+        if note not in notes:
+            notes.append(note)
+            entry["notes"] = notes[-20:]
+            changed = True
+        entry.setdefault("question_types", [])
+        entry.setdefault("weaknesses", [])
+        entry.setdefault("interview_history", [])
+        entry.setdefault("mastery", {"evidence": 0, "interview_passes": 0, "shield": "none"})
+        return entry, changed
+
+    def _reconcile_legacy_progress(self, payload: Mapping[str, Any], progress: dict[str, Any]) -> Mutation:
+        """Apply an explicitly approved, evidence-bounded legacy save migration.
+
+        This is intentionally an internal-only command.  It accepts selected
+        facts that a human reviewed from the legacy report/session evidence,
+        never a legacy snapshot.  Player counters may move only from the
+        untouched defaults to the reviewed values (or remain idempotent), so a
+        later legitimate local save cannot be silently overwritten.
+        """
+
+        allowed = {
+            "evidence_id",
+            "source",
+            "reason",
+            "level",
+            "xp",
+            "xp_next",
+            "lifetime_xp",
+            "coins",
+            "defeated_mobs",
+            "project_progress",
+            "sessions",
+            "explanations",
+            "streak_current",
+            "streak_longest",
+            "streak_last_active",
+            "streak_days_logged",
+            "daily_goal_ids",
+            "weekly_goal_progress",
+            "current_quest",
+            "last_session",
+        }
+        required = {
+            "evidence_id",
+            "source",
+            "reason",
+            "level",
+            "xp",
+            "lifetime_xp",
+            "coins",
+            "defeated_mobs",
+            "project_progress",
+        }
+        data = self._payload(payload, allowed, required)
+        evidence_id = self._text(data["evidence_id"], "evidence_id", max_length=MAX_IDENTIFIER_LENGTH, identifier=True)
+        source = self._text(data["source"], "source", max_length=MAX_IDENTIFIER_LENGTH, identifier=True)
+        reason = self._text(data["reason"], "reason")
+        level = self._integer(data["level"], "level", minimum=1, maximum=MAX_SYNC_LEVEL)
+        xp = self._integer(data["xp"], "xp", minimum=0, maximum=MAX_SYNC_COUNTER)
+        lifetime_xp = self._integer(data["lifetime_xp"], "lifetime_xp", minimum=0, maximum=MAX_SYNC_COUNTER)
+        coins = self._integer(data["coins"], "coins", minimum=0, maximum=MAX_SYNC_COUNTER)
+        xp_next = self._integer(data.get("xp_next", 100), "xp_next", minimum=1, maximum=MAX_SYNC_COUNTER)
+        if xp >= xp_next:
+            raise StateCommandError("xp must be below xp_next for a reconciled level")
+        project_progress = self._integer(data["project_progress"], "project_progress", minimum=0, maximum=100)
+
+        raw_defeated = data["defeated_mobs"]
+        if not isinstance(raw_defeated, list) or not raw_defeated:
+            raise StateCommandError("defeated_mobs must contain at least one reviewed encounter")
+        if len(raw_defeated) > MAX_SYNC_LIST_ITEMS:
+            raise StateCommandError("defeated_mobs contains too many entries")
+        defeated_names = [
+            self._text(item, "defeated_mob", max_length=MAX_IDENTIFIER_LENGTH)
+            for item in raw_defeated
+        ]
+        if len(set(defeated_names)) != len(defeated_names):
+            raise StateCommandError("defeated_mobs must not contain duplicates")
+
+        project, mobs, _next_index, next_mob = self._active_project_and_mob(progress)
+        project_id = self._project_id(project)
+        mob_names = [self._text(item.get("name", ""), "mob_name", max_length=MAX_IDENTIFIER_LENGTH) for item in mobs]
+        expected_prefix = mob_names[: len(defeated_names)]
+        if defeated_names != expected_prefix:
+            raise StateCommandError("defeated_mobs must be the contiguous active-quest prefix")
+
+        # A player counter with any non-default, non-target value represents a
+        # possible newer local session.  Refuse the migration instead of
+        # choosing a timestamp or silently replacing it.
+        player = self._dict(progress, "player")
+        defaults = {"level": 1, "xp": 0, "xp_next": 100, "lifetime_xp": 0, "coins": 0}
+        targets = {"level": level, "xp": xp, "xp_next": xp_next, "lifetime_xp": lifetime_xp, "coins": coins}
+        player_conflicts = []
+        for field, target in targets.items():
+            current = self._counter(player, field)
+            if current not in {defaults[field], target}:
+                player_conflicts.append(field)
+        if player_conflicts:
+            raise StateCommandError(
+                "Canonical player progress differs from the reviewed legacy target: "
+                + ", ".join(player_conflicts),
+                status_code=409,
+            )
+
+        changed = False
+        restored_fields: list[str] = []
+        player_level_changed = False
+        for field, target in targets.items():
+            if self._counter(player, field) != target:
+                player[field] = target
+                changed = True
+                restored_fields.append(f"player.{field}")
+                player_level_changed = player_level_changed or field == "level"
+
+        stats = self._dict(progress, "stats")
+        stat_targets = {
+            "sessions": data.get("sessions"),
+            "explanations": data.get("explanations"),
+            "mobs_defeated": len(defeated_names),
+        }
+        for field, raw_target in stat_targets.items():
+            if raw_target is None:
+                continue
+            target = self._integer(raw_target, field, minimum=0, maximum=MAX_SYNC_COUNTER)
+            current = self._counter(stats, field)
+            if current < target:
+                stats[field] = target
+                changed = True
+                restored_fields.append(f"stats.{field}")
+
+        # Preserve any later clear that is already in canonical state, but
+        # never allow this migration to unlock a non-prefix encounter.
+        later_conflicts = []
+        for index, mob in enumerate(mobs):
+            status = str(mob.get("status") or "locked")
+            if index >= len(defeated_names) and status in {"defeated", "cleared"}:
+                later_conflicts.append(str(mob.get("name") or index))
+        if later_conflicts:
+            raise StateCommandError(
+                "Canonical encounter history is ahead of the reviewed legacy evidence: "
+                + ", ".join(later_conflicts),
+                status_code=409,
+            )
+        for index, mob in enumerate(mobs[: len(defeated_names)]):
+            if mob.get("status") != "defeated":
+                mob["status"] = "defeated"
+                changed = True
+                restored_fields.append(f"projects.{project_id}.mobs.{index}.status")
+            if mob.get("resolve") != 0:
+                mob["resolve"] = 0
+                changed = True
+                restored_fields.append(f"projects.{project_id}.mobs.{index}.resolve")
+
+        current_project_progress = self._integer(project.get("progress", 0), "project.progress", minimum=0, maximum=100)
+        if current_project_progress < project_progress:
+            project["progress"] = project_progress
+            changed = True
+            restored_fields.append(f"projects.{project_id}.progress")
+
+        next_name: str | None = None
+        encounter_projection: dict[str, Any] | None = None
+        if len(defeated_names) < len(mobs):
+            next_mob = mobs[len(defeated_names)]
+            next_name = str(next_mob.get("name") or "")
+            if next_mob.get("status") == "locked":
+                next_mob["status"] = "available"
+                changed = True
+                restored_fields.append(f"projects.{project_id}.mobs.{len(defeated_names)}.status")
+            elif next_mob.get("status") not in {"available"}:
+                raise StateCommandError("Canonical next encounter conflicts with the reviewed legacy state", status_code=409)
+            existing_encounter = progress.get("encounter_state")
+            if (
+                isinstance(existing_encounter, dict)
+                and existing_encounter.get("status") != "defeated"
+                and existing_encounter.get("mob_name") not in {None, next_name}
+            ):
+                raise StateCommandError("Canonical active encounter conflicts with the reviewed legacy state", status_code=409)
+            self._ensure_encounter_state(progress, project, next_mob, len(defeated_names))
+            encounter_projection = self.encounter_projection(progress)
+            if not isinstance(existing_encounter, dict) or existing_encounter.get("mob_name") != next_name:
+                changed = True
+                restored_fields.append("encounter_state")
+
+        codex_ids: list[str] = []
+        for mob in mobs[: len(defeated_names)]:
+            entry, entry_changed = self._reconcile_codex_entry(progress, project, mob, evidence_id=evidence_id)
+            codex_ids.append(str(entry["id"]))
+            changed = changed or entry_changed
+            if entry_changed:
+                restored_fields.append(f"codex.{entry['id']}")
+
+        achievement_unlocked = None
+        achievements = progress.get("achievements")
+        if not isinstance(achievements, list):
+            raise StateCommandError("Existing state field achievements is invalid", status_code=500)
+        first_blood = next((item for item in achievements if isinstance(item, dict) and item.get("name") == "First Blood"), None)
+        if first_blood is not None and first_blood.get("unlocked") is not True:
+            first_blood["unlocked"] = True
+            achievement_unlocked = "First Blood"
+            changed = True
+            restored_fields.append("achievements.First Blood")
+
+        streak_fields = {"streak_current", "streak_longest", "streak_last_active", "streak_days_logged"}
+        if any(field in data for field in streak_fields):
+            streak = self._dict(progress, "streak")
+            for field in ("streak_current", "streak_longest"):
+                if field not in data:
+                    continue
+                target = self._integer(data[field], field, minimum=0, maximum=MAX_SYNC_COUNTER)
+                current = self._counter(streak, "current" if field == "streak_current" else "longest")
+                if current < target:
+                    streak["current" if field == "streak_current" else "longest"] = target
+                    changed = True
+                    restored_fields.append(f"streak.{field.removeprefix('streak_')}")
+            if "streak_last_active" in data:
+                last_active = self._legacy_text(data["streak_last_active"], "streak_last_active", max_length=10)
+                if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", last_active):
+                    raise StateCommandError("streak_last_active must use YYYY-MM-DD")
+                if not streak.get("last_active"):
+                    streak["last_active"] = last_active
+                    changed = True
+                    restored_fields.append("streak.last_active")
+            if "streak_days_logged" in data:
+                raw_days = data["streak_days_logged"]
+                if not isinstance(raw_days, list) or len(raw_days) > MAX_SYNC_LIST_ITEMS:
+                    raise StateCommandError("streak_days_logged must be a bounded list")
+                days = []
+                for day in raw_days:
+                    value = self._legacy_text(day, "streak_day", max_length=10)
+                    if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", value):
+                        raise StateCommandError("streak_days_logged must use YYYY-MM-DD")
+                    if value not in days:
+                        days.append(value)
+                existing_days = streak.get("days_logged")
+                if not isinstance(existing_days, list):
+                    existing_days = []
+                merged_days = list(dict.fromkeys([str(day) for day in existing_days] + days))[-MAX_SYNC_LIST_ITEMS:]
+                if merged_days != existing_days:
+                    streak["days_logged"] = merged_days
+                    changed = True
+                    restored_fields.append("streak.days_logged")
+
+        if "daily_goal_ids" in data:
+            raw_goal_ids = data["daily_goal_ids"]
+            if not isinstance(raw_goal_ids, list) or len(raw_goal_ids) > MAX_SYNC_LIST_ITEMS:
+                raise StateCommandError("daily_goal_ids must be a bounded list")
+            goals = self._dict(progress, "goals")
+            daily = goals.get("daily")
+            if not isinstance(daily, list):
+                raise StateCommandError("Existing daily goals are invalid", status_code=500)
+            daily_by_id = {str(item.get("id")): item for item in daily if isinstance(item, dict) and item.get("id")}
+            for raw_id in raw_goal_ids:
+                goal_id = self._text(raw_id, "daily_goal_id", max_length=MAX_IDENTIFIER_LENGTH, identifier=True)
+                goal = daily_by_id.get(goal_id)
+                if goal is None:
+                    raise StateCommandError(f"Unknown daily goal: {goal_id}", status_code=404)
+                if goal.get("done") is not True:
+                    goal["done"] = True
+                    changed = True
+                    restored_fields.append(f"goals.daily.{goal_id}")
+
+        if "weekly_goal_progress" in data:
+            raw_updates = data["weekly_goal_progress"]
+            if not isinstance(raw_updates, list) or len(raw_updates) > MAX_SYNC_LIST_ITEMS:
+                raise StateCommandError("weekly_goal_progress must be a bounded list")
+            goals = self._dict(progress, "goals")
+            weekly = goals.get("weekly")
+            if not isinstance(weekly, list):
+                raise StateCommandError("Existing weekly goals are invalid", status_code=500)
+            weekly_by_id = {str(item.get("id")): item for item in weekly if isinstance(item, dict) and item.get("id")}
+            for update in raw_updates:
+                if not isinstance(update, Mapping) or set(update) != {"id", "progress"}:
+                    raise StateCommandError("weekly_goal_progress entries must contain only id and progress")
+                goal_id = self._text(update["id"], "weekly_goal_id", max_length=MAX_IDENTIFIER_LENGTH, identifier=True)
+                goal = weekly_by_id.get(goal_id)
+                if goal is None:
+                    raise StateCommandError(f"Unknown weekly goal: {goal_id}", status_code=404)
+                target = self._integer(update["progress"], "weekly_goal_progress", minimum=0, maximum=MAX_SYNC_COUNTER)
+                current = self._counter(goal, "progress")
+                if current < target:
+                    goal["progress"] = target
+                    target_goal = self._counter(goal, "target")
+                    goal["done"] = target >= target_goal
+                    changed = True
+                    restored_fields.append(f"goals.weekly.{goal_id}")
+
+        text_targets = {"current_quest": data.get("current_quest"), "last_session": data.get("last_session")}
+        text_defaults = {
+            "current_quest": "Blackjack — PYR teaches the next needed concept, then you enter Forge phase and implement it from scratch.",
+            "last_session": "Forge RPG Shell and Homestead were approved as the next IDE evolution. No learning rewards or purchases were claimed.",
+        }
+        for field, target in text_targets.items():
+            if target is None:
+                continue
+            target_text = self._legacy_text(target, field)
+            current_text = progress.get(field)
+            if current_text not in {None, "", text_defaults[field], target_text}:
+                raise StateCommandError(f"Canonical {field} differs from the reviewed legacy evidence", status_code=409)
+            if current_text != target_text:
+                progress[field] = target_text
+                changed = True
+                restored_fields.append(field)
+
+        # Session notes establish that the player reached Forge for the next
+        # encounter.  The concept is taken from canonical mob metadata rather
+        # than from an arbitrary legacy string.
+        learning_state = self._dict(progress, "learning_state")
+        if next_name:
+            next_concept = self._legacy_text(next_mob.get("concept") or "", "next_mob_concept")
+            if learning_state.get("phase") not in {None, "teach", "forge"}:
+                raise StateCommandError("Canonical learning phase conflicts with the reviewed legacy evidence", status_code=409)
+            if learning_state.get("project") not in {None, project_id}:
+                raise StateCommandError("Canonical learning project conflicts with the reviewed legacy evidence", status_code=409)
+            if learning_state.get("phase") != "forge":
+                learning_state["phase"] = "forge"
+                changed = True
+                restored_fields.append("learning_state.phase")
+            if learning_state.get("project") != project_id:
+                learning_state["project"] = project_id
+                changed = True
+                restored_fields.append("learning_state.project")
+            if learning_state.get("concept") != next_concept:
+                learning_state["concept"] = next_concept
+                changed = True
+                restored_fields.append("learning_state.concept")
+
+        if not changed:
+            return Mutation(
+                False,
+                {
+                    "already_reconciled": True,
+                    "project_id": project_id,
+                    "restored_mobs": defeated_names,
+                    "next_mob": next_name,
+                    "codex_entries": codex_ids,
+                    "encounter": encounter_projection,
+                },
+            )
+
+        actual_project_progress = self._integer(project.get("progress", 0), "project.progress", minimum=0, maximum=100)
+        level_event = {"level_before": defaults["level"], "level_after": level} if player_level_changed else {}
+        return Mutation(
+            True,
+            {
+                "project_id": project_id,
+                "restored_level": level,
+                "restored_xp": xp,
+                "restored_lifetime_xp": lifetime_xp,
+                "restored_coins": coins,
+                "restored_mobs": defeated_names,
+                "project_progress": actual_project_progress,
+                "next_mob": next_name,
+                "encounter": encounter_projection,
+                "codex_entries": codex_ids,
+                "achievement_unlocked": achievement_unlocked,
+                "restored_fields": list(dict.fromkeys(restored_fields)),
+                "reward_history_inferred": False,
+            },
+            {
+                "project_id": project_id,
+                "source": source,
+                "evidence_id": evidence_id,
+                "reason": reason,
+                "reconciliation": "approved_legacy_evidence",
+                "restored_level": level,
+                "restored_xp": xp,
+                "restored_lifetime_xp": lifetime_xp,
+                "restored_coins": coins,
+                "restored_mobs": defeated_names,
+                "project_progress": actual_project_progress,
+                "next_mob": next_name,
+                "codex_entries": codex_ids,
+                "achievement_unlocked": achievement_unlocked,
+                "reward_history_inferred": False,
+                "restored_fields": list(dict.fromkeys(restored_fields)),
+                **level_event,
+            },
         )

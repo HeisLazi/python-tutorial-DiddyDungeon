@@ -319,6 +319,91 @@ The stray-save proof edited only the disposable workspace copy to Level 99,
 Level 2 and 10 coins, with `legacy_authoritative: false`; the stray file could
 not create a second game state.
 
+### Approved legacy Blackjack reconciliation
+
+The operator explicitly approved a bounded reconciliation after the live
+learning session. I read the legacy `legacy-report` endpoint (also through
+`python -m ide.state_cli legacy-report`), the legacy `progress.json`,
+`SESSION_NOTES.md` and `HANDOFF.md` before selecting fields. The real legacy
+file was never edited. Its SHA-256 was
+`200f5b8c1c87040dc522dbf6f8397c47c035bd036312601ee731180021e6744c` both
+before and after the operation, and the report continues to mark
+`legacy_authoritative: false` and `manual_approval_required: true`.
+
+The approved payload was sent to the internal `system` action
+`reconcile_legacy_progress` on the canonical state service. It was an
+allowlisted, read/modify/write mutation rather than a snapshot copy. The
+canonical WSL path is `/home/lazi/projects/python-tutorial-DiddyDungeon/progress.json`;
+the post-reconciliation file SHA-256 is
+`3d67a950fa9c57bf2e7b0bdd738b56ec82490fbebc7ecb937c2889a848817116` and its
+state revision is `2`. Two audited `state_events` were created (the second
+added only the additionally reviewed current-goal mappings), both carry
+`reconciliation: approved_legacy_evidence` and
+`reward_history_inferred: false`. The action is internal-only over HTTP/CLI,
+so an ordinary PYR command cannot manufacture a migration or write a second
+save.
+
+Restored because the report and session evidence agree:
+
+- Player Level 2, 50/100 current XP, 150 lifetime XP and 55 coins.
+- Session/explanation counters of 1 and 3, respectively; three defeated mobs.
+- Current streak 1, longest streak 1, and the logged date `2026-09-14`.
+- Blackjack project progress 38%; `The Empty Table`, `The Dealer's Hand` and
+  `The Count Keeper` are defeated; only `The Hitman` is unlocked next.
+- The active `The Hitman` encounter is in Forge phase with canonical Resolve
+  8/8 and only its allowed `CODE_CHECKPOINT` (4 Impact) and `BUG_DIAGNOSIS`
+  (4 Impact) objective metadata exposed. No partial Resolve reduction was
+  inferred because the legacy evidence contained none.
+- The validated `First Blood` achievement.
+- Current daily equivalents `learn-before-forge`, `first-deal` and
+  `explain-lists`; weekly progress `three-sessions: 1/3` and
+  `two-mobs: 2/2`. The separate first-interview goal remains 0/1.
+- The reviewed current quest/last-session text, Forge learning phase and the
+  canonical Mob 3 concept.
+- Three Codex encounter records for the defeated mobs, each tagged with its
+  canonical concept, defeated status and the evidence id. They contain no
+  fabricated attempts, question types, weaknesses, interview history or
+  mastery shield; each record carries an explicit note that those facts and
+  exact rewards were not inferred.
+
+Not restored because it was absent or contradictory in structured evidence:
+
+- No equipment or upgrade beyond the existing starter loadout (Apprentice
+  Coat, no trinket, Apprentice Coder title) was claimed.
+- Companion remains PYR, Tiny Code-Flame, level 1, bond 0. No companion reward
+  evidence was present.
+- The legacy file reports zero interview passes and zero shields. A prose note
+  mentions a Functions/Lists interview, but without a structured result it was
+  not enough to grant mastery, a shield or a first-interview completion.
+- Exact legacy reward history, individual question attempts, weaknesses,
+  discoveries/bonuses, boss clears and later quest unlocks were not replayed.
+  Aggregate XP/coin totals were restored as reviewed facts only; no per-reward
+  history was invented.
+
+Live Forge acceptance used the current branch source with the canonical WSL
+state service at `http://127.0.0.1:7333` and the Forge tab at
+`http://127.0.0.1:5174/`. While that tab was open, the second audited
+reconciliation committed revision 2. No browser refresh occurred: the
+one-second revision poll delivered `PROGRESS RESTORED`, `NEXT ENCOUNTER` and
+`CODEX UPDATED`, and the same tab then showed:
+
+1. HUD/Character values Level 2, 50 XP and 55 coins (plus the existing HP,
+   streak and starter loadout).
+2. Quest Journal progress 38%, the three defeated mobs, Mob 3 `The Hitman`,
+   and Resolve 8/8 with the two allowed objectives.
+3. Codex entries for all three fought mobs with their concepts and evidence
+   notes.
+4. Homestead purse 55 and the unchanged starter cosmetic ownership.
+5. Shell and AI terminal pills `CONNECTED`; the current backend PTY children
+   remained 73138 and 73163. The pre-existing user Forge PTYs (41367 shell,
+   41376 AI with agy 41422) were not reset or modified.
+
+The direct stray-file check remains negative: changing a temporary legacy path
+in the isolated state-service tests never changed the canonical revision, and
+the real legacy file hash above is unchanged. There is one active local state
+authority exposed by the service; the workspace `progress.json` is evidence
+only.
+
 ### Sync Engine v1 verification
 
 The frontend sync harness uses two isolated engine instances sharing one fake
