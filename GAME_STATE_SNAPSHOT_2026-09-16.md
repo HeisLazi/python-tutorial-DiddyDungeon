@@ -63,6 +63,9 @@ increment the canonical revision or enter the event/cloud projection.
 - targeted frontend dependency decision (one low and one moderate
   Monaco/DOMPurify advisory; npm only offers a semver-major 0.53.0 downgrade,
   and no forced fix was applied);
+- a disposable 0.53.0 Monaco candidate passed 31 frontend tests, a 1,293-
+  module build and a zero-vulnerability production audit; adoption remains a
+  compatibility decision;
 - safe web/Vercel account/profile surface and, only after those gates, any
   friends/presence/raid transport.
 

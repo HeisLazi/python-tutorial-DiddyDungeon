@@ -67,10 +67,13 @@ test('campaign loading never presents starter values as a reset', () => {
 test('PYR context submissions use the bounded local bridge and current editor selection', () => {
   const app = source('../AppV2.jsx')
   const enhancements = source('../forgeEnhancements.js')
+  const pyrClient = source('./pyrClient.js')
 
   assert.match(app, /\/api\/pyr\/context/)
   assert.match(app, /client_id: pyrClientId\(\)/)
-  assert.match(app, /questlab\.pyr\.client-id/)
+  assert.match(enhancements, /client_id: pyrClientId\(\)/)
+  assert.match(pyrClient, /questlab\.pyr\.client-id/)
+  assert.match(pyrClient, /sessionStorage/)
   assert.match(app, /editorSelectionRef\.current/)
   assert.match(app, /getText\(\)/)
   assert.match(app, /__questlabPublishPyrContext/)

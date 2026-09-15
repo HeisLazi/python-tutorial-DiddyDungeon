@@ -992,8 +992,9 @@ no forced upgrade or lockfile rewrite was applied.
 ### Per-tab PYR challenge isolation — 2026-09-16
 
 The local provider bridge now partitions pending Battle, Boss and Dungeon
-challenges by an opaque browser-tab id held in `sessionStorage`. Challenge maps
-are expiring and provider calls locate the intended entry by its server-issued
+challenges by an opaque browser-tab id held in `sessionStorage`. The React
+publisher and direct DOM enhancement fallback share the same client-id helper.
+Challenge maps are expiring and provider calls locate the intended entry by its server-issued
 nonce, so a second tab cannot overwrite the first tab's pending answer. The
 legacy singular challenge variables remain compatibility snapshots for older
 in-process callers only; they are not the lookup authority.
@@ -1025,3 +1026,10 @@ silent downgrade or unreviewed lockfile rewrite was applied. The current
 frontend tests and production build remain green. F-050 is now a bounded
 compatibility/security decision before friend distribution is called
 security-clean; the audit did not touch player state, PTYs or hosted state.
+
+A clean disposable archive was also tested with `monaco-editor` pinned to
+0.53.0. Without changing the repository lockfile, its 31 frontend tests
+passed, the Vite build transformed 1,293 modules, and `npm audit --omit=dev`
+reported zero vulnerabilities. This is a compatibility candidate only; the
+current branch remains on 0.56.0 until the semver-major editor decision is
+reviewed.

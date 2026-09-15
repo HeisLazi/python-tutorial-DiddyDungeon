@@ -8,6 +8,7 @@ import {
   validateAvatarDataUrl,
   writeCachedAvatar,
 } from './cloud/avatarStorage.js'
+import { pyrClientId } from './cloud/pyrClient.js'
 
 const ICONS = {
   Forge: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 15h16M7 15V9l5-4 5 4v6M9 19h6"/></svg>',
@@ -94,7 +95,12 @@ async function requestPyrContext(output) {
   const response = await fetch('/api/pyr/context', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ active_path: activeFileLabel(), selection: '', terminal_tail: output }),
+    body: JSON.stringify({
+      active_path: activeFileLabel(),
+      selection: '',
+      terminal_tail: output,
+      client_id: pyrClientId(),
+    }),
   })
   if (!response.ok) throw new Error('The local PYR context bridge is unavailable.')
   const result = await response.json()

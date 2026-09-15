@@ -488,7 +488,9 @@ state were not touched.
 
 The local challenge boundary no longer relies on one process-global Battle,
 Boss or Dungeon slot. The Forge assigns each browser tab an opaque
-`sessionStorage` client id; the gateway keeps separate expiring challenge maps
+`sessionStorage` client id; both the React publisher and the direct DOM
+enhancement fallback use the same helper, while the gateway keeps separate
+expiring challenge maps
 and binds provider submissions/verdicts by their server-issued nonce. The old
 singular names remain compatibility snapshots for older in-process callers, not
 the lookup authority. Invalid/missing client ids fall back to the bounded
@@ -522,3 +524,10 @@ run. The build and test gates remain green on the current 0.56.0 line. F-050
 therefore remains open for an explicit Monaco compatibility/security decision
 before calling the friend bundle security-clean; this audit did not change the
 player save, runtime processes or hosted state.
+
+A clean disposable HEAD archive then pinned `monaco-editor` 0.53.0 without
+touching the repository lockfile. Its frontend suite passed all 31 tests, the
+Vite build transformed 1,293 modules, and `npm audit --omit=dev` reported zero
+vulnerabilities. This makes 0.53.0 a tested candidate, not an adopted change:
+the downgrade still needs a reviewer/product decision because the current
+editor line is 0.56.0.
