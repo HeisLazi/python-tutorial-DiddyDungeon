@@ -7,7 +7,7 @@ remaining release gates. It is a snapshot, not a progression mutation.
 ## Source baseline
 
 - Branch: `feature/cloud-sync-desktop`
-- Local and remote HEAD at snapshot time: `89e9368` (`docs: explain WSL dependency preflight`)
+- Local and remote HEAD at snapshot time: `954db9a` (`system: recognize all Linux Rollup variants`)
 - Canonical checkout: `/mnt/c/Users/lazar/OneDrive/Documents/ChatGPT/Python Quest Lab`
 - The checkout has user-owned working-tree state in `progress.json` and an
   untracked root `tutor.py`. Neither was staged, overwritten, or used as test
