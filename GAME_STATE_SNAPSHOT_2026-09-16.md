@@ -37,6 +37,8 @@ increment the canonical revision or enter the event/cloud projection.
   project from the shared revision/event source.
 - React owns the five monochrome SVG HUD icons; revision polling does not
   replace them with nested pills or emoji.
+- Direct HUD stat pills reserve compact icon/value slots so initial sync and
+  digit-length changes do not reflow the top bar.
 - Campaign `tutor.py` remains a dedicated Campaign surface; Practice is
   separate and never writes it or Campaign/Dungeon rewards.
 - Infinite Dungeon local loop is K&M-verified: fresh loadout, checkpoint,
@@ -60,7 +62,7 @@ increment the canonical revision or enter the event/cloud projection.
 
 ## Automated evidence at snapshot time
 
-- WSL backend: 66 tests passed;
+- WSL backend: 67 tests passed;
 - frontend: 31 tests passed;
 - Windows Vite production build: 1,344 modules transformed;
 - Python compilation and PowerShell launcher/package parsing passed;

@@ -184,7 +184,7 @@ Campaign surface; it was not removed or merged into Practice.
 - Slice 8 (hosted friends/presence/raids) remains last and is intentionally not
   seeded or claimed complete.
 
-Latest gates: 66 WSL backend tests, 31 frontend tests, Windows Vite build, and
+Latest gates: 67 WSL backend tests, 31 frontend tests, Windows Vite build, and
 manual browser K&M acceptance on an isolated current-branch runtime. The
 frontend count includes source tripwires as well as behavioural sync tests. No
 Playwright was used.

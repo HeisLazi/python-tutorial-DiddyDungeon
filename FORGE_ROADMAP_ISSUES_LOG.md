@@ -306,6 +306,7 @@ The mutation was disposable and both backends were stopped afterward.
 
 | F-046 | P2 | Friend bundle custody | A friend-facing bundle could accidentally be made from the dirty OneDrive working tree, carrying the player's uncommitted save or Campaign `tutor.py` into distribution. | Fixed locally: `tools/questlab-package.ps1` archives committed `HEAD` only, refuses unrelated dirty source files, emits a manifest/zip, and leaves the live save and untracked tutor notebook out. Clean-install launch and Tauri desktop proof remain separate gates. |
 | F-047 | P2 | Live RPG projection acceptance | The shared revision/event architecture needed a fresh end-to-end K&M proof that rewards, Resolve, mob unlocks, Codex, Homestead economy, Tutor and Practice all stay coherent without a refresh. | Fixed locally: the disposable current-branch runtime passed the campaign reward/Resolve/mob-clear/Codex/Homestead/Tutor/Practice sequence below with both PTYs connected. Hosted transport remains gated by F-018/Milestone C. |
+| F-048 | P3 | HUD sync layout stability | Revision polling and the initial campaign load could change stat text widths while nested icon/value spans participated in the pill layout, making the top bar visibly jump even after the SVG ownership fix. | Fixed locally: direct stat pills now reserve a compact minimum width/height, keep their value on one line, and reserve the SVG/value slots. Nested spans remain unstyled as pills; compact/adventurer selectors stay direct-child scoped. |
 
 ## Verification update — 2026-09-15 — WSL launcher dependency preflight
 
@@ -454,3 +455,14 @@ The browser never refreshed and neither PTY was remounted. The temporary
 backend/frontend and state copy were stopped and removed after the check; the
 user's canonical `progress.json`, legacy evidence, root `tutor.py`, existing
 runtime processes and hosted state were not touched.
+
+## Verification update — 2026-09-16 — HUD sync layout stability
+
+The top-stat stability patch stayed within the existing SVG/React boundary. It
+adds a fixed compact slot for each direct HUD stat pill and explicit icon/value
+flex sizing, without restoring emoji or changing the revision/event source.
+The WSL frontend suite passed all 31 tests, the full WSL backend suite passed
+67 tests, and the Windows Vite build passed with 1,344 modules transformed.
+This is a source/build contract check; the
+existing disposable K&M projection run remains the live evidence for icons,
+rewards and PTY preservation.

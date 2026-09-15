@@ -960,3 +960,14 @@ with the three bounded requirements. No refresh occurred, no hidden future
 prompt/answer was exposed, and neither PTY was remounted. The temporary
 runtime/save was removed; user state, legacy evidence and hosted state were
 untouched.
+
+### HUD sync layout stability — 2026-09-16
+
+The HUD icon regression fix now also reserves a compact slot for each direct
+stat pill (`min-width`, `min-height` and `white-space`) and fixed flex slots for
+the nested SVG/value content. This prevents the top bar from jumping when the
+first campaign revision arrives or a value changes digit length. It keeps the
+React-owned monochrome SVGs, direct-child selector boundary and compact/
+adventurer HUD modes unchanged. The WSL frontend suite passed 31 tests, the
+full WSL backend suite passed 67 tests, and the Windows Vite build transformed
+1,344 modules. No PTY or save was touched.
