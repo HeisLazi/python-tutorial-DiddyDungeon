@@ -112,6 +112,21 @@ Hosted Auth is configured to require email confirmation (`mailer_autoconfirm=fal
   state service remains the only writer; the form cannot award Impact, XP,
   coins, HP or rewards. Provider authentication is still required before a
   hosted Battle release.
+- Added the first Infinite Dungeon save-state slice. `dungeon_run` is stored
+  under the canonical state service, starts with Apprentice Coat/no trinket/one
+  heal, and exposes a controlled `dungeon.py` projection. A saved editor buffer
+  and floor/room/question survive a Forge or workstation restart; question
+  rotation and recorded death clear the buffer. Direct `/api/file` access to
+  the projection is rejected so it cannot become a second save authority.
+- Added separate Dungeon and Practice surfaces. Dungeon is run-scoped and
+  restart-safe; Practice lets the player choose a concept, question type and
+  difficulty for unlimited provider-assisted drills without Campaign/Dungeon
+  rewards or a `tutor.py` file. Adaptive generation, rooms, markets, scoring
+  and hosted leaderboards remain later slices.
+- The legacy Tutor Notebook remains available only through its compatibility
+  endpoint for existing tooling. Normal Campaign navigation and the workspace
+  file tree no longer expose `tutor.py`; older persisted Tutor routes redirect
+  to Forge so Practice is the player-facing AI learning mode.
 
 ## Supabase project and schema
 
@@ -182,6 +197,12 @@ newer cloud revision is never replaced by an older device snapshot.
   local context/submission/verdict boundary and Journal form are implemented,
   but the raw local AI terminal remains a trusted caller; do not treat an
   unauthenticated caller-supplied verdict as proof of learning.
+- Infinite Dungeon currently has the local checkpoint/projection foundation
+  and starter UI only. Question generation/verdict progression, rest/market
+  rooms, death UI, scoring and leaderboard persistence are not complete.
+- Practice currently sends bounded teaching requests to the selected provider;
+  its persistent session history and validated learning-evidence recording are
+  still future work.
 - The durable review findings for the context/verdict/Battle slices are tracked
   in `FORGE_ROADMAP_ISSUES_LOG.md`; open trust and concurrency gates remain
   listed there.

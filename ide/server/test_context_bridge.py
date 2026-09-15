@@ -60,6 +60,99 @@ def context_progress() -> dict:
 
 
 class PyrContextBridgeTests(unittest.TestCase):
+    def test_dungeon_checkpoint_uses_state_gateway_and_context_projection(self):
+        original_workspace = app_v2.WORKSPACE
+        original_progress = app_v2.PROGRESS_PATH
+        original_dungeon = app_v2.DUNGEON_PATH
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            workspace = root / "quest"
+            workspace.mkdir()
+            (workspace / "main.py").write_text("print('hello')\n", encoding="utf-8")
+            (workspace / "tutor.py").write_text("print('legacy')\n", encoding="utf-8")
+            canonical = root / "platform" / "progress.json"
+            canonical.parent.mkdir()
+            canonical.write_text(json.dumps(context_progress()), encoding="utf-8")
+            app_v2.WORKSPACE = workspace
+            app_v2.PROGRESS_PATH = canonical
+            app_v2.DUNGEON_PATH = workspace / "dungeon.py"
+            try:
+                client = TestClient(app_v2.app, base_url="http://127.0.0.1")
+                tree = client.get("/api/tree", headers={"host": "127.0.0.1"})
+                self.assertEqual(tree.status_code, 200)
+                self.assertNotIn("tutor.py", {item["path"] for item in tree.json()["items"]})
+                idle = client.get("/api/dungeon", headers={"host": "127.0.0.1"})
+                self.assertEqual(idle.status_code, 200)
+                self.assertEqual(idle.json()["dungeon"]["status"], "idle")
+                self.assertTrue((workspace / "dungeon.py").exists())
+                self.assertEqual((workspace / "dungeon.py").read_text(encoding="utf-8"), "")
+
+                started = client.post(
+                    "/api/dungeon/start",
+                    headers={"host": "127.0.0.1"},
+                    json={"concept_id": "lists", "seed": "bridge-seed"},
+                )
+                self.assertEqual(started.status_code, 200)
+                run = started.json()["dungeon"]
+                self.assertTrue(run["active"])
+                self.assertEqual(run["floor"], 1)
+                self.assertEqual(run["loadout"]["armor"], "Apprentice Coat")
+                self.assertEqual(run["loadout"]["heals"], 1)
+                self.assertEqual(run["editor_content"], "")
+
+                saved = client.put(
+                    "/api/dungeon/editor",
+                    headers={"host": "127.0.0.1"},
+                    json={"run_id": run["run_id"], "content": "items = []\n"},
+                )
+                self.assertEqual(saved.status_code, 200)
+                self.assertEqual(saved.json()["dungeon"]["editor_content"], "items = []\n")
+                self.assertEqual((workspace / "dungeon.py").read_text(encoding="utf-8"), "items = []\n")
+
+                context = client.post(
+                    "/api/pyr/context",
+                    headers={"host": "127.0.0.1"},
+                    json={"active_path": "dungeon.py"},
+                )
+                self.assertEqual(context.status_code, 200)
+                self.assertEqual(context.json()["context"]["active_file"]["content"], "items = []\n")
+
+                direct_read = client.get("/api/file?path=dungeon.py", headers={"host": "127.0.0.1"})
+                self.assertEqual(direct_read.status_code, 403)
+                direct_write = client.put(
+                    "/api/file",
+                    headers={"host": "127.0.0.1"},
+                    json={"path": "dungeon.py", "content": "tips = 'leak'\n"},
+                )
+                self.assertEqual(direct_write.status_code, 403)
+
+                next_question = app_v2.STATE_SERVICE.apply_internal(
+                    "dungeon_issue_question",
+                    {
+                        "run_id": run["run_id"],
+                        "floor": 1,
+                        "room": 2,
+                        "question": {
+                            "id": f"{run['run_id']}-q2",
+                            "question_type": "true_false",
+                            "concept_id": "lists",
+                            "difficulty": 2,
+                            "prompt": "Is indexing zero-based?",
+                            "options": ["True", "False"],
+                        },
+                    },
+                )
+                self.assertTrue(next_question["changed"])
+                refreshed = client.get("/api/dungeon", headers={"host": "127.0.0.1"})
+                self.assertEqual(refreshed.status_code, 200)
+                self.assertEqual(refreshed.json()["dungeon"]["room"], 2)
+                self.assertEqual(refreshed.json()["dungeon"]["editor_content"], "")
+                self.assertEqual((workspace / "dungeon.py").read_text(encoding="utf-8"), "")
+            finally:
+                app_v2.WORKSPACE = original_workspace
+                app_v2.PROGRESS_PATH = original_progress
+                app_v2.DUNGEON_PATH = original_dungeon
+
     def test_context_is_bounded_live_and_does_not_mutate_player_state(self):
         original_workspace = app_v2.WORKSPACE
         original_progress = app_v2.PROGRESS_PATH

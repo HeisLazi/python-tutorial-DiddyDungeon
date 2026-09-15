@@ -33,6 +33,11 @@ MAX_SYNC_TEXT_LENGTH = 120
 MAX_SYNC_LEVEL = 1000
 MAX_SYNC_COUNTER = 1_000_000_000
 BATTLE_RAW_DAMAGE_BY_MOB = (6, 10, 15, 18, 22, 24, 26, 28)
+MAX_DUNGEON_EDITOR_BYTES = 120_000
+MAX_DUNGEON_OPTIONS = 8
+MAX_DUNGEON_FLOOR = 1_000_000
+MAX_DUNGEON_ROOM = 1_000_000
+MAX_DUNGEON_DIFFICULTY = 10
 
 PUBLIC_ACTORS = frozenset({"player", "pyr"})
 SYSTEM_ACTOR = "system"
@@ -100,6 +105,10 @@ ACTION_DEFINITIONS: dict[str, ActionDefinition] = {
     "complete_mob": ActionDefinition(frozenset({SYSTEM_ACTOR}), internal=True),
     "record_battle_miss": ActionDefinition(frozenset({SYSTEM_ACTOR}), internal=True),
     "reconcile_legacy_progress": ActionDefinition(frozenset({SYSTEM_ACTOR}), internal=True),
+    "dungeon_start_run": ActionDefinition(frozenset({"player"})),
+    "dungeon_save_editor": ActionDefinition(frozenset({"player"})),
+    "dungeon_issue_question": ActionDefinition(frozenset({SYSTEM_ACTOR}), internal=True),
+    "dungeon_record_death": ActionDefinition(frozenset({SYSTEM_ACTOR}), internal=True),
 }
 
 PUBLIC_ACTIONS = frozenset(action for action, definition in ACTION_DEFINITIONS.items() if not definition.internal)
@@ -744,6 +753,291 @@ class LocalStateService:
             "question_types": observed_types,
         }
 
+    @staticmethod
+    def _multiline_text(value: object, field: str, *, max_bytes: int) -> str:
+        """Normalize bounded editor/prompt text while preserving line breaks."""
+
+        if not isinstance(value, str):
+            raise StateCommandError(f"{field} must be text")
+        normalized = value.replace("\r\n", "\n").replace("\r", "\n").replace("\x00", "")
+        if any(ord(character) < 32 and character not in {"\n", "\t"} for character in normalized):
+            raise StateCommandError(f"{field} contains unsupported control characters")
+        if len(normalized.encode("utf-8")) > max_bytes:
+            raise StateCommandError(f"{field} is too large")
+        return normalized
+
+    @classmethod
+    def _dungeon_question_spec(cls, value: Mapping[str, Any]) -> dict[str, Any]:
+        """Validate the public portion of one current Dungeon question."""
+
+        if not isinstance(value, Mapping):
+            raise StateCommandError("Dungeon question must be an object")
+        allowed = {"id", "question_type", "concept_id", "difficulty", "prompt", "options"}
+        unknown = set(value) - allowed
+        if unknown:
+            raise StateCommandError(f"Unsupported Dungeon question field(s): {', '.join(sorted(unknown))}")
+        required = {"id", "question_type", "concept_id", "difficulty", "prompt"}
+        missing = sorted(required - set(value))
+        if missing:
+            raise StateCommandError(f"Missing Dungeon question field(s): {', '.join(missing)}")
+        question_id = cls._text(value["id"], "question.id", max_length=MAX_IDENTIFIER_LENGTH, identifier=True)
+        question_type = cls._text(
+            value["question_type"],
+            "question.question_type",
+            max_length=MAX_IDENTIFIER_LENGTH,
+            identifier=True,
+        )
+        concept_id = cls._text(value["concept_id"], "question.concept_id", max_length=MAX_IDENTIFIER_LENGTH)
+        difficulty = cls._integer(
+            value["difficulty"],
+            "question.difficulty",
+            minimum=1,
+            maximum=MAX_DUNGEON_DIFFICULTY,
+        )
+        prompt = cls._multiline_text(value["prompt"], "question.prompt", max_bytes=8_000).strip()
+        if not prompt:
+            raise StateCommandError("question.prompt must not be empty")
+        raw_options = value.get("options", [])
+        if not isinstance(raw_options, list) or len(raw_options) > MAX_DUNGEON_OPTIONS:
+            raise StateCommandError("question.options must be a bounded list")
+        options = [
+            cls._text(option, "question.options", max_length=MAX_SYNC_TEXT_LENGTH)
+            for option in raw_options
+        ]
+        return {
+            "id": question_id,
+            "question_type": question_type,
+            "concept_id": concept_id,
+            "difficulty": difficulty,
+            "prompt": prompt,
+            "options": options,
+        }
+
+    @staticmethod
+    def _dungeon_run(progress: Mapping[str, Any]) -> dict[str, Any] | None:
+        raw = progress.get("dungeon_run")
+        if raw is None:
+            return None
+        if not isinstance(raw, dict):
+            raise StateCommandError("Existing state field dungeon_run is invalid", status_code=500)
+        return raw
+
+    def _active_dungeon_run(self, progress: Mapping[str, Any]) -> dict[str, Any]:
+        run = self._dungeon_run(progress)
+        if run is None or run.get("status") != "active":
+            raise StateCommandError("No active Dungeon run is available", status_code=409)
+        if not isinstance(run.get("run_id"), str) or not run["run_id"].strip():
+            raise StateCommandError("Existing Dungeon run ID is invalid", status_code=500)
+        return run
+
+    def dungeon_projection(self, progress: Mapping[str, Any]) -> dict[str, Any]:
+        """Return the restart-safe public Dungeon projection.
+
+        Internal generation fields (including any future answer key) are never
+        copied into this projection. The editor buffer is canonical state and
+        is only exposed for the current active run.
+        """
+
+        run = self._dungeon_run(progress)
+        if run is None:
+            return {"active": False, "status": "idle", "editor_content": ""}
+        status = run.get("status", "idle")
+        if status not in {"active", "dead", "complete"}:
+            raise StateCommandError("Existing Dungeon run status is invalid", status_code=500)
+        projection: dict[str, Any] = {
+            "active": status == "active",
+            "status": status,
+            "run_id": run.get("run_id"),
+            "seed": run.get("seed"),
+            "floor": run.get("floor", 0),
+            "room": run.get("room", 0),
+            "room_type": run.get("room_type", ""),
+            "score": run.get("score", 0),
+            "run_coins": run.get("run_coins", 0),
+            "started_at": run.get("started_at"),
+            "updated_at": run.get("updated_at"),
+            "ended_at": run.get("ended_at"),
+            "loadout": {},
+            "question": None,
+            "editor_content": "",
+        }
+        for field in ("floor", "room", "score", "run_coins"):
+            try:
+                projection[field] = max(0, int(projection[field] or 0))
+            except (TypeError, ValueError) as exc:
+                raise StateCommandError(f"Existing Dungeon field {field} is invalid", status_code=500) from exc
+        loadout = run.get("loadout")
+        if not isinstance(loadout, Mapping):
+            raise StateCommandError("Existing Dungeon loadout is invalid", status_code=500)
+        projection["loadout"] = {
+            field: loadout[field]
+            for field in ("armor", "trinket", "hp", "max_hp", "heals", "coins")
+            if field in loadout
+        }
+        question = run.get("question")
+        if isinstance(question, Mapping):
+            projection["question"] = {
+                field: question[field]
+                for field in ("id", "question_type", "concept_id", "difficulty", "prompt", "options")
+                if field in question
+            }
+        elif status == "active":
+            raise StateCommandError("Active Dungeon run has no current question", status_code=500)
+        editor_content = run.get("editor_content", "")
+        if not isinstance(editor_content, str):
+            raise StateCommandError("Existing Dungeon editor content is invalid", status_code=500)
+        projection["editor_content"] = editor_content if status == "active" else ""
+        return projection
+
+    def _dungeon_start_run(self, payload: Mapping[str, Any], progress: dict[str, Any]) -> Mutation:
+        data = self._payload(payload, {"concept_id", "seed"}, set())
+        existing = self._dungeon_run(progress)
+        if isinstance(existing, dict) and existing.get("status") == "active":
+            raise StateCommandError("An active Dungeon run already exists", status_code=409)
+
+        learning = progress.get("learning_state")
+        fallback_concept = learning.get("concept") if isinstance(learning, Mapping) else None
+        concept_id = data.get("concept_id") or fallback_concept or "python-basics"
+        concept_id = self._text(concept_id, "concept_id", max_length=MAX_IDENTIFIER_LENGTH)
+        seed = data.get("seed") or uuid.uuid4().hex
+        seed = self._text(seed, "seed", max_length=MAX_IDENTIFIER_LENGTH, identifier=True)
+        run_id = f"dungeon-{uuid.uuid4().hex}"
+        question_id = f"{run_id}-q1"
+        question = self._dungeon_question_spec(
+            {
+                "id": question_id,
+                "question_type": "code_checkpoint",
+                "concept_id": concept_id,
+                "difficulty": 1,
+                "prompt": f"Write a small Python example that demonstrates {concept_id}.",
+                "options": [],
+            }
+        )
+        player = self._dict(progress, "player")
+        maximum = self._counter(player, "max_hp") or 100
+        now = _utc_now()
+        run = {
+            "status": "active",
+            "run_id": run_id,
+            "seed": seed,
+            "floor": 1,
+            "room": 1,
+            "room_type": "encounter",
+            "score": 0,
+            "run_coins": 0,
+            "started_at": now,
+            "updated_at": now,
+            "ended_at": None,
+            "loadout": {
+                "armor": "Apprentice Coat",
+                "trinket": None,
+                "hp": maximum,
+                "max_hp": maximum,
+                "heals": 1,
+                "coins": 0,
+            },
+            "question": question,
+            "editor_content": "",
+        }
+        progress["dungeon_run"] = run
+        projection = self.dungeon_projection(progress)
+        return Mutation(
+            True,
+            {"run": projection},
+            {
+                "run_id": run_id,
+                "floor": 1,
+                "room": 1,
+                "room_type": "encounter",
+                "question_id": question_id,
+                "question_type": question["question_type"],
+                "concept_id": concept_id,
+                "editor_reset": True,
+                "reason": "dungeon_run_started",
+            },
+        )
+
+    def _dungeon_save_editor(self, payload: Mapping[str, Any], progress: dict[str, Any]) -> Mutation:
+        data = self._payload(payload, {"run_id", "content"}, {"run_id", "content"})
+        run = self._active_dungeon_run(progress)
+        run_id = self._text(data["run_id"], "run_id", max_length=MAX_IDENTIFIER_LENGTH, identifier=True)
+        if run.get("run_id") != run_id:
+            raise StateCommandError("Dungeon run changed; reload the current run", status_code=409)
+        content = self._multiline_text(data["content"], "content", max_bytes=MAX_DUNGEON_EDITOR_BYTES)
+        previous = run.get("editor_content", "")
+        if previous == content:
+            return Mutation(False, {"run": self.dungeon_projection(progress), "saved": False})
+        run["editor_content"] = content
+        run["updated_at"] = _utc_now()
+        question = run.get("question") if isinstance(run.get("question"), Mapping) else {}
+        return Mutation(
+            True,
+            {"run": self.dungeon_projection(progress), "saved": True},
+            {
+                "run_id": run_id,
+                "floor": run.get("floor", 1),
+                "room": run.get("room", 1),
+                "question_id": question.get("id"),
+                "bytes": len(content.encode("utf-8")),
+                "reason": "dungeon_checkpoint_saved",
+            },
+        )
+
+    def _dungeon_issue_question(self, payload: Mapping[str, Any], progress: dict[str, Any]) -> Mutation:
+        data = self._payload(payload, {"run_id", "question", "floor", "room", "room_type"}, {"run_id", "question"})
+        run = self._active_dungeon_run(progress)
+        run_id = self._text(data["run_id"], "run_id", max_length=MAX_IDENTIFIER_LENGTH, identifier=True)
+        if run.get("run_id") != run_id:
+            raise StateCommandError("Dungeon run changed; reload the current run", status_code=409)
+        question = self._dungeon_question_spec(data["question"])
+        floor = self._integer(data.get("floor", run.get("floor", 1)), "floor", minimum=1, maximum=MAX_DUNGEON_FLOOR)
+        room = self._integer(data.get("room", run.get("room", 1)), "room", minimum=1, maximum=MAX_DUNGEON_ROOM)
+        room_type = self._text(data.get("room_type", run.get("room_type", "encounter")), "room_type", max_length=MAX_IDENTIFIER_LENGTH, identifier=True)
+        previous_question = run.get("question") if isinstance(run.get("question"), Mapping) else {}
+        run.update(
+            {
+                "floor": floor,
+                "room": room,
+                "room_type": room_type,
+                "question": question,
+                "editor_content": "",
+                "updated_at": _utc_now(),
+            }
+        )
+        return Mutation(
+            True,
+            {"run": self.dungeon_projection(progress)},
+            {
+                "run_id": run_id,
+                "floor": floor,
+                "room": room,
+                "room_type": room_type,
+                "question_id": question["id"],
+                "question_type": question["question_type"],
+                "concept_id": question["concept_id"],
+                "previous_question_id": previous_question.get("id"),
+                "editor_reset": True,
+                "reason": "dungeon_question_rotated",
+            },
+        )
+
+    def _dungeon_record_death(self, payload: Mapping[str, Any], progress: dict[str, Any]) -> Mutation:
+        data = self._payload(payload, {"run_id", "reason"}, {"run_id", "reason"})
+        run = self._active_dungeon_run(progress)
+        run_id = self._text(data["run_id"], "run_id", max_length=MAX_IDENTIFIER_LENGTH, identifier=True)
+        if run.get("run_id") != run_id:
+            raise StateCommandError("Dungeon run changed; reload the current run", status_code=409)
+        reason = self._text(data["reason"], "reason")
+        ended = _utc_now()
+        score = self._counter(run, "score")
+        floor = self._counter(run, "floor")
+        run.update({"status": "dead", "ended_at": ended, "updated_at": ended, "editor_content": "", "question": None})
+        return Mutation(
+            True,
+            {"run": self.dungeon_projection(progress)},
+            {"run_id": run_id, "floor": floor, "score": score, "editor_reset": True, "reason": reason},
+        )
+
     def _metadata_from_progress(self, progress: Mapping[str, Any]) -> dict[str, Any]:
         raw = progress.get("meta") if isinstance(progress.get("meta"), dict) else {}
         device_id = raw.get("device_id") if _is_safe_device_id(raw.get("device_id")) else self.device_id()
@@ -960,6 +1254,10 @@ class LocalStateService:
             "complete_mob": self._complete_mob,
             "record_battle_miss": self._record_battle_miss,
             "reconcile_legacy_progress": self._reconcile_legacy_progress,
+            "dungeon_start_run": self._dungeon_start_run,
+            "dungeon_save_editor": self._dungeon_save_editor,
+            "dungeon_issue_question": self._dungeon_issue_question,
+            "dungeon_record_death": self._dungeon_record_death,
         }
         return handlers[action](payload, progress)
 

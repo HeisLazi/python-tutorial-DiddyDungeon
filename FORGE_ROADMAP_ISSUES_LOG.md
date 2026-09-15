@@ -42,3 +42,28 @@ mailbox acceptance gate before Tauri packaging.
 - Windows Vite production build: passed after the final frontend changes.
 - Existing personal `progress.json` and `tutor.py` are out of scope and must
   remain unstaged.
+
+## Review — 2026-09-15 — Dungeon and Practice foundation
+
+Scope: the first Infinite Dungeon save-state/projection slice and the separate
+Practice surface. Review lens: authority, restart behavior, question isolation,
+player-facing mode boundaries, and failure behavior.
+
+| ID | Severity | Area | Finding | Status |
+|---|---|---|---|---|
+| F-013 | P2 | Dungeon authority | A writable workspace `dungeon.py` could otherwise become a second run save and drift from the campaign cache. | Fixed: the active run and editor buffer live in canonical state; the file is an atomic projection, hidden from the tree, and direct file reads/writes are rejected. |
+| F-014 | P2 | Question isolation | Reusing one editor buffer across generated questions could carry an old answer or provider tip into a new room. | Fixed: validated question rotation clears the canonical buffer and emits `editor_reset`; the projection and PYR context expose only the current question. |
+| F-015 | P2 | Restart durability | A browser/workstation restart could lose the active Dungeon room or current answer if it existed only in React/Monaco state. | Fixed for committed checkpoints: floor, room, question, loadout and editor content are restored from the state service. An edit made after the last checkpoint is not promised across a hard power loss. |
+| F-016 | P2 | Run lifecycle | A dead run could accidentally be resumed or have its starter loadout mutated in place. | Fixed: death is a terminal state that clears the question/buffer; starting again creates a new run ID and fresh starter loadout while preserving the summary. |
+| F-017 | P2 | Mode boundary | Practice assistance could accidentally grant Campaign/Dungeon rewards or become a hidden Dungeon variant. | Fixed at the UI/provider contract: Practice is an independent unlimited request surface and explicitly forbids verdicts, rewards, HP, Dungeon score and `tutor.py`; the normal file tree hides the legacy notebook and an older persisted Tutor view redirects to Forge. Persistent Practice evidence remains future work. |
+| F-018 | P2 | Cloud scope | The local Dungeon checkpoint is not yet part of the hosted player-state projection. | Open by design: generation, verdict progression, rooms, scoring, leaderboard state and cross-device Dungeon resume wait until the provider-auth and hosted-state gates are closed. |
+| F-019 | P3 | Product completeness | The current screen has a deterministic starter question and checkpoint controls, but no adaptive generator, rest/market rooms, death UI, leaderboard or Practice history. | Open roadmap work; the missing pieces are documented in `INFINITE_DUNGEON_DESIGN.md` and the Forge handoff. |
+
+### Dungeon foundation verification
+
+- WSL state-service tests cover restart restoration, active-run protection,
+  hidden-question-field rejection, rotation blanking and death/new-run reset.
+- Context-bridge tests prove `/api/pyr/context` receives the canonical
+  `dungeon.py` projection, while direct `/api/file` access is denied.
+- Frontend tests cover the separate Dungeon/Practice routes; the production
+  Vite build remains green.

@@ -33,6 +33,7 @@ from ide.server.context_bridge import (
 )
 from ide.server.security import allowed_hosts, allowed_origins, is_allowed_origin
 from ide.server.state import (
+    MAX_DUNGEON_EDITOR_BYTES,
     MAX_IDENTIFIER_LENGTH,
     MAX_REASON_LENGTH,
     LocalStateService,
@@ -68,6 +69,7 @@ def configured_progress_path() -> Path:
 
 PROGRESS_PATH = configured_progress_path()
 TUTOR_PATH = WORKSPACE / "tutor.py"
+DUNGEON_PATH = WORKSPACE / "dungeon.py"
 MAX_TEXT_BYTES = 2_000_000
 IGNORED_DIRS = {
     ".git",
@@ -166,6 +168,20 @@ class PyrBattleSubmissionRequest(BaseModel):
     answer: str = Field(min_length=1, max_length=20_000)
 
 
+class DungeonStartRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    concept_id: str | None = Field(default=None, max_length=MAX_IDENTIFIER_LENGTH)
+    seed: str | None = Field(default=None, max_length=MAX_IDENTIFIER_LENGTH)
+
+
+class DungeonEditorRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    run_id: str = Field(min_length=1, max_length=MAX_IDENTIFIER_LENGTH)
+    content: str = Field(max_length=MAX_DUNGEON_EDITOR_BYTES)
+
+
 def safe_path(relative: str) -> Path:
     relative = relative.strip().lstrip("/\\")
     if not relative:
@@ -195,16 +211,25 @@ def state_path_kind(target: Path) -> str | None:
         return "canonical"
     if target.resolve() == legacy_progress_path() and target.resolve() != canonical:
         return "legacy"
+    if target.resolve() == DUNGEON_PATH.resolve():
+        return "dungeon_projection"
     return None
 
 
-def reject_state_file_access(target: Path) -> None:
+def reject_state_file_access(target: Path, *, allow_dungeon_projection: bool = False) -> None:
     kind = state_path_kind(target)
     if kind:
         if kind == "legacy":
             raise HTTPException(
                 status_code=403,
                 detail="workspace progress.json is legacy data; use the local state service and canonical repo state",
+            )
+        if kind == "dungeon_projection":
+            if allow_dungeon_projection:
+                return
+            raise HTTPException(
+                status_code=403,
+                detail="dungeon.py is a state-service projection; use the Dungeon checkpoint endpoint",
             )
         raise HTTPException(status_code=403, detail="progress.json is managed by the local state service")
 
@@ -238,6 +263,27 @@ def ensure_tutor_file() -> Path:
     if not TUTOR_PATH.exists():
         TUTOR_PATH.write_text(TUTOR_TEMPLATE, encoding="utf-8")
     return TUTOR_PATH
+
+
+def write_dungeon_projection(content: str) -> None:
+    """Materialize the canonical current-run buffer as a controlled cache."""
+
+    try:
+        DUNGEON_PATH.relative_to(WORKSPACE)
+    except ValueError as exc:
+        raise HTTPException(status_code=500, detail="Dungeon projection path escaped the workspace") from exc
+    DUNGEON_PATH.parent.mkdir(parents=True, exist_ok=True)
+    temporary = DUNGEON_PATH.with_suffix(DUNGEON_PATH.suffix + ".tmp")
+    temporary.write_text(content, encoding="utf-8")
+    temporary.replace(DUNGEON_PATH)
+
+
+def sync_dungeon_projection(progress: dict) -> dict:
+    """Write only the current canonical run buffer and return its projection."""
+
+    projection = STATE_SERVICE.dungeon_projection(progress)
+    write_dungeon_projection(projection.get("editor_content", "") if projection.get("active") else "")
+    return projection
 
 
 def git_info() -> dict:
@@ -277,7 +323,7 @@ def build_tree() -> list[dict]:
             return
 
         for child in children:
-            if child.name in IGNORED_DIRS or child.name.startswith(".DS_Store"):
+            if child.name in IGNORED_DIRS or child.name in {DUNGEON_PATH.name, TUTOR_PATH.name} or child.name.startswith(".DS_Store"):
                 continue
             try:
                 relative = child.relative_to(WORKSPACE).as_posix()
@@ -368,12 +414,58 @@ def campaign():
         "progress": progress,
         "revision": metadata["revision"],
         "encounter": STATE_SERVICE.encounter_projection(progress),
+        "dungeon": STATE_SERVICE.dungeon_projection(progress),
         "activity": activity,
         "git": git_info(),
         "workspace": str(WORKSPACE),
         "repo_root": str(REPO_ROOT),
         "state_authority": state_authority_info(PROGRESS_PATH, WORKSPACE),
     }
+
+
+@app.get("/api/dungeon")
+def dungeon():
+    """Return the restart-safe Dungeon run and materialize its editor cache."""
+
+    try:
+        progress, metadata = STATE_SERVICE.snapshot_with_metadata()
+        projection = sync_dungeon_projection(progress)
+    except StateCommandError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
+    return {
+        "ok": True,
+        "revision": metadata["revision"],
+        "dungeon": projection,
+        "file": {"path": "dungeon.py", "content": projection.get("editor_content", "")},
+    }
+
+
+@app.post("/api/dungeon/start")
+def start_dungeon(payload: DungeonStartRequest):
+    envelope = _apply_state_or_http("dungeon_start_run", payload.model_dump(exclude_none=True), "player")
+    try:
+        progress, metadata = STATE_SERVICE.snapshot_with_metadata()
+        projection = sync_dungeon_projection(progress)
+    except StateCommandError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
+    result = _flatten_state_result(envelope)
+    result.update({"dungeon": projection, "file": {"path": "dungeon.py", "content": projection.get("editor_content", "")}})
+    result["revision"] = metadata["revision"]
+    return result
+
+
+@app.put("/api/dungeon/editor")
+def save_dungeon_editor(payload: DungeonEditorRequest):
+    envelope = _apply_state_or_http("dungeon_save_editor", payload.model_dump(), "player")
+    try:
+        progress, metadata = STATE_SERVICE.snapshot_with_metadata()
+        projection = sync_dungeon_projection(progress)
+    except StateCommandError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
+    result = _flatten_state_result(envelope)
+    result.update({"dungeon": projection, "file": {"path": "dungeon.py", "content": projection.get("editor_content", "")}})
+    result["revision"] = metadata["revision"]
+    return result
 
 
 @app.get("/api/state/revision")
@@ -480,7 +572,13 @@ def _capture_pyr_context(payload: PyrContextRequest, *, rotate_challenge: bool =
         if is_sensitive_path(active_path):
             raise HTTPException(status_code=403, detail="Secret-looking files cannot be sent to the PYR context bridge")
         target = safe_path(active_path)
-        reject_state_file_access(target)
+        if target.resolve() == DUNGEON_PATH.resolve():
+            try:
+                sync_dungeon_projection(STATE_SERVICE.snapshot())
+            except StateCommandError as exc:
+                raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
+        else:
+            reject_state_file_access(target)
         if not target.exists() or not target.is_file():
             raise HTTPException(status_code=404, detail="Active file not found")
         try:
@@ -732,7 +830,6 @@ def apply_pyr_verdict(payload: PyrVerdictRequest):
 
 @app.get("/api/tree")
 def tree():
-    ensure_tutor_file()
     return {"workspace": str(WORKSPACE), "items": build_tree()}
 
 

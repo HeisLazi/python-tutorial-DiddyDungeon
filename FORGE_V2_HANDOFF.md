@@ -41,9 +41,11 @@ The right terminal targets:
 
 `/api/runtime` detects whether each command exists and disables missing launch buttons.
 
-## Tutor Notebook boundary
+## Tutor Notebook boundary (legacy compatibility)
 
-`tutor.py` is collaborative scratch space.
+`tutor.py` remains collaborative scratch space for existing tooling, but it is
+not a normal Campaign destination. The player-facing AI learning surface is
+Practice, which never creates or writes `tutor.py`.
 
 The controlled future PYR agent may write examples/exercises there. Required project source such as `blackjack.py` remains read-only to the tutor agent. The raw CLI terminal is intentionally powerful and is not a security sandbox.
 
@@ -65,11 +67,13 @@ The controlled future PYR agent may write examples/exercises there. Required pro
 
 - Forge editor and normal terminal;
 - independent AI terminal;
-- Tutor Notebook;
+- legacy Tutor Notebook endpoint (hidden from normal navigation and file tree);
 - Quest Journal;
 - Codex;
 - Character sheet;
 - Homestead scene + cosmetic catalog;
+- Infinite Dungeon checkpoint screen;
+- independent Practice screen;
 - cosmetic buy/equip backend;
 - themes / cursor / HUD / terminal cosmetic slots;
 - persistent local layout sizes;
@@ -118,14 +122,22 @@ Canonical combat details live in `COMBAT_SYSTEM.md`.
    requires the matching submission tokens and delegates to the internal state
    service; callers cannot provide Impact, rewards, HP or counterattack values.
    Provider authentication remains a hosted-release gate.
-3. Persistent Resolve / armor calculation / HP / combat log.
-4. Teach Me / Quick Refresher / Test Me encounter entry.
-5. **Partial:** Living Codex records now retain bounded encounter attempts,
+3. **Dungeon save foundation implemented:** `dungeon_run` is a canonical
+   run-scoped checkpoint. `POST /api/dungeon/start`, `PUT /api/dungeon/editor`
+   and `GET /api/dungeon` restore floor/room/question/editor state after a
+   restart. `dungeon.py` is a controlled projection; internal question rotation
+   blanks it and recorded death clears the run. The Dungeon and Practice UI
+   surfaces are starter-only at this boundary.
+4. Persistent Resolve / armor calculation / HP / combat log.
+5. Teach Me / Quick Refresher / Test Me encounter entry.
+6. **Partial:** Living Codex records now retain bounded encounter attempts,
    question types and verified/incorrect results from the challenged verdict
    path. Weakness tags and interview history still require their own validated
    Teach Me / Test Me mutation flow.
-6. Boss phase presentation and trinket triggers.
-7. Later: shared weekly raid transport/state and party objectives.
+7. Dungeon question generation, rest/market rooms, score and run completion.
+8. Independent Practice history and validated learning evidence.
+9. Boss phase presentation and trinket triggers.
+10. Later: shared weekly raid transport/state and party objectives.
 
 ## PC test procedure
 
@@ -156,4 +168,6 @@ for the selected local provider to adjudicate a submitted answer. The context,
 answer-binding and challenged-verdict halves of the bridge are implemented and
 tested; verdict mutations persist bounded encounter attempts/results, while
 provider authentication and the remaining persistent combat projection are
-next, not more fake front-end combat state.
+next, not more fake front-end combat state. The Dungeon checkpoint contract and
+starter Dungeon/Practice screens are now local-only; generation, run combat,
+leaderboards and cloud Dungeon sync are deliberately not claimed complete.

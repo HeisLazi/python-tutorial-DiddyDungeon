@@ -83,6 +83,22 @@ test('Battle Journal binds player answers before provider adjudication', () => {
   assert.match(views, /Resolve and rewards change only after the provider returns a validated verdict/)
 })
 
+test('Dungeon checkpoints and Practice remain separate learning modes', () => {
+  const app = source('../AppV2.jsx')
+  const views = source('../RpgViews.jsx')
+
+  assert.match(app, /\/api\/dungeon\/start/)
+  assert.match(app, /\/api\/dungeon\/editor/)
+  assert.match(app, /saveDungeon/)
+  assert.match(app, /activeView === 'dungeon'/)
+  assert.match(views, /data-testid="dungeon"/)
+  assert.match(views, /dungeon\.py · current room buffer/)
+  assert.match(views, /data-testid="practice"/)
+  assert.match(views, /Practice is unlimited and separate from Campaign and Dungeon/)
+  assert.doesNotMatch(views, /id: 'tutor',/)
+  assert.match(app, /Tutor Notebook is legacy-only/)
+})
+
 test('combat projection treats legacy cleared mobs as terminal', () => {
   const combat = source('../combatShell.js')
   const views = source('../RpgViews.jsx')

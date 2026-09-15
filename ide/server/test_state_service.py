@@ -129,6 +129,109 @@ class StateServiceBehaviorTests(unittest.TestCase):
         self.assertTrue(state["achievements"][0]["unlocked"])
         self.assertEqual([event["action"] for event in state["state_events"]], ["player_hp_change", "record_achievement"])
 
+    def test_dungeon_checkpoint_survives_service_restart_with_fresh_run_loadout(self):
+        service, path = self.make_service()
+        before = self.read(path)
+        started = service.apply(
+            "dungeon_start_run",
+            {"concept_id": "lists", "seed": "test-seed"},
+            "player",
+        )
+        run = started["result"]["run"]
+        self.assertTrue(run["active"])
+        self.assertEqual(run["floor"], 1)
+        self.assertEqual(run["room"], 1)
+        self.assertEqual(run["loadout"]["armor"], "Apprentice Coat")
+        self.assertIsNone(run["loadout"]["trinket"])
+        self.assertEqual(run["loadout"]["heals"], 1)
+        self.assertEqual(run["loadout"]["coins"], 0)
+        self.assertEqual(run["editor_content"], "")
+        self.assertEqual(self.read(path)["player"], before["player"])
+
+        saved = service.apply(
+            "dungeon_save_editor",
+            {"run_id": run["run_id"], "content": "items = ['hit', 'stand']\nprint(items)\n"},
+            "player",
+        )
+        self.assertTrue(saved["result"]["saved"])
+        resumed = LocalStateService(path, threading.RLock()).dungeon_projection(
+            LocalStateService(path, threading.RLock()).snapshot()
+        )
+        self.assertEqual(resumed["run_id"], run["run_id"])
+        self.assertEqual(resumed["editor_content"], "items = ['hit', 'stand']\nprint(items)\n")
+        self.assertEqual(resumed["question"]["concept_id"], "lists")
+
+    def test_dungeon_question_rotation_blanks_editor_and_death_requires_new_run(self):
+        service, path = self.make_service()
+        started = service.apply("dungeon_start_run", {"concept_id": "loops"}, "player")
+        run_id = started["result"]["run"]["run_id"]
+        service.apply("dungeon_save_editor", {"run_id": run_id, "content": "tips = 'old'\n"}, "player")
+
+        rotated = service.apply_internal(
+            "dungeon_issue_question",
+            {
+                "run_id": run_id,
+                "floor": 1,
+                "room": 2,
+                "room_type": "encounter",
+                "question": {
+                    "id": f"{run_id}-q2",
+                    "question_type": "bug_hunt",
+                    "concept_id": "loops",
+                    "difficulty": 2,
+                    "prompt": "Find the loop condition that never changes.",
+                    "options": [],
+                },
+            },
+        )
+        rotated_run = rotated["result"]["run"]
+        self.assertEqual(rotated_run["room"], 2)
+        self.assertEqual(rotated_run["editor_content"], "")
+        self.assertEqual(rotated["event"]["editor_reset"], True)
+        self.assertEqual(self.read(path)["dungeon_run"]["editor_content"], "")
+
+        death = service.apply_internal(
+            "dungeon_record_death",
+            {"run_id": run_id, "reason": "hp_zero"},
+        )
+        self.assertFalse(death["result"]["run"]["active"])
+        self.assertEqual(death["result"]["run"]["status"], "dead")
+        self.assertEqual(death["result"]["run"]["editor_content"], "")
+        self.assertIsNone(death["result"]["run"]["question"])
+
+        fresh = service.apply("dungeon_start_run", {"concept_id": "loops"}, "player")
+        fresh_run = fresh["result"]["run"]
+        self.assertNotEqual(fresh_run["run_id"], run_id)
+        self.assertEqual(fresh_run["floor"], 1)
+        self.assertEqual(fresh_run["room"], 1)
+        self.assertEqual(fresh_run["editor_content"], "")
+        self.assertEqual(fresh_run["loadout"]["heals"], 1)
+
+    def test_dungeon_questions_reject_hidden_fields_and_active_runs_cannot_reset(self):
+        service, _ = self.make_service()
+        started = service.apply("dungeon_start_run", {"concept_id": "lists"}, "player")
+        run_id = started["result"]["run"]["run_id"]
+        with self.assertRaises(StateCommandError) as active:
+            service.apply("dungeon_start_run", {"concept_id": "loops"}, "player")
+        self.assertEqual(active.exception.status_code, 409)
+        with self.assertRaises(StateCommandError) as hidden:
+            service.apply_internal(
+                "dungeon_issue_question",
+                {
+                    "run_id": run_id,
+                    "question": {
+                        "id": f"{run_id}-q2",
+                        "question_type": "multiple_choice",
+                        "concept_id": "lists",
+                        "difficulty": 1,
+                        "prompt": "Choose the correct expression.",
+                        "options": ["a", "b"],
+                        "answer_key": "a",
+                    },
+                },
+            )
+        self.assertEqual(hidden.exception.status_code, 422)
+
     def test_learning_event_cannot_change_progression_fields_outside_its_scope(self):
         service, path = self.make_service()
         before = self.read(path)

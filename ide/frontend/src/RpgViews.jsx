@@ -2,11 +2,12 @@ import { useEffect, useState } from 'react'
 
 export const viewItems = [
   { id: 'forge', icon: '⌘', label: 'Forge' },
-  { id: 'tutor', icon: '🧪', label: 'Tutor Notebook' },
   { id: 'quests', icon: '⚔', label: 'Quest Journal' },
   { id: 'codex', icon: '▤', label: 'Codex' },
   { id: 'character', icon: '♙', label: 'Character' },
   { id: 'homestead', icon: '⌂', label: 'Homestead' },
+  { id: 'dungeon', icon: '♜', label: 'Infinite Dungeon' },
+  { id: 'practice', icon: '✦', label: 'Practice' },
   { id: 'settings', icon: '⚙', label: 'Settings' },
 ]
 
@@ -173,6 +174,34 @@ export function ContextPanel({ activeView, campaign, files, activePath, openFile
             <p>Build your coding home with cosmetics earned from real learning.</p>
             <div className="context-stat"><span>Coins</span><b>{player.coins ?? 0}c</b></div>
             <div className="context-stat"><span>Owned</span><b>{owned.length}</b></div>
+          </>
+        )}
+
+        {activeView === 'dungeon' && (
+          <>
+            <div className="context-kicker">RUN CHECKPOINT</div>
+            <h3>Infinite Dungeon</h3>
+            <p>Each run starts with the starter armor, one heal and no trinket. The active checkpoint survives a restart.</p>
+            <div className="context-row stacked">
+              <strong>{campaign?.dungeon?.active ? `Floor ${campaign.dungeon.floor} · Room ${campaign.dungeon.room}` : 'No active run'}</strong>
+              <span>{campaign?.dungeon?.active ? campaign.dungeon.question?.concept_id || 'Adaptive concept' : 'Start a run from the Dungeon screen.'}</span>
+            </div>
+            <div className="boundary-card locked">
+              <strong>STATE GATEWAY</strong>
+              <span>dungeon.py is a controlled projection, never a second save.</span>
+            </div>
+          </>
+        )}
+
+        {activeView === 'practice' && (
+          <>
+            <div className="context-kicker">OPEN PRACTICE</div>
+            <h3>Choose what to strengthen</h3>
+            <p>Practice is unlimited and separate from Campaign and Dungeon runs. Provider help uses the same bounded context bridge.</p>
+            <div className="boundary-card safe">
+              <strong>NO CAMPAIGN COST</strong>
+              <span>No Dungeon score, run currency or permanent reward is changed here.</span>
+            </div>
           </>
         )}
 
@@ -501,6 +530,126 @@ function Homestead({ progress, revision, purchaseCosmetic, equipCosmetic, busy }
   )
 }
 
+function DungeonScreen({ dungeon, revision, onStart, busy, editorContent, onEditorChange, onSave }) {
+  const [concept, setConcept] = useState('')
+  const run = dungeon || { active: false, status: 'idle' }
+  const question = run.question || {}
+  const loadout = run.loadout || {}
+
+  const start = async (event) => {
+    event.preventDefault()
+    if (!onStart || busy) return
+    await onStart(concept.trim() || undefined)
+  }
+
+  return (
+    <div className="game-screen-scroll" data-testid="dungeon" data-campaign-revision={revision}>
+      <div className="screen-hero dungeon-hero">
+        <div>
+          <span className="screen-kicker">INFINITE DUNGEON</span>
+          <h2>{run.active ? `Floor ${run.floor} · Room ${run.room}` : 'Enter the endless run.'}</h2>
+          <p>{run.active ? 'Your checkpoint is safe. Keep solving to go deeper.' : 'A fresh loadout, adaptive questions and a score that belongs to this run.'}</p>
+        </div>
+        <div className="dungeon-score"><small>{run.active ? 'RUN SCORE' : 'LAST RUN'}</small><strong>{run.score ?? 0}</strong><span>{run.status === 'dead' ? 'run ended' : run.active ? `${run.run_coins ?? 0} run coins` : 'ready'}</span></div>
+      </div>
+
+      {!run.active ? (
+        <section className="game-card dungeon-start-card">
+          <div className="card-heading"><span>{run.status === 'dead' ? 'RUN RECOVERED' : 'NEW RUN'}</span><b>FRESH LOADOUT</b></div>
+          <p>{run.status === 'dead' ? `That run ended on floor ${run.floor ?? 0}. Start again when you are ready.` : 'Campaign gear never leaks into the Dungeon.'}</p>
+          <div className="dungeon-starter-loadout"><span>Apprentice Coat</span><span>No trinket</span><span>1 heal</span><span>0 run coins</span></div>
+          <form className="dungeon-start-form" onSubmit={start}>
+            <label><span>Optional focus concept</span><input value={concept} onChange={(event) => setConcept(event.target.value)} maxLength={120} placeholder="e.g. lists, loops, debugging" disabled={busy} /></label>
+            <button className="primary" type="submit" disabled={busy}>{busy ? 'Starting…' : 'Enter Dungeon'}</button>
+          </form>
+        </section>
+      ) : (
+        <>
+          <div className="screen-grid two">
+            <section className="game-card">
+              <div className="card-heading"><span>CURRENT ROOM</span><b>{String(run.room_type || 'encounter').toUpperCase()}</b></div>
+              <h3>{question.concept_id || 'Adaptive encounter'}</h3>
+              <p>{question.prompt || 'The next question will be issued by the state service.'}</p>
+              {Array.isArray(question.options) && question.options.length > 0 && (
+                <div className="impact-objectives" aria-label="Question options">
+                  {question.options.map((option) => <span key={option}>{option}</span>)}
+                </div>
+              )}
+              <div className="dungeon-question-meta"><span>{question.question_type || 'question'}</span><span>Difficulty {question.difficulty ?? 1}</span><span>Write in dungeon.py</span></div>
+              <label className="dungeon-editor-field"><span>dungeon.py · current room buffer</span><textarea value={editorContent || ''} onChange={(event) => onEditorChange?.(event.target.value)} maxLength={120_000} rows={10} placeholder="Write your answer here. This buffer is checkpointed through the state gateway." disabled={busy} /></label>
+              <button type="button" onClick={onSave} disabled={busy || !onSave}>{busy ? 'Saving…' : 'Save checkpoint'}</button>
+            </section>
+            <section className="game-card">
+              <div className="card-heading"><span>RUN LOADOUT</span><b>{loadout.hp ?? 0}/{loadout.max_hp ?? 0} HP</b></div>
+              <div className="dungeon-loadout-list"><div><small>ARMOR</small><strong>{loadout.armor || 'Apprentice Coat'}</strong></div><div><small>TRINKET</small><strong>{loadout.trinket || 'None'}</strong></div><div><small>HEALS</small><strong>{loadout.heals ?? 0}</strong></div><div><small>RUN COINS</small><strong>{run.run_coins ?? 0}</strong></div></div>
+              <p className="context-note">The editor buffer autosaves through the state gateway. A new question clears it before the next prompt.</p>
+            </section>
+          </div>
+          <section className="game-card dungeon-checkpoint-card">
+            <div className="card-heading"><span>CHECKPOINT</span><b>{run.updated_at ? 'SAVED' : 'PENDING'}</b></div>
+            <p>Run <code>{run.run_id}</code> will resume at this room after a Forge or workstation restart. Death is the only reset.</p>
+          </section>
+        </>
+      )}
+    </div>
+  )
+}
+
+function PracticeScreen({ progress, revision, onPracticePrompt, busy }) {
+  const activeProject = (progress.projects || []).find((project) => project.status === 'active') || {}
+  const concepts = Array.from(new Set([
+    ...(progress.skills || []).map((skill) => skill.concept).filter(Boolean),
+    ...(activeProject.mobs || []).map((mob) => mob.concept).filter(Boolean),
+    progress.learning_state?.concept,
+  ].filter(Boolean)))
+  const [concept, setConcept] = useState(concepts[0] || 'python-basics')
+  const [questionType, setQuestionType] = useState('multiple_choice')
+  const [difficulty, setDifficulty] = useState('1')
+  const [answer, setAnswer] = useState('')
+  const [status, setStatus] = useState('')
+
+  useEffect(() => {
+    if (!concepts.includes(concept)) setConcept(concepts[0] || 'python-basics')
+  }, [concepts.join('|'), concept])
+
+  const ask = async (event) => {
+    event.preventDefault()
+    if (!onPracticePrompt || busy) return
+    setStatus(answer.trim() ? 'Sending your answer for feedback…' : 'Asking the provider for one practice question…')
+    try {
+      await onPracticePrompt({ concept, questionType, difficulty: Number(difficulty), answer })
+      setStatus(answer.trim() ? 'Feedback requested. Practice never changes Dungeon or Campaign state.' : 'Question requested. Answer it in the provider conversation, then ask for feedback.')
+      if (answer.trim()) setAnswer('')
+    } catch (error) {
+      setStatus(error?.message || 'Practice request failed.')
+    }
+  }
+
+  return (
+    <div className="game-screen-scroll" data-testid="practice" data-campaign-revision={revision}>
+      <div className="screen-hero practice-hero">
+        <div><span className="screen-kicker">PRACTICE MODE</span><h2>Train any concept, anytime.</h2><p>Pick the concept and question style. PYR can teach, challenge and explain without consuming a run or Campaign reward.</p></div>
+        <div className="dungeon-score"><small>STAKES</small><strong>NONE</strong><span>unlimited attempts</span></div>
+      </div>
+      <section className="game-card practice-card">
+        <div className="card-heading"><span>BUILD A DRILL</span><b>AI ASSISTED</b></div>
+        <form className="practice-form" onSubmit={ask}>
+          <label><span>Concept</span><select value={concept} onChange={(event) => setConcept(event.target.value)} disabled={busy}>{concepts.map((item) => <option key={item} value={item}>{item}</option>)}<option value="python-basics">python-basics</option></select></label>
+          <label><span>Question type</span><select value={questionType} onChange={(event) => setQuestionType(event.target.value)} disabled={busy}><option value="true_false">True / False</option><option value="multiple_choice">Multiple choice</option><option value="short_explanation">Short explanation</option><option value="code_trace">Code trace</option><option value="bug_hunt">Bug hunt</option></select></label>
+          <label><span>Difficulty</span><select value={difficulty} onChange={(event) => setDifficulty(event.target.value)} disabled={busy}>{[1, 2, 3, 4, 5].map((level) => <option key={level} value={level}>Tier {level}</option>)}</select></label>
+          <label className="practice-answer"><span>Answer or ask for feedback</span><textarea value={answer} onChange={(event) => setAnswer(event.target.value)} maxLength={20_000} rows={5} placeholder="Leave blank for a new question, or paste your answer here…" disabled={busy} /></label>
+          <button className="primary" type="submit" disabled={busy}>{busy ? 'Sending…' : answer.trim() ? 'Ask for feedback' : 'Ask PYR for a drill'}</button>
+        </form>
+        {status && <small className="battle-submit-status" role="status">{status}</small>}
+      </section>
+      <section className="game-card">
+        <div className="card-heading"><span>PRACTICE BOUNDARY</span><b>SEPARATE MODE</b></div>
+        <p className="context-note">Practice uses the same bounded provider context as Campaign, but it never creates a leaderboard run, copies Campaign gear, or writes tutor.py.</p>
+      </section>
+    </div>
+  )
+}
+
 function AccountPanel({ account, busy, notice, onSignIn, onSignUp, onSignOut, onDeviceLabelSave, onResolveConflict }) {
   const [formMode, setFormMode] = useState('signin')
   const [email, setEmail] = useState('')
@@ -621,11 +770,13 @@ function SettingsScreen({ preferences, setters, resetLayout, equipped, account, 
   )
 }
 
-export function GameScreen({ activeView, progress, revision, encounter, purchaseCosmetic, equipCosmetic, busy, submitBattle, preferences, setters, resetLayout, account, accountBusy, accountNotice, onSignIn, onSignUp, onSignOut, onDeviceLabelSave, onResolveConflict }) {
+export function GameScreen({ activeView, progress, revision, encounter, dungeon, dungeonEditorContent, onDungeonEditorChange, onSaveDungeon, purchaseCosmetic, equipCosmetic, busy, submitBattle, onStartDungeon, onPracticePrompt, preferences, setters, resetLayout, account, accountBusy, accountNotice, onSignIn, onSignUp, onSignOut, onDeviceLabelSave, onResolveConflict }) {
   if (activeView === 'quests') return <QuestJournal progress={progress} revision={revision} encounter={encounter} submitBattle={submitBattle} busy={busy} />
   if (activeView === 'codex') return <Codex progress={progress} revision={revision} />
   if (activeView === 'character') return <CharacterSheet progress={progress} revision={revision} />
   if (activeView === 'homestead') return <Homestead progress={progress} revision={revision} purchaseCosmetic={purchaseCosmetic} equipCosmetic={equipCosmetic} busy={busy} />
+  if (activeView === 'dungeon') return <DungeonScreen dungeon={dungeon} revision={revision} onStart={onStartDungeon} busy={busy} editorContent={dungeonEditorContent} onEditorChange={onDungeonEditorChange} onSave={onSaveDungeon} />
+  if (activeView === 'practice') return <PracticeScreen progress={progress} revision={revision} onPracticePrompt={onPracticePrompt} busy={busy} />
   if (activeView === 'settings') return <SettingsScreen preferences={preferences} setters={setters} resetLayout={resetLayout} equipped={progress.homestead?.equipped || {}} account={account} accountBusy={accountBusy} accountNotice={accountNotice} onSignIn={onSignIn} onSignUp={onSignUp} onSignOut={onSignOut} onDeviceLabelSave={onDeviceLabelSave} onResolveConflict={onResolveConflict} revision={revision} />
   return null
 }

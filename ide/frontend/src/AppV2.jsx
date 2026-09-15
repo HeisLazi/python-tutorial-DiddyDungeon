@@ -278,6 +278,8 @@ function AppV2() {
   const [tutorDirty, setTutorDirty] = useState(false)
   const [tutorDiskRevision, setTutorDiskRevision] = useState('')
   const [tutorExternalChange, setTutorExternalChange] = useState(null)
+  const [dungeonCode, setDungeonCode] = useState('')
+  const [dungeonDirty, setDungeonDirty] = useState(false)
   const [busy, setBusy] = useState(false)
   const [notice, setNotice] = useState('')
   const [shellState, setShellState] = useState('connecting')
@@ -288,6 +290,8 @@ function AppV2() {
   const tutorDirtyRef = useRef(false)
   const tutorDiskRevisionRef = useRef('')
   const tutorExternalChangeRef = useRef(null)
+  const dungeonDirtyRef = useRef(false)
+  const dungeonQuestionRef = useRef('')
   const campaignRevisionRef = useRef(null)
   const campaignInitializedRef = useRef(false)
   const seenStateEventsRef = useRef(new Set())
@@ -310,6 +314,7 @@ function AppV2() {
   const activity = campaign?.activity || {}
   const git = campaign?.git || {}
   const homestead = progress.homestead || {}
+  const dungeon = campaign?.dungeon || { active: false, status: 'idle', editor_content: '' }
   const equipped = homestead.equipped || {}
   const theme = (equipped.theme || 'theme-ember-forge').replace('theme-', '')
   const terminalSkin = equipped.terminal || 'terminal-charcoal'
@@ -410,6 +415,30 @@ function AppV2() {
           detail: event.reason || 'Verified Battle miss',
         })
       }
+    } else if (action === 'dungeon_start_run') {
+      notifications.push({
+        id: `${event.id}:dungeon-start`,
+        kind: 'objective',
+        title: 'DUNGEON RUN STARTED',
+        body: `Floor ${event.floor ?? 1} · ${event.concept_id || 'adaptive concept'}`,
+        detail: 'Starter loadout equipped; checkpoint is active',
+      })
+    } else if (action === 'dungeon_question_rotated') {
+      notifications.push({
+        id: `${event.id}:dungeon-question`,
+        kind: 'unlock',
+        title: 'NEW DUNGEON QUESTION',
+        body: `${event.question_type || 'question'} · ${event.concept_id || 'adaptive concept'}`,
+        detail: 'dungeon.py cleared for this room',
+      })
+    } else if (action === 'dungeon_record_death') {
+      notifications.push({
+        id: `${event.id}:dungeon-death`,
+        kind: 'warning',
+        title: 'DUNGEON RUN ENDED',
+        body: `Floor ${event.floor ?? 0} · ${event.score ?? 0} score`,
+        detail: 'Death resets the run; Campaign progress is unchanged',
+      })
     } else if (action === 'reconcile_legacy_progress') {
       const restoredMobs = Array.isArray(event.restored_mobs) ? event.restored_mobs : []
       const restoredFields = Array.isArray(event.restored_fields) ? event.restored_fields : []
@@ -560,7 +589,7 @@ function AppV2() {
   }
 
   const publishPyrContext = async ({ terminalTail } = {}) => {
-    const activeFile = activeView === 'tutor' ? 'tutor.py' : activePath || null
+    const activeFile = activeView === 'tutor' ? 'tutor.py' : activeView === 'dungeon' ? 'dungeon.py' : activePath || null
     const result = await api('/api/pyr/context', {
       method: 'POST',
       body: JSON.stringify({
@@ -648,8 +677,16 @@ function AppV2() {
     refreshCampaign()
     refreshRuntime()
     refreshFiles()
-    refreshTutor()
   }, [])
+
+  // Tutor Notebook is retained only as a legacy backend compatibility surface;
+  // normal Campaign navigation now uses Practice for provider-assisted help.
+  // Redirect an older persisted view so a refresh cannot reopen tutor.py.
+  useEffect(() => {
+    if (activeView !== 'tutor') return
+    setActiveView('forge')
+    setNotice('Tutor Notebook is legacy-only. Use Practice for AI-assisted learning.')
+  }, [activeView, setActiveView])
 
   // The DOM enhancement layer and any local AI client can request this
   // explicitly captured context without knowing React's editor/terminal refs.
@@ -717,6 +754,23 @@ function AppV2() {
     tutorDiskRevisionRef.current = tutorDiskRevision
   }, [tutorDiskRevision])
 
+  useEffect(() => {
+    dungeonDirtyRef.current = dungeonDirty
+  }, [dungeonDirty])
+
+  useEffect(() => {
+    const snapshot = campaign?.dungeon
+    const questionId = snapshot?.question?.id || ''
+    const previousQuestionId = dungeonQuestionRef.current
+    const questionRotated = Boolean(previousQuestionId && questionId && previousQuestionId !== questionId)
+    dungeonQuestionRef.current = questionId
+    if (questionRotated || !dungeonDirtyRef.current || !snapshot?.active) {
+      setDungeonCode(snapshot?.active ? snapshot.editor_content || '' : '')
+      setDungeonDirty(false)
+      dungeonDirtyRef.current = false
+    }
+  }, [campaign?.dungeon?.run_id, campaign?.dungeon?.question?.id, campaign?.dungeon?.editor_content, campaign?.dungeon?.status])
+
   // Poll only while the collaborative notebook is visible. A clean editor
   // follows an external write immediately; a dirty editor keeps its text and
   // surfaces the external version as an explicit reload/keep decision.
@@ -778,6 +832,7 @@ function AppV2() {
         event.preventDefault()
         if (activeView === 'tutor') saveTutor()
         if (activeView === 'forge') saveFile()
+        if (activeView === 'dungeon') saveDungeon()
       }
       if (event.shiftKey && event.altKey && event.key.toLowerCase() === 'f') {
         event.preventDefault()
@@ -888,6 +943,93 @@ function AppV2() {
       setBusy(false)
     }
   }
+
+  const saveDungeon = async () => {
+    if (!dungeon.active || !dungeon.run_id) return false
+    try {
+      setBusy(true)
+      const result = await api('/api/dungeon/editor', {
+        method: 'PUT',
+        body: JSON.stringify({ run_id: dungeon.run_id, content: dungeonCode }),
+      })
+      setDungeonCode(result.dungeon?.editor_content ?? dungeonCode)
+      setDungeonDirty(false)
+      dungeonDirtyRef.current = false
+      await refreshCampaign({ silent: true })
+      setNotice('Dungeon checkpoint saved. This room will resume after a restart.')
+      return true
+    } catch (error) {
+      setNotice(`Dungeon checkpoint failed: ${error.message}`)
+      return false
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const startDungeon = async (conceptId) => {
+    try {
+      setBusy(true)
+      const payload = conceptId ? { concept_id: conceptId } : {}
+      const result = await api('/api/dungeon/start', {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      })
+      setDungeonCode(result.dungeon?.editor_content || '')
+      setDungeonDirty(false)
+      dungeonDirtyRef.current = false
+      setActiveView('dungeon')
+      await refreshCampaign({ silent: true })
+      setNotice(`Dungeon run started on floor ${result.dungeon?.floor ?? 1}.`)
+    } catch (error) {
+      setNotice(`Dungeon start failed: ${error.message}`)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const requestPracticePrompt = async ({ concept, questionType, difficulty, answer }) => {
+    const provider = sessionStorage.getItem('questlab.aiProvider')
+    if (!provider) throw new Error('Launch Codex, Claude, or AGY first, then ask for practice help.')
+    const context = await publishPyrContext({ terminalTail: shellTerminalRef.current?.getText?.() || '' })
+    const hasAnswer = typeof answer === 'string' && answer.trim()
+    const prompt = [
+      'Quest Lab Practice mode — provider teaching request.',
+      `Provider: ${provider}`,
+      `Concept: ${concept}`,
+      `Question type: ${questionType}`,
+      `Difficulty tier: ${difficulty}`,
+      hasAnswer ? 'Give feedback on the submitted practice answer below.' : 'Generate one self-contained practice question now.',
+      'Practice is unlimited and separate from Campaign and Dungeon. Do not issue a Battle verdict, award rewards, change HP, or reveal future Dungeon questions.',
+      hasAnswer ? ['Player practice answer:', '```text', answer.trim(), '```'].join('\n') : '',
+      '',
+      'Use only this bounded current context for personalization:',
+      `Quest projection: ${JSON.stringify(context.quest || {})}`,
+      `Encounter projection: ${JSON.stringify(context.encounter || {})}`,
+      `Active file: ${context.active_file?.path || '(none)'}`,
+      '```text',
+      context.active_file?.content || '(none)',
+      '```',
+      'Selected code:',
+      '```text',
+      context.selection?.text || '(none)',
+      '```',
+      'Recent shell output:',
+      '```text',
+      context.terminal?.tail || '(none)',
+      '```',
+      '',
+    ].join('\n')
+    pasteAiPrompt(prompt)
+    setNotice(hasAnswer ? `Practice feedback sent to ${provider}.` : `Practice drill requested from ${provider}.`)
+  }
+
+  useEffect(() => {
+    if (activeView !== 'dungeon' || !dungeon.active || !dungeonDirty || busy) return undefined
+    const timer = window.setTimeout(() => {
+      void saveDungeon()
+    }, 1000)
+    return () => window.clearTimeout(timer)
+  }, [activeView, dungeon.active, dungeon.run_id, dungeonCode, dungeonDirty, busy])
 
   const formatCurrent = async () => {
     if (!activePath) return
@@ -1215,6 +1357,13 @@ function AppV2() {
               progress={progress}
               revision={campaign?.revision ?? 0}
               encounter={campaign?.encounter}
+              dungeon={dungeon}
+              dungeonEditorContent={dungeonCode}
+              onDungeonEditorChange={(value) => {
+                setDungeonCode(value ?? '')
+                setDungeonDirty(true)
+              }}
+              onSaveDungeon={saveDungeon}
               submitBattle={submitBattle}
               purchaseCosmetic={purchaseCosmetic}
               equipCosmetic={equipCosmetic}
@@ -1272,6 +1421,10 @@ function AppV2() {
             ? 'working…'
             : activeView === 'tutor'
               ? 'tutor.py · Ctrl+S save · Shift+Alt+F format'
+              : activeView === 'dungeon'
+                ? `dungeon.py · ${dungeonDirty ? 'checkpoint pending' : 'checkpoint saved'}`
+                : activeView === 'practice'
+                  ? 'practice mode · no campaign or dungeon state changes'
               : activePath
                 ? `${languageFor(activePath)} · Ctrl+S save · Shift+Alt+F format`
                 : 'select a file'}
