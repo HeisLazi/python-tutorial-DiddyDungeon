@@ -49,11 +49,13 @@ class StateCliTests(unittest.TestCase):
     def test_authority_and_campaign_commands_are_read_only_backend_projections(self, get):
         self.assertEqual(state_cli.main(["--backend-port", "7444", "authority"]), 0)
         self.assertEqual(state_cli.main(["--backend-port", "7444", "campaign"]), 0)
+        self.assertEqual(state_cli.main(["--backend-port", "7444", "runtime"]), 0)
         self.assertEqual(
             get.call_args_list,
             [
                 ((7444, "/api/state/revision"), {}),
                 ((7444, "/api/campaign"), {}),
+                ((7444, "/api/runtime"), {}),
             ],
         )
 

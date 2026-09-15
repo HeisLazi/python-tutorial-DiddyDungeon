@@ -700,3 +700,26 @@ After HMR settled, both PTYs were `CONNECTED` and retained their marker/input
 behavior through navigation and state polling. This does not occur from the
 one-second campaign revision poll; use the production-built/normal launcher for
 the no-reset acceptance gate. Existing user PTYs were not touched.
+
+### Friend-ready launcher foundation — 2026-09-15
+
+The local distribution slice now includes `tools/questlab-launch.ps1` and
+`FRIEND_ONBOARDING.md`. The PowerShell entry point checks that the platform
+checkout is on `feature/cloud-sync-desktop` (unless a user explicitly opts
+out), validates the WSL virtual environment/frontend dependencies and selected
+workspace, converts paths safely, then delegates to `ide/quest.py` with backend
+reload disabled. It prints the checkout, canonical state path and workspace so
+a stale long-lived runtime is visible before a session starts. It does not
+kill an existing Forge process or reset either PTY.
+
+`questlab-state runtime` is now a read-only named gateway report alongside
+`authority`, `campaign` and `legacy-report`; it exposes the same runtime
+identity/authority information as `/api/runtime` from a terminal. The friend
+onboarding guide explicitly says that a workspace `progress.json` is legacy
+evidence and must not be copied between devices. Progression continues to flow
+through the state gateway and the existing compare-and-swap sync boundary.
+
+The launcher contract and CLI routing have focused unit coverage. A clean
+install, two-device mailbox sync acceptance and a packaged Tauri/native
+Windows proof remain open gates; this slice does not seed Supabase, expose a
+public PTY, or change the Campaign Tutor/Practice boundary.

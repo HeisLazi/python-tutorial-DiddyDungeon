@@ -81,6 +81,7 @@ def build_parser() -> argparse.ArgumentParser:
     subparsers.add_parser("legacy-report", help="compare canonical state with a non-authoritative workspace progress.json")
     subparsers.add_parser("authority", help="show the canonical state authority and current revision")
     subparsers.add_parser("campaign", help="read the current canonical campaign projection")
+    subparsers.add_parser("runtime", help="read checkout, path and command health for the running Forge")
     return parser
 
 
@@ -185,6 +186,8 @@ def main(argv: list[str] | None = None) -> int:
             return _get(args.backend_port, "/api/state/revision")
         if args.command == "campaign":
             return _get(args.backend_port, "/api/campaign")
+        if args.command == "runtime":
+            return _get(args.backend_port, "/api/runtime")
     except argparse.ArgumentTypeError as exc:
         parser.error(str(exc))
     return _reserved(args.command)

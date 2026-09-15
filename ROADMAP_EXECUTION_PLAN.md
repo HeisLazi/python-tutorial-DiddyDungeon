@@ -1,7 +1,8 @@
 # Forge roadmap execution plan
 
-Status: local roadmap slices 0–6 implemented and verified; distribution/social
-slices remain explicitly gated — 2026-09-15
+Status: local roadmap slices 0–6 implemented and verified; friend-ready
+launcher/health foundation added; hosted distribution/social slices remain
+explicitly gated — 2026-09-15
 
 Claude Sonnet review was attempted from WSL but the configured CLI returned
 `Not logged in · Please run /login`. No external model review is represented as
@@ -108,6 +109,9 @@ Campaign surface; it was not removed or merged into Practice.
 
 - Fix launcher/runtime checkout drift (F-025) without silently killing current
   PTYs; provide a clear intended-checkout launch command and health screen.
+- Provide a guarded Windows/WSL launcher and onboarding contract that refuses a
+  stale branch by default, injects the canonical platform state path and keeps
+  backend reload disabled for stable PTYs.
 - Finish local/offline sync conflict UX and account-scoped storage boundaries;
   do not seed Supabase until provider-authenticated state acceptance passes.
 - Package a Windows desktop build/installer and a documented friend onboarding
@@ -161,9 +165,10 @@ Campaign surface; it was not removed or merged into Practice.
 - Slice 6 is implemented as an independent Practice mode with mixed question
   types, bounded sessions and provider-validated history. It never writes
   Campaign, Dungeon, rewards, HP, Resolve or `tutor.py`.
-- Slice 7 has local launcher/runtime identity and offline sync boundaries, but
-  requires a clean-install/two-device acceptance before packaging is called
-  complete. The old 5173 process is not killed automatically.
+- Slice 7 has local launcher/runtime identity, a guarded Windows/WSL launcher,
+  friend onboarding instructions and offline sync boundaries, but requires a
+  clean-install/two-device acceptance before packaging is called complete. The
+  old 5173 process is not killed automatically.
 - Slice 8 (hosted friends/presence/raids) remains last and is intentionally not
   seeded or claimed complete.
 

@@ -196,18 +196,22 @@ def main():
         else:
             print(f"   browser:   frontend was not ready yet; open manually when it starts: {url}")
 
+    exit_code = 0
     try:
         while not stopping:
             for proc in processes:
                 code = proc.poll()
                 if code is not None:
                     print(f"A Quest Lab process exited with code {code}.")
+                    if code != 0:
+                        exit_code = code
                     stop()
                     break
             time.sleep(0.5)
     finally:
         stop()
+    return exit_code
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())

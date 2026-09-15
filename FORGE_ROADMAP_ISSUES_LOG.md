@@ -126,7 +126,7 @@ processes and their PTYs were not restarted.
 | F-029 | P2 | Practice history | Practice requests had no durable, bounded attempt history. | Fixed: independent sessions and provider-validated attempts are stored through the state service with zero Campaign/Dungeon rewards and no raw answer/prompt persistence. |
 | F-030 | P2 | Dungeon progression | The local loop lacked adaptive focus, room transitions, rest/market actions and a bounded leaderboard. | Fixed locally: adaptive focus uses only recorded Codex weakness/incorrect-result evidence; encounters, rest, market, death, banked runs and leaderboard summaries are canonical and answer-free. Hosted transport remains gated. |
 | F-031 | P2 | Runtime checkout | An older long-lived 5173 process can still show a different checkout if it was started before the launcher fix. | Fixed for new launches: `ide/quest.py` exports the expected branch and `/api/runtime` exposes workspace/repo/canonical paths plus branch mismatch health. Existing 5173 is intentionally left running and remains a user restart/launch choice. |
-| F-032 | P3 | Codex usability | The Codex needed a searchable book/page projection with encounter records and bounded player notes. | Fixed in source and route tests; K&M verified search, concept pages and validated encounter records. Note persistence is covered by state-service tests; a note was not used as a live acceptance mutation on the disposable copy. |
+| F-032 | P3 | Codex usability | The Codex needed a searchable book/page projection with encounter records and bounded player notes. | Fixed: source/route tests and K&M verified search, concept pages, validated encounter records, and a live saved field note (`CODEX NOTE SAVED`) on the disposable copy. |
 | F-033 | P2 | WSL frontend packaging | WSL Vite cannot resolve the Linux Rollup optional package from the shared Windows `node_modules`; this is an environment/dependency-install issue, not a source failure. | Open: Windows `npm run build` is green; install Linux dependencies in a disposable WSL checkout before using WSL Vite builds. |
 | F-034 | P2 | Secondary review | Claude Code remains unauthenticated in the WSL CLI despite the separate desktop login. | Open external gate: the review was attempted and returned `Not logged in`; no Claude approval is claimed. |
 | F-035 | P3 | Dev HMR lifecycle | Editing the running Vite source caused one disposable-runtime terminal websocket reconnect; normal revision polling/navigation did not remount it. | Open dev-only limitation: use the built/started runtime for the acceptance gate. The user's existing PTYs were never restarted; the current disposable children remained stable after HMR settled. |
@@ -165,3 +165,13 @@ processes and their PTYs were not restarted.
 - WSL backend: 47 tests passed.
 - Frontend source/runtime: 29 tests passed.
 - Windows Vite production build: passed (existing large-chunk warning only).
+
+## Verification update — 2026-09-15 — friend-ready launcher foundation
+
+| ID | Severity | Area | Finding | Status |
+|---|---|---|---|---|
+| F-036 | P2 | Friend launch/runtime identity | A friend could start a different checkout or accidentally use a workspace save unless launch instructions made the authority and branch boundary explicit. | Fixed locally: `tools/questlab-launch.ps1` validates the intended branch by default, converts Windows paths to WSL, delegates to the stable `ide/quest.py` launcher and prints canonical/workspace identity. `FRIEND_ONBOARDING.md` documents setup, read-only `questlab-state runtime`, offline mode and the no-copy save rule. Clean-install and two-device acceptance remain open. |
+
+The Claude browser session was refreshed during this checkpoint and redirected
+to Anthropic's sign-in/device-key page before a review could be submitted; the
+WSL CLI still reports `Not logged in`. No Claude approval is represented.
