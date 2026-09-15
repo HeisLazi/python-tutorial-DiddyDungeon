@@ -392,6 +392,15 @@ function AppV2() {
       })
     } else if (action === 'record_battle_miss' || action === 'player_hp_change') {
       const damage = Number(event.damage ?? Math.max(0, -(Number(event.amount) || 0)))
+      if (action === 'record_battle_miss' && event.objective_id) {
+        notifications.push({
+          id: `${event.id}:attempt`,
+          kind: 'warning',
+          title: 'BATTLE ATTEMPT RECORDED',
+          body: `${mobName} · ${event.question_type || 'objective'}`,
+          detail: 'Incorrect result added to the Codex; mastery evidence unchanged',
+        })
+      }
       if (damage > 0) {
         notifications.push({
           id: `${event.id}:hp`,
@@ -564,6 +573,75 @@ function AppV2() {
     return result.context || result
   }
 
+  const pasteAiPrompt = (payload) => {
+    const textarea = document.querySelector('.ai-panel .xterm-helper-textarea')
+    if (!textarea) throw new Error('AI terminal is not ready yet.')
+    textarea.focus()
+    const data = new DataTransfer()
+    data.setData('text/plain', `${payload}\n`)
+    textarea.dispatchEvent(new ClipboardEvent('paste', { clipboardData: data, bubbles: true, cancelable: true }))
+  }
+
+  const submitBattle = async ({ objectiveId, answer }) => {
+    const provider = sessionStorage.getItem('questlab.aiProvider')
+    if (!provider) throw new Error('Launch Codex, Claude, or AGY first, then submit the Battle answer.')
+    if (typeof answer !== 'string' || !answer.trim()) throw new Error('Write an answer before entering Battle.')
+
+    const context = await publishPyrContext({ terminalTail: shellTerminalRef.current?.getText?.() || '' })
+    const nonce = context?.verdict?.nonce
+    if (!nonce) throw new Error('There is no active PYR encounter challenge. Capture context again.')
+    const result = await api('/api/pyr/battle-submission', {
+      method: 'POST',
+      body: JSON.stringify({ nonce, objective_id: objectiveId, answer }),
+    })
+    const submission = result.submission
+    const objective = (context.encounter?.available_objectives || []).find((item) => item.id === objectiveId) || {}
+    const prompt = [
+      'Quest Lab Battle submission — provider adjudication required.',
+      `Provider: ${provider}`,
+      `Campaign revision: ${submission.revision}`,
+      `Encounter: ${submission.mob_name}`,
+      `Objective: ${submission.objective_id} (${submission.question_type}, ${submission.impact} Impact)`,
+      `Submission ID: ${submission.submission_id}`,
+      `Challenge nonce: ${submission.nonce}`,
+      `Evidence ID: ${submission.evidence_id}`,
+      `Answer digest: ${submission.answer_digest}`,
+      '',
+      'Player answer:',
+      '```text',
+      answer.trim(),
+      '```',
+      '',
+      'Adjudicate only this submitted answer against the current bounded context and the project evidence. Do not reveal hidden future questions or answers. If the answer is sufficient, call POST /api/pyr/verdict with this exact nonce, submission_id, answer_digest, objective_id and evidence_id, verdict=correct, and a concise reason. If it is incomplete or incorrect, call the same endpoint with verdict=incorrect and explain the learning gap. Never supply Impact, rewards, HP or damage values.',
+      `Current objective metadata: ${JSON.stringify(objective)}`,
+      '',
+      'Bounded Quest Lab context (use only this current projection; do not infer or reveal future encounters):',
+      `Quest projection: ${JSON.stringify(context.quest || {})}`,
+      `Encounter projection: ${JSON.stringify(context.encounter || {})}`,
+      `Active file (${context.active_file?.path || 'none'}):`,
+      '```text',
+      context.active_file?.content || '(none)',
+      '```',
+      'Selected code:',
+      '```text',
+      context.selection?.text || '(none)',
+      '```',
+      'Recent shell output:',
+      '```text',
+      context.terminal?.tail || '(none)',
+      '```',
+      `Git branch: ${context.git?.branch || 'detached'}`,
+      'Bounded git diff:',
+      '```diff',
+      context.git?.diff || '(none)',
+      '```',
+      '',
+    ].join('\n')
+    pasteAiPrompt(prompt)
+    setNotice(`Battle answer sent to ${provider}; waiting for its validated verdict.`)
+    return submission
+  }
+
   pyrContextPublisherRef.current = publishPyrContext
 
   useEffect(() => {
@@ -581,6 +659,11 @@ function AppV2() {
     return () => {
       delete window.__questlabPublishPyrContext
     }
+  }, [])
+
+  useEffect(() => () => {
+    editorSelectionSubscriptionRef.current?.dispose()
+    editorSelectionSubscriptionRef.current = null
   }, [])
 
   useEffect(() => {
@@ -1132,6 +1215,7 @@ function AppV2() {
               progress={progress}
               revision={campaign?.revision ?? 0}
               encounter={campaign?.encounter}
+              submitBattle={submitBattle}
               purchaseCosmetic={purchaseCosmetic}
               equipCosmetic={equipCosmetic}
               busy={busy}

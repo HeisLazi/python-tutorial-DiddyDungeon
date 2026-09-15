@@ -21,7 +21,7 @@ from typing import Literal
 
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from ide.server.context_bridge import (
@@ -29,9 +29,12 @@ from ide.server.context_bridge import (
     bounded_file,
     bounded_text,
     build_context,
+    is_sensitive_path,
 )
 from ide.server.security import allowed_hosts, allowed_origins, is_allowed_origin
 from ide.server.state import (
+    MAX_IDENTIFIER_LENGTH,
+    MAX_REASON_LENGTH,
     LocalStateService,
     StateApplyRequest,
     StateCommandError,
@@ -138,19 +141,29 @@ class HomesteadEquip(BaseModel):
 class PyrContextRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    active_path: str | None = None
-    selection: str = ""
-    terminal_tail: str = ""
+    active_path: str | None = Field(default=None, max_length=240)
+    selection: str = Field(default="", max_length=64_000)
+    terminal_tail: str = Field(default="", max_length=64_000)
 
 
 class PyrVerdictRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    nonce: str
+    nonce: str = Field(min_length=16, max_length=128)
+    submission_id: str = Field(min_length=1, max_length=MAX_IDENTIFIER_LENGTH)
+    answer_digest: str = Field(min_length=64, max_length=64, pattern=r"^[0-9a-f]{64}$")
     verdict: Literal["correct", "incorrect"]
-    objective_id: str | None = None
-    evidence_id: str
-    reason: str
+    objective_id: str | None = Field(default=None, max_length=MAX_IDENTIFIER_LENGTH)
+    evidence_id: str = Field(min_length=1, max_length=MAX_IDENTIFIER_LENGTH)
+    reason: str = Field(min_length=1, max_length=MAX_REASON_LENGTH)
+
+
+class PyrBattleSubmissionRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    nonce: str = Field(min_length=16, max_length=128)
+    objective_id: str = Field(min_length=1, max_length=MAX_IDENTIFIER_LENGTH)
+    answer: str = Field(min_length=1, max_length=20_000)
 
 
 def safe_path(relative: str) -> Path:
@@ -399,7 +412,6 @@ def state_legacy_report():
 
 
 PYR_VERDICT_TTL_SECONDS = 300
-PYR_RAW_DAMAGE_BY_MOB = (6, 10, 15, 18, 22, 24, 26, 28)
 
 
 def _attach_pyr_verdict_challenge(
@@ -430,6 +442,12 @@ def _attach_pyr_verdict_challenge(
             and existing.get("mob_name") == mob_name
             and float(existing.get("expires_at", 0)) > now
         )
+        # Keep an issued answer-bound challenge stable while the user submits
+        # the prompt to the provider. A background/context refresh must not
+        # invalidate the only pending Battle answer; a completed verdict still
+        # clears the challenge before a fresh one can be issued.
+        if rotate and valid_existing and existing.get("submission_id"):
+            rotate = False
         if rotate or not valid_existing:
             existing = {
                 "nonce": secrets.token_urlsafe(24),
@@ -446,6 +464,9 @@ def _attach_pyr_verdict_challenge(
             "mob_name": existing["mob_name"],
             "expires_in": max(0, int(float(existing["expires_at"]) - now)),
         }
+        for field in ("submission_id", "objective_id", "answer_digest", "evidence_id"):
+            if field in existing:
+                context["verdict"][field] = existing[field]
 
 
 def _capture_pyr_context(payload: PyrContextRequest, *, rotate_challenge: bool = False) -> dict:
@@ -456,6 +477,8 @@ def _capture_pyr_context(payload: PyrContextRequest, *, rotate_challenge: bool =
     normalized_path: str | None = None
     active_file = None
     if active_path:
+        if is_sensitive_path(active_path):
+            raise HTTPException(status_code=403, detail="Secret-looking files cannot be sent to the PYR context bridge")
         target = safe_path(active_path)
         reject_state_file_access(target)
         if not target.exists() or not target.is_file():
@@ -526,6 +549,94 @@ def write_pyr_context(payload: PyrContextRequest):
     return {"ok": True, "context": _capture_pyr_context(payload, rotate_challenge=True)}
 
 
+@app.post("/api/pyr/battle-submission")
+def create_pyr_battle_submission(payload: PyrBattleSubmissionRequest):
+    """Bind one bounded player answer to the current PYR challenge.
+
+    The answer is intentionally ephemeral: it is hashed for the verdict
+    boundary and is never written to canonical progress. The selected local
+    provider receives the answer from the Forge UI and must return a verdict
+    using the issued submission/evidence tokens.
+    """
+
+    nonce = payload.nonce.strip()
+    objective_id = payload.objective_id.strip()
+    try:
+        answer, answer_truncated = bounded_text(payload.answer, "answer")
+    except ContextValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    if answer_truncated:
+        raise HTTPException(status_code=413, detail="Battle answer is too large")
+    if not answer.strip():
+        raise HTTPException(status_code=422, detail="Battle answer must not be empty")
+
+    global PYR_CONTEXT_CHALLENGE
+    with PYR_CONTEXT_LOCK:
+        challenge = PYR_CONTEXT_CHALLENGE
+        now = time.monotonic()
+        if not isinstance(challenge, dict) or challenge.get("nonce") != nonce:
+            raise HTTPException(status_code=409, detail="PYR challenge is missing or already used")
+        if float(challenge.get("expires_at", 0)) <= now:
+            PYR_CONTEXT_CHALLENGE = None
+            raise HTTPException(status_code=409, detail="PYR challenge expired; capture context again")
+        if challenge.get("submission_id"):
+            raise HTTPException(status_code=409, detail="This PYR challenge already has a Battle submission")
+
+        with PROGRESS_LOCK:
+            try:
+                progress, metadata = STATE_SERVICE.snapshot_with_metadata()
+                encounter = STATE_SERVICE.encounter_projection(progress)
+                if metadata["revision"] != challenge.get("revision"):
+                    PYR_CONTEXT_CHALLENGE = None
+                    raise HTTPException(status_code=409, detail="Campaign changed; capture fresh PYR context")
+                if (
+                    not isinstance(encounter, dict)
+                    or encounter.get("project_id") != challenge.get("project_id")
+                    or encounter.get("mob_name") != challenge.get("mob_name")
+                ):
+                    PYR_CONTEXT_CHALLENGE = None
+                    raise HTTPException(status_code=409, detail="Active encounter changed; capture fresh PYR context")
+                objective = next(
+                    (item for item in encounter.get("available_objectives", []) if isinstance(item, dict) and item.get("id") == objective_id),
+                    None,
+                )
+                if objective is None:
+                    raise HTTPException(status_code=422, detail="objective_id is not available for the active encounter")
+
+                submission_id = f"battle-{secrets.token_hex(12)}"
+                evidence_id = submission_id
+                answer_digest = hashlib.sha256(answer.encode("utf-8")).hexdigest()
+                challenge.update(
+                    {
+                        "submission_id": submission_id,
+                        "objective_id": objective_id,
+                        "question_type": str(objective.get("question_type") or "verified"),
+                        "impact": int(objective.get("impact") or 0),
+                        "evidence_id": evidence_id,
+                        "answer_digest": answer_digest,
+                    }
+                )
+            except StateCommandError as exc:
+                raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
+
+    return {
+        "ok": True,
+        "submission": {
+            "submission_id": submission_id,
+            "nonce": nonce,
+            "revision": challenge["revision"],
+            "project_id": challenge["project_id"],
+            "mob_name": challenge["mob_name"],
+            "objective_id": objective_id,
+            "question_type": challenge["question_type"],
+            "impact": challenge["impact"],
+            "evidence_id": evidence_id,
+            "answer_digest": answer_digest,
+            "expires_in": max(0, int(float(challenge["expires_at"]) - time.monotonic())),
+        },
+    }
+
+
 @app.post("/api/pyr/verdict")
 def apply_pyr_verdict(payload: PyrVerdictRequest):
     """Apply one challenged PYR Battle verdict through the state service.
@@ -540,6 +651,7 @@ def apply_pyr_verdict(payload: PyrVerdictRequest):
     if len(nonce) < 16 or len(nonce) > 128 or any(ord(character) < 33 for character in nonce):
         raise HTTPException(status_code=422, detail="nonce must be a bounded challenge token")
     objective_id = payload.objective_id.strip() if payload.objective_id else None
+    evidence_id = payload.evidence_id.strip()
     if payload.verdict == "correct" and not objective_id:
         raise HTTPException(status_code=422, detail="A correct verdict requires objective_id")
     if payload.verdict == "incorrect" and not objective_id:
@@ -554,6 +666,13 @@ def apply_pyr_verdict(payload: PyrVerdictRequest):
         if float(challenge.get("expires_at", 0)) <= now:
             PYR_CONTEXT_CHALLENGE = None
             raise HTTPException(status_code=409, detail="PYR verdict challenge expired; capture context again")
+        if (
+            challenge.get("submission_id") != payload.submission_id
+            or challenge.get("answer_digest") != payload.answer_digest
+            or challenge.get("objective_id") != objective_id
+            or challenge.get("evidence_id") != evidence_id
+        ):
+            raise HTTPException(status_code=409, detail="Verdict does not match the pending Battle submission")
 
         with PROGRESS_LOCK:
             try:
@@ -581,7 +700,7 @@ def apply_pyr_verdict(payload: PyrVerdictRequest):
                     action = "record_battle_objective"
                     state_payload = {
                         "objective_id": objective_id,
-                        "evidence_id": payload.evidence_id,
+                        "evidence_id": evidence_id,
                         "reason": payload.reason,
                     }
                 else:
@@ -591,11 +710,11 @@ def apply_pyr_verdict(payload: PyrVerdictRequest):
                     except (TypeError, ValueError):
                         mob_index = 0
                     state_payload = {
-                        "raw_damage": PYR_RAW_DAMAGE_BY_MOB[min(mob_index, len(PYR_RAW_DAMAGE_BY_MOB) - 1)],
+                        "mob_index": mob_index,
                         "reason": payload.reason,
                         "encounter_id": f"{encounter['project_id']}-{mob_index}",
                         "objective_id": objective_id,
-                        "evidence_id": payload.evidence_id,
+                        "evidence_id": evidence_id,
                     }
                 mutation = STATE_SERVICE.apply_internal(action, state_payload)
             except StateCommandError as exc:

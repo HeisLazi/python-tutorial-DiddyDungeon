@@ -142,7 +142,7 @@ function contextPrompt(context, fallbackOutput) {
     JSON.stringify({ quest, encounter, assistance }, null, 2),
     '',
     `Battle verdict challenge: ${verdict?.nonce || '(none; capture context while an encounter is active)'}`,
-    'Only after independently verifying the submitted answer, use POST /api/pyr/verdict with this one-time challenge, verdict, objective_id, evidence_id and reason. Never supply Impact, reward or damage values.',
+    'For Battle, first bind the player answer with POST /api/pyr/battle-submission, then independently adjudicate that submission and use POST /api/pyr/verdict with its exact tokens. Never supply Impact, reward or damage values.',
     '',
     'Act as PYR under TUTOR_CONTRACT.md. Do not invent rewards or mutate player state directly. Tutor me from this context using the hint ladder; use tutor.py for examples and send any progression decision through the controlled state service.',
     '',

@@ -206,7 +206,61 @@ function ProgressBar({ value, max, label, className = '' }) {
   )
 }
 
-function QuestJournal({ progress, revision, encounter }) {
+function BattleSubmission({ availableObjectives, onSubmit, busy }) {
+  const [objectiveId, setObjectiveId] = useState(availableObjectives[0]?.id || '')
+  const [answer, setAnswer] = useState('')
+  const [status, setStatus] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+
+  useEffect(() => {
+    if (!availableObjectives.some((objective) => objective.id === objectiveId)) {
+      setObjectiveId(availableObjectives[0]?.id || '')
+    }
+  }, [availableObjectives, objectiveId])
+
+  if (!availableObjectives.length) return null
+
+  const submit = async (event) => {
+    event.preventDefault()
+    if (!objectiveId || !answer.trim() || !onSubmit || submitting) return
+    setSubmitting(true)
+    setStatus('Sending answer to the selected provider…')
+    try {
+      await onSubmit({ objectiveId, answer })
+      setAnswer('')
+      setStatus('Answer sent. Resolve and rewards change only after the provider returns a validated verdict.')
+    } catch (error) {
+      setStatus(error?.message || 'Battle submission failed.')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  return (
+    <section className="battle-submit-card" data-testid="battle-submission">
+      <div className="card-heading"><span>BATTLE SUBMISSION</span><b>OPTIONAL</b></div>
+      <p className="context-note">Choose one currently available objective and explain your answer. PYR receives the answer for adjudication; this form cannot award Impact or damage on its own.</p>
+      <form onSubmit={submit}>
+        <label className="battle-field">
+          <span>Objective</span>
+          <select value={objectiveId} onChange={(event) => setObjectiveId(event.target.value)} disabled={busy || submitting}>
+            {availableObjectives.map((objective) => (
+              <option key={objective.id} value={objective.id}>{objective.question_type} · {objective.impact} Impact</option>
+            ))}
+          </select>
+        </label>
+        <label className="battle-field">
+          <span>Your answer</span>
+          <textarea value={answer} onChange={(event) => setAnswer(event.target.value)} maxLength={20_000} rows={7} placeholder="Explain the idea or show the checkpoint you completed…" disabled={busy || submitting} />
+        </label>
+        <button className="primary" type="submit" disabled={busy || submitting || !answer.trim() || !onSubmit}>{submitting ? 'Sending…' : 'Send to PYR'}</button>
+      </form>
+      {status && <small className="battle-submit-status" role="status">{status}</small>}
+    </section>
+  )
+}
+
+function QuestJournal({ progress, revision, encounter, submitBattle, busy }) {
   const activeProject = (progress.projects || []).find((project) => project.status === 'active') || {}
   const mobs = activeProject.mobs || []
   const projectedIndex = encounter?.mob_name ? mobs.findIndex((mob) => mob.name === encounter.mob_name) : -1
@@ -249,6 +303,7 @@ function QuestJournal({ progress, revision, encounter }) {
               </div>
             )}
           </div>
+          <BattleSubmission availableObjectives={availableObjectives} onSubmit={submitBattle} busy={busy} />
           <div className="mob-path">
             {mobs.map((mob, index) => (
               <div key={mob.name} className={`mob-node ${mob.status} ${index === currentIndex ? 'current' : ''}`}>
@@ -566,8 +621,8 @@ function SettingsScreen({ preferences, setters, resetLayout, equipped, account, 
   )
 }
 
-export function GameScreen({ activeView, progress, revision, encounter, purchaseCosmetic, equipCosmetic, busy, preferences, setters, resetLayout, account, accountBusy, accountNotice, onSignIn, onSignUp, onSignOut, onDeviceLabelSave, onResolveConflict }) {
-  if (activeView === 'quests') return <QuestJournal progress={progress} revision={revision} encounter={encounter} />
+export function GameScreen({ activeView, progress, revision, encounter, purchaseCosmetic, equipCosmetic, busy, submitBattle, preferences, setters, resetLayout, account, accountBusy, accountNotice, onSignIn, onSignUp, onSignOut, onDeviceLabelSave, onResolveConflict }) {
+  if (activeView === 'quests') return <QuestJournal progress={progress} revision={revision} encounter={encounter} submitBattle={submitBattle} busy={busy} />
   if (activeView === 'codex') return <Codex progress={progress} revision={revision} />
   if (activeView === 'character') return <CharacterSheet progress={progress} revision={revision} />
   if (activeView === 'homestead') return <Homestead progress={progress} revision={revision} purchaseCosmetic={purchaseCosmetic} equipCosmetic={equipCosmetic} busy={busy} />

@@ -103,14 +103,53 @@ class PyrContextBridgeTests(unittest.TestCase):
                 self.assertEqual(persisted["meta"]["revision"], 7)
                 self.assertEqual(persisted["state_events"], [])
 
+                submission_response = client.post(
+                    "/api/pyr/battle-submission",
+                    headers={"host": "127.0.0.1"},
+                    json={
+                        "nonce": nonce,
+                        "objective_id": "choice_flow",
+                        "answer": "I would stop asking for cards when the choice is no longer true.",
+                    },
+                )
+                self.assertEqual(submission_response.status_code, 200)
+                submission = submission_response.json()["submission"]
+                self.assertEqual(submission["objective_id"], "choice_flow")
+                self.assertEqual(submission["question_type"], "code_checkpoint")
+                self.assertEqual(submission["impact"], 4)
+                self.assertEqual(submission["evidence_id"], submission["submission_id"])
+                self.assertEqual(len(submission["answer_digest"]), 64)
+                self.assertEqual(json.loads(canonical.read_text(encoding="utf-8"))["meta"]["revision"], 7)
+                pending_context = client.get("/api/pyr/context", headers={"host": "127.0.0.1"})
+                self.assertEqual(pending_context.status_code, 200)
+                self.assertEqual(pending_context.json()["context"]["verdict"]["nonce"], nonce)
+                self.assertEqual(pending_context.json()["context"]["verdict"]["submission_id"], submission["submission_id"])
+
+                mismatched_verdict = client.post(
+                    "/api/pyr/verdict",
+                    headers={"host": "127.0.0.1"},
+                    json={
+                        "nonce": nonce,
+                        "submission_id": submission["submission_id"],
+                        "answer_digest": "0" * 64,
+                        "verdict": "correct",
+                        "objective_id": "choice_flow",
+                        "evidence_id": submission["evidence_id"],
+                        "reason": "The digest does not match the submitted answer.",
+                    },
+                )
+                self.assertEqual(mismatched_verdict.status_code, 409)
+
                 verdict = client.post(
                     "/api/pyr/verdict",
                     headers={"host": "127.0.0.1"},
                     json={
                         "nonce": nonce,
+                        "submission_id": submission["submission_id"],
+                        "answer_digest": submission["answer_digest"],
                         "verdict": "correct",
                         "objective_id": "choice_flow",
-                        "evidence_id": "hitman-choice-001",
+                        "evidence_id": submission["evidence_id"],
                         "reason": "PYR verified the stop and continue explanation.",
                     },
                 )
@@ -125,9 +164,11 @@ class PyrContextBridgeTests(unittest.TestCase):
                     headers={"host": "127.0.0.1"},
                     json={
                         "nonce": nonce,
+                        "submission_id": submission["submission_id"],
+                        "answer_digest": submission["answer_digest"],
                         "verdict": "correct",
                         "objective_id": "stop_condition",
-                        "evidence_id": "hitman-replay",
+                        "evidence_id": submission["evidence_id"],
                         "reason": "Replay must be rejected.",
                     },
                 )
@@ -139,14 +180,28 @@ class PyrContextBridgeTests(unittest.TestCase):
                 self.assertEqual(refreshed_context["active_file"]["path"], "main.py")
                 self.assertNotEqual(refreshed_context["verdict"]["nonce"], nonce)
 
+                miss_submission_response = client.post(
+                    "/api/pyr/battle-submission",
+                    headers={"host": "127.0.0.1"},
+                    json={
+                        "nonce": refreshed_context["verdict"]["nonce"],
+                        "objective_id": "stop_condition",
+                        "answer": "I would keep looping without checking whether the player wants another card.",
+                    },
+                )
+                self.assertEqual(miss_submission_response.status_code, 200)
+                miss_submission = miss_submission_response.json()["submission"]
+
                 miss = client.post(
                     "/api/pyr/verdict",
                     headers={"host": "127.0.0.1"},
                     json={
                         "nonce": refreshed_context["verdict"]["nonce"],
+                        "submission_id": miss_submission["submission_id"],
+                        "answer_digest": miss_submission["answer_digest"],
                         "verdict": "incorrect",
                         "objective_id": "stop_condition",
-                        "evidence_id": "hitman-miss-001",
+                        "evidence_id": miss_submission["evidence_id"],
                         "reason": "PYR marked the submitted explanation incomplete.",
                     },
                 )
@@ -154,7 +209,7 @@ class PyrContextBridgeTests(unittest.TestCase):
                 miss_mutation = miss.json()["mutation"]
                 self.assertEqual(miss_mutation["event"]["action"], "record_battle_miss")
                 self.assertEqual(miss_mutation["result"]["damage"], 18)
-                self.assertEqual(miss_mutation["event"]["evidence_id"], "hitman-miss-001")
+                self.assertEqual(miss_mutation["event"]["evidence_id"], miss_submission["evidence_id"])
                 self.assertEqual(miss_mutation["result"]["mob_name"], "The Hitman")
                 self.assertEqual(miss_mutation["result"]["objective_id"], "stop_condition")
                 self.assertEqual(miss_mutation["result"]["question_type"], "bug_diagnosis")
@@ -194,6 +249,27 @@ class PyrContextBridgeTests(unittest.TestCase):
                 )
                 self.assertEqual(rejected.status_code, 403)
 
+                (workspace / ".env").write_text("SECRET=do-not-forward\n", encoding="utf-8")
+                secret_rejected = client.post(
+                    "/api/pyr/context",
+                    headers={"host": "127.0.0.1"},
+                    json={"active_path": ".env"},
+                )
+                self.assertEqual(secret_rejected.status_code, 403)
+
+                large_file = workspace / "large.py"
+                large_file.write_text("# bounded\n" + ("x" * 50_000), encoding="utf-8")
+                large_context = client.post(
+                    "/api/pyr/context",
+                    headers={"host": "127.0.0.1"},
+                    json={"active_path": "large.py"},
+                )
+                self.assertEqual(large_context.status_code, 200)
+                large_active_file = large_context.json()["context"]["active_file"]
+                self.assertTrue(large_active_file["truncated"])
+                self.assertEqual(large_active_file["bytes"], large_file.stat().st_size)
+                self.assertLessEqual(len(large_active_file["content"].encode()), 40_000)
+
                 bounded = client.post(
                     "/api/pyr/context",
                     headers={"host": "127.0.0.1"},
@@ -205,6 +281,21 @@ class PyrContextBridgeTests(unittest.TestCase):
                 self.assertTrue(context["terminal"]["truncated"])
                 self.assertLessEqual(len(context["selection"]["text"].encode()), 20_000)
                 self.assertLessEqual(len(context["terminal"]["tail"].encode()), 20_000)
+
+                missing_submission = client.post(
+                    "/api/pyr/verdict",
+                    headers={"host": "127.0.0.1"},
+                    json={
+                        "nonce": context["verdict"]["nonce"],
+                        "submission_id": "battle-missing",
+                        "answer_digest": "0" * 64,
+                        "verdict": "incorrect",
+                        "objective_id": "choice_flow",
+                        "evidence_id": "battle-missing",
+                        "reason": "No submission exists.",
+                    },
+                )
+                self.assertEqual(missing_submission.status_code, 409)
 
                 forbidden = client.post(
                     "/api/pyr/verdict",

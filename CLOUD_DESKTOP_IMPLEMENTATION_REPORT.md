@@ -106,6 +106,12 @@ Hosted Auth is configured to require email confirmation (`mailer_autoconfirm=fal
   evidence; incorrect outcomes retain the question type, result and bounded
   note without granting mastery evidence. The route returns these validated
   mutation/event details for the existing live projection and reward queue.
+- The Quest Journal now provides an optional Battle answer form. A submission
+  is bound to the current objective and an answer digest in memory, then sent
+  to the selected local AI terminal with exact verdict tokens. The canonical
+  state service remains the only writer; the form cannot award Impact, XP,
+  coins, HP or rewards. Provider authentication is still required before a
+  hosted Battle release.
 
 ## Supabase project and schema
 
@@ -172,9 +178,13 @@ newer cloud revision is never replaced by an older device snapshot.
   isolated two-engine reconciliation are implemented and tested.
 - Hosted avatar upload/download acceptance, Tauri packaging (E), Vercel surface
   (F), friends/presence and raid mechanics remain future work.
-- A real browser-level PYR verdict path is still pending; the current context
-  bridge/verdict boundary has no provider-side answer adjudicator or player
-  Battle UI yet. Do not treat a caller-supplied verdict as proof of learning.
+- A provider-authenticated browser-level PYR verdict path is still pending. The
+  local context/submission/verdict boundary and Journal form are implemented,
+  but the raw local AI terminal remains a trusted caller; do not treat an
+  unauthenticated caller-supplied verdict as proof of learning.
+- The durable review findings for the context/verdict/Battle slices are tracked
+  in `FORGE_ROADMAP_ISSUES_LOG.md`; open trust and concurrency gates remain
+  listed there.
 - A real hosted sign-in was not independently verified in this run; this
   project requires email confirmation. A signed-in account still needs the
   hosted two-device acceptance below.

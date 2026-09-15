@@ -63,8 +63,24 @@ test('PYR context submissions use the bounded local bridge and current editor se
   assert.match(enhancements, /Validated current quest\/mob state/)
   assert.match(enhancements, /\/api\/pyr\/verdict/)
   assert.match(enhancements, /Battle verdict challenge/)
+  assert.match(enhancements, /battle-submission/)
   assert.match(enhancements, /active_file/)
   assert.match(enhancements, /git\?\.diff/)
+})
+
+test('Battle Journal binds player answers before provider adjudication', () => {
+  const app = source('../AppV2.jsx')
+  const views = source('../RpgViews.jsx')
+
+  assert.match(app, /const submitBattle = async/)
+  assert.match(app, /pasteAiPrompt/)
+  assert.match(app, /Battle answer sent to/)
+  assert.match(app, /Bounded Quest Lab context/)
+  assert.match(app, /Active file \(\$\{context\.active_file/)
+  assert.match(app, /BATTLE ATTEMPT RECORDED/)
+  assert.match(views, /data-testid="battle-submission"/)
+  assert.match(views, /Send to PYR/)
+  assert.match(views, /Resolve and rewards change only after the provider returns a validated verdict/)
 })
 
 test('combat projection treats legacy cleared mobs as terminal', () => {

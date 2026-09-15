@@ -20,11 +20,36 @@ MAX_CONTEXT_FILE_BYTES = 40_000
 MAX_CONTEXT_DIFF_BYTES = 24_000
 MAX_CONTEXT_LINES = 80
 
+_SENSITIVE_BASENAMES = {
+    "id_rsa",
+    "id_ed25519",
+    "credentials.json",
+    "secrets.json",
+    "service-account.json",
+}
+_SENSITIVE_SUFFIXES = (".pem", ".key", ".p12", ".pfx", ".secret")
+
 _ANSI_ESCAPE = re.compile(r"\x1b(?:\[[0-?]*[ -/]*[@-~]|\][^\x07]*(?:\x07|\x1b\\))")
 
 
 class ContextValueError(ValueError):
     """Raised when a caller supplies an oversized or unsafe context value."""
+
+
+def is_sensitive_path(value: object) -> bool:
+    """Return whether a workspace path looks like a secret-bearing file."""
+
+    if isinstance(value, Path):
+        parts = value.parts
+    elif isinstance(value, str):
+        parts = tuple(part for part in re.split(r"[/\\]+", value) if part)
+    else:
+        return False
+    for part in parts:
+        name = str(part).casefold()
+        if name.startswith(".env") or name in _SENSITIVE_BASENAMES or name.endswith(_SENSITIVE_SUFFIXES):
+            return True
+    return False
 
 
 def bounded_text(value: object, field: str, *, max_bytes: int = MAX_CONTEXT_TEXT_BYTES) -> tuple[str, bool]:
@@ -55,17 +80,29 @@ def bounded_file(path: Path) -> dict[str, Any]:
     """Read one already-authorized workspace file for context."""
 
     try:
-        raw = path.read_bytes()
+        size = path.stat().st_size
+        with path.open("rb") as handle:
+            raw = handle.read(MAX_CONTEXT_FILE_BYTES)
+            has_more = bool(handle.read(1))
     except FileNotFoundError as exc:
         raise ContextValueError("Active file was not found") from exc
     except OSError as exc:
         raise ContextValueError("Active file could not be read") from exc
+    truncated = size > MAX_CONTEXT_FILE_BYTES or has_more
     try:
         content = raw.decode("utf-8")
     except UnicodeDecodeError as exc:
-        raise ContextValueError("Active file is not UTF-8 text") from exc
-    text, truncated = bounded_text(content, "active_file", max_bytes=MAX_CONTEXT_FILE_BYTES)
-    return {"content": text, "bytes": len(raw), "truncated": truncated}
+        # A valid UTF-8 code point may straddle the bounded read boundary. If
+        # the decoder failed near that boundary, discard only the incomplete
+        # suffix; invalid bytes earlier in the file still fail closed.
+        if not truncated or exc.start < max(0, len(raw) - 3):
+            raise ContextValueError("Active file is not UTF-8 text") from exc
+        try:
+            content = raw[: exc.start].decode("utf-8")
+        except UnicodeDecodeError as nested:
+            raise ContextValueError("Active file is not UTF-8 text") from nested
+    text, text_truncated = bounded_text(content, "active_file", max_bytes=MAX_CONTEXT_FILE_BYTES)
+    return {"content": text, "bytes": size, "truncated": truncated or text_truncated}
 
 
 def _run_git(workspace: Path, *args: str) -> str:
@@ -74,12 +111,14 @@ def _run_git(workspace: Path, *args: str) -> str:
             ["git", "-C", str(workspace), *args],
             check=False,
             capture_output=True,
-            text=True,
+            text=False,
             timeout=5,
         )
     except (OSError, subprocess.SubprocessError):
         return ""
-    return result.stdout
+    if isinstance(result.stdout, bytes):
+        return result.stdout.decode("utf-8", errors="replace")
+    return result.stdout or ""
 
 
 def git_context(workspace: Path) -> dict[str, Any]:

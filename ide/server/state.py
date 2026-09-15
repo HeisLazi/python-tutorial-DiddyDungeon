@@ -32,6 +32,7 @@ MAX_SYNC_LIST_ITEMS = 100
 MAX_SYNC_TEXT_LENGTH = 120
 MAX_SYNC_LEVEL = 1000
 MAX_SYNC_COUNTER = 1_000_000_000
+BATTLE_RAW_DAMAGE_BY_MOB = (6, 10, 15, 18, 22, 24, 26, 28)
 
 PUBLIC_ACTORS = frozenset({"player", "pyr"})
 SYSTEM_ACTOR = "system"
@@ -166,6 +167,16 @@ ENCOUNTER_PROFILES: tuple[dict[str, Any], ...] = (
         },
     },
 )
+
+
+def canonical_battle_raw_damage(mob_index: int) -> int:
+    """Return the server-owned counterattack damage for an encounter index."""
+
+    try:
+        index = max(0, int(mob_index))
+    except (TypeError, ValueError):
+        index = 0
+    return BATTLE_RAW_DAMAGE_BY_MOB[min(index, len(BATTLE_RAW_DAMAGE_BY_MOB) - 1)]
 
 MOB_REWARDS: tuple[tuple[int, int], ...] = (
     (25, 10),
@@ -1447,19 +1458,20 @@ class LocalStateService:
     def _record_battle_miss(self, payload: Mapping[str, Any], progress: dict[str, Any]) -> Mutation:
         data = self._payload(
             payload,
-            {"raw_damage", "reason", "encounter_id", "objective_id", "evidence_id"},
-            {"raw_damage", "reason", "encounter_id"},
+            {"raw_damage", "mob_index", "reason", "encounter_id", "objective_id", "evidence_id"},
+            {"reason", "encounter_id"},
         )
-        raw_damage = self._integer(data["raw_damage"], "raw_damage", minimum=1, maximum=28)
         reason = self._text(data["reason"], "reason")
         encounter_id = self._text(data["encounter_id"], "encounter_id", max_length=MAX_IDENTIFIER_LENGTH, identifier=True)
         evidence_id = self._text(data.get("evidence_id", encounter_id), "evidence_id", max_length=MAX_IDENTIFIER_LENGTH, identifier=True)
         objective_id = None
         question_type = None
         mob_name = None
+        raw_damage = None
         if data.get("objective_id") is not None:
             objective_id = self._text(data["objective_id"], "objective_id", max_length=MAX_IDENTIFIER_LENGTH, identifier=True)
             project, mobs, index, mob = self._active_project_and_mob(progress)
+            raw_damage = canonical_battle_raw_damage(index)
             profile = self._encounter_profile(index)
             objective = profile["objectives"].get(objective_id)
             if objective is None:
@@ -1490,6 +1502,12 @@ class LocalStateService:
                 note=reason,
             )
             entry["status"] = "observed"
+        elif data.get("raw_damage") is not None:
+            raw_damage = self._integer(data["raw_damage"], "raw_damage", minimum=1, maximum=28)
+        elif data.get("mob_index") is not None:
+            raw_damage = canonical_battle_raw_damage(self._integer(data["mob_index"], "mob_index", minimum=0, maximum=1000))
+        else:
+            raise StateCommandError("raw_damage or mob_index is required")
         player = self._dict(progress, "player")
         armor_name = str((progress.get("equipment") or {}).get("armor") or "")
         armor_reduction = {"Apprentice Coat": 10, "Leather Guard": 20, "Runic Mail": 30, "Emberplate": 40, "Guardian Aegis": 50, "Mythril Archive Plate": 60}.get(armor_name, 0)

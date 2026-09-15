@@ -111,12 +111,13 @@ Canonical combat details live in `COMBAT_SYSTEM.md`.
    active file, selected code, terminal tail, bounded git diff, and the current
    quest/mob/concept plus assistance/Clean Clear state. It is read-only and
    excludes player-state/secret-looking files.
-2. **Boundary implemented:** `POST /api/pyr/verdict` accepts a one-time
-   context challenge plus a correct/incorrect verdict and evidence. It binds
-   the call to the same campaign revision and active mob, then delegates to
-   the internal state service; callers cannot provide Impact, rewards, HP or
-   counterattack values. Provider-side answer adjudication and a player-facing
-   Battle submission flow remain next.
+2. **Local Battle flow implemented:** `POST /api/pyr/battle-submission` binds a
+   bounded player answer to the current objective, digest and server-issued
+   evidence ID without persisting the answer. The Quest Journal sends that
+   submission to the selected local AI terminal. `POST /api/pyr/verdict` then
+   requires the matching submission tokens and delegates to the internal state
+   service; callers cannot provide Impact, rewards, HP or counterattack values.
+   Provider authentication remains a hosted-release gate.
 3. Persistent Resolve / armor calculation / HP / combat log.
 4. Teach Me / Quick Refresher / Test Me encounter entry.
 5. **Partial:** Living Codex records now retain bounded encounter attempts,
@@ -150,9 +151,9 @@ Report broken behaviour with a screenshot and the visible launcher/terminal outp
 
 ## Current test boundary
 
-This remains a local-runtime test build. The combat shell intentionally stops
-before automatic provider adjudication. The context and challenged-verdict
-halves of the bridge are implemented and tested; verdict mutations now persist
-bounded encounter attempts/results, while provider-side answer adjudication
-and the remaining persistent combat projection are next, not more fake
-front-end combat state.
+This remains a local-runtime test build. The combat shell intentionally waits
+for the selected local provider to adjudicate a submitted answer. The context,
+answer-binding and challenged-verdict halves of the bridge are implemented and
+tested; verdict mutations persist bounded encounter attempts/results, while
+provider authentication and the remaining persistent combat projection are
+next, not more fake front-end combat state.
