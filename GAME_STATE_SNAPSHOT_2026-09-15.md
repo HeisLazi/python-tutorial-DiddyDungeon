@@ -83,6 +83,9 @@ invented. The workspace/legacy save remains evidence only.
 - A clean ext4 K&M runtime showed the explicit campaign-loading guard and
   typed `questlab-state custody` output. Two disposable local roots then
   returned distinct namespaces; mutating device A advanced only A's revision.
+- Forge v2 now owns the five top-stat SVG icons in React; K&M showed them
+  visible after a live Level 2 projection and after Codex navigation, with no
+  emoji fallback or nested stat-pill mutation.
 
 ## Remaining release gates
 

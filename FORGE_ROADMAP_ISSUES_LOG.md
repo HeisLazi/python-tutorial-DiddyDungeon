@@ -361,3 +361,16 @@ non-interactive confirmation flag), and switches the state path only for that
 launch. A missing confirmation exits before backend/frontend startup. Fixture
 tests proved both refusal-without-copy and confirmed copy/switch behavior; the
 canonical revision and source bytes remain unchanged.
+
+## Verification update — 2026-09-15 — React-owned HUD stat icons
+
+| ID | Severity | Area | Finding | Status |
+|---|---|---|---|---|
+| F-045 | P2 | HUD icon lifecycle | Forge v2 still emitted emoji stat glyphs and depended on the DOM polish observer to replace them. A revision rerender could briefly recreate the glyph nodes and let the broad descendant styling regress into empty nested pills. | Fixed: AppV2 now renders the heart, coin, flame, shield and sword as monochrome SVG children; `uiPolish.js` skips React-owned stat values. The existing legacy fallback remains for the older surface. |
+
+The frontend suite remains 31 tests and the Windows Vite build transforms 1,344
+modules. A click-only K&M browser check on a disposable current-branch tab
+showed Level 2 / 50 XP / 55 coins with all five SVG icons visible, then kept
+the icons visible after navigating to Codex. The disposable frontend proxy's
+terminal reconnect state was not used as PTY evidence; the managed connected
+PTY acceptance remains the prior checkpoint.

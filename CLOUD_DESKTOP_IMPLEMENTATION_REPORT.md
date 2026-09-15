@@ -886,3 +886,10 @@ The guarded Windows wrapper now exposes `-MigrateLocalState`. It prints the
 same custody preview, requires `MIGRATE_LOCAL_STATE` before copying, and sets
 the derived local state path only for that explicit launch. A default later
 launch remains on the tracked cache; no real player save was migrated.
+
+The HUD icon regression is now hardened at the source boundary: Forge v2
+renders heart, coin, streak, shield and boss SVGs directly from React instead
+of emitting emoji and waiting for `uiPolish.js` to mutate the DOM. The legacy
+polish bridge ignores React-owned stat values, so revision polling cannot
+replace the nested SVG or its coin suffix. Frontend tests and the 1,344-module
+Vite build pass; K&M showed all five icons before and after Codex navigation.
