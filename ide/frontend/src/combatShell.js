@@ -60,7 +60,6 @@ const THREAT_PROFILES = [
 ]
 
 let campaign = null
-let loading = false
 let revision = null
 
 const escapeHtml = (value) => String(value ?? '').replace(/[&<>"']/g, (character) => ({
@@ -70,35 +69,6 @@ const escapeHtml = (value) => String(value ?? '').replace(/[&<>"']/g, (character
   '"': '&quot;',
   "'": '&#39;',
 }[character]))
-
-async function refreshCampaign() {
-  if (loading) return
-  loading = true
-  try {
-    const response = await fetch('/api/campaign')
-    if (response.ok) {
-      campaign = await response.json()
-      revision = Number(campaign.revision ?? campaign.progress?.meta?.revision ?? 0)
-    }
-  } catch {
-    // The base UI already surfaces backend errors. Combat polish should not break Forge.
-  } finally {
-    loading = false
-  }
-}
-
-async function refreshCampaignIfChanged() {
-  if (loading) return
-  try {
-    const response = await fetch('/api/state/revision')
-    if (!response.ok) return
-    const metadata = await response.json()
-    const nextRevision = Number(metadata.revision ?? 0)
-    if (revision === null || nextRevision !== revision) await refreshCampaign()
-  } catch {
-    // React's campaign polling owns the user-facing error state.
-  }
-}
 
 function activeProject(progress) {
   return (progress.projects || []).find((project) => project.status === 'active') || null
@@ -338,6 +308,10 @@ const observer = new MutationObserver(() => {
 })
 observer.observe(document.documentElement, { subtree: true, childList: true })
 
+// AppV2 owns the single revision poll and publishes the committed projection.
+// This legacy DOM polish layer only consumes that event; a second timer here
+// would refetch the campaign, duplicate git work and make the HUD appear to
+// jump during an otherwise ordinary state update.
 window.addEventListener('questlab:campaign-updated', (event) => {
   if (event.detail && typeof event.detail === 'object') {
     campaign = event.detail
@@ -345,7 +319,3 @@ window.addEventListener('questlab:campaign-updated', (event) => {
     render()
   }
 })
-
-refreshCampaign().then(render)
-setInterval(refreshCampaignIfChanged, 1000)
-window.addEventListener('load', () => refreshCampaignIfChanged())

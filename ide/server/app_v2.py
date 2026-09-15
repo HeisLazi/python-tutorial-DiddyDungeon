@@ -412,7 +412,7 @@ def safe_campaign_dungeon_projection(progress: dict) -> dict:
             }
 
 
-def git_info(root: Path | None = None) -> dict:
+def git_info(root: Path | None = None, *, include_upstream: bool = False) -> dict:
     git_root = (root or WORKSPACE).resolve()
 
     def run(*args: str) -> str:
@@ -430,13 +430,35 @@ def git_info(root: Path | None = None) -> dict:
 
     branch = run("branch", "--show-current") or "detached"
     status_lines = [line for line in run("status", "--short").splitlines() if line.strip()]
-    return {
+    info = {
         "root": str(git_root),
         "branch": branch,
         "dirty_count": len(status_lines),
         "status": status_lines[:50],
         "last_commit": run("log", "-1", "--pretty=%h %s"),
     }
+    if include_upstream:
+        head_sha = run("rev-parse", "HEAD")
+        upstream_ref = run("rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}")
+        upstream_sha = run("rev-parse", "@{u}") if upstream_ref else ""
+        ahead = behind = 0
+        counts = run("rev-list", "--left-right", "--count", "HEAD...@{u}") if upstream_ref else ""
+        if counts:
+            try:
+                ahead, behind = (int(value) for value in counts.split())
+            except (TypeError, ValueError):
+                ahead = behind = 0
+        info.update(
+            {
+                "head_sha": head_sha,
+                "upstream_ref": upstream_ref or None,
+                "upstream_sha": upstream_sha or None,
+                "upstream_available": bool(upstream_ref and upstream_sha),
+                "ahead_upstream": ahead,
+                "behind_upstream": behind,
+            }
+        )
+    return info
 
 
 def build_tree() -> list[dict]:
@@ -549,7 +571,7 @@ def health():
 def runtime():
     shell = resolve_shell()
     workspace_git = git_info(WORKSPACE)
-    repo_git = git_info(REPO_ROOT)
+    repo_git = git_info(REPO_ROOT, include_upstream=True)
     return {
         "shell": shell,
         "python": sys.executable,

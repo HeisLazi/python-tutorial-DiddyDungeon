@@ -997,6 +997,19 @@ class StateGatewayHttpTests(unittest.TestCase):
         self.assertIn("revision", revision.json())
         self.assertTrue(report.json()["manual_approval_required"])
 
+    def test_runtime_report_exposes_upstream_freshness_without_changing_state(self):
+        path = self.with_temp_progress()
+        before = path.read_text(encoding="utf-8")
+        client = self.client()
+        response = client.get("/api/runtime", headers={"host": "127.0.0.1"})
+        self.assertEqual(response.status_code, 200)
+        repo_git = response.json()["repo_git"]
+        self.assertIn("head_sha", repo_git)
+        self.assertIn("upstream_ref", repo_git)
+        self.assertIn("upstream_sha", repo_git)
+        self.assertIn("behind_upstream", repo_git)
+        self.assertEqual(path.read_text(encoding="utf-8"), before)
+
     def test_sync_endpoints_expose_allowlisted_projection_and_compare_and_swap(self):
         path = self.with_temp_progress()
         client = self.client()

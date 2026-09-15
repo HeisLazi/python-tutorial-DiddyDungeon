@@ -44,8 +44,10 @@ The generator may propose a current question, but the state service validates
 the public schema and owns difficulty, Impact, damage, score and reward bands.
 Only the current question is projected to React/provider context. Hidden answer
 keys and future rooms remain outside the public projection. Every answer binds
-to the run revision, question ID, nonce, digest and evidence ID before a
-provider verdict can mutate the run.
+to the run revision, question ID, nonce, digest and evidence ID before the
+local provider-routed verdict bridge can mutate the run. The workstation
+bridge is not provider-authenticated; hosted adjudication remains a later
+gate.
 
 Supported question types include true/false, multiple choice, short explanation,
 code tracing, output prediction, bug hunting and refactoring. A custom mob is
@@ -101,7 +103,7 @@ rewards or independently advance a room.
 1. Add the local run checkpoint/restore/blank-on-rotation contract.
 2. Add a small Dungeon screen and controlled `dungeon.py` projection.
 3. Add three deterministic question renderers (true/false, multiple choice and
-   code checkpoint), then provider-bound verdicts.
+   code checkpoint), then the provider-routed local verdict bridge.
 4. Add adaptive concept selection, custom mobs and multi-phase bosses.
 5. Add rest, market, score and local provisional leaderboard.
 6. Add independent Practice mode.

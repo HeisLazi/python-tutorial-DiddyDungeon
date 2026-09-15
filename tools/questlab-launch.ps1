@@ -6,7 +6,8 @@ param(
     [ValidateRange(1, 65535)]
     [int]$FrontendPort = 5173,
     [switch]$NoBrowser,
-    [switch]$AllowOtherBranch
+    [switch]$AllowOtherBranch,
+    [switch]$AllowStaleCheckout
 )
 
 $ErrorActionPreference = 'Stop'
@@ -36,6 +37,24 @@ if (-not $AllowOtherBranch -and $branch -ne $expectedBranch) {
     throw "Wrong Quest Lab checkout branch '$branch'. Switch to '$expectedBranch' or pass -AllowOtherBranch explicitly."
 }
 
+$upstreamRef = (& git -C $repoRoot rev-parse --abbrev-ref --symbolic-full-name '@{u}' 2>$null).Trim()
+if ($upstreamRef -and -not $AllowStaleCheckout) {
+    & git -C $repoRoot fetch --quiet origin
+    if ($LASTEXITCODE -ne 0) {
+        throw "Could not refresh '$upstreamRef'. Re-run with -AllowStaleCheckout only when offline use is intentional."
+    }
+    $headSha = (& git -C $repoRoot rev-parse HEAD).Trim()
+    $upstreamSha = (& git -C $repoRoot rev-parse '@{u}').Trim()
+    if ($headSha -ne $upstreamSha) {
+        throw "Checkout is not at upstream '$upstreamRef'. Run git pull --ff-only origin $expectedBranch or pass -AllowStaleCheckout explicitly."
+    }
+}
+
+$progressStatus = (& git -C $repoRoot status --short -- progress.json).Trim()
+if ($progressStatus) {
+    Write-Warning 'Canonical progress.json has local player-state changes; the launcher will not overwrite or reconcile them.'
+}
+
 if (-not $Workspace) {
     $Workspace = $repoRoot
 } else {
@@ -56,6 +75,7 @@ Write-Host "Quest Lab checkout: $branch"
 Write-Host "Canonical state:    $repoWsl/progress.json"
 Write-Host "Quest workspace:    $workspaceWsl"
 Write-Host "Expected branch:    $expectedBranch"
+if ($upstreamRef) { Write-Host "Upstream:           $upstreamRef" }
 Write-Host 'PTY mode:            stable (backend reload disabled)'
 Write-Host ''
 

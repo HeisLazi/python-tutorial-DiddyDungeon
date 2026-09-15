@@ -323,6 +323,7 @@ function AppV2() {
   const showEditor = activeView === 'forge' || activeView === 'tutor'
   const runtimeBranch = runtime?.repo_git?.branch || 'checking branch…'
   const runtimeMismatch = Boolean(runtime?.expected_branch && runtimeBranch !== runtime.expected_branch)
+  const runtimeStale = Boolean(runtime?.repo_git?.behind_upstream > 0)
 
   const shields = useMemo(
     () => (progress.skills || []).filter((skill) => skill.shield?.tier && skill.shield.tier !== 'none').length,
@@ -1717,8 +1718,12 @@ function AppV2() {
 
       <footer className="statusbar">
         <span>{notice || `Runtime: ${runtime?.shell || 'checking shell…'}`}</span>
-        <span className={`runtime-identity ${runtimeMismatch ? 'warning' : ''}`} title={runtime?.repo_root || ''}>
-          {runtimeMismatch ? `CHECKOUT MISMATCH · ${runtimeBranch}` : `CHECKOUT ${runtimeBranch}`}
+        <span className={`runtime-identity ${runtimeMismatch || runtimeStale ? 'warning' : ''}`} title={runtime?.repo_root || ''}>
+          {runtimeMismatch
+            ? `CHECKOUT MISMATCH · ${runtimeBranch}`
+            : runtimeStale
+              ? `CHECKOUT STALE · ${runtimeBranch}`
+              : `CHECKOUT ${runtimeBranch}`}
         </span>
         <span>
           {busy

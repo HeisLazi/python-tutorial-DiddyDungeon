@@ -4,10 +4,11 @@ Status: local roadmap slices 0–6 implemented and verified; friend-ready
 launcher/health foundation added; hosted distribution/social slices remain
 explicitly gated — 2026-09-15
 
-Claude Sonnet review was attempted from WSL but the configured CLI returned
-`Not logged in · Please run /login`. No external model review is represented as
-approval. This plan is the primary implementation/review record until a
-reviewer becomes available.
+Claude Sonnet review was attempted from WSL but the configured CLI still
+returns `Not logged in · Please run /login`. An authenticated Claude browser
+review did complete read-only against the current checkout/archive; its
+findings are recorded in the issue log and are not treated as approval. This
+plan remains the primary implementation/review record.
 
 The current local checkpoint includes the playable Dungeon question/verdict
 loop, adaptive evidence-grounded focus, rest/market rooms, local leaderboard,
@@ -145,9 +146,15 @@ Campaign surface; it was not removed or merged into Practice.
 - Local provider verdicts remain a trusted workstation boundary (F-001/F-009/
   F-010); hosted release must add provider authentication and tab-scoped
   challenge storage.
-- The visible long-lived port 5173 runtime is on a different checkout (F-025).
-  Verification uses an isolated current-branch runtime until the launcher is
-  corrected.
+- A tracked `progress.json` is still the offline canonical cache, so a branch
+  switch or destructive Git operation can overwrite a live save unless the
+  player backs it up. Moving that custody to an ignored per-device path is an
+  explicit migration choice and remains open; this pass does not touch the
+  player's save.
+- OneDrive currently replicates the checkout, `.git`, dependencies and local
+  save. It is an environmental third writer outside the state gateway; move
+  the checkout or exclude those directories before trusting a two-device
+  acceptance result.
 - Existing legacy saves do not prove equipment, mastery or exact question
   history. Reconciliation must continue to report unsupported fields rather
   than invent them.
@@ -158,7 +165,8 @@ Campaign surface; it was not removed or merged into Practice.
   campaign/boss validation, live revision polling, Codex pages/notes and
   Homestead purchases/equipment.
 - Slice 5 is locally playable: fresh starter loadout, checkpointed
-  `dungeon.py`, provider-bound verdicts, blank-on-rotation, adaptive recorded-
+  `dungeon.py`, provider-routed unauthenticated verdict bridge,
+  blank-on-rotation, adaptive recorded-
   weakness focus, progressive room types, rest/market, death reset and local
   leaderboard. It intentionally does not grant Campaign rewards or use hosted
   leaderboard transport.
@@ -172,6 +180,12 @@ Campaign surface; it was not removed or merged into Practice.
 - Slice 8 (hosted friends/presence/raids) remains last and is intentionally not
   seeded or claimed complete.
 
-Latest gates: 47 WSL backend tests, 29 frontend tests, Windows Vite build, and
-manual browser K&M acceptance on an isolated current-branch runtime. No
+Latest gates: 55 WSL backend tests, 29 frontend tests, Windows Vite build, and
+manual browser K&M acceptance on an isolated current-branch runtime. The
+frontend count includes source tripwires as well as behavioural sync tests. No
 Playwright was used.
+
+The latest checkpoint adds upstream freshness to `/api/runtime` and the footer,
+removes the legacy combat shell's duplicate campaign poll (React now owns the
+single revision timer), and preserves the Linux executable bit on
+`questlab-state`.

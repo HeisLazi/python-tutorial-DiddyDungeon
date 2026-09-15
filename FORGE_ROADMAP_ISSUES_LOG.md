@@ -128,7 +128,7 @@ processes and their PTYs were not restarted.
 | F-031 | P2 | Runtime checkout | An older long-lived 5173 process can still show a different checkout if it was started before the launcher fix. | Fixed for new launches: `ide/quest.py` exports the expected branch and `/api/runtime` exposes workspace/repo/canonical paths plus branch mismatch health. Existing 5173 is intentionally left running and remains a user restart/launch choice. |
 | F-032 | P3 | Codex usability | The Codex needed a searchable book/page projection with encounter records and bounded player notes. | Fixed: source/route tests and K&M verified search, concept pages, validated encounter records, and a live saved field note (`CODEX NOTE SAVED`) on the disposable copy. |
 | F-033 | P2 | WSL frontend packaging | WSL Vite cannot resolve the Linux Rollup optional package from the shared Windows `node_modules`; this is an environment/dependency-install issue, not a source failure. | Open: Windows `npm run build` is green; install Linux dependencies in a disposable WSL checkout before using WSL Vite builds. |
-| F-034 | P2 | Secondary review | Claude Code remains unauthenticated in the WSL CLI despite the separate desktop login. | Open external gate: the review was attempted and returned `Not logged in`; no Claude approval is claimed. |
+| F-034 | P2 | Secondary review | Claude Code remains unauthenticated in the WSL CLI despite the separate desktop login. | WSL CLI remains open, but an authenticated Claude browser review completed read-only against the current OneDrive checkout/archive. Its findings are recorded below; no external approval claim is made. |
 | F-035 | P3 | Dev HMR lifecycle | Editing the running Vite source caused one disposable-runtime terminal websocket reconnect; normal revision polling/navigation did not remount it. | Open dev-only limitation: use the built/started runtime for the acceptance gate. The user's existing PTYs were never restarted; the current disposable children remained stable after HMR settled. |
 
 ### Current K&M acceptance evidence
@@ -172,6 +172,26 @@ processes and their PTYs were not restarted.
 |---|---|---|---|---|
 | F-036 | P2 | Friend launch/runtime identity | A friend could start a different checkout or accidentally use a workspace save unless launch instructions made the authority and branch boundary explicit. | Fixed locally: `tools/questlab-launch.ps1` validates the intended branch by default, converts Windows paths to WSL, delegates to the stable `ide/quest.py` launcher and prints canonical/workspace identity. `FRIEND_ONBOARDING.md` documents setup, read-only `questlab-state runtime`, offline mode and the no-copy save rule. Clean-install and two-device acceptance remain open. |
 
-The Claude browser session was refreshed during this checkpoint and redirected
-to Anthropic's sign-in/device-key page before a review could be submitted; the
-WSL CLI still reports `Not logged in`. No Claude approval is represented.
+The WSL Claude CLI still reports `Not logged in`. After the user re-authenticated
+the browser, an authenticated review completed read-only; it is treated as
+secondary findings rather than approval.
+
+## Verification update — 2026-09-15 — custody/freshness review follow-up
+
+Claude's authenticated browser review confirmed the engineering boundaries but
+flagged custody risks that remain deliberately open: the tracked canonical
+`progress.json` can be overwritten by a destructive Git operation, OneDrive
+replicates the checkout/save outside the state gateway, and local verdict tokens
+are provider-routed rather than provider-authenticated. No save was moved,
+untracked or overwritten in response; those choices require an explicit player
+migration decision.
+
+| ID | Severity | Area | Finding | Status |
+|---|---|---|---|---|
+| F-037 | P2 | Runtime freshness | Two checkouts can share `feature/cloud-sync-desktop` while one is behind upstream; a branch-name-only guard cannot distinguish them. | Fixed locally: `/api/runtime` reports HEAD/upstream SHA and ahead/behind counts, the footer shows `CHECKOUT STALE`, and `tools/questlab-launch.ps1` refreshes upstream and refuses stale launch unless `-AllowStaleCheckout` is explicit. |
+| F-038 | P2 | Linux onboarding | `questlab-state` was mode `100644` in a clean ext4 clone, so a friend could receive `Permission denied`. | Fixed: committed executable mode `100755`; onboarding includes a one-time chmod recovery for filesystems that strip modes. |
+| F-039 | P2 | Offline save custody | The tracked `progress.json` remains a live cache and OneDrive remains a third filesystem replicator. | Open by design: do not touch the player's save or move the checkout silently. Requires an approved ignored per-device save migration and a non-OneDrive clean-install/two-device test. |
+| F-040 | P2 | Duplicate projection polling | The legacy DOM combat shell and React both polled the campaign revision every second, duplicating full fetch/git work and contributing to sync churn. | Fixed: `combatShell.js` now consumes React's `questlab:campaign-updated` event only; source test asserts no second revision timer/fetch. |
+
+The post-fix automated counts are 55 WSL backend tests, 29 frontend tests and
+a green Windows Vite production build. No Playwright was used.

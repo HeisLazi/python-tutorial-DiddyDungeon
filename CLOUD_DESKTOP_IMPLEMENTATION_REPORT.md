@@ -650,7 +650,8 @@ Homestead, Infinite Dungeon and Practice. The Campaign Tutor Notebook remains
 its own first-class surface; Practice is a separate unlimited mode and never
 writes `tutor.py` or grants Campaign/Dungeon state.
 
-Infinite Dungeon now has a canonical, provider-bound answer/verdict bridge,
+Infinite Dungeon now has a canonical, provider-routed unauthenticated
+answer/verdict bridge,
 adaptive focus based only on recorded Codex incorrect-result/weakness evidence,
 progressive encounter/rest/market rooms, run-only score/coins, death reset,
 checkpoint persistence, blank editor rotation and a bounded local leaderboard.
@@ -723,3 +724,34 @@ The launcher contract and CLI routing have focused unit coverage. A clean
 install, two-device mailbox sync acceptance and a packaged Tauri/native
 Windows proof remain open gates; this slice does not seed Supabase, expose a
 public PTY, or change the Campaign Tutor/Practice boundary.
+
+### Custody and polling review follow-up — 2026-09-15
+
+The authenticated Claude browser review was read-only and ran against the
+OneDrive checkout plus an isolated archive; it did not edit or commit either
+tree. It identified two safe code issues that are now fixed: `questlab-state`
+is committed with mode `100755` for Linux clones, and `/api/runtime` now reports
+the repo HEAD/upstream SHA plus ahead/behind counts. The Windows launcher refreshes
+the upstream ref and refuses a stale checkout by default (with an explicit
+`-AllowStaleCheckout` escape hatch), while warning rather than overwriting a
+locally changed canonical save. The footer shows `CHECKOUT STALE` when the
+runtime is behind its upstream branch.
+
+The legacy `combatShell.js` overlay no longer runs its own one-second campaign
+poll or refetches `/api/campaign`; it consumes the `questlab:campaign-updated`
+projection emitted by React's single revision poll. This removes duplicate
+campaign/git work and avoids an avoidable source of HUD/sync jumps without
+remounting either PTY.
+
+The review also confirmed the remaining custody gates: the tracked
+`progress.json` is still the live offline cache, OneDrive is a third filesystem
+replicator, and local verdict tokens are provider-routed but not provider-
+authenticated. Those are documented/open by design. This pass does not move,
+untrack or overwrite the player's save, delete the stale checkout, seed
+Supabase, or claim hosted multiplayer readiness.
+
+Post-fix gates: 55 WSL backend tests, 29 frontend tests and a green Windows
+Vite production build. The K&M current-branch runtime still showed Level 2,
+50 XP, 54 disposable-test coins, The Hitman at 8/8, three cleared mobs, Codex
+records/field note, visible SVG HUD icons, `CHECKOUT feature/cloud-sync-desktop`
+and `CONNECTED` AI/shell surfaces without a browser refresh.

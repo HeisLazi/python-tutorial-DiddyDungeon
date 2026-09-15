@@ -3,7 +3,6 @@ from __future__ import annotations
 import unittest
 from pathlib import Path
 
-
 ROOT = Path(__file__).resolve().parents[2]
 
 
@@ -20,6 +19,10 @@ class LauncherContractTests(unittest.TestCase):
         self.assertNotIn("$command -join", launcher)
         self.assertNotIn("--reload-backend", launcher)
         self.assertIn("-AllowOtherBranch", launcher)
+        self.assertIn("-AllowStaleCheckout", launcher)
+        self.assertIn("git -C $repoRoot fetch --quiet origin", launcher)
+        self.assertIn("rev-parse '@{u}'", launcher)
+        self.assertIn("Canonical progress.json has local player-state changes", launcher)
         self.assertIn("exit_code = 0", python_launcher)
         self.assertIn("raise SystemExit(main())", python_launcher)
 

@@ -45,8 +45,9 @@ test('campaign projections use revision polling and state-service events', () =>
   assert.match(views, /data-testid="encounter-resolve"/)
   assert.match(views, /progress\.codex\?\.encounters/)
   assert.match(views, /data-campaign-revision=\{revision\}/)
-  assert.match(combat, /refreshCampaignIfChanged/)
   assert.match(combat, /questlab:campaign-updated/)
+  assert.doesNotMatch(combat, /setInterval\(refreshCampaignIfChanged/)
+  assert.doesNotMatch(combat, /fetch\('\/api\/state\/revision'/)
   assert.doesNotMatch(views, /mob\.encounter \|\| 'This encounter has not revealed/)
 })
 
@@ -163,9 +164,12 @@ test('runtime health exposes the checkout and one canonical state authority', ()
   assert.match(app, /expected_branch/)
   assert.match(app, /workspace_git/)
   assert.match(app, /repo_git/)
+  assert.match(app, /include_upstream=True/)
+  assert.match(app, /behind_upstream/)
   assert.match(app, /canonical_state_path/)
   assert.match(launcher, /QUESTLAB_EXPECTED_BRANCH/)
   assert.match(views, /CHECKOUT MISMATCH/)
+  assert.match(views, /CHECKOUT STALE/)
 })
 
 test('Codex renders a searchable concept library and writes bounded field notes through the gateway', () => {

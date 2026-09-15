@@ -51,8 +51,13 @@ From PowerShell in the cloned checkout:
 The launcher refuses an unexpected branch unless `-AllowOtherBranch` is
 explicitly supplied, injects the canonical state path, keeps backend reload
 off so PTYs survive ordinary use, and prints the checkout/workspace identity.
+It refreshes the configured upstream ref and refuses a stale checkout by
+default; use `-AllowStaleCheckout` only for an intentional offline session.
 Use `-NoBrowser` when opening the URL yourself. Ports move forward if the
-preferred port is busy; the footer reports the actual checkout.
+preferred port is busy; the footer reports the actual checkout and marks a
+checkout stale when the runtime health report sees commits behind upstream.
+If `progress.json` has local player-state changes, the launcher warns but does
+not overwrite them.
 
 ## Health checks
 
@@ -66,9 +71,12 @@ questlab-state campaign
 ```
 
 `runtime` reports the repo branch, workspace branch, canonical state path,
-legacy path, expected branch and available CLI commands. `authority` reports
-the canonical revision. `campaign` is the player-facing projection. These are
-read-only reports; they do not edit a save.
+legacy path, expected branch, upstream SHA/freshness and available CLI
+commands. `authority` reports the canonical revision. `campaign` is the
+player-facing projection. These are read-only reports; they do not edit a save.
+
+On a Linux filesystem, keep the executable bit on `questlab-state`; a clone
+that reports `Permission denied` should run `chmod +x questlab-state` once.
 
 ## Offline and account sync
 
