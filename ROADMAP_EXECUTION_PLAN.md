@@ -185,6 +185,11 @@ manual browser K&M acceptance on an isolated current-branch runtime. The
 frontend count includes source tripwires as well as behavioural sync tests. No
 Playwright was used.
 
+A fresh ext4 archive also passed WSL `npm ci` plus `npm run build` (1,344
+modules). The remaining F-033 packaging risk is limited to the shared OneDrive
+`node_modules` tree; friends should install dependencies inside their Linux
+checkout rather than reuse a Windows tree.
+
 The latest checkpoint adds upstream freshness to `/api/runtime` and the footer,
 removes the legacy combat shell's duplicate campaign poll (React now owns the
 single revision timer), preserves the Linux executable bit on `questlab-state`,

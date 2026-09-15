@@ -222,3 +222,15 @@ refresh. Quest Journal stayed on Mob 3 The Hitman and Codex retained the
 validated encounter records; both shell and AI panes remained `CONNECTED`.
 The disposable backend/frontend were stopped afterward; the existing
 5173/5174 PTYs and live saves were not restarted.
+
+## Verification update — 2026-09-15 — clean Linux frontend install
+
+F-033 was narrowed with a clean-filesystem check. A fresh `git archive` of the
+current branch was extracted under `/tmp/questlab-clean-linux`; `npm ci` in the
+WSL checkout installed 84 packages, and `npm run build` completed with 1,344
+modules transformed. The earlier failure is therefore specific to the shared
+OneDrive `node_modules` tree missing the Linux Rollup optional package, not a
+source/build failure. The OneDrive environment still needs a disposable Linux
+dependency install (or a documented cleanup) before the Windows launcher can
+be called clean-install verified; no dependency directory in the player's
+checkout was replaced.

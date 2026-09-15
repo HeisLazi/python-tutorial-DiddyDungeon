@@ -784,3 +784,14 @@ changed the HUD and Character to 63 coins without refresh. Quest Journal stayed
 on Mob 3 The Hitman and Codex retained its validated records; both shell and AI
 panes remained `CONNECTED`. The disposable runtime was stopped afterward;
 current user PTYs and live saves were not restarted or modified.
+
+### Clean Linux packaging check — 2026-09-15
+
+To separate source regressions from the known OneDrive dependency issue, a
+fresh `git archive HEAD` was extracted into `/tmp/questlab-clean-linux` (no
+player save or worktree was used). WSL `npm ci` installed 84 packages and the
+clean checkout's `npm run build` passed after transforming 1,344 modules. This
+confirms the committed frontend builds on a Linux filesystem; F-033 remains
+an environment cleanup/onboarding gate only for the shared OneDrive
+`node_modules` tree, which is missing the Linux Rollup optional package. The
+player checkout's dependencies were not replaced.
