@@ -592,3 +592,14 @@ and the three cleared mobs, while Character and Homestead showed the same 56-
 coin projection and Codex remained populated. The exact temp state/workspace,
 frontend, backend and browser tab were stopped/removed afterward; the user
 save, legacy evidence and long-lived runtimes were untouched.
+
+## Verification update — 2026-09-16 — F-033 onboarding contract
+
+The launcher contract suite now asserts that `FRIEND_ONBOARDING.md` directs
+friends to install dependencies inside a native Linux/WSL checkout, rerun
+`npm ci` there when the Linux Rollup optional package is missing, and use a
+Linux filesystem rather than a copied cross-platform `node_modules` tree. The
+focused launcher suite passed 7 tests and the full WSL backend suite passed
+69 tests. This closes the documentation/regression portion of F-033; the
+shared OneDrive environment remains intentionally bounded by the fail-fast
+launcher.

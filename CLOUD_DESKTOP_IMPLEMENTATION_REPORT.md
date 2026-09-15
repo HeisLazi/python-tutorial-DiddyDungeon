@@ -1076,3 +1076,13 @@ to 56 coins without a refresh. Quest Journal, Character, Homestead and Codex
 continued to project the same revision. The exact temporary runtime, state
 copy and browser tab were removed afterward; no user save, legacy evidence,
 long-lived runtime or hosted state was touched.
+
+### F-033 onboarding contract — 2026-09-16
+
+The launcher contract tests now lock the friend setup boundary to native
+Linux/WSL dependencies, a rerun of `npm ci` inside that checkout when Rollup's
+Linux optional package is missing, and a Linux filesystem instead of a copied
+cross-platform `node_modules` tree. The focused launcher suite passed 7 tests;
+the full WSL backend suite passed 69 tests. The shared OneDrive limitation
+remains bounded by the launcher's fail-fast check and was not papered over with
+source changes.

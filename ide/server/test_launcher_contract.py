@@ -53,6 +53,9 @@ class LauncherContractTests(unittest.TestCase):
         self.assertIn("legacy evidence", onboarding)
         self.assertIn("Do not copy", onboarding)
         self.assertIn("two-device sync acceptance", onboarding)
+        self.assertIn("native\nLinux Rollup", onboarding)
+        self.assertIn("npm ci", onboarding)
+        self.assertIn("Linux filesystem", onboarding)
 
     def test_friend_bundle_archives_committed_source_without_personal_worktree_files(self):
         packager = (ROOT / "tools" / "questlab-package.ps1").read_text(encoding="utf-8")
