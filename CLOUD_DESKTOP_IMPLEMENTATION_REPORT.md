@@ -858,4 +858,6 @@ is clean-install safe.
 
 Post-change gates: 59 WSL backend tests, 31 frontend tests, targeted Python
 compilation, and a green Windows Vite production build transforming 1,344
-modules. No Playwright was used.
+modules. A real WSL invocation against the shared OneDrive checkout emitted
+the same actionable message and exited before spawning its requested ports.
+No Playwright was used.

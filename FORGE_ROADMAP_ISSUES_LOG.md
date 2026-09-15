@@ -317,3 +317,7 @@ The updated contract test covers both a missing package and a native package
 using isolated temporary trees. The full gate is now 59 WSL backend tests, 31
 frontend tests, a green Windows Vite production build (1,344 modules), and
 successful Python compilation. No Playwright was used.
+
+A real WSL invocation from the shared OneDrive checkout produced the same
+fail-fast message and exited before attempting the disposable ports requested
+for that check; no backend/frontend process was spawned by the guard.
