@@ -1,5 +1,17 @@
 import { cloudConfig } from './config.js'
 import { getSupabaseClient } from './supabaseClient.js'
+import {
+  AVATAR_BUCKET,
+  AVATAR_CLOUD_MIME_TYPES,
+  AVATAR_MAX_BYTES,
+  avatarObjectPath,
+  blobToDataUrl,
+  dataUrlToBlob,
+  readCachedAvatar,
+  removeCachedAvatar,
+  validateAvatarDataUrl,
+  writeCachedAvatar,
+} from './avatarStorage.js'
 
 export const DEFAULT_DEVICE_LABEL = 'Quest Lab device'
 export const DEVICE_IDS_STORAGE_KEY = 'questlab.cloud.device-ids'
@@ -107,7 +119,7 @@ const writeStoredJson = (storage, key, value) => {
   }
 }
 
-const profileColumns = 'id,display_name,created_at,updated_at'
+const profileColumns = 'id,display_name,avatar_path,created_at,updated_at'
 const deviceColumns = 'id,user_id,display_name,created_at,updated_at,last_seen_at'
 
 const getStorage = () => {
@@ -190,6 +202,7 @@ const profileSummary = (profile) =>
     ? {
         id: profile.id,
         display_name: profile.display_name,
+        avatar_path: profile.avatar_path ?? null,
         created_at: profile.created_at,
         updated_at: profile.updated_at,
       }
@@ -228,6 +241,7 @@ const initialState = (config) => ({
   localRevision: null,
   cloudRevision: null,
   conflict: null,
+  avatar: { path: null, dataUrl: '', source: 'local', status: 'idle' },
   authStatus: 'anonymous',
   label: config.configured && config.valid ? 'Cloud ready' : 'Offline / Local Mode',
   detail: config.reason,
@@ -255,6 +269,7 @@ export class SyncEngine {
     this.syncPromise = null
     this.syncTimer = null
     this.syncInterval = null
+    this.avatarOperation = 0
     this.latestLocalSnapshot = null
     this.syncCursor = null
     this.outbox = []
@@ -341,6 +356,7 @@ export class SyncEngine {
 
   async applySession(session) {
     const sessionNonce = ++this.sessionNonce
+    this.avatarOperation += 1
     this.session = session ?? null
     const user = session?.user ?? null
     if (!user) {
@@ -351,10 +367,14 @@ export class SyncEngine {
       this.cloudSnapshot = null
       this.latestLocalSnapshot = null
       this._stopSyncPolling()
+      this._setAvatar(null, readCachedAvatar(this.storage), 'local')
       this.setState({ user: null, profile: null, device: null, authStatus: 'signed-out', syncStatus: 'local', pendingChanges: 0, conflict: null, label: 'Sign in to sync', detail: 'Forge remains available locally. Sign in when cloud sync is configured.', error: null })
       return this.state
     }
 
+    // Restore the last account-scoped image before the profile request. This
+    // keeps a previously synced portrait visible during a brief offline start.
+    this._restoreCachedAvatar(user.id)
     this.setState({ user: userSummary(user), authStatus: 'signed-in', syncStatus: 'local', label: 'Signed in · local cache', detail: 'Account identity restored. Campaign fields will sync through the state gateway.', error: null })
     try {
       if (!this.accountPromise || this.accountUserId !== user.id) {
@@ -366,6 +386,7 @@ export class SyncEngine {
       this._loadSyncMetadata(user.id)
       this._startSyncPolling()
       this.setState({ profile: account.profile, device: account.device, authStatus: 'signed-in', syncStatus: 'local', label: 'Signed in · local cache', detail: 'Campaign fields will sync through the state gateway. Projects and Codex remain local in this slice.', error: null })
+      void this._refreshCloudAvatar(account.profile?.avatar_path, user.id)
       void this.sync()
     } catch (error) {
       this.accountPromise = null
@@ -473,6 +494,122 @@ export class SyncEngine {
     if (result.error) throw asError(result.error, 'Device name could not be saved.')
     this.setState({ device: deviceSummary(result.data), error: null })
     return this.state
+  }
+
+  _setAvatar(path, dataUrl, source = 'local', status = 'ready') {
+    const normalizedDataUrl = typeof dataUrl === 'string' ? dataUrl : ''
+    const avatar = { path: path || null, source, status, cached: Boolean(normalizedDataUrl) }
+    this.setState({ avatar })
+    if (typeof globalThis.dispatchEvent === 'function' && typeof globalThis.CustomEvent === 'function') {
+      globalThis.dispatchEvent(new CustomEvent('questlab:avatar-updated', { detail: { ...avatar, dataUrl: normalizedDataUrl } }))
+    }
+    return avatar
+  }
+
+  _restoreCachedAvatar(userId) {
+    const accountCached = readCachedAvatar(this.storage, userId)
+    const localCached = readCachedAvatar(this.storage)
+    return this._setAvatar(null, accountCached || localCached, accountCached ? 'cached-cloud' : 'local', accountCached || localCached ? 'ready' : 'empty')
+  }
+
+  async _refreshCloudAvatar(path, userId = this._userId()) {
+    if (!userId) return this.state.avatar
+    const operation = ++this.avatarOperation
+    const expectedPath = avatarObjectPath(userId)
+    if (!path) {
+      removeCachedAvatar(this.storage, userId)
+      return this._restoreCachedAvatar(userId)
+    }
+    if (path !== expectedPath) {
+      const cached = readCachedAvatar(this.storage, userId)
+      return this._setAvatar(null, cached, 'cloud', 'invalid')
+    }
+    if (!this.client?.storage?.from) return this._restoreCachedAvatar(userId)
+
+    try {
+      const result = await this.client.storage.from(AVATAR_BUCKET).download(path)
+      if (result?.error) throw result.error
+      const dataUrl = await blobToDataUrl(result?.data)
+      if (operation !== this.avatarOperation || this._userId() !== userId) return this.state.avatar
+      validateAvatarDataUrl(dataUrl, { maxBytes: AVATAR_MAX_BYTES, allowedMimeTypes: AVATAR_CLOUD_MIME_TYPES })
+      writeCachedAvatar(dataUrl, this.storage, userId)
+      return this._setAvatar(path, dataUrl, 'cloud')
+    } catch {
+      const cached = readCachedAvatar(this.storage, userId)
+      if (cached) return this._setAvatar(path, cached, 'cached-cloud', 'stale')
+      // Avatar transport is optional to the gameplay session. Keep the
+      // account signed in and expose the unavailable state without creating
+      // an unhandled rejection during background session restore.
+      this._setAvatar(path, '', 'cloud', 'unavailable')
+      return this.state.avatar
+    }
+  }
+
+  async _saveAvatarProfilePath(path) {
+    if (!this.client?.from || !this.session?.user) throw new Error('Cloud avatar profile updates are unavailable.')
+    const result = await this.client
+      .from('profiles')
+      .update({ avatar_path: path || null })
+      .eq('id', this.session.user.id)
+      .select(profileColumns)
+      .single()
+    if (result?.error) throw result.error
+    const profile = profileSummary(result?.data)
+    this.setState({ profile })
+    return profile
+  }
+
+  async setAvatarDataUrl(dataUrl) {
+    const validation = validateAvatarDataUrl(dataUrl, { maxBytes: AVATAR_MAX_BYTES, allowedMimeTypes: AVATAR_CLOUD_MIME_TYPES })
+    this.avatarOperation += 1
+    // Keep a local fallback even if a signed-in upload is interrupted.
+    writeCachedAvatar(dataUrl, this.storage)
+    const userId = this._userId()
+    if (!userId || !this.client?.storage?.from) return this._setAvatar(null, dataUrl, 'local')
+
+    const path = avatarObjectPath(userId)
+    const blob = dataUrlToBlob(dataUrl, { maxBytes: AVATAR_MAX_BYTES, allowedMimeTypes: AVATAR_CLOUD_MIME_TYPES })
+    this.setState({ avatar: { ...this.state.avatar, path, status: 'uploading' } })
+    try {
+      const upload = await this.client.storage.from(AVATAR_BUCKET).upload(path, blob, {
+        upsert: true,
+        contentType: validation.mimeType,
+        cacheControl: '3600',
+      })
+      if (upload?.error) throw upload.error
+      await this._saveAvatarProfilePath(path)
+      writeCachedAvatar(dataUrl, this.storage, userId)
+      return this._setAvatar(path, dataUrl, 'cloud')
+    } catch (error) {
+      // The fixed path may have replaced a previous valid image. Leave it in
+      // place if profile metadata fails so an existing reference never points
+      // at a deleted object; the next upload safely upserts the same path.
+      this._setAvatar(null, readCachedAvatar(this.storage), 'local', 'upload-failed')
+      throw asError(error, 'Avatar upload failed.')
+    }
+  }
+
+  async removeAvatar() {
+    const userId = this._userId()
+    this.avatarOperation += 1
+    if (!userId || !this.client?.storage?.from) {
+      removeCachedAvatar(this.storage)
+      return this._setAvatar(null, '', 'local', 'empty')
+    }
+    const path = this.state.profile?.avatar_path || this.state.avatar?.path || avatarObjectPath(userId)
+    if (path !== avatarObjectPath(userId)) throw new Error('Cloud avatar reference is invalid.')
+    this.setState({ avatar: { ...this.state.avatar, path, status: 'removing' } })
+    try {
+      const removal = await this.client.storage.from(AVATAR_BUCKET).remove([path])
+      if (removal?.error) throw removal.error
+      await this._saveAvatarProfilePath(null)
+      removeCachedAvatar(this.storage, userId)
+      removeCachedAvatar(this.storage)
+      return this._setAvatar(null, '', 'local', 'empty')
+    } catch (error) {
+      this._restoreCachedAvatar(userId)
+      throw asError(error, 'Avatar could not be removed.')
+    }
   }
 
   _userId() {

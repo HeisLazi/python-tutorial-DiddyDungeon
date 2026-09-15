@@ -104,3 +104,18 @@ test('top HUD SVG icons are nested content, not nested stat pills', () => {
   assert.match(styles, /\.top-stats\s*>\s*span\s*>\s*\[data-stat-value\]/)
   assert.match(styles, /\.top-stats\s+\.cloud-pill\{[^}]*min-width:15ch/)
 })
+
+test('avatar controls use the account-scoped storage boundary with a local fallback', () => {
+  const enhancements = source('../forgeEnhancements.js')
+  const engine = source('./syncEngine.js')
+  const avatar = source('./avatarStorage.js')
+
+  assert.match(enhancements, /syncEngine\.setAvatarDataUrl\(dataUrl\)/)
+  assert.match(enhancements, /syncEngine\.removeAvatar\(\)/)
+  assert.match(enhancements, /questlab:avatar-updated/)
+  assert.match(engine, /AVATAR_BUCKET/)
+  assert.match(engine, /_saveAvatarProfilePath/)
+  assert.match(engine, /readCachedAvatar\(this\.storage, userId\)/)
+  assert.match(avatar, /AVATAR_MAX_BYTES = 1_000_000/)
+  assert.match(avatar, /avatarObjectPath\(userId\)/)
+})

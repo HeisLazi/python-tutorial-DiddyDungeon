@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 
 import { resolveCloudConfig } from './config.js'
+import { AVATAR_MAX_BYTES, avatarObjectPath, readCachedAvatar, validateAvatarDataUrl } from './avatarStorage.js'
 import {
   DEFAULT_DEVICE_LABEL,
   DEVICE_IDS_STORAGE_KEY,
@@ -23,12 +24,17 @@ class MemoryStorage {
   setItem(key, value) {
     this.values.set(key, String(value))
   }
+
+  removeItem(key) {
+    this.values.delete(key)
+  }
 }
 
 function fakeCloudClient(user, { accessToken = 'test-access-token', cloudStore = null } = {}) {
-  const profileRows = new Map()
-  const deviceRows = new Map()
+  const profileRows = cloudStore?.profileRows || new Map()
+  const deviceRows = cloudStore?.deviceRows || new Map()
   const playerRows = cloudStore?.playerRows || new Map()
+  const avatarObjects = cloudStore?.avatarObjects || new Map()
   const writes = []
   let session = {
     access_token: accessToken,
@@ -39,6 +45,7 @@ function fakeCloudClient(user, { accessToken = 'test-access-token', cloudStore =
   const table = (name) => {
     let filter = null
     let payload = null
+    let updatePayload = null
     const builder = {
       select() {
         return builder
@@ -58,18 +65,26 @@ function fakeCloudClient(user, { accessToken = 'test-access-token', cloudStore =
         writes.push({ table: name, payload: { ...payload } })
         return builder
       },
+      update(nextPayload) {
+        updatePayload = { ...nextPayload }
+        writes.push({ table: name, payload: { ...updatePayload } })
+        return builder
+      },
       single: async () => {
         const rows = name === 'profiles' ? profileRows : deviceRows
         const now = '2026-09-14T00:00:00.000Z'
-        const existing = rows.get(payload.id)
+        const id = payload?.id || filter?.value
+        const existing = rows.get(id)
         const row = {
           ...existing,
           ...payload,
+          ...updatePayload,
+          ...(id ? { id } : {}),
           created_at: existing?.created_at ?? now,
           updated_at: now,
           ...(name === 'devices' ? { last_seen_at: payload.last_seen_at ?? now } : {}),
         }
-        rows.set(payload.id, row)
+        rows.set(id, row)
         return { data: row, error: null }
       },
     }
@@ -95,6 +110,24 @@ function fakeCloudClient(user, { accessToken = 'test-access-token', cloudStore =
         session = null
         authCallback?.('SIGNED_OUT', null)
         return { error: null }
+      },
+    },
+    storage: {
+      from(bucket) {
+        assert.equal(bucket, 'avatars')
+        return {
+          async upload(path, blob) {
+            avatarObjects.set(path, blob)
+            return { data: { path }, error: null }
+          },
+          async download(path) {
+            return { data: avatarObjects.get(path) ?? null, error: avatarObjects.has(path) ? null : { message: 'Avatar not found' } }
+          },
+          async remove(paths) {
+            paths.forEach((path) => avatarObjects.delete(path))
+            return { data: paths.map((path) => ({ name: path })), error: null }
+          },
+        }
       },
     },
     from: table,
@@ -200,6 +233,47 @@ test('restored auth creates private profile/device records through the service b
   assert.deepEqual(Object.keys(client.writes[1].payload).sort(), ['display_name', 'id', 'last_seen_at', 'user_id'])
   assert.equal(Object.prototype.hasOwnProperty.call(client.writes[1].payload, 'workspace'), false)
   assert.equal(Object.prototype.hasOwnProperty.call(client.writes[1].payload, 'path'), false)
+})
+
+test('avatar storage validates bounded WebP data and restores it through an account-scoped cache', async () => {
+  const config = resolveCloudConfig({
+    VITE_SUPABASE_URL: 'https://example.supabase.co',
+    VITE_SUPABASE_ANON_KEY: 'public-anon-key',
+  })
+  const user = { id: '00000000-0000-4000-8000-000000000051', email: 'avatar@example.test' }
+  const cloudStore = { profileRows: new Map(), deviceRows: new Map(), avatarObjects: new Map() }
+  const storageA = new MemoryStorage()
+  const clientA = fakeCloudClient(user, { cloudStore })
+  const engineA = new SyncEngine({ config, clientFactory: () => clientA, storage: storageA })
+  const dataUrl = 'data:image/webp;base64,U29tZSBhdmF0YXI='
+
+  assert.deepEqual(validateAvatarDataUrl(dataUrl, { maxBytes: AVATAR_MAX_BYTES, allowedMimeTypes: ['image/webp'] }), { mimeType: 'image/webp', bytes: 11 })
+  assert.throws(() => validateAvatarDataUrl('data:image/gif;base64,R0lGODlh', { allowedMimeTypes: ['image/webp'] }), /PNG, JPEG or WebP/)
+  assert.throws(() => validateAvatarDataUrl(dataUrl, { maxBytes: 4, allowedMimeTypes: ['image/webp'] }), /under 4 bytes/)
+
+  engineA.initialize()
+  await engineA.restoreSession()
+  await engineA.setAvatarDataUrl(dataUrl)
+  const path = avatarObjectPath(user.id)
+  assert.equal(engineA.getState().profile.avatar_path, path)
+  assert.equal(engineA.getState().avatar.source, 'cloud')
+  assert.equal(cloudStore.avatarObjects.has(path), true)
+  assert.equal(readCachedAvatar(storageA, user.id), dataUrl)
+
+  const storageB = new MemoryStorage()
+  const engineB = new SyncEngine({ config, clientFactory: () => fakeCloudClient(user, { cloudStore }), storage: storageB })
+  engineB.initialize()
+  await engineB.restoreSession()
+  await engineB._refreshCloudAvatar(path, user.id)
+  assert.equal(engineB.getState().avatar.source, 'cloud')
+  assert.equal(readCachedAvatar(storageB, user.id), dataUrl)
+
+  await engineB.removeAvatar()
+  assert.equal(cloudStore.avatarObjects.has(path), false)
+  assert.equal(engineB.getState().profile.avatar_path, null)
+  assert.equal(readCachedAvatar(storageB, user.id), '')
+  engineA.dispose()
+  engineB.dispose()
 })
 
 test('sign-out returns to local Forge without deleting the local device identity', async () => {

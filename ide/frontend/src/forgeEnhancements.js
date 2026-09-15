@@ -1,3 +1,14 @@
+import { syncEngine } from './cloud/syncEngine.js'
+import {
+  AVATAR_CLOUD_MIME_TYPES,
+  AVATAR_MAX_BYTES,
+  AVATAR_MAX_SOURCE_BYTES,
+  AVATAR_MIME_TYPES,
+  readCachedAvatar,
+  validateAvatarDataUrl,
+  writeCachedAvatar,
+} from './cloud/avatarStorage.js'
+
 const ICONS = {
   Forge: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 15h16M7 15V9l5-4 5 4v6M9 19h6"/></svg>',
   'Tutor Notebook': '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3v5l-4 8a3 3 0 0 0 2.7 4h8.6A3 3 0 0 0 19 16l-4-8V3M8 11h8M9 16h6"/></svg>',
@@ -189,23 +200,15 @@ function replaceGameIcons() {
   }
 }
 
-const AVATAR_KEY = 'questlab.avatar.v1'
+let activeAvatar
 
 function getAvatar() {
-  try {
-    return localStorage.getItem(AVATAR_KEY) || ''
-  } catch {
-    return ''
-  }
+  return activeAvatar === undefined ? readCachedAvatar() : activeAvatar
 }
 
-function setAvatar(dataUrl) {
-  try {
-    if (dataUrl) localStorage.setItem(AVATAR_KEY, dataUrl)
-    else localStorage.removeItem(AVATAR_KEY)
-  } catch {
-    showToast('Could not store the avatar in this browser.', 'warn')
-  }
+function setLocalAvatar(dataUrl) {
+  activeAvatar = dataUrl || ''
+  if (!writeCachedAvatar(activeAvatar)) showToast('Could not store the avatar in this browser.', 'warn')
   applyAvatar(true)
 }
 
@@ -260,7 +263,11 @@ function createAvatarInput() {
     const file = input.files?.[0]
     input.value = ''
     if (!file) return
-    if (file.size > 5_000_000) {
+    if (!AVATAR_MIME_TYPES.includes(file.type)) {
+      showToast('Avatar must be a PNG, JPEG or WebP image.', 'warn')
+      return
+    }
+    if (file.size > AVATAR_MAX_SOURCE_BYTES) {
       showToast('Avatar image must be under 5 MB.', 'warn')
       return
     }
@@ -284,16 +291,36 @@ function createAvatarInput() {
       canvas.width = 256
       canvas.height = 256
       const context = canvas.getContext('2d')
+      if (!context) throw new Error('Canvas is unavailable.')
       const side = Math.min(image.naturalWidth, image.naturalHeight)
       const sx = (image.naturalWidth - side) / 2
       const sy = (image.naturalHeight - side) / 2
       context.drawImage(image, sx, sy, side, side, 0, 0, 256, 256)
-      setAvatar(canvas.toDataURL('image/webp', 0.86))
+
+      let dataUrl = ''
+      for (const quality of [0.86, 0.72, 0.58, 0.44, 0.32]) {
+        const candidate = canvas.toDataURL('image/webp', quality)
+        try {
+          validateAvatarDataUrl(candidate, { maxBytes: AVATAR_MAX_BYTES, allowedMimeTypes: AVATAR_CLOUD_MIME_TYPES })
+          dataUrl = candidate
+          break
+        } catch {
+          // Try a lower quality before refusing an oversized portrait.
+        }
+      }
+      if (!dataUrl) throw new Error('Avatar image must be under 1 MB after processing.')
+
+      if (syncEngine.getState().authStatus === 'signed-in') {
+        await syncEngine.setAvatarDataUrl(dataUrl)
+        showToast('Character portrait synced to your account.', 'success')
+      } else {
+        setLocalAvatar(dataUrl)
+        showToast('Character portrait updated on this device.', 'success')
+      }
       document.querySelector('.avatar-controls')?.remove()
       installAvatarControls()
-      showToast('Character portrait updated on this device.', 'success')
-    } catch {
-      showToast('That image could not be loaded.', 'warn')
+    } catch (error) {
+      showToast(error?.message || 'That image could not be loaded.', 'warn')
     }
   })
   document.body.appendChild(input)
@@ -314,17 +341,28 @@ function installAvatarControls() {
   if (getAvatar()) {
     const remove = document.createElement('button')
     remove.textContent = 'Remove'
-    remove.addEventListener('click', () => {
-      setAvatar('')
-      controls.remove()
-      installAvatarControls()
-      showToast('Character portrait removed.')
+    remove.addEventListener('click', async () => {
+      try {
+        if (syncEngine.getState().authStatus === 'signed-in') await syncEngine.removeAvatar()
+        else setLocalAvatar('')
+        controls.remove()
+        installAvatarControls()
+        showToast(syncEngine.getState().authStatus === 'signed-in' ? 'Character portrait removed from your account.' : 'Character portrait removed.')
+      } catch (error) {
+        showToast(error?.message || 'Avatar could not be removed.', 'warn')
+      }
     })
     controls.appendChild(remove)
   }
 
   card.appendChild(controls)
 }
+
+window.addEventListener('questlab:avatar-updated', (event) => {
+  activeAvatar = typeof event.detail?.dataUrl === 'string' ? event.detail.dataUrl : ''
+  applyAvatar(true)
+  installAvatarControls()
+})
 
 function enhance() {
   installSubmitButton()

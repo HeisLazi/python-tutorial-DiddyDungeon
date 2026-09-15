@@ -66,22 +66,45 @@ Hosted Auth is configured to require email confirmation (`mailer_autoconfirm=fal
   on other signed-in devices. A non-starter cloud projection still raises an
   explicit conflict; no timestamp or newest-file heuristic is used.
 
+### Milestone D — Avatar cloud storage implemented and gated
+
+- Added the private `avatars` bucket and account-scoped Storage RLS policies.
+  Each account has one fixed object path, `<auth-user-id>/avatar.webp`; the
+  profile stores only that bounded reference in `avatar_path`.
+- Avatar uploads accept PNG/JPEG/WebP source files up to 5 MB, center-crop to a
+  256px WebP and enforce a 1 MB cloud payload limit before calling Supabase
+  Storage. The bucket independently enforces the WebP type and 1 MB limit.
+- `SyncEngine` owns avatar upload, profile-reference update, download and
+  removal. Forge controls call that boundary when signed in and retain the
+  existing local-only path when offline or anonymous.
+- Successful downloads are cached under an account-scoped local key and
+  delivered through `questlab:avatar-updated`; a previously synced portrait is
+  restored from that cache during an offline session without blocking gameplay.
+  Async avatar work is invalidated when the account changes or a newer upload /
+  removal starts, so a stale download cannot resurrect a removed portrait.
+
 ## Supabase project and schema
 
 - Dedicated project: `Quest Lab` (`ajnxexxcqfbozszwpjpk`) in `HeisLazi's Org`.
 - `Lazi-os` was not linked, changed or queried for migrations.
-- Migration: `supabase/migrations/20260914000100_profiles_devices.sql`.
-- Tables: `public.profiles` and `public.devices`.
+- Migrations: `supabase/migrations/20260914000100_profiles_devices.sql` and
+  `supabase/migrations/20260915000400_avatar_storage.sql`.
+- Tables: `public.profiles` and `public.devices`; `profiles.avatar_path` is a
+  bounded account-owned reference to the private `avatars` Storage bucket.
 - `profiles.id` references `auth.users(id)` with cascade delete; the auth-user trigger creates a profile from display-name metadata or the email local part.
 - Device labels are bounded to 80 characters, reject control characters and path-like `/`, `\\` and `:` characters, and are indexed by `user_id`.
 - `updated_at` triggers keep profile/device timestamps current.
 
 ## RLS policies
 
-Both tables have RLS enabled and anonymous access revoked.
+Identity tables have RLS enabled and anonymous access revoked. The private
+`avatars` bucket has owner-only object policies for select/insert/update/delete
+and accepts only the fixed `<auth-user-id>/avatar.webp` path.
 
 - `profiles_select_own`, `profiles_insert_own`, `profiles_update_own`
 - `devices_select_own`, `devices_insert_own`, `devices_update_own`, `devices_delete_own`
+- `avatars_objects_select_own`, `avatars_objects_insert_own`,
+  `avatars_objects_update_own`, `avatars_objects_delete_own`
 
 Every policy is scoped to `(select auth.uid())`, with matching `WITH CHECK` clauses for writes. `supabase/tests/profiles_devices_rls.sql` runs isolated User A/User B fixtures and proves private reads, cross-user insert rejection and cross-user update protection. The suite passed against the linked Quest Lab database.
 
@@ -98,20 +121,21 @@ The local `ide/frontend/.env.local` is ignored by Git. No service-role/secret ke
 
 Without both public variables, the service does not construct a Supabase client and reports `Offline / Local Mode`; `progress.json`, the local filesystem, Forge, Monaco and PTYs continue to operate. With cloud variables but no session, the Settings surface reports `Sign in to sync`. After sign-out, the local Forge remains usable and the local device-ID map is retained.
 
-The bounded C slice is now implemented, but it remains gated until a
-confirmed-mailbox account and a hosted two-device run are available. The local
-cache/outbox is authoritative while offline, and a newer cloud revision is
-never replaced by an older device snapshot.
+The bounded C/D slices are now implemented, but hosted acceptance remains
+gated until a confirmed-mailbox account can exercise two-device state and
+avatar transport. The local cache/outbox is authoritative while offline, and a
+newer cloud revision is never replaced by an older device snapshot.
 
 ## Verification commands and results
 
-- `npm test` — 18 frontend cloud/runtime/sync tests passed.
+- `npm test` — 20 frontend cloud/runtime/sync tests passed.
 - `npm run build` — Vite production build passed.
 - WSL Forge launch with no cloud variables — backend health returned HTTP 200; both `/ws/terminal/shell` and `/ws/terminal/ai` executed independent markers.
-- WSL `npx --yes supabase db push --linked --yes` — profiles/devices plus all
-  three player-state migrations applied.
+- WSL `npx --yes supabase db push --linked --yes` — profiles/devices, all three
+  player-state migrations and the private avatar bucket migration applied.
 - WSL `npx --yes supabase db query --linked --file supabase/tests/profiles_devices_rls.sql` — `profiles_devices_rls: PASS`.
 - WSL `npx --yes supabase db query --linked --file supabase/tests/player_state_rls.sql` — `player_state_rls: PASS`.
+- WSL `npx --yes supabase db query --linked --file supabase/tests/avatar_storage_rls.sql` — `avatar_storage_rls: PASS`.
 - WSL `npx --yes supabase db lint --linked` — no schema errors.
 - Browser Settings smoke — cloud-configured Forge showed `Sign in to sync`, account creation toggle and device-account surface with no console errors.
 
@@ -120,7 +144,8 @@ never replaced by an older device snapshot.
 - An independently verified hosted PC/laptop player-state run is still
   pending; the bounded Sync Engine v1 migration, outbox, conflict UI and
   isolated two-engine reconciliation are implemented and tested.
-- Avatar Storage (D), Tauri packaging (E), Vercel surface (F), friends/presence and raid mechanics are not implemented.
+- Hosted avatar upload/download acceptance, Tauri packaging (E), Vercel surface
+  (F), friends/presence and raid mechanics remain future work.
 - A real hosted sign-in was not independently verified in this run; this
   project requires email confirmation. A signed-in account still needs the
   hosted two-device acceptance below.
@@ -447,15 +472,16 @@ campaign revision and that Settings exposes both conflict choices.
 
 ### Status and remaining gates
 
-The bounded Milestone C slice is implemented and gated. A real
-mailbox-backed signed-in session and hosted two-device game-state save remain
-to be demonstrated; the automated harness is not a claim of that physical
-acceptance. Native Windows ConPTY packaging proof and Milestones D/E/F remain
+The bounded Milestone C slice and the Milestone D avatar boundary are
+implemented and gated. A real mailbox-backed signed-in session, hosted
+two-device player-state save, and hosted avatar upload/download still need to
+be demonstrated; the automated harness is not a claim of that physical
+acceptance. Native Windows ConPTY packaging proof and Milestones E/F remain
 future work, as do friends/presence and raid mechanics. A confirmed session
 still needs the hosted Device A/Device B acceptance: sign in with the same
-account, verify the allowed projection arrives and the PTYs remain alive, then
-exercise an explicit conflict choice. The final remote branch SHA is recorded
-after the verification commit.
+account, verify the allowed projection and portrait arrive, keep both PTYs
+alive, then exercise an explicit conflict choice. The final remote branch SHA
+is recorded after the verification commit.
 
 ### Signed-in laptop state clarification
 
