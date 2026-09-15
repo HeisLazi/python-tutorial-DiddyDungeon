@@ -129,6 +129,7 @@ processes and their PTYs were not restarted.
 | F-032 | P3 | Codex usability | The Codex needed a searchable book/page projection with encounter records and bounded player notes. | Fixed in source and route tests; K&M verified search, concept pages and validated encounter records. Note persistence is covered by state-service tests; a note was not used as a live acceptance mutation on the disposable copy. |
 | F-033 | P2 | WSL frontend packaging | WSL Vite cannot resolve the Linux Rollup optional package from the shared Windows `node_modules`; this is an environment/dependency-install issue, not a source failure. | Open: Windows `npm run build` is green; install Linux dependencies in a disposable WSL checkout before using WSL Vite builds. |
 | F-034 | P2 | Secondary review | Claude Code remains unauthenticated in the WSL CLI despite the separate desktop login. | Open external gate: the review was attempted and returned `Not logged in`; no Claude approval is claimed. |
+| F-035 | P3 | Dev HMR lifecycle | Editing the running Vite source caused one disposable-runtime terminal websocket reconnect; normal revision polling/navigation did not remount it. | Open dev-only limitation: use the built/started runtime for the acceptance gate. The user's existing PTYs were never restarted; the current disposable children remained stable after HMR settled. |
 
 ### Current K&M acceptance evidence
 

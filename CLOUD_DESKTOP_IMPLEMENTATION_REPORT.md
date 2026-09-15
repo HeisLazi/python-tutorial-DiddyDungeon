@@ -693,3 +693,10 @@ approval is claimed.
 - The existing 5173 process may still be an older checkout until the user
   chooses to restart/launch the corrected branch; the new launcher exposes a
   branch mismatch instead of silently hiding it.
+
+Development note: while loading the final Codex textarea fix through Vite HMR,
+the disposable browser runtime briefly reconnected its terminal websockets.
+After HMR settled, both PTYs were `CONNECTED` and retained their marker/input
+behavior through navigation and state polling. This does not occur from the
+one-second campaign revision poll; use the production-built/normal launcher for
+the no-reset acceptance gate. Existing user PTYs were not touched.
