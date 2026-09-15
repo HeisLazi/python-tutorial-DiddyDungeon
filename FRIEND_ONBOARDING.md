@@ -47,6 +47,19 @@ Forge state service for progression changes.
 
 ## Launch from Windows
 
+To prepare a friend-safe source bundle from a reviewed commit, run this from
+the clean branch checkout:
+
+```powershell
+.\tools\questlab-package.ps1 -OutputDirectory .\questlab-bundles
+```
+
+The packager archives committed `HEAD` only. It refuses unrelated dirty source
+changes and never copies an uncommitted `progress.json` or an untracked root
+`tutor.py`; the bundle includes the committed baseline save and this guide.
+It does not install dependencies, so each friend still runs the WSL setup
+above inside the extracted checkout.
+
 From PowerShell in the cloned checkout:
 
 ```powershell

@@ -922,3 +922,20 @@ or browser checks. Its primary remaining blocker is the real hosted two-device
 Supabase acceptance; provider trust findings F-001/F-009/F-010 remain open.
 Custody migration therefore remains explicitly opt-in, and no new hosted
 Dungeon/Codex player-state fields were added.
+
+### Reproducible friend bundle — 2026-09-16
+
+Slice 7 now has a guarded distribution artifact path in
+`tools/questlab-package.ps1`. It validates the intended branch and rejects
+uncommitted source changes, while allowing the known player-owned
+`progress.json` and untracked Campaign `tutor.py` to remain in the working
+tree. The actual bundle is built from `git archive HEAD`, so neither of those
+dirty files can leak into the friend copy. It emits a commit manifest, a
+directory bundle and a ZIP; `FRIEND_ONBOARDING.md` remains the setup contract.
+
+The PowerShell parser and seven-test launcher contract suite passed. A real
+fixture run created `QuestLab-6c61317` folder/ZIP output, confirmed onboarding
+was included and confirmed root `tutor.py` was absent; the temporary artifact
+was deleted afterward. This closes the source-custody portion of the local
+distribution slice. It does not claim a clean-install launcher, Windows
+installer or Tauri desktop acceptance, and no hosted state was seeded.

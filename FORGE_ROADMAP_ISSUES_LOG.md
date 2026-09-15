@@ -304,6 +304,8 @@ The mutation was disposable and both backends were stopped afterward.
 |---|---|---|---|---|
 | F-044 | P2 | Two-device local isolation | Slice 7 needed evidence that separate local roots do not share a save before hosted sync is attempted. | Verified locally with two disposable state services and K&M on the clean runtime. This proves isolation only; hosted mailbox synchronization and real save-custody migration remain open. |
 
+| F-046 | P2 | Friend bundle custody | A friend-facing bundle could accidentally be made from the dirty OneDrive working tree, carrying the player's uncommitted save or Campaign `tutor.py` into distribution. | Fixed locally: `tools/questlab-package.ps1` archives committed `HEAD` only, refuses unrelated dirty source files, emits a manifest/zip, and leaves the live save and untracked tutor notebook out. Clean-install launch and Tauri desktop proof remain separate gates. |
+
 ## Verification update — 2026-09-15 — WSL launcher dependency preflight
 
 The guarded launcher now checks for a native `@rollup/rollup-linux-*` optional
@@ -412,3 +414,14 @@ migration the default was not adopted: explicit opt-in and no silent save
 movement are safety requirements. The roadmap and Milestone A–F handoff are
 now cross-linked in the execution plan/report rather than treated as one
 combined approval.
+
+## Verification update — 2026-09-16 — reproducible friend bundle
+
+The new `tools/questlab-package.ps1` contract was exercised from the dirty
+working tree. It refused an uncommitted source fixture, then succeeded after
+the semantic commit using `git archive HEAD`, producing a folder and ZIP with
+the branch/commit manifest and `FRIEND_ONBOARDING.md`. The package contained
+the committed baseline `progress.json` from `HEAD`, but did not contain the
+untracked root `tutor.py` or any uncommitted player-state bytes. The temporary
+bundle was removed afterward. This is distribution-custody evidence, not a
+claim that a Windows installer or Tauri desktop window has been proven.
