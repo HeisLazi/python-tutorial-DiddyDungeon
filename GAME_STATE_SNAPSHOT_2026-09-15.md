@@ -1,84 +1,99 @@
 # Forge game snapshot — 2026-09-15
 
-This is a persistent baseline for the full-roadmap pass. It records what was
-confirmed before the next implementation slice, what is deliberately still
-open, and which worktree/runtime is serving the visible app.
+This is the persistent baseline for the current full-roadmap pass. It records
+the actual source/save state, the local runtimes that were inspected, and the
+remaining release gates. It is a snapshot, not a progression mutation.
 
 ## Source baseline
 
 - Branch: `feature/cloud-sync-desktop`
-- Local and remote HEAD at snapshot time: `ddb7fed2eff7c10bea385a76083725f84b34579b`
+- Local and remote HEAD at snapshot time: `8a0443afa3f1e5a31a0045e26ab558fe3b5bd5f5`
 - Canonical checkout: `/mnt/c/Users/lazar/OneDrive/Documents/ChatGPT/Python Quest Lab`
-- The checkout contains user-owned working-tree state in `progress.json` and an
-  untracked root `tutor.py`. Neither is to be staged, overwritten, or treated
-  as disposable test data.
-- No Supabase seed, sign-in flow, legacy `progress.json`, or Lazi OS files were
-  touched for this snapshot.
+- The checkout has user-owned working-tree state in `progress.json` and an
+  untracked root `tutor.py`. Neither was staged, overwritten, or used as test
+  data.
+- No Lazi OS files, legacy `progress.json`, Supabase seed, or account data were
+  changed for this snapshot.
 
-## State observed (read-only)
+## Canonical state observed read-only
 
-The canonical working-tree save currently contains the previously reconciled
-Blackjack evidence: Level 2, 50 current XP, 150 lifetime XP, 55 coins, and
-three defeated mobs. The next active mob is The Hitman. This is an observation,
-not a new mutation in this snapshot.
+The canonical `progress.json` currently reports revision 2 and the previously
+approved Blackjack reconciliation:
+
+- Level 2; 50 / 100 current XP; 150 lifetime XP; 55 coins;
+- HP 100 / 100;
+- Blackjack at 38% project progress;
+- The Empty Table, The Dealer's Hand and The Count Keeper defeated;
+- The Hitman available as the current Mob 3; later mobs locked;
+- three Codex encounter records;
+- First Blood unlocked;
+- Apprentice Coat equipped, no trinket, Apprentice Coder title;
+- no validated mastery shield, companion evolution, interview completion or
+  unsupported equipment reward was inferred.
+
+The canonical state contains two reconciliation events (revisions 1 and 2).
+The second is the idempotent current-quest correction; no reward history was
+invented. The workspace/legacy save remains evidence only.
 
 ## Runtime map
 
-The visible long-lived Forge remains the user's existing runtime on port 5173:
+- The older long-lived Forge on port 5173/backend 7332 still serves
+  `/home/lazi/projects/python-tutorial-DiddyDungeon` on `feature/quest-lab-ide`.
+  Its shell/AI PTYs were not restarted.
+- The current checkout has a separate long-lived verification runtime on
+  port 5174/backend 7333. A disposable current-branch runtime on
+  `http://127.0.0.1:5183/` (backend 7350) was launched and stopped after the
+  latest namespace K&M check; it used an isolated `/tmp` save and workspace.
+- No runtime from this pass changed the user's live save or existing PTY
+  sessions.
 
-- frontend: `/home/lazi/projects/python-tutorial-DiddyDungeon` on
-  `feature/quest-lab-ide`, port 5173;
-- backend: port 7332;
-- shell and AI PTYs: existing sessions (PIDs 111021/111022 and their terminal
-  children) retained.
+## Confirmed surfaces
 
-The current `feature/cloud-sync-desktop` checkout is available separately for
-verification on port 5174/backend 7333. Disposable browser test runtimes may
-also exist, but they are not player state authorities.
-
-## Confirmed surfaces at baseline
-
-- controlled local state gateway and revision-aware campaign polling;
+- One canonical local state-service authority with revision/event polling;
 - live HUD, Character, Homestead, Quest Journal and Codex projections;
 - queued state-service reward/event notifications;
-- Campaign Tutor Notebook (`tutor.py`) kept separate from the independent
-  Practice mode;
-- Battle submission/verdict boundary with canonical Resolve, HP, Codex attempt
-  and mob-clear mutations;
-- Infinite Dungeon checkpoint foundation with controlled `dungeon.py`
-  projection, blank-on-question-rotation and reset-on-death rules;
-- monochrome SVG top-stat icons, with direct-child stat-pill selectors;
-- local cosmetic purchase/equip flow and account-scoped sync scaffolding.
+- Campaign Tutor Notebook (`tutor.py`) kept separate from Practice;
+- Battle submission/verdict boundary with canonical Resolve, HP, Codex and
+  mob-clear mutations;
+- Infinite Dungeon checkpoint, blank-on-rotation, adaptive local loop,
+  rest/market, death reset and local leaderboard foundation;
+- independent Practice sessions/history with no Campaign/Dungeon rewards;
+- searchable Codex concept/encounter pages and bounded field notes;
+- guarded Windows/WSL launcher, upstream freshness diagnostics and executable
+  `questlab-state`;
+- checkout-scoped browser sync metadata (device identity/label, cursor and
+  outbox) using an opaque runtime namespace;
+- monochrome SVG top-stat icons using direct-child stat-pill selectors.
 
-The prior verification record reports 39 WSL backend tests, 24 frontend source
-tests, a passing Windows Vite build, and a manual browser K&M check showing
-live revision updates while both PTYs stayed connected. Those claims are the
-baseline evidence and will be rerun at milestone checkpoints.
+## Latest verification evidence
 
-## Known open gates
+- WSL backend suite: 56 tests passing.
+- Frontend source/runtime suite: 30 tests passing.
+- Windows Vite production build: passed.
+- Clean ext4 archive: WSL `npm ci` plus Vite build passed after 1,344 modules.
+- Browser verification used only click/scroll/type K&M automation. A fresh
+  runtime showed Level 2 / 55 XP / 62 coins and all five SVG icons; a typed
+  compare-and-swap state-service mutation changed HUD and Character coins to
+  63 without refresh. Quest Journal stayed on Mob 3 The Hitman, Codex kept
+  validated records, and both shell/AI surfaces stayed `CONNECTED`.
 
-- the visible launcher/runtime still points at the older checkout (roadmap
-  issue F-025), so the latest branch UI is not automatically what port 5173
-  serves;
-- provider-authenticated Battle adjudication, hosted sync acceptance, and
-  multi-tab challenge isolation remain release gates;
-- Dungeon question/verdict generation, rest/market rooms, death UI, scoring,
-  leaderboard and Practice history are not yet complete;
-- next-project selection, boss interview/clear flow, Codex library depth,
-  Homestead presentation, friend onboarding and hosted multiplayer remain
-  roadmap work.
+## Remaining release gates
 
-## Unverified draft in the worktree
-
-The next campaign slice has been drafted but not yet tested or committed:
-finishing the mob sequence opens a state-service-owned boss gate, and the
-internal `record_boss_clear` command requires separate behaviour, explanation
-and interview evidence before awarding the documented +100 XP boss reward.
-This draft is intentionally not represented as a completed boss clear.
+- F-001/F-009/F-010: provider-authenticated adjudication and tab/account-scoped
+  challenge storage before hosted learning proof;
+- F-018: hosted Dungeon state/leaderboard and cross-device run resume;
+- F-025/F-031: the old 5173 process remains an explicitly user-managed stale
+  checkout; new launches use the guarded launcher;
+- F-033: shared OneDrive `node_modules` still needs Linux-local installation,
+  although clean ext4 packaging is proven;
+- F-034/F-035: WSL Claude CLI auth and dev-only HMR limitation;
+- F-039: tracked canonical cache plus OneDrive third-writer custody remains an
+  explicit migration decision, not a silent move;
+- clean-install/two-device mailbox acceptance, native/Tauri packaging and
+  hosted friends/presence/raids remain unstarted or gated.
 
 ## Safety boundary
 
-All progression writes must continue through the canonical state service. A
-legacy/workspace `progress.json` is evidence only, never a second save. Browser
+All progression writes continue through the canonical state service. A
+workspace `progress.json` is legacy evidence, never a second save. Browser
 verification must use keyboard/mouse automation only; Playwright is excluded.
-

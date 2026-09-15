@@ -127,7 +127,7 @@ processes and their PTYs were not restarted.
 | F-030 | P2 | Dungeon progression | The local loop lacked adaptive focus, room transitions, rest/market actions and a bounded leaderboard. | Fixed locally: adaptive focus uses only recorded Codex weakness/incorrect-result evidence; encounters, rest, market, death, banked runs and leaderboard summaries are canonical and answer-free. Hosted transport remains gated. |
 | F-031 | P2 | Runtime checkout | An older long-lived 5173 process can still show a different checkout if it was started before the launcher fix. | Fixed for new launches: `ide/quest.py` exports the expected branch and `/api/runtime` exposes workspace/repo/canonical paths plus branch mismatch health. Existing 5173 is intentionally left running and remains a user restart/launch choice. |
 | F-032 | P3 | Codex usability | The Codex needed a searchable book/page projection with encounter records and bounded player notes. | Fixed: source/route tests and K&M verified search, concept pages, validated encounter records, and a live saved field note (`CODEX NOTE SAVED`) on the disposable copy. |
-| F-033 | P2 | WSL frontend packaging | WSL Vite cannot resolve the Linux Rollup optional package from the shared Windows `node_modules`; this is an environment/dependency-install issue, not a source failure. | Open: Windows `npm run build` is green; install Linux dependencies in a disposable WSL checkout before using WSL Vite builds. |
+| F-033 | P2 | WSL frontend packaging | WSL Vite cannot resolve the Linux Rollup optional package from the shared Windows `node_modules`; this is an environment/dependency-install issue, not a source failure. | Open but narrowed: a clean ext4 archive passed WSL `npm ci` and `npm run build`; install Linux dependencies in a disposable WSL checkout rather than reusing the shared OneDrive tree. |
 | F-034 | P2 | Secondary review | Claude Code remains unauthenticated in the WSL CLI despite the separate desktop login. | WSL CLI remains open, but an authenticated Claude browser review completed read-only against the current OneDrive checkout/archive. Its findings are recorded below; no external approval claim is made. |
 | F-035 | P3 | Dev HMR lifecycle | Editing the running Vite source caused one disposable-runtime terminal websocket reconnect; normal revision polling/navigation did not remount it. | Open dev-only limitation: use the built/started runtime for the acceptance gate. The user's existing PTYs were never restarted; the current disposable children remained stable after HMR settled. |
 
@@ -193,7 +193,7 @@ migration decision.
 | F-039 | P2 | Offline save custody | The tracked `progress.json` remains a live cache and OneDrive remains a third filesystem replicator. | Open by design: do not touch the player's save or move the checkout silently. Requires an approved ignored per-device save migration and a non-OneDrive clean-install/two-device test. |
 | F-040 | P2 | Duplicate projection polling | The legacy DOM combat shell and React both polled the campaign revision every second, duplicating full fetch/git work and contributing to sync churn. | Fixed: `combatShell.js` now consumes React's `questlab:campaign-updated` event only; source test asserts no second revision timer/fetch. |
 
-The post-fix automated counts are 55 WSL backend tests, 29 frontend tests and
+The post-fix automated counts are 56 WSL backend tests, 30 frontend tests and
 a green Windows Vite production build. No Playwright was used.
 
 ## Verification update — 2026-09-15 — checkout-scoped sync metadata
