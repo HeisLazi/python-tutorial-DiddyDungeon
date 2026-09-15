@@ -271,3 +271,22 @@ This is a plan/review finding, not approval to migrate the player's live save.
 The current tracked canonical cache remains untouched until an explicit custody
 choice is made; implementation work must use disposable fixtures and an opt-in
 boundary.
+
+## Verification update — 2026-09-15 — read-only custody preview
+
+The first safe implementation slice of Claude's custody recommendation is now
+in place. The state service exposes `/api/state/custody` and includes the same
+bounded report in `/api/runtime`; `questlab-state custody` reads that report
+through the localhost gateway. It derives an opaque per-device destination,
+reports source/destination revisions and exact digests, and distinguishes
+`approval-required`, `already-local`, `conflict`, `current` and
+`no-source-found` without selecting a newest file.
+
+| ID | Severity | Area | Finding | Status |
+|---|---|---|---|---|
+| F-043 | P2 | Custody migration safety | The roadmap needed a way to inspect the proposed per-device destination without accidentally moving or merging the live save. | Fixed locally as a read-only preview: no copy, merge, revision increment, event, source deletion or default-launch behavior occurs. Actual migration remains explicitly approval-gated. |
+
+The new endpoint/CLI and existing state-authority tests pass in the WSL suite
+(58 backend tests, 31 frontend tests);
+the live canonical save and workspace legacy file were not touched and remain
+outside the write path.

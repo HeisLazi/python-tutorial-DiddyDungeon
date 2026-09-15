@@ -82,6 +82,7 @@ def build_parser() -> argparse.ArgumentParser:
     subparsers.add_parser("authority", help="show the canonical state authority and current revision")
     subparsers.add_parser("campaign", help="read the current canonical campaign projection")
     subparsers.add_parser("runtime", help="read checkout, path and command health for the running Forge")
+    subparsers.add_parser("custody", help="preview the opt-in per-device state custody destination")
     return parser
 
 
@@ -188,6 +189,8 @@ def main(argv: list[str] | None = None) -> int:
             return _get(args.backend_port, "/api/campaign")
         if args.command == "runtime":
             return _get(args.backend_port, "/api/runtime")
+        if args.command == "custody":
+            return _get(args.backend_port, "/api/state/custody")
     except argparse.ArgumentTypeError as exc:
         parser.error(str(exc))
     return _reserved(args.command)

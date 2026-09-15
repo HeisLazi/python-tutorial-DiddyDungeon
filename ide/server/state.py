@@ -7,6 +7,7 @@ paths, JSON patches and direct snapshots are intentionally unsupported.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import re
@@ -467,6 +468,62 @@ def state_authority_info(canonical_path: Path, workspace_path: Path) -> dict[str
         "legacy_present": bool(not same_path and legacy.is_file()),
         "legacy_authoritative": False,
         "legacy_requires_approval": bool(not same_path and legacy.is_file()),
+    }
+
+
+def state_custody_report(canonical_path: Path, proposed_path: Path | None) -> dict[str, Any]:
+    """Describe an opt-in per-device custody destination without migrating it.
+
+    This is intentionally read-only.  It compares exact file digests when a
+    destination already exists; revision numbers are reported for context, but
+    are never used to choose a winner.  A caller must use a future explicit
+    gateway migration command after human approval.
+    """
+
+    canonical = canonical_path.resolve()
+    proposed = proposed_path.resolve() if proposed_path is not None else None
+    source = _read_state_file(canonical)
+    destination = _read_state_file(proposed) if proposed is not None else None
+
+    source_digest = None
+    destination_digest = None
+    try:
+        source_digest = hashlib.sha256(canonical.read_bytes()).hexdigest()
+    except (FileNotFoundError, OSError):
+        pass
+    if proposed is not None:
+        try:
+            destination_digest = hashlib.sha256(proposed.read_bytes()).hexdigest()
+        except (FileNotFoundError, OSError):
+            pass
+
+    if source is None:
+        status = "no-source-found"
+    elif proposed is None:
+        status = "approval-required"
+    elif canonical == proposed:
+        status = "current"
+    elif destination is None:
+        status = "approval-required"
+    elif source_digest == destination_digest:
+        status = "already-local"
+    else:
+        status = "conflict"
+
+    revision = lambda value: (value.get("meta") or {}).get("revision") if isinstance(value, dict) else None
+    return {
+        "canonical_path": str(canonical),
+        "proposed_path": str(proposed) if proposed is not None else None,
+        "status": status,
+        "approval_required": status in {"approval-required", "conflict"},
+        "source_present": source is not None,
+        "destination_present": destination is not None,
+        "source_revision": revision(source),
+        "destination_revision": revision(destination),
+        "source_digest": source_digest,
+        "destination_digest": destination_digest,
+        "migration_write_performed": False,
+        "migration_note": "Read-only preview. No automatic copy, merge, newest-revision choice or source deletion is performed.",
     }
 
 

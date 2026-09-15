@@ -50,12 +50,14 @@ class StateCliTests(unittest.TestCase):
         self.assertEqual(state_cli.main(["--backend-port", "7444", "authority"]), 0)
         self.assertEqual(state_cli.main(["--backend-port", "7444", "campaign"]), 0)
         self.assertEqual(state_cli.main(["--backend-port", "7444", "runtime"]), 0)
+        self.assertEqual(state_cli.main(["--backend-port", "7444", "custody"]), 0)
         self.assertEqual(
             get.call_args_list,
             [
                 ((7444, "/api/state/revision"), {}),
                 ((7444, "/api/campaign"), {}),
                 ((7444, "/api/runtime"), {}),
+                ((7444, "/api/state/custody"), {}),
             ],
         )
 

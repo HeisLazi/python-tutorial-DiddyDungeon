@@ -172,6 +172,7 @@ test('PTY state commands inherit the canonical gateway instead of workspace prog
 test('runtime health exposes the checkout and one canonical state authority', () => {
   const app = source('../../../server/app_v2.py')
   const launcher = source('../../../quest.py')
+  const cli = source('../../../state_cli.py')
   const views = source('../AppV2.jsx')
 
   assert.match(app, /expected_branch/)
@@ -181,6 +182,8 @@ test('runtime health exposes the checkout and one canonical state authority', ()
   assert.match(app, /behind_upstream/)
   assert.match(app, /canonical_state_path/)
   assert.match(app, /sync_storage_namespace/)
+  assert.match(app, /state_custody/)
+  assert.match(cli, /subparsers\.add_parser\("custody"/)
   assert.match(launcher, /QUESTLAB_EXPECTED_BRANCH/)
   assert.match(views, /CHECKOUT MISMATCH/)
   assert.match(views, /CHECKOUT STALE/)

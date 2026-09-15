@@ -44,6 +44,7 @@ from ide.server.state import (
     StateSyncApplyRequest,
     legacy_state_report,
     opaque_device_id,
+    state_custody_report,
     state_authority_info,
 )
 
@@ -84,6 +85,23 @@ def configured_progress_path() -> Path:
     if not candidate.is_absolute():
         candidate = REPO_ROOT / candidate
     return candidate.resolve()
+
+
+def proposed_local_state_path() -> Path:
+    """Return the opt-in per-device destination without making it canonical."""
+
+    override = os.getenv("QUESTLAB_LOCAL_STATE_ROOT", "").strip()
+    if override:
+        root = Path(override).expanduser()
+    elif os.name == "nt":
+        root = Path(os.getenv("LOCALAPPDATA", Path.home() / "AppData" / "Local")) / "QuestLab"
+    else:
+        root = Path(os.getenv("XDG_STATE_HOME", Path.home() / ".local" / "state")) / "QuestLab"
+    return (root / checkout_storage_namespace() / "progress.json").resolve()
+
+
+def local_state_custody_report() -> dict[str, object]:
+    return state_custody_report(PROGRESS_PATH, proposed_local_state_path())
 
 
 PROGRESS_PATH = configured_progress_path()
@@ -601,6 +619,7 @@ def runtime():
         "workspace_git": workspace_git,
         "repo_git": repo_git,
         "state_authority": state_authority_info(PROGRESS_PATH, WORKSPACE),
+        "state_custody": local_state_custody_report(),
         "commands": {
             "python3": command_available("python3"),
             "git": command_available("git"),
@@ -754,6 +773,13 @@ def state_revision():
         "sync_storage_namespace": checkout_storage_namespace(),
         "state_authority": state_authority_info(PROGRESS_PATH, WORKSPACE),
     }
+
+
+@app.get("/api/state/custody")
+def state_custody():
+    """Return a read-only preview of the opt-in local custody destination."""
+
+    return local_state_custody_report()
 
 
 @app.get("/api/state/sync")
