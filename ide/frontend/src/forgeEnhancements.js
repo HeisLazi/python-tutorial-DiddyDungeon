@@ -111,6 +111,7 @@ function contextPrompt(context, fallbackOutput) {
   const fileLabel = activeFile?.path || activeFileLabel()
   const fileContent = activeFile?.content || ''
   const gitDiff = context?.git?.diff || ''
+  const verdict = context?.verdict || null
 
   return [
     'Quest Lab structured context from the local PYR bridge.',
@@ -139,6 +140,9 @@ function contextPrompt(context, fallbackOutput) {
     '',
     'Validated current quest/mob state (future locked encounters are omitted):',
     JSON.stringify({ quest, encounter, assistance }, null, 2),
+    '',
+    `Battle verdict challenge: ${verdict?.nonce || '(none; capture context while an encounter is active)'}`,
+    'Only after independently verifying the submitted answer, use POST /api/pyr/verdict with this one-time challenge, verdict, objective_id, evidence_id and reason. Never supply Impact, reward or damage values.',
     '',
     'Act as PYR under TUTOR_CONTRACT.md. Do not invent rewards or mutate player state directly. Tutor me from this context using the hint ladder; use tutor.py for examples and send any progression decision through the controlled state service.',
     '',

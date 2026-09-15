@@ -97,6 +97,10 @@ Hosted Auth is configured to require email confirmation (`mailer_autoconfirm=fal
 - Submit Run now asks the bridge for a structured context payload before
   sending it to the selected local AI terminal. If the bridge is unavailable,
   the existing safe fallback remains available.
+- Added a challenged `POST /api/pyr/verdict` boundary for the next combat
+  slice. A one-time nonce binds a correct/incorrect verdict to the captured
+  campaign revision and active mob; only canonical objective Impact, rewards,
+  armor and counterattack values can be applied by the state service.
 
 ## Supabase project and schema
 
@@ -164,7 +168,8 @@ newer cloud revision is never replaced by an older device snapshot.
 - Hosted avatar upload/download acceptance, Tauri packaging (E), Vercel surface
   (F), friends/presence and raid mechanics remain future work.
 - A real browser-level PYR verdict path is still pending; the current context
-  bridge is read-only and does not award Impact, XP, coins or HP changes.
+  bridge/verdict boundary has no provider-side answer adjudicator or player
+  Battle UI yet. Do not treat a caller-supplied verdict as proof of learning.
 - A real hosted sign-in was not independently verified in this run; this
   project requires email confirmation. A signed-in account still needs the
   hosted two-device acceptance below.

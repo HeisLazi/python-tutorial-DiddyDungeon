@@ -7,6 +7,7 @@ import importlib.util
 import json
 import os
 import pty
+import secrets
 import shutil
 import signal
 import struct
@@ -14,11 +15,13 @@ import subprocess
 import sys
 import termios
 import threading
+import time
 from pathlib import Path
+from typing import Literal
 
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from ide.server.context_bridge import (
@@ -97,6 +100,7 @@ PYR_CONTEXT_INPUT: dict[str, str | None] = {
     "selection": "",
     "terminal_tail": "",
 }
+PYR_CONTEXT_CHALLENGE: dict[str, object] | None = None
 
 app = FastAPI(title="Python Quest Lab Local Server", version="0.4.0")
 app.add_middleware(TrustedHostMiddleware, allowed_hosts=list(allowed_hosts()))
@@ -132,9 +136,21 @@ class HomesteadEquip(BaseModel):
 
 
 class PyrContextRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     active_path: str | None = None
     selection: str = ""
     terminal_tail: str = ""
+
+
+class PyrVerdictRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    nonce: str
+    verdict: Literal["correct", "incorrect"]
+    objective_id: str | None = None
+    evidence_id: str
+    reason: str
 
 
 def safe_path(relative: str) -> Path:
@@ -382,7 +398,57 @@ def state_legacy_report():
     return legacy_state_report(PROGRESS_PATH, legacy_progress_path())
 
 
-def _capture_pyr_context(payload: PyrContextRequest) -> dict:
+PYR_VERDICT_TTL_SECONDS = 300
+PYR_RAW_DAMAGE_BY_MOB = (6, 10, 15, 18, 22, 24, 26, 28)
+
+
+def _attach_pyr_verdict_challenge(
+    context: dict,
+    *,
+    revision: int,
+    encounter: dict | None,
+    rotate: bool,
+) -> None:
+    """Attach one short-lived challenge for a trusted PYR verdict call."""
+
+    global PYR_CONTEXT_CHALLENGE
+    mob_name = encounter.get("mob_name") if isinstance(encounter, dict) else None
+    project_id = encounter.get("project_id") if isinstance(encounter, dict) else None
+    if not mob_name or not project_id:
+        with PYR_CONTEXT_LOCK:
+            PYR_CONTEXT_CHALLENGE = None
+        context["verdict"] = None
+        return
+
+    now = time.monotonic()
+    with PYR_CONTEXT_LOCK:
+        existing = PYR_CONTEXT_CHALLENGE
+        valid_existing = (
+            isinstance(existing, dict)
+            and existing.get("revision") == revision
+            and existing.get("project_id") == project_id
+            and existing.get("mob_name") == mob_name
+            and float(existing.get("expires_at", 0)) > now
+        )
+        if rotate or not valid_existing:
+            existing = {
+                "nonce": secrets.token_urlsafe(24),
+                "revision": revision,
+                "project_id": project_id,
+                "mob_name": mob_name,
+                "expires_at": now + PYR_VERDICT_TTL_SECONDS,
+            }
+            PYR_CONTEXT_CHALLENGE = existing
+        context["verdict"] = {
+            "nonce": existing["nonce"],
+            "revision": existing["revision"],
+            "project_id": existing["project_id"],
+            "mob_name": existing["mob_name"],
+            "expires_in": max(0, int(float(existing["expires_at"]) - now)),
+        }
+
+
+def _capture_pyr_context(payload: PyrContextRequest, *, rotate_challenge: bool = False) -> dict:
     active_path = payload.active_path.strip() if payload.active_path else ""
     if len(active_path) > 240 or any(ord(character) < 32 for character in active_path):
         raise HTTPException(status_code=422, detail="active_path must be a bounded relative path")
@@ -410,10 +476,11 @@ def _capture_pyr_context(payload: PyrContextRequest) -> dict:
         progress, metadata = STATE_SERVICE.snapshot_with_metadata()
     except StateCommandError as exc:
         raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
+    encounter = STATE_SERVICE.encounter_projection(progress)
     context = build_context(
         progress=progress,
         revision=metadata["revision"],
-        encounter=STATE_SERVICE.encounter_projection(progress),
+        encounter=encounter,
         workspace=WORKSPACE,
         active_path=normalized_path,
         active_file=active_file,
@@ -430,6 +497,12 @@ def _capture_pyr_context(payload: PyrContextRequest) -> dict:
                 "terminal_tail": terminal_tail,
             }
         )
+    _attach_pyr_verdict_challenge(
+        context,
+        revision=metadata["revision"],
+        encounter=encounter,
+        rotate=rotate_challenge,
+    )
     return context
 
 
@@ -450,7 +523,90 @@ def read_pyr_context():
 def write_pyr_context(payload: PyrContextRequest):
     """Capture explicit UI context for a local PYR client without mutating state."""
 
-    return {"ok": True, "context": _capture_pyr_context(payload)}
+    return {"ok": True, "context": _capture_pyr_context(payload, rotate_challenge=True)}
+
+
+@app.post("/api/pyr/verdict")
+def apply_pyr_verdict(payload: PyrVerdictRequest):
+    """Apply one challenged PYR Battle verdict through the state service.
+
+    The challenge binds the verdict to the campaign revision and active mob
+    that the context bridge returned. The caller can choose only correct or
+    incorrect; Impact, rewards and counterattack damage remain canonical
+    server/state-service values.
+    """
+
+    nonce = payload.nonce.strip()
+    if len(nonce) < 16 or len(nonce) > 128 or any(ord(character) < 33 for character in nonce):
+        raise HTTPException(status_code=422, detail="nonce must be a bounded challenge token")
+    objective_id = payload.objective_id.strip() if payload.objective_id else None
+    if payload.verdict == "correct" and not objective_id:
+        raise HTTPException(status_code=422, detail="A correct verdict requires objective_id")
+    if payload.verdict == "incorrect" and not objective_id:
+        raise HTTPException(status_code=422, detail="An incorrect verdict requires objective_id")
+
+    global PYR_CONTEXT_CHALLENGE
+    with PYR_CONTEXT_LOCK:
+        challenge = PYR_CONTEXT_CHALLENGE
+        now = time.monotonic()
+        if not isinstance(challenge, dict) or challenge.get("nonce") != nonce:
+            raise HTTPException(status_code=409, detail="PYR verdict challenge is missing or already used")
+        if float(challenge.get("expires_at", 0)) <= now:
+            PYR_CONTEXT_CHALLENGE = None
+            raise HTTPException(status_code=409, detail="PYR verdict challenge expired; capture context again")
+
+        with PROGRESS_LOCK:
+            try:
+                progress, metadata = STATE_SERVICE.snapshot_with_metadata()
+                encounter = STATE_SERVICE.encounter_projection(progress)
+                if metadata["revision"] != challenge.get("revision"):
+                    PYR_CONTEXT_CHALLENGE = None
+                    raise HTTPException(status_code=409, detail="Campaign changed; capture fresh PYR context")
+                if (
+                    not isinstance(encounter, dict)
+                    or encounter.get("project_id") != challenge.get("project_id")
+                    or encounter.get("mob_name") != challenge.get("mob_name")
+                ):
+                    PYR_CONTEXT_CHALLENGE = None
+                    raise HTTPException(status_code=409, detail="Active encounter changed; capture fresh PYR context")
+                available_ids = {
+                    item.get("id")
+                    for item in encounter.get("available_objectives", [])
+                    if isinstance(item, dict) and item.get("id")
+                }
+                if objective_id not in available_ids:
+                    raise HTTPException(status_code=422, detail="objective_id is not available for the active encounter")
+
+                if payload.verdict == "correct":
+                    action = "record_battle_objective"
+                    state_payload = {
+                        "objective_id": objective_id,
+                        "evidence_id": payload.evidence_id,
+                        "reason": payload.reason,
+                    }
+                else:
+                    action = "record_battle_miss"
+                    try:
+                        mob_index = max(0, int(encounter.get("mob_index", 0)))
+                    except (TypeError, ValueError):
+                        mob_index = 0
+                    state_payload = {
+                        "raw_damage": PYR_RAW_DAMAGE_BY_MOB[min(mob_index, len(PYR_RAW_DAMAGE_BY_MOB) - 1)],
+                        "reason": payload.reason,
+                        "encounter_id": f"{encounter['project_id']}-{mob_index}",
+                    }
+                mutation = STATE_SERVICE.apply_internal(action, state_payload)
+            except StateCommandError as exc:
+                raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
+        PYR_CONTEXT_CHALLENGE = None
+
+    return {
+        "ok": True,
+        "verdict": payload.verdict,
+        "mutation": mutation,
+        "revision": mutation.get("revision"),
+        "event": mutation.get("event"),
+    }
 
 
 @app.get("/api/tree")

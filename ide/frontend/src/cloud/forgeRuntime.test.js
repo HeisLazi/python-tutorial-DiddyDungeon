@@ -61,6 +61,8 @@ test('PYR context submissions use the bounded local bridge and current editor se
   assert.match(enhancements, /requestPyrContext/)
   assert.match(enhancements, /contextPrompt/)
   assert.match(enhancements, /Validated current quest\/mob state/)
+  assert.match(enhancements, /\/api\/pyr\/verdict/)
+  assert.match(enhancements, /Battle verdict challenge/)
   assert.match(enhancements, /active_file/)
   assert.match(enhancements, /git\?\.diff/)
 })

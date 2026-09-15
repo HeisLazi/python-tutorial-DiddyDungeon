@@ -88,6 +88,8 @@ class PyrContextBridgeTests(unittest.TestCase):
                 self.assertEqual(response.status_code, 200)
                 context = response.json()["context"]
                 self.assertEqual(context["revision"], 7)
+                nonce = context["verdict"]["nonce"]
+                self.assertEqual(context["verdict"]["mob_name"], "The Hitman")
                 self.assertEqual(context["active_file"]["path"], "main.py")
                 self.assertEqual(context["active_file"]["content"], "print('hello')\n")
                 self.assertEqual(context["selection"]["text"], "while choice:\n    print(choice)")
@@ -101,9 +103,57 @@ class PyrContextBridgeTests(unittest.TestCase):
                 self.assertEqual(persisted["meta"]["revision"], 7)
                 self.assertEqual(persisted["state_events"], [])
 
+                verdict = client.post(
+                    "/api/pyr/verdict",
+                    headers={"host": "127.0.0.1"},
+                    json={
+                        "nonce": nonce,
+                        "verdict": "correct",
+                        "objective_id": "choice_flow",
+                        "evidence_id": "hitman-choice-001",
+                        "reason": "PYR verified the stop and continue explanation.",
+                    },
+                )
+                self.assertEqual(verdict.status_code, 200)
+                mutation = verdict.json()["mutation"]
+                self.assertEqual(mutation["result"]["resolve_after"], 4)
+                self.assertEqual(mutation["event"]["action"], "record_battle_objective")
+                self.assertEqual(mutation["revision"], 8)
+
+                replay = client.post(
+                    "/api/pyr/verdict",
+                    headers={"host": "127.0.0.1"},
+                    json={
+                        "nonce": nonce,
+                        "verdict": "correct",
+                        "objective_id": "stop_condition",
+                        "evidence_id": "hitman-replay",
+                        "reason": "Replay must be rejected.",
+                    },
+                )
+                self.assertEqual(replay.status_code, 409)
+
                 fetched = client.get("/api/pyr/context", headers={"host": "127.0.0.1"})
                 self.assertEqual(fetched.status_code, 200)
-                self.assertEqual(fetched.json()["context"]["active_file"]["path"], "main.py")
+                refreshed_context = fetched.json()["context"]
+                self.assertEqual(refreshed_context["active_file"]["path"], "main.py")
+                self.assertNotEqual(refreshed_context["verdict"]["nonce"], nonce)
+
+                miss = client.post(
+                    "/api/pyr/verdict",
+                    headers={"host": "127.0.0.1"},
+                    json={
+                        "nonce": refreshed_context["verdict"]["nonce"],
+                        "verdict": "incorrect",
+                        "objective_id": "stop_condition",
+                        "evidence_id": "hitman-miss-001",
+                        "reason": "PYR marked the submitted explanation incomplete.",
+                    },
+                )
+                self.assertEqual(miss.status_code, 200)
+                miss_mutation = miss.json()["mutation"]
+                self.assertEqual(miss_mutation["event"]["action"], "record_battle_miss")
+                self.assertEqual(miss_mutation["result"]["damage"], 18)
             finally:
                 app_v2.WORKSPACE = original_workspace
                 app_v2.PROGRESS_PATH = original_progress
@@ -141,6 +191,20 @@ class PyrContextBridgeTests(unittest.TestCase):
                 self.assertTrue(context["terminal"]["truncated"])
                 self.assertLessEqual(len(context["selection"]["text"].encode()), 20_000)
                 self.assertLessEqual(len(context["terminal"]["tail"].encode()), 20_000)
+
+                forbidden = client.post(
+                    "/api/pyr/verdict",
+                    headers={"host": "127.0.0.1"},
+                    json={
+                        "nonce": context["verdict"]["nonce"],
+                        "verdict": "incorrect",
+                        "objective_id": "choice_flow",
+                        "evidence_id": "wrong-001",
+                        "reason": "The answer was incomplete.",
+                        "raw_damage": 1,
+                    },
+                )
+                self.assertEqual(forbidden.status_code, 422)
             finally:
                 app_v2.WORKSPACE = original_workspace
                 app_v2.PROGRESS_PATH = original_progress
