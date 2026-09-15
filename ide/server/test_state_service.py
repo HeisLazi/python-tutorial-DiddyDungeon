@@ -996,6 +996,7 @@ class StateGatewayHttpTests(unittest.TestCase):
         self.assertEqual(revision.status_code, 200)
         self.assertEqual(report.status_code, 200)
         self.assertIn("revision", revision.json())
+        self.assertRegex(revision.json()["sync_storage_namespace"], r"^checkout-[0-9a-f]{32}$")
         self.assertTrue(report.json()["manual_approval_required"])
 
     def test_runtime_report_exposes_upstream_freshness_without_changing_state(self):

@@ -236,6 +236,7 @@ test('bounded player-state sync stays behind one engine with revision/conflict c
   const engine = source('./syncEngine.js')
 
   assert.match(app, /syncEngine\.observeCampaign\(next\)/)
+  assert.match(app, /metadata\.sync_storage_namespace/)
   assert.match(app, /resolveCloudConflict/)
   assert.match(views, /Use cloud copy/)
   assert.match(views, /Keep this device/)

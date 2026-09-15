@@ -749,7 +749,11 @@ def state_revision():
         metadata = STATE_SERVICE.metadata()
     except StateCommandError as exc:
         raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
-    return {**metadata, "state_authority": state_authority_info(PROGRESS_PATH, WORKSPACE)}
+    return {
+        **metadata,
+        "sync_storage_namespace": checkout_storage_namespace(),
+        "state_authority": state_authority_info(PROGRESS_PATH, WORKSPACE),
+    }
 
 
 @app.get("/api/state/sync")

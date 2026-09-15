@@ -949,6 +949,7 @@ function AppV2() {
       try {
         const metadata = await api('/api/state/revision')
         if (cancelled) return
+        if (metadata.sync_storage_namespace) syncEngine.setCheckoutIdentity(metadata.sync_storage_namespace)
         const revision = Number(metadata.revision ?? 0)
         if (!campaignInitializedRef.current || campaignRevisionRef.current === null) {
           await refreshCampaign({ silent: true })
