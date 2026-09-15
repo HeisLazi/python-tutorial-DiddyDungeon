@@ -340,3 +340,14 @@ retries, marker integrity, revision races and symlink rejection. The full WSL
 backend suite is now 63 tests; the frontend suite remains 31 tests and the
 Windows Vite build remains green. Launcher opt-in and the real-save approval
 gate remain open; hosted Supabase transport is unchanged.
+
+## Verification update — 2026-09-15 — stale runtime replay
+
+A click/scroll/type-only replay against the isolated current-branch runtime
+settled on Level 2 / 50 XP / 55 coins, The Hitman at 8/8, three cleared mobs,
+three Codex encounter records, 55 Homestead coins, visible heart/coin/flame/
+shield/boss SVG icons and `CONNECTED` shell/AI panes. The pre-existing 5174
+tab still showed its old starter/no-branch projection, so it was deliberately
+left running; this is the already logged F-025/F-031 stale-runtime choice,
+not a live-save reset. New launches must use the guarded launcher after the
+WSL dependency preflight passes.

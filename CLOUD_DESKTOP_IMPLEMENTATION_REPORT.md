@@ -874,3 +874,10 @@ workspace/legacy paths; identical retries are reported as `already-local`.
 The operation is not called by the default launcher, and no real player save
 was migrated. Full backend coverage is now 63 tests; frontend remains 31 and
 the Windows Vite build remains green.
+
+The browser replay also confirmed the stale-runtime boundary: the isolated
+current-branch tab settled on Level 2 / 50 XP / 55 coins, The Hitman 8/8,
+three cleared mobs, three Codex records, Homestead 55 coins, all five SVG HUD
+icons and `CONNECTED` shell/AI panes. The old 5174 tab still showed its
+starter/no-branch projection and was not restarted, preserving its PTY; use
+the guarded launcher for a fresh current-branch session.
