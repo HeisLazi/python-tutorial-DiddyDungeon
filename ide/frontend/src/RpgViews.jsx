@@ -30,7 +30,9 @@ export function RewardQueue({ items = [] }) {
   )
 }
 
-export function ActivityRail({ activeView, setActiveView, player }) {
+export function ActivityRail({ activeView, setActiveView, player, campaignReady = true }) {
+  const displayLevel = campaignReady ? (player.level ?? 1) : '—'
+  const displayName = campaignReady ? (player.name || 'Player') : 'Campaign syncing'
   return (
     <nav className="activity-rail" aria-label="Quest Lab destinations">
       <div className="activity-mark">🔥</div>
@@ -50,10 +52,10 @@ export function ActivityRail({ activeView, setActiveView, player }) {
       <button
         className={`activity-avatar ${activeView === 'character' ? 'active' : ''}`}
         onClick={() => setActiveView('character')}
-        title={`${player.name || 'Player'} · Level ${player.level ?? 1}`}
+        title={`${displayName} · ${campaignReady ? `Level ${displayLevel}` : 'waiting for state'}`}
       >
-        <span>{(player.name || 'L').slice(0, 1).toUpperCase()}</span>
-        <b>{player.level ?? 1}</b>
+        <span>{campaignReady ? (player.name || 'L').slice(0, 1).toUpperCase() : '…'}</span>
+        <b>{displayLevel}</b>
       </button>
     </nav>
   )
@@ -113,6 +115,22 @@ export function ContextPanel({ activeView, campaign, files, activePath, openFile
             <span>blackjack.py and other required project source</span>
           </div>
           <p className="context-note">The raw AI terminal is still a real shell, so this guarantee applies to the future controlled PYR toolset—not arbitrary CLI commands.</p>
+        </div>
+      </>
+    )
+  }
+
+  if (!campaign) {
+    return (
+      <>
+        <div className="panel-title">
+          <span>{viewItems.find((item) => item.id === activeView)?.label?.toUpperCase()}</span>
+          <button onClick={() => setActiveView('forge')} title="Return to Forge">⌘</button>
+        </div>
+        <div className="context-scroll">
+          <div className="context-kicker">CAMPAIGN SYNC</div>
+          <h3>Waiting for the canonical state</h3>
+          <p>The Forge is still connected, but the campaign projection has not arrived yet. Player stats stay hidden until the state service responds.</p>
         </div>
       </>
     )
@@ -918,7 +936,16 @@ function SettingsScreen({ preferences, setters, resetLayout, equipped, account, 
   )
 }
 
-export function GameScreen({ activeView, progress, revision, encounter, codexProjection, practiceProjection, dungeon, dungeonEditorContent, onDungeonEditorChange, onSaveDungeon, onDungeonRest, onDungeonMarketPurchase, onDungeonLeave, onDungeonFinish, purchaseCosmetic, equipCosmetic, saveCodexNote, busy, dungeonSaving, submitBattle, submitBoss, submitDungeon, onStartDungeon, onPracticePrompt, preferences, setters, resetLayout, account, accountBusy, accountNotice, onSignIn, onSignUp, onSignOut, onDeviceLabelSave, onResolveConflict }) {
+export function GameScreen({ activeView, progress, revision, encounter, codexProjection, practiceProjection, dungeon, dungeonEditorContent, onDungeonEditorChange, onSaveDungeon, onDungeonRest, onDungeonMarketPurchase, onDungeonLeave, onDungeonFinish, purchaseCosmetic, equipCosmetic, saveCodexNote, busy, dungeonSaving, submitBattle, submitBoss, submitDungeon, onStartDungeon, onPracticePrompt, preferences, setters, resetLayout, account, accountBusy, accountNotice, onSignIn, onSignUp, onSignOut, onDeviceLabelSave, onResolveConflict, campaignReady = true }) {
+  if (!campaignReady && activeView !== 'settings') {
+    return (
+      <div className="game-screen-scroll campaign-loading" data-testid="campaign-loading" aria-live="polite">
+        <section className="screen-hero">
+          <div><span className="screen-kicker">CAMPAIGN SYNC</span><h2>Waiting for the canonical state</h2><p>Forge will show your level, encounters, Codex and inventory as soon as the state service returns the latest revision. No starter values are being substituted.</p></div>
+        </section>
+      </div>
+    )
+  }
   if (activeView === 'quests') return <QuestJournal progress={progress} revision={revision} encounter={encounter} submitBattle={submitBattle} submitBoss={submitBoss} busy={busy} />
   if (activeView === 'codex') return <Codex progress={progress} revision={revision} codexProjection={codexProjection} saveCodexNote={saveCodexNote} busy={busy} />
   if (activeView === 'character') return <CharacterSheet progress={progress} revision={revision} />

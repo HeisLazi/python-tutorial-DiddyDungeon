@@ -234,3 +234,19 @@ source/build failure. The OneDrive environment still needs a disposable Linux
 dependency install (or a documented cleanup) before the Windows launcher can
 be called clean-install verified; no dependency directory in the player's
 checkout was replaced.
+
+## Verification update — 2026-09-15 — campaign loading guard
+
+The live current-branch tab briefly exposed the cost of a stale or miswired
+frontend/backend pair: while `/api/campaign` was unavailable, the React shell
+rendered believable starter defaults (Level 1, zero XP and zero coins). That
+could be mistaken for lost progress even though the canonical save was intact.
+
+| ID | Severity | Area | Finding | Status |
+|---|---|---|---|---|
+| F-042 | P2 | Loading-state integrity | A missing campaign projection fell through to starter-looking HUD, character and game-screen defaults. | Fixed locally: HUD/quest banner use an explicit `SYNCING` state, RPG screens wait for the canonical projection, the context panel explains the wait, and Settings remains reachable. No progression write or PTY lifecycle is involved. |
+
+Focused/frontend gates for this slice: 31 frontend tests, 56 WSL backend
+tests, and a green Windows Vite build (1,344 modules). The live K&M tab then
+settled on the canonical Level 2 / 50 XP / 55 coins projection with both PTYs
+still `CONNECTED`; no browser refresh or save mutation was used.

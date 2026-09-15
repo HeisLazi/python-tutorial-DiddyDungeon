@@ -318,6 +318,7 @@ function AppV2() {
   const homestead = progress.homestead || {}
   const dungeon = campaign?.dungeon || { active: false, status: 'idle', editor_content: '' }
   const equipped = homestead.equipped || {}
+  const campaignReady = Boolean(campaign && campaign.progress && typeof campaign.progress === 'object')
   const theme = (equipped.theme || 'theme-ember-forge').replace('theme-', '')
   const terminalSkin = equipped.terminal || 'terminal-charcoal'
   const showEditor = activeView === 'forge' || activeView === 'tutor'
@@ -1492,7 +1493,7 @@ function AppV2() {
   }
   const preferences = { editorFontSize, terminalFontSize, hudDensity, animations }
   const setters = { setEditorFontSize, setTerminalFontSize, setHudDensity, setAnimations }
-  const xpPercent = clamp(((player.xp ?? 0) / Math.max(1, player.xp_next ?? 100)) * 100, 0, 100)
+  const xpPercent = campaignReady ? clamp(((player.xp ?? 0) / Math.max(1, player.xp_next ?? 100)) * 100, 0, 100) : 0
   const commands = runtime?.commands || {}
 
   return (
@@ -1511,35 +1512,35 @@ function AppV2() {
           <h1>Forge</h1>
         </div>
         <div className="hud-xp">
-          <div><strong>LV {player.level ?? 1}</strong><span>{player.title || 'Apprentice Coder'}</span></div>
+          <div><strong>{campaignReady ? `LV ${player.level ?? 1}` : 'SYNCING'}</strong><span>{campaignReady ? (player.title || 'Apprentice Coder') : 'Campaign state'}</span></div>
           <div className="hud-xp-track"><span style={{ width: `${xpPercent}%` }} /></div>
-          <small>{player.xp ?? 0}/{player.xp_next ?? 100} XP</small>
+          <small>{campaignReady ? `${player.xp ?? 0}/${player.xp_next ?? 100} XP` : 'waiting for revision…'}</small>
         </div>
         <div className="top-stats">
-          <span className="hp-stat" data-campaign-stat="hp" data-campaign-stat-value={player.hp ?? 100}>♥ {player.hp ?? 100}</span>
-          <span data-campaign-stat="coins" data-campaign-stat-value={player.coins ?? 0}>◈ {player.coins ?? 0}c</span>
-          <span data-campaign-stat="streak" data-campaign-stat-value={streak.current ?? 0}>🔥 {streak.current ?? 0}</span>
-          <span className="optional-stat" data-campaign-stat="shields" data-campaign-stat-value={shields}>🛡 {shields}</span>
-          <span className="optional-stat" data-campaign-stat="bosses" data-campaign-stat-value={stats.bosses_defeated ?? 0}>⚔ {stats.bosses_defeated ?? 0}</span>
-          <span className="optional-stat">DEV {activity.activity_score ?? 0}</span>
+          <span className="hp-stat" data-campaign-stat="hp" data-campaign-stat-value={campaignReady ? (player.hp ?? 100) : '—'}>♥ {campaignReady ? (player.hp ?? 100) : '—'}</span>
+          <span data-campaign-stat="coins" data-campaign-stat-value={campaignReady ? (player.coins ?? 0) : '—'}>◈ {campaignReady ? (player.coins ?? 0) : '—'}c</span>
+          <span data-campaign-stat="streak" data-campaign-stat-value={campaignReady ? (streak.current ?? 0) : '—'}>🔥 {campaignReady ? (streak.current ?? 0) : '—'}</span>
+          <span className="optional-stat" data-campaign-stat="shields" data-campaign-stat-value={campaignReady ? shields : '—'}>🛡 {campaignReady ? shields : '—'}</span>
+          <span className="optional-stat" data-campaign-stat="bosses" data-campaign-stat-value={campaignReady ? (stats.bosses_defeated ?? 0) : '—'}>⚔ {campaignReady ? (stats.bosses_defeated ?? 0) : '—'}</span>
+          <span className="optional-stat">DEV {campaignReady ? (activity.activity_score ?? 0) : '—'}</span>
           <span
             className={`cloud-pill ${cloudState.error || cloudState.syncStatus === 'conflict' ? 'error' : cloudState.configured ? 'ready' : 'local'}`}
             title={cloudState.detail}
           >
             {cloudState.label}
           </span>
-          <span className="rank-stat">RANK {player.rank || 'F'}</span>
+          <span className="rank-stat">RANK {campaignReady ? (player.rank || 'F') : '—'}</span>
         </div>
       </header>
 
       <div className="quest-banner">
-        <div><strong>{companion.name || 'PYR'}</strong> · {companion.form || 'Tiny Code-Flame'}</div>
-        <div className="quest-text">{progress.current_quest || 'Choose a quest.'}</div>
-        <div className="git-pill">{git.branch || 'no branch'} · {git.dirty_count ?? 0} changes</div>
+        <div><strong>{campaignReady ? (companion.name || 'PYR') : 'PYR'}</strong> · {campaignReady ? (companion.form || 'Tiny Code-Flame') : 'waiting for campaign'}</div>
+        <div className="quest-text">{campaignReady ? (progress.current_quest || 'Choose a quest.') : 'Syncing campaign state…'}</div>
+        <div className="git-pill">{campaignReady ? `${git.branch || 'no branch'} · ${git.dirty_count ?? 0} changes` : 'campaign unavailable'}</div>
       </div>
 
       <main className="workspace-grid" style={gridStyle}>
-        <ActivityRail activeView={activeView} setActiveView={setActiveView} player={player} />
+        <ActivityRail activeView={activeView} setActiveView={setActiveView} player={player} campaignReady={campaignReady} />
 
         <aside className="left-panel panel">
           <ContextPanel
@@ -1696,6 +1697,7 @@ function AppV2() {
               onSignOut={signOut}
               onDeviceLabelSave={saveDeviceLabel}
               onResolveConflict={resolveCloudConflict}
+              campaignReady={campaignReady}
             />
           </section>
         )}

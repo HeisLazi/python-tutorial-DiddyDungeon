@@ -51,6 +51,19 @@ test('campaign projections use revision polling and state-service events', () =>
   assert.doesNotMatch(views, /mob\.encounter \|\| 'This encounter has not revealed/)
 })
 
+test('campaign loading never presents starter values as a reset', () => {
+  const app = source('../AppV2.jsx')
+  const views = source('../RpgViews.jsx')
+
+  assert.match(app, /const campaignReady = Boolean\(campaign && campaign\.progress/)
+  assert.match(app, /campaignReady \? `LV \$\{player\.level/)
+  assert.match(app, /campaignReady \? `\$\{player\.xp \?\? 0\}/)
+  assert.match(app, /Syncing campaign state/)
+  assert.match(views, /data-testid="campaign-loading"/)
+  assert.match(views, /No starter values are being substituted/)
+  assert.match(views, /campaignReady = true/)
+})
+
 test('PYR context submissions use the bounded local bridge and current editor selection', () => {
   const app = source('../AppV2.jsx')
   const enhancements = source('../forgeEnhancements.js')
