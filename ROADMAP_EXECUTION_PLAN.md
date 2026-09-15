@@ -4,10 +4,11 @@ Status: local roadmap slices 0–6 implemented and verified; friend-ready
 launcher/health foundation added; hosted distribution/social slices remain
 explicitly gated — 2026-09-15
 
-Claude Sonnet review was attempted from WSL but the configured CLI still
-returns `Not logged in · Please run /login`. An authenticated Claude browser
-review did complete read-only against the current checkout/archive; its
-findings are recorded in the issue log and are not treated as approval. This
+Claude Sonnet review was previously attempted from WSL while the configured
+CLI returned `Not logged in · Please run /login`. The current checkpoint has
+now completed an authenticated WSL Claude read-only review against the current
+checkout/archive; its findings are recorded in the issue log and are not
+treated as approval. This
 plan remains the primary implementation/review record.
 
 The current local checkpoint includes the playable Dungeon question/verdict
