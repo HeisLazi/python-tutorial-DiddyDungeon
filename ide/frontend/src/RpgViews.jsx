@@ -290,7 +290,50 @@ function BattleSubmission({ availableObjectives, onSubmit, busy }) {
   )
 }
 
-function QuestJournal({ progress, revision, encounter, submitBattle, busy }) {
+function BossSubmission({ requirements, verifiedRequirements = [], onSubmit, busy }) {
+  const available = requirements.filter((requirement) => !verifiedRequirements.includes(requirement))
+  const [requirementId, setRequirementId] = useState(available[0] || '')
+  const [answer, setAnswer] = useState('')
+  const [status, setStatus] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+
+  useEffect(() => {
+    if (!available.includes(requirementId)) setRequirementId(available[0] || '')
+  }, [available.join('|'), requirementId])
+
+  if (!available.length) return <small className="battle-submit-status" role="status">All boss requirements are with PYR for validation.</small>
+
+  const submit = async (event) => {
+    event.preventDefault()
+    if (!requirementId || !answer.trim() || !onSubmit || submitting) return
+    setSubmitting(true)
+    setStatus('Sending requirement to the selected provider…')
+    try {
+      await onSubmit({ requirementId, answer })
+      setAnswer('')
+      setStatus('Requirement sent. The gate changes only after a validated provider verdict.')
+    } catch (error) {
+      setStatus(error?.message || 'Boss requirement submission failed.')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  return (
+    <section className="battle-submit-card boss-submit-card" data-testid="boss-submission">
+      <div className="card-heading"><span>BOSS VALIDATION</span><b>{verifiedRequirements.length}/{requirements.length}</b></div>
+      <p className="context-note">Submit one requirement at a time. PYR receives only this answer and the current bounded projection; no future prompts or answer keys are exposed.</p>
+      <form onSubmit={submit}>
+        <label className="battle-field"><span>Requirement</span><select value={requirementId} onChange={(event) => setRequirementId(event.target.value)} disabled={busy || submitting}>{available.map((requirement) => <option key={requirement} value={requirement}>{requirement.replaceAll('_', ' ')}</option>)}</select></label>
+        <label className="battle-field"><span>Your evidence / explanation</span><textarea value={answer} onChange={(event) => setAnswer(event.target.value)} maxLength={20_000} rows={6} placeholder="Describe the verified behaviour or answer the interview…" disabled={busy || submitting} /></label>
+        <button className="primary" type="submit" disabled={busy || submitting || !answer.trim() || !onSubmit}>{submitting ? 'Sending…' : 'Send to PYR'}</button>
+      </form>
+      {status && <small className="battle-submit-status" role="status">{status}</small>}
+    </section>
+  )
+}
+
+function QuestJournal({ progress, revision, encounter, submitBattle, submitBoss, busy }) {
   const activeProject = (progress.projects || []).find((project) => project.status === 'active') || {}
   const mobs = activeProject.mobs || []
   const projectedIndex = encounter?.mob_name ? mobs.findIndex((mob) => mob.name === encounter.mob_name) : -1
@@ -348,6 +391,7 @@ function QuestJournal({ progress, revision, encounter, submitBattle, busy }) {
                 ))}
               </div>
               <small>No future questions or answers are revealed here; the provider supplies the next bounded interview challenge.</small>
+              <BossSubmission requirements={bossRequirements} verifiedRequirements={encounter?.verified_boss_requirements || []} onSubmit={submitBoss} busy={busy} />
             </div>
           ) : (
             <>
@@ -402,21 +446,98 @@ function QuestJournal({ progress, revision, encounter, submitBattle, busy }) {
   )
 }
 
-function Codex({ progress, revision }) {
+function Codex({ progress, revision, codexProjection, saveCodexNote, busy }) {
   const activeProject = (progress.projects || []).find((project) => project.status === 'active') || {}
   const skills = progress.skills || []
-  const entries = progress.codex?.encounters || []
+  const pages = codexProjection?.pages || []
+  const entries = codexProjection?.entries || progress.codex?.encounters || []
+  const [query, setQuery] = useState('')
+  const [selectedPageId, setSelectedPageId] = useState(pages[0]?.id || '')
+  const [selectedEntryId, setSelectedEntryId] = useState('')
+  const [note, setNote] = useState('')
+  const [noteStatus, setNoteStatus] = useState('')
+
+  useEffect(() => {
+    if (!pages.some((page) => page.id === selectedPageId)) setSelectedPageId(pages[0]?.id || '')
+  }, [pages, selectedPageId])
+
+  const normalizedQuery = query.trim().toLowerCase()
+  const filteredPages = pages.filter((page) => !normalizedQuery || `${page.title} ${page.definition}`.toLowerCase().includes(normalizedQuery))
+  const selectedPage = pages.find((page) => page.id === selectedPageId) || filteredPages[0] || pages[0]
+  const selectedEntries = entries.filter((entry) => entry.page_id === selectedPage?.id || (!entry.page_id && entry.concept?.toLowerCase().includes(selectedPage?.title?.split(' ')[0]?.toLowerCase() || '')))
+  const selectedEntry = selectedEntries.find((entry) => entry.id === selectedEntryId) || selectedEntries[0]
+  const selectedEntryIds = selectedEntries.map((entry) => entry.id).join('|')
+
+  useEffect(() => {
+    if (!selectedEntries.some((entry) => entry.id === selectedEntryId)) setSelectedEntryId(selectedEntries[0]?.id || '')
+    setNote('')
+    setNoteStatus('')
+  }, [selectedPage?.id, selectedEntryIds, selectedEntryId])
+
+  const selectPage = (pageId) => {
+    setSelectedPageId(pageId)
+    setSelectedEntryId('')
+  }
+
+  const submitNote = async (event) => {
+    event.preventDefault()
+    if (!selectedEntry || !note.trim() || !saveCodexNote || busy) return
+    try {
+      await saveCodexNote(selectedEntry.id, note)
+      setNote('')
+      setNoteStatus('Saved to the canonical Codex record.')
+    } catch (error) {
+      setNoteStatus(error?.message || 'Could not save the note.')
+    }
+  }
 
   return (
     <div className="game-screen-scroll" data-testid="codex" data-campaign-revision={revision}>
       <div className="screen-hero">
         <div>
-          <span className="screen-kicker">CODEX</span>
-          <h2>What you have faced becomes knowledge.</h2>
-          <p>Concepts, mastery evidence and encounter styles. Exact hidden answers stay hidden.</p>
+          <span className="screen-kicker">CODEX / FIELD LIBRARY</span>
+          <h2>What you face becomes knowledge.</h2>
+          <p>Read a concept page, inspect validated encounter evidence, and keep your own field notes. Exact hidden answers stay hidden.</p>
         </div>
-        <div className="codex-count"><strong>{skills.length + entries.length}</strong><span>entries indexed</span></div>
+        <div className="codex-count"><strong>{skills.length + entries.length}</strong><span>records indexed</span></div>
       </div>
+
+      <section className="codex-library game-card">
+        <aside className="codex-index" aria-label="Codex concept index">
+          <div className="card-heading"><span>BOOKS</span><b>{pages.length}</b></div>
+          <label className="codex-search"><span>Search library</span><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="lists, loops…" aria-label="Search Codex" /></label>
+          <div className="codex-page-list">
+            {filteredPages.map((page) => (
+              <button key={page.id} type="button" className={selectedPage?.id === page.id ? 'active' : ''} onClick={() => selectPage(page.id)} data-testid={`codex-page-${page.id}`}>
+                <span>{page.title}</span><small>{page.encounter_ids?.length || 0} encounter{page.encounter_ids?.length === 1 ? '' : 's'}</small>
+              </button>
+            ))}
+            {!filteredPages.length && <div className="empty-state">No concept page matches that search.</div>}
+          </div>
+        </aside>
+
+        <article className="codex-book-page">
+          {selectedPage ? (
+            <>
+              <div className="codex-page-heading"><span className="screen-kicker">CONCEPT PAGE</span><h3>{selectedPage.title}</h3><p>{selectedPage.definition}</p></div>
+              <div className="codex-page-grid">
+                <div><small className="codex-label">GENERIC EXAMPLES</small><div className="codex-examples">{(selectedPage.examples || []).map((example, index) => <pre key={index}>{example}</pre>)}</div></div>
+                <div><small className="codex-label">QUESTION LENS</small><div className="codex-tags">{(selectedPage.question_types || []).map((type) => <span key={type}>{type}</span>)}</div><small className="codex-label">ENCOUNTERS ON THIS PAGE</small><div className="codex-entry-picker">{selectedEntries.map((entry) => <button key={entry.id} type="button" className={selectedEntry?.id === entry.id ? 'active' : ''} onClick={() => setSelectedEntryId(entry.id)}>{entry.mob_name}<small>{entry.status}</small></button>)}{!selectedEntries.length && <span className="empty-state">No encounter recorded yet.</span>}</div></div>
+              </div>
+              {selectedEntry && (
+                <section className="codex-entry-detail">
+                  <div className="card-heading"><span>{selectedEntry.mob_name} · OBSERVATION</span><b>{String(selectedEntry.status || 'observed').toUpperCase()}</b></div>
+                  <div className="codex-entry-meta"><span>{selectedEntry.attempts ?? 0} attempts</span><span>{(selectedEntry.question_types || []).join(' · ') || 'type pending'}</span><span>{(selectedEntry.weaknesses || []).length} weaknesses</span><span>Mastery {selectedEntry.mastery?.evidence ?? 0}</span></div>
+                  <p>{selectedEntry.notes?.at(-1) || 'The encounter has been observed through verified learning evidence.'}</p>
+                  {selectedEntry.player_notes?.length > 0 && <div className="codex-notes"><small className="codex-label">YOUR FIELD NOTES</small>{selectedEntry.player_notes.map((item, index) => <p key={`${item}-${index}`}>{item}</p>)}</div>}
+                  <form className="codex-note-form" onSubmit={submitNote}><label><span>Add a field note</span><textarea value={note} onChange={(event) => setNote(event.target.value)} maxLength={2_000} rows={3} placeholder="What did you notice, or what should you revisit?" disabled={busy} /></label><button type="submit" disabled={busy || !note.trim()}>Save note</button></form>
+                  {noteStatus && <small className="battle-submit-status" role="status">{noteStatus}</small>}
+                </section>
+              )}
+            </>
+          ) : <div className="empty-state">The Codex library is unavailable until the state service returns a projection.</div>}
+        </article>
+      </section>
 
       <section className="game-card">
         <div className="card-heading"><span>CONCEPT MASTERY</span></div>
@@ -429,34 +550,6 @@ function Codex({ progress, revision }) {
               <div className="shield-line"><span>{skill.shield?.tier || 'none'} shield</span><b>{skill.shield?.charges ?? 0}/{skill.shield?.max_charges ?? 0}</b></div>
             </article>
           ))}
-        </div>
-      </section>
-
-      <section className="game-card">
-        <div className="card-heading"><span>{activeProject.name || 'PROJECT'} ENCOUNTERS</span><b>{entries.length}</b></div>
-        <div className="encounter-grid">
-          {entries.map((entry, index) => {
-            const mastery = entry.mastery || {}
-            const results = entry.results || []
-            return (
-            <article key={entry.id || entry.mob_name} className={`encounter-card ${entry.status || 'observed'}`}>
-              <div className="encounter-number">{String(index + 1).padStart(2, '0')}</div>
-              <small>{String(entry.status || 'observed').toUpperCase()}</small>
-              <h3>{entry.mob_name || 'Encounter'}</h3>
-              <strong>{entry.concept || 'Concept recorded by campaign'}</strong>
-              <p>{entry.notes?.at(-1) || 'The encounter has been observed through verified learning evidence.'}</p>
-              <div className="codex-entry-meta">
-                <span>{entry.attempts ?? 0} attempts</span>
-                <span>{(entry.question_types || []).join(' · ') || 'type pending'}</span>
-                <span>Mastery {mastery.evidence ?? 0}</span>
-                <span>{(entry.weaknesses || []).length} weaknesses recorded</span>
-                <span>{(entry.interview_history || []).length + (mastery.interview_passes ?? 0)} interviews</span>
-              </div>
-              {results.length > 0 && <small className="codex-last-result">Last result: {results.at(-1).outcome || 'recorded'}</small>}
-            </article>
-            )
-          })}
-          {!entries.length && <div className="empty-state">Complete a verified encounter objective to grow the Codex.</div>}
         </div>
       </section>
     </div>
@@ -564,8 +657,9 @@ function Homestead({ progress, revision, purchaseCosmetic, equipCosmetic, busy }
   )
 }
 
-function DungeonScreen({ dungeon, revision, onStart, busy, saving, editorContent, onEditorChange, onSave }) {
+function DungeonScreen({ dungeon, revision, onStart, onRest, onMarketPurchase, onLeave, onFinish, submitDungeon, busy, saving, editorContent, onEditorChange, onSave }) {
   const [concept, setConcept] = useState('')
+  const [submitStatus, setSubmitStatus] = useState('')
   const run = dungeon || { active: false, status: 'idle' }
   const question = run.question || {}
   const loadout = run.loadout || {}
@@ -574,6 +668,17 @@ function DungeonScreen({ dungeon, revision, onStart, busy, saving, editorContent
     event.preventDefault()
     if (!onStart || busy) return
     await onStart(concept.trim() || undefined)
+  }
+
+  const submit = async () => {
+    if (!submitDungeon || !question.id || !editorContent?.trim() || busy) return
+    setSubmitStatus('Binding this answer for PYR…')
+    try {
+      await submitDungeon({ runId: run.run_id, questionId: question.id, answer: editorContent })
+      setSubmitStatus('Sent to PYR. The room changes only after a validated verdict.')
+    } catch (error) {
+      setSubmitStatus(error?.message || 'Dungeon submission failed.')
+    }
   }
 
   return (
@@ -596,40 +701,44 @@ function DungeonScreen({ dungeon, revision, onStart, busy, saving, editorContent
             <label><span>Optional focus concept</span><input value={concept} onChange={(event) => setConcept(event.target.value)} maxLength={120} placeholder="e.g. lists, loops, debugging" disabled={busy} /></label>
             <button className="primary" type="submit" disabled={busy}>{busy ? 'Starting…' : 'Enter Dungeon'}</button>
           </form>
+          {Array.isArray(run.leaderboard) && run.leaderboard.length > 0 && <div className="dungeon-leaderboard"><strong>LOCAL LEADERBOARD</strong>{run.leaderboard.slice(0, 5).map((entry, index) => <div key={entry.run_id || index}><span>#{index + 1} · {entry.concept_id || 'adaptive'}</span><strong>{entry.score ?? 0}</strong><small>F{entry.floor ?? 0} · {entry.status || 'complete'}</small></div>)}</div>}
         </section>
       ) : (
         <>
           <div className="screen-grid two">
             <section className="game-card">
               <div className="card-heading"><span>CURRENT ROOM</span><b>{String(run.room_type || 'encounter').toUpperCase()}</b></div>
-              <h3>{question.concept_id || 'Adaptive encounter'}</h3>
-              <p>{question.prompt || 'The next question will be issued by the state service.'}</p>
-              {Array.isArray(question.options) && question.options.length > 0 && (
-                <div className="impact-objectives" aria-label="Question options">
-                  {question.options.map((option) => <span key={option}>{option}</span>)}
-                </div>
+              {run.room_type === 'rest' ? (
+                <div className="dungeon-room-action"><h3>Quiet Ember Rest</h3><p>Use one run heal to restore up to 30 HP, then continue deeper. Campaign HP is untouched.</p><button className="primary" type="button" onClick={() => onRest?.(run.run_id)} disabled={busy || !onRest || (loadout.heals ?? 0) <= 0 || (loadout.hp ?? 0) >= (loadout.max_hp ?? 0)}>Use rest ({loadout.heals ?? 0} left)</button><button type="button" onClick={() => onLeave?.(run.run_id)} disabled={busy || !onLeave}>Leave room</button></div>
+              ) : run.room_type === 'market' ? (
+                <div className="dungeon-room-action"><h3>Wayfarer Market</h3><p>Spend run-only coins on a temporary aid. Nothing enters Campaign inventory.</p><div className="dungeon-market-list">{(run.market_catalog || []).map((item) => <div key={item.id}><div><strong>{item.name}</strong><small>{item.description}</small></div><button type="button" onClick={() => onMarketPurchase?.(run.run_id, item.id)} disabled={busy || !onMarketPurchase || (run.run_coins ?? 0) < (item.price ?? 0)}>{item.price}c</button></div>)}</div><button type="button" onClick={() => onLeave?.(run.run_id)} disabled={busy || !onLeave}>Leave market</button></div>
+              ) : (
+                <><h3>{question.concept_id || 'Adaptive encounter'}</h3><p>{question.prompt || 'The next question will be issued by the state service.'}</p>{Array.isArray(question.options) && question.options.length > 0 && <div className="impact-objectives" aria-label="Question options">{question.options.map((option) => <span key={option}>{option}</span>)}</div>}<div className="dungeon-question-meta"><span>{question.question_type || 'question'}</span><span>Difficulty {question.difficulty ?? 1}</span><span>Write in dungeon.py</span></div><label className="dungeon-editor-field"><span>dungeon.py · current room buffer</span><textarea value={editorContent || ''} onChange={(event) => onEditorChange?.(event.target.value)} maxLength={120_000} rows={10} placeholder="Write your answer here. This buffer is checkpointed through the state gateway." disabled={busy} /></label><div className="dungeon-answer-actions"><button type="button" onClick={onSave} disabled={busy || saving || !onSave}>{saving ? 'Saving…' : 'Save checkpoint'}</button><button className="primary" type="button" onClick={submit} disabled={busy || !submitDungeon || !editorContent?.trim()}>Send answer to PYR</button></div>{submitStatus && <small className="battle-submit-status" role="status">{submitStatus}</small>}</>
               )}
-              <div className="dungeon-question-meta"><span>{question.question_type || 'question'}</span><span>Difficulty {question.difficulty ?? 1}</span><span>Write in dungeon.py</span></div>
-              <label className="dungeon-editor-field"><span>dungeon.py · current room buffer</span><textarea value={editorContent || ''} onChange={(event) => onEditorChange?.(event.target.value)} maxLength={120_000} rows={10} placeholder="Write your answer here. This buffer is checkpointed through the state gateway." disabled={busy} /></label>
-              <button type="button" onClick={onSave} disabled={busy || saving || !onSave}>{saving ? 'Saving…' : 'Save checkpoint'}</button>
             </section>
             <section className="game-card">
               <div className="card-heading"><span>RUN LOADOUT</span><b>{loadout.hp ?? 0}/{loadout.max_hp ?? 0} HP</b></div>
               <div className="dungeon-loadout-list"><div><small>ARMOR</small><strong>{loadout.armor || 'Apprentice Coat'}</strong></div><div><small>TRINKET</small><strong>{loadout.trinket || 'None'}</strong></div><div><small>HEALS</small><strong>{loadout.heals ?? 0}</strong></div><div><small>RUN COINS</small><strong>{run.run_coins ?? 0}</strong></div></div>
+              {run.last_result && <div className={`dungeon-last-result ${run.last_result.outcome || ''}`}><small>LAST RESULT</small><strong>{String(run.last_result.outcome || 'recorded').replaceAll('_', ' ')}</strong><span>{run.last_result.score_delta ? `+${run.last_result.score_delta} score` : ''}{run.last_result.coins_delta ? ` · ${run.last_result.coins_delta > 0 ? '+' : ''}${run.last_result.coins_delta} coins` : ''}{run.last_result.damage ? ` · −${run.last_result.damage} HP` : ''}</span></div>}
               <p className="context-note">The editor buffer autosaves through the state gateway. A new question clears it before the next prompt.</p>
+              <button type="button" onClick={() => onFinish?.(run.run_id)} disabled={busy || !onFinish}>Bank score and end run</button>
             </section>
           </div>
           <section className="game-card dungeon-checkpoint-card">
             <div className="card-heading"><span>CHECKPOINT</span><b>{run.updated_at ? 'SAVED' : 'PENDING'}</b></div>
             <p>Run <code>{run.run_id}</code> will resume at this room after a Forge or workstation restart. Death is the only reset.</p>
           </section>
+          {Array.isArray(run.leaderboard) && run.leaderboard.length > 0 && <section className="game-card">
+            <div className="card-heading"><span>LOCAL LEADERBOARD</span><b>{run.leaderboard.length}</b></div>
+            <div className="dungeon-leaderboard">{run.leaderboard.slice(0, 5).map((entry, index) => <div key={entry.run_id || index}><span>#{index + 1} · {entry.concept_id || 'adaptive'}</span><strong>{entry.score ?? 0}</strong><small>F{entry.floor ?? 0} · {entry.status || 'complete'}</small></div>)}</div>
+          </section>}
         </>
       )}
     </div>
   )
 }
 
-function PracticeScreen({ progress, revision, onPracticePrompt, busy }) {
+function PracticeScreen({ progress, revision, practiceProjection, onPracticePrompt, busy }) {
   const activeProject = (progress.projects || []).find((project) => project.status === 'active') || {}
   const concepts = Array.from(new Set([
     ...(progress.skills || []).map((skill) => skill.concept).filter(Boolean),
@@ -680,6 +789,10 @@ function PracticeScreen({ progress, revision, onPracticePrompt, busy }) {
       <section className="game-card">
         <div className="card-heading"><span>PRACTICE BOUNDARY</span><b>SEPARATE MODE</b></div>
         <p className="context-note">Practice uses the same bounded provider context as Campaign, but it never creates a leaderboard run, copies Campaign gear, or writes tutor.py.</p>
+      </section>
+      <section className="game-card">
+        <div className="card-heading"><span>RECENT PRACTICE HISTORY</span><b>{practiceProjection?.count ?? 0}</b></div>
+        {practiceProjection?.sessions?.length ? <div className="practice-history">{practiceProjection.sessions.slice().reverse().slice(0, 8).map((session) => <article key={session.session_id}><div><strong>{session.concept}</strong><small>{session.question_type} · Tier {session.difficulty}</small></div><span>{session.correct ?? 0}/{session.attempts ?? 0} correct</span></article>)}</div> : <p className="context-note">Your first drill will appear here after the state gateway opens a Practice session.</p>}
       </section>
     </div>
   )
@@ -805,13 +918,13 @@ function SettingsScreen({ preferences, setters, resetLayout, equipped, account, 
   )
 }
 
-export function GameScreen({ activeView, progress, revision, encounter, dungeon, dungeonEditorContent, onDungeonEditorChange, onSaveDungeon, purchaseCosmetic, equipCosmetic, busy, dungeonSaving, submitBattle, onStartDungeon, onPracticePrompt, preferences, setters, resetLayout, account, accountBusy, accountNotice, onSignIn, onSignUp, onSignOut, onDeviceLabelSave, onResolveConflict }) {
-  if (activeView === 'quests') return <QuestJournal progress={progress} revision={revision} encounter={encounter} submitBattle={submitBattle} busy={busy} />
-  if (activeView === 'codex') return <Codex progress={progress} revision={revision} />
+export function GameScreen({ activeView, progress, revision, encounter, codexProjection, practiceProjection, dungeon, dungeonEditorContent, onDungeonEditorChange, onSaveDungeon, onDungeonRest, onDungeonMarketPurchase, onDungeonLeave, onDungeonFinish, purchaseCosmetic, equipCosmetic, saveCodexNote, busy, dungeonSaving, submitBattle, submitBoss, submitDungeon, onStartDungeon, onPracticePrompt, preferences, setters, resetLayout, account, accountBusy, accountNotice, onSignIn, onSignUp, onSignOut, onDeviceLabelSave, onResolveConflict }) {
+  if (activeView === 'quests') return <QuestJournal progress={progress} revision={revision} encounter={encounter} submitBattle={submitBattle} submitBoss={submitBoss} busy={busy} />
+  if (activeView === 'codex') return <Codex progress={progress} revision={revision} codexProjection={codexProjection} saveCodexNote={saveCodexNote} busy={busy} />
   if (activeView === 'character') return <CharacterSheet progress={progress} revision={revision} />
   if (activeView === 'homestead') return <Homestead progress={progress} revision={revision} purchaseCosmetic={purchaseCosmetic} equipCosmetic={equipCosmetic} busy={busy} />
-  if (activeView === 'dungeon') return <DungeonScreen dungeon={dungeon} revision={revision} onStart={onStartDungeon} busy={busy} saving={dungeonSaving} editorContent={dungeonEditorContent} onEditorChange={onDungeonEditorChange} onSave={onSaveDungeon} />
-  if (activeView === 'practice') return <PracticeScreen progress={progress} revision={revision} onPracticePrompt={onPracticePrompt} busy={busy} />
+  if (activeView === 'dungeon') return <DungeonScreen dungeon={dungeon} revision={revision} onStart={onStartDungeon} onRest={onDungeonRest} onMarketPurchase={onDungeonMarketPurchase} onLeave={onDungeonLeave} onFinish={onDungeonFinish} submitDungeon={submitDungeon} busy={busy} saving={dungeonSaving} editorContent={dungeonEditorContent} onEditorChange={onDungeonEditorChange} onSave={onSaveDungeon} />
+  if (activeView === 'practice') return <PracticeScreen progress={progress} revision={revision} practiceProjection={practiceProjection} onPracticePrompt={onPracticePrompt} busy={busy} />
   if (activeView === 'settings') return <SettingsScreen preferences={preferences} setters={setters} resetLayout={resetLayout} equipped={progress.homestead?.equipped || {}} account={account} accountBusy={accountBusy} accountNotice={accountNotice} onSignIn={onSignIn} onSignUp={onSignUp} onSignOut={onSignOut} onDeviceLabelSave={onDeviceLabelSave} onResolveConflict={onResolveConflict} revision={revision} />
   return null
 }

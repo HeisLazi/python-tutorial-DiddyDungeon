@@ -33,6 +33,8 @@ from ide.server.context_bridge import (
 )
 from ide.server.security import allowed_hosts, allowed_origins, is_allowed_origin
 from ide.server.state import (
+    BOSS_REQUIREMENTS,
+    MAX_CODEX_NOTE_BYTES,
     MAX_DUNGEON_EDITOR_BYTES,
     MAX_IDENTIFIER_LENGTH,
     MAX_REASON_LENGTH,
@@ -106,6 +108,8 @@ PYR_CONTEXT_INPUT: dict[str, str | None] = {
     "terminal_tail": "",
 }
 PYR_CONTEXT_CHALLENGE: dict[str, object] | None = None
+PYR_DUNGEON_CHALLENGE: dict[str, object] | None = None
+PYR_PRACTICE_CHALLENGES: dict[str, dict[str, object]] = {}
 
 app = FastAPI(title="Python Quest Lab Local Server", version="0.4.0")
 app.add_middleware(TrustedHostMiddleware, allowed_hosts=list(allowed_hosts()))
@@ -140,6 +144,13 @@ class HomesteadEquip(BaseModel):
     item_id: str
 
 
+class CodexNoteRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    entry_id: str = Field(min_length=1, max_length=MAX_IDENTIFIER_LENGTH)
+    note: str = Field(min_length=1, max_length=MAX_CODEX_NOTE_BYTES)
+
+
 class PyrContextRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -168,6 +179,26 @@ class PyrBattleSubmissionRequest(BaseModel):
     answer: str = Field(min_length=1, max_length=20_000)
 
 
+class PyrBossSubmissionRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    nonce: str = Field(min_length=16, max_length=128)
+    requirement_id: Literal["required_behavior", "explanation", "interview"]
+    answer: str = Field(min_length=1, max_length=20_000)
+
+
+class PyrBossVerdictRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    nonce: str = Field(min_length=16, max_length=128)
+    submission_id: str = Field(min_length=1, max_length=MAX_IDENTIFIER_LENGTH)
+    answer_digest: str = Field(min_length=64, max_length=64, pattern=r"^[0-9a-f]{64}$")
+    verdict: Literal["correct", "incorrect"]
+    requirement_id: Literal["required_behavior", "explanation", "interview"]
+    evidence_id: str = Field(min_length=1, max_length=MAX_IDENTIFIER_LENGTH)
+    reason: str = Field(min_length=1, max_length=MAX_REASON_LENGTH)
+
+
 class DungeonStartRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -181,6 +212,65 @@ class DungeonEditorRequest(BaseModel):
     run_id: str = Field(min_length=1, max_length=MAX_IDENTIFIER_LENGTH)
     question_id: str = Field(min_length=1, max_length=MAX_IDENTIFIER_LENGTH)
     content: str = Field(max_length=MAX_DUNGEON_EDITOR_BYTES)
+
+
+class DungeonRunRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    run_id: str = Field(min_length=1, max_length=MAX_IDENTIFIER_LENGTH)
+
+
+class DungeonMarketRequest(DungeonRunRequest):
+    item_id: str = Field(min_length=1, max_length=MAX_IDENTIFIER_LENGTH)
+
+
+class PyrDungeonSubmissionRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    nonce: str = Field(min_length=16, max_length=128)
+    run_id: str = Field(min_length=1, max_length=MAX_IDENTIFIER_LENGTH)
+    question_id: str = Field(min_length=1, max_length=MAX_IDENTIFIER_LENGTH)
+    answer: str = Field(min_length=1, max_length=MAX_DUNGEON_EDITOR_BYTES)
+
+
+class PyrDungeonVerdictRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    nonce: str = Field(min_length=16, max_length=128)
+    submission_id: str = Field(min_length=1, max_length=MAX_IDENTIFIER_LENGTH)
+    answer_digest: str = Field(min_length=64, max_length=64, pattern=r"^[0-9a-f]{64}$")
+    verdict: Literal["correct", "incorrect"]
+    run_id: str = Field(min_length=1, max_length=MAX_IDENTIFIER_LENGTH)
+    question_id: str = Field(min_length=1, max_length=MAX_IDENTIFIER_LENGTH)
+    evidence_id: str = Field(min_length=1, max_length=MAX_IDENTIFIER_LENGTH)
+    reason: str = Field(min_length=1, max_length=MAX_REASON_LENGTH)
+
+
+class PracticeStartRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    concept: str = Field(min_length=1, max_length=MAX_IDENTIFIER_LENGTH)
+    question_type: Literal["true_false", "multiple_choice", "short_explanation", "code_trace", "bug_hunt"]
+    difficulty: int = Field(ge=1, le=5)
+
+
+class PyrPracticeSubmissionRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    session_id: str = Field(min_length=1, max_length=MAX_IDENTIFIER_LENGTH)
+    answer: str = Field(min_length=1, max_length=20_000)
+
+
+class PyrPracticeVerdictRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    nonce: str = Field(min_length=16, max_length=128)
+    submission_id: str = Field(min_length=1, max_length=MAX_IDENTIFIER_LENGTH)
+    answer_digest: str = Field(min_length=64, max_length=64, pattern=r"^[0-9a-f]{64}$")
+    verdict: Literal["correct", "incorrect", "reviewed"]
+    session_id: str = Field(min_length=1, max_length=MAX_IDENTIFIER_LENGTH)
+    evidence_id: str = Field(min_length=1, max_length=MAX_IDENTIFIER_LENGTH)
+    reason: str = Field(min_length=1, max_length=MAX_REASON_LENGTH)
 
 
 def safe_path(relative: str) -> Path:
@@ -322,11 +412,13 @@ def safe_campaign_dungeon_projection(progress: dict) -> dict:
             }
 
 
-def git_info() -> dict:
+def git_info(root: Path | None = None) -> dict:
+    git_root = (root or WORKSPACE).resolve()
+
     def run(*args: str) -> str:
         try:
             result = subprocess.run(
-                ["git", "-C", str(WORKSPACE), *args],
+                ["git", "-C", str(git_root), *args],
                 check=False,
                 capture_output=True,
                 text=True,
@@ -339,6 +431,7 @@ def git_info() -> dict:
     branch = run("branch", "--show-current") or "detached"
     status_lines = [line for line in run("status", "--short").splitlines() if line.strip()]
     return {
+        "root": str(git_root),
         "branch": branch,
         "dirty_count": len(status_lines),
         "status": status_lines[:50],
@@ -455,9 +548,19 @@ def health():
 @app.get("/api/runtime")
 def runtime():
     shell = resolve_shell()
+    workspace_git = git_info(WORKSPACE)
+    repo_git = git_info(REPO_ROOT)
     return {
         "shell": shell,
         "python": sys.executable,
+        "workspace": str(WORKSPACE),
+        "repo_root": str(REPO_ROOT),
+        "canonical_state_path": str(PROGRESS_PATH),
+        "legacy_state_path": str(legacy_progress_path()),
+        "expected_branch": os.getenv("QUESTLAB_EXPECTED_BRANCH", "feature/cloud-sync-desktop"),
+        "workspace_git": workspace_git,
+        "repo_git": repo_git,
+        "state_authority": state_authority_info(PROGRESS_PATH, WORKSPACE),
         "commands": {
             "python3": command_available("python3"),
             "git": command_available("git"),
@@ -481,9 +584,12 @@ def campaign():
         "progress": progress,
         "revision": metadata["revision"],
         "encounter": STATE_SERVICE.encounter_projection(progress),
+        "codex_projection": STATE_SERVICE.codex_projection(progress),
+        "practice_projection": STATE_SERVICE.practice_projection(progress),
         "dungeon": dungeon_projection,
         "activity": activity,
         "git": git_info(),
+        "repo_git": git_info(REPO_ROOT),
         "workspace": str(WORKSPACE),
         "repo_root": str(REPO_ROOT),
         "state_authority": state_authority_info(PROGRESS_PATH, WORKSPACE),
@@ -535,6 +641,67 @@ def save_dungeon_editor(payload: DungeonEditorRequest):
     return result
 
 
+def _dungeon_player_action(action: str, payload: dict) -> dict:
+    envelope = _apply_state_or_http(action, payload, "player")
+    try:
+        progress, metadata = STATE_SERVICE.snapshot_with_metadata()
+        projection = sync_dungeon_projection(progress)
+    except StateCommandError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
+    result = _flatten_state_result(envelope)
+    result.update({"dungeon": projection, "revision": metadata["revision"]})
+    return result
+
+
+@app.post("/api/dungeon/rest")
+def use_dungeon_rest(payload: DungeonRunRequest):
+    return _dungeon_player_action("dungeon_use_rest", payload.model_dump())
+
+
+@app.post("/api/dungeon/market")
+def purchase_dungeon_market(payload: DungeonMarketRequest):
+    return _dungeon_player_action("dungeon_market_purchase", payload.model_dump())
+
+
+@app.post("/api/dungeon/leave")
+def leave_dungeon_room(payload: DungeonRunRequest):
+    return _dungeon_player_action("dungeon_leave_room", payload.model_dump())
+
+
+@app.post("/api/dungeon/finish")
+def finish_dungeon_run(payload: DungeonRunRequest):
+    return _dungeon_player_action("dungeon_finish_run", payload.model_dump())
+
+
+@app.get("/api/practice")
+def practice():
+    """Return independent Practice history; Campaign/Dungeon projections stay separate."""
+
+    try:
+        progress, metadata = STATE_SERVICE.snapshot_with_metadata()
+        projection = STATE_SERVICE.practice_projection(progress)
+    except StateCommandError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
+    return {"ok": True, "revision": metadata["revision"], "practice": projection}
+
+
+@app.post("/api/practice/session")
+def start_practice_session(payload: PracticeStartRequest):
+    envelope = _apply_state_or_http(
+        "practice_session_started",
+        payload.model_dump(),
+        "player",
+    )
+    try:
+        progress, metadata = STATE_SERVICE.snapshot_with_metadata()
+        projection = STATE_SERVICE.practice_projection(progress)
+    except StateCommandError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
+    result = _flatten_state_result(envelope)
+    result.update({"practice": projection, "revision": metadata["revision"]})
+    return result
+
+
 @app.get("/api/state/revision")
 def state_revision():
     try:
@@ -570,6 +737,18 @@ def state_legacy_report():
     return legacy_state_report(PROGRESS_PATH, legacy_progress_path())
 
 
+@app.get("/api/codex")
+def codex():
+    """Return the generic concept library and validated encounter records."""
+
+    try:
+        progress, metadata = STATE_SERVICE.snapshot_with_metadata()
+        projection = STATE_SERVICE.codex_projection(progress)
+    except StateCommandError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
+    return {"ok": True, "revision": metadata["revision"], "codex": projection}
+
+
 PYR_VERDICT_TTL_SECONDS = 300
 
 
@@ -583,9 +762,17 @@ def _attach_pyr_verdict_challenge(
     """Attach one short-lived challenge for a trusted PYR verdict call."""
 
     global PYR_CONTEXT_CHALLENGE
-    mob_name = encounter.get("mob_name") if isinstance(encounter, dict) else None
-    project_id = encounter.get("project_id") if isinstance(encounter, dict) else None
-    if not mob_name or not project_id:
+    if not isinstance(encounter, dict):
+        with PYR_CONTEXT_LOCK:
+            PYR_CONTEXT_CHALLENGE = None
+        context["verdict"] = None
+        return
+
+    project_id = encounter.get("project_id")
+    mob_name = encounter.get("mob_name")
+    boss_mode = encounter.get("status") == "boss_available" or encounter.get("boss_status") == "available"
+    boss_name = encounter.get("boss") if boss_mode else None
+    if not project_id or (not mob_name and not boss_mode):
         with PYR_CONTEXT_LOCK:
             PYR_CONTEXT_CHALLENGE = None
         context["verdict"] = None
@@ -598,34 +785,97 @@ def _attach_pyr_verdict_challenge(
             isinstance(existing, dict)
             and existing.get("revision") == revision
             and existing.get("project_id") == project_id
-            and existing.get("mob_name") == mob_name
+            and existing.get("challenge_type") == ("boss" if boss_mode else "battle")
+            and (existing.get("boss_name") == boss_name if boss_mode else existing.get("mob_name") == mob_name)
             and float(existing.get("expires_at", 0)) > now
         )
         # Keep an issued answer-bound challenge stable while the user submits
         # the prompt to the provider. A background/context refresh must not
         # invalidate the only pending Battle answer; a completed verdict still
         # clears the challenge before a fresh one can be issued.
-        if rotate and valid_existing and existing.get("submission_id"):
+        if rotate and valid_existing and (existing.get("submission_id") or existing.get("boss_submissions") or existing.get("boss_verified")):
             rotate = False
         if rotate or not valid_existing:
             existing = {
                 "nonce": secrets.token_urlsafe(24),
                 "revision": revision,
                 "project_id": project_id,
-                "mob_name": mob_name,
+                "challenge_type": "boss" if boss_mode else "battle",
                 "expires_at": now + PYR_VERDICT_TTL_SECONDS,
             }
+            if boss_mode:
+                existing.update({"boss_name": boss_name, "boss_submissions": {}, "boss_verified": {}})
+            else:
+                existing["mob_name"] = mob_name
             PYR_CONTEXT_CHALLENGE = existing
         context["verdict"] = {
             "nonce": existing["nonce"],
             "revision": existing["revision"],
             "project_id": existing["project_id"],
-            "mob_name": existing["mob_name"],
+            "challenge_type": existing["challenge_type"],
             "expires_in": max(0, int(float(existing["expires_at"]) - now)),
         }
+        if existing.get("mob_name"):
+            context["verdict"]["mob_name"] = existing["mob_name"]
+        if existing.get("boss_name"):
+            context["verdict"]["boss_name"] = existing["boss_name"]
+            context["verdict"]["requirements"] = list(BOSS_REQUIREMENTS)
+            context["verdict"]["verified_requirements"] = sorted(existing.get("boss_verified", {}).keys())
         for field in ("submission_id", "objective_id", "answer_digest", "evidence_id"):
             if field in existing:
                 context["verdict"][field] = existing[field]
+
+
+def _attach_pyr_dungeon_challenge(context: dict, *, revision: int, dungeon: dict | None, rotate: bool) -> None:
+    """Attach a short-lived answer-bound challenge for an active Dungeon room."""
+
+    global PYR_DUNGEON_CHALLENGE
+    if not isinstance(dungeon, dict) or not dungeon.get("active") or dungeon.get("room_type") != "encounter":
+        PYR_DUNGEON_CHALLENGE = None
+        context["dungeon_verdict"] = None
+        return
+    run_id = dungeon.get("run_id")
+    question = dungeon.get("question") if isinstance(dungeon.get("question"), dict) else {}
+    question_id = question.get("id")
+    if not isinstance(run_id, str) or not run_id.strip() or not isinstance(question_id, str) or not question_id.strip():
+        PYR_DUNGEON_CHALLENGE = None
+        context["dungeon_verdict"] = None
+        return
+    now = time.monotonic()
+    with PYR_CONTEXT_LOCK:
+        existing = PYR_DUNGEON_CHALLENGE
+        valid_existing = (
+            isinstance(existing, dict)
+            and existing.get("revision") == revision
+            and existing.get("run_id") == run_id
+            and existing.get("question_id") == question_id
+            and float(existing.get("expires_at", 0)) > now
+        )
+        if rotate and valid_existing and existing.get("submission_id"):
+            rotate = False
+        if rotate or not valid_existing:
+            existing = {
+                "nonce": secrets.token_urlsafe(24),
+                "revision": revision,
+                "run_id": run_id,
+                "question_id": question_id,
+                "question_type": str(question.get("question_type") or "question"),
+                "concept_id": str(question.get("concept_id") or "python-basics"),
+                "expires_at": now + PYR_VERDICT_TTL_SECONDS,
+            }
+            PYR_DUNGEON_CHALLENGE = existing
+        context["dungeon_verdict"] = {
+            "nonce": existing["nonce"],
+            "revision": existing["revision"],
+            "run_id": existing["run_id"],
+            "question_id": existing["question_id"],
+            "question_type": existing["question_type"],
+            "concept_id": existing["concept_id"],
+            "expires_in": max(0, int(float(existing["expires_at"]) - now)),
+        }
+        for field in ("submission_id", "answer_digest", "evidence_id"):
+            if field in existing:
+                context["dungeon_verdict"][field] = existing[field]
 
 
 def _capture_pyr_context(payload: PyrContextRequest, *, rotate_challenge: bool = False) -> dict:
@@ -665,6 +915,10 @@ def _capture_pyr_context(payload: PyrContextRequest, *, rotate_challenge: bool =
     except StateCommandError as exc:
         raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
     encounter = STATE_SERVICE.encounter_projection(progress)
+    try:
+        dungeon = STATE_SERVICE.dungeon_projection(progress)
+    except StateCommandError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
     context = build_context(
         progress=progress,
         revision=metadata["revision"],
@@ -689,6 +943,13 @@ def _capture_pyr_context(payload: PyrContextRequest, *, rotate_challenge: bool =
         context,
         revision=metadata["revision"],
         encounter=encounter,
+        rotate=rotate_challenge,
+    )
+    context["dungeon"] = dungeon
+    _attach_pyr_dungeon_challenge(
+        context,
+        revision=metadata["revision"],
+        dungeon=dungeon,
         rotate=rotate_challenge,
     )
     return context
@@ -800,6 +1061,362 @@ def create_pyr_battle_submission(payload: PyrBattleSubmissionRequest):
             "expires_in": max(0, int(float(challenge["expires_at"]) - time.monotonic())),
         },
     }
+
+
+@app.post("/api/pyr/dungeon-submission")
+def create_pyr_dungeon_submission(payload: PyrDungeonSubmissionRequest):
+    """Bind the current Dungeon answer before provider adjudication."""
+
+    nonce = payload.nonce.strip()
+    run_id = payload.run_id.strip()
+    question_id = payload.question_id.strip()
+    try:
+        answer, answer_truncated = bounded_text(payload.answer, "answer", max_bytes=MAX_DUNGEON_EDITOR_BYTES)
+    except ContextValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    if answer_truncated:
+        raise HTTPException(status_code=413, detail="Dungeon answer is too large")
+    if not answer.strip():
+        raise HTTPException(status_code=422, detail="Dungeon answer must not be empty")
+
+    global PYR_DUNGEON_CHALLENGE
+    with PYR_CONTEXT_LOCK:
+        challenge = PYR_DUNGEON_CHALLENGE
+        now = time.monotonic()
+        if not isinstance(challenge, dict) or challenge.get("nonce") != nonce:
+            raise HTTPException(status_code=409, detail="Dungeon challenge is missing or already used")
+        if float(challenge.get("expires_at", 0)) <= now:
+            PYR_DUNGEON_CHALLENGE = None
+            raise HTTPException(status_code=409, detail="Dungeon challenge expired; capture context again")
+        if challenge.get("submission_id"):
+            raise HTTPException(status_code=409, detail="This Dungeon challenge already has a submission")
+        if challenge.get("run_id") != run_id or challenge.get("question_id") != question_id:
+            raise HTTPException(status_code=409, detail="Dungeon question changed; capture current context again")
+        with PROGRESS_LOCK:
+            try:
+                progress, metadata = STATE_SERVICE.snapshot_with_metadata()
+                projection = STATE_SERVICE.dungeon_projection(progress)
+                question = projection.get("question") if isinstance(projection.get("question"), dict) else {}
+                if metadata["revision"] != challenge.get("revision") or not projection.get("active") or projection.get("room_type") != "encounter":
+                    PYR_DUNGEON_CHALLENGE = None
+                    raise HTTPException(status_code=409, detail="Dungeon run changed; capture fresh context")
+                if projection.get("run_id") != run_id or question.get("id") != question_id:
+                    PYR_DUNGEON_CHALLENGE = None
+                    raise HTTPException(status_code=409, detail="Dungeon question changed; capture fresh context")
+                submission_id = f"dungeon-{secrets.token_hex(12)}"
+                evidence_id = submission_id
+                answer_digest = hashlib.sha256(answer.encode("utf-8")).hexdigest()
+                challenge.update({"submission_id": submission_id, "evidence_id": evidence_id, "answer_digest": answer_digest})
+            except StateCommandError as exc:
+                raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
+
+    return {
+        "ok": True,
+        "submission": {
+            "submission_id": submission_id,
+            "nonce": nonce,
+            "revision": challenge["revision"],
+            "run_id": run_id,
+            "question_id": question_id,
+            "question_type": challenge["question_type"],
+            "concept_id": challenge["concept_id"],
+            "evidence_id": evidence_id,
+            "answer_digest": answer_digest,
+            "expires_in": max(0, int(float(challenge["expires_at"]) - time.monotonic())),
+        },
+    }
+
+
+@app.post("/api/pyr/dungeon-verdict")
+def apply_pyr_dungeon_verdict(payload: PyrDungeonVerdictRequest):
+    """Apply one provider-validated Dungeon result through the gateway."""
+
+    nonce = payload.nonce.strip()
+    global PYR_DUNGEON_CHALLENGE
+    with PYR_CONTEXT_LOCK:
+        challenge = PYR_DUNGEON_CHALLENGE
+        now = time.monotonic()
+        if not isinstance(challenge, dict) or challenge.get("nonce") != nonce:
+            raise HTTPException(status_code=409, detail="Dungeon verdict challenge is missing or already used")
+        if float(challenge.get("expires_at", 0)) <= now:
+            PYR_DUNGEON_CHALLENGE = None
+            raise HTTPException(status_code=409, detail="Dungeon challenge expired; capture context again")
+        if (
+            challenge.get("submission_id") != payload.submission_id
+            or challenge.get("answer_digest") != payload.answer_digest
+            or challenge.get("run_id") != payload.run_id
+            or challenge.get("question_id") != payload.question_id
+            or challenge.get("evidence_id") != payload.evidence_id
+        ):
+            raise HTTPException(status_code=409, detail="Dungeon verdict does not match the pending submission")
+        with PROGRESS_LOCK:
+            try:
+                progress, metadata = STATE_SERVICE.snapshot_with_metadata()
+                if metadata["revision"] != challenge.get("revision"):
+                    PYR_DUNGEON_CHALLENGE = None
+                    raise HTTPException(status_code=409, detail="Dungeon run changed; capture fresh context")
+                mutation = STATE_SERVICE.apply_internal(
+                    "dungeon_record_verdict",
+                    {
+                        "run_id": payload.run_id,
+                        "question_id": payload.question_id,
+                        "verdict": payload.verdict,
+                        "evidence_id": payload.evidence_id,
+                        "reason": payload.reason,
+                    },
+                )
+            except StateCommandError as exc:
+                raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
+        PYR_DUNGEON_CHALLENGE = None
+    return {"ok": True, "verdict": payload.verdict, "mutation": mutation, "revision": mutation.get("revision"), "event": mutation.get("event")}
+
+
+@app.post("/api/pyr/practice-submission")
+def create_pyr_practice_submission(payload: PyrPracticeSubmissionRequest):
+    """Bind an optional Practice answer without storing its raw text."""
+
+    session_id = payload.session_id.strip()
+    try:
+        answer, answer_truncated = bounded_text(payload.answer, "answer")
+    except ContextValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    if answer_truncated:
+        raise HTTPException(status_code=413, detail="Practice answer is too large")
+    if not answer.strip():
+        raise HTTPException(status_code=422, detail="Practice answer must not be empty")
+
+    global PYR_PRACTICE_CHALLENGES
+    with PYR_CONTEXT_LOCK:
+        with PROGRESS_LOCK:
+            try:
+                progress, metadata = STATE_SERVICE.snapshot_with_metadata()
+                history = STATE_SERVICE.practice_projection(progress)["sessions"]
+            except StateCommandError as exc:
+                raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
+        session = next((item for item in history if item.get("session_id") == session_id), None)
+        if session is None:
+            raise HTTPException(status_code=404, detail="Practice session was not found")
+        now = time.monotonic()
+        existing = PYR_PRACTICE_CHALLENGES.get(session_id)
+        if isinstance(existing, dict) and float(existing.get("expires_at", 0)) > now and existing.get("submission_id"):
+            raise HTTPException(status_code=409, detail="This Practice session already has a pending submission")
+        nonce = secrets.token_urlsafe(24)
+        submission_id = f"practice-{secrets.token_hex(12)}"
+        evidence_id = submission_id
+        answer_digest = hashlib.sha256(answer.encode("utf-8")).hexdigest()
+        challenge = {
+            "nonce": nonce,
+            "submission_id": submission_id,
+            "session_id": session_id,
+            "answer_digest": answer_digest,
+            "evidence_id": evidence_id,
+            "revision": metadata["revision"],
+            "expires_at": now + PYR_VERDICT_TTL_SECONDS,
+        }
+        PYR_PRACTICE_CHALLENGES[session_id] = challenge
+    return {
+        "ok": True,
+        "submission": {
+            "nonce": nonce,
+            "submission_id": submission_id,
+            "session_id": session_id,
+            "revision": metadata["revision"],
+            "evidence_id": evidence_id,
+            "answer_digest": answer_digest,
+            "expires_in": PYR_VERDICT_TTL_SECONDS,
+        },
+    }
+
+
+@app.post("/api/pyr/practice-verdict")
+def apply_pyr_practice_verdict(payload: PyrPracticeVerdictRequest):
+    """Record a provider-validated Practice outcome with no game reward."""
+
+    global PYR_PRACTICE_CHALLENGES
+    with PYR_CONTEXT_LOCK:
+        challenge = PYR_PRACTICE_CHALLENGES.get(payload.session_id)
+        now = time.monotonic()
+        if not isinstance(challenge, dict) or challenge.get("nonce") != payload.nonce:
+            raise HTTPException(status_code=409, detail="Practice verdict challenge is missing or already used")
+        if float(challenge.get("expires_at", 0)) <= now:
+            PYR_PRACTICE_CHALLENGES.pop(payload.session_id, None)
+            raise HTTPException(status_code=409, detail="Practice challenge expired; request a fresh answer")
+        if (
+            challenge.get("submission_id") != payload.submission_id
+            or challenge.get("answer_digest") != payload.answer_digest
+            or challenge.get("evidence_id") != payload.evidence_id
+        ):
+            raise HTTPException(status_code=409, detail="Practice verdict does not match the pending submission")
+        with PROGRESS_LOCK:
+            try:
+                mutation = STATE_SERVICE.apply_internal(
+                    "practice_record_attempt",
+                    {
+                        "session_id": payload.session_id,
+                        "outcome": payload.verdict,
+                        "evidence_id": payload.evidence_id,
+                        "reason": payload.reason,
+                    },
+                )
+            except StateCommandError as exc:
+                raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
+        PYR_PRACTICE_CHALLENGES.pop(payload.session_id, None)
+    return {"ok": True, "verdict": payload.verdict, "mutation": mutation, "revision": mutation.get("revision"), "event": mutation.get("event")}
+
+
+@app.post("/api/pyr/boss-submission")
+def create_pyr_boss_submission(payload: PyrBossSubmissionRequest):
+    """Bind one answer to one of the three current boss requirements."""
+
+    nonce = payload.nonce.strip()
+    requirement_id = payload.requirement_id
+    try:
+        answer, answer_truncated = bounded_text(payload.answer, "answer")
+    except ContextValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    if answer_truncated:
+        raise HTTPException(status_code=413, detail="Boss answer is too large")
+    if not answer.strip():
+        raise HTTPException(status_code=422, detail="Boss answer must not be empty")
+
+    global PYR_CONTEXT_CHALLENGE
+    with PYR_CONTEXT_LOCK:
+        challenge = PYR_CONTEXT_CHALLENGE
+        now = time.monotonic()
+        if not isinstance(challenge, dict) or challenge.get("nonce") != nonce or challenge.get("challenge_type") != "boss":
+            raise HTTPException(status_code=409, detail="Boss challenge is missing; capture current context again")
+        if float(challenge.get("expires_at", 0)) <= now:
+            PYR_CONTEXT_CHALLENGE = None
+            raise HTTPException(status_code=409, detail="Boss challenge expired; capture context again")
+        submissions = challenge.setdefault("boss_submissions", {})
+        verified = challenge.setdefault("boss_verified", {})
+        if requirement_id in verified:
+            raise HTTPException(status_code=409, detail="This boss requirement is already verified")
+        if requirement_id in submissions:
+            raise HTTPException(status_code=409, detail="This boss requirement already has a pending submission")
+
+        with PROGRESS_LOCK:
+            try:
+                progress, metadata = STATE_SERVICE.snapshot_with_metadata()
+                encounter = STATE_SERVICE.encounter_projection(progress)
+                if metadata["revision"] != challenge.get("revision") or not isinstance(encounter, dict):
+                    PYR_CONTEXT_CHALLENGE = None
+                    raise HTTPException(status_code=409, detail="Campaign changed; capture fresh boss context")
+                if encounter.get("status") != "boss_available" or encounter.get("project_id") != challenge.get("project_id"):
+                    PYR_CONTEXT_CHALLENGE = None
+                    raise HTTPException(status_code=409, detail="The boss gate is no longer available")
+                if requirement_id not in BOSS_REQUIREMENTS:
+                    raise HTTPException(status_code=422, detail="Unsupported boss requirement")
+                submission_id = f"boss-{secrets.token_hex(12)}"
+                evidence_id = submission_id
+                answer_digest = hashlib.sha256(answer.encode("utf-8")).hexdigest()
+                submissions[requirement_id] = {
+                    "submission_id": submission_id,
+                    "evidence_id": evidence_id,
+                    "answer_digest": answer_digest,
+                    "requirement_id": requirement_id,
+                    "question_type": "interview" if requirement_id == "interview" else "explanation",
+                }
+            except StateCommandError as exc:
+                raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
+
+    return {
+        "ok": True,
+        "submission": {
+            "submission_id": submission_id,
+            "nonce": nonce,
+            "challenge_type": "boss",
+            "revision": challenge["revision"],
+            "project_id": challenge["project_id"],
+            "boss_name": challenge.get("boss_name"),
+            "requirement_id": requirement_id,
+            "question_type": submissions[requirement_id]["question_type"],
+            "evidence_id": evidence_id,
+            "answer_digest": answer_digest,
+            "expires_in": max(0, int(float(challenge["expires_at"]) - time.monotonic())),
+        },
+    }
+
+
+@app.post("/api/pyr/boss-verdict")
+def apply_pyr_boss_verdict(payload: PyrBossVerdictRequest):
+    """Record a validated boss requirement and clear the gate when complete."""
+
+    nonce = payload.nonce.strip()
+    requirement_id = payload.requirement_id
+    global PYR_CONTEXT_CHALLENGE
+    with PYR_CONTEXT_LOCK:
+        challenge = PYR_CONTEXT_CHALLENGE
+        now = time.monotonic()
+        if not isinstance(challenge, dict) or challenge.get("nonce") != nonce or challenge.get("challenge_type") != "boss":
+            raise HTTPException(status_code=409, detail="Boss verdict challenge is missing or already used")
+        if float(challenge.get("expires_at", 0)) <= now:
+            PYR_CONTEXT_CHALLENGE = None
+            raise HTTPException(status_code=409, detail="Boss challenge expired; capture context again")
+        submissions = challenge.get("boss_submissions")
+        verified = challenge.get("boss_verified")
+        pending = submissions.get(requirement_id) if isinstance(submissions, dict) else None
+        if not isinstance(verified, dict) or not isinstance(pending, dict):
+            raise HTTPException(status_code=409, detail="No pending submission exists for this boss requirement")
+        if (
+            pending.get("submission_id") != payload.submission_id
+            or pending.get("answer_digest") != payload.answer_digest
+            or pending.get("evidence_id") != payload.evidence_id
+        ):
+            raise HTTPException(status_code=409, detail="Boss verdict does not match the pending submission")
+
+        if payload.verdict == "incorrect":
+            del submissions[requirement_id]
+            return {
+                "ok": True,
+                "verdict": "incorrect",
+                "requirement_id": requirement_id,
+                "complete": False,
+                "retry_allowed": True,
+                "reason": payload.reason,
+            }
+
+        verified[requirement_id] = {
+            "evidence_id": pending["evidence_id"],
+            "submission_id": pending["submission_id"],
+            "reason": payload.reason,
+        }
+        del submissions[requirement_id]
+        mutation = None
+        with PROGRESS_LOCK:
+            try:
+                progress, metadata = STATE_SERVICE.snapshot_with_metadata()
+                encounter = STATE_SERVICE.encounter_projection(progress)
+                if metadata["revision"] != challenge.get("revision") or not isinstance(encounter, dict) or encounter.get("status") != "boss_available":
+                    PYR_CONTEXT_CHALLENGE = None
+                    raise HTTPException(status_code=409, detail="Campaign changed; capture fresh boss context")
+                if all(requirement in verified for requirement in BOSS_REQUIREMENTS):
+                    reason = "Boss requirements verified; " + "; ".join(
+                        str(verified[requirement].get("reason") or "validated") for requirement in BOSS_REQUIREMENTS
+                    )
+                    mutation = STATE_SERVICE.apply_internal(
+                        "record_boss_clear",
+                        {
+                            "evidence_id": verified["required_behavior"]["evidence_id"],
+                            "explanation_evidence_id": verified["explanation"]["evidence_id"],
+                            "interview_evidence_id": verified["interview"]["evidence_id"],
+                            "reason": reason[:MAX_REASON_LENGTH],
+                        },
+                    )
+                    PYR_CONTEXT_CHALLENGE = None
+            except StateCommandError as exc:
+                raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
+
+        return {
+            "ok": True,
+            "verdict": "correct",
+            "requirement_id": requirement_id,
+            "complete": mutation is not None,
+            "verified_requirements": sorted(verified),
+            "mutation": mutation,
+            "revision": mutation.get("revision") if mutation else challenge.get("revision"),
+            "event": mutation.get("event") if mutation else None,
+        }
 
 
 @app.post("/api/pyr/verdict")
@@ -1041,6 +1658,31 @@ def purchase_homestead_item(payload: HomesteadPurchase):
 def equip_homestead_item(payload: HomesteadEquip):
     envelope = _apply_state_or_http("homestead_equip", payload.model_dump(), "player")
     return _flatten_state_result(envelope)
+
+
+@app.post("/api/codex/note")
+def save_codex_note(payload: CodexNoteRequest):
+    """Store a player-authored note through the canonical state gateway."""
+
+    try:
+        note = payload.note.replace("\r\n", "\n").replace("\r", "\n")
+        if len(note.encode("utf-8")) > MAX_CODEX_NOTE_BYTES:
+            raise HTTPException(status_code=413, detail="Codex note is too large")
+    except UnicodeEncodeError as exc:
+        raise HTTPException(status_code=422, detail="Codex note is not valid UTF-8") from exc
+    envelope = _apply_state_or_http(
+        "record_codex_note",
+        {"entry_id": payload.entry_id, "note": note},
+        "player",
+    )
+    try:
+        progress, metadata = STATE_SERVICE.snapshot_with_metadata()
+        projection = STATE_SERVICE.codex_projection(progress)
+    except StateCommandError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
+    result = _flatten_state_result(envelope)
+    result.update({"revision": metadata["revision"], "codex": projection})
+    return result
 
 
 @app.websocket("/ws/terminal/{role}")

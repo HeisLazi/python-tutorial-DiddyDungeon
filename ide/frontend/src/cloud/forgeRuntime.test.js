@@ -89,6 +89,11 @@ test('Dungeon checkpoints and Practice remain separate learning modes', () => {
 
   assert.match(app, /\/api\/dungeon\/start/)
   assert.match(app, /\/api\/dungeon\/editor/)
+  assert.match(app, /\/api\/pyr\/dungeon-submission/)
+  assert.match(app, /\/api\/pyr\/dungeon-verdict/)
+  assert.match(app, /\/api\/practice\/session/)
+  assert.match(app, /\/api\/pyr\/practice-submission/)
+  assert.match(app, /\/api\/pyr\/practice-verdict/)
   assert.match(app, /question_id: questionId/)
   assert.match(app, /saveDungeon/)
   assert.match(app, /dungeonSaving/)
@@ -97,6 +102,8 @@ test('Dungeon checkpoints and Practice remain separate learning modes', () => {
   assert.match(views, /dungeon\.py · current room buffer/)
   assert.match(views, /data-testid="practice"/)
   assert.match(views, /Practice is unlimited and separate from Campaign and Dungeon/)
+  assert.match(views, /Send answer to PYR/)
+  assert.match(views, /RECENT PRACTICE HISTORY/)
   assert.match(views, /id: 'tutor', icon: '🧪', label: 'Tutor Notebook'/)
   assert.doesNotMatch(views, /<option value="python-basics">python-basics<\/option>/)
   assert.match(app, /Tutor Notebook is a Campaign surface/)
@@ -119,6 +126,22 @@ test('Campaign completion keeps the boss gate and state-service boundary explici
   assert.doesNotMatch(views, /boss.*reward.*\+100/)
 })
 
+test('boss gate provider bridge binds behaviour, explanation and interview evidence', () => {
+  const app = source('../AppV2.jsx')
+  const views = source('../RpgViews.jsx')
+  const server = source('../../../server/app_v2.py')
+
+  assert.match(app, /const submitBoss = async/)
+  assert.match(app, /\/api\/pyr\/boss-submission/)
+  assert.match(app, /\/api\/pyr\/boss-verdict/)
+  assert.match(app, /A project completes only after all three requirements are separately verified/)
+  assert.match(views, /data-testid="boss-submission"/)
+  assert.match(views, /Send to PYR/)
+  assert.match(server, /class PyrBossSubmissionRequest/)
+  assert.match(server, /class PyrBossVerdictRequest/)
+  assert.match(server, /all\(requirement in verified for requirement in BOSS_REQUIREMENTS\)/)
+})
+
 test('PTY state commands inherit the canonical gateway instead of workspace progress.json', () => {
   const app = source('../../../server/app_v2.py')
   const cli = source('../../../state_cli.py')
@@ -130,6 +153,38 @@ test('PTY state commands inherit the canonical gateway instead of workspace prog
   assert.match(app, /QUESTLAB_PYTHON.*sys\.executable/)
   assert.match(cli, /subparsers\.add_parser\("authority"/)
   assert.match(cli, /subparsers\.add_parser\("campaign"/)
+})
+
+test('runtime health exposes the checkout and one canonical state authority', () => {
+  const app = source('../../../server/app_v2.py')
+  const launcher = source('../../../quest.py')
+  const views = source('../AppV2.jsx')
+
+  assert.match(app, /expected_branch/)
+  assert.match(app, /workspace_git/)
+  assert.match(app, /repo_git/)
+  assert.match(app, /canonical_state_path/)
+  assert.match(launcher, /QUESTLAB_EXPECTED_BRANCH/)
+  assert.match(views, /CHECKOUT MISMATCH/)
+})
+
+test('Codex renders a searchable concept library and writes bounded field notes through the gateway', () => {
+  const app = source('../AppV2.jsx')
+  const views = source('../RpgViews.jsx')
+  const server = source('../../../server/app_v2.py')
+  const state = source('../../../server/state.py')
+
+  assert.match(app, /saveCodexNote/)
+  assert.match(app, /\/api\/codex\/note/)
+  assert.match(views, /CODEX \/ FIELD LIBRARY/)
+  assert.match(views, /Search Codex/)
+  assert.match(views, /Add a field note/)
+  assert.match(views, /codex-page-/)
+  assert.match(server, /@app\.get\("\/api\/codex"\)/)
+  assert.match(server, /@app\.post\("\/api\/codex\/note"\)/)
+  assert.match(state, /"record_codex_note": ActionDefinition\(frozenset\(\{"player"\}\)\)/)
+  assert.match(state, /MAX_CODEX_NOTE_BYTES/)
+  assert.match(state, /def codex_projection\(/)
 })
 
 test('top HUD stat pills style only direct stats and reset nested SVG content', () => {

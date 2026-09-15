@@ -28,6 +28,12 @@ MAX_REWARD_COINS = 100
 MAX_HP_DELTA = 100
 MAX_IMPACT = 8
 MAX_CODEX_RECORDS = 100
+MAX_CODEX_NOTE_BYTES = 2_000
+MAX_CODEX_NOTES_PER_ENTRY = 20
+MAX_PRACTICE_SESSIONS = 50
+MAX_PRACTICE_ATTEMPTS_PER_SESSION = 20
+PRACTICE_QUESTION_TYPES = frozenset({"true_false", "multiple_choice", "short_explanation", "code_trace", "bug_hunt"})
+MAX_DUNGEON_LEADERBOARD = 50
 MAX_SYNC_LIST_ITEMS = 100
 MAX_SYNC_TEXT_LENGTH = 120
 MAX_SYNC_LEVEL = 1000
@@ -38,6 +44,14 @@ MAX_DUNGEON_OPTIONS = 8
 MAX_DUNGEON_FLOOR = 1_000_000
 MAX_DUNGEON_ROOM = 1_000_000
 MAX_DUNGEON_DIFFICULTY = 10
+DUNGEON_SCORE_BY_DIFFICULTY = (0, 10, 15, 20, 30, 45, 60, 80, 105, 135, 170)
+DUNGEON_COIN_BY_DIFFICULTY = (0, 5, 8, 11, 15, 20, 26, 33, 41, 50, 60)
+DUNGEON_REST_HEAL = 30
+DUNGEON_MARKET_CATALOG: tuple[dict[str, Any], ...] = (
+    {"id": "dungeon-heal", "name": "Field Ration", "price": 12, "kind": "heal", "description": "Restore 20 run HP."},
+    {"id": "dungeon-ward", "name": "Ember Ward", "price": 24, "kind": "armor", "armor": "Ember Ward", "description": "Reduce the next counterattack."},
+    {"id": "dungeon-lens", "name": "Scholar Lens", "price": 30, "kind": "trinket", "trinket": "Scholar Lens", "description": "A cosmetic run trophy for careful reasoning."},
+)
 
 PUBLIC_ACTORS = frozenset({"player", "pyr"})
 SYSTEM_ACTOR = "system"
@@ -106,10 +120,18 @@ ACTION_DEFINITIONS: dict[str, ActionDefinition] = {
     "record_boss_clear": ActionDefinition(frozenset({SYSTEM_ACTOR}), internal=True),
     "record_battle_miss": ActionDefinition(frozenset({SYSTEM_ACTOR}), internal=True),
     "reconcile_legacy_progress": ActionDefinition(frozenset({SYSTEM_ACTOR}), internal=True),
+    "record_codex_note": ActionDefinition(frozenset({"player"})),
+    "practice_session_started": ActionDefinition(frozenset({"player"})),
+    "practice_record_attempt": ActionDefinition(frozenset({SYSTEM_ACTOR}), internal=True),
     "dungeon_start_run": ActionDefinition(frozenset({"player"})),
     "dungeon_save_editor": ActionDefinition(frozenset({"player"})),
     "dungeon_issue_question": ActionDefinition(frozenset({SYSTEM_ACTOR}), internal=True),
+    "dungeon_record_verdict": ActionDefinition(frozenset({SYSTEM_ACTOR}), internal=True),
     "dungeon_record_death": ActionDefinition(frozenset({SYSTEM_ACTOR}), internal=True),
+    "dungeon_use_rest": ActionDefinition(frozenset({"player"})),
+    "dungeon_market_purchase": ActionDefinition(frozenset({"player"})),
+    "dungeon_leave_room": ActionDefinition(frozenset({"player"})),
+    "dungeon_finish_run": ActionDefinition(frozenset({"player"})),
 }
 
 PUBLIC_ACTIONS = frozenset(action for action, definition in ACTION_DEFINITIONS.items() if not definition.internal)
@@ -203,6 +225,84 @@ BOSS_REQUIREMENTS: tuple[str, ...] = (
     "required_behavior",
     "explanation",
     "interview",
+)
+
+# The library is deliberately generic.  These pages teach transferable Python
+# ideas without carrying a project answer key or a future encounter prompt.
+# Encounter-specific observations remain in the canonical Codex records.
+CODEX_CONCEPT_PAGES: tuple[dict[str, Any], ...] = (
+    {
+        "id": "variables",
+        "title": "Variables & program state",
+        "aliases": ("variable", "variables", "program state", "state"),
+        "definition": "A variable gives a meaningful name to a value so a program can read or update its state.",
+        "examples": ("score = 0\nscore = score + 1", "name = input('Name: ')\nprint(name)"),
+        "question_types": ("prediction", "explanation", "code_checkpoint"),
+    },
+    {
+        "id": "input-output",
+        "title": "Input and output",
+        "aliases": ("input", "output", "input/output"),
+        "definition": "Input brings data into a program; output communicates a result to a person or another system.",
+        "examples": ("city = input('City: ')\nprint(f'You chose {city}')",),
+        "question_types": ("prediction", "explanation"),
+    },
+    {
+        "id": "lists",
+        "title": "Lists & collections",
+        "aliases": ("list", "lists", "collection", "random selection"),
+        "definition": "A list keeps an ordered, changeable sequence of values that can be indexed or iterated.",
+        "examples": ("colors = ['red', 'blue']\ncolors.append('gold')\nprint(colors[0])",),
+        "question_types": ("code_checkpoint", "prediction", "explanation"),
+    },
+    {
+        "id": "loops",
+        "title": "Loops & totals",
+        "aliases": ("loop", "loops", "iteration", "totals", "running total"),
+        "definition": "A loop repeats a block while walking through values or while a condition remains true.",
+        "examples": ("total = 0\nfor value in [2, 4, 6]:\n    total += value",),
+        "question_types": ("prediction", "code_checkpoint", "explanation"),
+    },
+    {
+        "id": "conditionals",
+        "title": "Conditionals & branches",
+        "aliases": ("conditional", "conditionals", "branch", "branches"),
+        "definition": "A conditional chooses which code path runs by evaluating a Boolean expression.",
+        "examples": ("if temperature > 30:\n    label = 'hot'\nelse:\n    label = 'mild'",),
+        "question_types": ("prediction", "bug_diagnosis", "explanation"),
+    },
+    {
+        "id": "functions",
+        "title": "Functions & boundaries",
+        "aliases": ("function", "functions", "return", "function boundary"),
+        "definition": "A function packages a named operation with inputs and an explicit result or side effect.",
+        "examples": ("def double(value):\n    return value * 2\n\nanswer = double(4)",),
+        "question_types": ("code_checkpoint", "explanation", "bug_diagnosis"),
+    },
+    {
+        "id": "dictionaries",
+        "title": "Dictionaries & lookup",
+        "aliases": ("dictionary", "dictionaries", "mapping", "lookup"),
+        "definition": "A dictionary maps unique keys to values so related data can be looked up by name.",
+        "examples": ("prices = {'tea': 3, 'cake': 5}\nprint(prices.get('tea', 0))",),
+        "question_types": ("code_checkpoint", "prediction", "explanation"),
+    },
+    {
+        "id": "control-flow",
+        "title": "Control flow & reset",
+        "aliases": ("control flow", "input loops", "reset state", "program loops"),
+        "definition": "Control flow combines sequence, branches, loops and state updates; reset logic returns state to a known boundary.",
+        "examples": ("running = True\nwhile running:\n    running = False",),
+        "question_types": ("code_checkpoint", "bug_diagnosis", "explanation"),
+    },
+    {
+        "id": "random-selection",
+        "title": "Random selection",
+        "aliases": ("random selection", "random"),
+        "definition": "Random selection chooses a value from a collection; keeping the chosen value visible makes the result explainable and testable.",
+        "examples": ("import random\nchoice = random.choice(['left', 'right'])",),
+        "question_types": ("prediction", "explanation", "code_checkpoint"),
+    },
 )
 
 SYNC_PLAYER_FIELDS = frozenset(
@@ -838,6 +938,101 @@ class LocalStateService:
         }
 
     @staticmethod
+    def _dungeon_market_catalog() -> list[dict[str, Any]]:
+        return [dict(item) for item in DUNGEON_MARKET_CATALOG]
+
+    @classmethod
+    def _dungeon_adaptive_concept(cls, progress: Mapping[str, Any] | None, fallback: str) -> str:
+        """Choose a recorded weak concept for the next room when available.
+
+        The Dungeon may adapt to evidence already in the Codex, but it never
+        invents a weakness from raw browser text.  Incorrect encounter results
+        or an explicit recorded weakness are the only signals considered.
+        """
+
+        if not isinstance(progress, Mapping):
+            return fallback
+        codex = progress.get("codex")
+        entries = codex.get("encounters") if isinstance(codex, Mapping) else None
+        if not isinstance(entries, list):
+            return fallback
+        candidates: list[tuple[int, str]] = []
+        for entry in entries:
+            if not isinstance(entry, Mapping):
+                continue
+            concept = entry.get("concept")
+            if not isinstance(concept, str) or not concept.strip():
+                continue
+            results = entry.get("results") if isinstance(entry.get("results"), list) else []
+            incorrect = sum(1 for result in results if isinstance(result, Mapping) and result.get("outcome") == "incorrect")
+            weaknesses = entry.get("weaknesses") if isinstance(entry.get("weaknesses"), list) else []
+            signal = incorrect + (1 if weaknesses else 0)
+            if signal:
+                candidates.append((signal, concept.strip()))
+        if not candidates:
+            return fallback
+        candidates.sort(key=lambda item: (-item[0], item[1].casefold()))
+        return candidates[0][1][:MAX_IDENTIFIER_LENGTH]
+
+    @classmethod
+    def _dungeon_question_for_room(cls, run: Mapping[str, Any], *, room: int, floor: int) -> dict[str, Any]:
+        """Create a safe deterministic prompt for a newly reached room.
+
+        A trusted provider may replace this public prompt through
+        ``dungeon_issue_question``; this fallback keeps the local vertical
+        slice playable without exposing an answer key.
+        """
+
+        concept = str(run.get("concept_id") or "python-basics")
+        difficulty = min(MAX_DUNGEON_DIFFICULTY, max(1, 1 + (floor - 1) // 2))
+        types = ("true_false", "multiple_choice", "code_checkpoint", "bug_hunt", "short_explanation")
+        question_type = types[(room - 1) % len(types)]
+        prompt_by_type = {
+            "true_false": f"True or false: a {concept} loop should make its stopping condition observable.",
+            "multiple_choice": f"Which small change would make a {concept} example easier to test?",
+            "code_checkpoint": f"Write a small Python example that demonstrates {concept}.",
+            "bug_hunt": f"Find one likely boundary bug in a short {concept} example and explain the fix.",
+            "short_explanation": f"Explain how you would check a {concept} result before changing state.",
+        }
+        options = ["Make the state explicit", "Hide the state", "Skip the check"] if question_type == "multiple_choice" else ["True", "False"] if question_type == "true_false" else []
+        return cls._dungeon_question_spec(
+            {
+                "id": f"{run['run_id']}-q{int(run.get('question_number', 1))}",
+                "question_type": question_type,
+                "concept_id": concept,
+                "difficulty": difficulty,
+                "prompt": prompt_by_type[question_type],
+                "options": options,
+            }
+        )
+
+    @classmethod
+    def _dungeon_set_next_room(cls, run: dict[str, Any], progress: Mapping[str, Any] | None = None) -> dict[str, Any]:
+        next_room = cls._integer(run.get("room", 1), "room", minimum=1, maximum=MAX_DUNGEON_ROOM) + 1
+        floor = max(1, cls._integer(run.get("floor", 1), "floor", minimum=1, maximum=MAX_DUNGEON_FLOOR))
+        floor = max(floor, 1 + (next_room - 1) // 10)
+        room_type = "rest" if next_room % 5 == 0 else "market" if next_room % 7 == 0 else "encounter"
+        if room_type == "encounter":
+            run["concept_id"] = cls._dungeon_adaptive_concept(progress, str(run.get("concept_id") or "python-basics"))
+        run["room"] = next_room
+        run["floor"] = floor
+        run["room_type"] = room_type
+        run["question_number"] = cls._counter(run, "question_number") + 1
+        run["question"] = cls._dungeon_question_for_room(run, room=next_room, floor=floor) if room_type == "encounter" else None
+        run["editor_content"] = ""
+        run["updated_at"] = _utc_now()
+        return run
+
+    @classmethod
+    def _dungeon_append_history(cls, run: dict[str, Any], item: Mapping[str, Any]) -> None:
+        history = run.setdefault("history", [])
+        if not isinstance(history, list):
+            raise StateCommandError("Existing Dungeon history is invalid", status_code=500)
+        safe = {key: item[key] for key in ("room", "floor", "question_id", "outcome", "evidence_id", "score_delta", "coins_delta", "damage") if key in item}
+        history.append(safe)
+        run["history"] = history[-50:]
+
+    @staticmethod
     def _dungeon_run(progress: Mapping[str, Any]) -> dict[str, Any] | None:
         raw = progress.get("dungeon_run")
         if raw is None:
@@ -873,6 +1068,7 @@ class LocalStateService:
             "status": status,
             "run_id": run.get("run_id"),
             "seed": run.get("seed"),
+            "concept_id": run.get("concept_id"),
             "floor": run.get("floor", 0),
             "room": run.get("room", 0),
             "room_type": run.get("room_type", ""),
@@ -884,6 +1080,10 @@ class LocalStateService:
             "loadout": {},
             "question": None,
             "editor_content": "",
+            "last_result": None,
+            "history": [],
+            "market_catalog": self._dungeon_market_catalog() if status == "active" and run.get("room_type") == "market" else [],
+            "leaderboard": [],
         }
         for field in ("floor", "room", "score", "run_coins"):
             try:
@@ -905,13 +1105,64 @@ class LocalStateService:
                 for field in ("id", "question_type", "concept_id", "difficulty", "prompt", "options")
                 if field in question
             }
-        elif status == "active":
+        elif status == "active" and run.get("room_type") not in {"rest", "market"}:
             raise StateCommandError("Active Dungeon run has no current question", status_code=500)
         editor_content = run.get("editor_content", "")
         if not isinstance(editor_content, str):
             raise StateCommandError("Existing Dungeon editor content is invalid", status_code=500)
         projection["editor_content"] = editor_content if status == "active" else ""
+        last_result = run.get("last_result")
+        if isinstance(last_result, Mapping):
+            projection["last_result"] = {
+                key: last_result[key]
+                for key in ("outcome", "question_id", "score_delta", "coins_delta", "damage", "evidence_id", "reason")
+                if key in last_result
+            }
+        history = run.get("history")
+        if isinstance(history, list):
+            projection["history"] = [
+                {
+                    key: item[key]
+                    for key in ("room", "floor", "question_id", "outcome", "evidence_id", "score_delta", "coins_delta", "damage")
+                    if key in item
+                }
+                for item in history[-50:]
+                if isinstance(item, Mapping)
+            ]
+        leaderboard = progress.get("dungeon_leaderboard") if isinstance(progress, Mapping) else None
+        if isinstance(leaderboard, list):
+            projection["leaderboard"] = [
+                {
+                    key: item[key]
+                    for key in ("run_id", "score", "floor", "room", "status", "concept_id", "ended_at")
+                    if key in item
+                }
+                for item in leaderboard[:20]
+                if isinstance(item, Mapping)
+            ]
         return projection
+
+    @classmethod
+    def _dungeon_record_leaderboard(cls, progress: dict[str, Any], run: Mapping[str, Any], status: str) -> None:
+        board = progress.setdefault("dungeon_leaderboard", [])
+        if not isinstance(board, list):
+            raise StateCommandError("Existing Dungeon leaderboard is invalid", status_code=500)
+        run_id = str(run.get("run_id") or "")
+        if not run_id or any(isinstance(item, Mapping) and item.get("run_id") == run_id for item in board):
+            return
+        board.append(
+            {
+                "run_id": run_id,
+                "score": max(0, int(run.get("score", 0) or 0)),
+                "floor": max(1, int(run.get("floor", 1) or 1)),
+                "room": max(1, int(run.get("room", 1) or 1)),
+                "status": status,
+                "concept_id": str(run.get("concept_id") or "python-basics")[:MAX_IDENTIFIER_LENGTH],
+                "ended_at": run.get("ended_at") or _utc_now(),
+            }
+        )
+        board.sort(key=lambda item: (-int(item.get("score", 0) or 0), -int(item.get("floor", 0) or 0), str(item.get("ended_at") or "")))
+        progress["dungeon_leaderboard"] = board[:MAX_DUNGEON_LEADERBOARD]
 
     def _dungeon_start_run(self, payload: Mapping[str, Any], progress: dict[str, Any]) -> Mutation:
         data = self._payload(payload, {"concept_id", "seed"}, set())
@@ -921,7 +1172,7 @@ class LocalStateService:
 
         learning = progress.get("learning_state")
         fallback_concept = learning.get("concept") if isinstance(learning, Mapping) else None
-        concept_id = data.get("concept_id") or fallback_concept or "python-basics"
+        concept_id = data.get("concept_id") or self._dungeon_adaptive_concept(progress, str(fallback_concept or "python-basics"))
         concept_id = self._text(concept_id, "concept_id", max_length=MAX_IDENTIFIER_LENGTH)
         seed = data.get("seed") or uuid.uuid4().hex
         seed = self._text(seed, "seed", max_length=MAX_IDENTIFIER_LENGTH, identifier=True)
@@ -944,6 +1195,7 @@ class LocalStateService:
             "status": "active",
             "run_id": run_id,
             "seed": seed,
+            "concept_id": concept_id,
             "floor": 1,
             "room": 1,
             "room_type": "encounter",
@@ -961,7 +1213,10 @@ class LocalStateService:
                 "coins": 0,
             },
             "question": question,
+            "question_number": 1,
             "editor_content": "",
+            "last_result": None,
+            "history": [],
         }
         progress["dungeon_run"] = run
         projection = self.dungeon_projection(progress)
@@ -1029,6 +1284,7 @@ class LocalStateService:
                 "floor": floor,
                 "room": room,
                 "room_type": room_type,
+                "concept_id": question["concept_id"],
                 "question": question,
                 "editor_content": "",
                 "updated_at": _utc_now(),
@@ -1051,6 +1307,171 @@ class LocalStateService:
             },
         )
 
+    def _dungeon_record_verdict(self, payload: Mapping[str, Any], progress: dict[str, Any]) -> Mutation:
+        """Apply one provider-validated Dungeon answer without Campaign rewards."""
+
+        data = self._payload(
+            payload,
+            {"run_id", "question_id", "verdict", "evidence_id", "reason"},
+            {"run_id", "question_id", "verdict", "evidence_id", "reason"},
+        )
+        run = self._active_dungeon_run(progress)
+        run_id = self._text(data["run_id"], "run_id", max_length=MAX_IDENTIFIER_LENGTH, identifier=True)
+        question_id = self._text(data["question_id"], "question_id", max_length=MAX_IDENTIFIER_LENGTH, identifier=True)
+        verdict = self._text(data["verdict"], "verdict", max_length=20, identifier=True)
+        if verdict not in {"correct", "incorrect"}:
+            raise StateCommandError("Dungeon verdict must be correct or incorrect")
+        evidence_id = self._text(data["evidence_id"], "evidence_id", max_length=MAX_IDENTIFIER_LENGTH, identifier=True)
+        reason = self._text(data["reason"], "reason")
+        if run.get("run_id") != run_id:
+            raise StateCommandError("Dungeon run changed; reload the current run", status_code=409)
+        question = run.get("question") if isinstance(run.get("question"), Mapping) else None
+        if question is None or question.get("id") != question_id or run.get("room_type") != "encounter":
+            raise StateCommandError("Dungeon question changed; reload the current room", status_code=409)
+        difficulty = self._integer(question.get("difficulty", 1), "question.difficulty", minimum=1, maximum=MAX_DUNGEON_DIFFICULTY)
+        run["attempts"] = self._counter(run, "attempts") + 1
+        score_delta = 0
+        coins_delta = 0
+        damage = 0
+        if verdict == "correct":
+            score_delta = DUNGEON_SCORE_BY_DIFFICULTY[min(difficulty, len(DUNGEON_SCORE_BY_DIFFICULTY) - 1)]
+            coins_delta = DUNGEON_COIN_BY_DIFFICULTY[min(difficulty, len(DUNGEON_COIN_BY_DIFFICULTY) - 1)]
+            run["score"] = self._counter(run, "score") + score_delta
+            run["run_coins"] = self._counter(run, "run_coins") + coins_delta
+        else:
+            raw_damage = min(28, 4 + difficulty * 2)
+            loadout = run.get("loadout")
+            if not isinstance(loadout, dict):
+                raise StateCommandError("Existing Dungeon loadout is invalid", status_code=500)
+            armor_reduction = 25 if loadout.get("armor") == "Ember Ward" else 0
+            damage = max(1, (raw_damage * (100 - armor_reduction) + 99) // 100)
+            current_hp = self._counter(loadout, "hp")
+            loadout["hp"] = max(0, current_hp - damage)
+            if loadout["armor"] == "Ember Ward":
+                loadout["armor"] = "Apprentice Coat"
+
+        result_record = {
+            "outcome": verdict,
+            "question_id": question_id,
+            "score_delta": score_delta,
+            "coins_delta": coins_delta,
+            "damage": damage,
+            "evidence_id": evidence_id,
+            "reason": reason,
+        }
+        run["last_result"] = result_record
+        self._dungeon_append_history(run, {"room": run.get("room", 1), "floor": run.get("floor", 1), **result_record})
+        run["editor_content"] = ""
+        died = verdict == "incorrect" and self._counter(run.get("loadout") or {}, "hp") <= 0
+        if died:
+            ended = _utc_now()
+            run.update({"status": "dead", "ended_at": ended, "updated_at": ended, "question": None})
+            self._dungeon_record_leaderboard(progress, run, "dead")
+        else:
+            if verdict == "correct":
+                self._dungeon_set_next_room(run, progress)
+            else:
+                run["updated_at"] = _utc_now()
+        projection = self.dungeon_projection(progress)
+        event = {
+            "run_id": run_id,
+            "floor": run.get("floor", 1),
+            "room": run.get("room", 1),
+            "question_id": question_id,
+            "outcome": verdict,
+            "score_delta": score_delta,
+            "coins_delta": coins_delta,
+            "damage": damage,
+            "evidence_id": evidence_id,
+            "editor_reset": True,
+            "reason": reason,
+        }
+        if died:
+            event.update({"run_died": True, "score": run.get("score", 0)})
+        elif verdict == "correct":
+            event.update({"next_room": run.get("room"), "next_room_type": run.get("room_type"), "question_type": (run.get("question") or {}).get("question_type") if isinstance(run.get("question"), Mapping) else None, "concept_id": (run.get("question") or {}).get("concept_id") if isinstance(run.get("question"), Mapping) else run.get("concept_id")})
+        return Mutation(True, {"run": projection, **result_record, "run_died": died}, event)
+
+    def _dungeon_use_rest(self, payload: Mapping[str, Any], progress: dict[str, Any]) -> Mutation:
+        data = self._payload(payload, {"run_id"}, {"run_id"})
+        run = self._active_dungeon_run(progress)
+        run_id = self._text(data["run_id"], "run_id", max_length=MAX_IDENTIFIER_LENGTH, identifier=True)
+        if run.get("run_id") != run_id:
+            raise StateCommandError("Dungeon run changed; reload the current run", status_code=409)
+        if run.get("room_type") != "rest":
+            raise StateCommandError("A rest room is not currently available", status_code=409)
+        loadout = run.get("loadout")
+        if not isinstance(loadout, dict):
+            raise StateCommandError("Existing Dungeon loadout is invalid", status_code=500)
+        heals = self._counter(loadout, "heals")
+        current_hp = self._counter(loadout, "hp")
+        maximum = self._counter(loadout, "max_hp")
+        if heals <= 0:
+            raise StateCommandError("No rest charges remain in this run", status_code=409)
+        if current_hp >= maximum:
+            raise StateCommandError("HP is already full", status_code=409)
+        healed = min(DUNGEON_REST_HEAL, maximum - current_hp)
+        loadout["hp"] = current_hp + healed
+        loadout["heals"] = heals - 1
+        run["last_result"] = {"outcome": "rest", "score_delta": 0, "coins_delta": 0, "damage": 0, "reason": "dungeon_rest_used"}
+        self._dungeon_append_history(run, {"room": run.get("room", 1), "floor": run.get("floor", 1), "outcome": "rest", "score_delta": 0, "coins_delta": 0, "damage": 0})
+        self._dungeon_set_next_room(run, progress)
+        return Mutation(True, {"run": self.dungeon_projection(progress), "healed": healed}, {"run_id": run_id, "healed": healed, "next_room": run.get("room"), "next_room_type": run.get("room_type"), "editor_reset": True, "reason": "dungeon_rest_used"})
+
+    def _dungeon_market_purchase(self, payload: Mapping[str, Any], progress: dict[str, Any]) -> Mutation:
+        data = self._payload(payload, {"run_id", "item_id"}, {"run_id", "item_id"})
+        run = self._active_dungeon_run(progress)
+        run_id = self._text(data["run_id"], "run_id", max_length=MAX_IDENTIFIER_LENGTH, identifier=True)
+        item_id = self._text(data["item_id"], "item_id", max_length=MAX_IDENTIFIER_LENGTH, identifier=True)
+        if run.get("run_id") != run_id:
+            raise StateCommandError("Dungeon run changed; reload the current run", status_code=409)
+        if run.get("room_type") != "market":
+            raise StateCommandError("A market room is not currently available", status_code=409)
+        item = next((candidate for candidate in DUNGEON_MARKET_CATALOG if candidate["id"] == item_id), None)
+        if item is None:
+            raise StateCommandError("Unknown Dungeon market item", status_code=404)
+        coins = self._counter(run, "run_coins")
+        price = self._integer(item["price"], "market.price", minimum=0, maximum=MAX_SYNC_COUNTER)
+        if coins < price:
+            raise StateCommandError(f"Not enough run coins for {item['name']}", status_code=409)
+        loadout = run.get("loadout")
+        if not isinstance(loadout, dict):
+            raise StateCommandError("Existing Dungeon loadout is invalid", status_code=500)
+        run["run_coins"] = coins - price
+        if item["kind"] == "heal":
+            loadout["hp"] = min(self._counter(loadout, "max_hp"), self._counter(loadout, "hp") + 20)
+        elif item["kind"] == "armor":
+            loadout["armor"] = item["armor"]
+        elif item["kind"] == "trinket":
+            loadout["trinket"] = item["trinket"]
+        run["last_result"] = {"outcome": "market_purchase", "coins_delta": -price, "score_delta": 0, "damage": 0, "reason": item["name"]}
+        self._dungeon_append_history(run, {"room": run.get("room", 1), "floor": run.get("floor", 1), "outcome": "market_purchase", "coins_delta": -price, "score_delta": 0, "damage": 0})
+        return Mutation(True, {"run": self.dungeon_projection(progress), "item": item, "run_coins": run["run_coins"]}, {"run_id": run_id, "item_id": item_id, "item_name": item["name"], "coins_delta": -price, "reason": "dungeon_market_purchase"})
+
+    def _dungeon_leave_room(self, payload: Mapping[str, Any], progress: dict[str, Any]) -> Mutation:
+        data = self._payload(payload, {"run_id"}, {"run_id"})
+        run = self._active_dungeon_run(progress)
+        run_id = self._text(data["run_id"], "run_id", max_length=MAX_IDENTIFIER_LENGTH, identifier=True)
+        if run.get("run_id") != run_id:
+            raise StateCommandError("Dungeon run changed; reload the current run", status_code=409)
+        if run.get("room_type") not in {"rest", "market"}:
+            raise StateCommandError("The current encounter must be resolved first", status_code=409)
+        self._dungeon_set_next_room(run, progress)
+        return Mutation(True, {"run": self.dungeon_projection(progress)}, {"run_id": run_id, "next_room": run.get("room"), "next_room_type": run.get("room_type"), "editor_reset": True, "reason": "dungeon_room_left"})
+
+    def _dungeon_finish_run(self, payload: Mapping[str, Any], progress: dict[str, Any]) -> Mutation:
+        data = self._payload(payload, {"run_id"}, {"run_id"})
+        run = self._active_dungeon_run(progress)
+        run_id = self._text(data["run_id"], "run_id", max_length=MAX_IDENTIFIER_LENGTH, identifier=True)
+        if run.get("run_id") != run_id:
+            raise StateCommandError("Dungeon run changed; reload the current run", status_code=409)
+        ended = _utc_now()
+        score = self._counter(run, "score")
+        run.update({"status": "complete", "ended_at": ended, "updated_at": ended, "question": None, "editor_content": ""})
+        run["last_result"] = {"outcome": "complete", "score_delta": 0, "coins_delta": 0, "damage": 0, "reason": "dungeon_run_finished"}
+        self._dungeon_record_leaderboard(progress, run, "complete")
+        return Mutation(True, {"run": self.dungeon_projection(progress), "score": score}, {"run_id": run_id, "score": score, "run_finished": True, "editor_reset": True, "reason": "dungeon_run_finished"})
+
     def _dungeon_record_death(self, payload: Mapping[str, Any], progress: dict[str, Any]) -> Mutation:
         data = self._payload(payload, {"run_id", "reason"}, {"run_id", "reason"})
         run = self._active_dungeon_run(progress)
@@ -1062,6 +1483,7 @@ class LocalStateService:
         score = self._counter(run, "score")
         floor = self._counter(run, "floor")
         run.update({"status": "dead", "ended_at": ended, "updated_at": ended, "editor_content": "", "question": None})
+        self._dungeon_record_leaderboard(progress, run, "dead")
         return Mutation(
             True,
             {"run": self.dungeon_projection(progress)},
@@ -1285,10 +1707,18 @@ class LocalStateService:
             "record_boss_clear": self._record_boss_clear,
             "record_battle_miss": self._record_battle_miss,
             "reconcile_legacy_progress": self._reconcile_legacy_progress,
+            "record_codex_note": self._record_codex_note,
+            "practice_session_started": self._practice_session_started,
+            "practice_record_attempt": self._practice_record_attempt,
             "dungeon_start_run": self._dungeon_start_run,
             "dungeon_save_editor": self._dungeon_save_editor,
             "dungeon_issue_question": self._dungeon_issue_question,
+            "dungeon_record_verdict": self._dungeon_record_verdict,
             "dungeon_record_death": self._dungeon_record_death,
+            "dungeon_use_rest": self._dungeon_use_rest,
+            "dungeon_market_purchase": self._dungeon_market_purchase,
+            "dungeon_leave_room": self._dungeon_leave_room,
+            "dungeon_finish_run": self._dungeon_finish_run,
         }
         return handlers[action](payload, progress)
 
@@ -1544,6 +1974,92 @@ class LocalStateService:
             raise StateCommandError("Existing state field codex.encounters is invalid", status_code=500)
         return codex, entries
 
+    @staticmethod
+    def _codex_page_id(concept: object) -> str | None:
+        """Map a recorded concept label to a generic library page."""
+
+        if not isinstance(concept, str):
+            return None
+        normalized = concept.casefold()
+        for page in CODEX_CONCEPT_PAGES:
+            aliases = page.get("aliases", ())
+            if any(isinstance(alias, str) and alias.casefold() in normalized for alias in aliases):
+                return str(page["id"])
+        return None
+
+    def codex_projection(self, progress: Mapping[str, Any]) -> dict[str, Any]:
+        """Return the safe book/page projection used by the live Codex UI.
+
+        Only canonical encounter observations are copied.  Unknown fields on
+        a legacy or provider-created record are intentionally omitted, which
+        keeps answer keys and arbitrary provider payloads out of the browser.
+        """
+
+        mutable_progress = progress if isinstance(progress, dict) else dict(progress)
+        _, entries = self._codex_container(mutable_progress)
+        projected_entries: list[dict[str, Any]] = []
+        page_entry_ids: dict[str, list[str]] = {str(page["id"]): [] for page in CODEX_CONCEPT_PAGES}
+        for entry in entries:
+            if not isinstance(entry, Mapping):
+                continue
+            entry_id = entry.get("id")
+            mob_name = entry.get("mob_name")
+            if not isinstance(entry_id, str) or not entry_id.strip() or not isinstance(mob_name, str):
+                continue
+            page_id = self._codex_page_id(entry.get("concept"))
+            safe: dict[str, Any] = {
+                "id": entry_id,
+                "project_id": str(entry.get("project_id") or ""),
+                "mob_name": mob_name[:MAX_IDENTIFIER_LENGTH],
+                "concept": str(entry.get("concept") or "Unknown concept")[:MAX_REASON_LENGTH],
+                "page_id": page_id,
+                "status": str(entry.get("status") or "observed"),
+                "attempts": max(0, int(entry.get("attempts", 0) or 0)),
+                "question_types": [item for item in entry.get("question_types", []) if isinstance(item, str)][-20:],
+                "weaknesses": [item for item in entry.get("weaknesses", []) if isinstance(item, str)][-20:],
+                "notes": [item for item in entry.get("notes", []) if isinstance(item, str)][-20:],
+                "player_notes": [item for item in entry.get("player_notes", []) if isinstance(item, str)][-MAX_CODEX_NOTES_PER_ENTRY:],
+                "results": [
+                    {
+                        "outcome": str(item.get("outcome") or "recorded"),
+                        "evidence_id": str(item.get("evidence_id") or ""),
+                    }
+                    for item in entry.get("results", [])
+                    if isinstance(item, Mapping)
+                ][-20:],
+                "interview_history": [
+                    {
+                        "outcome": str(item.get("outcome") or "recorded"),
+                        "evidence_id": str(item.get("evidence_id") or ""),
+                    }
+                    for item in entry.get("interview_history", [])
+                    if isinstance(item, Mapping)
+                ][-20:],
+            }
+            mastery = entry.get("mastery")
+            if isinstance(mastery, Mapping):
+                safe["mastery"] = {
+                    "evidence": max(0, int(mastery.get("evidence", 0) or 0)),
+                    "interview_passes": max(0, int(mastery.get("interview_passes", 0) or 0)),
+                    "shield": str(mastery.get("shield") or "none"),
+                }
+            projected_entries.append(safe)
+            if page_id in page_entry_ids:
+                page_entry_ids[page_id].append(entry_id)
+
+        pages = [
+            {
+                "id": str(page["id"]),
+                "title": str(page["title"]),
+                "definition": str(page["definition"]),
+                "examples": list(page.get("examples", ())),
+                "question_types": list(page.get("question_types", ())),
+                "encounter_ids": page_entry_ids[str(page["id"])],
+            }
+            for page in CODEX_CONCEPT_PAGES
+        ]
+        return {"pages": pages, "entries": projected_entries}
+
     def _upsert_codex_entry(
         self,
         progress: dict[str, Any],
@@ -1796,6 +2312,187 @@ class LocalStateService:
         entry = self._upsert_codex_entry(progress, project, mob, question_type="completion", outcome="defeated", evidence_id=evidence_id, note=reason)
         entry["status"] = "defeated"
         return Mutation(True, finish, {"project_id": self._project_id(project), **finish, "codex_entry_id": entry["id"]})
+
+    def _record_codex_note(self, payload: Mapping[str, Any], progress: dict[str, Any]) -> Mutation:
+        """Append one bounded player-authored note to an existing entry."""
+
+        data = self._payload(payload, {"entry_id", "note"}, {"entry_id", "note"})
+        entry_id = self._text(data["entry_id"], "entry_id", max_length=MAX_IDENTIFIER_LENGTH, identifier=True)
+        if not isinstance(data["note"], str) or "\x00" in data["note"]:
+            raise StateCommandError("note contains unsupported control characters")
+        note = self._multiline_text(data["note"], "note", max_bytes=MAX_CODEX_NOTE_BYTES).strip()
+        if not note:
+            raise StateCommandError("note must not be empty")
+        _, entries = self._codex_container(progress)
+        entry = next((item for item in entries if item.get("id") == entry_id), None)
+        if entry is None:
+            raise StateCommandError("Codex entry was not found", status_code=404)
+        notes = entry.setdefault("player_notes", [])
+        if not isinstance(notes, list) or not all(isinstance(item, str) for item in notes):
+            raise StateCommandError("Existing Codex player notes are invalid", status_code=500)
+        if note in notes:
+            return Mutation(
+                False,
+                {"entry_id": entry_id, "note_count": len(notes), "already_saved": True},
+            )
+        notes.append(note)
+        entry["player_notes"] = notes[-MAX_CODEX_NOTES_PER_ENTRY:]
+        return Mutation(
+            True,
+            {"entry_id": entry_id, "note_count": len(entry["player_notes"]), "saved": True},
+            {
+                "entry_id": entry_id,
+                "note_count": len(entry["player_notes"]),
+                "reason": "player_codex_note",
+            },
+        )
+
+    @classmethod
+    def practice_projection(cls, progress: Mapping[str, Any]) -> dict[str, Any]:
+        """Return the bounded, answer-free Practice history projection.
+
+        Practice is intentionally independent from Campaign and Dungeon.  The
+        history records only the selected drill metadata and provider-validated
+        outcomes; raw answers, prompts and answer keys never enter canonical
+        state or this projection.
+        """
+
+        raw = progress.get("practice_sessions") if isinstance(progress, Mapping) else None
+        if raw is None:
+            raw = []
+        if not isinstance(raw, list):
+            raise StateCommandError("Existing Practice history is invalid", status_code=500)
+        sessions: list[dict[str, Any]] = []
+        for item in raw[-MAX_PRACTICE_SESSIONS:]:
+            if not isinstance(item, Mapping):
+                continue
+            session_id = item.get("session_id")
+            concept = item.get("concept")
+            question_type = item.get("question_type")
+            if not all(isinstance(value, str) and value.strip() for value in (session_id, concept, question_type)):
+                continue
+            history = item.get("history") if isinstance(item.get("history"), list) else []
+            safe_history = []
+            for attempt in history[-MAX_PRACTICE_ATTEMPTS_PER_SESSION:]:
+                if not isinstance(attempt, Mapping):
+                    continue
+                safe_attempt = {
+                    key: attempt[key]
+                    for key in ("outcome", "evidence_id", "reason", "recorded_at")
+                    if key in attempt
+                }
+                safe_history.append(safe_attempt)
+            try:
+                difficulty = max(1, min(5, int(item.get("difficulty", 1) or 1)))
+                attempts = max(0, int(item.get("attempts", 0) or 0))
+                correct = max(0, int(item.get("correct", 0) or 0))
+            except (TypeError, ValueError) as exc:
+                raise StateCommandError("Existing Practice counters are invalid", status_code=500) from exc
+            sessions.append(
+                {
+                    "session_id": session_id,
+                    "concept": concept,
+                    "question_type": question_type,
+                    "difficulty": difficulty,
+                    "status": str(item.get("status") or "requested"),
+                    "attempts": attempts,
+                    "correct": correct,
+                    "started_at": item.get("started_at"),
+                    "updated_at": item.get("updated_at"),
+                    "history": safe_history,
+                }
+            )
+        return {"sessions": sessions, "count": len(sessions)}
+
+    def _practice_session_started(self, payload: Mapping[str, Any], progress: dict[str, Any]) -> Mutation:
+        """Open one independent Practice drill without touching game state."""
+
+        data = self._payload(payload, {"concept", "question_type", "difficulty"}, {"concept", "question_type", "difficulty"})
+        concept = self._text(data["concept"], "concept", max_length=MAX_IDENTIFIER_LENGTH)
+        question_type = self._text(data["question_type"], "question_type", max_length=MAX_IDENTIFIER_LENGTH, identifier=True)
+        if question_type not in PRACTICE_QUESTION_TYPES:
+            raise StateCommandError("Unsupported Practice question type")
+        difficulty = self._integer(data["difficulty"], "difficulty", minimum=1, maximum=5)
+        sessions = progress.setdefault("practice_sessions", [])
+        if not isinstance(sessions, list):
+            raise StateCommandError("Existing Practice history is invalid", status_code=500)
+        session_id = f"practice-{uuid.uuid4().hex}"
+        now = _utc_now()
+        session = {
+            "session_id": session_id,
+            "concept": concept,
+            "question_type": question_type,
+            "difficulty": difficulty,
+            "status": "requested",
+            "attempts": 0,
+            "correct": 0,
+            "started_at": now,
+            "updated_at": now,
+            "history": [],
+        }
+        sessions.append(session)
+        progress["practice_sessions"] = sessions[-MAX_PRACTICE_SESSIONS:]
+        return Mutation(
+            True,
+            {"session": self.practice_projection(progress)["sessions"][-1]},
+            {
+                "session_id": session_id,
+                "concept": concept,
+                "question_type": question_type,
+                "difficulty": difficulty,
+                "reason": "practice_session_started",
+            },
+        )
+
+    def _practice_record_attempt(self, payload: Mapping[str, Any], progress: dict[str, Any]) -> Mutation:
+        """Record a provider-validated Practice result, with no rewards."""
+
+        data = self._payload(
+            payload,
+            {"session_id", "outcome", "evidence_id", "reason"},
+            {"session_id", "outcome", "evidence_id", "reason"},
+        )
+        session_id = self._text(data["session_id"], "session_id", max_length=MAX_IDENTIFIER_LENGTH, identifier=True)
+        outcome = self._text(data["outcome"], "outcome", max_length=20, identifier=True)
+        if outcome not in {"correct", "incorrect", "reviewed"}:
+            raise StateCommandError("Practice outcome must be correct, incorrect or reviewed")
+        evidence_id = self._text(data["evidence_id"], "evidence_id", max_length=MAX_IDENTIFIER_LENGTH, identifier=True)
+        reason = self._text(data["reason"], "reason")
+        sessions = progress.get("practice_sessions")
+        if not isinstance(sessions, list):
+            raise StateCommandError("Existing Practice history is invalid", status_code=500)
+        session = next((item for item in sessions if isinstance(item, dict) and item.get("session_id") == session_id), None)
+        if session is None:
+            raise StateCommandError("Practice session was not found", status_code=404)
+        history = session.setdefault("history", [])
+        if not isinstance(history, list):
+            raise StateCommandError("Existing Practice attempt history is invalid", status_code=500)
+        if any(isinstance(item, Mapping) and item.get("evidence_id") == evidence_id for item in history):
+            return Mutation(False, {"session": self.practice_projection(progress)["sessions"][-1], "already_recorded": True})
+        attempts = self._counter(session, "attempts")
+        if attempts >= MAX_PRACTICE_ATTEMPTS_PER_SESSION:
+            raise StateCommandError("Practice session attempt limit reached", status_code=409)
+        session["attempts"] = attempts + 1
+        if outcome == "correct":
+            session["correct"] = self._counter(session, "correct") + 1
+        session["status"] = "reviewed"
+        session["updated_at"] = _utc_now()
+        history.append({"outcome": outcome, "evidence_id": evidence_id, "reason": reason, "recorded_at": session["updated_at"]})
+        session["history"] = history[-MAX_PRACTICE_ATTEMPTS_PER_SESSION:]
+        projected = self.practice_projection(progress)
+        safe_session = next(item for item in projected["sessions"] if item["session_id"] == session_id)
+        return Mutation(
+            True,
+            {"session": safe_session, "outcome": outcome, "reward_xp": 0, "reward_coins": 0},
+            {
+                "session_id": session_id,
+                "outcome": outcome,
+                "evidence_id": evidence_id,
+                "reason": reason,
+                "reward_xp": 0,
+                "reward_coins": 0,
+            },
+        )
 
     def _record_boss_clear(self, payload: Mapping[str, Any], progress: dict[str, Any]) -> Mutation:
         """Record a boss victory after trusted, evidence-backed validation.

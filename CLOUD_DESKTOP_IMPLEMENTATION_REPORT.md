@@ -642,3 +642,54 @@ flaky PTY-origin test cancellation under Python 3.14; it is being isolated and
 must be green before this checkpoint is committed. Windows Vite/K&M gates are
 still pending for the new slice. Claude Sonnet review remains unavailable from
 WSL until its CLI is authenticated; no external approval is claimed.
+
+### Current local roadmap checkpoint — 2026-09-15
+
+The local playable roadmap slices are now complete through Campaign, Codex,
+Homestead, Infinite Dungeon and Practice. The Campaign Tutor Notebook remains
+its own first-class surface; Practice is a separate unlimited mode and never
+writes `tutor.py` or grants Campaign/Dungeon state.
+
+Infinite Dungeon now has a canonical, provider-bound answer/verdict bridge,
+adaptive focus based only on recorded Codex incorrect-result/weakness evidence,
+progressive encounter/rest/market rooms, run-only score/coins, death reset,
+checkpoint persistence, blank editor rotation and a bounded local leaderboard.
+Practice has bounded sessions, mixed question types and provider-validated
+attempt history with no reward/HP/Resolve/Campaign mutation. The Codex is a
+searchable concept-page projection with validated encounter observations and a
+bounded player-note action. All visible rewards and progression remain event
+results from the state service.
+
+The fresh K&M acceptance used only click/scroll/type automation (no
+Playwright) against an isolated current-branch runtime at port 5181. It showed
+Level 2 / 50 XP / 55 coins, the repaired monochrome SVG HUD icons, three
+cleared Blackjack mobs, The Hitman at 8/8 Resolve, 38% progress, Character and
+Codex projections, Dungeon checkpoint/leaderboard behavior, and the Practice
+boundary. A typed external state-gateway Dungeon start appeared in the view
+after revision polling without a refresh. Shell and AI PTY labels stayed
+`CONNECTED`; the real canonical save, legacy files and existing user PTYs were
+not touched.
+
+For the specific gold-sync regression, a typed compare-and-swap state-service
+projection changed only the disposable cache's coins from 55 to 54. The HUD
+changed to 54 after the next revision poll without a refresh, proving the same
+revision source drives the header as well as Dungeon/Character/Homestead views.
+
+Latest automated gates are 47 WSL backend tests, 29 frontend tests and a green
+Windows Vite production build. WSL Vite remains blocked only by the shared
+Windows `node_modules` missing the Linux Rollup optional package. Claude Code
+was retried from WSL and still returned `Not logged in`; no external review
+approval is claimed.
+
+### Remaining gates before distribution/social release
+
+- Provider-authenticated adjudication and tab/account-scoped challenge storage
+  remain required before treating local AI verdicts as hosted learning proof.
+- Hosted two-device mailbox acceptance, clean installer/launch verification and
+  explicit conflict-choice testing remain before calling the Windows friend
+  distribution slice complete.
+- Hosted Dungeon state/leaderboard, friends/presence and raids remain deferred;
+  Supabase was not seeded or expanded in this checkpoint.
+- The existing 5173 process may still be an older checkout until the user
+  chooses to restart/launch the corrected branch; the new launcher exposes a
+  branch mismatch instead of silently hiding it.

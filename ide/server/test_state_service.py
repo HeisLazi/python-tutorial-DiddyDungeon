@@ -242,6 +242,136 @@ class StateServiceBehaviorTests(unittest.TestCase):
             )
         self.assertEqual(hidden.exception.status_code, 422)
 
+    def test_dungeon_verdicts_advance_rooms_without_campaign_rewards_and_support_rest_market_finish(self):
+        service, path = self.make_service()
+        started = service.apply("dungeon_start_run", {"concept_id": "lists", "seed": "loop-seed"}, "player")
+        run = started["result"]["run"]
+        initial_player = self.read(path)["player"].copy()
+
+        for index in range(4):
+            current = service.dungeon_projection(service.snapshot())
+            result = service.apply_internal(
+                "dungeon_record_verdict",
+                {
+                    "run_id": run["run_id"],
+                    "question_id": current["question"]["id"],
+                    "verdict": "correct",
+                    "evidence_id": f"dungeon-proof-{index}",
+                    "reason": "Provider validated the current room",
+                },
+            )
+            self.assertEqual(result["result"]["outcome"], "correct")
+
+        rest = service.dungeon_projection(service.snapshot())
+        self.assertEqual(rest["room"], 5)
+        self.assertEqual(rest["room_type"], "rest")
+        self.assertIsNone(rest["question"])
+        state = self.read(path)
+        state["dungeon_run"]["loadout"]["hp"] = 40
+        path.write_text(json.dumps(state), encoding="utf-8")
+        rested = service.apply("dungeon_use_rest", {"run_id": run["run_id"]}, "player")
+        self.assertEqual(rested["result"]["healed"], 30)
+        self.assertEqual(rested["result"]["run"]["room_type"], "encounter")
+        self.assertEqual(rested["result"]["run"]["loadout"]["hp"], 70)
+
+        for index in range(1):
+            current = service.dungeon_projection(service.snapshot())
+            service.apply_internal(
+                "dungeon_record_verdict",
+                {
+                    "run_id": run["run_id"],
+                    "question_id": current["question"]["id"],
+                    "verdict": "correct",
+                    "evidence_id": f"dungeon-proof-market-{index}",
+                    "reason": "Provider validated the current room",
+                },
+            )
+        market = service.dungeon_projection(service.snapshot())
+        self.assertEqual(market["room_type"], "market")
+        self.assertTrue(market["market_catalog"])
+        purchased = service.apply("dungeon_market_purchase", {"run_id": run["run_id"], "item_id": "dungeon-ward"}, "player")
+        self.assertEqual(purchased["result"]["item"]["id"], "dungeon-ward")
+        self.assertEqual(purchased["result"]["run"]["loadout"]["armor"], "Ember Ward")
+        left = service.apply("dungeon_leave_room", {"run_id": run["run_id"]}, "player")
+        self.assertEqual(left["result"]["run"]["room_type"], "encounter")
+
+        finished = service.apply("dungeon_finish_run", {"run_id": run["run_id"]}, "player")
+        self.assertEqual(finished["result"]["run"]["status"], "complete")
+        self.assertEqual(self.read(path)["player"], initial_player)
+        self.assertTrue(all("answer_key" not in entry for entry in finished["result"]["run"]["history"]))
+        self.assertEqual(len(self.read(path)["dungeon_leaderboard"]), 1)
+        self.assertEqual(finished["result"]["run"]["leaderboard"][0]["status"], "complete")
+
+    def test_dungeon_focus_uses_only_recorded_codex_weakness_evidence(self):
+        service, path = self.make_service()
+        state = self.read(path)
+        state["learning_state"]["concept"] = "Fallback concept"
+        state["codex"] = {
+            "encounters": [
+                {
+                    "id": "lists-mob",
+                    "project_id": "01-blackjack",
+                    "mob_name": "The Dealer's Hand",
+                    "concept": "Lists and random selection",
+                    "results": [{"outcome": "incorrect", "evidence_id": "attempt-1"}],
+                    "weaknesses": ["index boundaries"],
+                }
+            ]
+        }
+        path.write_text(json.dumps(state), encoding="utf-8")
+        started = service.apply("dungeon_start_run", {"seed": "adaptive-seed"}, "player")
+        self.assertEqual(started["result"]["run"]["concept_id"], "Lists and random selection")
+        self.assertNotIn("answer_key", json.dumps(started["result"]["run"]))
+
+    def test_dungeon_incorrect_verdict_can_end_only_the_run(self):
+        service, path = self.make_service()
+        started = service.apply("dungeon_start_run", {"concept_id": "loops"}, "player")
+        run = started["result"]["run"]
+        state = self.read(path)
+        state["dungeon_run"]["loadout"]["hp"] = 1
+        path.write_text(json.dumps(state), encoding="utf-8")
+        result = service.apply_internal(
+            "dungeon_record_verdict",
+            {
+                "run_id": run["run_id"],
+                "question_id": run["question"]["id"],
+                "verdict": "incorrect",
+                "evidence_id": "dungeon-miss-1",
+                "reason": "Provider marked the answer incomplete",
+            },
+        )
+        self.assertTrue(result["result"]["run_died"])
+        self.assertEqual(result["result"]["run"]["status"], "dead")
+        self.assertEqual(result["result"]["run"]["editor_content"], "")
+        self.assertIsNone(result["result"]["run"]["question"])
+
+    def test_practice_history_is_independent_and_provider_validated(self):
+        service, path = self.make_service()
+        before = self.read(path)
+        started = service.apply(
+            "practice_session_started",
+            {"concept": "lists", "question_type": "bug_hunt", "difficulty": 3},
+            "player",
+        )
+        session = started["result"]["session"]
+        self.assertEqual(session["status"], "requested")
+        recorded = service.apply_internal(
+            "practice_record_attempt",
+            {
+                "session_id": session["session_id"],
+                "outcome": "correct",
+                "evidence_id": "practice-proof-1",
+                "reason": "Provider validated the boundary explanation",
+            },
+        )
+        self.assertEqual(recorded["result"]["session"]["correct"], 1)
+        after = self.read(path)
+        self.assertEqual(after["player"], before["player"])
+        self.assertNotIn("dungeon_run", after)
+        self.assertNotIn("answer", json.dumps(after["practice_sessions"]))
+        self.assertEqual([event["action"] for event in after["state_events"]], ["practice_session_started", "practice_record_attempt"])
+        self.assertEqual(service.practice_projection(after)["count"], 1)
+
     def test_learning_event_cannot_change_progression_fields_outside_its_scope(self):
         service, path = self.make_service()
         before = self.read(path)
@@ -298,6 +428,47 @@ class StateServiceBehaviorTests(unittest.TestCase):
         self.assertEqual(state["player"]["coins"], 40)
         self.assertEqual(state["homestead"]["equipped"]["cursor"], "cursor-golden-spark")
         self.assertEqual([event["action"] for event in state["state_events"]], ["homestead_purchase", "homestead_equip"])
+
+    def test_codex_projection_exposes_generic_pages_and_note_action_is_bounded(self):
+        service, path = self.make_service()
+        state = self.read(path)
+        state["codex"] = {
+            "encounters": [
+                {
+                    "id": "blackjack-lists",
+                    "project_id": "01-blackjack",
+                    "mob_name": "The Dealer's Hand",
+                    "concept": "Lists and random selection",
+                    "status": "defeated",
+                    "question_types": ["prediction"],
+                    "weaknesses": ["indexing"],
+                    "notes": ["Validated collection reasoning"],
+                    "attempts": 2,
+                    "results": [{"outcome": "defeated", "evidence_id": "mob-1", "answer_key": "secret"}],
+                    "interview_history": [],
+                    "mastery": {"evidence": 1, "interview_passes": 0, "shield": "none"},
+                }
+            ]
+        }
+        path.write_text(json.dumps(state), encoding="utf-8")
+        projection = service.codex_projection(service.snapshot())
+        lists_page = next(page for page in projection["pages"] if page["id"] == "lists")
+        self.assertIn("blackjack-lists", lists_page["encounter_ids"])
+        self.assertEqual(projection["entries"][0]["page_id"], "lists")
+        self.assertNotIn("answer_key", projection["entries"][0]["results"][0])
+
+        saved = service.apply("record_codex_note", {"entry_id": "blackjack-lists", "note": "Revisit indexing tomorrow."}, "player")
+        self.assertTrue(saved["changed"])
+        self.assertEqual(saved["revision"], 5)
+        updated = self.read(path)
+        self.assertEqual(updated["codex"]["encounters"][0]["player_notes"], ["Revisit indexing tomorrow."])
+        self.assertEqual(updated["state_events"][-1]["action"], "record_codex_note")
+        self.assertEqual(updated["state_events"][-1]["note_count"], 1)
+
+        duplicate = service.apply("record_codex_note", {"entry_id": "blackjack-lists", "note": "Revisit indexing tomorrow."}, "player")
+        self.assertFalse(duplicate["changed"])
+        with self.assertRaises(StateCommandError):
+            service.apply("record_codex_note", {"entry_id": "blackjack-lists", "note": "\u0000bad"}, "player")
 
     def test_verified_objectives_reduce_resolve_and_complete_mob_with_codex_projection(self):
         service, path = self.make_service()
@@ -713,6 +884,85 @@ class StateGatewayHttpTests(unittest.TestCase):
         self.assertEqual(equip.json()["revision"], 6)
         state = json.loads(path.read_text(encoding="utf-8"))
         self.assertEqual(state["homestead"]["equipped"]["cursor"], "cursor-golden-spark")
+
+    def test_codex_routes_use_canonical_revision_and_player_note_boundary(self):
+        path = self.with_temp_progress()
+        state = json.loads(path.read_text(encoding="utf-8"))
+        state["codex"] = {"encounters": [{"id": "blackjack-table", "project_id": "01-blackjack", "mob_name": "The Empty Table", "concept": "Variables", "status": "defeated"}]}
+        path.write_text(json.dumps(state), encoding="utf-8")
+        client = self.client()
+        projection = client.get("/api/codex", headers={"host": "127.0.0.1"})
+        self.assertEqual(projection.status_code, 200)
+        self.assertEqual(projection.json()["revision"], 4)
+        self.assertEqual(projection.json()["codex"]["entries"][0]["id"], "blackjack-table")
+
+        saved = client.post(
+            "/api/codex/note",
+            headers={"host": "127.0.0.1"},
+            json={"entry_id": "blackjack-table", "note": "Track the state before changing it."},
+        )
+        self.assertEqual(saved.status_code, 200)
+        self.assertEqual(saved.json()["revision"], 5)
+        self.assertEqual(saved.json()["codex"]["entries"][0]["player_notes"], ["Track the state before changing it."])
+        forbidden = client.post(
+            "/api/state/apply",
+            headers={"host": "127.0.0.1"},
+            json={"action": "record_codex_note", "actor": "pyr", "payload": {"entry_id": "blackjack-table", "note": "provider"}},
+        )
+        self.assertEqual(forbidden.status_code, 403)
+
+    def test_practice_routes_record_history_without_campaign_mutations(self):
+        path = self.with_temp_progress()
+        original = app_v2.PYR_PRACTICE_CHALLENGES
+        app_v2.PYR_PRACTICE_CHALLENGES = {}
+        self.addCleanup(setattr, app_v2, "PYR_PRACTICE_CHALLENGES", original)
+        client = self.client()
+        started = client.post(
+            "/api/practice/session",
+            headers={"host": "127.0.0.1"},
+            json={"concept": "lists", "question_type": "multiple_choice", "difficulty": 2},
+        )
+        self.assertEqual(started.status_code, 200)
+        session = started.json()["practice"]["sessions"][-1]
+        before = json.loads(path.read_text(encoding="utf-8"))["player"].copy()
+        bound = client.post(
+            "/api/pyr/practice-submission",
+            headers={"host": "127.0.0.1"},
+            json={"session_id": session["session_id"], "answer": "Make the state explicit."},
+        )
+        self.assertEqual(bound.status_code, 200)
+        submission = bound.json()["submission"]
+        verdict = client.post(
+            "/api/pyr/practice-verdict",
+            headers={"host": "127.0.0.1"},
+            json={
+                "nonce": submission["nonce"],
+                "submission_id": submission["submission_id"],
+                "answer_digest": submission["answer_digest"],
+                "verdict": "correct",
+                "session_id": session["session_id"],
+                "evidence_id": submission["evidence_id"],
+                "reason": "Provider validated the selected answer.",
+            },
+        )
+        self.assertEqual(verdict.status_code, 200, verdict.text)
+        self.assertEqual(verdict.json()["mutation"]["result"]["reward_xp"], 0)
+        self.assertEqual(json.loads(path.read_text(encoding="utf-8"))["player"], before)
+        self.assertEqual(client.get("/api/practice", headers={"host": "127.0.0.1"}).json()["practice"]["count"], 1)
+        replay = client.post(
+            "/api/pyr/practice-verdict",
+            headers={"host": "127.0.0.1"},
+            json={
+                "nonce": submission["nonce"],
+                "submission_id": submission["submission_id"],
+                "answer_digest": submission["answer_digest"],
+                "verdict": "correct",
+                "session_id": session["session_id"],
+                "evidence_id": submission["evidence_id"],
+                "reason": "Replay must be rejected.",
+            },
+        )
+        self.assertEqual(replay.status_code, 409)
 
     def test_revision_and_campaign_ignore_stray_workspace_progress(self):
         canonical, legacy = self.with_split_state_paths()

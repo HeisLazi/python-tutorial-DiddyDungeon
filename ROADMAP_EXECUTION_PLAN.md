@@ -1,11 +1,18 @@
 # Forge roadmap execution plan
 
-Status: approved defaults, execution in progress — 2026-09-15
+Status: local roadmap slices 0–6 implemented and verified; distribution/social
+slices remain explicitly gated — 2026-09-15
 
 Claude Sonnet review was attempted from WSL but the configured CLI returned
 `Not logged in · Please run /login`. No external model review is represented as
 approval. This plan is the primary implementation/review record until a
 reviewer becomes available.
+
+The current local checkpoint includes the playable Dungeon question/verdict
+loop, adaptive evidence-grounded focus, rest/market rooms, local leaderboard,
+independent Practice sessions/validated history, Codex library projection and
+runtime checkout diagnostics. The Campaign Tutor Notebook remains part of the
+Campaign surface; it was not removed or merged into Practice.
 
 ## Non-negotiable invariants
 
@@ -141,3 +148,25 @@ reviewer becomes available.
   history. Reconciliation must continue to report unsupported fields rather
   than invent them.
 
+## Current checkpoint — 2026-09-15
+
+- Slices 0–4 are implemented through the canonical state gateway, including
+  campaign/boss validation, live revision polling, Codex pages/notes and
+  Homestead purchases/equipment.
+- Slice 5 is locally playable: fresh starter loadout, checkpointed
+  `dungeon.py`, provider-bound verdicts, blank-on-rotation, adaptive recorded-
+  weakness focus, progressive room types, rest/market, death reset and local
+  leaderboard. It intentionally does not grant Campaign rewards or use hosted
+  leaderboard transport.
+- Slice 6 is implemented as an independent Practice mode with mixed question
+  types, bounded sessions and provider-validated history. It never writes
+  Campaign, Dungeon, rewards, HP, Resolve or `tutor.py`.
+- Slice 7 has local launcher/runtime identity and offline sync boundaries, but
+  requires a clean-install/two-device acceptance before packaging is called
+  complete. The old 5173 process is not killed automatically.
+- Slice 8 (hosted friends/presence/raids) remains last and is intentionally not
+  seeded or claimed complete.
+
+Latest gates: 47 WSL backend tests, 29 frontend tests, Windows Vite build, and
+manual browser K&M acceptance on an isolated current-branch runtime. No
+Playwright was used.

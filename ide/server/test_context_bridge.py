@@ -196,6 +196,77 @@ class PyrContextBridgeTests(unittest.TestCase):
                 app_v2.PROGRESS_PATH = original_progress
                 app_v2.DUNGEON_PATH = original_dungeon
 
+    def test_dungeon_provider_bridge_binds_answer_and_rotates_only_after_verdict(self):
+        original_workspace = app_v2.WORKSPACE
+        original_progress = app_v2.PROGRESS_PATH
+        original_dungeon = app_v2.DUNGEON_PATH
+        original_challenge = app_v2.PYR_DUNGEON_CHALLENGE
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            workspace = root / "quest"
+            workspace.mkdir()
+            canonical = root / "platform" / "progress.json"
+            canonical.parent.mkdir()
+            canonical.write_text(json.dumps(context_progress()), encoding="utf-8")
+            app_v2.WORKSPACE = workspace
+            app_v2.PROGRESS_PATH = canonical
+            app_v2.DUNGEON_PATH = workspace / "dungeon.py"
+            app_v2.PYR_DUNGEON_CHALLENGE = None
+            try:
+                client = TestClient(app_v2.app, base_url="http://127.0.0.1")
+                started = client.post("/api/dungeon/start", headers={"host": "127.0.0.1"}, json={"concept_id": "lists", "seed": "bridge"})
+                self.assertEqual(started.status_code, 200)
+                run = started.json()["dungeon"]
+                context = client.post("/api/pyr/context", headers={"host": "127.0.0.1"}, json={"active_path": "dungeon.py"})
+                self.assertEqual(context.status_code, 200, context.text)
+                challenge = context.json()["context"]["dungeon_verdict"]
+                self.assertEqual(challenge["run_id"], run["run_id"])
+                bound = client.post(
+                    "/api/pyr/dungeon-submission",
+                    headers={"host": "127.0.0.1"},
+                    json={"nonce": challenge["nonce"], "run_id": run["run_id"], "question_id": run["question"]["id"], "answer": "items = ['red']"},
+                )
+                self.assertEqual(bound.status_code, 200, bound.text)
+                submission = bound.json()["submission"]
+                verdict = client.post(
+                    "/api/pyr/dungeon-verdict",
+                    headers={"host": "127.0.0.1"},
+                    json={
+                        "nonce": submission["nonce"],
+                        "submission_id": submission["submission_id"],
+                        "answer_digest": submission["answer_digest"],
+                        "verdict": "correct",
+                        "run_id": run["run_id"],
+                        "question_id": run["question"]["id"],
+                        "evidence_id": submission["evidence_id"],
+                        "reason": "Provider validated the current Dungeon answer.",
+                    },
+                )
+                self.assertEqual(verdict.status_code, 200, verdict.text)
+                self.assertEqual(verdict.json()["mutation"]["result"]["run"]["room"], 2)
+                self.assertEqual(verdict.json()["mutation"]["event"]["action"], "dungeon_record_verdict")
+                self.assertEqual(json.loads(canonical.read_text(encoding="utf-8"))["player"]["coins"], 55)
+                replay = client.post(
+                    "/api/pyr/dungeon-verdict",
+                    headers={"host": "127.0.0.1"},
+                    json={
+                        "nonce": submission["nonce"],
+                        "submission_id": submission["submission_id"],
+                        "answer_digest": submission["answer_digest"],
+                        "verdict": "correct",
+                        "run_id": run["run_id"],
+                        "question_id": run["question"]["id"],
+                        "evidence_id": submission["evidence_id"],
+                        "reason": "Replay must fail.",
+                    },
+                )
+                self.assertEqual(replay.status_code, 409)
+            finally:
+                app_v2.WORKSPACE = original_workspace
+                app_v2.PROGRESS_PATH = original_progress
+                app_v2.DUNGEON_PATH = original_dungeon
+                app_v2.PYR_DUNGEON_CHALLENGE = original_challenge
+
     def test_context_is_bounded_live_and_does_not_mutate_player_state(self):
         original_workspace = app_v2.WORKSPACE
         original_progress = app_v2.PROGRESS_PATH
@@ -449,6 +520,79 @@ class PyrContextBridgeTests(unittest.TestCase):
             finally:
                 app_v2.WORKSPACE = original_workspace
                 app_v2.PROGRESS_PATH = original_progress
+
+    def test_boss_bridge_requires_three_bound_evidence_verdicts_before_clear(self):
+        original_workspace = app_v2.WORKSPACE
+        original_progress = app_v2.PROGRESS_PATH
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            workspace = root / "quest"
+            workspace.mkdir()
+            canonical = root / "platform" / "progress.json"
+            canonical.parent.mkdir()
+            state = context_progress()
+            project = state["projects"][0]
+            project["progress"] = 100
+            project["boss"] = "The House"
+            project["boss_status"] = "available"
+            project["mob_sequence_complete"] = True
+            for mob in project["mobs"]:
+                mob["status"] = "defeated"
+                mob["resolve"] = 0
+            state["stats"] = {"mobs_defeated": len(project["mobs"])}
+            state["achievements"] = [{"name": "Housebreaker", "unlocked": False}, {"name": "Clean Clear", "unlocked": False}]
+            canonical.write_text(json.dumps(state), encoding="utf-8")
+            app_v2.WORKSPACE = workspace
+            app_v2.PROGRESS_PATH = canonical
+            app_v2.PYR_CONTEXT_CHALLENGE = None
+            try:
+                client = TestClient(app_v2.app, base_url="http://127.0.0.1")
+                context = client.post("/api/pyr/context", headers={"host": "127.0.0.1"}, json={}).json()["context"]
+                self.assertEqual(context["verdict"]["challenge_type"], "boss")
+                self.assertEqual(context["verdict"]["requirements"], ["required_behavior", "explanation", "interview"])
+                nonce = context["verdict"]["nonce"]
+
+                for index, requirement in enumerate(("required_behavior", "explanation", "interview")):
+                    submission = client.post(
+                        "/api/pyr/boss-submission",
+                        headers={"host": "127.0.0.1"},
+                        json={"nonce": nonce, "requirement_id": requirement, "answer": f"Evidence for {requirement}"},
+                    )
+                    self.assertEqual(submission.status_code, 200)
+                    body = submission.json()["submission"]
+                    verdict = client.post(
+                        "/api/pyr/boss-verdict",
+                        headers={"host": "127.0.0.1"},
+                        json={
+                            "nonce": nonce,
+                            "submission_id": body["submission_id"],
+                            "answer_digest": body["answer_digest"],
+                            "verdict": "correct",
+                            "requirement_id": requirement,
+                            "evidence_id": body["evidence_id"],
+                            "reason": f"Validated {requirement}",
+                        },
+                    )
+                    self.assertEqual(verdict.status_code, 200, verdict.text)
+                    if index < 2:
+                        self.assertFalse(verdict.json()["complete"])
+                        self.assertEqual(verdict.json()["verified_requirements"], sorted(["required_behavior", "explanation"][: index + 1]))
+                    else:
+                        self.assertTrue(verdict.json()["complete"])
+                        self.assertEqual(verdict.json()["mutation"]["event"]["action"], "record_boss_clear")
+                        self.assertEqual(verdict.json()["mutation"]["revision"], 8)
+
+                final = json.loads(canonical.read_text(encoding="utf-8"))
+                self.assertTrue(final["projects"][0]["completed"])
+                self.assertEqual(final["projects"][0]["boss_status"], "defeated")
+                self.assertEqual(final["player"]["xp"], 50)
+                self.assertEqual(final["player"]["level"], 3)
+                self.assertEqual(final["player"]["lifetime_xp"], 250)
+                self.assertEqual(final["stats"]["bosses_defeated"], 1)
+            finally:
+                app_v2.WORKSPACE = original_workspace
+                app_v2.PROGRESS_PATH = original_progress
+                app_v2.PYR_CONTEXT_CHALLENGE = None
 
 
 if __name__ == "__main__":

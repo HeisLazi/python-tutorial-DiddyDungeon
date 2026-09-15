@@ -321,6 +321,8 @@ function AppV2() {
   const theme = (equipped.theme || 'theme-ember-forge').replace('theme-', '')
   const terminalSkin = equipped.terminal || 'terminal-charcoal'
   const showEditor = activeView === 'forge' || activeView === 'tutor'
+  const runtimeBranch = runtime?.repo_git?.branch || 'checking branch…'
+  const runtimeMismatch = Boolean(runtime?.expected_branch && runtimeBranch !== runtime.expected_branch)
 
   const shields = useMemo(
     () => (progress.skills || []).filter((skill) => skill.shield?.tier && skill.shield.tier !== 'none').length,
@@ -432,6 +434,14 @@ function AppV2() {
         body: event.item_name,
         detail: 'Equipment projection updated',
       })
+    } else if (action === 'record_codex_note') {
+      notifications.push({
+        id: `${event.id}:codex-note`,
+        kind: 'objective',
+        title: 'CODEX NOTE SAVED',
+        body: 'Personal field note recorded',
+        detail: `${Number(event.note_count ?? 0)} note${Number(event.note_count ?? 0) === 1 ? '' : 's'} on this encounter`,
+      })
     } else if (action === 'record_battle_miss' || action === 'player_hp_change') {
       const damage = Number(event.damage ?? Math.max(0, -(Number(event.amount) || 0)))
       if (action === 'record_battle_miss' && event.objective_id) {
@@ -468,6 +478,48 @@ function AppV2() {
         body: `${event.question_type || 'question'} · ${event.concept_id || 'adaptive concept'}`,
         detail: 'dungeon.py cleared for this room',
       })
+    } else if (action === 'dungeon_record_verdict') {
+      if (event.outcome === 'correct') {
+        notifications.push({
+          id: `${event.id}:dungeon-clear`,
+          kind: 'objective',
+          title: 'DUNGEON ROOM CLEARED',
+          body: `+${Number(event.score_delta ?? 0)} score · +${Number(event.coins_delta ?? 0)} run coins`,
+          detail: `Next room ${event.next_room ?? 'ready'} · ${event.next_room_type || 'encounter'}`,
+        })
+      } else {
+        notifications.push({
+          id: `${event.id}:dungeon-hit`,
+          kind: 'warning',
+          title: event.run_died ? 'DUNGEON RUN ENDED' : 'DUNGEON COUNTERATTACK',
+          body: event.run_died ? `Score ${event.score ?? 0}` : `−${Number(event.damage ?? 0)} HP`,
+          detail: event.run_died ? 'Death resets this run; Campaign is untouched' : 'Validated result; the current room remains active',
+        })
+      }
+    } else if (action === 'dungeon_use_rest') {
+      notifications.push({
+        id: `${event.id}:dungeon-rest`,
+        kind: 'reward',
+        title: 'REST USED',
+        body: `+${Number(event.healed ?? 0)} HP`,
+        detail: `Room ${event.next_room ?? 'next'} is ready`,
+      })
+    } else if (action === 'dungeon_market_purchase') {
+      notifications.push({
+        id: `${event.id}:dungeon-market`,
+        kind: 'item',
+        title: 'DUNGEON ITEM',
+        body: event.item_name || 'Run aid purchased',
+        detail: `${Number(event.coins_delta ?? 0)} run coins`,
+      })
+    } else if (action === 'dungeon_finish_run') {
+      notifications.push({
+        id: `${event.id}:dungeon-finish`,
+        kind: 'achievement',
+        title: 'RUN BANKED',
+        body: `${Number(event.score ?? 0)} score`,
+        detail: 'Local leaderboard updated',
+      })
     } else if (action === 'dungeon_record_death') {
       notifications.push({
         id: `${event.id}:dungeon-death`,
@@ -475,6 +527,22 @@ function AppV2() {
         title: 'DUNGEON RUN ENDED',
         body: `Floor ${event.floor ?? 0} · ${event.score ?? 0} score`,
         detail: 'Death resets the run; Campaign progress is unchanged',
+      })
+    } else if (action === 'practice_session_started') {
+      notifications.push({
+        id: `${event.id}:practice`,
+        kind: 'objective',
+        title: 'PRACTICE DRILL READY',
+        body: `${event.concept || 'Concept'} · ${event.question_type || 'question'}`,
+        detail: `Tier ${event.difficulty ?? 1} · no Campaign or Dungeon rewards`,
+      })
+    } else if (action === 'practice_record_attempt') {
+      notifications.push({
+        id: `${event.id}:practice-result`,
+        kind: event.outcome === 'correct' ? 'reward' : 'objective',
+        title: 'PRACTICE RESULT RECORDED',
+        body: String(event.outcome || 'reviewed').toUpperCase(),
+        detail: 'Learning history updated; game state unchanged',
       })
     } else if (action === 'reconcile_legacy_progress') {
       const restoredMobs = Array.isArray(event.restored_mobs) ? event.restored_mobs : []
@@ -710,6 +778,118 @@ function AppV2() {
     ].join('\n')
     pasteAiPrompt(prompt)
     setNotice(`Battle answer sent to ${provider}; waiting for its validated verdict.`)
+    return submission
+  }
+
+  const submitBoss = async ({ requirementId, answer }) => {
+    const provider = sessionStorage.getItem('questlab.aiProvider')
+    if (!provider) throw new Error('Launch Codex, Claude, or AGY first, then submit the boss evidence.')
+    if (typeof answer !== 'string' || !answer.trim()) throw new Error('Write evidence before entering the boss gate.')
+
+    const context = await publishPyrContext({ terminalTail: shellTerminalRef.current?.getText?.() || '' })
+    const nonce = context?.verdict?.nonce
+    if (!nonce || context?.verdict?.challenge_type !== 'boss') throw new Error('There is no active boss challenge. Capture context again.')
+    const result = await api('/api/pyr/boss-submission', {
+      method: 'POST',
+      body: JSON.stringify({ nonce, requirement_id: requirementId, answer }),
+    })
+    const submission = result.submission
+    const prompt = [
+      'Quest Lab boss gate — provider adjudication required.',
+      `Provider: ${provider}`,
+      `Campaign revision: ${submission.revision}`,
+      `Project: ${submission.project_id}`,
+      `Boss: ${submission.boss_name}`,
+      `Requirement: ${submission.requirement_id}`,
+      `Submission ID: ${submission.submission_id}`,
+      `Challenge nonce: ${submission.nonce}`,
+      `Evidence ID: ${submission.evidence_id}`,
+      `Answer digest: ${submission.answer_digest}`,
+      '',
+      'Player evidence:',
+      '```text',
+      answer.trim(),
+      '```',
+      '',
+      'Adjudicate only this submitted evidence against the current bounded context and project files. Do not reveal hidden future questions or answers. Call POST /api/pyr/boss-verdict with this exact nonce, submission_id, answer_digest, requirement_id and evidence_id, verdict=correct or incorrect, and a concise reason. Never supply rewards, Impact, HP or damage values. A project completes only after all three requirements are separately verified.',
+      '',
+      'Bounded current context:',
+      `Quest projection: ${JSON.stringify(context.quest || {})}`,
+      `Encounter projection: ${JSON.stringify(context.encounter || {})}`,
+      `Active file (${context.active_file?.path || 'none'}):`,
+      '```text',
+      context.active_file?.content || '(none)',
+      '```',
+      'Selected code:',
+      '```text',
+      context.selection?.text || '(none)',
+      '```',
+      'Recent shell output:',
+      '```text',
+      context.terminal?.tail || '(none)',
+      '```',
+      `Git branch: ${context.git?.branch || 'detached'}`,
+      'Bounded git diff:',
+      '```diff',
+      context.git?.diff || '(none)',
+      '```',
+      '',
+    ].join('\n')
+    pasteAiPrompt(prompt)
+    setNotice(`Boss ${requirementId.replaceAll('_', ' ')} sent to ${provider}; waiting for its validated verdict.`)
+    return submission
+  }
+
+  const submitDungeon = async ({ runId, questionId, answer }) => {
+    const provider = sessionStorage.getItem('questlab.aiProvider')
+    if (!provider) throw new Error('Launch Codex, Claude, or AGY first, then submit the Dungeon answer.')
+    if (typeof answer !== 'string' || !answer.trim()) throw new Error('Write an answer in dungeon.py before submitting it.')
+
+    const context = await publishPyrContext({ terminalTail: shellTerminalRef.current?.getText?.() || '' })
+    const challenge = context?.dungeon_verdict
+    if (!challenge?.nonce || challenge.run_id !== runId || challenge.question_id !== questionId) {
+      throw new Error('There is no active Dungeon challenge for this room. Capture context again.')
+    }
+    const result = await api('/api/pyr/dungeon-submission', {
+      method: 'POST',
+      body: JSON.stringify({ nonce: challenge.nonce, run_id: runId, question_id: questionId, answer }),
+    })
+    const submission = result.submission
+    const prompt = [
+      'Quest Lab Infinite Dungeon — provider adjudication required.',
+      `Provider: ${provider}`,
+      `Campaign revision: ${submission.revision}`,
+      `Run: ${submission.run_id}`,
+      `Room question: ${submission.question_id} (${submission.question_type}, ${submission.concept_id})`,
+      `Submission ID: ${submission.submission_id}`,
+      `Challenge nonce: ${submission.nonce}`,
+      `Evidence ID: ${submission.evidence_id}`,
+      `Answer digest: ${submission.answer_digest}`,
+      '',
+      'Player Dungeon answer:',
+      '```text',
+      answer.trim(),
+      '```',
+      '',
+      'Adjudicate only this submitted answer against the current Dungeon question and bounded context. Do not reveal hidden future questions or answer keys. Call POST /api/pyr/dungeon-verdict with this exact nonce, submission_id, answer_digest, verdict=correct or incorrect, run_id, question_id, evidence_id and a concise reason. Never supply score, coins, damage or rewards; the state service decides those values. A correct verdict clears this room and rotates dungeon.py to a blank next-room buffer.',
+      '',
+      'Current Dungeon projection:',
+      JSON.stringify(context.dungeon || {}),
+      'Bounded current context:',
+      `Quest projection: ${JSON.stringify(context.quest || {})}`,
+      `Encounter projection: ${JSON.stringify(context.encounter || {})}`,
+      `Active file (${context.active_file?.path || 'none'}):`,
+      '```text',
+      context.active_file?.content || '(none)',
+      '```',
+      'Recent shell output:',
+      '```text',
+      context.terminal?.tail || '(none)',
+      '```',
+      '',
+    ].join('\n')
+    pasteAiPrompt(prompt)
+    setNotice(`Dungeon answer sent to ${provider}; waiting for its validated verdict.`)
     return submission
   }
 
@@ -1012,6 +1192,26 @@ function AppV2() {
     }
   }
 
+  const dungeonAction = async (path, payload, successMessage) => {
+    try {
+      setBusy(true)
+      const result = await api(path, { method: 'POST', body: JSON.stringify(payload) })
+      await refreshCampaign({ silent: true })
+      setNotice(successMessage(result))
+      return result
+    } catch (error) {
+      setNotice(`Dungeon action failed: ${error.message}`)
+      throw error
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const useDungeonRest = (runId) => dungeonAction('/api/dungeon/rest', { run_id: runId }, (result) => `Rest used. +${result.healed ?? 0} HP; the next room is ready.`)
+  const buyDungeonItem = (runId, itemId) => dungeonAction('/api/dungeon/market', { run_id: runId, item_id: itemId }, (result) => `Bought ${result.item?.name || itemId} for run currency.`)
+  const leaveDungeonRoom = (runId) => dungeonAction('/api/dungeon/leave', { run_id: runId }, () => 'Market cleared. The next encounter is ready.')
+  const finishDungeonRun = (runId) => dungeonAction('/api/dungeon/finish', { run_id: runId }, (result) => `Run banked at ${result.score ?? result.dungeon?.score ?? 0} score.`)
+
   const startDungeon = async (conceptId) => {
     try {
       setBusy(true)
@@ -1038,16 +1238,36 @@ function AppV2() {
   const requestPracticePrompt = async ({ concept, questionType, difficulty, answer }) => {
     const provider = sessionStorage.getItem('questlab.aiProvider')
     if (!provider) throw new Error('Launch Codex, Claude, or AGY first, then ask for practice help.')
+    const sessionResult = await api('/api/practice/session', {
+      method: 'POST',
+      body: JSON.stringify({ concept, question_type: questionType, difficulty }),
+    })
+    const session = sessionResult.practice?.sessions?.at(-1) || sessionResult.result?.session || sessionResult.session
+    const sessionId = session?.session_id
+    if (!sessionId) throw new Error('Practice session could not be opened through the state gateway.')
     const context = await publishPyrContext({ terminalTail: shellTerminalRef.current?.getText?.() || '' })
     const hasAnswer = typeof answer === 'string' && answer.trim()
+    let submission = null
+    if (hasAnswer) {
+      const bound = await api('/api/pyr/practice-submission', {
+        method: 'POST',
+        body: JSON.stringify({ session_id: sessionId, answer }),
+      })
+      submission = bound.submission
+    }
     const prompt = [
       'Quest Lab Practice mode — provider teaching request.',
       `Provider: ${provider}`,
       `Concept: ${concept}`,
       `Question type: ${questionType}`,
       `Difficulty tier: ${difficulty}`,
+      `Practice session: ${sessionId}`,
+      submission ? `Submission ID: ${submission.submission_id}` : '',
+      submission ? `Challenge nonce: ${submission.nonce}` : '',
+      submission ? `Evidence ID: ${submission.evidence_id}` : '',
+      submission ? `Answer digest: ${submission.answer_digest}` : '',
       hasAnswer ? 'Give feedback on the submitted practice answer below.' : 'Generate one self-contained practice question now.',
-      'Practice is unlimited and separate from Campaign and Dungeon. Do not issue a Battle verdict, award rewards, change HP, or reveal future Dungeon questions.',
+      hasAnswer ? 'If the answer is correct, incomplete or needs review, call POST /api/pyr/practice-verdict with the exact nonce, submission_id, answer_digest, verdict (correct, incorrect or reviewed), session_id, evidence_id and a concise reason. Never award XP, coins, HP, Resolve or Dungeon score.' : 'Practice is unlimited and separate from Campaign and Dungeon. Do not issue a Battle verdict, award rewards, change HP, or reveal future Dungeon questions.',
       hasAnswer ? ['Player practice answer:', '```text', answer.trim(), '```'].join('\n') : '',
       '',
       'Use only this bounded current context for personalization:',
@@ -1180,6 +1400,24 @@ function AppV2() {
       setNotice(`Equipped ${result.item?.name || itemId}.`)
     } catch (error) {
       setNotice(`Equip failed: ${error.message}`)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const saveCodexNote = async (entryId, note) => {
+    try {
+      setBusy(true)
+      const result = await api('/api/codex/note', {
+        method: 'POST',
+        body: JSON.stringify({ entry_id: entryId, note }),
+      })
+      await refreshCampaign({ silent: true })
+      setNotice(result.already_saved ? 'That note is already in the Codex.' : 'Codex note saved through the state gateway.')
+      return result
+    } catch (error) {
+      setNotice(`Codex note failed: ${error.message}`)
+      throw error
     } finally {
       setBusy(false)
     }
@@ -1404,6 +1642,8 @@ function AppV2() {
               activeView={activeView}
               progress={progress}
               revision={campaign?.revision ?? 0}
+              codexProjection={campaign?.codex_projection}
+              practiceProjection={campaign?.practice_projection}
               encounter={campaign?.encounter}
               dungeon={dungeon}
               dungeonEditorContent={dungeonCode}
@@ -1415,12 +1655,19 @@ function AppV2() {
                 dungeonDirtyRef.current = true
               }}
               onSaveDungeon={saveDungeon}
+              onDungeonRest={useDungeonRest}
+              onDungeonMarketPurchase={buyDungeonItem}
+              onDungeonLeave={leaveDungeonRoom}
+              onDungeonFinish={finishDungeonRun}
               onStartDungeon={startDungeon}
               onPracticePrompt={requestPracticePrompt}
               dungeonSaving={dungeonSaving}
               submitBattle={submitBattle}
+              submitBoss={submitBoss}
+              submitDungeon={submitDungeon}
               purchaseCosmetic={purchaseCosmetic}
               equipCosmetic={equipCosmetic}
+              saveCodexNote={saveCodexNote}
               busy={busy}
               preferences={preferences}
               setters={setters}
@@ -1470,6 +1717,9 @@ function AppV2() {
 
       <footer className="statusbar">
         <span>{notice || `Runtime: ${runtime?.shell || 'checking shell…'}`}</span>
+        <span className={`runtime-identity ${runtimeMismatch ? 'warning' : ''}`} title={runtime?.repo_root || ''}>
+          {runtimeMismatch ? `CHECKOUT MISMATCH · ${runtimeBranch}` : `CHECKOUT ${runtimeBranch}`}
+        </span>
         <span>
           {busy
             ? 'working…'

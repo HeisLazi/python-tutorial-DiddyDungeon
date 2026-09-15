@@ -125,6 +125,7 @@ def main():
     env["QUESTLAB_WORKSPACE"] = str(workspace)
     env["QUESTLAB_BACKEND_PORT"] = str(backend_port)
     env["QUESTLAB_FRONTEND_PORT"] = str(frontend_port)
+    env["QUESTLAB_EXPECTED_BRANCH"] = "feature/cloud-sync-desktop"
 
     backend_cmd = [
         sys.executable,
