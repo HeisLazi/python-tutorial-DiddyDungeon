@@ -1,6 +1,7 @@
 # Infinite Dungeon and Practice Mode
 
-Status: approved product direction, local state foundation next.
+Status: approved product direction; local playable loop implemented and K&M
+verified. Hosted state/leaderboards are intentionally later.
 
 ## Modes
 

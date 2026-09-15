@@ -893,3 +893,32 @@ of emitting emoji and waiting for `uiPolish.js` to mutate the DOM. The legacy
 polish bridge ignores React-owned stat values, so revision polling cannot
 replace the nested SVG or its coin suffix. Frontend tests and the 1,344-module
 Vite build pass; K&M showed all five icons before and after Codex navigation.
+
+### Isolated Infinite Dungeon K&M verification — 2026-09-16
+
+The local current-branch Dungeon contract was verified in a disposable
+backend/save using browser clicks, scrolling and typing only (no Playwright).
+The campaign loaded at Level 2 / 50 XP / 55 coins. `lists` focus followed by
+Enter Dungeon showed a fresh run: Apprentice Coat, no trinket, one heal and
+zero run coins. The visible provider bridge accepted a checkpointed answer;
+the disposable state service recorded the validated verdict and Forge changed
+live to the next room with a room-clear reward, new question and blank editor.
+Three additional verdicts exercised code, bug-hunt and true/false rotation;
+each new room started with a clean editor buffer.
+
+The run reached REST, MARKET and encounter rooms without refresh. REST was
+correctly disabled at full HP (the heal mutation is covered by the backend
+tests). A Field Ration purchase showed `-12 run coins`, leaving 13, and Bank
+score ended with `RUN BANKED 50 score` plus the local `#1 · lists 50 F1 ·
+complete` leaderboard row. The disposable backend/frontend and temp save were
+stopped and removed afterward. Existing user progress, long-lived shell/AI
+PTYs and hosted state were not touched. This is local product-completeness
+evidence only; hosted Dungeon persistence, cross-device resume and hosted
+leaderboards remain gated by provider-auth/Milestone C acceptance.
+
+The 2026-09-16 Claude read-only roadmap/source review confirmed that the HUD
+icon and Dungeon implementations are present in source, but did not run tests
+or browser checks. Its primary remaining blocker is the real hosted two-device
+Supabase acceptance; provider trust findings F-001/F-009/F-010 remain open.
+Custody migration therefore remains explicitly opt-in, and no new hosted
+Dungeon/Codex player-state fields were added.

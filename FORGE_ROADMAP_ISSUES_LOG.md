@@ -57,7 +57,7 @@ player-facing mode boundaries, and failure behavior.
 | F-016 | P2 | Run lifecycle | A dead run could accidentally be resumed or have its starter loadout mutated in place. | Fixed: death is a terminal state that clears the question/buffer; starting again creates a new run ID and fresh starter loadout while preserving the summary. |
 | F-017 | P2 | Mode boundary | Practice assistance could accidentally grant Campaign/Dungeon rewards or become a hidden Dungeon variant. | Fixed at the UI/provider contract: Practice is an independent unlimited request surface and explicitly forbids verdicts, rewards, HP, Dungeon score and `tutor.py`; Campaign retains a dedicated Tutor Notebook surface for collaborative scratch work. Persistent Practice evidence remains future work. |
 | F-018 | P2 | Cloud scope | The local Dungeon checkpoint is not yet part of the hosted player-state projection. | Open by design: generation, verdict progression, rooms, scoring, leaderboard state and cross-device Dungeon resume wait until the provider-auth and hosted-state gates are closed. |
-| F-019 | P3 | Product completeness | The current screen has a deterministic starter question and checkpoint controls, but no adaptive generator, rest/market rooms, death UI, leaderboard or Practice history. | Open roadmap work; the missing pieces are documented in `INFINITE_DUNGEON_DESIGN.md` and the Forge handoff. |
+| F-019 | P3 | Product completeness | The current screen has a deterministic starter question and checkpoint controls, but no adaptive generator, rest/market rooms, death UI, leaderboard or Practice history. | Fixed locally: the current-branch state service and Forge now cover adaptive recorded-weakness focus, progressive rooms, rest/market, death reset, local leaderboard and the independent Practice surface; isolated K&M acceptance is recorded below. Hosted Dungeon state/leaderboards remain F-018. |
 | F-020 | P2 | Checkpoint race | A delayed autosave from the previous Dungeon question could overwrite the newly rotated room buffer. | Fixed: every checkpoint carries the current `question_id`; stale or mismatched saves fail closed with HTTP 409. |
 | F-021 | P2 | Projection resilience | Campaign polling could fail if the disk `dungeon.py` projection was malformed or could drift until a dedicated Dungeon request ran. | Fixed: campaign polling materializes the controlled projection and falls back to a safe invalid/empty projection without taking down the campaign HUD. |
 | F-022 | P2 | Editor responsiveness | Autosave reused the global busy flag and could overwrite edits that arrived while a save was in flight. | Fixed: Dungeon uses a dedicated saving flag and content ref; a save only clears dirty state when the captured content is still current. |
@@ -374,3 +374,41 @@ showed Level 2 / 50 XP / 55 coins with all five SVG icons visible, then kept
 the icons visible after navigating to Codex. The disposable frontend proxy's
 terminal reconnect state was not used as PTY evidence; the managed connected
 PTY acceptance remains the prior checkpoint.
+
+## Verification update — 2026-09-16 — isolated Infinite Dungeon K&M acceptance
+
+The current-branch Dungeon loop was exercised in a disposable backend/save
+with browser clicks, scrolling and typing only (no Playwright). The campaign
+projection loaded at Level 2 / 50 XP / 55 coins. Selecting `lists` and entering
+the Dungeon produced the fresh starter loadout (Apprentice Coat, no trinket,
+one heal and zero run coins) and a `DUNGEON RUN STARTED` event. A checkpointed
+code answer was submitted through the visible provider bridge; the disposable
+state service then recorded a validated verdict and the browser updated live
+to the next room with `+10 score`, `+5 run coins`, a blank editor and the next
+question. Three further validated room transitions covered code, bug-hunt and
+true/false questions, with the blank buffer recreated on each rotation.
+
+The run then reached a REST room, a MARKET room and a later encounter without
+refreshing. The full-health REST action was correctly disabled in this run;
+the rest/heal mutation remains covered by the backend suite. Buying a Field
+Ration produced the visible `-12 run coins` purchase event, leaving 13 run
+coins. Banking the run produced `RUN BANKED 50 score` and a local leaderboard
+entry (`#1 · lists 50 F1 · complete`). The K&M session and its disposable
+processes were stopped and removed afterward; no user save, long-lived PTY or
+hosted state was touched. This closes the local product-completeness finding;
+hosted Dungeon persistence and cross-device leaderboards remain intentionally
+open under F-018/Milestone C.
+
+## Review — 2026-09-16 — Claude roadmap/source pass
+
+Claude Code read the roadmap, handoff, Dungeon design, issue log and current
+source in read-only mode. It confirmed that the React-owned HUD icons and the
+Dungeon contracts are source-backed, while noting that it did not run tests or
+browser checks. It identifies real hosted two-device Supabase acceptance as
+the primary remaining Milestone C blocker and keeps provider trust findings
+F-001/F-009/F-010 open. It recommends no expansion of Dungeon/Codex into
+hosted player-state until that gate is closed. Its suggestion to make custody
+migration the default was not adopted: explicit opt-in and no silent save
+movement are safety requirements. The roadmap and Milestone A–F handoff are
+now cross-linked in the execution plan/report rather than treated as one
+combined approval.

@@ -35,6 +35,23 @@ The canonical state contains two reconciliation events (revisions 1 and 2).
 The second is the idempotent current-quest correction; no reward history was
 invented. The workspace/legacy save remains evidence only.
 
+## Follow-up verification — 2026-09-16
+
+An isolated current-branch K&M run (browser clicks, scrolling and typing only;
+no Playwright) verified the local Infinite Dungeon loop without touching this
+save: fresh starter loadout, provider verdict, blank-on-rotation, progressive
+rooms, MARKET purchase and run banking/leaderboard. The disposable run reached
+50 score and 13 run coins after a Field Ration purchase. Full-health REST was
+disabled as expected; the heal path remains covered by backend tests. The
+disposable processes and save were removed afterward. Hosted Dungeon state and
+cross-device leaderboards remain gated by Milestone C/provider-auth
+acceptance.
+
+The authenticated Claude read-only review on the same date confirmed the HUD
+icon and Dungeon source contracts but did not run tests or browser checks. It
+left hosted two-device acceptance and provider trust findings F-001/F-009/F-010
+open; local custody migration remains explicit opt-in.
+
 ## Runtime map
 
 - The older long-lived Forge on port 5173/backend 7332 still serves

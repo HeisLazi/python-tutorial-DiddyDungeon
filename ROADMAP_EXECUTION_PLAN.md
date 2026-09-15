@@ -2,7 +2,7 @@
 
 Status: local roadmap slices 0–6 implemented and verified; friend-ready
 launcher/health foundation added; hosted distribution/social slices remain
-explicitly gated — 2026-09-15
+explicitly gated — 2026-09-16
 
 Claude Sonnet review was previously attempted from WSL while the configured
 CLI returned `Not logged in · Please run /login`. The current checkpoint has
@@ -185,6 +185,15 @@ Latest gates: 66 WSL backend tests, 31 frontend tests, Windows Vite build, and
 manual browser K&M acceptance on an isolated current-branch runtime. The
 frontend count includes source tripwires as well as behavioural sync tests. No
 Playwright was used.
+
+The local Slice 5 loop is also covered by the 2026-09-16 isolated K&M run
+recorded in `FORGE_ROADMAP_ISSUES_LOG.md` and
+`CLOUD_DESKTOP_IMPLEMENTATION_REPORT.md`: provider verdict, blank-on-rotation,
+progressive rooms, market purchase, run banking and leaderboard were observed
+without a browser refresh. Hosted Dungeon persistence remains F-018. For the
+Milestone A–F cloud gates and their approval boundaries, see
+`AGENT_CLOUD_DESKTOP_HANDOFF.md` and the implementation report; this plan is
+the local-slice execution record.
 
 A fresh ext4 archive also passed WSL `npm ci` plus `npm run build` (1,344
 modules). The remaining F-033 packaging risk is limited to the shared OneDrive
