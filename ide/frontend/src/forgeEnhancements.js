@@ -80,7 +80,72 @@ function showToast(message, tone = 'default') {
   showToast.timer = setTimeout(() => toast.classList.remove('show'), 2600)
 }
 
-function submitRunToAI() {
+async function requestPyrContext(output) {
+  const publisher = window.__questlabPublishPyrContext
+  if (typeof publisher === 'function') {
+    try {
+      return await publisher({ terminalTail: output })
+    } catch {
+      // Fall through to the direct local bridge request when React is still
+      // mounting or the current editor surface is unavailable.
+    }
+  }
+
+  const response = await fetch('/api/pyr/context', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ active_path: activeFileLabel(), selection: '', terminal_tail: output }),
+  })
+  if (!response.ok) throw new Error('The local PYR context bridge is unavailable.')
+  const result = await response.json()
+  return result.context || result
+}
+
+function contextPrompt(context, fallbackOutput) {
+  const activeFile = context?.active_file
+  const selection = context?.selection?.text || ''
+  const terminalTail = context?.terminal?.tail || fallbackOutput
+  const quest = context?.quest || {}
+  const encounter = context?.encounter || null
+  const assistance = quest.assistance || {}
+  const fileLabel = activeFile?.path || activeFileLabel()
+  const fileContent = activeFile?.content || ''
+  const gitDiff = context?.git?.diff || ''
+
+  return [
+    'Quest Lab structured context from the local PYR bridge.',
+    `Campaign revision: ${context?.revision ?? 'unknown'}`,
+    `Active file: ${fileLabel}${activeFile?.truncated ? ' (content truncated)' : ''}`,
+    '',
+    'Selected code:',
+    '```text',
+    selection || '(no selection)',
+    '```',
+    '',
+    'Active file content:',
+    '```text',
+    fileContent || '(file content unavailable)',
+    '```',
+    '',
+    'Recent Forge terminal output:',
+    '```text',
+    terminalTail || '(no terminal output)',
+    '```',
+    '',
+    'Git diff (state files and secret-looking files are excluded):',
+    '```diff',
+    gitDiff || '(no code diff)',
+    '```',
+    '',
+    'Validated current quest/mob state (future locked encounters are omitted):',
+    JSON.stringify({ quest, encounter, assistance }, null, 2),
+    '',
+    'Act as PYR under TUTOR_CONTRACT.md. Do not invent rewards or mutate player state directly. Tutor me from this context using the hint ladder; use tutor.py for examples and send any progression decision through the controlled state service.',
+    '',
+  ].join('\n')
+}
+
+async function submitRunToAI() {
   const output = terminalText()
   if (!output) {
     showToast('Nothing recent in the Forge terminal to submit.', 'warn')
@@ -100,20 +165,9 @@ function submitRunToAI() {
     return
   }
 
-  const payload = [
-    'Quest Lab context submission.',
-    `Active file: ${activeFileLabel()}`,
-    '',
-    'Recent Forge terminal output:',
-    '```text',
-    output,
-    '```',
-    '',
-    'Act as PYR under TUTOR_CONTRACT.md. Read the project source if needed, but do not edit required project files. Tutor me from this run using the hint ladder; use tutor.py for any examples.',
-    '',
-  ].join('\n')
-
   try {
+    const context = await requestPyrContext(output)
+    const payload = contextPrompt(context, output)
     textarea.focus()
     const data = new DataTransfer()
     data.setData('text/plain', `${payload}\n`)
@@ -121,7 +175,19 @@ function submitRunToAI() {
     textarea.dispatchEvent(event)
     showToast(`Submitted recent run to ${provider}.`, 'success')
   } catch {
-    navigator.clipboard?.writeText(payload)
+    const fallback = [
+      'Quest Lab context submission (local bridge unavailable).',
+      `Active file: ${activeFileLabel()}`,
+      '',
+      'Recent Forge terminal output:',
+      '```text',
+      output,
+      '```',
+      '',
+      'Act as PYR under TUTOR_CONTRACT.md. Do not edit required project files. Tutor me from this run using the hint ladder; use tutor.py for examples.',
+      '',
+    ].join('\n')
+    navigator.clipboard?.writeText(fallback)
     focusTerminal('.ai-panel')
     showToast('Context copied. Paste it into the AI terminal with Ctrl+V.', 'warn')
   }

@@ -21,6 +21,12 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
+from ide.server.context_bridge import (
+    ContextValueError,
+    bounded_file,
+    bounded_text,
+    build_context,
+)
 from ide.server.security import allowed_hosts, allowed_origins, is_allowed_origin
 from ide.server.state import (
     LocalStateService,
@@ -85,6 +91,12 @@ current project.
 ALLOWED_ORIGINS = allowed_origins()
 PROGRESS_LOCK = threading.RLock()
 STATE_SERVICE = LocalStateService(lambda: PROGRESS_PATH, PROGRESS_LOCK)
+PYR_CONTEXT_LOCK = threading.RLock()
+PYR_CONTEXT_INPUT: dict[str, str | None] = {
+    "active_path": None,
+    "selection": "",
+    "terminal_tail": "",
+}
 
 app = FastAPI(title="Python Quest Lab Local Server", version="0.4.0")
 app.add_middleware(TrustedHostMiddleware, allowed_hosts=list(allowed_hosts()))
@@ -117,6 +129,12 @@ class HomesteadPurchase(BaseModel):
 
 class HomesteadEquip(BaseModel):
     item_id: str
+
+
+class PyrContextRequest(BaseModel):
+    active_path: str | None = None
+    selection: str = ""
+    terminal_tail: str = ""
 
 
 def safe_path(relative: str) -> Path:
@@ -362,6 +380,77 @@ def apply_cloud_state(payload: StateSyncApplyRequest):
 @app.get("/api/state/legacy")
 def state_legacy_report():
     return legacy_state_report(PROGRESS_PATH, legacy_progress_path())
+
+
+def _capture_pyr_context(payload: PyrContextRequest) -> dict:
+    active_path = payload.active_path.strip() if payload.active_path else ""
+    if len(active_path) > 240 or any(ord(character) < 32 for character in active_path):
+        raise HTTPException(status_code=422, detail="active_path must be a bounded relative path")
+
+    normalized_path: str | None = None
+    active_file = None
+    if active_path:
+        target = safe_path(active_path)
+        reject_state_file_access(target)
+        if not target.exists() or not target.is_file():
+            raise HTTPException(status_code=404, detail="Active file not found")
+        try:
+            active_file = bounded_file(target)
+        except ContextValueError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
+        normalized_path = target.relative_to(WORKSPACE).as_posix()
+
+    try:
+        selection, selection_truncated = bounded_text(payload.selection, "selection")
+        terminal_tail, terminal_truncated = bounded_text(payload.terminal_tail, "terminal_tail")
+    except ContextValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+    try:
+        progress, metadata = STATE_SERVICE.snapshot_with_metadata()
+    except StateCommandError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
+    context = build_context(
+        progress=progress,
+        revision=metadata["revision"],
+        encounter=STATE_SERVICE.encounter_projection(progress),
+        workspace=WORKSPACE,
+        active_path=normalized_path,
+        active_file=active_file,
+        selection=selection,
+        selection_truncated=selection_truncated,
+        terminal_tail=terminal_tail,
+        terminal_truncated=terminal_truncated,
+    )
+    with PYR_CONTEXT_LOCK:
+        PYR_CONTEXT_INPUT.update(
+            {
+                "active_path": normalized_path,
+                "selection": selection,
+                "terminal_tail": terminal_tail,
+            }
+        )
+    return context
+
+
+def _stored_pyr_context_request() -> PyrContextRequest:
+    with PYR_CONTEXT_LOCK:
+        values = dict(PYR_CONTEXT_INPUT)
+    return PyrContextRequest(**values)
+
+
+@app.get("/api/pyr/context")
+def read_pyr_context():
+    """Return the latest bounded editor/terminal context and live campaign view."""
+
+    return {"ok": True, "context": _capture_pyr_context(_stored_pyr_context_request())}
+
+
+@app.post("/api/pyr/context")
+def write_pyr_context(payload: PyrContextRequest):
+    """Capture explicit UI context for a local PYR client without mutating state."""
+
+    return {"ok": True, "context": _capture_pyr_context(payload)}
 
 
 @app.get("/api/tree")

@@ -107,7 +107,10 @@ Canonical combat details live in `COMBAT_SYSTEM.md`.
 
 ## Next implementation block
 
-1. PYR context bridge: active file, selection, terminal tail, git diff, quest/mob state.
+1. **Implemented:** PYR context bridge at `GET/POST /api/pyr/context` captures
+   active file, selected code, terminal tail, bounded git diff, and the current
+   quest/mob/concept plus assistance/Clean Clear state. It is read-only and
+   excludes player-state/secret-looking files.
 2. Controlled PYR verdict path for Battle submissions.
 3. Persistent Resolve / armor calculation / HP / combat log.
 4. Teach Me / Quick Refresher / Test Me encounter entry.
@@ -139,4 +142,7 @@ Report broken behaviour with a screenshot and the visible launcher/terminal outp
 
 ## Current test boundary
 
-This remains a local-runtime test build. The combat shell intentionally stops before automatic verdicts/state mutation. The next high-value engineering step is the controlled PYR context/verdict bridge, not more fake front-end combat state.
+This remains a local-runtime test build. The combat shell intentionally stops
+before automatic verdicts/state mutation. The context half of the bridge is
+implemented and tested; the next high-value engineering step is the controlled
+PYR verdict path, not more fake front-end combat state.

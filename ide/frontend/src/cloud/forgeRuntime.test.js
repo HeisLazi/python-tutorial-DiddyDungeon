@@ -50,6 +50,21 @@ test('campaign projections use revision polling and state-service events', () =>
   assert.doesNotMatch(views, /mob\.encounter \|\| 'This encounter has not revealed/)
 })
 
+test('PYR context submissions use the bounded local bridge and current editor selection', () => {
+  const app = source('../AppV2.jsx')
+  const enhancements = source('../forgeEnhancements.js')
+
+  assert.match(app, /\/api\/pyr\/context/)
+  assert.match(app, /editorSelectionRef\.current/)
+  assert.match(app, /getText\(\)/)
+  assert.match(app, /__questlabPublishPyrContext/)
+  assert.match(enhancements, /requestPyrContext/)
+  assert.match(enhancements, /contextPrompt/)
+  assert.match(enhancements, /Validated current quest\/mob state/)
+  assert.match(enhancements, /active_file/)
+  assert.match(enhancements, /git\?\.diff/)
+})
+
 test('combat projection treats legacy cleared mobs as terminal', () => {
   const combat = source('../combatShell.js')
   const views = source('../RpgViews.jsx')

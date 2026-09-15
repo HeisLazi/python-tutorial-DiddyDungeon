@@ -182,9 +182,12 @@ The **terminals are different**: they are intentionally real shells. They have t
 
 # Next milestones
 
-## Milestone 2 — PYR context bridge
+## Milestone 2 — PYR context bridge (implemented)
 
-Give PYR structured context without copy/paste:
+The local Forge now exposes a bounded, read-only context bridge at
+`GET/POST /api/pyr/context`. The editor publishes the current selection and
+the Submit Run enhancement captures the terminal tail through that bridge.
+The response includes:
 
 - active file;
 - selected code;
@@ -193,7 +196,10 @@ Give PYR structured context without copy/paste:
 - current quest/mob/concept;
 - assistance mode / Clean Clear state.
 
-The AI must still follow `TUTOR_CONTRACT.md` and `LEARNING_PROTOCOL.md`.
+State files and secret-looking paths are excluded from git context, payloads are
+bounded and ANSI-cleaned, and the bridge never mutates campaign state. The AI
+must still follow `TUTOR_CONTRACT.md` and `LEARNING_PROTOCOL.md`; any reward or
+combat mutation remains behind the controlled state service.
 
 ## Milestone 3 — in-app PYR chat
 

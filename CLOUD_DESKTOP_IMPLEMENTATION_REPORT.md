@@ -83,6 +83,21 @@ Hosted Auth is configured to require email confirmation (`mailer_autoconfirm=fal
   Async avatar work is invalidated when the account changes or a newer upload /
   removal starts, so a stale download cannot resurrect a removed portrait.
 
+### Forge roadmap — bounded PYR context bridge implemented
+
+- Added read-only `GET/POST /api/pyr/context` endpoints. The bridge combines
+  the current canonical campaign revision/encounter projection with an
+  explicitly captured active file, Monaco selection and Forge terminal tail.
+- Context includes only the current quest/mob/concept and assistance/Clean
+  Clear state; future locked encounter prompts/answers are not projected.
+  Active file and terminal/diff text are UTF-8/ANSI cleaned and byte-bounded.
+- Git context excludes `progress.json` and secret-looking files. The bridge
+  stores only the latest ephemeral editor/terminal capture in memory and never
+  writes player state or bypasses the state service.
+- Submit Run now asks the bridge for a structured context payload before
+  sending it to the selected local AI terminal. If the bridge is unavailable,
+  the existing safe fallback remains available.
+
 ## Supabase project and schema
 
 - Dedicated project: `Quest Lab` (`ajnxexxcqfbozszwpjpk`) in `HeisLazi's Org`.
@@ -128,7 +143,7 @@ newer cloud revision is never replaced by an older device snapshot.
 
 ## Verification commands and results
 
-- `npm test` — 20 frontend cloud/runtime/sync tests passed.
+- `npm test` — 21 frontend cloud/runtime/sync/context tests passed.
 - `npm run build` — Vite production build passed.
 - WSL Forge launch with no cloud variables — backend health returned HTTP 200; both `/ws/terminal/shell` and `/ws/terminal/ai` executed independent markers.
 - WSL `npx --yes supabase db push --linked --yes` — profiles/devices, all three
@@ -137,6 +152,8 @@ newer cloud revision is never replaced by an older device snapshot.
 - WSL `npx --yes supabase db query --linked --file supabase/tests/player_state_rls.sql` — `player_state_rls: PASS`.
 - WSL `npx --yes supabase db query --linked --file supabase/tests/avatar_storage_rls.sql` — `avatar_storage_rls: PASS`.
 - WSL `npx --yes supabase db lint --linked` — no schema errors.
+- WSL `.venv/bin/python -m unittest discover -s ide/server -p "test_*.py"` —
+  34 backend tests passed, including bounded context/state-file isolation.
 - Browser Settings smoke — cloud-configured Forge showed `Sign in to sync`, account creation toggle and device-account surface with no console errors.
 
 ## Known limitations / intentionally unimplemented
@@ -146,6 +163,8 @@ newer cloud revision is never replaced by an older device snapshot.
   isolated two-engine reconciliation are implemented and tested.
 - Hosted avatar upload/download acceptance, Tauri packaging (E), Vercel surface
   (F), friends/presence and raid mechanics remain future work.
+- A real browser-level PYR verdict path is still pending; the current context
+  bridge is read-only and does not award Impact, XP, coins or HP changes.
 - A real hosted sign-in was not independently verified in this run; this
   project requires email confirmation. A signed-in account still needs the
   hosted two-device acceptance below.

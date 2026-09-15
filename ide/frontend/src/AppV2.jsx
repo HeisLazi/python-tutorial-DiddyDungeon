@@ -167,6 +167,17 @@ const TerminalPane = forwardRef(function TerminalPane(
     clear() {
       termRef.current?.clear()
     },
+    getText() {
+      const buffer = termRef.current?.buffer?.active
+      if (!buffer) return ''
+      const start = Math.max(0, buffer.length - 80)
+      const lines = []
+      for (let index = start; index < buffer.length; index += 1) {
+        const line = buffer.getLine(index)
+        if (line) lines.push(line.translateToString(true))
+      }
+      return lines.join('\n').replace(/\s+$/g, '').trim()
+    },
     reconnect() {
       const socket = socketRef.current
       if (socket && socket.readyState < WebSocket.CLOSING) socket.close()
@@ -253,6 +264,9 @@ const TerminalPane = forwardRef(function TerminalPane(
 function AppV2() {
   const shellTerminalRef = useRef(null)
   const aiTerminalRef = useRef(null)
+  const editorSelectionRef = useRef('')
+  const editorSelectionSubscriptionRef = useRef(null)
+  const pyrContextPublisherRef = useRef(null)
   const [campaign, setCampaign] = useState(null)
   const [rewardQueue, setRewardQueue] = useState([])
   const [runtime, setRuntime] = useState(null)
@@ -536,12 +550,42 @@ function AppV2() {
     }
   }
 
+  const publishPyrContext = async ({ terminalTail } = {}) => {
+    const activeFile = activeView === 'tutor' ? 'tutor.py' : activePath || null
+    const result = await api('/api/pyr/context', {
+      method: 'POST',
+      body: JSON.stringify({
+        active_path: activeFile,
+        selection: editorSelectionRef.current || '',
+        terminal_tail:
+          typeof terminalTail === 'string' ? terminalTail : shellTerminalRef.current?.getText?.() || '',
+      }),
+    })
+    return result.context || result
+  }
+
+  pyrContextPublisherRef.current = publishPyrContext
+
   useEffect(() => {
     refreshCampaign()
     refreshRuntime()
     refreshFiles()
     refreshTutor()
   }, [])
+
+  // The DOM enhancement layer and any local AI client can request this
+  // explicitly captured context without knowing React's editor/terminal refs.
+  // The function itself is stable; the ref always points at the current view.
+  useEffect(() => {
+    window.__questlabPublishPyrContext = (options) => pyrContextPublisherRef.current?.(options)
+    return () => {
+      delete window.__questlabPublishPyrContext
+    }
+  }, [])
+
+  useEffect(() => {
+    editorSelectionRef.current = ''
+  }, [activeView])
 
   // Campaign state is an external projection: check the cheap revision every
   // second and fetch the full snapshot only when the state service committed a
@@ -705,6 +749,7 @@ function AppV2() {
       setBusy(true)
       const result = await api(`/api/file?path=${encodeURIComponent(path)}`)
       setActivePath(path)
+      editorSelectionRef.current = ''
       setCode(result.content ?? '')
       setDirty(false)
       setNotice('')
@@ -1026,6 +1071,16 @@ function AppV2() {
               path={activeView === 'tutor' ? 'tutor.py' : (activePath || 'untitled.txt')}
               language={activeView === 'tutor' ? 'python' : languageFor(activePath)}
               value={activeView === 'tutor' ? tutorCode : code}
+              onMount={(editor) => {
+                editorSelectionSubscriptionRef.current?.dispose()
+                const updateSelection = () => {
+                  const selection = editor.getSelection()
+                  const model = editor.getModel()
+                  editorSelectionRef.current = selection && model ? model.getValueInRange(selection) : ''
+                }
+                updateSelection()
+                editorSelectionSubscriptionRef.current = editor.onDidChangeCursorSelection(updateSelection)
+              }}
               onChange={(value) => {
                 if (activeView === 'tutor') {
                   setTutorCode(value ?? '')
