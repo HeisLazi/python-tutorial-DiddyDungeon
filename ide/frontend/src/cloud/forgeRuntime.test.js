@@ -212,6 +212,7 @@ test('Codex renders a searchable concept library and writes bounded field notes 
 test('top HUD stat pills style only direct stats and reset nested SVG content', () => {
   const styles = source('../styles.css')
   const v2 = source('../v2.css')
+  const app = source('../AppV2.jsx')
   const polish = source('../uiPolish.js')
 
   assert.match(styles, /\.top-stats\s*>\s*span,\.git-pill/)
@@ -222,6 +223,10 @@ test('top HUD stat pills style only direct stats and reset nested SVG content', 
   assert.match(v2, /top-stats\s*>\s*span\s+\.quest-icon/)
   assert.ok(polish.includes("querySelectorAll('.top-stats > span')"))
   assert.match(polish, /data-stat-value/)
+  assert.match(app, /function StatIcon\(\{ name \}\)/)
+  for (const icon of ['heart', 'coin', 'flame', 'shield', 'sword']) assert.match(app, new RegExp(`name="${icon}"`))
+  assert.match(polish, /dataset\.reactStat === 'true'/)
+  assert.doesNotMatch(app, /[♥◈🔥🛡⚔]/)
 })
 
 test('combat projection treats legacy cleared mobs as terminal', () => {

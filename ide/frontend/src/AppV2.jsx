@@ -38,6 +38,21 @@ const languageFor = (path = '') => {
 
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value))
 
+function StatIcon({ name }) {
+  const paths = {
+    heart: <path d="M20 8c0 5-8 11-8 11S4 13 4 8a4 4 0 0 1 7-3 4 4 0 0 1 7 0 4 4 0 0 1 2 3z" />,
+    coin: <><circle cx="12" cy="12" r="8" /><path d="M9 9h5a2 2 0 0 1 0 4h-4a2 2 0 0 0 0 4h5M12 6v12" /></>,
+    flame: <path d="M13 2s1 4-2 7c-2 2-3 4-2 7 1 2 3 3 5 2 3-1 5-4 4-8 3 3 4 8 1 11-4 4-12 2-13-4-1-5 3-8 7-15z" />,
+    shield: <path d="M12 3 5 6v5c0 5 3 8 7 10 4-2 7-5 7-10V6z" />,
+    sword: <path d="m14 4 6-1-1 6-9 9-4-4zM6 14l-3 3 4 4 3-3" />,
+  }
+  return (
+    <span className="quest-icon" aria-hidden="true">
+      <svg viewBox="0 0 24 24">{paths[name]}</svg>
+    </span>
+  )
+}
+
 function usePersistentState(key, initialValue) {
   const [value, setValue] = useState(() => {
     try {
@@ -1517,11 +1532,11 @@ function AppV2() {
           <small>{campaignReady ? `${player.xp ?? 0}/${player.xp_next ?? 100} XP` : 'waiting for revision…'}</small>
         </div>
         <div className="top-stats">
-          <span className="hp-stat" data-campaign-stat="hp" data-campaign-stat-value={campaignReady ? (player.hp ?? 100) : '—'}>♥ {campaignReady ? (player.hp ?? 100) : '—'}</span>
-          <span data-campaign-stat="coins" data-campaign-stat-value={campaignReady ? (player.coins ?? 0) : '—'}>◈ {campaignReady ? (player.coins ?? 0) : '—'}c</span>
-          <span data-campaign-stat="streak" data-campaign-stat-value={campaignReady ? (streak.current ?? 0) : '—'}>🔥 {campaignReady ? (streak.current ?? 0) : '—'}</span>
-          <span className="optional-stat" data-campaign-stat="shields" data-campaign-stat-value={campaignReady ? shields : '—'}>🛡 {campaignReady ? shields : '—'}</span>
-          <span className="optional-stat" data-campaign-stat="bosses" data-campaign-stat-value={campaignReady ? (stats.bosses_defeated ?? 0) : '—'}>⚔ {campaignReady ? (stats.bosses_defeated ?? 0) : '—'}</span>
+          <span className="hp-stat" data-react-stat="true" data-campaign-stat="hp" data-campaign-stat-value={campaignReady ? (player.hp ?? 100) : '—'}><StatIcon name="heart" /><span data-stat-value>{campaignReady ? (player.hp ?? 100) : '—'}</span></span>
+          <span data-react-stat="true" data-campaign-stat="coins" data-campaign-stat-value={campaignReady ? (player.coins ?? 0) : '—'}><StatIcon name="coin" /><span data-stat-value>{campaignReady ? (player.coins ?? 0) : '—'}c</span></span>
+          <span data-react-stat="true" data-campaign-stat="streak" data-campaign-stat-value={campaignReady ? (streak.current ?? 0) : '—'}><StatIcon name="flame" /><span data-stat-value>{campaignReady ? (streak.current ?? 0) : '—'}</span></span>
+          <span className="optional-stat" data-react-stat="true" data-campaign-stat="shields" data-campaign-stat-value={campaignReady ? shields : '—'}><StatIcon name="shield" /><span data-stat-value>{campaignReady ? shields : '—'}</span></span>
+          <span className="optional-stat" data-react-stat="true" data-campaign-stat="bosses" data-campaign-stat-value={campaignReady ? (stats.bosses_defeated ?? 0) : '—'}><StatIcon name="sword" /><span data-stat-value>{campaignReady ? (stats.bosses_defeated ?? 0) : '—'}</span></span>
           <span className="optional-stat">DEV {campaignReady ? (activity.activity_score ?? 0) : '—'}</span>
           <span
             className={`cloud-pill ${cloudState.error || cloudState.syncStatus === 'conflict' ? 'error' : cloudState.configured ? 'ready' : 'local'}`}

@@ -33,6 +33,10 @@ function replaceTopStat(node) {
 
 function syncCampaignValues() {
   document.querySelectorAll('[data-campaign-stat]').forEach((node) => {
+    // Forge v2 renders its SVG stat icon and value as React children. React
+    // owns those values; the legacy DOM bridge must not replace suffixes or
+    // clobber the nested SVG during a revision update.
+    if (node.dataset.reactStat === 'true') return
     const value = node.querySelector('[data-stat-value]')
     if (value && node.dataset.campaignStatValue !== undefined) value.textContent = node.dataset.campaignStatValue
   })
