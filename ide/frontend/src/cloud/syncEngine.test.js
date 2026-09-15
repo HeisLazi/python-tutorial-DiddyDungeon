@@ -4,9 +4,12 @@ import test from 'node:test'
 import { resolveCloudConfig } from './config.js'
 import { AVATAR_MAX_BYTES, avatarObjectPath, readCachedAvatar, validateAvatarDataUrl } from './avatarStorage.js'
 import {
+  CHECKOUT_NAMESPACE_RE,
   DEFAULT_DEVICE_LABEL,
   DEVICE_IDS_STORAGE_KEY,
+  SYNC_OUTBOX_STORAGE_KEY,
   SyncEngine,
+  checkoutStorageNamespace,
   deviceIdForUser,
   normalizeDeviceLabel,
   projectPlayerState,
@@ -208,6 +211,32 @@ test('device labels are friendly names and per-account IDs never contain filesys
     '00000000-0000-4000-8000-000000000002',
   ])
   assert.match(userA, /^[0-9a-f-]{36}$/)
+})
+
+test('same-user sync metadata is partitioned by an opaque checkout namespace', () => {
+  const storage = new MemoryStorage()
+  const userId = '00000000-0000-4000-8000-000000000003'
+  const namespaceA = checkoutStorageNamespace('C:\\QuestLab\\platform')
+  const namespaceB = checkoutStorageNamespace('/home/lazi/projects/questlab-platform')
+
+  assert.match(namespaceA, CHECKOUT_NAMESPACE_RE)
+  assert.match(namespaceB, CHECKOUT_NAMESPACE_RE)
+  assert.notEqual(namespaceA, namespaceB)
+  assert.equal(namespaceA.includes('QuestLab'), false)
+  assert.equal(namespaceB.includes('/home'), false)
+
+  const deviceA = deviceIdForUser(userId, storage, namespaceA)
+  const deviceB = deviceIdForUser(userId, storage, namespaceB)
+  assert.notEqual(deviceA, deviceB)
+  assert.equal(storage.getItem(`${DEVICE_IDS_STORAGE_KEY}:${namespaceA}`) !== null, true)
+  assert.equal(storage.getItem(`${DEVICE_IDS_STORAGE_KEY}:${namespaceB}`) !== null, true)
+  assert.equal(storage.getItem(DEVICE_IDS_STORAGE_KEY), null)
+
+  const engineA = new SyncEngine({ storage, checkoutIdentity: namespaceA })
+  const engineB = new SyncEngine({ storage, checkoutIdentity: namespaceB })
+  assert.equal(engineA._outboxKey(userId), `${SYNC_OUTBOX_STORAGE_KEY}:${namespaceA}:${encodeURIComponent(userId)}`)
+  assert.equal(engineB._outboxKey(userId), `${SYNC_OUTBOX_STORAGE_KEY}:${namespaceB}:${encodeURIComponent(userId)}`)
+  assert.notEqual(engineA._outboxKey(userId), engineB._outboxKey(userId))
 })
 
 test('restored auth creates private profile/device records through the service boundary', async () => {

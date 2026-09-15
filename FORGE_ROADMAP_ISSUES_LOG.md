@@ -195,3 +195,30 @@ migration decision.
 
 The post-fix automated counts are 55 WSL backend tests, 29 frontend tests and
 a green Windows Vite production build. No Playwright was used.
+
+## Verification update — 2026-09-15 — checkout-scoped sync metadata
+
+The next local Slice 7 boundary is now implemented without changing canonical
+save custody or starting hosted player-state transport.
+
+| ID | Severity | Area | Finding | Status |
+|---|---|---|---|---|
+| F-041 | P2 | Same-origin checkout mailbox | Device IDs, cloud cursors and offline outboxes were keyed by user alone. Two local checkouts sharing a browser origin could therefore reuse recoverable sync metadata even though their state-service caches were separate. | Fixed locally: `/api/runtime` and `/api/campaign` expose an opaque SHA-derived checkout namespace; AppV2 resolves it before cloud auth restoration; `SyncEngine` partitions device IDs, cursors and outboxes by that namespace. Raw filesystem paths never enter device rows or cloud payloads. |
+
+The namespace change deliberately does not merge or delete pre-existing
+legacy metadata. If the runtime cannot provide its identity, the engine keeps
+the old unscoped keys as a compatibility fallback; once an identity is known,
+the new checkout starts with its own mailbox and ordinary revision/conflict
+rules decide whether a local or cloud projection may be applied. This avoids
+silently attributing one checkout's offline writes to another.
+
+Focused and full gates for this slice: 56 WSL backend tests, 30 frontend tests,
+targeted Python compilation and a green Windows Vite production build. A
+fresh browser K&M run against a newly started disposable runtime then passed:
+the UI booted with the opaque checkout namespace, showed Level 2 / 55 XP / 62
+coins and all five monochrome SVG stat icons, and a typed compare-and-swap
+state-service mutation changed the HUD and Character to 63 coins without a
+refresh. Quest Journal stayed on Mob 3 The Hitman and Codex retained the
+validated encounter records; both shell and AI panes remained `CONNECTED`.
+The disposable backend/frontend were stopped afterward; the existing
+5173/5174 PTYs and live saves were not restarted.

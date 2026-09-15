@@ -622,6 +622,7 @@ function AppV2() {
 
   const applyCampaign = (next) => {
     if (!next || typeof next !== 'object') return
+    if (next.sync_storage_namespace) syncEngine.setCheckoutIdentity(next.sync_storage_namespace)
     const nextRevision = Number(next.revision ?? next.progress?.meta?.revision ?? 0)
     if (campaignInitializedRef.current && campaignRevisionRef.current !== null && nextRevision < campaignRevisionRef.current) return
     const events = Array.isArray(next.progress?.state_events) ? next.progress.state_events : []
@@ -662,9 +663,13 @@ function AppV2() {
 
   const refreshRuntime = async () => {
     try {
-      setRuntime(await api('/api/runtime'))
+      const next = await api('/api/runtime')
+      if (next.sync_storage_namespace) syncEngine.setCheckoutIdentity(next.sync_storage_namespace)
+      setRuntime(next)
+      return next
     } catch (error) {
       setNotice(`Runtime check failed: ${error.message}`)
+      return null
     }
   }
 
@@ -897,9 +902,19 @@ function AppV2() {
   pyrContextPublisherRef.current = publishPyrContext
 
   useEffect(() => {
-    refreshCampaign()
-    refreshRuntime()
-    refreshFiles()
+    let cancelled = false
+    const boot = async () => {
+      // Resolve the opaque checkout namespace before auth restoration so a
+      // same-origin second checkout cannot reuse this one's sync mailbox.
+      await refreshRuntime()
+      if (cancelled) return
+      syncEngine.initialize()
+      await Promise.all([refreshCampaign(), refreshFiles()])
+    }
+    void boot()
+    return () => {
+      cancelled = true
+    }
   }, [])
 
   // Tutor Notebook is a Campaign surface. It shares the real shell and
@@ -1042,7 +1057,6 @@ function AppV2() {
 
   useEffect(() => {
     const unsubscribe = syncEngine.subscribe(setCloudState)
-    syncEngine.initialize()
     return unsubscribe
   }, [])
 

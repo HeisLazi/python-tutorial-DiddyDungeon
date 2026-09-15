@@ -971,6 +971,7 @@ class StateGatewayHttpTests(unittest.TestCase):
         self.assertEqual(campaign.status_code, 200)
         body = campaign.json()
         self.assertEqual(body["revision"], 4)
+        self.assertRegex(body["sync_storage_namespace"], r"^checkout-[0-9a-f]{32}$")
         self.assertEqual(body["progress"]["player"]["level"], 1)
         self.assertEqual(body["encounter"]["mob_name"], "The Empty Table")
         self.assertEqual(body["encounter"]["resolve"], 4)
@@ -1003,12 +1004,25 @@ class StateGatewayHttpTests(unittest.TestCase):
         client = self.client()
         response = client.get("/api/runtime", headers={"host": "127.0.0.1"})
         self.assertEqual(response.status_code, 200)
-        repo_git = response.json()["repo_git"]
+        body = response.json()
+        repo_git = body["repo_git"]
         self.assertIn("head_sha", repo_git)
         self.assertIn("upstream_ref", repo_git)
         self.assertIn("upstream_sha", repo_git)
         self.assertIn("behind_upstream", repo_git)
+        namespace = body["sync_storage_namespace"]
+        self.assertRegex(namespace, r"^checkout-[0-9a-f]{32}$")
+        self.assertNotIn(str(app_v2.REPO_ROOT), namespace)
         self.assertEqual(path.read_text(encoding="utf-8"), before)
+
+    def test_checkout_storage_namespace_is_stable_and_path_opaque(self):
+        first = app_v2.checkout_storage_namespace(Path("/tmp/questlab/repo-a"), Path("/tmp/questlab/workspace-a"))
+        repeat = app_v2.checkout_storage_namespace(Path("/tmp/questlab/repo-a"), Path("/tmp/questlab/workspace-a"))
+        other = app_v2.checkout_storage_namespace(Path("/tmp/questlab/repo-b"), Path("/tmp/questlab/workspace-b"))
+        self.assertEqual(first, repeat)
+        self.assertNotEqual(first, other)
+        self.assertRegex(first, r"^checkout-[0-9a-f]{32}$")
+        self.assertNotIn("/tmp/questlab", first)
 
     def test_sync_endpoints_expose_allowlisted_projection_and_compare_and_swap(self):
         path = self.with_temp_progress()

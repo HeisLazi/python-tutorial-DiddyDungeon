@@ -18,6 +18,7 @@ export const DEVICE_IDS_STORAGE_KEY = 'questlab.cloud.device-ids'
 export const DEVICE_LABEL_STORAGE_KEY = 'questlab.cloud.device-label'
 export const SYNC_OUTBOX_STORAGE_KEY = 'questlab.cloud.sync-outbox'
 export const SYNC_CURSOR_STORAGE_KEY = 'questlab.cloud.sync-cursors'
+export const CHECKOUT_NAMESPACE_RE = /^checkout-[0-9a-f]{8,64}$/i
 export const MAX_SYNC_OUTBOX_ENTRIES = 8
 
 const SYNC_PLAYER_FIELDS = ['name', 'title', 'rank', 'level', 'xp', 'xp_next', 'lifetime_xp', 'hp', 'max_hp', 'coins', 'potions']
@@ -70,7 +71,27 @@ const stableJson = (value) => {
   }
   return JSON.stringify(normalize(value))
 }
-const syncUserKey = (base, userId) => `${base}:${encodeURIComponent(userId)}`
+const fnvDigest = (value) => {
+  let hash = 2166136261
+  for (let index = 0; index < value.length; index += 1) hash = Math.imul(hash ^ value.charCodeAt(index), 16777619) >>> 0
+  return hash.toString(16).padStart(8, '0')
+}
+
+/**
+ * Partition recoverable browser sync metadata by checkout without exposing a
+ * filesystem path to Supabase or device rows. The backend normally supplies
+ * an opaque SHA-256 namespace; the bounded local digest is a safe fallback
+ * for tests or a runtime that predates that field.
+ */
+export function checkoutStorageNamespace(identity) {
+  const normalized = String(identity ?? '').trim()
+  if (!normalized) return ''
+  if (CHECKOUT_NAMESPACE_RE.test(normalized)) return normalized.toLowerCase()
+  return `checkout-${fnvDigest(normalized)}`
+}
+
+const scopedStorageKey = (base, namespace = '') => (namespace ? `${base}:${namespace}` : base)
+const syncUserKey = (base, userId, namespace = '') => `${scopedStorageKey(base, namespace)}:${encodeURIComponent(userId)}`
 
 const playerSummary = (projection) => {
   const player = isRecord(projection?.player) ? projection.player : {}
@@ -179,8 +200,8 @@ export function createDeviceId() {
   })
 }
 
-export function deviceIdForUser(userId, storage = getStorage()) {
-  const stored = readStorage(storage, DEVICE_IDS_STORAGE_KEY)
+export function deviceIdForUser(userId, storage = getStorage(), namespace = '') {
+  const stored = readStorage(storage, scopedStorageKey(DEVICE_IDS_STORAGE_KEY, checkoutStorageNamespace(namespace)))
   let ids = {}
   try {
     ids = stored ? JSON.parse(stored) : {}
@@ -192,7 +213,7 @@ export function deviceIdForUser(userId, storage = getStorage()) {
   if (existing) return existing
 
   const id = createDeviceId()
-  writeStorage(storage, DEVICE_IDS_STORAGE_KEY, JSON.stringify({ ...ids, [userId]: id }))
+  writeStorage(storage, scopedStorageKey(DEVICE_IDS_STORAGE_KEY, checkoutStorageNamespace(namespace)), JSON.stringify({ ...ids, [userId]: id }))
   return id
 }
 
@@ -252,12 +273,14 @@ const initialState = (config) => ({
 })
 
 export class SyncEngine {
-  constructor({ config = cloudConfig, clientFactory = getSupabaseClient, storage = getStorage(), now = () => new Date(), fetchImpl } = {}) {
+  constructor({ config = cloudConfig, clientFactory = getSupabaseClient, storage = getStorage(), now = () => new Date(), fetchImpl, checkoutIdentity = '' } = {}) {
     this.config = config
     this.clientFactory = clientFactory
     this.storage = storage
     this.now = now
     this.fetchImpl = fetchImpl || (typeof window !== 'undefined' && typeof globalThis.fetch === 'function' ? globalThis.fetch.bind(globalThis) : null)
+    this.storageNamespace = checkoutStorageNamespace(checkoutIdentity)
+    this.pendingStorageNamespace = null
     this.client = null
     this.session = null
     this.authSubscription = null
@@ -282,6 +305,25 @@ export class SyncEngine {
 
   getState() {
     return this.state
+  }
+
+  setCheckoutIdentity(identity) {
+    const nextNamespace = checkoutStorageNamespace(identity)
+    if (nextNamespace === this.storageNamespace) return this.storageNamespace
+    if (this.syncPromise) {
+      this.pendingStorageNamespace = nextNamespace
+      return nextNamespace
+    }
+
+    this.storageNamespace = nextNamespace
+    this.syncCursor = null
+    this.outbox = []
+    this.cloudSnapshot = null
+    this.latestLocalSnapshot = null
+    if (this._userId()) this._loadSyncMetadata(this._userId())
+    else this.setState({ pendingChanges: 0, localRevision: null, cloudRevision: null })
+    if (this.session?.user && this.client) this._scheduleSync()
+    return this.storageNamespace
   }
 
   subscribe(listener) {
@@ -415,7 +457,7 @@ export class SyncEngine {
 
     const label = normalizeDeviceLabel(readStorage(this.storage, DEVICE_LABEL_STORAGE_KEY) || DEFAULT_DEVICE_LABEL)
     const devicePayload = {
-      id: deviceIdForUser(user.id, this.storage),
+      id: deviceIdForUser(user.id, this.storage, this.storageNamespace),
       user_id: user.id,
       display_name: label,
       last_seen_at: this.now().toISOString(),
@@ -486,7 +528,7 @@ export class SyncEngine {
     }
 
     const payload = {
-      id: deviceIdForUser(this.session.user.id, this.storage),
+      id: deviceIdForUser(this.session.user.id, this.storage, this.storageNamespace),
       user_id: this.session.user.id,
       display_name: label,
       last_seen_at: this.now().toISOString(),
@@ -618,11 +660,11 @@ export class SyncEngine {
   }
 
   _outboxKey(userId = this._userId()) {
-    return userId ? syncUserKey(SYNC_OUTBOX_STORAGE_KEY, userId) : SYNC_OUTBOX_STORAGE_KEY
+    return userId ? syncUserKey(SYNC_OUTBOX_STORAGE_KEY, userId, this.storageNamespace) : scopedStorageKey(SYNC_OUTBOX_STORAGE_KEY, this.storageNamespace)
   }
 
   _cursorKey(userId = this._userId()) {
-    return userId ? syncUserKey(SYNC_CURSOR_STORAGE_KEY, userId) : SYNC_CURSOR_STORAGE_KEY
+    return userId ? syncUserKey(SYNC_CURSOR_STORAGE_KEY, userId, this.storageNamespace) : scopedStorageKey(SYNC_CURSOR_STORAGE_KEY, this.storageNamespace)
   }
 
   _readOutbox(userId = this._userId()) {
@@ -1023,6 +1065,13 @@ export class SyncEngine {
       })
       .finally(() => {
         this.syncPromise = null
+        if (this.pendingStorageNamespace !== null && this.pendingStorageNamespace !== this.storageNamespace) {
+          const nextNamespace = this.pendingStorageNamespace
+          this.pendingStorageNamespace = null
+          this.setCheckoutIdentity(nextNamespace)
+        } else {
+          this.pendingStorageNamespace = null
+        }
       })
     return this.syncPromise
   }

@@ -187,5 +187,7 @@ Playwright was used.
 
 The latest checkpoint adds upstream freshness to `/api/runtime` and the footer,
 removes the legacy combat shell's duplicate campaign poll (React now owns the
-single revision timer), and preserves the Linux executable bit on
-`questlab-state`.
+single revision timer), preserves the Linux executable bit on `questlab-state`,
+and partitions browser sync metadata by an opaque checkout namespace before
+cloud auth restoration. Existing legacy metadata is not merged or deleted;
+normal revision/conflict handling remains the authority for any new checkout.

@@ -51,6 +51,23 @@ REPO_ROOT = Path(os.getenv("QUESTLAB_REPO_ROOT", Path(__file__).resolve().parent
 WORKSPACE = Path(os.getenv("QUESTLAB_WORKSPACE", REPO_ROOT)).resolve()
 
 
+def checkout_storage_namespace(repo_root: Path | None = None, workspace: Path | None = None) -> str:
+    """Return an opaque, stable local-storage partition for this checkout.
+
+    The browser needs to distinguish two local Forge checkouts that share an
+    origin, but an absolute repository/workspace path must never become a
+    cloud/device identifier.  Hashing both roots keeps the partition stable
+    for a checkout while exposing no filesystem path to the frontend.
+    """
+
+    material = "\n".join(
+        str(path.resolve())
+        for path in (repo_root or REPO_ROOT, workspace or WORKSPACE)
+    )
+    digest = hashlib.sha256(material.encode("utf-8")).hexdigest()[:32]
+    return f"checkout-{digest}"
+
+
 def configured_progress_path() -> Path:
     """Resolve the one canonical state path from server configuration.
 
@@ -577,6 +594,7 @@ def runtime():
         "python": sys.executable,
         "workspace": str(WORKSPACE),
         "repo_root": str(REPO_ROOT),
+        "sync_storage_namespace": checkout_storage_namespace(),
         "canonical_state_path": str(PROGRESS_PATH),
         "legacy_state_path": str(legacy_progress_path()),
         "expected_branch": os.getenv("QUESTLAB_EXPECTED_BRANCH", "feature/cloud-sync-desktop"),
@@ -605,6 +623,7 @@ def campaign():
     return {
         "progress": progress,
         "revision": metadata["revision"],
+        "sync_storage_namespace": checkout_storage_namespace(),
         "encounter": STATE_SERVICE.encounter_projection(progress),
         "codex_projection": STATE_SERVICE.codex_projection(progress),
         "practice_projection": STATE_SERVICE.practice_projection(progress),

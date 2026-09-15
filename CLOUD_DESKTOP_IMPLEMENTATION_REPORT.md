@@ -755,3 +755,31 @@ Vite production build. The K&M current-branch runtime still showed Level 2,
 50 XP, 54 disposable-test coins, The Hitman at 8/8, three cleared mobs, Codex
 records/field note, visible SVG HUD icons, `CHECKOUT feature/cloud-sync-desktop`
 and `CONNECTED` AI/shell surfaces without a browser refresh.
+
+### Checkout-scoped sync metadata — 2026-09-15
+
+The local cloud-sync mailbox is now partitioned by an opaque checkout namespace.
+The backend derives a stable SHA-256 namespace from the platform/workspace
+roots and exposes only the `checkout-<hex>` value through `/api/runtime` and
+`/api/campaign`. React resolves that value before `SyncEngine` restores auth;
+the engine uses it for device IDs, cursor rows and offline outboxes. Supabase
+device records receive only the UUID device ID and friendly label, never a
+filesystem path.
+
+This addresses the same-origin two-checkout metadata collision without moving
+or untracking the player's canonical `progress.json`, changing OneDrive
+custody, or beginning Milestone C hosted state transport. Old unscoped browser
+metadata is left intact and is used only when a runtime has no namespace; it is
+not copied into a new checkout automatically. A new checkout therefore follows
+the existing explicit revision/conflict rules instead of attributing an offline
+write to the wrong cache.
+
+Slice gates after this change: 56 WSL backend tests, 30 frontend tests,
+targeted Python compilation and a green Windows Vite production build. A fresh
+K&M browser smoke against a newly launched disposable runtime passed: the
+runtime booted with the opaque namespace, showed Level 2 / 55 XP / 62 coins and
+all five SVG stat icons, and a typed compare-and-swap state-service mutation
+changed the HUD and Character to 63 coins without refresh. Quest Journal stayed
+on Mob 3 The Hitman and Codex retained its validated records; both shell and AI
+panes remained `CONNECTED`. The disposable runtime was stopped afterward;
+current user PTYs and live saves were not restarted or modified.
