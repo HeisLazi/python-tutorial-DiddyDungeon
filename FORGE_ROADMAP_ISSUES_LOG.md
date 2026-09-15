@@ -250,3 +250,24 @@ Focused/frontend gates for this slice: 31 frontend tests, 56 WSL backend
 tests, and a green Windows Vite build (1,344 modules). The live K&M tab then
 settled on the canonical Level 2 / 50 XP / 55 coins projection with both PTYs
 still `CONNECTED`; no browser refresh or save mutation was used.
+
+## Review — 2026-09-15 — Claude read-only roadmap pass
+
+Claude Code was available again and reviewed the handoff, roadmap, issue log,
+implementation report and current source/tests without editing files or touching
+`progress.json`/`tutor.py`. Its recommendation is to close the remaining local
+Slice 7 boundary before starting Milestone C hosted player-state transport:
+
+- keep Supabase migrations, seeding and new cloud tables out of the next slice;
+- prepare an explicit, per-device local-save custody migration keyed by the
+  existing opaque checkout namespace, with copy-once/idempotent behavior and a
+  visible migration status;
+- prove clean ext4 install plus two isolated checkout/device launches, including
+  independent state paths and no cross-talk;
+- retain the existing provider-authentication gates F-001/F-009/F-010 and do
+  not claim hosted Dungeon or social readiness.
+
+This is a plan/review finding, not approval to migrate the player's live save.
+The current tracked canonical cache remains untouched until an explicit custody
+choice is made; implementation work must use disposable fixtures and an opt-in
+boundary.
