@@ -337,7 +337,7 @@ was migrated in this checkpoint.
 
 Temporary-fixture tests cover route authorization, copy-once/idempotent
 retries, marker integrity, revision races and symlink rejection. The full WSL
-backend suite is now 63 tests; the frontend suite remains 31 tests and the
+backend suite is now 66 tests; the frontend suite remains 31 tests and the
 Windows Vite build remains green. Launcher opt-in and the real-save approval
 gate remain open; hosted Supabase transport is unchanged.
 
@@ -351,3 +351,13 @@ tab still showed its old starter/no-branch projection, so it was deliberately
 left running; this is the already logged F-025/F-031 stale-runtime choice,
 not a live-save reset. New launches must use the guarded launcher after the
 WSL dependency preflight passes.
+
+## Verification update — 2026-09-15 — launcher custody opt-in
+
+The guarded Windows wrapper now exposes `-MigrateLocalState`, which passes
+`--use-local-state` to `ide/quest.py`. The launcher prints the gateway preview,
+requires the exact `MIGRATE_LOCAL_STATE` token interactively (or an explicit
+non-interactive confirmation flag), and switches the state path only for that
+launch. A missing confirmation exits before backend/frontend startup. Fixture
+tests proved both refusal-without-copy and confirmed copy/switch behavior; the
+canonical revision and source bytes remain unchanged.

@@ -71,7 +71,7 @@ invented. The workspace/legacy save remains evidence only.
 
 ## Latest verification evidence
 
-- WSL backend suite: 63 tests passing.
+- WSL backend suite: 66 tests passing.
 - Frontend source/runtime suite: 31 tests passing.
 - Windows Vite production build: passed.
 - Clean ext4 archive: WSL `npm ci` plus Vite build passed after 1,344 modules.
@@ -96,7 +96,8 @@ invented. The workspace/legacy save remains evidence only.
   early with an actionable native-Rollup message;
 - F-034/F-035: WSL Claude CLI auth and dev-only HMR limitation;
 - F-039: tracked canonical cache plus OneDrive third-writer custody remains an
-  explicit migration decision, not a silent move;
+  explicit migration decision, not a silent move; launcher opt-in is now
+  implemented but real-save approval is still required;
 - clean-install/two-device mailbox acceptance, native/Tauri packaging and
   hosted friends/presence/raids remain unstarted or gated.
 

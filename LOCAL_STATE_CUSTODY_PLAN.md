@@ -31,8 +31,9 @@ provide cross-device sync before hosted transport is accepted.
    non-empty destination; if source and destination disagree, the service
    reports a conflict and stops for human choice.
 5. Only an explicit launcher opt-in switches `QUESTLAB_STATE_PATH` to the
-   approved destination on the next stable launch. The old tracked file stays
-   read-only legacy evidence until the player separately approves archival.
+   approved destination for that launch. Later default launches remain on the
+   tracked cache until the player separately chooses custody; the old tracked
+   file stays read-only legacy evidence until archival is approved.
 6. With no Supabase configuration, each device remains local-only. This plan
    does not claim cross-device progress transport; the existing cloud-sync
    engine and provider-authentication gates remain unchanged.
@@ -66,10 +67,12 @@ provide cross-device sync before hosted transport is accepted.
 
 ### C. Opt-in launcher and onboarding
 
-- Add an explicit `-MigrateLocalState`/`--use-local-state` flow to the guarded
-  launcher; the default launch remains the current tracked-cache mode.
-- Print the preview and require the player to review the source/destination and
-  revision before the gateway call.
+- Implemented: `-MigrateLocalState`/`--use-local-state` prints the preview,
+  requires the player to type `MIGRATE_LOCAL_STATE` (or use the explicit
+  non-interactive confirmation flag), then switches `QUESTLAB_STATE_PATH` for
+  that launch only. The default launch remains tracked-cache mode.
+- The wrapper refuses non-interactive migration without confirmation and does
+  not start either child process when review/confirmation is missing.
 - Document that this is local custody only; cloud sync, two-device mailbox
   transport, and hosted Dungeon state remain separate acceptance gates.
 

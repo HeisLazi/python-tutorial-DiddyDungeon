@@ -181,7 +181,7 @@ Campaign surface; it was not removed or merged into Practice.
 - Slice 8 (hosted friends/presence/raids) remains last and is intentionally not
   seeded or claimed complete.
 
-Latest gates: 63 WSL backend tests, 31 frontend tests, Windows Vite build, and
+Latest gates: 66 WSL backend tests, 31 frontend tests, Windows Vite build, and
 manual browser K&M acceptance on an isolated current-branch runtime. The
 frontend count includes source tripwires as well as behavioural sync tests. No
 Playwright was used.
@@ -198,11 +198,12 @@ The current local Slice 7 checkpoint also exposes a read-only custody preview
 do not migrate the tracked save or claim hosted sync; F-039 remains approval-
 gated and the next migration command must stay opt-in.
 
-The opt-in gateway half is now present as `questlab-state custody-migrate`.
-It requires a reviewed source revision plus `MIGRATE_LOCAL_STATE`, derives the
-destination from the opaque checkout namespace, copies atomically and keeps
-the canonical revision/events unchanged. The default launcher still does not
-invoke it; the real-save approval and launcher-switch gates remain open.
+The opt-in gateway and launcher halves are now present as
+`questlab-state custody-migrate` and `-MigrateLocalState`. They require a
+reviewed source revision plus `MIGRATE_LOCAL_STATE`, derive the destination
+from the opaque checkout namespace, copy atomically and keep the canonical
+revision/events unchanged. The default launcher still remains on the tracked
+cache; real-save approval and clean two-device acceptance remain open.
 
 The latest checkpoint adds upstream freshness to `/api/runtime` and the footer,
 removes the legacy combat shell's duplicate campaign poll (React now owns the

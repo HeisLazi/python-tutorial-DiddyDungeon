@@ -64,6 +64,18 @@ checkout stale when the runtime health report sees commits behind upstream.
 If `progress.json` has local player-state changes, the launcher warns but does
 not overwrite them.
 
+To opt into per-device local custody after reviewing the preview, add the
+explicit switch:
+
+```powershell
+.\tools\questlab-launch.ps1 -Workspace ..\questlab-blackjack -MigrateLocalState
+```
+
+The launcher prints the source/destination/revision report and asks for
+`MIGRATE_LOCAL_STATE` before copying. This applies only to that launch; a
+normal later launch stays on the tracked cache until custody is selected
+again. It never merges or deletes a workspace/legacy save.
+
 ## Health checks
 
 With Forge running, the shell PTY can inspect the same backend that powers the
