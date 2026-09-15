@@ -58,12 +58,12 @@ The point is not to speedrun eight repos. The point is to make Python fundamenta
 
 | Dev activity | Current |
 |---|---:|
-| Activity score | **70** |
-| Commit streak | **1 days** — best: 1 |
-| Commits | **98** / 7d · **98** / 30d |
-| Active dev days | **1** / 7d · **1** / 30d |
+| Activity score | **92** |
+| Commit streak | **2 days** — best: 2 |
+| Commits | **99** / 7d · **99** / 30d |
+| Active dev days | **2** / 7d · **2** / 30d |
 | Active branches (30d) | **11** |
-| Last commit day | **2026-09-14** |
+| Last commit day | **2026-09-15** |
 
 `Activity score` is machine-derived from commit history. It rewards active days and streaks, caps effective commits per day, and does **not** grant learning XP or Mastery Shields.
 
