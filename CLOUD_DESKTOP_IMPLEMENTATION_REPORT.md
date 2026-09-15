@@ -1049,3 +1049,15 @@ submission/verdict remains valid after tab B captures its own challenge. The
 full backend suite passes 69 tests; frontend tests remain at 31 and the latest
 Windows Vite build transforms 1,345 modules. Claude did not edit files and
 could not run the WSL suite in its sandbox; local gates remain the evidence.
+
+### Final current-branch K&M projection smoke — 2026-09-16
+
+The disposable 7362/5198 runtime loaded a copy of the current local save. A
+click/scroll/accessibility-only browser pass (no Playwright) showed Level 2,
+50 / 100 XP, 55 coins, The Hitman at 8 / 8 Resolve, three cleared mobs, the
+Codex encounter records and `CONNECTED` shell/AI PTYs. A trusted state-service
+reward advanced the disposable revision and changed the HUD plus reward queue
+to 56 coins without a refresh. Quest Journal, Character, Homestead and Codex
+continued to project the same revision. The exact temporary runtime, state
+copy and browser tab were removed afterward; no user save, legacy evidence,
+long-lived runtime or hosted state was touched.

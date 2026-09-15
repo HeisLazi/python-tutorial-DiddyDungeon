@@ -561,3 +561,17 @@ challenges in tabs A and B and successfully submits/verifies tab A's evidence
 after tab B rotates its own challenge. The full WSL backend suite now passes
 69 tests; the frontend suite remains 31 tests and the latest Windows Vite build
 transforms 1,345 modules. No player save, PTY, or hosted state was touched.
+
+## Verification update — 2026-09-16 — final current-branch K&M projection smoke
+
+A disposable backend/frontend pair on ports 7362/5198 loaded a copy of the
+current local canonical save. Using browser clicks and accessibility checks
+only (no Playwright), the Forge showed Level 2, 50 / 100 XP, 55 coins, Mob 3
+The Hitman at 8 / 8 Resolve, three cleared mobs, the three Codex encounter
+records, and `CONNECTED` shell and AI PTYs. A trusted state-service reward then
+advanced only the disposable revision; revision polling changed the HUD and
+reward queue to 56 coins without refresh. Quest Journal still showed The Hitman
+and the three cleared mobs, while Character and Homestead showed the same 56-
+coin projection and Codex remained populated. The exact temp state/workspace,
+frontend, backend and browser tab were stopped/removed afterward; the user
+save, legacy evidence and long-lived runtimes were untouched.
