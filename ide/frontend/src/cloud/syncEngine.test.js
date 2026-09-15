@@ -341,7 +341,7 @@ test('silent background sync does not flap a settled HUD status', async () => {
   engine.dispose()
 })
 
-test('a reconciled local cache is preserved when the account still has a starter cloud copy', async () => {
+test('a validated local cache bootstraps an untouched starter cloud copy', async () => {
   const config = resolveCloudConfig({ VITE_SUPABASE_URL: 'https://example.supabase.co', VITE_SUPABASE_ANON_KEY: 'public-anon-key' })
   const user = { id: '00000000-0000-4000-8000-000000000041', email: 'starter-cloud@example.test' }
   const cloudStore = { playerRows: new Map() }
@@ -365,12 +365,13 @@ test('a reconciled local cache is preserved when the account still has a starter
   await engine.restoreSession()
   await engine.sync()
 
-  assert.equal(engine.getState().syncStatus, 'conflict')
-  assert.equal(engine.getState().conflict.localRevision, 2)
-  assert.equal(engine.getState().conflict.cloudRevision, 1)
-  assert.deepEqual(engine.getState().conflict.localPlayer, { level: 2, xp: 50, xpNext: 100, coins: 50 })
-  assert.deepEqual(engine.getState().conflict.cloudPlayer, { level: 1, xp: 0, xpNext: 100, coins: 0 })
-  assert.match(engine.getState().detail, /This device: Level 2 · 50\/100 XP · 50 coins\. Cloud: Level 1 · 0\/100 XP · 0 coins\./)
+  assert.equal(engine.getState().syncStatus, 'synced')
+  assert.equal(engine.getState().conflict, null)
+  assert.equal(cloudStore.playerRows.get(user.id).revision, 2)
+  assert.equal(cloudStore.playerRows.get(user.id).state.player.level, 2)
+  assert.equal(cloudStore.playerRows.get(user.id).state.player.xp, 50)
+  assert.equal(cloudStore.playerRows.get(user.id).state.player.coins, 50)
+  assert.match(engine.getState().detail, /published to the starter cloud copy/i)
   assert.equal(local.getProgress().player.level, 2)
   assert.equal(local.getProgress().player.coins, 50)
   engine.dispose()

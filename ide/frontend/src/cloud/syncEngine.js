@@ -70,6 +70,24 @@ const playerSummary = (projection) => {
   }
 }
 
+// A starter cloud row is the untouched account projection created during
+// onboarding.  It is safe to replace only this exact baseline with a
+// validated local campaign; any other cloud divergence remains an explicit
+// conflict so one device can never silently overwrite another device's work.
+const isStarterProjection = (projection) => {
+  const player = isRecord(projection?.player) ? projection.player : null
+  if (!player) return false
+  const required = ['level', 'xp', 'lifetime_xp', 'coins']
+  if (!required.every((field) => Object.prototype.hasOwnProperty.call(player, field))) return false
+  return Number(player.level) === 1
+    && Number(player.xp) === 0
+    && Number(player.lifetime_xp) === 0
+    && Number(player.coins) === 0
+    && (player.xp_next === undefined || Number(player.xp_next) === 100)
+    && (player.hp === undefined || Number(player.hp) === 100)
+    && (player.max_hp === undefined || Number(player.max_hp) === 100)
+}
+
 const readStoredJson = (storage, key, fallback) => {
   try {
     const raw = storage?.getItem(key)
@@ -739,7 +757,7 @@ export class SyncEngine {
       return this.state
     }
 
-    const pushLocal = async (expectedCloudRevision, entry = null) => {
+    const pushLocal = async (expectedCloudRevision, entry = null, detail = 'Campaign fields are synced.') => {
       const captured = entry || { localRevision: local.revision, projection: local.projection }
       try {
         const saved = await this._saveCloudState(expectedCloudRevision, captured.projection)
@@ -754,7 +772,7 @@ export class SyncEngine {
           this._enqueueLocal(after, saved.revision)
           this.setState({ syncStatus: 'syncing', label: 'Syncing…', detail: 'A newer local mutation is queued for the next cloud revision.' })
         } else {
-          this._setSynced(after, saved)
+          this._setSynced(after, saved, detail)
         }
         return saved
       } catch (error) {
@@ -781,6 +799,10 @@ export class SyncEngine {
         this._writeCursor({ localRevision: applied.revision, cloudRevision: cloud.revision })
         this._clearOutboxThrough(refreshed.revision)
         this._setSynced(refreshed, cloud, 'Pulled the existing cloud campaign into the local cache.')
+        return this.state
+      }
+      if (local.revision > 0 && cloud.revision > 0 && isStarterProjection(cloud.state) && !isStarterProjection(local.projection)) {
+        await pushLocal(cloud.revision, null, 'This device’s validated campaign was published to the starter cloud copy.')
         return this.state
       }
       if (cloud.revision === 0 && local.revision > 0) {

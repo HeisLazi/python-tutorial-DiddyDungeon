@@ -59,6 +59,12 @@ Hosted Auth is configured to require email confirmation (`mailer_autoconfirm=fal
 - A signed-in browser performs a lightweight two-second cloud-row check with
   in-flight deduplication, so another device's accepted projection is pulled
   into the same local revision/event stream automatically.
+- First-device bootstrap is now automatic when the cloud row is still the
+  untouched starter projection and the local cache contains validated progress:
+  the local projection is published through the compare-and-swap RPC, the
+  cloud revision increments, and the normal live campaign polling picks it up
+  on other signed-in devices. A non-starter cloud projection still raises an
+  explicit conflict; no timestamp or newest-file heuristic is used.
 
 ## Supabase project and schema
 
@@ -99,7 +105,7 @@ never replaced by an older device snapshot.
 
 ## Verification commands and results
 
-- `npm test` — 17 frontend cloud/runtime/sync tests passed.
+- `npm test` — 18 frontend cloud/runtime/sync tests passed.
 - `npm run build` — Vite production build passed.
 - WSL Forge launch with no cloud variables — backend health returned HTTP 200; both `/ws/terminal/shell` and `/ws/terminal/ai` executed independent markers.
 - WSL `npx --yes supabase db push --linked --yes` — profiles/devices plus all
@@ -453,16 +459,16 @@ after the verification commit.
 
 ### Signed-in laptop state clarification
 
-The laptop can legitimately show two different, clearly separated signals
-until the hosted sync choice is made: the local Forge cache contains the
-validated Level 2 reconciliation, while an account that still has the starter
-cloud row can report Level 1. The SyncEngine preserves the reconciled local
-cache and raises an explicit conflict; it does not silently seed or overwrite
-the cloud row. Selecting **Keep this device** is the deliberate publish step,
-and was not performed in this pass. The portrait shown in the rail/Character
-is likewise a browser-local `localStorage` avatar; account-wide avatar sync is
-reserved for Milestone D, so its persistence after refresh does not prove that
-player state has synced.
+The first signed-in device with a validated local campaign now bootstraps an
+account that still has the untouched starter cloud row. The SyncEngine publishes
+that projection through `save_player_state`, records the new cloud revision and
+shows a short “published to the starter cloud copy” detail. This removes the
+Level 2/local versus Level 1/cloud split without requiring a manual choice.
+**Keep this device** remains available for a true non-starter conflict, where
+both devices contain independent progress and neither copy may silently win.
+The portrait shown in the rail/Character is likewise a browser-local
+`localStorage` avatar; account-wide avatar sync is reserved for Milestone D, so
+its persistence after refresh does not prove that player state has synced.
 
 ### Follow-up stale projection repair
 
@@ -476,8 +482,7 @@ the frontend source test `combat projection treats legacy cleared mobs as
 terminal`.
 
 Cloud conflicts now also include a bounded Level/XP/coins summary for the local
-and cloud projections in Settings. This makes a starter cloud row visible as a
-deliberate sync choice instead of looking like a silent local reset; it does not
-publish, overwrite or seed cloud state. Homestead purchases continue to use the
-canonical `/api/homestead/purchase` mutation and refresh the campaign projection
-after the validated result.
+and cloud projections in Settings. This keeps real conflicts visible as a
+deliberate sync choice instead of looking like a silent local reset. Homestead
+purchases continue to use the canonical `/api/homestead/purchase` mutation and
+refresh the campaign projection after the validated result.

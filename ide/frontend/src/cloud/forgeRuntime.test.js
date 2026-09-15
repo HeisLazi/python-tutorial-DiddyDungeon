@@ -87,6 +87,8 @@ test('bounded player-state sync stays behind one engine with revision/conflict c
   assert.match(engine, /resolveConflict\(choice\)/)
   assert.match(engine, /localPlayer: playerSummary\(local\?\.projection\)/)
   assert.match(engine, /cloudPlayer: playerSummary\(cloud\?\.state\)/)
+  assert.match(engine, /isStarterProjection/)
+  assert.match(engine, /published to the starter cloud copy/)
   assert.match(engine, /window\.setInterval\(\(\) => \{[\s\S]*void this\.sync\(\{ silent: true \}\)/)
 })
 
