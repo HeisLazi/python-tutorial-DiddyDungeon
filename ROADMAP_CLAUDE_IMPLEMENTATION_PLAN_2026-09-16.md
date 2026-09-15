@@ -3,7 +3,7 @@
 **Review date:** 2026-09-16  
 **Reviewer:** Claude Sonnet (read-only)  
 **Working branch:** `feature/cloud-sync-desktop`  
-**Source checkpoint:** `4a494b5`  
+**Source checkpoint:** `58f6942` (snapshot state was captured at `4a494b5`)  
 **Input evidence:** `AGENT_CLOUD_DESKTOP_HANDOFF.md`,
 `ROADMAP_EXECUTION_PLAN.md`, `FORGE_ROADMAP_ISSUES_LOG.md`,
 `CLOUD_DESKTOP_IMPLEMENTATION_REPORT.md`,
