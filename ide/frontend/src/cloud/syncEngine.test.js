@@ -316,3 +316,59 @@ test('two isolated engine instances sync through revision-aware push, pull, offl
   engineA.dispose()
   engineB.dispose()
 })
+
+test('silent background sync does not flap a settled HUD status', async () => {
+  const config = resolveCloudConfig({ VITE_SUPABASE_URL: 'https://example.supabase.co', VITE_SUPABASE_ANON_KEY: 'public-anon-key' })
+  const user = { id: '00000000-0000-4000-8000-000000000031', email: 'background@example.test' }
+  const storage = new MemoryStorage()
+  const local = fakeLocalApi(campaign(5), 1)
+  const client = fakeCloudClient(user)
+  const engine = new SyncEngine({ config, clientFactory: () => client, storage, fetchImpl: local.fetch })
+
+  engine.initialize()
+  await engine.restoreSession()
+  await engine.sync()
+  assert.equal(engine.getState().syncStatus, 'synced')
+
+  const statuses = []
+  const unsubscribe = engine.subscribe((state) => statuses.push(state.syncStatus))
+  statuses.length = 0
+  await engine.sync({ silent: true })
+
+  assert.equal(statuses.includes('syncing'), false)
+  assert.equal(engine.getState().syncStatus, 'synced')
+  unsubscribe()
+  engine.dispose()
+})
+
+test('a reconciled local cache is preserved when the account still has a starter cloud copy', async () => {
+  const config = resolveCloudConfig({ VITE_SUPABASE_URL: 'https://example.supabase.co', VITE_SUPABASE_ANON_KEY: 'public-anon-key' })
+  const user = { id: '00000000-0000-4000-8000-000000000041', email: 'starter-cloud@example.test' }
+  const cloudStore = { playerRows: new Map() }
+  const starter = projectPlayerState(campaign(0, 1))
+  cloudStore.playerRows.set(user.id, {
+    user_id: user.id,
+    state: starter,
+    revision: 1,
+    device_id: 'starter-device',
+    updated_at: '2026-09-14T00:00:00.000Z',
+  })
+  const local = fakeLocalApi(campaign(50, 2), 2)
+  const engine = new SyncEngine({
+    config,
+    clientFactory: () => fakeCloudClient(user, { cloudStore }),
+    storage: new MemoryStorage(),
+    fetchImpl: local.fetch,
+  })
+
+  engine.initialize()
+  await engine.restoreSession()
+  await engine.sync()
+
+  assert.equal(engine.getState().syncStatus, 'conflict')
+  assert.equal(engine.getState().conflict.localRevision, 2)
+  assert.equal(engine.getState().conflict.cloudRevision, 1)
+  assert.equal(local.getProgress().player.level, 2)
+  assert.equal(local.getProgress().player.coins, 50)
+  engine.dispose()
+})

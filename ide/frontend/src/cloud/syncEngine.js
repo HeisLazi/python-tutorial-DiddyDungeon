@@ -537,7 +537,11 @@ export class SyncEngine {
   _startSyncPolling() {
     if (this.syncInterval || typeof window === 'undefined' || typeof window.setInterval !== 'function') return
     this.syncInterval = window.setInterval(() => {
-      if (this.session?.user && this.client) void this.sync()
+      // Background checks should not make the top HUD alternate between
+      // "Synced" and "Syncing…" every few seconds.  A real mutation,
+      // reconnect, conflict, or error still announces itself; an unchanged
+      // campaign stays visually stable while the revision check runs.
+      if (this.session?.user && this.client) void this.sync({ silent: true })
     }, 2000)
   }
 
@@ -686,12 +690,17 @@ export class SyncEngine {
     return code === '40001' || error?.status === 409 || message.includes('conflict') || message.includes('revision')
   }
 
-  async _syncNow() {
+  async _syncNow({ silent = false } = {}) {
     if (!this.session?.user || !this.client) return this.state
     const sessionNonce = this.sessionNonce
     const userId = this._userId()
     const sessionIsCurrent = () => this.sessionNonce === sessionNonce && this._userId() === userId
-    this.setState({ syncStatus: 'syncing', label: 'Syncing…', detail: 'Comparing the local cache with the cloud revision.', error: null })
+    // Keep a settled background state visible while polling.  We still show
+    // the transient status for an explicit sync (sign-in, a local mutation,
+    // or reconnect), and conflict/error states are always surfaced below.
+    if (!silent || this.state.syncStatus !== 'synced') {
+      this.setState({ syncStatus: 'syncing', label: 'Syncing…', detail: 'Comparing the local cache with the cloud revision.', error: null })
+    }
     const local = await this._fetchLocalSnapshot()
     if (!sessionIsCurrent()) return this.state
     this.latestLocalSnapshot = local
@@ -791,11 +800,11 @@ export class SyncEngine {
     return this.state
   }
 
-  sync() {
+  sync({ silent = false } = {}) {
     if (!this.session?.user || !this.client) return Promise.resolve(this.state)
     if (this.syncPromise) return this.syncPromise
     const sessionNonce = this.sessionNonce
-    this.syncPromise = this._syncNow()
+    this.syncPromise = this._syncNow({ silent })
       .catch(async (error) => {
         if (this.sessionNonce !== sessionNonce) return this.state
         const safeError = asError(error, 'Cloud sync failed.')

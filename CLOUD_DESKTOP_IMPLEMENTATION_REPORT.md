@@ -22,7 +22,7 @@ Branch: `feature/cloud-sync-desktop`
 - Local anonymous/offline Forge remains available when cloud configuration is absent or after sign-out.
 - The service stores only `{id, user_id, display_name, last_seen_at}` for device writes. It never sends workspace paths, shell history, terminal output, machine metadata or AI credentials.
 
-Hosted Auth is configured to require email confirmation (`mailer_autoconfirm=false`). The automated service tests cover session restoration/sign-in/sign-out with a fake Auth boundary; a real hosted sign-in needs a mailbox the operator controls and was not claimed here.
+Hosted Auth is configured to require email confirmation (`mailer_autoconfirm=false`). The automated service tests cover session restoration/sign-in/sign-out with a fake Auth boundary; a hosted mailbox sign-in remains an operator-owned acceptance check and is not claimed solely from source tests.
 
 ### Milestone C — bounded Sync Engine v1 implemented and gated
 
@@ -99,7 +99,7 @@ never replaced by an older device snapshot.
 
 ## Verification commands and results
 
-- `npm test` — 14 frontend cloud/runtime/sync tests passed.
+- `npm test` — 17 frontend cloud/runtime/sync tests passed.
 - `npm run build` — Vite production build passed.
 - WSL Forge launch with no cloud variables — backend health returned HTTP 200; both `/ws/terminal/shell` and `/ws/terminal/ai` executed independent markers.
 - WSL `npx --yes supabase db push --linked --yes` — profiles/devices plus all
@@ -111,11 +111,13 @@ never replaced by an older device snapshot.
 
 ## Known limitations / intentionally unimplemented
 
-- Hosted mailbox-backed sign-in and a physical PC/laptop player-state run are
-  still pending; the bounded Sync Engine v1 migration, outbox, conflict UI and
+- An independently verified hosted PC/laptop player-state run is still
+  pending; the bounded Sync Engine v1 migration, outbox, conflict UI and
   isolated two-engine reconciliation are implemented and tested.
 - Avatar Storage (D), Tauri packaging (E), Vercel surface (F), friends/presence and raid mechanics are not implemented.
-- A real hosted sign-in was not claimed because this project requires email confirmation and no operator mailbox was supplied.
+- A real hosted sign-in was not independently verified in this run; this
+  project requires email confirmation. A signed-in account still needs the
+  hosted two-device acceptance below.
 - The local FastAPI/PTy backend remains the existing loopback-only process; no Rust rewrite or desktop wrapper was attempted.
 
 ## Repair pass — A/B hardening before Milestone C
@@ -193,7 +195,7 @@ untracked and player-editable.
 
 ### Repair verification
 
-- Windows `npm test` — 14 tests passed.
+- Windows `npm test` — 17 tests passed.
 - Windows `npm run build` — passed; 1,343 modules transformed and local
   Monaco worker assets emitted. Vite emitted only the existing large-chunk
   warning (main bundle ~4.8 MB).
@@ -263,9 +265,12 @@ state, the candidate files were inspected read-only:
   was an older schema 2 save at Level 2, 50 XP (150 lifetime XP), 55 coins,
   three defeated mobs and 38% project progress. Its session log recorded the
   first three Blackjack mobs as cleared.
-- The active Windows checkout canonical file
+- Before reconciliation, the active Windows checkout canonical file
   `C:\Users\lazar\OneDrive\Documents\ChatGPT\Python Quest Lab\progress.json`
-  is schema 4/rules 1.5 with revision 0 at Level 1, 0 XP and 0 coins.
+  was schema 4/rules 1.5 with revision 0 at Level 1, 0 XP and 0 coins. It was
+  later reconciled through the same internal state-service action; it is now
+  revision 2 at Level 2 with the validated Blackjack projection described
+  below.
 
 The workspace copy is therefore treated as legacy evidence, never as a second
 live save. No timestamp or “newest file wins” merge was performed. The bounded
@@ -314,6 +319,14 @@ padding/borders and the existing monochrome stroke sizing. Adventurer and
 compact selectors use the same direct-child boundary, and the batched DOM
 enhancement observers leave the icons intact across revision polling.
 
+The follow-up HUD jump was traced to the background SyncEngine poll setting the
+top cloud pill to `Syncing…` and then `Synced` on every unchanged two-second
+check. Background polls now use a silent path that preserves a settled status;
+explicit mutations, reconnects, conflicts and errors still surface normally.
+The cloud pill also reserves a fixed width with ellipsis so status text cannot
+push the HP/coins/streak/shield/boss stat pills around. A regression test keeps
+the silent poll from emitting a transient `syncing` state.
+
 The stray-save proof edited only the disposable workspace copy to Level 99,
 9999 coins and revision 999. The canonical API still reported revision 4,
 Level 2 and 10 coins, with `legacy_authoritative: false`; the stray file could
@@ -342,6 +355,15 @@ added only the additionally reviewed current-goal mappings), both carry
 `reward_history_inferred: false`. The action is internal-only over HTTP/CLI,
 so an ordinary PYR command cannot manufacture a migration or write a second
 save.
+
+The same allowlisted payload was then applied on the laptop checkout through
+its local state gateway. The Windows canonical cache
+`C:\Users\lazar\OneDrive\Documents\ChatGPT\Python Quest Lab\progress.json`
+finished at revision `2` with SHA-256
+`b80c89ce3606f626f5b0565ad121f03fb14868d92410933d338f3fbc03ce607`.
+The legacy workspace hash remained
+`200f5b8c1c87040dc522dbf6f8397c47c035bd036312601ee731180021e6744c`; it was
+read-only evidence and was not edited.
 
 Restored because the report and session evidence agree:
 
@@ -423,10 +445,21 @@ The bounded Milestone C slice is implemented and gated. A real
 mailbox-backed signed-in session and hosted two-device game-state save remain
 to be demonstrated; the automated harness is not a claim of that physical
 acceptance. Native Windows ConPTY packaging proof and Milestones D/E/F remain
-future work, as do friends/presence and raid mechanics. Auth B remains an
-automated/fake-boundary verification only because email confirmation is
-enabled and no operator mailbox was supplied. The exact next manual check is:
-sign in with a confirmed account on Device A, register it, sign in with the
-same account in an isolated Device B profile, verify the allowed projection
-arrives and the PTYs remain alive, then exercise an explicit conflict choice.
-The final remote branch SHA is recorded after the verification commit.
+future work, as do friends/presence and raid mechanics. A confirmed session
+still needs the hosted Device A/Device B acceptance: sign in with the same
+account, verify the allowed projection arrives and the PTYs remain alive, then
+exercise an explicit conflict choice. The final remote branch SHA is recorded
+after the verification commit.
+
+### Signed-in laptop state clarification
+
+The laptop can legitimately show two different, clearly separated signals
+until the hosted sync choice is made: the local Forge cache contains the
+validated Level 2 reconciliation, while an account that still has the starter
+cloud row can report Level 1. The SyncEngine preserves the reconciled local
+cache and raises an explicit conflict; it does not silently seed or overwrite
+the cloud row. Selecting **Keep this device** is the deliberate publish step,
+and was not performed in this pass. The portrait shown in the rail/Character
+is likewise a browser-local `localStorage` avatar; account-wide avatar sync is
+reserved for Milestone D, so its persistence after refresh does not prove that
+player state has synced.

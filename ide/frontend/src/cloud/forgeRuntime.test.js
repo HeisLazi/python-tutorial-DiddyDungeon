@@ -75,7 +75,7 @@ test('bounded player-state sync stays behind one engine with revision/conflict c
   assert.match(engine, /save_player_state/)
   assert.match(engine, /SYNC_OUTBOX_STORAGE_KEY/)
   assert.match(engine, /resolveConflict\(choice\)/)
-  assert.match(engine, /window\.setInterval\(\(\) => \{[\s\S]*void this\.sync\(\)/)
+  assert.match(engine, /window\.setInterval\(\(\) => \{[\s\S]*void this\.sync\(\{ silent: true \}\)/)
 })
 
 test('top HUD SVG icons are nested content, not nested stat pills', () => {
@@ -88,4 +88,5 @@ test('top HUD SVG icons are nested content, not nested stat pills', () => {
   assert.doesNotMatch(styles, /\.top-stats\s+span,\.git-pill/)
   assert.match(styles, /\.top-stats\s*>\s*span\s*>\s*\.quest-icon/)
   assert.match(styles, /\.top-stats\s*>\s*span\s*>\s*\[data-stat-value\]/)
+  assert.match(styles, /\.top-stats\s+\.cloud-pill\{[^}]*min-width:15ch/)
 })
