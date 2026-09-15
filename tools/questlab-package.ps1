@@ -1,0 +1,86 @@
+[CmdletBinding()]
+param(
+    [string]$OutputDirectory = (Join-Path (Get-Location) 'questlab-bundles'),
+    [switch]$KeepStaging
+)
+
+$ErrorActionPreference = 'Stop'
+$expectedBranch = 'feature/cloud-sync-desktop'
+$repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
+
+function Require-Command([string]$Name) {
+    if (-not (Get-Command $Name -ErrorAction SilentlyContinue)) {
+        throw "Quest Lab packaging requires '$Name' on PATH."
+    }
+}
+
+Require-Command 'git'
+Require-Command 'tar'
+Require-Command 'Compress-Archive'
+
+$branch = (& git -C $repoRoot branch --show-current).Trim()
+if ($branch -ne $expectedBranch) {
+    throw "Wrong Quest Lab checkout branch '$branch'. Switch to '$expectedBranch' before packaging."
+}
+
+$dirty = @(& git -C $repoRoot status --porcelain=v1)
+$unexpected = @($dirty | Where-Object {
+    $_ -and $_ -notmatch '(^|\s)(progress\.json|tutor\.py)$'
+})
+if ($unexpected.Count -gt 0) {
+    throw "Refusing to package a checkout with uncommitted source changes:`n$($unexpected -join "`n")"
+}
+
+$head = (& git -C $repoRoot rev-parse HEAD).Trim()
+$shortHead = (& git -C $repoRoot rev-parse --short HEAD).Trim()
+$outputRoot = [System.IO.Path]::GetFullPath($OutputDirectory)
+New-Item -ItemType Directory -Path $outputRoot -Force | Out-Null
+$bundleName = "QuestLab-$shortHead"
+$bundleDirectory = Join-Path $outputRoot $bundleName
+if (Test-Path -LiteralPath $bundleDirectory) {
+    throw "Bundle already exists: $bundleDirectory. Choose another output directory."
+}
+
+$tempRoot = Join-Path ([System.IO.Path]::GetTempPath()) ("questlab-package-" + [guid]::NewGuid().ToString('N'))
+$archive = Join-Path $tempRoot 'source.tar'
+$staging = Join-Path $tempRoot 'staging'
+New-Item -ItemType Directory -Path $staging -Force | Out-Null
+
+try {
+    # Archive HEAD, never the working tree: uncommitted progress.json and an
+    # untracked tutor.py can therefore never leak into a friend bundle.
+    & git -C $repoRoot archive --format=tar --output=$archive HEAD
+    if ($LASTEXITCODE -ne 0) { throw 'git archive failed.' }
+    & tar -xf $archive -C $staging
+    if ($LASTEXITCODE -ne 0) { throw 'tar extraction failed.' }
+
+    $manifest = @(
+        'Quest Lab local-first bundle',
+        "Branch: $expectedBranch",
+        "Source HEAD: $head",
+        '',
+        'This bundle contains committed source only.',
+        'The player save is local to the checkout and is never copied between devices.',
+        'Follow FRIEND_ONBOARDING.md for WSL setup and the guarded launcher.',
+        'Do not reuse node_modules from another operating system; run npm ci inside WSL.'
+    ) -join [Environment]::NewLine
+    Set-Content -LiteralPath (Join-Path $staging 'QUESTLAB_BUNDLE.txt') -Value $manifest -Encoding UTF8
+
+    # Keep the archive self-contained but omit platform-specific dependency
+    # trees and local caches; the onboarding flow installs them on the target.
+    New-Item -ItemType Directory -Path $bundleDirectory -Force | Out-Null
+    Copy-Item -Path (Join-Path $staging '*') -Destination $bundleDirectory -Recurse -Force
+    $zipPath = Join-Path $outputRoot "$bundleName.zip"
+    Compress-Archive -Path (Join-Path $staging '*') -DestinationPath $zipPath -CompressionLevel Optimal
+
+    Write-Host "Quest Lab bundle created: $bundleDirectory"
+    Write-Host "Quest Lab zip created:     $zipPath"
+    Write-Host "Source HEAD:               $head"
+}
+finally {
+    if (-not $KeepStaging -and (Test-Path -LiteralPath $tempRoot)) {
+        [System.IO.Directory]::Delete($tempRoot, $true)
+    } elseif ($KeepStaging) {
+        Write-Host "Staging retained:           $tempRoot"
+    }
+}

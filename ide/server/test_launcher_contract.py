@@ -54,6 +54,17 @@ class LauncherContractTests(unittest.TestCase):
         self.assertIn("Do not copy", onboarding)
         self.assertIn("two-device sync acceptance", onboarding)
 
+    def test_friend_bundle_archives_committed_source_without_personal_worktree_files(self):
+        packager = (ROOT / "tools" / "questlab-package.ps1").read_text(encoding="utf-8")
+        self.assertIn("$expectedBranch = 'feature/cloud-sync-desktop'", packager)
+        self.assertIn("git archive", packager)
+        self.assertIn("uncommitted progress.json", packager)
+        self.assertIn("untracked tutor.py", packager)
+        self.assertIn("Compress-Archive", packager)
+        self.assertIn("FRIEND_ONBOARDING.md", packager)
+        self.assertIn("npm ci", packager)
+        self.assertNotIn("Copy-Item -LiteralPath (Join-Path $repoRoot 'progress.json')", packager)
+
     @patch("ide.quest.running_under_wsl", return_value=True)
     def test_wsl_launcher_detects_missing_native_rollup_optional_dependency(self, _running):
         import tempfile
