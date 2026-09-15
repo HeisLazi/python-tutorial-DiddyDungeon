@@ -144,9 +144,9 @@ Campaign surface; it was not removed or merged into Practice.
 
 ## Current risks
 
-- Local provider verdicts remain a trusted workstation boundary (F-001/F-009/
-  F-010); hosted release must add provider authentication and tab-scoped
-  challenge storage.
+- Local provider verdicts remain a trusted workstation boundary (F-001/F-010);
+  local Battle/Boss/Dungeon challenge storage is now tab-scoped (F-009), but
+  hosted release still must add provider authentication and account scoping.
 - A tracked `progress.json` is still the offline canonical cache, so a branch
   switch or destructive Git operation can overwrite a live save unless the
   player backs it up. Moving that custody to an ignored per-device path is an
@@ -160,7 +160,7 @@ Campaign surface; it was not removed or merged into Practice.
   history. Reconciliation must continue to report unsupported fields rather
   than invent them.
 
-## Current checkpoint — 2026-09-15
+## Current checkpoint — 2026-09-16
 
 - Slices 0–4 are implemented through the canonical state gateway, including
   campaign/boss validation, live revision polling, Codex pages/notes and
@@ -183,7 +183,7 @@ Campaign surface; it was not removed or merged into Practice.
 - Slice 8 (hosted friends/presence/raids) remains last and is intentionally not
   seeded or claimed complete.
 
-Latest gates: 67 WSL backend tests, 31 frontend tests, Windows Vite build, and
+Latest gates: 68 WSL backend tests, 31 frontend tests, Windows Vite build, and
 manual browser K&M acceptance on an isolated current-branch runtime. The
 frontend count includes source tripwires as well as behavioural sync tests. No
 Playwright was used.

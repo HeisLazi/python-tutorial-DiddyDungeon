@@ -21,7 +21,7 @@ limits, concurrency, and regression coverage.
 | F-006 | P2 | Submission integrity | A verdict was previously bound only to revision/mob, so a caller could claim an unrelated answer/evidence. | Fixed: one pending submission binds objective, answer digest and server-issued evidence ID; replay/mismatch fails closed. |
 | F-007 | P2 | Player flow | The UI previously had no way to submit a Battle answer to the selected provider. | Fixed: Quest Journal now offers an optional answer form and sends a bounded adjudication prompt; no progression occurs until the provider calls the verdict boundary. |
 | F-008 | P3 | Lifecycle | Monaco cursor-selection subscriptions were not explicitly disposed when the Forge unmounted. | Fixed: AppV2 disposes the current selection listener on unmount. |
-| F-009 | P2 | Concurrency | The challenge is a single process-global slot, so two tabs or overlapping provider submissions can invalidate one another. | Open: acceptable for the current single-player local runtime; replace with account/tab-scoped challenge storage before multi-user or hosted use. |
+| F-009 | P2 | Concurrency | The challenge is a single process-global slot, so two tabs or overlapping provider submissions can invalidate one another. | Fixed locally in the per-tab isolation slice: opaque session-storage client ids and nonce-bound tab maps now keep pending Battle/Boss/Dungeon challenges independent. Hosted provider authentication and account-scoped storage remain open under F-001/F-010. |
 | F-010 | P2 | Local threat model | The loopback API intentionally has no hosted user authentication; another local process can attempt to use a valid challenge while the Forge is open. | Open: retain loopback-only binding and add provider authentication before exposing this beyond the trusted workstation. |
 | F-011 | P3 | Payload hardening | Context/verdict request models previously had no field-size limits even though downstream helpers were bounded. | Fixed: request fields now have explicit Pydantic limits plus byte-level validation. |
 | F-012 | P2 | Provider context | The first Battle prompt carried the answer and objective metadata but not the bounded code, terminal, git, quest, and encounter projection returned by the context bridge. | Fixed: the provider prompt now includes that bounded current projection and still excludes future encounter prompts/answers. |
@@ -29,10 +29,9 @@ limits, concurrency, and regression coverage.
 ### Review result
 
 No additional critical correctness or data-loss issue was found after the
-fixes above. F-001, F-009 and F-010 are deliberate trust/concurrency limits,
-not hidden completion claims. They remain release gates for a hosted/provider-
-authenticated Battle flow and are tracked alongside the existing two-device
-mailbox acceptance gate before Tauri packaging.
+fixes above. F-001 and F-010 remain deliberate trust/security limits; F-009
+is now fixed for local multi-tab use; hosted provider authentication and the
+two-device mailbox gate still precede Tauri packaging.
 
 ### Verification recorded with this review
 
@@ -484,3 +483,27 @@ the disposable canonical cache from revision 0 to 1; the HUD changed from
 loaded normally. The tab, runtime and exact temporary checkout were then
 closed/removed. The user save, legacy evidence, long-lived runtimes and hosted
 state were not touched.
+
+## Verification update — 2026-09-16 — per-tab PYR challenge isolation
+
+The local challenge boundary no longer relies on one process-global Battle,
+Boss or Dungeon slot. The Forge assigns each browser tab an opaque
+`sessionStorage` client id; the gateway keeps separate expiring challenge maps
+and binds provider submissions/verdicts by their server-issued nonce. The old
+singular names remain compatibility snapshots for older in-process callers, not
+the lookup authority. Invalid/missing client ids fall back to the bounded
+default partition, and challenge expiry pruning is retained.
+
+The focused isolation test proved that tab A's Battle submission and Dungeon
+submission remain valid after tab B captures a fresh challenge. The full WSL
+backend suite then passed 68 tests, the frontend suite passed 31 tests, Python
+compilation passed, and the Windows Vite build transformed 1,344 modules.
+
+A disposable current-branch runtime was also checked with browser clicks,
+scrolling and typing only (no Playwright): two tabs loaded the same canonical
+revision, a trusted state-service reward changed the HUD without refresh, and
+both shell and AI PTY labels remained `CONNECTED`. The exact temporary backend,
+frontend and state directory were stopped/removed afterward. The user's dirty
+`progress.json`, root `tutor.py`, long-lived runtimes and hosted state were not
+touched. This closes the local F-009 defect; provider-authenticated hosted
+adjudication remains a release gate.

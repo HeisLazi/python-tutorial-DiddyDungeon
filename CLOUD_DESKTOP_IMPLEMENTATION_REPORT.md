@@ -988,3 +988,25 @@ machine, hosted two-device or Tauri proof.
 `npm ci` also reported two dependency advisories (one low and one moderate)
 in the clean-install output. This is recorded as F-050 for a targeted audit;
 no forced upgrade or lockfile rewrite was applied.
+
+### Per-tab PYR challenge isolation — 2026-09-16
+
+The local provider bridge now partitions pending Battle, Boss and Dungeon
+challenges by an opaque browser-tab id held in `sessionStorage`. Challenge maps
+are expiring and provider calls locate the intended entry by its server-issued
+nonce, so a second tab cannot overwrite the first tab's pending answer. The
+legacy singular challenge variables remain compatibility snapshots for older
+in-process callers only; they are not the lookup authority.
+
+The focused backend test issued challenges in tab A and tab B, then submitted
+tab A's Battle and Dungeon answers after tab B had issued its own challenge;
+both remained bindable. Full gates passed: 68 WSL backend tests, 31 frontend
+tests, Python compilation, and a Windows Vite build transforming 1,344 modules.
+
+The browser smoke used clicks, scrolling and typing only (no Playwright). Two
+disposable tabs loaded the same current-branch revision, a trusted state-service
+reward moved the HUD from 0 to 1 coin without refresh, and both shell and AI
+PTY labels remained `CONNECTED`. The exact temporary runtime and state folder
+were removed afterward. The dirty user save, root Campaign `tutor.py`,
+long-lived runtimes and hosted state were untouched. This closes local F-009;
+provider-authenticated hosted adjudication remains gated by F-001/F-010.

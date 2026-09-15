@@ -69,6 +69,8 @@ test('PYR context submissions use the bounded local bridge and current editor se
   const enhancements = source('../forgeEnhancements.js')
 
   assert.match(app, /\/api\/pyr\/context/)
+  assert.match(app, /client_id: pyrClientId\(\)/)
+  assert.match(app, /questlab\.pyr\.client-id/)
   assert.match(app, /editorSelectionRef\.current/)
   assert.match(app, /getText\(\)/)
   assert.match(app, /__questlabPublishPyrContext/)

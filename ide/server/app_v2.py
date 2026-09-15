@@ -141,7 +141,14 @@ PYR_CONTEXT_INPUT: dict[str, str | None] = {
     "active_path": None,
     "selection": "",
     "terminal_tail": "",
+    "client_id": "default",
 }
+# Challenge state is partitioned by an opaque browser-tab id. Verdict calls
+# still locate the entry by their nonce, so a provider does not need to know
+# the tab id. The legacy singular names remain as compatibility snapshots for
+# older tests/in-process callers; they are never the authority for lookup.
+PYR_CONTEXT_CHALLENGES: dict[str, dict[str, object]] = {}
+PYR_DUNGEON_CHALLENGES: dict[str, dict[str, object]] = {}
 PYR_CONTEXT_CHALLENGE: dict[str, object] | None = None
 PYR_DUNGEON_CHALLENGE: dict[str, object] | None = None
 PYR_PRACTICE_CHALLENGES: dict[str, dict[str, object]] = {}
@@ -199,6 +206,7 @@ class PyrContextRequest(BaseModel):
     active_path: str | None = Field(default=None, max_length=240)
     selection: str = Field(default="", max_length=64_000)
     terminal_tail: str = Field(default="", max_length=64_000)
+    client_id: str = Field(default="default", min_length=1, max_length=128, pattern=r"^[A-Za-z0-9._:-]+$")
 
 
 class PyrVerdictRequest(BaseModel):
@@ -847,19 +855,66 @@ def codex():
 PYR_VERDICT_TTL_SECONDS = 300
 
 
+def _pyr_client_id(value: str | None) -> str:
+    """Normalize the opaque per-tab challenge partition key."""
+
+    candidate = (value or "default").strip()
+    if not candidate or len(candidate) > 128 or any(
+        character not in "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789._:-"
+        for character in candidate
+    ):
+        return "default"
+    return candidate
+
+
+def _prune_pyr_challenges(now: float | None = None) -> None:
+    """Drop expired tab challenges without touching another tab's state."""
+
+    current = time.monotonic() if now is None else now
+    for store in (PYR_CONTEXT_CHALLENGES, PYR_DUNGEON_CHALLENGES):
+        for client_id, challenge in list(store.items()):
+            if not isinstance(challenge, dict) or float(challenge.get("expires_at", 0)) <= current:
+                store.pop(client_id, None)
+
+
+def _challenge_by_nonce(
+    store: dict[str, dict[str, object]], nonce: str, *, legacy: dict[str, object] | None = None
+) -> tuple[str | None, dict[str, object] | None]:
+    """Find a challenge by its provider-facing nonce under the lock."""
+
+    _prune_pyr_challenges()
+    for client_id, challenge in store.items():
+        if isinstance(challenge, dict) and challenge.get("nonce") == nonce:
+            return client_id, challenge
+    # Preserve compatibility for old in-process callers that set the singular
+    # snapshot directly while the new partitioned map is empty.
+    if isinstance(legacy, dict) and legacy.get("nonce") == nonce:
+        return "default", legacy
+    return None, None
+
+
+def _clear_challenge(store: dict[str, dict[str, object]], client_id: str | None) -> None:
+    if client_id is not None:
+        store.pop(client_id, None)
+
+
 def _attach_pyr_verdict_challenge(
     context: dict,
     *,
     revision: int,
     encounter: dict | None,
+    client_id: str,
     rotate: bool,
 ) -> None:
     """Attach one short-lived challenge for a trusted PYR verdict call."""
 
     global PYR_CONTEXT_CHALLENGE
+    client_key = _pyr_client_id(client_id)
     if not isinstance(encounter, dict):
         with PYR_CONTEXT_LOCK:
-            PYR_CONTEXT_CHALLENGE = None
+            _clear_challenge(PYR_CONTEXT_CHALLENGES, client_key)
+            if client_key == "default":
+                PYR_CONTEXT_CHALLENGE = None
         context["verdict"] = None
         return
 
@@ -869,13 +924,20 @@ def _attach_pyr_verdict_challenge(
     boss_name = encounter.get("boss") if boss_mode else None
     if not project_id or (not mob_name and not boss_mode):
         with PYR_CONTEXT_LOCK:
-            PYR_CONTEXT_CHALLENGE = None
+            _clear_challenge(PYR_CONTEXT_CHALLENGES, client_key)
+            if client_key == "default":
+                PYR_CONTEXT_CHALLENGE = None
         context["verdict"] = None
         return
 
     now = time.monotonic()
     with PYR_CONTEXT_LOCK:
-        existing = PYR_CONTEXT_CHALLENGE
+        _prune_pyr_challenges(now)
+        if client_key == "default" and PYR_CONTEXT_CHALLENGE is None:
+            PYR_CONTEXT_CHALLENGES.pop(client_key, None)
+        existing = PYR_CONTEXT_CHALLENGES.get(client_key)
+        if existing is None and client_key == "default" and isinstance(PYR_CONTEXT_CHALLENGE, dict):
+            existing = PYR_CONTEXT_CHALLENGE
         valid_existing = (
             isinstance(existing, dict)
             and existing.get("revision") == revision
@@ -893,6 +955,7 @@ def _attach_pyr_verdict_challenge(
         if rotate or not valid_existing:
             existing = {
                 "nonce": secrets.token_urlsafe(24),
+                "client_id": client_key,
                 "revision": revision,
                 "project_id": project_id,
                 "challenge_type": "boss" if boss_mode else "battle",
@@ -902,7 +965,12 @@ def _attach_pyr_verdict_challenge(
                 existing.update({"boss_name": boss_name, "boss_submissions": {}, "boss_verified": {}})
             else:
                 existing["mob_name"] = mob_name
+            PYR_CONTEXT_CHALLENGES[client_key] = existing
             PYR_CONTEXT_CHALLENGE = existing
+        elif isinstance(existing, dict):
+            PYR_CONTEXT_CHALLENGES[client_key] = existing
+            if client_key == "default":
+                PYR_CONTEXT_CHALLENGE = existing
         context["verdict"] = {
             "nonce": existing["nonce"],
             "revision": existing["revision"],
@@ -921,24 +989,38 @@ def _attach_pyr_verdict_challenge(
                 context["verdict"][field] = existing[field]
 
 
-def _attach_pyr_dungeon_challenge(context: dict, *, revision: int, dungeon: dict | None, rotate: bool) -> None:
+def _attach_pyr_dungeon_challenge(
+    context: dict, *, revision: int, dungeon: dict | None, client_id: str, rotate: bool
+) -> None:
     """Attach a short-lived answer-bound challenge for an active Dungeon room."""
 
     global PYR_DUNGEON_CHALLENGE
+    client_key = _pyr_client_id(client_id)
     if not isinstance(dungeon, dict) or not dungeon.get("active") or dungeon.get("room_type") != "encounter":
-        PYR_DUNGEON_CHALLENGE = None
+        with PYR_CONTEXT_LOCK:
+            _clear_challenge(PYR_DUNGEON_CHALLENGES, client_key)
+            if client_key == "default":
+                PYR_DUNGEON_CHALLENGE = None
         context["dungeon_verdict"] = None
         return
     run_id = dungeon.get("run_id")
     question = dungeon.get("question") if isinstance(dungeon.get("question"), dict) else {}
     question_id = question.get("id")
     if not isinstance(run_id, str) or not run_id.strip() or not isinstance(question_id, str) or not question_id.strip():
-        PYR_DUNGEON_CHALLENGE = None
+        with PYR_CONTEXT_LOCK:
+            _clear_challenge(PYR_DUNGEON_CHALLENGES, client_key)
+            if client_key == "default":
+                PYR_DUNGEON_CHALLENGE = None
         context["dungeon_verdict"] = None
         return
     now = time.monotonic()
     with PYR_CONTEXT_LOCK:
-        existing = PYR_DUNGEON_CHALLENGE
+        _prune_pyr_challenges(now)
+        if client_key == "default" and PYR_DUNGEON_CHALLENGE is None:
+            PYR_DUNGEON_CHALLENGES.pop(client_key, None)
+        existing = PYR_DUNGEON_CHALLENGES.get(client_key)
+        if existing is None and client_key == "default" and isinstance(PYR_DUNGEON_CHALLENGE, dict):
+            existing = PYR_DUNGEON_CHALLENGE
         valid_existing = (
             isinstance(existing, dict)
             and existing.get("revision") == revision
@@ -951,6 +1033,7 @@ def _attach_pyr_dungeon_challenge(context: dict, *, revision: int, dungeon: dict
         if rotate or not valid_existing:
             existing = {
                 "nonce": secrets.token_urlsafe(24),
+                "client_id": client_key,
                 "revision": revision,
                 "run_id": run_id,
                 "question_id": question_id,
@@ -958,7 +1041,12 @@ def _attach_pyr_dungeon_challenge(context: dict, *, revision: int, dungeon: dict
                 "concept_id": str(question.get("concept_id") or "python-basics"),
                 "expires_at": now + PYR_VERDICT_TTL_SECONDS,
             }
+            PYR_DUNGEON_CHALLENGES[client_key] = existing
             PYR_DUNGEON_CHALLENGE = existing
+        elif isinstance(existing, dict):
+            PYR_DUNGEON_CHALLENGES[client_key] = existing
+            if client_key == "default":
+                PYR_DUNGEON_CHALLENGE = existing
         context["dungeon_verdict"] = {
             "nonce": existing["nonce"],
             "revision": existing["revision"],
@@ -974,6 +1062,7 @@ def _attach_pyr_dungeon_challenge(context: dict, *, revision: int, dungeon: dict
 
 
 def _capture_pyr_context(payload: PyrContextRequest, *, rotate_challenge: bool = False) -> dict:
+    client_id = _pyr_client_id(payload.client_id)
     active_path = payload.active_path.strip() if payload.active_path else ""
     if len(active_path) > 240 or any(ord(character) < 32 for character in active_path):
         raise HTTPException(status_code=422, detail="active_path must be a bounded relative path")
@@ -1032,12 +1121,14 @@ def _capture_pyr_context(payload: PyrContextRequest, *, rotate_challenge: bool =
                 "active_path": normalized_path,
                 "selection": selection,
                 "terminal_tail": terminal_tail,
+                "client_id": client_id,
             }
         )
     _attach_pyr_verdict_challenge(
         context,
         revision=metadata["revision"],
         encounter=encounter,
+        client_id=client_id,
         rotate=rotate_challenge,
     )
     context["dungeon"] = dungeon
@@ -1045,6 +1136,7 @@ def _capture_pyr_context(payload: PyrContextRequest, *, rotate_challenge: bool =
         context,
         revision=metadata["revision"],
         dungeon=dungeon,
+        client_id=client_id,
         rotate=rotate_challenge,
     )
     return context
@@ -1093,13 +1185,19 @@ def create_pyr_battle_submission(payload: PyrBattleSubmissionRequest):
 
     global PYR_CONTEXT_CHALLENGE
     with PYR_CONTEXT_LOCK:
-        challenge = PYR_CONTEXT_CHALLENGE
+        client_id, challenge = _challenge_by_nonce(
+            PYR_CONTEXT_CHALLENGES, nonce, legacy=PYR_CONTEXT_CHALLENGE
+        )
         now = time.monotonic()
         if not isinstance(challenge, dict) or challenge.get("nonce") != nonce:
             raise HTTPException(status_code=409, detail="PYR challenge is missing or already used")
         if float(challenge.get("expires_at", 0)) <= now:
-            PYR_CONTEXT_CHALLENGE = None
+            _clear_challenge(PYR_CONTEXT_CHALLENGES, client_id)
+            if client_id == "default":
+                PYR_CONTEXT_CHALLENGE = None
             raise HTTPException(status_code=409, detail="PYR challenge expired; capture context again")
+        if client_id is not None:
+            PYR_CONTEXT_CHALLENGES[client_id] = challenge
         if challenge.get("submission_id"):
             raise HTTPException(status_code=409, detail="This PYR challenge already has a Battle submission")
 
@@ -1108,14 +1206,18 @@ def create_pyr_battle_submission(payload: PyrBattleSubmissionRequest):
                 progress, metadata = STATE_SERVICE.snapshot_with_metadata()
                 encounter = STATE_SERVICE.encounter_projection(progress)
                 if metadata["revision"] != challenge.get("revision"):
-                    PYR_CONTEXT_CHALLENGE = None
+                    _clear_challenge(PYR_CONTEXT_CHALLENGES, client_id)
+                    if client_id == "default":
+                        PYR_CONTEXT_CHALLENGE = None
                     raise HTTPException(status_code=409, detail="Campaign changed; capture fresh PYR context")
                 if (
                     not isinstance(encounter, dict)
                     or encounter.get("project_id") != challenge.get("project_id")
                     or encounter.get("mob_name") != challenge.get("mob_name")
                 ):
-                    PYR_CONTEXT_CHALLENGE = None
+                    _clear_challenge(PYR_CONTEXT_CHALLENGES, client_id)
+                    if client_id == "default":
+                        PYR_CONTEXT_CHALLENGE = None
                     raise HTTPException(status_code=409, detail="Active encounter changed; capture fresh PYR context")
                 objective = next(
                     (item for item in encounter.get("available_objectives", []) if isinstance(item, dict) and item.get("id") == objective_id),
@@ -1176,13 +1278,19 @@ def create_pyr_dungeon_submission(payload: PyrDungeonSubmissionRequest):
 
     global PYR_DUNGEON_CHALLENGE
     with PYR_CONTEXT_LOCK:
-        challenge = PYR_DUNGEON_CHALLENGE
+        client_id, challenge = _challenge_by_nonce(
+            PYR_DUNGEON_CHALLENGES, nonce, legacy=PYR_DUNGEON_CHALLENGE
+        )
         now = time.monotonic()
         if not isinstance(challenge, dict) or challenge.get("nonce") != nonce:
             raise HTTPException(status_code=409, detail="Dungeon challenge is missing or already used")
         if float(challenge.get("expires_at", 0)) <= now:
-            PYR_DUNGEON_CHALLENGE = None
+            _clear_challenge(PYR_DUNGEON_CHALLENGES, client_id)
+            if client_id == "default":
+                PYR_DUNGEON_CHALLENGE = None
             raise HTTPException(status_code=409, detail="Dungeon challenge expired; capture context again")
+        if client_id is not None:
+            PYR_DUNGEON_CHALLENGES[client_id] = challenge
         if challenge.get("submission_id"):
             raise HTTPException(status_code=409, detail="This Dungeon challenge already has a submission")
         if challenge.get("run_id") != run_id or challenge.get("question_id") != question_id:
@@ -1193,10 +1301,14 @@ def create_pyr_dungeon_submission(payload: PyrDungeonSubmissionRequest):
                 projection = STATE_SERVICE.dungeon_projection(progress)
                 question = projection.get("question") if isinstance(projection.get("question"), dict) else {}
                 if metadata["revision"] != challenge.get("revision") or not projection.get("active") or projection.get("room_type") != "encounter":
-                    PYR_DUNGEON_CHALLENGE = None
+                    _clear_challenge(PYR_DUNGEON_CHALLENGES, client_id)
+                    if client_id == "default":
+                        PYR_DUNGEON_CHALLENGE = None
                     raise HTTPException(status_code=409, detail="Dungeon run changed; capture fresh context")
                 if projection.get("run_id") != run_id or question.get("id") != question_id:
-                    PYR_DUNGEON_CHALLENGE = None
+                    _clear_challenge(PYR_DUNGEON_CHALLENGES, client_id)
+                    if client_id == "default":
+                        PYR_DUNGEON_CHALLENGE = None
                     raise HTTPException(status_code=409, detail="Dungeon question changed; capture fresh context")
                 submission_id = f"dungeon-{secrets.token_hex(12)}"
                 evidence_id = submission_id
@@ -1229,12 +1341,16 @@ def apply_pyr_dungeon_verdict(payload: PyrDungeonVerdictRequest):
     nonce = payload.nonce.strip()
     global PYR_DUNGEON_CHALLENGE
     with PYR_CONTEXT_LOCK:
-        challenge = PYR_DUNGEON_CHALLENGE
+        client_id, challenge = _challenge_by_nonce(
+            PYR_DUNGEON_CHALLENGES, nonce, legacy=PYR_DUNGEON_CHALLENGE
+        )
         now = time.monotonic()
         if not isinstance(challenge, dict) or challenge.get("nonce") != nonce:
             raise HTTPException(status_code=409, detail="Dungeon verdict challenge is missing or already used")
         if float(challenge.get("expires_at", 0)) <= now:
-            PYR_DUNGEON_CHALLENGE = None
+            _clear_challenge(PYR_DUNGEON_CHALLENGES, client_id)
+            if client_id == "default":
+                PYR_DUNGEON_CHALLENGE = None
             raise HTTPException(status_code=409, detail="Dungeon challenge expired; capture context again")
         if (
             challenge.get("submission_id") != payload.submission_id
@@ -1248,7 +1364,9 @@ def apply_pyr_dungeon_verdict(payload: PyrDungeonVerdictRequest):
             try:
                 progress, metadata = STATE_SERVICE.snapshot_with_metadata()
                 if metadata["revision"] != challenge.get("revision"):
-                    PYR_DUNGEON_CHALLENGE = None
+                    _clear_challenge(PYR_DUNGEON_CHALLENGES, client_id)
+                    if client_id == "default":
+                        PYR_DUNGEON_CHALLENGE = None
                     raise HTTPException(status_code=409, detail="Dungeon run changed; capture fresh context")
                 mutation = STATE_SERVICE.apply_internal(
                     "dungeon_record_verdict",
@@ -1262,7 +1380,9 @@ def apply_pyr_dungeon_verdict(payload: PyrDungeonVerdictRequest):
                 )
             except StateCommandError as exc:
                 raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
-        PYR_DUNGEON_CHALLENGE = None
+        _clear_challenge(PYR_DUNGEON_CHALLENGES, client_id)
+        if client_id == "default":
+            PYR_DUNGEON_CHALLENGE = None
     return {"ok": True, "verdict": payload.verdict, "mutation": mutation, "revision": mutation.get("revision"), "event": mutation.get("event")}
 
 
@@ -1376,13 +1496,19 @@ def create_pyr_boss_submission(payload: PyrBossSubmissionRequest):
 
     global PYR_CONTEXT_CHALLENGE
     with PYR_CONTEXT_LOCK:
-        challenge = PYR_CONTEXT_CHALLENGE
+        client_id, challenge = _challenge_by_nonce(
+            PYR_CONTEXT_CHALLENGES, nonce, legacy=PYR_CONTEXT_CHALLENGE
+        )
         now = time.monotonic()
         if not isinstance(challenge, dict) or challenge.get("nonce") != nonce or challenge.get("challenge_type") != "boss":
             raise HTTPException(status_code=409, detail="Boss challenge is missing; capture current context again")
         if float(challenge.get("expires_at", 0)) <= now:
-            PYR_CONTEXT_CHALLENGE = None
+            _clear_challenge(PYR_CONTEXT_CHALLENGES, client_id)
+            if client_id == "default":
+                PYR_CONTEXT_CHALLENGE = None
             raise HTTPException(status_code=409, detail="Boss challenge expired; capture context again")
+        if client_id is not None:
+            PYR_CONTEXT_CHALLENGES[client_id] = challenge
         submissions = challenge.setdefault("boss_submissions", {})
         verified = challenge.setdefault("boss_verified", {})
         if requirement_id in verified:
@@ -1395,10 +1521,14 @@ def create_pyr_boss_submission(payload: PyrBossSubmissionRequest):
                 progress, metadata = STATE_SERVICE.snapshot_with_metadata()
                 encounter = STATE_SERVICE.encounter_projection(progress)
                 if metadata["revision"] != challenge.get("revision") or not isinstance(encounter, dict):
-                    PYR_CONTEXT_CHALLENGE = None
+                    _clear_challenge(PYR_CONTEXT_CHALLENGES, client_id)
+                    if client_id == "default":
+                        PYR_CONTEXT_CHALLENGE = None
                     raise HTTPException(status_code=409, detail="Campaign changed; capture fresh boss context")
                 if encounter.get("status") != "boss_available" or encounter.get("project_id") != challenge.get("project_id"):
-                    PYR_CONTEXT_CHALLENGE = None
+                    _clear_challenge(PYR_CONTEXT_CHALLENGES, client_id)
+                    if client_id == "default":
+                        PYR_CONTEXT_CHALLENGE = None
                     raise HTTPException(status_code=409, detail="The boss gate is no longer available")
                 if requirement_id not in BOSS_REQUIREMENTS:
                     raise HTTPException(status_code=422, detail="Unsupported boss requirement")
@@ -1441,12 +1571,16 @@ def apply_pyr_boss_verdict(payload: PyrBossVerdictRequest):
     requirement_id = payload.requirement_id
     global PYR_CONTEXT_CHALLENGE
     with PYR_CONTEXT_LOCK:
-        challenge = PYR_CONTEXT_CHALLENGE
+        client_id, challenge = _challenge_by_nonce(
+            PYR_CONTEXT_CHALLENGES, nonce, legacy=PYR_CONTEXT_CHALLENGE
+        )
         now = time.monotonic()
         if not isinstance(challenge, dict) or challenge.get("nonce") != nonce or challenge.get("challenge_type") != "boss":
             raise HTTPException(status_code=409, detail="Boss verdict challenge is missing or already used")
         if float(challenge.get("expires_at", 0)) <= now:
-            PYR_CONTEXT_CHALLENGE = None
+            _clear_challenge(PYR_CONTEXT_CHALLENGES, client_id)
+            if client_id == "default":
+                PYR_CONTEXT_CHALLENGE = None
             raise HTTPException(status_code=409, detail="Boss challenge expired; capture context again")
         submissions = challenge.get("boss_submissions")
         verified = challenge.get("boss_verified")
@@ -1483,7 +1617,9 @@ def apply_pyr_boss_verdict(payload: PyrBossVerdictRequest):
                 progress, metadata = STATE_SERVICE.snapshot_with_metadata()
                 encounter = STATE_SERVICE.encounter_projection(progress)
                 if metadata["revision"] != challenge.get("revision") or not isinstance(encounter, dict) or encounter.get("status") != "boss_available":
-                    PYR_CONTEXT_CHALLENGE = None
+                    _clear_challenge(PYR_CONTEXT_CHALLENGES, client_id)
+                    if client_id == "default":
+                        PYR_CONTEXT_CHALLENGE = None
                     raise HTTPException(status_code=409, detail="Campaign changed; capture fresh boss context")
                 if all(requirement in verified for requirement in BOSS_REQUIREMENTS):
                     reason = "Boss requirements verified; " + "; ".join(
@@ -1498,7 +1634,9 @@ def apply_pyr_boss_verdict(payload: PyrBossVerdictRequest):
                             "reason": reason[:MAX_REASON_LENGTH],
                         },
                     )
-                    PYR_CONTEXT_CHALLENGE = None
+                    _clear_challenge(PYR_CONTEXT_CHALLENGES, client_id)
+                    if client_id == "default":
+                        PYR_CONTEXT_CHALLENGE = None
             except StateCommandError as exc:
                 raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
 
@@ -1536,13 +1674,19 @@ def apply_pyr_verdict(payload: PyrVerdictRequest):
 
     global PYR_CONTEXT_CHALLENGE
     with PYR_CONTEXT_LOCK:
-        challenge = PYR_CONTEXT_CHALLENGE
+        client_id, challenge = _challenge_by_nonce(
+            PYR_CONTEXT_CHALLENGES, nonce, legacy=PYR_CONTEXT_CHALLENGE
+        )
         now = time.monotonic()
         if not isinstance(challenge, dict) or challenge.get("nonce") != nonce:
             raise HTTPException(status_code=409, detail="PYR verdict challenge is missing or already used")
         if float(challenge.get("expires_at", 0)) <= now:
-            PYR_CONTEXT_CHALLENGE = None
+            _clear_challenge(PYR_CONTEXT_CHALLENGES, client_id)
+            if client_id == "default":
+                PYR_CONTEXT_CHALLENGE = None
             raise HTTPException(status_code=409, detail="PYR verdict challenge expired; capture context again")
+        if client_id is not None:
+            PYR_CONTEXT_CHALLENGES[client_id] = challenge
         if (
             challenge.get("submission_id") != payload.submission_id
             or challenge.get("answer_digest") != payload.answer_digest
@@ -1556,14 +1700,18 @@ def apply_pyr_verdict(payload: PyrVerdictRequest):
                 progress, metadata = STATE_SERVICE.snapshot_with_metadata()
                 encounter = STATE_SERVICE.encounter_projection(progress)
                 if metadata["revision"] != challenge.get("revision"):
-                    PYR_CONTEXT_CHALLENGE = None
+                    _clear_challenge(PYR_CONTEXT_CHALLENGES, client_id)
+                    if client_id == "default":
+                        PYR_CONTEXT_CHALLENGE = None
                     raise HTTPException(status_code=409, detail="Campaign changed; capture fresh PYR context")
                 if (
                     not isinstance(encounter, dict)
                     or encounter.get("project_id") != challenge.get("project_id")
                     or encounter.get("mob_name") != challenge.get("mob_name")
                 ):
-                    PYR_CONTEXT_CHALLENGE = None
+                    _clear_challenge(PYR_CONTEXT_CHALLENGES, client_id)
+                    if client_id == "default":
+                        PYR_CONTEXT_CHALLENGE = None
                     raise HTTPException(status_code=409, detail="Active encounter changed; capture fresh PYR context")
                 available_ids = {
                     item.get("id")
@@ -1596,7 +1744,9 @@ def apply_pyr_verdict(payload: PyrVerdictRequest):
                 mutation = STATE_SERVICE.apply_internal(action, state_payload)
             except StateCommandError as exc:
                 raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
-        PYR_CONTEXT_CHALLENGE = None
+        _clear_challenge(PYR_CONTEXT_CHALLENGES, client_id)
+        if client_id == "default":
+            PYR_CONTEXT_CHALLENGE = None
 
     return {
         "ok": True,

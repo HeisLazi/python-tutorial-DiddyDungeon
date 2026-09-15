@@ -39,6 +39,9 @@ increment the canonical revision or enter the event/cloud projection.
   replace them with nested pills or emoji.
 - Direct HUD stat pills reserve compact icon/value slots so initial sync and
   digit-length changes do not reflow the top bar.
+- PYR Battle/Boss/Dungeon challenges are now partitioned by opaque per-tab
+  session ids and looked up by nonce; a second tab cannot invalidate a pending
+  answer in the first tab. Hosted provider authentication remains open.
 - Campaign `tutor.py` remains a dedicated Campaign surface; Practice is
   separate and never writes it or Campaign/Dungeon rewards.
 - Infinite Dungeon local loop is K&M-verified: fresh loadout, checkpoint,
@@ -64,7 +67,7 @@ increment the canonical revision or enter the event/cloud projection.
 
 ## Automated evidence at snapshot time
 
-- WSL backend: 67 tests passed;
+- WSL backend: 68 tests passed;
 - frontend: 31 tests passed;
 - Windows Vite production build: 1,344 modules transformed;
 - Python compilation and PowerShell launcher/package parsing passed;

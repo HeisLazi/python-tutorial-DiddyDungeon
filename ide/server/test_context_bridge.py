@@ -434,6 +434,91 @@ class PyrContextBridgeTests(unittest.TestCase):
                 app_v2.WORKSPACE = original_workspace
                 app_v2.PROGRESS_PATH = original_progress
 
+    def test_battle_and_dungeon_challenges_are_isolated_per_tab(self):
+        original_workspace = app_v2.WORKSPACE
+        original_progress = app_v2.PROGRESS_PATH
+        original_dungeon = app_v2.DUNGEON_PATH
+        original_context_challenge = app_v2.PYR_CONTEXT_CHALLENGE
+        original_dungeon_challenge = app_v2.PYR_DUNGEON_CHALLENGE
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            workspace = root / "quest"
+            workspace.mkdir()
+            canonical = root / "platform" / "progress.json"
+            canonical.parent.mkdir()
+            canonical.write_text(json.dumps(context_progress()), encoding="utf-8")
+            app_v2.WORKSPACE = workspace
+            app_v2.PROGRESS_PATH = canonical
+            app_v2.DUNGEON_PATH = workspace / "dungeon.py"
+            app_v2.PYR_CONTEXT_CHALLENGE = None
+            app_v2.PYR_DUNGEON_CHALLENGE = None
+            app_v2.PYR_CONTEXT_CHALLENGES.clear()
+            app_v2.PYR_DUNGEON_CHALLENGES.clear()
+            try:
+                client = TestClient(app_v2.app, base_url="http://127.0.0.1")
+                tab_a = client.post(
+                    "/api/pyr/context",
+                    headers={"host": "127.0.0.1"},
+                    json={"client_id": "tab-a"},
+                ).json()["context"]["verdict"]
+                tab_b = client.post(
+                    "/api/pyr/context",
+                    headers={"host": "127.0.0.1"},
+                    json={"client_id": "tab-b"},
+                ).json()["context"]["verdict"]
+                self.assertNotEqual(tab_a["nonce"], tab_b["nonce"])
+
+                # Issuing a challenge in tab B must not invalidate tab A's
+                # pending answer, which was the old process-global-slot bug.
+                bound = client.post(
+                    "/api/pyr/battle-submission",
+                    headers={"host": "127.0.0.1"},
+                    json={
+                        "nonce": tab_a["nonce"],
+                        "objective_id": "choice_flow",
+                        "answer": "I stop when the player's choice is no longer true.",
+                    },
+                )
+                self.assertEqual(bound.status_code, 200, bound.text)
+
+                started = client.post(
+                    "/api/dungeon/start",
+                    headers={"host": "127.0.0.1"},
+                    json={"concept_id": "lists", "seed": "tab-isolation"},
+                )
+                self.assertEqual(started.status_code, 200, started.text)
+                run = started.json()["dungeon"]
+                dungeon_a = client.post(
+                    "/api/pyr/context",
+                    headers={"host": "127.0.0.1"},
+                    json={"client_id": "tab-a", "active_path": "dungeon.py"},
+                ).json()["context"]["dungeon_verdict"]
+                dungeon_b = client.post(
+                    "/api/pyr/context",
+                    headers={"host": "127.0.0.1"},
+                    json={"client_id": "tab-b", "active_path": "dungeon.py"},
+                ).json()["context"]["dungeon_verdict"]
+                self.assertNotEqual(dungeon_a["nonce"], dungeon_b["nonce"])
+                dungeon_bound = client.post(
+                    "/api/pyr/dungeon-submission",
+                    headers={"host": "127.0.0.1"},
+                    json={
+                        "nonce": dungeon_a["nonce"],
+                        "run_id": run["run_id"],
+                        "question_id": run["question"]["id"],
+                        "answer": "items = []",
+                    },
+                )
+                self.assertEqual(dungeon_bound.status_code, 200, dungeon_bound.text)
+            finally:
+                app_v2.WORKSPACE = original_workspace
+                app_v2.PROGRESS_PATH = original_progress
+                app_v2.DUNGEON_PATH = original_dungeon
+                app_v2.PYR_CONTEXT_CHALLENGE = original_context_challenge
+                app_v2.PYR_DUNGEON_CHALLENGE = original_dungeon_challenge
+                app_v2.PYR_CONTEXT_CHALLENGES.clear()
+                app_v2.PYR_DUNGEON_CHALLENGES.clear()
+
     def test_context_rejects_state_file_and_bounds_large_text(self):
         original_workspace = app_v2.WORKSPACE
         original_progress = app_v2.PROGRESS_PATH
