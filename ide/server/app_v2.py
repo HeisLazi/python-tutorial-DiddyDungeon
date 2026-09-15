@@ -408,6 +408,36 @@ def shell_argv(shell: str) -> list[str]:
     return [shell]
 
 
+def terminal_environment(role: str) -> dict[str, str]:
+    """Build a PTY environment that can reach the same state authority.
+
+    Terminals intentionally run in the player quest workspace so normal code
+    and Git commands stay local.  That cwd must not determine where state
+    commands import from or where they save: expose the platform package,
+    backend port and canonical/legacy diagnostics explicitly instead.
+    """
+
+    env = os.environ.copy()
+    env["TERM"] = "xterm-256color"
+    env["COLORTERM"] = "truecolor"
+    env["QUESTLAB_WORKSPACE"] = str(WORKSPACE)
+    env["QUESTLAB_REPO_ROOT"] = str(REPO_ROOT)
+    env["QUESTLAB_STATE_PATH"] = str(PROGRESS_PATH)
+    env["QUESTLAB_CANONICAL_STATE_PATH"] = str(PROGRESS_PATH)
+    env["QUESTLAB_LEGACY_STATE_PATH"] = str(legacy_progress_path())
+    env["QUESTLAB_BACKEND_PORT"] = os.getenv("QUESTLAB_BACKEND_PORT", "7331")
+    env["QUESTLAB_FRONTEND_PORT"] = os.getenv("QUESTLAB_FRONTEND_PORT", "5173")
+    env["QUESTLAB_TERMINAL_ROLE"] = role
+    env["QUESTLAB_PYTHON"] = sys.executable
+    env["PYTHONPATH"] = os.pathsep.join(
+        item for item in (str(REPO_ROOT), env.get("PYTHONPATH", "")) if item
+    )
+    env["PATH"] = os.pathsep.join(
+        item for item in (str(REPO_ROOT), env.get("PATH", "")) if item
+    )
+    return env
+
+
 def command_available(name: str) -> bool:
     return shutil.which(name) is not None
 
@@ -1024,11 +1054,7 @@ async def terminal(websocket: WebSocket, role: str):
 
     await websocket.accept()
     shell = resolve_shell()
-    env = os.environ.copy()
-    env["TERM"] = "xterm-256color"
-    env["COLORTERM"] = "truecolor"
-    env["QUESTLAB_WORKSPACE"] = str(WORKSPACE)
-    env["QUESTLAB_TERMINAL_ROLE"] = role
+    env = terminal_environment(role)
 
     try:
         pid, master_fd = pty.fork()
@@ -1118,6 +1144,14 @@ async def terminal(websocket: WebSocket, role: str):
         for task in (output_task, input_task):
             if not task.done():
                 task.cancel()
+        # Closing the master before waiting on the child unblocks any
+        # ``os.read`` already running in the output worker. This matters for
+        # browser/test clients that close immediately after the websocket
+        # handshake and prevents the PTY route from hanging its shutdown.
+        try:
+            os.close(master_fd)
+        except OSError:
+            pass
         if not child_exited(pid):
             try:
                 os.killpg(pid, signal.SIGTERM)
@@ -1137,7 +1171,3 @@ async def terminal(websocket: WebSocket, role: str):
                     await asyncio.wait_for(asyncio.to_thread(os.waitpid, pid, 0), timeout=1.5)
                 except (asyncio.TimeoutError, ChildProcessError):
                     pass
-        try:
-            os.close(master_fd)
-        except OSError:
-            pass

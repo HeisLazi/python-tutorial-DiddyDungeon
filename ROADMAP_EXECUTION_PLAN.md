@@ -1,0 +1,143 @@
+# Forge roadmap execution plan
+
+Status: approved defaults, execution in progress — 2026-09-15
+
+Claude Sonnet review was attempted from WSL but the configured CLI returned
+`Not logged in · Please run /login`. No external model review is represented as
+approval. This plan is the primary implementation/review record until a
+reviewer becomes available.
+
+## Non-negotiable invariants
+
+1. `LocalStateService` is the only progression writer. The backend anchors the
+   canonical path to `REPO_ROOT/progress.json`; a workspace `progress.json` is
+   legacy evidence and never a second save.
+2. Every meaningful mutation increments the canonical revision and appends a
+   bounded `state_events` record. React polls the cheap revision endpoint and
+   reloads the full projection only when it changes.
+3. Campaign keeps its collaborative Tutor Notebook (`tutor.py`). Practice is a
+   separate provider-assisted mode and cannot write Campaign, Dungeon, or
+   `tutor.py` state.
+4. Rewards, Impact, Resolve, HP, unlocks, mastery and combat outcomes come from
+   validated state-service results. React only renders them.
+5. PTY sessions are long-lived. Browser checks use keyboard/mouse/scroll/type
+   automation only; Playwright is prohibited.
+6. Hidden future questions/answers are never sent to the browser, Codex, or
+   provider context.
+
+## Dependency-ordered slices and gates
+
+### Slice 0 — baseline and authority (current)
+
+- Preserve `GAME_STATE_SNAPSHOT_2026-09-15.md` and the persistent issue log.
+- Add an explicit terminal-safe state command path and diagnostics so PYR never
+  infers storage from its cwd.
+- Add tests proving a direct workspace-file edit cannot change canonical
+  revision, state events, HUD projection or cloud sync payload.
+- Gate: backend/frontend suites green; canonical and workspace hashes are shown
+  separately; existing shell/AI PTYs remain connected.
+
+### Slice 1 — Campaign encounter completion
+
+- Final mob clear opens a boss gate, without pretending the boss was defeated.
+- Internal `record_boss_clear` accepts only bounded behaviour, explanation and
+  interview evidence IDs; the service derives +100 XP, Housebreaker, Clean
+  Clear eligibility and PYR evolution.
+- Quest Journal renders mob completion, boss requirements and later victory
+  projection without exposing future prompts.
+- Gate: state-service mutation tests, event/reward queue tests and K&M flow.
+
+### Slice 2 — boss interview and project progression
+
+- Add provider-bound boss challenge/verdict tokens, replay protection and
+  evidence-backed interview history.
+- Record boss clear only after required behaviour, explanation and interview
+  are all present; update long-term goals and the next-project chooser.
+- Gate: negative verdict/replay tests, Codex/Character/Journal live projection,
+  PTY survival.
+
+### Slice 3 — Codex library
+
+- Extend the canonical Codex schema with concept pages, definitions, generic
+  examples, player notes, encountered question types, mob observations,
+  attempts/results, weaknesses and interview/mastery history.
+- Add bounded note editing through a named state action; never accept arbitrary
+  JSON paths or provider-invented mastery.
+- Render a searchable book/page layout from the projection.
+- Gate: schema limits, sanitisation, no hidden answer leakage, K&M navigation
+  and note persistence.
+
+### Slice 4 — Homestead and economy polish
+
+- Keep purchases/equipment behind the state service and show coins immediately
+  from the same campaign revision.
+- Add canonical validated armour/trinket unlock records only when evidence
+  exists; do not infer legacy equipment.
+- Replace placeholder presentation with a stable scene, loadout summary and
+  purchase feedback that does not remount PTYs.
+- Gate: purchase/equip/insufficient-funds tests, live HUD/Homestead checks.
+
+### Slice 5 — Infinite Dungeon playable loop
+
+- Preserve fresh starter loadout, durable run checkpoint, blank editor per
+  question and reset-on-death semantics.
+- Add state-service-owned question issue, answer/verdict, room transitions,
+  rest/heal, market purchases, adaptive/custom mob generation from recorded
+  weakness evidence, progressive difficulty and bounded rewards.
+- Store run score, floor, room, completion/death summary and a local leaderboard
+  projection. No Campaign rewards are granted by Practice or unverified text.
+- Gate: restart/death/stale-question tests; K&M full run with typing; no PTY
+  reset; no future answer leakage.
+
+### Slice 6 — Practice mode history
+
+- Add independent practice sessions, concept selection, mixed question types,
+  optional AI help, attempts and validated history.
+- Explicitly reject Campaign/Dungeon reward, HP, Resolve, `tutor.py` and cloud
+  player-state mutations from Practice.
+- Gate: mode-boundary tests and K&M repeat-use flow.
+
+### Slice 7 — friend-ready local distribution
+
+- Fix launcher/runtime checkout drift (F-025) without silently killing current
+  PTYs; provide a clear intended-checkout launch command and health screen.
+- Finish local/offline sync conflict UX and account-scoped storage boundaries;
+  do not seed Supabase until provider-authenticated state acceptance passes.
+- Package a Windows desktop build/installer and a documented friend onboarding
+  path. Sharing is opt-in and exposes stats/progression, never code/private
+  notes.
+- Gate: two-device mailbox acceptance, clean install/launch, K&M smoke test.
+
+### Slice 8 — hosted social layer (last)
+
+- After authentication and sync gates: opt-in rivals, friend presence, shared
+  weekly raids and hosted leaderboard projections.
+- Keep server-side authorization and event validation; local browser state is
+  never trusted as a reward authority.
+- Gate: authenticated multi-user tests and explicit privacy review.
+
+## Per-slice review protocol
+
+1. Read the current issue log and relevant contract before editing.
+2. Add tests before or with the implementation.
+3. Run focused tests, then the full WSL backend/frontend suites and Windows
+   production build.
+4. Run a browser K&M checkpoint: click/scroll/type only, capture before/after
+   visible state, and assert shell/AI connection labels and process identity.
+5. Record failures and reviewer findings in `FORGE_ROADMAP_ISSUES_LOG.md`.
+6. Commit only semantic files (never user `progress.json` or root `tutor.py`),
+   request Claude/Z.ai review when authenticated, fix findings, rerun gates,
+   then push the green checkpoint.
+
+## Current risks
+
+- Local provider verdicts remain a trusted workstation boundary (F-001/F-009/
+  F-010); hosted release must add provider authentication and tab-scoped
+  challenge storage.
+- The visible long-lived port 5173 runtime is on a different checkout (F-025).
+  Verification uses an isolated current-branch runtime until the launcher is
+  corrected.
+- Existing legacy saves do not prove equipment, mastery or exact question
+  history. Reconciliation must continue to report unsupported fields rather
+  than invent them.
+

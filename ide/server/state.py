@@ -103,6 +103,7 @@ ACTION_DEFINITIONS: dict[str, ActionDefinition] = {
     "record_achievement": ActionDefinition(frozenset({SYSTEM_ACTOR}), internal=True),
     "record_battle_objective": ActionDefinition(frozenset({SYSTEM_ACTOR}), internal=True),
     "complete_mob": ActionDefinition(frozenset({SYSTEM_ACTOR}), internal=True),
+    "record_boss_clear": ActionDefinition(frozenset({SYSTEM_ACTOR}), internal=True),
     "record_battle_miss": ActionDefinition(frozenset({SYSTEM_ACTOR}), internal=True),
     "reconcile_legacy_progress": ActionDefinition(frozenset({SYSTEM_ACTOR}), internal=True),
     "dungeon_start_run": ActionDefinition(frozenset({"player"})),
@@ -196,6 +197,12 @@ MOB_REWARDS: tuple[tuple[int, int], ...] = (
     (40, 25),
     (45, 30),
     (50, 35),
+)
+
+BOSS_REQUIREMENTS: tuple[str, ...] = (
+    "required_behavior",
+    "explanation",
+    "interview",
 )
 
 SYNC_PLAYER_FIELDS = frozenset(
@@ -693,11 +700,21 @@ class LocalStateService:
         if index is None:
             index = next((i for i, item in enumerate(mobs) if item.get("status") not in {"defeated", "cleared"}), None)
         if index is None:
+            project_completed = project.get("completed") is True or project.get("boss_status") == "defeated"
+            boss_status = str(project.get("boss_status") or ("available" if not project_completed else "defeated"))
             return {
                 "project_id": self._project_id(project),
+                "project_name": str(project.get("name") or project.get("branch") or ""),
+                "project_progress": project.get("progress", 100),
+                "project_status": str(project.get("status") or "active"),
+                "project_complete": project_completed,
+                "mob_sequence_complete": True,
+                "boss": str(project.get("boss") or ""),
+                "boss_status": boss_status,
+                "boss_requirements": list(BOSS_REQUIREMENTS),
                 "mob_name": None,
                 "mob_index": None,
-                "status": "complete",
+                "status": "complete" if project_completed else "boss_available",
                 "resolve": 0,
                 "max_resolve": 0,
                 "completed_objectives": [],
@@ -742,6 +759,13 @@ class LocalStateService:
             attempts = 0
         return {
             "project_id": project_id,
+            "project_name": str(project.get("name") or project.get("branch") or ""),
+            "project_progress": project.get("progress", 0),
+            "project_status": str(project.get("status") or "active"),
+            "project_complete": False,
+            "mob_sequence_complete": False,
+            "boss": str(project.get("boss") or ""),
+            "boss_status": str(project.get("boss_status") or "locked"),
             "mob_name": mob_name,
             "mob_index": index,
             "status": str(mob.get("status") or "locked"),
@@ -1258,6 +1282,7 @@ class LocalStateService:
             "record_achievement": self._record_achievement,
             "record_battle_objective": self._record_battle_objective,
             "complete_mob": self._complete_mob,
+            "record_boss_clear": self._record_boss_clear,
             "record_battle_miss": self._record_battle_miss,
             "reconcile_legacy_progress": self._reconcile_legacy_progress,
             "dungeon_start_run": self._dungeon_start_run,
@@ -1635,6 +1660,14 @@ class LocalStateService:
         stats["mobs_defeated"] = self._counter(stats, "mobs_defeated") + 1
         cleared_count = sum(1 for candidate in mobs if candidate.get("status") in {"defeated", "cleared"})
         project["progress"] = round(cleared_count / max(1, len(mobs)) * 100)
+        boss_unlocked = next_mob is None
+        if boss_unlocked:
+            # A mob sequence ending is a gate, not a boss victory.  The
+            # integrated boss still needs its own verified behaviour,
+            # explanation and interview evidence before it can award boss XP.
+            project["progress"] = 100
+            project["mob_sequence_complete"] = True
+            project["boss_status"] = "available"
         for goal in (progress.get("goals") or {}).get("weekly", []):
             if isinstance(goal, dict) and goal.get("id") == "two-mobs":
                 target = max(1, self._counter(goal, "target"))
@@ -1658,6 +1691,11 @@ class LocalStateService:
             "mob_defeated": True,
             "mob_name": str(mob.get("name") or ""),
             "next_mob": next_mob,
+            "boss_unlocked": boss_unlocked,
+            "boss_name": str(project.get("boss") or "") if boss_unlocked else None,
+            "project_name": str(project.get("name") or "") if boss_unlocked else None,
+            "project_progress": project.get("progress", 0),
+            "boss_status": project.get("boss_status") if boss_unlocked else None,
             "reward_xp": reward_xp,
             "reward_coins": reward_coins,
             "level_before": reward["level_before"],
@@ -1758,6 +1796,178 @@ class LocalStateService:
         entry = self._upsert_codex_entry(progress, project, mob, question_type="completion", outcome="defeated", evidence_id=evidence_id, note=reason)
         entry["status"] = "defeated"
         return Mutation(True, finish, {"project_id": self._project_id(project), **finish, "codex_entry_id": entry["id"]})
+
+    def _record_boss_clear(self, payload: Mapping[str, Any], progress: dict[str, Any]) -> Mutation:
+        """Record a boss victory after trusted, evidence-backed validation.
+
+        The local provider bridge is still a trusted workstation boundary, so
+        this command is deliberately internal-only.  It accepts evidence IDs
+        and a bounded explanation, never caller-selected rewards, Impact or
+        level values.  A final mob clear only opens the boss gate; this command
+        is the sole path that can award the canonical boss reward.
+        """
+
+        data = self._payload(
+            payload,
+            {"evidence_id", "explanation_evidence_id", "interview_evidence_id", "reason"},
+            {"evidence_id", "explanation_evidence_id", "interview_evidence_id", "reason"},
+        )
+        evidence_id = self._text(data["evidence_id"], "evidence_id", max_length=MAX_IDENTIFIER_LENGTH, identifier=True)
+        explanation_evidence_id = self._text(
+            data["explanation_evidence_id"],
+            "explanation_evidence_id",
+            max_length=MAX_IDENTIFIER_LENGTH,
+            identifier=True,
+        )
+        interview_evidence_id = self._text(
+            data["interview_evidence_id"],
+            "interview_evidence_id",
+            max_length=MAX_IDENTIFIER_LENGTH,
+            identifier=True,
+        )
+        reason = self._text(data["reason"], "reason")
+
+        projects = progress.get("projects")
+        if not isinstance(projects, list):
+            raise StateCommandError("Existing state field projects is invalid", status_code=500)
+        project = next((item for item in projects if isinstance(item, dict) and item.get("status") == "active"), None)
+        if project is None:
+            raise StateCommandError("No active project is available", status_code=409)
+        mobs = project.get("mobs")
+        if not isinstance(mobs, list) or not all(isinstance(item, dict) for item in mobs):
+            raise StateCommandError("Existing active project mobs are invalid", status_code=500)
+        if any(item.get("status") not in {"defeated", "cleared"} for item in mobs):
+            raise StateCommandError("The active project still has unresolved mobs", status_code=409)
+        boss_name = self._text(project.get("boss") or "", "boss_name", max_length=MAX_IDENTIFIER_LENGTH)
+        project_name = self._text(project.get("name") or project.get("branch") or "", "project_name")
+        if project.get("boss_status") == "defeated" or project.get("completed") is True:
+            return Mutation(
+                False,
+                {
+                    "already_cleared": True,
+                    "boss_name": boss_name,
+                    "project_name": project_name,
+                },
+            )
+        if project.get("boss_status") != "available":
+            raise StateCommandError("The project boss is not unlocked yet", status_code=409)
+
+        player = self._dict(progress, "player")
+        reward = self._grant_reward(player, 100, 0)
+        stats = self._dict(progress, "stats")
+        stats["projects_cleared"] = self._counter(stats, "projects_cleared") + 1
+        stats["bosses_defeated"] = self._counter(stats, "bosses_defeated") + 1
+        project["progress"] = 100
+        project["completed"] = True
+        project["boss_status"] = "defeated"
+        completed_at = _utc_now()
+        project["completed_at"] = completed_at
+        project["boss_clear"] = {
+            "evidence_id": evidence_id,
+            "explanation_evidence_id": explanation_evidence_id,
+            "interview_evidence_id": interview_evidence_id,
+            "recorded_at": completed_at,
+        }
+
+        clean_clear = bool(project.get("clean_clear_eligible"))
+        assist = progress.get("assist")
+        if isinstance(assist, dict) and str(assist.get("mode") or "").casefold() in {"reference", "guided", "assisted"}:
+            clean_clear = False
+        if any(str(item.get("assist") or "clean").casefold() in {"reference", "guided", "assisted"} for item in mobs):
+            clean_clear = False
+        if clean_clear:
+            project["clean_clear"] = True
+            stats["clean_clears"] = self._counter(stats, "clean_clears") + 1
+
+        unlocked_achievements: list[str] = []
+        achievements = progress.get("achievements")
+        if isinstance(achievements, list):
+            for achievement_name in ("Housebreaker", "Clean Clear") if clean_clear else ("Housebreaker",):
+                match = next(
+                    (
+                        item
+                        for item in achievements
+                        if isinstance(item, dict) and item.get("name") == achievement_name
+                    ),
+                    None,
+                )
+                if match is not None and match.get("unlocked") is not True:
+                    match["unlocked"] = True
+                    unlocked_achievements.append(achievement_name)
+
+        goals = progress.get("goals")
+        if isinstance(goals, dict):
+            for goal in goals.get("long_term", []):
+                if isinstance(goal, dict) and goal.get("id") == "first-boss":
+                    goal["done"] = True
+
+        companion = progress.get("companion")
+        companion_form_before = None
+        companion_form_after = None
+        companion_level_before = None
+        companion_level_after = None
+        if isinstance(companion, dict):
+            companion_form_before = str(companion.get("form") or "")
+            companion_level_before = self._counter(companion, "level")
+            companion["bond"] = self._counter(companion, "bond") + 1
+            if companion_form_before == "Tiny Code-Flame":
+                companion["form"] = "Ember Sprite"
+                companion["level"] = max(2, companion_level_before)
+                companion["next_form"] = "Runic Familiar"
+                companion["next_form_requirement"] = "Earn 3 Mastery Shields"
+            companion_form_after = str(companion.get("form") or companion_form_before)
+            companion_level_after = self._counter(companion, "level")
+
+        return Mutation(
+            True,
+            {
+                "boss_defeated": True,
+                "project_completed": True,
+                "boss_name": boss_name,
+                "project_name": project_name,
+                "reward_xp": 100,
+                "reward_coins": 0,
+                "boss_reward_xp": 100,
+                "boss_reward_coins": 0,
+                "level_before": reward["level_before"],
+                "level_after": reward["level_after"],
+                "achievement_unlocked": unlocked_achievements[0] if unlocked_achievements else None,
+                "achievements_unlocked": unlocked_achievements,
+                "clean_clear": clean_clear,
+                "companion_form_before": companion_form_before,
+                "companion_form_after": companion_form_after,
+                "companion_level_before": companion_level_before,
+                "companion_level_after": companion_level_after,
+                "evidence_id": evidence_id,
+                "explanation_evidence_id": explanation_evidence_id,
+                "interview_evidence_id": interview_evidence_id,
+                "reason": reason,
+            },
+            {
+                "project_id": self._project_id(project),
+                "project_name": project_name,
+                "boss_name": boss_name,
+                "boss_defeated": True,
+                "project_completed": True,
+                "reward_xp": 100,
+                "reward_coins": 0,
+                "boss_reward_xp": 100,
+                "boss_reward_coins": 0,
+                "level_before": reward["level_before"],
+                "level_after": reward["level_after"],
+                "achievement_unlocked": unlocked_achievements[0] if unlocked_achievements else None,
+                "achievements_unlocked": unlocked_achievements,
+                "clean_clear": clean_clear,
+                "companion_form_before": companion_form_before,
+                "companion_form_after": companion_form_after,
+                "companion_level_before": companion_level_before,
+                "companion_level_after": companion_level_after,
+                "evidence_id": evidence_id,
+                "explanation_evidence_id": explanation_evidence_id,
+                "interview_evidence_id": interview_evidence_id,
+                "reason": reason,
+            },
+        )
 
     def _record_battle_miss(self, payload: Mapping[str, Any], progress: dict[str, Any]) -> Mutation:
         data = self._payload(

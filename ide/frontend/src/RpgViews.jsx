@@ -301,39 +301,72 @@ function QuestJournal({ progress, revision, encounter, submitBattle, busy }) {
   const resolve = encounter?.resolve ?? currentMob?.resolve ?? currentMob?.max_resolve ?? 0
   const maxResolve = encounter?.max_resolve ?? currentMob?.max_resolve ?? resolve
   const availableObjectives = encounter?.available_objectives || []
+  const bossStatus = encounter?.boss_status || activeProject.boss_status || 'locked'
+  const bossUnlocked = encounter?.status === 'boss_available' || bossStatus === 'available'
+  const projectComplete = encounter?.status === 'complete' || encounter?.project_complete === true || activeProject.completed === true || bossStatus === 'defeated'
+  const bossRequirements = encounter?.boss_requirements || ['required_behavior', 'explanation', 'interview']
+  const codexEntries = progress.codex?.encounters || []
 
   return (
     <div className="game-screen-scroll" data-testid="quest-journal" data-campaign-revision={revision}>
       <div className="screen-hero quest-hero">
         <div>
-          <span className="screen-kicker">CURRENT CHAPTER</span>
+          <span className="screen-kicker">{projectComplete ? 'CHAPTER COMPLETE' : bossUnlocked ? 'BOSS GATE' : 'CURRENT CHAPTER'}</span>
           <h2>{activeProject.name || 'Choose a quest'}</h2>
-          <p>{progress.current_quest}</p>
+          <p>{projectComplete ? 'The integrated challenge is recorded. Your verified campaign evidence is preserved.' : bossUnlocked ? 'Every mob is cleared. Complete the integrated boss validation when your implementation and understanding are ready.' : progress.current_quest}</p>
         </div>
         <div className="boss-seal">
           <small>BOSS</small>
-          <strong>{activeProject.boss || 'Unknown'}</strong>
-          <span>{activeProject.clean_clear_eligible ? 'Clean Clear eligible' : 'Assisted clear'}</span>
+          <strong>{projectComplete ? 'DEFEATED' : bossUnlocked ? 'UNLOCKED' : activeProject.boss || 'Unknown'}</strong>
+          <span>{projectComplete ? activeProject.boss || 'Verified boss clear' : bossUnlocked ? activeProject.boss || 'Integrated challenge' : activeProject.clean_clear_eligible ? 'Clean Clear eligible' : 'Assisted clear'}</span>
         </div>
       </div>
 
       <div className="screen-grid two">
         <section className="game-card">
-          <div className="card-heading"><span>MAIN QUEST</span><b>{activeProject.progress ?? 0}%</b></div>
-          <h3>{currentMob ? currentMob.name : `Face ${activeProject.boss || 'the boss'}`}</h3>
-          <p>{currentMob?.concept || 'Complete the remaining chapter objectives.'}</p>
-          <div className="encounter-resolve-panel" data-testid="encounter-resolve">
-            <div className="card-heading"><span>ENEMY RESOLVE</span><b>{resolve}/{maxResolve}</b></div>
-            <ProgressBar value={resolve} max={maxResolve} label="Resolve" className="resolve" />
-            {availableObjectives.length > 0 && (
-              <div className="impact-objectives" aria-label="Available verified objectives">
-                {availableObjectives.map((objective) => (
-                  <span key={objective.id}>{objective.question_type} · {objective.impact} Impact</span>
+          <div className="card-heading"><span>{projectComplete ? 'CAMPAIGN COMPLETE' : bossUnlocked ? 'MOBS CLEARED' : 'MAIN QUEST'}</span><b>{activeProject.progress ?? encounter?.project_progress ?? 0}%</b></div>
+          {projectComplete ? (
+            <div className="campaign-victory" data-testid="campaign-complete">
+              <span className="screen-kicker">BOSS CLEAR</span>
+              <h3>{activeProject.boss || encounter?.boss || 'Boss'} defeated</h3>
+              <p>{activeProject.name || encounter?.project_name || 'This project'} is complete. The state service recorded the validated behaviour, explanation and interview evidence.</p>
+              <div className="victory-stats">
+                <span>MOBS {mobs.filter((mob) => isMobDefeated(mob.status)).length}/{mobs.length}</span>
+                <span>CODEX {codexEntries.length}</span>
+                <span>PROJECT 100%</span>
+              </div>
+              <small>Choose the next Campaign project when that slice is enabled. Practice and Infinite Dungeon remain independent modes.</small>
+            </div>
+          ) : bossUnlocked ? (
+            <div className="boss-gate" data-testid="boss-gate">
+              <span className="screen-kicker">INTEGRATED CHALLENGE UNLOCKED</span>
+              <h3>{activeProject.boss || encounter?.boss || 'Project boss'}</h3>
+              <p>All project mobs are defeated. PYR must validate the finished behaviour, your explanation and a short interview before the boss reward is recorded.</p>
+              <div className="boss-requirements" aria-label="Boss requirements">
+                {bossRequirements.map((requirement) => (
+                  <span key={requirement}>{String(requirement).replaceAll('_', ' ')}</span>
                 ))}
               </div>
-            )}
-          </div>
-          <BattleSubmission availableObjectives={availableObjectives} onSubmit={submitBattle} busy={busy} />
+              <small>No future questions or answers are revealed here; the provider supplies the next bounded interview challenge.</small>
+            </div>
+          ) : (
+            <>
+              <h3>{currentMob ? currentMob.name : `Face ${activeProject.boss || 'the boss'}`}</h3>
+              <p>{currentMob?.concept || 'Complete the remaining chapter objectives.'}</p>
+              <div className="encounter-resolve-panel" data-testid="encounter-resolve">
+                <div className="card-heading"><span>ENEMY RESOLVE</span><b>{resolve}/{maxResolve}</b></div>
+                <ProgressBar value={resolve} max={maxResolve} label="Resolve" className="resolve" />
+                {availableObjectives.length > 0 && (
+                  <div className="impact-objectives" aria-label="Available verified objectives">
+                    {availableObjectives.map((objective) => (
+                      <span key={objective.id}>{objective.question_type} · {objective.impact} Impact</span>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <BattleSubmission availableObjectives={availableObjectives} onSubmit={submitBattle} busy={busy} />
+            </>
+          )}
           <div className="mob-path">
             {mobs.map((mob, index) => (
               <div key={mob.name} className={`mob-node ${mob.status} ${index === currentIndex ? 'current' : ''}`}>

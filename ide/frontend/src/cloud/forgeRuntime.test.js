@@ -103,6 +103,35 @@ test('Dungeon checkpoints and Practice remain separate learning modes', () => {
   assert.match(app, /\/api\/tutor\/format/)
 })
 
+test('Campaign completion keeps the boss gate and state-service boundary explicit', () => {
+  const app = source('../AppV2.jsx')
+  const views = source('../RpgViews.jsx')
+
+  assert.match(app, /event\.boss_unlocked/)
+  assert.match(app, /BOSS GATE UNLOCKED/)
+  assert.match(app, /action === 'record_boss_clear'/)
+  assert.match(app, /BOSS DEFEATED/)
+  assert.match(app, /CAMPAIGN COMPLETE/)
+  assert.match(views, /data-testid="boss-gate"/)
+  assert.match(views, /data-testid="campaign-complete"/)
+  assert.match(views, /required_behavior.*explanation.*interview/)
+  assert.match(views, /No future questions or answers are revealed here/)
+  assert.doesNotMatch(views, /boss.*reward.*\+100/)
+})
+
+test('PTY state commands inherit the canonical gateway instead of workspace progress.json', () => {
+  const app = source('../../../server/app_v2.py')
+  const cli = source('../../../state_cli.py')
+
+  assert.match(app, /def terminal_environment\(role: str\)/)
+  assert.match(app, /QUESTLAB_CANONICAL_STATE_PATH/)
+  assert.match(app, /env\["PYTHONPATH"\]/)
+  assert.match(app, /str\(REPO_ROOT\)/)
+  assert.match(app, /QUESTLAB_PYTHON.*sys\.executable/)
+  assert.match(cli, /subparsers\.add_parser\("authority"/)
+  assert.match(cli, /subparsers\.add_parser\("campaign"/)
+})
+
 test('top HUD stat pills style only direct stats and reset nested SVG content', () => {
   const styles = source('../styles.css')
   const v2 = source('../v2.css')

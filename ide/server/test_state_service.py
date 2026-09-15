@@ -330,6 +330,75 @@ class StateServiceBehaviorTests(unittest.TestCase):
         self.assertEqual(state["codex"]["encounters"][0]["attempts"], 2)
         self.assertTrue(next(item for item in state["achievements"] if item["name"] == "First Blood")["unlocked"])
 
+    def test_final_mob_opens_boss_gate_and_verified_boss_clear_awards_canonical_progression(self):
+        service, path = self.make_service()
+        state = self.read(path)
+        project = state["projects"][0]
+        project.update({"boss": "The House", "clean_clear_eligible": True})
+        project["mobs"] = [{"name": "The Empty Table", "status": "available", "concept": "Variables"}]
+        state["achievements"].extend(
+            [
+                {"name": "Housebreaker", "unlocked": False},
+                {"name": "Clean Clear", "unlocked": False},
+            ]
+        )
+        state["goals"] = {"long_term": [{"id": "first-boss", "done": False}]}
+        state["companion"] = {
+            "name": "PYR",
+            "form": "Tiny Code-Flame",
+            "level": 1,
+            "bond": 0,
+            "next_form": "Ember Sprite",
+            "next_form_requirement": "Defeat your first project boss",
+        }
+        path.write_text(json.dumps(state), encoding="utf-8")
+
+        service.apply_internal(
+            "record_battle_objective",
+            {"objective_id": "table_setup", "evidence_id": "boss-mob-1", "reason": "Explained the table state"},
+        )
+        gate = service.apply_internal(
+            "record_battle_objective",
+            {"objective_id": "state_explanation", "evidence_id": "boss-mob-2", "reason": "Explained the state boundary"},
+        )
+        self.assertTrue(gate["result"]["mob_defeated"])
+        self.assertTrue(gate["result"]["boss_unlocked"])
+        self.assertEqual(gate["result"]["boss_status"], "available")
+        self.assertEqual(service.encounter_projection(self.read(path))["status"], "boss_available")
+
+        cleared = service.apply_internal(
+            "record_boss_clear",
+            {
+                "evidence_id": "boss-behavior-1",
+                "explanation_evidence_id": "boss-explain-1",
+                "interview_evidence_id": "boss-interview-1",
+                "reason": "Required behavior works and the player passed the short interview",
+            },
+        )
+        self.assertTrue(cleared["result"]["boss_defeated"])
+        self.assertTrue(cleared["result"]["project_completed"])
+        self.assertEqual(cleared["result"]["reward_xp"], 100)
+        self.assertEqual(cleared["result"]["reward_coins"], 0)
+        after = self.read(path)
+        self.assertEqual(after["player"]["xp"], 35)
+        self.assertEqual(after["player"]["lifetime_xp"], 150)
+        self.assertEqual(after["player"]["coins"], 60)
+        self.assertEqual(after["stats"]["mobs_defeated"], 1)
+        self.assertEqual(after["stats"]["projects_cleared"], 1)
+        self.assertEqual(after["stats"]["bosses_defeated"], 1)
+        self.assertEqual(after["stats"]["clean_clears"], 1)
+        self.assertTrue(after["projects"][0]["completed"])
+        self.assertEqual(after["projects"][0]["boss_status"], "defeated")
+        self.assertTrue(next(item for item in after["achievements"] if item["name"] == "Housebreaker")["unlocked"])
+        self.assertTrue(next(item for item in after["achievements"] if item["name"] == "Clean Clear")["unlocked"])
+        self.assertTrue(after["goals"]["long_term"][0]["done"])
+        self.assertEqual(after["companion"]["form"], "Ember Sprite")
+        self.assertEqual(after["companion"]["level"], 2)
+        self.assertEqual(after["companion"]["next_form"], "Runic Familiar")
+        self.assertEqual(after["state_events"][-1]["action"], "record_boss_clear")
+        self.assertTrue(after["state_events"][-1]["project_completed"])
+        self.assertEqual(service.encounter_projection(after)["status"], "complete")
+
     def test_approved_legacy_reconciliation_restores_only_reviewed_fields_and_is_idempotent(self):
         service, path = self.make_service()
         state = self.read(path)
@@ -602,6 +671,25 @@ class StateGatewayHttpTests(unittest.TestCase):
                 "action": "reconcile_legacy_progress",
                 "actor": "pyr",
                 "payload": {},
+            },
+        )
+        self.assertEqual(response.status_code, 403)
+
+    def test_boss_clear_is_internal_only_over_http(self):
+        self.with_temp_progress()
+        client = self.client()
+        response = client.post(
+            "/api/state/apply",
+            headers={"host": "127.0.0.1"},
+            json={
+                "action": "record_boss_clear",
+                "actor": "pyr",
+                "payload": {
+                    "evidence_id": "boss-behavior",
+                    "explanation_evidence_id": "boss-explanation",
+                    "interview_evidence_id": "boss-interview",
+                    "reason": "validated",
+                },
             },
         )
         self.assertEqual(response.status_code, 403)

@@ -463,6 +463,30 @@ def format_file(payload: FormatRequest):
     }
 
 
+def terminal_environment(role: str = "shell") -> dict[str, str]:
+    """Expose the canonical state gateway to a PTY without changing its cwd."""
+
+    env = os.environ.copy()
+    env["TERM"] = "xterm-256color"
+    env["COLORTERM"] = "truecolor"
+    env["QUESTLAB_WORKSPACE"] = str(WORKSPACE)
+    env["QUESTLAB_REPO_ROOT"] = str(REPO_ROOT)
+    env["QUESTLAB_STATE_PATH"] = str(PROGRESS_PATH)
+    env["QUESTLAB_CANONICAL_STATE_PATH"] = str(PROGRESS_PATH)
+    env["QUESTLAB_LEGACY_STATE_PATH"] = str(legacy_progress_path())
+    env["QUESTLAB_BACKEND_PORT"] = os.getenv("QUESTLAB_BACKEND_PORT", "7331")
+    env["QUESTLAB_FRONTEND_PORT"] = os.getenv("QUESTLAB_FRONTEND_PORT", "5173")
+    env["QUESTLAB_TERMINAL_ROLE"] = role
+    env["QUESTLAB_PYTHON"] = sys.executable
+    env["PYTHONPATH"] = os.pathsep.join(
+        item for item in (str(REPO_ROOT), env.get("PYTHONPATH", "")) if item
+    )
+    env["PATH"] = os.pathsep.join(
+        item for item in (str(REPO_ROOT), env.get("PATH", "")) if item
+    )
+    return env
+
+
 @app.websocket("/ws/terminal")
 async def terminal(websocket: WebSocket):
     if not is_allowed_origin(websocket.headers.get("origin")):
@@ -470,10 +494,7 @@ async def terminal(websocket: WebSocket):
         return
     await websocket.accept()
     shell = os.getenv("SHELL", "/bin/bash")
-    env = os.environ.copy()
-    env["TERM"] = "xterm-256color"
-    env["COLORTERM"] = "truecolor"
-    env["QUESTLAB_WORKSPACE"] = str(WORKSPACE)
+    env = terminal_environment()
 
     try:
         pid, master_fd = pty.fork()
@@ -567,6 +588,14 @@ async def terminal(websocket: WebSocket):
             if not task.done():
                 task.cancel()
 
+        # Unblock an output worker that is still waiting in os.read before
+        # waiting for the child process. Immediate websocket closes should not
+        # leave the server route hanging during PTY cleanup.
+        try:
+            os.close(master_fd)
+        except OSError:
+            pass
+
         if not child_exited(pid):
             try:
                 os.killpg(pid, signal.SIGTERM)
@@ -579,7 +608,3 @@ async def terminal(websocket: WebSocket):
                 await asyncio.to_thread(os.waitpid, pid, 0)
             except ChildProcessError:
                 pass
-        try:
-            os.close(master_fd)
-        except OSError:
-            pass

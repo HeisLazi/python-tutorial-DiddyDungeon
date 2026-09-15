@@ -38,6 +38,10 @@ The current working runtime is valuable. Preserve it.
 - use named, trust-scoped state commands through `POST /api/state/apply` (or
   the localhost `python -m ide.state_cli` bridge); never add arbitrary JSON
   patching or direct snapshot writes.
+- PTYs intentionally keep the quest workspace as their coding cwd, but the
+  launcher must inject the platform package path, backend port and canonical
+  state path. Use the `questlab-state` wrapper from a terminal; a workspace
+  `progress.json` is legacy evidence and direct edits do not update Forge.
 
 ## Working style
 

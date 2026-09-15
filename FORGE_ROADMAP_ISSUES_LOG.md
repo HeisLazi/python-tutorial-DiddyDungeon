@@ -64,6 +64,22 @@ player-facing mode boundaries, and failure behavior.
 | F-023 | P3 | Notebook write boundary | `tutor.py` could be reached through generic file routes and bypass the controlled teaching boundary. | Fixed: the Campaign Tutor Notebook uses the dedicated `/api/tutor` surface; direct file read/write/format routes reject `tutor.py`, while Practice remains a separate no-file mode. |
 | F-024 | P3 | PTY protocol/lifecycle | Unknown JSON envelopes could be typed into the shell, and closing the PTY master before reaping made descriptor reuse possible. | Fixed: both terminal bridges ignore unknown control envelopes and reap the child before closing the master descriptor. |
 | F-025 | P2 | Runtime checkout drift | The visible Forge on port 5173 was serving `/home/lazi/projects/python-tutorial-DiddyDungeon` on `feature/quest-lab-ide`, while this work was being developed in the `feature/cloud-sync-desktop` checkout. That made newer Dungeon/Practice/sync changes appear missing and reintroduced the old broad top-stat selector. | Open until the launcher points at the intended checkout. The active runtime's frontend-only CSS/icon polish was patched in place without restarting its backend or either PTY; the canonical branch remains separately verified on port 5174. |
+| F-026 | P2 | Campaign completion authority | Clearing the final mob previously left the project without a visible boss gate, and there was no state-service command that could record the required integrated behaviour, explanation and interview before boss rewards. | Fixed in the current slice: final mob clear opens `boss_status=available`; internal `record_boss_clear` derives the documented +100 XP, project/boss counters, achievements and companion evolution from bounded evidence IDs. The action remains internal until provider-authenticated boss adjudication is added. |
+| F-027 | P2 | PTY state routing | PTYs run in the quest workspace, so `python -m ide.state_cli` could fail to import and raw `progress.json` edits could silently land in the non-authoritative workspace copy without changing the live HUD or revision. | Fixed for the supported command path: PTY environments now expose the repo package, backend port, canonical/legacy paths and a `questlab-state` wrapper. Direct workspace-file edits remain intentionally non-authoritative and are covered by tests; PYR must use named gateway commands. |
+
+### Full-roadmap execution review — 2026-09-15
+
+The approved defaults are recorded in `ROADMAP_EXECUTION_PLAN.md`: boss
+validation requires behaviour/explanation/interview evidence; Dungeon is
+local-first before hosted leaderboard transport; friend sharing is opt-in and
+does not expose code/private notes; AI custom mobs use recorded weakness
+evidence and state-service validation; Campaign Tutor and Practice remain
+separate; current PTYs are not reset during development.
+
+Claude Sonnet was attempted as the chief reviewer from WSL, but its configured
+CLI returned `Not logged in · Please run /login` even after the user reported a
+separate Claude login. No Claude approval is claimed. The primary agent is the
+fallback reviewer until a successful read-only review is available.
 
 ### Dungeon foundation verification
 

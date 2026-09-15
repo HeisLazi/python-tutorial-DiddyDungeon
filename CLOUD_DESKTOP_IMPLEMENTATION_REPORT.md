@@ -607,3 +607,38 @@ left alone. A fresh port-5174 tab served this branch and showed the expected
 monochrome SVG stat icons and Campaign Tutor destination. The launcher still
 needs to target this checkout before the new branch features will be visible at
 the user's usual port.
+
+### Roadmap execution baseline and authority routing — 2026-09-15
+
+`GAME_STATE_SNAPSHOT_2026-09-15.md` and `ROADMAP_EXECUTION_PLAN.md` are the
+persistent baseline and dependency-ordered delivery plan for the remaining
+Campaign, Codex, Homestead, Dungeon, Practice, distribution and friend
+features. The plan was approved with these defaults: boss XP requires separate
+behaviour/explanation/interview evidence; Dungeon is local-first; sharing is
+opt-in and excludes code/private notes; AI custom encounters must be grounded
+in recorded weakness evidence; Campaign Tutor and Practice remain separate;
+the current PTYs are not reset.
+
+The first completion slice is now implemented in the worktree. A final mob
+clear sets `mob_sequence_complete` and `boss_status=available`, increments only
+the canonical mob reward, and emits a `BOSS GATE UNLOCKED` event. Trusted game
+code may then call the internal `record_boss_clear` action with bounded
+behaviour, explanation and interview evidence IDs. The service derives the
+documented +100 XP boss reward, project/boss counters, Housebreaker/Clean Clear
+when justified, the first-boss long-term goal and Tiny Code-Flame → Ember
+Sprite evolution. A mob clear never silently counts as a boss victory.
+
+The PTY routing fix is also in the worktree. Both terminal bridges now inject
+the repo package path, backend port, canonical state path and explicit legacy
+path diagnostics. The `questlab-state` wrapper and read-only `authority`/
+`campaign` CLI commands work from the quest workspace. Raw workspace
+`progress.json` edits remain intentionally non-authoritative: they cannot bump
+the canonical revision, create state events, update the HUD, or enter cloud
+sync. PYR must use named state-service commands.
+
+Focused verification for this slice: 38 WSL backend tests and 26 frontend
+source tests pass. The full WSL discovery run currently reports 43 tests with a
+flaky PTY-origin test cancellation under Python 3.14; it is being isolated and
+must be green before this checkpoint is committed. Windows Vite/K&M gates are
+still pending for the new slice. Claude Sonnet review remains unavailable from
+WSL until its CLI is authenticated; no external approval is claimed.

@@ -45,6 +45,18 @@ class StateCliTests(unittest.TestCase):
         self.assertEqual(state_cli.main(["--backend-port", "7444", "legacy-report"]), 0)
         get.assert_called_once_with(7444, "/api/state/legacy")
 
+    @patch("ide.state_cli._get", return_value=0)
+    def test_authority_and_campaign_commands_are_read_only_backend_projections(self, get):
+        self.assertEqual(state_cli.main(["--backend-port", "7444", "authority"]), 0)
+        self.assertEqual(state_cli.main(["--backend-port", "7444", "campaign"]), 0)
+        self.assertEqual(
+            get.call_args_list,
+            [
+                ((7444, "/api/state/revision"), {}),
+                ((7444, "/api/campaign"), {}),
+            ],
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

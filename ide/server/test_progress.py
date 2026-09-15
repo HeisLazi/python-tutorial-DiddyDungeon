@@ -40,6 +40,33 @@ class ProgressRevisionTests(unittest.TestCase):
             )
             self.assertEqual(response.status_code, 403)
 
+    def test_terminal_environment_points_cli_at_repo_state_not_workspace_cwd(self):
+        original_root = app_v2.REPO_ROOT
+        original_workspace = app_v2.WORKSPACE
+        original_progress = app_v2.PROGRESS_PATH
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory) / "platform"
+            workspace = Path(directory) / "quest"
+            root.mkdir()
+            workspace.mkdir()
+            canonical = root / "progress.json"
+            app_v2.REPO_ROOT = root
+            app_v2.WORKSPACE = workspace
+            app_v2.PROGRESS_PATH = canonical
+            try:
+                environment = app_v2.terminal_environment("ai")
+            finally:
+                app_v2.REPO_ROOT = original_root
+                app_v2.WORKSPACE = original_workspace
+                app_v2.PROGRESS_PATH = original_progress
+
+        self.assertEqual(environment["QUESTLAB_CANONICAL_STATE_PATH"], str(canonical))
+        self.assertEqual(environment["QUESTLAB_STATE_PATH"], str(canonical))
+        self.assertEqual(environment["QUESTLAB_LEGACY_STATE_PATH"], str(workspace / "progress.json"))
+        self.assertEqual(environment["QUESTLAB_TERMINAL_ROLE"], "ai")
+        self.assertIn(str(root), environment["PYTHONPATH"].split(":"))
+        self.assertIn(str(root), environment["PATH"].split(":"))
+
 
 if __name__ == "__main__":
     unittest.main()

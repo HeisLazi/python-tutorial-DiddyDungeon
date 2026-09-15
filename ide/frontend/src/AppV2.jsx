@@ -364,6 +364,41 @@ function AppV2() {
             detail: 'Unlocked by the verified clear',
           })
         }
+        if (event.boss_unlocked) {
+          notifications.push({
+            id: `${event.id}:boss-gate`,
+            kind: 'unlock',
+            title: 'BOSS GATE UNLOCKED',
+            body: event.boss_name || 'Integrated project challenge',
+            detail: 'All mobs cleared · behaviour, explanation and interview remain',
+          })
+        }
+      }
+    } else if (action === 'record_boss_clear' && event.boss_defeated) {
+      notifications.push({
+        id: `${event.id}:boss`,
+        kind: 'defeat',
+        title: 'BOSS DEFEATED',
+        body: event.boss_name || 'Project boss',
+        detail: `+${Number(event.boss_reward_xp ?? event.reward_xp ?? 100)} XP · ${event.project_name || 'Project complete'}`,
+      })
+      if (event.project_completed) {
+        notifications.push({
+          id: `${event.id}:complete`,
+          kind: 'unlock',
+          title: 'CAMPAIGN COMPLETE',
+          body: event.project_name || 'Project complete',
+          detail: 'Verified integrated challenge recorded; choose the next project when ready',
+        })
+      }
+      if (event.companion_form_before && event.companion_form_after && event.companion_form_before !== event.companion_form_after) {
+        notifications.push({
+          id: `${event.id}:companion`,
+          kind: 'mastery',
+          title: 'COMPANION EVOLVED',
+          body: event.companion_form_after,
+          detail: `${event.companion_form_before} · first boss clear`,
+        })
       }
     } else if (action === 'award_learning_reward' && (xp > 0 || coins > 0)) {
       notifications.push({
@@ -489,15 +524,20 @@ function AppV2() {
         detail: 'Validated progression milestone',
       })
     }
-    if (event.achievement_unlocked) {
+    const unlockedAchievements = Array.isArray(event.achievements_unlocked) && event.achievements_unlocked.length
+      ? event.achievements_unlocked
+      : event.achievement_unlocked
+        ? [event.achievement_unlocked]
+        : []
+    unlockedAchievements.forEach((achievement, index) => {
       notifications.push({
-        id: `${event.id}:achievement-extra`,
+        id: `${event.id}:achievement-extra:${index}`,
         kind: 'achievement',
         title: 'ACHIEVEMENT UNLOCKED',
-        body: event.achievement_unlocked,
-        detail: 'First verified encounter clear',
+        body: achievement,
+        detail: event.action === 'record_boss_clear' ? 'Verified boss milestone' : 'First verified encounter clear',
       })
-    }
+    })
     const mastery = event.mastery || event.mastery_shield || event.shield
     if (mastery && typeof mastery === 'object' && (mastery.tier || mastery.shield || mastery.gained)) {
       notifications.push({

@@ -130,16 +130,26 @@ Canonical combat details live in `COMBAT_SYSTEM.md`.
    restart. `dungeon.py` is a controlled projection; internal question rotation
    blanks it and recorded death clears the run. The Dungeon and Practice UI
    surfaces are starter-only at this boundary.
-4. Persistent Resolve / armor calculation / HP / combat log.
-5. Teach Me / Quick Refresher / Test Me encounter entry.
-6. **Partial:** Living Codex records now retain bounded encounter attempts,
+4. **Campaign completion gate implemented:** clearing the final mob marks the
+   mob sequence complete and exposes a boss gate. Trusted game code can record
+   a boss clear only with separate behaviour, explanation and interview
+   evidence IDs; the service derives the +100 XP reward, counters, achievements
+   and first-boss companion evolution. The UI never treats a mob clear as a
+   boss victory or reveals future interview prompts.
+5. **PTY state routing hardened:** terminal environments expose the canonical
+   repo package/path and `questlab-state` wrapper while retaining the quest
+   workspace cwd. Raw workspace `progress.json` edits remain legacy and
+   non-authoritative.
+6. Persistent Resolve / armor calculation / HP / combat log.
+7. Teach Me / Quick Refresher / Test Me encounter entry.
+8. **Partial:** Living Codex records now retain bounded encounter attempts,
    question types and verified/incorrect results from the challenged verdict
    path. Weakness tags and interview history still require their own validated
    Teach Me / Test Me mutation flow.
-7. Dungeon question generation, rest/market rooms, score and run completion.
-8. Independent Practice history and validated learning evidence.
-9. Boss phase presentation and trinket triggers.
-10. Later: shared weekly raid transport/state and party objectives.
+9. Dungeon question generation, rest/market rooms, score and run completion.
+10. Independent Practice history and validated learning evidence.
+11. Boss phase presentation and trinket triggers.
+12. Later: shared weekly raid transport/state and party objectives.
 
 ## PC test procedure
 

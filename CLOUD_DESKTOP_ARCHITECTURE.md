@@ -102,8 +102,13 @@ Trust levels are deliberately separate:
 Every changed command loads the latest cache under `PROGRESS_LOCK`, validates
 the command, appends a bounded `state_events` audit record, bumps revision
 metadata and writes atomically. The localhost-only helper
-`python -m ide.state_cli` exposes the public commands for PYR/player tooling;
-system-only commands fail closed without making a request.
+`python -m ide.state_cli` (or the PTY-provided `questlab-state` wrapper)
+exposes the public commands for PYR/player tooling; system-only commands fail
+closed without making a request. PTYs keep the quest workspace as their cwd
+for code/Git work, but inherit the repo package path, backend port and explicit
+canonical/legacy state paths. A cwd-relative CLI import or raw workspace
+`progress.json` edit therefore cannot become a second live save; only named
+gateway actions change revision or state events.
 
 The server exposes `GET /api/state/revision` as the cheap polling check and
 `GET /api/campaign` as one locked snapshot containing the same revision,
