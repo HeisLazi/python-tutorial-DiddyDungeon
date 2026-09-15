@@ -179,6 +179,7 @@ class DungeonEditorRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     run_id: str = Field(min_length=1, max_length=MAX_IDENTIFIER_LENGTH)
+    question_id: str = Field(min_length=1, max_length=MAX_IDENTIFIER_LENGTH)
     content: str = Field(max_length=MAX_DUNGEON_EDITOR_BYTES)
 
 
@@ -213,6 +214,8 @@ def state_path_kind(target: Path) -> str | None:
         return "legacy"
     if target.resolve() == DUNGEON_PATH.resolve():
         return "dungeon_projection"
+    if target.resolve() == (WORKSPACE / TUTOR_PATH.name).resolve():
+        return "tutor_legacy"
     return None
 
 
@@ -230,6 +233,11 @@ def reject_state_file_access(target: Path, *, allow_dungeon_projection: bool = F
             raise HTTPException(
                 status_code=403,
                 detail="dungeon.py is a state-service projection; use the Dungeon checkpoint endpoint",
+            )
+        if kind == "tutor_legacy":
+            raise HTTPException(
+                status_code=403,
+                detail="tutor.py is legacy-only; use Practice for provider-assisted learning",
             )
         raise HTTPException(status_code=403, detail="progress.json is managed by the local state service")
 
@@ -286,6 +294,34 @@ def sync_dungeon_projection(progress: dict) -> dict:
     return projection
 
 
+def safe_campaign_dungeon_projection(progress: dict) -> dict:
+    """Keep a Dungeon-only corruption from taking down the campaign HUD."""
+
+    try:
+        return sync_dungeon_projection(progress)
+    except StateCommandError as exc:
+        return {
+            "active": False,
+            "status": "invalid",
+            "editor_content": "",
+            "error": exc.detail,
+        }
+    except HTTPException:
+        # A test or a legacy launcher can temporarily point DUNGEON_PATH at a
+        # path outside its current WORKSPACE. Keep the campaign projection
+        # available; the next correctly configured Dungeon request will
+        # materialize the controlled cache.
+        try:
+            return STATE_SERVICE.dungeon_projection(progress)
+        except StateCommandError as exc:
+            return {
+                "active": False,
+                "status": "invalid",
+                "editor_content": "",
+                "error": exc.detail,
+            }
+
+
 def git_info() -> dict:
     def run(*args: str) -> str:
         try:
@@ -323,7 +359,7 @@ def build_tree() -> list[dict]:
             return
 
         for child in children:
-            if child.name in IGNORED_DIRS or child.name in {DUNGEON_PATH.name, TUTOR_PATH.name} or child.name.startswith(".DS_Store"):
+            if child.name in IGNORED_DIRS or child.name in {DUNGEON_PATH.name, f"{DUNGEON_PATH.name}.tmp", TUTOR_PATH.name} or child.name.startswith(".DS_Store"):
                 continue
             try:
                 relative = child.relative_to(WORKSPACE).as_posix()
@@ -409,12 +445,13 @@ def campaign():
         progress, metadata = STATE_SERVICE.snapshot_with_metadata()
     except StateCommandError as exc:
         raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
+    dungeon_projection = safe_campaign_dungeon_projection(progress)
     activity = read_json(REPO_ROOT / "activity.json", {})
     return {
         "progress": progress,
         "revision": metadata["revision"],
         "encounter": STATE_SERVICE.encounter_projection(progress),
-        "dungeon": STATE_SERVICE.dungeon_projection(progress),
+        "dungeon": dungeon_projection,
         "activity": activity,
         "git": git_info(),
         "workspace": str(WORKSPACE),
@@ -1037,7 +1074,12 @@ async def terminal(websocket: WebSocket, role: str):
             if isinstance(message, dict) and message.get("type") == "ping":
                 continue
 
-            payload = message.get("data", "") if isinstance(message, dict) and message.get("type") == "input" else text
+            if isinstance(message, dict):
+                if message.get("type") != "input":
+                    continue
+                payload = message.get("data", "")
+            else:
+                payload = text
             if payload:
                 try:
                     await asyncio.to_thread(os.write, master_fd, payload.encode("utf-8"))
@@ -1064,11 +1106,6 @@ async def terminal(websocket: WebSocket, role: str):
         for task in (output_task, input_task):
             if not task.done():
                 task.cancel()
-        try:
-            os.close(master_fd)
-        except OSError:
-            pass
-
         if not child_exited(pid):
             try:
                 os.killpg(pid, signal.SIGTERM)
@@ -1084,3 +1121,11 @@ async def terminal(websocket: WebSocket, role: str):
                     os.kill(pid, signal.SIGKILL)
                 except OSError:
                     pass
+                try:
+                    await asyncio.wait_for(asyncio.to_thread(os.waitpid, pid, 0), timeout=1.5)
+                except (asyncio.TimeoutError, ChildProcessError):
+                    pass
+        try:
+            os.close(master_fd)
+        except OSError:
+            pass

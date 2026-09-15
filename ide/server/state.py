@@ -958,18 +958,24 @@ class LocalStateService:
         )
 
     def _dungeon_save_editor(self, payload: Mapping[str, Any], progress: dict[str, Any]) -> Mutation:
-        data = self._payload(payload, {"run_id", "content"}, {"run_id", "content"})
+        data = self._payload(payload, {"run_id", "question_id", "content"}, {"run_id", "question_id", "content"})
         run = self._active_dungeon_run(progress)
         run_id = self._text(data["run_id"], "run_id", max_length=MAX_IDENTIFIER_LENGTH, identifier=True)
         if run.get("run_id") != run_id:
             raise StateCommandError("Dungeon run changed; reload the current run", status_code=409)
+        question_id = self._text(data["question_id"], "question_id", max_length=MAX_IDENTIFIER_LENGTH, identifier=True)
+        question = run.get("question") if isinstance(run.get("question"), Mapping) else {}
+        current_question_id = question.get("id")
+        if not isinstance(current_question_id, str) or not current_question_id.strip():
+            raise StateCommandError("Active Dungeon run has no current question", status_code=500)
+        if question_id != current_question_id:
+            raise StateCommandError("Dungeon question changed; reload the current question", status_code=409)
         content = self._multiline_text(data["content"], "content", max_bytes=MAX_DUNGEON_EDITOR_BYTES)
         previous = run.get("editor_content", "")
         if previous == content:
             return Mutation(False, {"run": self.dungeon_projection(progress), "saved": False})
         run["editor_content"] = content
         run["updated_at"] = _utc_now()
-        question = run.get("question") if isinstance(run.get("question"), Mapping) else {}
         return Mutation(
             True,
             {"run": self.dungeon_projection(progress), "saved": True},
@@ -977,7 +983,7 @@ class LocalStateService:
                 "run_id": run_id,
                 "floor": run.get("floor", 1),
                 "room": run.get("room", 1),
-                "question_id": question.get("id"),
+                "question_id": question_id,
                 "bytes": len(content.encode("utf-8")),
                 "reason": "dungeon_checkpoint_saved",
             },

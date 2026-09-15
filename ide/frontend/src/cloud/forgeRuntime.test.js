@@ -89,13 +89,16 @@ test('Dungeon checkpoints and Practice remain separate learning modes', () => {
 
   assert.match(app, /\/api\/dungeon\/start/)
   assert.match(app, /\/api\/dungeon\/editor/)
+  assert.match(app, /question_id: questionId/)
   assert.match(app, /saveDungeon/)
+  assert.match(app, /dungeonSaving/)
   assert.match(app, /activeView === 'dungeon'/)
   assert.match(views, /data-testid="dungeon"/)
   assert.match(views, /dungeon\.py · current room buffer/)
   assert.match(views, /data-testid="practice"/)
   assert.match(views, /Practice is unlimited and separate from Campaign and Dungeon/)
   assert.doesNotMatch(views, /id: 'tutor',/)
+  assert.doesNotMatch(views, /<option value="python-basics">python-basics<\/option>/)
   assert.match(app, /Tutor Notebook is legacy-only/)
 })
 

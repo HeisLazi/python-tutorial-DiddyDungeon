@@ -70,6 +70,7 @@ class PyrContextBridgeTests(unittest.TestCase):
             workspace.mkdir()
             (workspace / "main.py").write_text("print('hello')\n", encoding="utf-8")
             (workspace / "tutor.py").write_text("print('legacy')\n", encoding="utf-8")
+            (workspace / "dungeon.py.tmp").write_text("stale\n", encoding="utf-8")
             canonical = root / "platform" / "progress.json"
             canonical.parent.mkdir()
             canonical.write_text(json.dumps(context_progress()), encoding="utf-8")
@@ -81,6 +82,7 @@ class PyrContextBridgeTests(unittest.TestCase):
                 tree = client.get("/api/tree", headers={"host": "127.0.0.1"})
                 self.assertEqual(tree.status_code, 200)
                 self.assertNotIn("tutor.py", {item["path"] for item in tree.json()["items"]})
+                self.assertNotIn("dungeon.py.tmp", {item["path"] for item in tree.json()["items"]})
                 idle = client.get("/api/dungeon", headers={"host": "127.0.0.1"})
                 self.assertEqual(idle.status_code, 200)
                 self.assertEqual(idle.json()["dungeon"]["status"], "idle")
@@ -103,7 +105,7 @@ class PyrContextBridgeTests(unittest.TestCase):
                 saved = client.put(
                     "/api/dungeon/editor",
                     headers={"host": "127.0.0.1"},
-                    json={"run_id": run["run_id"], "content": "items = []\n"},
+                    json={"run_id": run["run_id"], "question_id": run["question"]["id"], "content": "items = []\n"},
                 )
                 self.assertEqual(saved.status_code, 200)
                 self.assertEqual(saved.json()["dungeon"]["editor_content"], "items = []\n")
@@ -125,6 +127,14 @@ class PyrContextBridgeTests(unittest.TestCase):
                     json={"path": "dungeon.py", "content": "tips = 'leak'\n"},
                 )
                 self.assertEqual(direct_write.status_code, 403)
+                legacy_read = client.get("/api/file?path=tutor.py", headers={"host": "127.0.0.1"})
+                self.assertEqual(legacy_read.status_code, 403)
+                legacy_format = client.post(
+                    "/api/format",
+                    headers={"host": "127.0.0.1"},
+                    json={"path": "tutor.py", "content": "print('legacy')\n"},
+                )
+                self.assertEqual(legacy_format.status_code, 403)
 
                 next_question = app_v2.STATE_SERVICE.apply_internal(
                     "dungeon_issue_question",
@@ -143,11 +153,44 @@ class PyrContextBridgeTests(unittest.TestCase):
                     },
                 )
                 self.assertTrue(next_question["changed"])
+                stale_save = client.put(
+                    "/api/dungeon/editor",
+                    headers={"host": "127.0.0.1"},
+                    json={"run_id": run["run_id"], "question_id": run["question"]["id"], "content": "late = 'old'\n"},
+                )
+                self.assertEqual(stale_save.status_code, 409)
                 refreshed = client.get("/api/dungeon", headers={"host": "127.0.0.1"})
                 self.assertEqual(refreshed.status_code, 200)
                 self.assertEqual(refreshed.json()["dungeon"]["room"], 2)
                 self.assertEqual(refreshed.json()["dungeon"]["editor_content"], "")
                 self.assertEqual((workspace / "dungeon.py").read_text(encoding="utf-8"), "")
+            finally:
+                app_v2.WORKSPACE = original_workspace
+                app_v2.PROGRESS_PATH = original_progress
+                app_v2.DUNGEON_PATH = original_dungeon
+
+    def test_campaign_polling_survives_invalid_dungeon_projection(self):
+        original_workspace = app_v2.WORKSPACE
+        original_progress = app_v2.PROGRESS_PATH
+        original_dungeon = app_v2.DUNGEON_PATH
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            workspace = root / "quest"
+            workspace.mkdir()
+            canonical = root / "platform" / "progress.json"
+            canonical.parent.mkdir()
+            state = context_progress()
+            state["dungeon_run"] = {"status": "corrupt", "run_id": "bad-run"}
+            canonical.write_text(json.dumps(state), encoding="utf-8")
+            app_v2.WORKSPACE = workspace
+            app_v2.PROGRESS_PATH = canonical
+            app_v2.DUNGEON_PATH = workspace / "dungeon.py"
+            try:
+                client = TestClient(app_v2.app, base_url="http://127.0.0.1")
+                response = client.get("/api/campaign", headers={"host": "127.0.0.1"})
+                self.assertEqual(response.status_code, 200)
+                self.assertEqual(response.json()["dungeon"]["status"], "invalid")
+                self.assertEqual(response.json()["progress"]["player"]["level"], 2)
             finally:
                 app_v2.WORKSPACE = original_workspace
                 app_v2.PROGRESS_PATH = original_progress

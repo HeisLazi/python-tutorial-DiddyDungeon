@@ -530,7 +530,7 @@ function Homestead({ progress, revision, purchaseCosmetic, equipCosmetic, busy }
   )
 }
 
-function DungeonScreen({ dungeon, revision, onStart, busy, editorContent, onEditorChange, onSave }) {
+function DungeonScreen({ dungeon, revision, onStart, busy, saving, editorContent, onEditorChange, onSave }) {
   const [concept, setConcept] = useState('')
   const run = dungeon || { active: false, status: 'idle' }
   const question = run.question || {}
@@ -577,7 +577,7 @@ function DungeonScreen({ dungeon, revision, onStart, busy, editorContent, onEdit
               )}
               <div className="dungeon-question-meta"><span>{question.question_type || 'question'}</span><span>Difficulty {question.difficulty ?? 1}</span><span>Write in dungeon.py</span></div>
               <label className="dungeon-editor-field"><span>dungeon.py · current room buffer</span><textarea value={editorContent || ''} onChange={(event) => onEditorChange?.(event.target.value)} maxLength={120_000} rows={10} placeholder="Write your answer here. This buffer is checkpointed through the state gateway." disabled={busy} /></label>
-              <button type="button" onClick={onSave} disabled={busy || !onSave}>{busy ? 'Saving…' : 'Save checkpoint'}</button>
+              <button type="button" onClick={onSave} disabled={busy || saving || !onSave}>{saving ? 'Saving…' : 'Save checkpoint'}</button>
             </section>
             <section className="game-card">
               <div className="card-heading"><span>RUN LOADOUT</span><b>{loadout.hp ?? 0}/{loadout.max_hp ?? 0} HP</b></div>
@@ -601,6 +601,7 @@ function PracticeScreen({ progress, revision, onPracticePrompt, busy }) {
     ...(progress.skills || []).map((skill) => skill.concept).filter(Boolean),
     ...(activeProject.mobs || []).map((mob) => mob.concept).filter(Boolean),
     progress.learning_state?.concept,
+    'python-basics',
   ].filter(Boolean)))
   const [concept, setConcept] = useState(concepts[0] || 'python-basics')
   const [questionType, setQuestionType] = useState('multiple_choice')
@@ -634,7 +635,7 @@ function PracticeScreen({ progress, revision, onPracticePrompt, busy }) {
       <section className="game-card practice-card">
         <div className="card-heading"><span>BUILD A DRILL</span><b>AI ASSISTED</b></div>
         <form className="practice-form" onSubmit={ask}>
-          <label><span>Concept</span><select value={concept} onChange={(event) => setConcept(event.target.value)} disabled={busy}>{concepts.map((item) => <option key={item} value={item}>{item}</option>)}<option value="python-basics">python-basics</option></select></label>
+          <label><span>Concept</span><select value={concept} onChange={(event) => setConcept(event.target.value)} disabled={busy}>{concepts.map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
           <label><span>Question type</span><select value={questionType} onChange={(event) => setQuestionType(event.target.value)} disabled={busy}><option value="true_false">True / False</option><option value="multiple_choice">Multiple choice</option><option value="short_explanation">Short explanation</option><option value="code_trace">Code trace</option><option value="bug_hunt">Bug hunt</option></select></label>
           <label><span>Difficulty</span><select value={difficulty} onChange={(event) => setDifficulty(event.target.value)} disabled={busy}>{[1, 2, 3, 4, 5].map((level) => <option key={level} value={level}>Tier {level}</option>)}</select></label>
           <label className="practice-answer"><span>Answer or ask for feedback</span><textarea value={answer} onChange={(event) => setAnswer(event.target.value)} maxLength={20_000} rows={5} placeholder="Leave blank for a new question, or paste your answer here…" disabled={busy} /></label>
@@ -770,12 +771,12 @@ function SettingsScreen({ preferences, setters, resetLayout, equipped, account, 
   )
 }
 
-export function GameScreen({ activeView, progress, revision, encounter, dungeon, dungeonEditorContent, onDungeonEditorChange, onSaveDungeon, purchaseCosmetic, equipCosmetic, busy, submitBattle, onStartDungeon, onPracticePrompt, preferences, setters, resetLayout, account, accountBusy, accountNotice, onSignIn, onSignUp, onSignOut, onDeviceLabelSave, onResolveConflict }) {
+export function GameScreen({ activeView, progress, revision, encounter, dungeon, dungeonEditorContent, onDungeonEditorChange, onSaveDungeon, purchaseCosmetic, equipCosmetic, busy, dungeonSaving, submitBattle, onStartDungeon, onPracticePrompt, preferences, setters, resetLayout, account, accountBusy, accountNotice, onSignIn, onSignUp, onSignOut, onDeviceLabelSave, onResolveConflict }) {
   if (activeView === 'quests') return <QuestJournal progress={progress} revision={revision} encounter={encounter} submitBattle={submitBattle} busy={busy} />
   if (activeView === 'codex') return <Codex progress={progress} revision={revision} />
   if (activeView === 'character') return <CharacterSheet progress={progress} revision={revision} />
   if (activeView === 'homestead') return <Homestead progress={progress} revision={revision} purchaseCosmetic={purchaseCosmetic} equipCosmetic={equipCosmetic} busy={busy} />
-  if (activeView === 'dungeon') return <DungeonScreen dungeon={dungeon} revision={revision} onStart={onStartDungeon} busy={busy} editorContent={dungeonEditorContent} onEditorChange={onDungeonEditorChange} onSave={onSaveDungeon} />
+  if (activeView === 'dungeon') return <DungeonScreen dungeon={dungeon} revision={revision} onStart={onStartDungeon} busy={busy} saving={dungeonSaving} editorContent={dungeonEditorContent} onEditorChange={onDungeonEditorChange} onSave={onSaveDungeon} />
   if (activeView === 'practice') return <PracticeScreen progress={progress} revision={revision} onPracticePrompt={onPracticePrompt} busy={busy} />
   if (activeView === 'settings') return <SettingsScreen preferences={preferences} setters={setters} resetLayout={resetLayout} equipped={progress.homestead?.equipped || {}} account={account} accountBusy={accountBusy} accountNotice={accountNotice} onSignIn={onSignIn} onSignUp={onSignUp} onSignOut={onSignOut} onDeviceLabelSave={onDeviceLabelSave} onResolveConflict={onResolveConflict} revision={revision} />
   return null

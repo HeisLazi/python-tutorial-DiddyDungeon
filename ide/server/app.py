@@ -513,13 +513,21 @@ async def terminal(websocket: WebSocket):
         while True:
             text = await websocket.receive_text()
             message = None
+            json_object = False
             if text.startswith("{"):
                 try:
                     candidate = json.loads(text)
-                    if isinstance(candidate, dict) and candidate.get("type") in {"input", "resize"}:
-                        message = candidate
+                    if isinstance(candidate, dict):
+                        json_object = True
+                        if candidate.get("type") in {"input", "resize"}:
+                            message = candidate
                 except json.JSONDecodeError:
                     pass
+
+            # JSON control envelopes are an internal protocol.  Never echo an
+            # unknown envelope into the user's shell as literal input.
+            if json_object and message is None:
+                continue
 
             if message and message.get("type") == "resize":
                 try:
@@ -528,7 +536,12 @@ async def terminal(websocket: WebSocket):
                     pass
                 continue
 
-            payload = message.get("data", "") if message and message.get("type") == "input" else text
+            if message:
+                if message.get("type") != "input":
+                    continue
+                payload = message.get("data", "")
+            else:
+                payload = text
             if payload:
                 await asyncio.to_thread(os.write, master_fd, payload.encode("utf-8"))
 
@@ -554,11 +567,6 @@ async def terminal(websocket: WebSocket):
             if not task.done():
                 task.cancel()
 
-        try:
-            os.close(master_fd)
-        except OSError:
-            pass
-
         if not child_exited(pid):
             try:
                 os.killpg(pid, signal.SIGTERM)
@@ -571,3 +579,7 @@ async def terminal(websocket: WebSocket):
                 await asyncio.to_thread(os.waitpid, pid, 0)
             except ChildProcessError:
                 pass
+        try:
+            os.close(master_fd)
+        except OSError:
+            pass

@@ -572,3 +572,24 @@ and cloud projections in Settings. This keeps real conflicts visible as a
 deliberate sync choice instead of looking like a silent local reset. Homestead
 purchases continue to use the canonical `/api/homestead/purchase` mutation and
 refresh the campaign projection after the validated result.
+
+### Dungeon projection hardening — 2026-09-15
+
+The local Infinite Dungeon foundation received a focused correctness pass before
+Milestone C. Checkpoint writes now include the current question ID and reject a
+late save from a rotated question, while debounced autosave keeps the editor
+responsive and never discards newer local input. Campaign revision polling also
+materializes the canonical `dungeon.py` projection and degrades to a safe
+invalid/empty Dungeon projection if a legacy or malformed file is encountered;
+the campaign HUD remains available. Direct generic file access to legacy
+`tutor.py` is blocked, and both terminal bridges ignore unknown JSON control
+envelopes and reap PTY children before closing descriptors; the live browser
+check exercised that PTY lifecycle without dropping either session.
+
+The browser acceptance was run with keyboard/mouse automation only (no
+Playwright) against a disposable isolated state copy. It verified live reward
+feedback, Resolve and Codex changes, Character/Homestead projection updates,
+the monochrome SVG HUD icons, checkpoint restoration after a backend restart,
+and `CONNECTED` shell/AI PTYs. WSL backend tests: 39 passed; frontend tests: 23
+passed; Windows Vite build: passed. No real `progress.json`, legacy evidence,
+user PTY or Supabase state was modified.

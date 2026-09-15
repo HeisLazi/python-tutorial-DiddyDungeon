@@ -58,6 +58,11 @@ player-facing mode boundaries, and failure behavior.
 | F-017 | P2 | Mode boundary | Practice assistance could accidentally grant Campaign/Dungeon rewards or become a hidden Dungeon variant. | Fixed at the UI/provider contract: Practice is an independent unlimited request surface and explicitly forbids verdicts, rewards, HP, Dungeon score and `tutor.py`; the normal file tree hides the legacy notebook and an older persisted Tutor view redirects to Forge. Persistent Practice evidence remains future work. |
 | F-018 | P2 | Cloud scope | The local Dungeon checkpoint is not yet part of the hosted player-state projection. | Open by design: generation, verdict progression, rooms, scoring, leaderboard state and cross-device Dungeon resume wait until the provider-auth and hosted-state gates are closed. |
 | F-019 | P3 | Product completeness | The current screen has a deterministic starter question and checkpoint controls, but no adaptive generator, rest/market rooms, death UI, leaderboard or Practice history. | Open roadmap work; the missing pieces are documented in `INFINITE_DUNGEON_DESIGN.md` and the Forge handoff. |
+| F-020 | P2 | Checkpoint race | A delayed autosave from the previous Dungeon question could overwrite the newly rotated room buffer. | Fixed: every checkpoint carries the current `question_id`; stale or mismatched saves fail closed with HTTP 409. |
+| F-021 | P2 | Projection resilience | Campaign polling could fail if the disk `dungeon.py` projection was malformed or could drift until a dedicated Dungeon request ran. | Fixed: campaign polling materializes the controlled projection and falls back to a safe invalid/empty projection without taking down the campaign HUD. |
+| F-022 | P2 | Editor responsiveness | Autosave reused the global busy flag and could overwrite edits that arrived while a save was in flight. | Fixed: Dungeon uses a dedicated saving flag and content ref; a save only clears dirty state when the captured content is still current. |
+| F-023 | P3 | Legacy notebook exposure | The legacy `tutor.py` could still be reached through generic file routes even though Practice replaced it in the player-facing shell. | Fixed: direct file read/write/format routes reject `tutor.py`; the compatibility endpoint remains legacy-only and is not a player mode. |
+| F-024 | P3 | PTY protocol/lifecycle | Unknown JSON envelopes could be typed into the shell, and closing the PTY master before reaping made descriptor reuse possible. | Fixed: both terminal bridges ignore unknown control envelopes and reap the child before closing the master descriptor. |
 
 ### Dungeon foundation verification
 
@@ -67,3 +72,26 @@ player-facing mode boundaries, and failure behavior.
   `dungeon.py` projection, while direct `/api/file` access is denied.
 - Frontend tests cover the separate Dungeon/Practice routes; the production
   Vite build remains green.
+
+### Dungeon hardening verification — 2026-09-15
+
+- WSL backend suite: 39 tests passed, including stale-question checkpoint
+  rejection, malformed-projection campaign recovery and legacy `tutor.py` route
+  rejection; terminal protocol/lifecycle behavior was exercised in the live
+  browser PTY check.
+- Frontend source/runtime suite: 23 tests passed; Windows Vite production build
+  passed.
+- Manual Forge acceptance used only the browser K&M automation surface (no
+  Playwright) against a disposable isolated state copy. Revision polling
+  updated the HUD from Level 2 / 50 XP / 55 coins to Level 2 / 55 XP / 62
+  coins after a validated reward, Quest Journal Resolve changed from 8/8 to
+  4/8 after a validated Mob 3 objective, and Codex gained the observed Hitman
+  encounter record. Character and Homestead reflected the same canonical
+  projection; shell and AI PTYs stayed `CONNECTED` through a backend restart
+  and checkpoint save.
+- The top HUD heart, coin, flame, shield and sword SVGs were visually checked
+  before their values; DEV/RANK stayed unchanged and no nested stat pills were
+  present.
+- The test copy was isolated under `/tmp/questlab-browser-manual`; the real
+  campaign save, legacy evidence files, user PTYs and Supabase state were not
+  touched.

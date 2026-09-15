@@ -33,6 +33,11 @@ Autosave is bounded/debounced and reports the last committed checkpoint. An
 unsaved buffer is not promised across a hard power loss; the last gateway
 checkpoint is the durable guarantee.
 
+Each checkpoint is bound to the question ID that was current when the edit was
+captured. If a question rotates while a debounced save is in flight, the state
+service rejects that stale write with a conflict response; it cannot repopulate
+the new room with an old answer or tip.
+
 ## Adaptive question contract
 
 The generator may propose a current question, but the state service validates

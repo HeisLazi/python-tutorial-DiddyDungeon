@@ -280,6 +280,7 @@ function AppV2() {
   const [tutorExternalChange, setTutorExternalChange] = useState(null)
   const [dungeonCode, setDungeonCode] = useState('')
   const [dungeonDirty, setDungeonDirty] = useState(false)
+  const [dungeonSaving, setDungeonSaving] = useState(false)
   const [busy, setBusy] = useState(false)
   const [notice, setNotice] = useState('')
   const [shellState, setShellState] = useState('connecting')
@@ -291,6 +292,7 @@ function AppV2() {
   const tutorDiskRevisionRef = useRef('')
   const tutorExternalChangeRef = useRef(null)
   const dungeonDirtyRef = useRef(false)
+  const dungeonCodeRef = useRef('')
   const dungeonQuestionRef = useRef('')
   const campaignRevisionRef = useRef(null)
   const campaignInitializedRef = useRef(false)
@@ -765,7 +767,9 @@ function AppV2() {
     const questionRotated = Boolean(previousQuestionId && questionId && previousQuestionId !== questionId)
     dungeonQuestionRef.current = questionId
     if (questionRotated || !dungeonDirtyRef.current || !snapshot?.active) {
-      setDungeonCode(snapshot?.active ? snapshot.editor_content || '' : '')
+      const nextContent = snapshot?.active ? snapshot.editor_content || '' : ''
+      dungeonCodeRef.current = nextContent
+      setDungeonCode(nextContent)
       setDungeonDirty(false)
       dungeonDirtyRef.current = false
     }
@@ -945,16 +949,23 @@ function AppV2() {
   }
 
   const saveDungeon = async () => {
-    if (!dungeon.active || !dungeon.run_id) return false
+    if (!dungeon.active || !dungeon.run_id || dungeonSaving) return false
+    const contentToSave = dungeonCodeRef.current
+    const questionId = dungeon.question?.id || ''
+    if (!questionId) {
+      setNotice('Dungeon checkpoint failed: the current question is unavailable.')
+      return false
+    }
     try {
-      setBusy(true)
+      setDungeonSaving(true)
       const result = await api('/api/dungeon/editor', {
         method: 'PUT',
-        body: JSON.stringify({ run_id: dungeon.run_id, content: dungeonCode }),
+        body: JSON.stringify({ run_id: dungeon.run_id, question_id: questionId, content: contentToSave }),
       })
-      setDungeonCode(result.dungeon?.editor_content ?? dungeonCode)
-      setDungeonDirty(false)
-      dungeonDirtyRef.current = false
+      if (dungeonCodeRef.current === contentToSave) {
+        setDungeonDirty(false)
+        dungeonDirtyRef.current = false
+      }
       await refreshCampaign({ silent: true })
       setNotice('Dungeon checkpoint saved. This room will resume after a restart.')
       return true
@@ -962,7 +973,7 @@ function AppV2() {
       setNotice(`Dungeon checkpoint failed: ${error.message}`)
       return false
     } finally {
-      setBusy(false)
+      setDungeonSaving(false)
     }
   }
 
@@ -974,7 +985,9 @@ function AppV2() {
         method: 'POST',
         body: JSON.stringify(payload),
       })
-      setDungeonCode(result.dungeon?.editor_content || '')
+      const nextContent = result.dungeon?.editor_content || ''
+      dungeonCodeRef.current = nextContent
+      setDungeonCode(nextContent)
       setDungeonDirty(false)
       dungeonDirtyRef.current = false
       setActiveView('dungeon')
@@ -1024,12 +1037,12 @@ function AppV2() {
   }
 
   useEffect(() => {
-    if (activeView !== 'dungeon' || !dungeon.active || !dungeonDirty || busy) return undefined
+    if (activeView !== 'dungeon' || !dungeon.active || !dungeonDirty || dungeonSaving) return undefined
     const timer = window.setTimeout(() => {
       void saveDungeon()
     }, 1000)
     return () => window.clearTimeout(timer)
-  }, [activeView, dungeon.active, dungeon.run_id, dungeonCode, dungeonDirty, busy])
+  }, [activeView, dungeon.active, dungeon.run_id, dungeon.question?.id, dungeonCode, dungeonDirty, dungeonSaving])
 
   const formatCurrent = async () => {
     if (!activePath) return
@@ -1360,10 +1373,16 @@ function AppV2() {
               dungeon={dungeon}
               dungeonEditorContent={dungeonCode}
               onDungeonEditorChange={(value) => {
-                setDungeonCode(value ?? '')
+                const nextContent = value ?? ''
+                dungeonCodeRef.current = nextContent
+                setDungeonCode(nextContent)
                 setDungeonDirty(true)
+                dungeonDirtyRef.current = true
               }}
               onSaveDungeon={saveDungeon}
+              onStartDungeon={startDungeon}
+              onPracticePrompt={requestPracticePrompt}
+              dungeonSaving={dungeonSaving}
               submitBattle={submitBattle}
               purchaseCosmetic={purchaseCosmetic}
               equipCosmetic={equipCosmetic}

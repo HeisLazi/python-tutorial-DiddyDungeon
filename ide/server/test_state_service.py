@@ -150,7 +150,7 @@ class StateServiceBehaviorTests(unittest.TestCase):
 
         saved = service.apply(
             "dungeon_save_editor",
-            {"run_id": run["run_id"], "content": "items = ['hit', 'stand']\nprint(items)\n"},
+            {"run_id": run["run_id"], "question_id": run["question"]["id"], "content": "items = ['hit', 'stand']\nprint(items)\n"},
             "player",
         )
         self.assertTrue(saved["result"]["saved"])
@@ -165,7 +165,8 @@ class StateServiceBehaviorTests(unittest.TestCase):
         service, path = self.make_service()
         started = service.apply("dungeon_start_run", {"concept_id": "loops"}, "player")
         run_id = started["result"]["run"]["run_id"]
-        service.apply("dungeon_save_editor", {"run_id": run_id, "content": "tips = 'old'\n"}, "player")
+        question_id = started["result"]["run"]["question"]["id"]
+        service.apply("dungeon_save_editor", {"run_id": run_id, "question_id": question_id, "content": "tips = 'old'\n"}, "player")
 
         rotated = service.apply_internal(
             "dungeon_issue_question",
@@ -188,6 +189,15 @@ class StateServiceBehaviorTests(unittest.TestCase):
         self.assertEqual(rotated_run["room"], 2)
         self.assertEqual(rotated_run["editor_content"], "")
         self.assertEqual(rotated["event"]["editor_reset"], True)
+        self.assertEqual(self.read(path)["dungeon_run"]["editor_content"], "")
+
+        with self.assertRaises(StateCommandError) as stale:
+            service.apply(
+                "dungeon_save_editor",
+                {"run_id": run_id, "question_id": question_id, "content": "late = 'old'\n"},
+                "player",
+            )
+        self.assertEqual(stale.exception.status_code, 409)
         self.assertEqual(self.read(path)["dungeon_run"]["editor_content"], "")
 
         death = service.apply_internal(
