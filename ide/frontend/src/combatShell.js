@@ -104,11 +104,16 @@ function activeProject(progress) {
   return (progress.projects || []).find((project) => project.status === 'active') || null
 }
 
+// Legacy snapshots used `cleared` while the state service now emits
+// `defeated`. Treat both as terminal so the DOM combat shell cannot fall back
+// to an already-cleared encounter when it receives an older projection.
+const isMobDefeated = (mob) => mob?.status === 'defeated' || mob?.status === 'cleared'
+
 function currentMob(project) {
   if (!project) return { mob: null, index: -1 }
   const mobs = project.mobs || []
   let index = mobs.findIndex((mob) => mob.status === 'available')
-  if (index < 0) index = mobs.findIndex((mob) => mob.status !== 'defeated')
+  if (index < 0) index = mobs.findIndex((mob) => !isMobDefeated(mob))
   if (index < 0 && mobs.length) index = mobs.length - 1
   return { mob: index >= 0 ? mobs[index] : null, index }
 }

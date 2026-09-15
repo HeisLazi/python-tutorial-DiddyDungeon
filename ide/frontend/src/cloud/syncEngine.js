@@ -60,6 +60,16 @@ const stableJson = (value) => {
 }
 const syncUserKey = (base, userId) => `${base}:${encodeURIComponent(userId)}`
 
+const playerSummary = (projection) => {
+  const player = isRecord(projection?.player) ? projection.player : {}
+  return {
+    level: Number.isFinite(Number(player.level)) ? Number(player.level) : null,
+    xp: Number.isFinite(Number(player.xp)) ? Number(player.xp) : null,
+    xpNext: Number.isFinite(Number(player.xp_next)) ? Number(player.xp_next) : null,
+    coins: Number.isFinite(Number(player.coins)) ? Number(player.coins) : null,
+  }
+}
+
 const readStoredJson = (storage, key, fallback) => {
   try {
     const raw = storage?.getItem(key)
@@ -670,11 +680,17 @@ export class SyncEngine {
       reason,
       localRevision: local?.revision ?? null,
       cloudRevision: cloud?.revision ?? null,
+      localPlayer: playerSummary(local?.projection),
+      cloudPlayer: playerSummary(cloud?.state),
     }
+    const localPlayer = conflict.localPlayer
+    const cloudPlayer = conflict.cloudPlayer
+    const formatPlayer = (value) =>
+      value.level === null ? 'unavailable' : `Level ${value.level} · ${value.xp ?? 0}/${value.xpNext ?? 100} XP · ${value.coins ?? 0} coins`
     this.setState({
       syncStatus: 'conflict',
       label: 'Sync conflict',
-      detail: 'Choose which validated campaign copy should win.',
+      detail: `This device: ${formatPlayer(localPlayer)}. Cloud: ${formatPlayer(cloudPlayer)}. Choose which validated campaign copy should win.`,
       error: null,
       conflict,
       localRevision: local?.revision ?? null,

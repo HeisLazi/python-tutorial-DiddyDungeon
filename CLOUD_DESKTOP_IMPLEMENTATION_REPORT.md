@@ -463,3 +463,21 @@ and was not performed in this pass. The portrait shown in the rail/Character
 is likewise a browser-local `localStorage` avatar; account-wide avatar sync is
 reserved for Milestone D, so its persistence after refresh does not prove that
 player state has synced.
+
+### Follow-up stale projection repair
+
+A compatibility gap remained in the DOM combat enhancement: older approved
+legacy projections use mob status `cleared`, while the current state service
+uses `defeated`. When no `available` entry was present, the enhancement could
+therefore select an already-cleared mob (for example, The Empty Table) as the
+current encounter. `combatShell.js` now treats both statuses as terminal, and
+the Quest Journal/context list uses the same rule. The regression is covered by
+the frontend source test `combat projection treats legacy cleared mobs as
+terminal`.
+
+Cloud conflicts now also include a bounded Level/XP/coins summary for the local
+and cloud projections in Settings. This makes a starter cloud row visible as a
+deliberate sync choice instead of looking like a silent local reset; it does not
+publish, overwrite or seed cloud state. Homestead purchases continue to use the
+canonical `/api/homestead/purchase` mutation and refresh the campaign projection
+after the validated result.

@@ -11,6 +11,7 @@ export const viewItems = [
 ]
 
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value))
+const isMobDefeated = (status) => status === 'defeated' || status === 'cleared'
 
 export function RewardQueue({ items = [] }) {
   if (!items.length) return null
@@ -130,7 +131,7 @@ export function ContextPanel({ activeView, campaign, files, activePath, openFile
             <div className="context-list">
               {(activeProject?.mobs || []).map((mob) => (
                 <div key={mob.name} className={`context-row ${mob.status}`}>
-                  <span>{mob.status === 'available' ? '◆' : mob.status === 'defeated' ? '✓' : '◇'}</span>
+                  <span>{mob.status === 'available' ? '◆' : isMobDefeated(mob.status) ? '✓' : '◇'}</span>
                   <span>{mob.name}</span>
                 </div>
               ))}
@@ -216,7 +217,6 @@ function QuestJournal({ progress, revision, encounter }) {
   const resolve = encounter?.resolve ?? currentMob?.resolve ?? currentMob?.max_resolve ?? 0
   const maxResolve = encounter?.max_resolve ?? currentMob?.max_resolve ?? resolve
   const availableObjectives = encounter?.available_objectives || []
-  const isDefeated = (status) => status === 'defeated' || status === 'cleared'
 
   return (
     <div className="game-screen-scroll" data-testid="quest-journal" data-campaign-revision={revision}>
@@ -252,7 +252,7 @@ function QuestJournal({ progress, revision, encounter }) {
           <div className="mob-path">
             {mobs.map((mob, index) => (
               <div key={mob.name} className={`mob-node ${mob.status} ${index === currentIndex ? 'current' : ''}`}>
-                <span>{isDefeated(mob.status) ? '✓' : index + 1}</span>
+                <span>{isMobDefeated(mob.status) ? '✓' : index + 1}</span>
                 <div><strong>{mob.name}</strong><small>{mob.status === 'locked' ? 'Encounter hidden' : mob.concept || 'Encounter details pending'}</small></div>
               </div>
             ))}
@@ -510,6 +510,9 @@ function AccountPanel({ account, busy, notice, onSignIn, onSignUp, onSignOut, on
             <div className="cloud-conflict-banner" role="alert">
               <strong>Campaign sync needs a choice.</strong>
               <span>Local revision {account.conflict.localRevision ?? '—'} and cloud revision {account.conflict.cloudRevision ?? '—'} differ.</span>
+              {account.conflict.localPlayer?.level !== null && account.conflict.cloudPlayer?.level !== null && (
+                <span>This device: Level {account.conflict.localPlayer.level} · {account.conflict.localPlayer.xp ?? 0}/{account.conflict.localPlayer.xpNext ?? 100} XP · {account.conflict.localPlayer.coins ?? 0} coins. Cloud: Level {account.conflict.cloudPlayer.level} · {account.conflict.cloudPlayer.xp ?? 0}/{account.conflict.cloudPlayer.xpNext ?? 100} XP · {account.conflict.cloudPlayer.coins ?? 0} coins.</span>
+              )}
               <div className="account-actions">
                 <button type="button" disabled={busy} onClick={async () => { try { await onResolveConflict('cloud') } catch {} }}>Use cloud copy</button>
                 <button type="button" disabled={busy} onClick={async () => { try { await onResolveConflict('local') } catch {} }}>Keep this device</button>

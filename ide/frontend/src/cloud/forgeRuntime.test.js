@@ -50,6 +50,16 @@ test('campaign projections use revision polling and state-service events', () =>
   assert.doesNotMatch(views, /mob\.encounter \|\| 'This encounter has not revealed/)
 })
 
+test('combat projection treats legacy cleared mobs as terminal', () => {
+  const combat = source('../combatShell.js')
+  const views = source('../RpgViews.jsx')
+
+  assert.match(combat, /isMobDefeated\s*=\s*\(mob\)\s*=>\s*mob\?\.status === 'defeated' \|\| mob\?\.status === 'cleared'/)
+  assert.match(combat, /mobs\.findIndex\(\(mob\) => !isMobDefeated\(mob\)\)/)
+  assert.match(views, /const isMobDefeated = \(status\) => status === 'defeated' \|\| status === 'cleared'/)
+  assert.doesNotMatch(views, /mob\.status === 'defeated' \? '✓'/)
+})
+
 test('legacy reconciliation renders validated restoration feedback without inventing rewards', () => {
   const app = source('../AppV2.jsx')
 
@@ -75,6 +85,8 @@ test('bounded player-state sync stays behind one engine with revision/conflict c
   assert.match(engine, /save_player_state/)
   assert.match(engine, /SYNC_OUTBOX_STORAGE_KEY/)
   assert.match(engine, /resolveConflict\(choice\)/)
+  assert.match(engine, /localPlayer: playerSummary\(local\?\.projection\)/)
+  assert.match(engine, /cloudPlayer: playerSummary\(cloud\?\.state\)/)
   assert.match(engine, /window\.setInterval\(\(\) => \{[\s\S]*void this\.sync\(\{ silent: true \}\)/)
 })
 
