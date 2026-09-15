@@ -65,15 +65,16 @@ increment the canonical revision or enter the event/cloud projection.
   and no forced fix was applied);
 - a disposable 0.53.0 Monaco candidate passed 31 frontend tests, a 1,293-
   module build and a zero-vulnerability production audit; adoption remains a
-  compatibility decision;
+  compatibility decision; npm audit does not inspect Monaco's vendored
+  sanitizer bundle;
 - safe web/Vercel account/profile surface and, only after those gates, any
   friends/presence/raid transport.
 
 ## Automated evidence at snapshot time
 
-- WSL backend: 68 tests passed;
+- WSL backend: 69 tests passed;
 - frontend: 31 tests passed;
-- Windows Vite production build: 1,344 modules transformed;
+- Windows Vite production build: 1,345 modules transformed;
 - Python compilation and PowerShell launcher/package parsing passed;
 - browser verification used K&M click/scroll/type only; no Playwright.
 

@@ -519,6 +519,89 @@ class PyrContextBridgeTests(unittest.TestCase):
                 app_v2.PYR_CONTEXT_CHALLENGES.clear()
                 app_v2.PYR_DUNGEON_CHALLENGES.clear()
 
+    def test_boss_challenges_are_isolated_and_default_slot_stays_compatible(self):
+        original_workspace = app_v2.WORKSPACE
+        original_progress = app_v2.PROGRESS_PATH
+        original_context_challenge = app_v2.PYR_CONTEXT_CHALLENGE
+        original_context_input = dict(app_v2.PYR_CONTEXT_INPUT)
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            workspace = root / "quest"
+            workspace.mkdir()
+            canonical = root / "platform" / "progress.json"
+            canonical.parent.mkdir()
+            state = context_progress()
+            project = state["projects"][0]
+            project.update({"progress": 100, "boss_status": "available", "mob_sequence_complete": True})
+            for mob in project["mobs"]:
+                mob.update({"status": "defeated", "resolve": 0})
+            state["stats"] = {"mobs_defeated": len(project["mobs"])}
+            state["achievements"] = [
+                {"name": "Housebreaker", "unlocked": False},
+                {"name": "Clean Clear", "unlocked": False},
+            ]
+            canonical.write_text(json.dumps(state), encoding="utf-8")
+            app_v2.WORKSPACE = workspace
+            app_v2.PROGRESS_PATH = canonical
+            app_v2.PYR_CONTEXT_CHALLENGE = None
+            app_v2.PYR_CONTEXT_CHALLENGES.clear()
+            try:
+                client = TestClient(app_v2.app, base_url="http://127.0.0.1")
+                default = client.post(
+                    "/api/pyr/context",
+                    headers={"host": "127.0.0.1"},
+                    json={},
+                ).json()["context"]["verdict"]
+                self.assertEqual(default["challenge_type"], "boss")
+                self.assertIs(app_v2.PYR_CONTEXT_CHALLENGES["default"], app_v2.PYR_CONTEXT_CHALLENGE)
+
+                tab_a = client.post(
+                    "/api/pyr/context",
+                    headers={"host": "127.0.0.1"},
+                    json={"client_id": "boss-tab-a"},
+                ).json()["context"]["verdict"]
+                tab_b = client.post(
+                    "/api/pyr/context",
+                    headers={"host": "127.0.0.1"},
+                    json={"client_id": "boss-tab-b"},
+                ).json()["context"]["verdict"]
+                self.assertNotEqual(default["nonce"], tab_a["nonce"])
+                self.assertNotEqual(tab_a["nonce"], tab_b["nonce"])
+
+                submission = client.post(
+                    "/api/pyr/boss-submission",
+                    headers={"host": "127.0.0.1"},
+                    json={
+                        "nonce": tab_a["nonce"],
+                        "requirement_id": "required_behavior",
+                        "answer": "I stop when the required behaviour is satisfied.",
+                    },
+                )
+                self.assertEqual(submission.status_code, 200, submission.text)
+                body = submission.json()["submission"]
+                verdict = client.post(
+                    "/api/pyr/boss-verdict",
+                    headers={"host": "127.0.0.1"},
+                    json={
+                        "nonce": tab_a["nonce"],
+                        "submission_id": body["submission_id"],
+                        "answer_digest": body["answer_digest"],
+                        "verdict": "correct",
+                        "requirement_id": "required_behavior",
+                        "evidence_id": body["evidence_id"],
+                        "reason": "The bounded behaviour evidence is present.",
+                    },
+                )
+                self.assertEqual(verdict.status_code, 200, verdict.text)
+                self.assertEqual(verdict.json()["verified_requirements"], ["required_behavior"])
+            finally:
+                app_v2.WORKSPACE = original_workspace
+                app_v2.PROGRESS_PATH = original_progress
+                app_v2.PYR_CONTEXT_CHALLENGE = original_context_challenge
+                app_v2.PYR_CONTEXT_INPUT.clear()
+                app_v2.PYR_CONTEXT_INPUT.update(original_context_input)
+                app_v2.PYR_CONTEXT_CHALLENGES.clear()
+
     def test_context_rejects_state_file_and_bounds_large_text(self):
         original_workspace = app_v2.WORKSPACE
         original_progress = app_v2.PROGRESS_PATH

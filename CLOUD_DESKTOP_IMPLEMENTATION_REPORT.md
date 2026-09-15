@@ -1032,4 +1032,20 @@ A clean disposable archive was also tested with `monaco-editor` pinned to
 passed, the Vite build transformed 1,293 modules, and `npm audit --omit=dev`
 reported zero vulnerabilities. This is a compatibility candidate only; the
 current branch remains on 0.56.0 until the semver-major editor decision is
-reviewed.
+reviewed, and npm audit does not inspect Monaco's vendored sanitizer bundle.
+
+### Claude F-009 follow-up and coverage closure — 2026-09-16
+
+Claude Sonnet reviewed commits `e8094c2` and `fea726e` read-only after the
+scheduled availability check. It found the nonce-keyed, lock-protected
+per-client maps and TTL pruning consistent across the Battle, Boss and Dungeon
+routes, confirmed the DOM fallback fix was necessary, and found no current
+functional regression. It noted that the prior test asserted Battle and
+Dungeon isolation but not Boss isolation or the default legacy snapshot.
+
+Those gaps are now covered by a backend regression test: the default Boss
+challenge is checked against its compatibility snapshot, and tab A's Boss
+submission/verdict remains valid after tab B captures its own challenge. The
+full backend suite passes 69 tests; frontend tests remain at 31 and the latest
+Windows Vite build transforms 1,345 modules. Claude did not edit files and
+could not run the WSL suite in its sandbox; local gates remain the evidence.

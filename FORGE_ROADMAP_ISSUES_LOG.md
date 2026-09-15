@@ -530,4 +530,34 @@ touching the repository lockfile. Its frontend suite passed all 31 tests, the
 Vite build transformed 1,293 modules, and `npm audit --omit=dev` reported zero
 vulnerabilities. This makes 0.53.0 a tested candidate, not an adopted change:
 the downgrade still needs a reviewer/product decision because the current
-editor line is 0.56.0.
+editor line is 0.56.0, and npm audit does not inspect Monaco's vendored
+sanitizer bundle.
+
+## Review update — 2026-09-16 — Claude Sonnet F-009 follow-up
+
+Claude's read-only review of commits `e8094c2` and `fea726e` found the core
+nonce-keyed, lock-protected per-tab maps and TTL pruning internally consistent
+across Battle, Boss, Dungeon submission/verdict routes. It confirmed that
+`fea726e` is a necessary isolation fix for the direct DOM enhancement fallback,
+not cosmetic cleanup. It found no current functional regression.
+
+The review identified two low-severity coverage gaps, now addressed in the
+backend suite: Boss-specific cross-tab binding was not asserted, and the
+default/legacy compatibility snapshot did not have an explicit round-trip
+assertion. The review also noted a bounded, already-known F-010 resource risk:
+many unique local client ids can occupy expiring map entries until lazy
+pruning; this remains within the loopback-only threat model and is not a
+blocking release defect.
+
+Claude could not independently run the WSL backend suite in its sandbox, so
+its review did not replace the local test evidence. No files were edited by
+Claude.
+
+## Verification update — 2026-09-16 — Boss/default challenge coverage
+
+The new backend regression test issues the default Boss challenge and asserts
+its map entry remains the legacy compatibility snapshot, then issues Boss
+challenges in tabs A and B and successfully submits/verifies tab A's evidence
+after tab B rotates its own challenge. The full WSL backend suite now passes
+69 tests; the frontend suite remains 31 tests and the latest Windows Vite build
+transforms 1,345 modules. No player save, PTY, or hosted state was touched.
