@@ -812,8 +812,28 @@ progress, reset a run, or remount either PTY. Issue F-042 is recorded in the
 persistent roadmap issue log.
 
 The focused gate now passes 31 frontend tests, the full WSL backend suite passes
-56 tests, and the Windows Vite build transforms 1,344 modules successfully.
+58 tests, and the Windows Vite build transforms 1,344 modules successfully.
 Manual browser validation used click/scroll/type K&M only (no Playwright): the
 loaded current runtime showed Level 2 / 50 XP / 55 coins, The Hitman at 8/8,
 three cleared mobs, three Codex encounter records, and both shell/AI surfaces
 `CONNECTED` without a refresh or progression mutation.
+
+### Read-only local custody preview — 2026-09-15
+
+The first safe part of the custody recommendation is now implemented without
+changing the active save. `/api/state/custody`, the runtime health projection,
+and `questlab-state custody` report the proposed opaque per-device destination,
+source/destination revisions, exact file digests and a bounded status. Missing,
+identical and divergent destinations are distinguished explicitly; no
+newest-file heuristic is used. The preview never copies, merges, increments
+campaign revision, creates a reward event or deletes the tracked source.
+
+This remains an approval-gated migration. The default launcher still uses the
+current canonical cache, the legacy workspace file remains evidence only, and
+no Supabase migration/seed or hosted player-state transport was started.
+The WSL backend suite is now 58 tests, the frontend suite is 31 tests, and the
+Windows Vite build still transforms 1,344 modules. A clean ext4 disposable
+runtime passed `npm ci`; browser click/scroll/type K&M showed the explicit
+campaign `SYNCING` guard before load, the offline/local HUD after load, visible
+SVG stat icons, custody JSON typed through the shell gateway, and both PTYs
+`CONNECTED`. The disposable runtime and save were removed afterward.

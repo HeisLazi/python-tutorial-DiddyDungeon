@@ -7,7 +7,7 @@ remaining release gates. It is a snapshot, not a progression mutation.
 ## Source baseline
 
 - Branch: `feature/cloud-sync-desktop`
-- Local and remote HEAD at snapshot time: `a5a8697134dfa7f61ab4372dbe37b7fe0eb2a43a`
+- Local and remote HEAD at snapshot time: `5add443b5e845de4a399cab105727f0d8e06d6bb`
 - Canonical checkout: `/mnt/c/Users/lazar/OneDrive/Documents/ChatGPT/Python Quest Lab`
 - The checkout has user-owned working-tree state in `progress.json` and an
   untracked root `tutor.py`. Neither was staged, overwritten, or used as test
@@ -65,11 +65,13 @@ invented. The workspace/legacy save remains evidence only.
   outbox) using an opaque runtime namespace;
 - explicit campaign-loading placeholders so a stale/miswired backend cannot
   masquerade as a Level 1 starter reset;
+- read-only local-custody preview through `/api/state/custody` and
+  `questlab-state custody`, with no automatic migration;
 - monochrome SVG top-stat icons using direct-child stat-pill selectors.
 
 ## Latest verification evidence
 
-- WSL backend suite: 56 tests passing.
+- WSL backend suite: 58 tests passing.
 - Frontend source/runtime suite: 31 tests passing.
 - Windows Vite production build: passed.
 - Clean ext4 archive: WSL `npm ci` plus Vite build passed after 1,344 modules.
