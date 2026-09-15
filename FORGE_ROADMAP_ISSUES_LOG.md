@@ -290,3 +290,16 @@ The new endpoint/CLI and existing state-authority tests pass in the WSL suite
 (58 backend tests, 31 frontend tests);
 the live canonical save and workspace legacy file were not touched and remain
 outside the write path.
+
+## Verification update — 2026-09-15 — isolated local-device proof
+
+Two disposable ext4 state roots were launched from the clean Linux checkout.
+The custody preview returned different opaque namespaces (`checkout-ca575e…`
+and `checkout-84f01e…`) and separate canonical paths. A typed state-service
+projection mutation advanced device A from revision 0 to 1 while device B
+remained at revision 0; neither workspace contained a second `progress.json`.
+The mutation was disposable and both backends were stopped afterward.
+
+| ID | Severity | Area | Finding | Status |
+|---|---|---|---|---|
+| F-044 | P2 | Two-device local isolation | Slice 7 needed evidence that separate local roots do not share a save before hosted sync is attempted. | Verified locally with two disposable state services and K&M on the clean runtime. This proves isolation only; hosted mailbox synchronization and real save-custody migration remain open. |

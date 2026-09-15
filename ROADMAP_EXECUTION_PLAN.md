@@ -190,6 +190,11 @@ modules). The remaining F-033 packaging risk is limited to the shared OneDrive
 `node_modules` tree; friends should install dependencies inside their Linux
 checkout rather than reuse a Windows tree.
 
+The current local Slice 7 checkpoint also exposes a read-only custody preview
+(`questlab-state custody`) and has a two-root disposable isolation proof. These
+do not migrate the tracked save or claim hosted sync; F-039 remains approval-
+gated and the next migration command must stay opt-in.
+
 The latest checkpoint adds upstream freshness to `/api/runtime` and the footer,
 removes the legacy combat shell's duplicate campaign poll (React now owns the
 single revision timer), preserves the Linux executable bit on `questlab-state`,

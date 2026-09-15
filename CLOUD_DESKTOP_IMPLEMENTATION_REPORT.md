@@ -837,3 +837,10 @@ runtime passed `npm ci`; browser click/scroll/type K&M showed the explicit
 campaign `SYNCING` guard before load, the offline/local HUD after load, visible
 SVG stat icons, custody JSON typed through the shell gateway, and both PTYs
 `CONNECTED`. The disposable runtime and save were removed afterward.
+
+The same clean checkout also powered two disposable local-device backends. The
+custody preview produced distinct opaque namespaces and canonical paths; a
+typed state-service projection mutation advanced device A to revision 1 while
+device B stayed at revision 0. Both disposable backends were stopped after the
+check. This is an isolation proof, not hosted sync proof, so F-039 and the
+Milestone C mailbox gate remain open.

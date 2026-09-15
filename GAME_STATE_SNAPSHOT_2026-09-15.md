@@ -80,6 +80,9 @@ invented. The workspace/legacy save remains evidence only.
   compare-and-swap state-service mutation changed HUD and Character coins to
   63 without refresh. Quest Journal stayed on Mob 3 The Hitman, Codex kept
   validated records, and both shell/AI surfaces stayed `CONNECTED`.
+- A clean ext4 K&M runtime showed the explicit campaign-loading guard and
+  typed `questlab-state custody` output. Two disposable local roots then
+  returned distinct namespaces; mutating device A advanced only A's revision.
 
 ## Remaining release gates
 
