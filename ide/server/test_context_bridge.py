@@ -154,6 +154,20 @@ class PyrContextBridgeTests(unittest.TestCase):
                 miss_mutation = miss.json()["mutation"]
                 self.assertEqual(miss_mutation["event"]["action"], "record_battle_miss")
                 self.assertEqual(miss_mutation["result"]["damage"], 18)
+                self.assertEqual(miss_mutation["event"]["evidence_id"], "hitman-miss-001")
+                self.assertEqual(miss_mutation["result"]["mob_name"], "The Hitman")
+                self.assertEqual(miss_mutation["result"]["objective_id"], "stop_condition")
+                self.assertEqual(miss_mutation["result"]["question_type"], "bug_diagnosis")
+
+                reconciled = json.loads(canonical.read_text(encoding="utf-8"))
+                encounter = reconciled["encounter_state"]
+                self.assertEqual(encounter["attempts"], 2)
+                self.assertEqual(encounter["question_types"], ["code_checkpoint", "bug_diagnosis"])
+                codex_entry = reconciled["codex"]["encounters"][0]
+                self.assertEqual(codex_entry["attempts"], 2)
+                self.assertEqual(codex_entry["question_types"], ["code_checkpoint", "bug_diagnosis"])
+                self.assertEqual([item["outcome"] for item in codex_entry["results"]], ["verified", "incorrect"])
+                self.assertEqual(codex_entry["mastery"]["evidence"], 1)
             finally:
                 app_v2.WORKSPACE = original_workspace
                 app_v2.PROGRESS_PATH = original_progress

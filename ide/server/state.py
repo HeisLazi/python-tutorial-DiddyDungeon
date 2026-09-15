@@ -1268,7 +1268,8 @@ class LocalStateService:
         mastery = entry.setdefault("mastery", {"evidence": 0, "interview_passes": 0, "shield": "none"})
         if not isinstance(mastery, dict):
             raise StateCommandError("Existing Codex mastery state is invalid", status_code=500)
-        mastery["evidence"] = self._counter(mastery, "evidence") + 1
+        if outcome in {"verified", "defeated"}:
+            mastery["evidence"] = self._counter(mastery, "evidence") + 1
         return entry
 
     def _update_skill_evidence(self, progress: dict[str, Any], concept: object) -> None:
@@ -1444,10 +1445,51 @@ class LocalStateService:
         return Mutation(True, finish, {"project_id": self._project_id(project), **finish, "codex_entry_id": entry["id"]})
 
     def _record_battle_miss(self, payload: Mapping[str, Any], progress: dict[str, Any]) -> Mutation:
-        data = self._payload(payload, {"raw_damage", "reason", "encounter_id"}, {"raw_damage", "reason", "encounter_id"})
+        data = self._payload(
+            payload,
+            {"raw_damage", "reason", "encounter_id", "objective_id", "evidence_id"},
+            {"raw_damage", "reason", "encounter_id"},
+        )
         raw_damage = self._integer(data["raw_damage"], "raw_damage", minimum=1, maximum=28)
         reason = self._text(data["reason"], "reason")
         encounter_id = self._text(data["encounter_id"], "encounter_id", max_length=MAX_IDENTIFIER_LENGTH, identifier=True)
+        evidence_id = self._text(data.get("evidence_id", encounter_id), "evidence_id", max_length=MAX_IDENTIFIER_LENGTH, identifier=True)
+        objective_id = None
+        question_type = None
+        mob_name = None
+        if data.get("objective_id") is not None:
+            objective_id = self._text(data["objective_id"], "objective_id", max_length=MAX_IDENTIFIER_LENGTH, identifier=True)
+            project, mobs, index, mob = self._active_project_and_mob(progress)
+            profile = self._encounter_profile(index)
+            objective = profile["objectives"].get(objective_id)
+            if objective is None:
+                raise StateCommandError("This Battle objective is not defined for the active encounter")
+            encounter = self._ensure_encounter_state(progress, project, mob, index)
+            completed = encounter.get("completed_objectives")
+            if not isinstance(completed, list):
+                raise StateCommandError("Existing encounter objective history is invalid", status_code=500)
+            if objective_id in completed:
+                raise StateCommandError("This encounter objective has already been verified", status_code=409)
+            question_type = str(objective["question_type"])
+            encounter["attempts"] = self._counter(encounter, "attempts") + 1
+            encounter["last_objective_id"] = objective_id
+            encounter["last_question_type"] = question_type
+            encounter["last_outcome"] = "incorrect"
+            question_types = encounter.setdefault("question_types", [])
+            if question_type not in question_types:
+                question_types.append(question_type)
+            mob["objective_attempts"] = self._counter(mob, "objective_attempts") + 1
+            mob_name = str(mob.get("name") or "")
+            entry = self._upsert_codex_entry(
+                progress,
+                project,
+                mob,
+                question_type=question_type,
+                outcome="incorrect",
+                evidence_id=evidence_id,
+                note=reason,
+            )
+            entry["status"] = "observed"
         player = self._dict(progress, "player")
         armor_name = str((progress.get("equipment") or {}).get("armor") or "")
         armor_reduction = {"Apprentice Coat": 10, "Leather Guard": 20, "Runic Mail": 30, "Emberplate": 40, "Guardian Aegis": 50, "Mythril Archive Plate": 60}.get(armor_name, 0)
@@ -1458,8 +1500,26 @@ class LocalStateService:
         player["hp"] = updated
         return Mutation(
             True,
-            {"hp": updated, "max_hp": maximum, "damage": damage},
-            {"raw_damage": raw_damage, "damage": damage, "hp_before": current, "hp_after": updated, "encounter_id": encounter_id, "reason": reason},
+            {
+                "hp": updated,
+                "max_hp": maximum,
+                "damage": damage,
+                "mob_name": mob_name,
+                "objective_id": objective_id,
+                "question_type": question_type,
+            },
+            {
+                "raw_damage": raw_damage,
+                "damage": damage,
+                "hp_before": current,
+                "hp_after": updated,
+                "encounter_id": encounter_id,
+                "evidence_id": evidence_id,
+                "mob_name": mob_name,
+                "objective_id": objective_id,
+                "question_type": question_type,
+                "reason": reason,
+            },
         )
 
     def _player_hp_change(self, payload: Mapping[str, Any], progress: dict[str, Any]) -> Mutation:

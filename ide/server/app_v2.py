@@ -594,6 +594,8 @@ def apply_pyr_verdict(payload: PyrVerdictRequest):
                         "raw_damage": PYR_RAW_DAMAGE_BY_MOB[min(mob_index, len(PYR_RAW_DAMAGE_BY_MOB) - 1)],
                         "reason": payload.reason,
                         "encounter_id": f"{encounter['project_id']}-{mob_index}",
+                        "objective_id": objective_id,
+                        "evidence_id": payload.evidence_id,
                     }
                 mutation = STATE_SERVICE.apply_internal(action, state_payload)
             except StateCommandError as exc:

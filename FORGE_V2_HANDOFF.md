@@ -119,7 +119,10 @@ Canonical combat details live in `COMBAT_SYSTEM.md`.
    Battle submission flow remain next.
 3. Persistent Resolve / armor calculation / HP / combat log.
 4. Teach Me / Quick Refresher / Test Me encounter entry.
-5. Living Codex records: attempts, weakness tags and interview history.
+5. **Partial:** Living Codex records now retain bounded encounter attempts,
+   question types and verified/incorrect results from the challenged verdict
+   path. Weakness tags and interview history still require their own validated
+   Teach Me / Test Me mutation flow.
 6. Boss phase presentation and trinket triggers.
 7. Later: shared weekly raid transport/state and party objectives.
 
@@ -149,6 +152,7 @@ Report broken behaviour with a screenshot and the visible launcher/terminal outp
 
 This remains a local-runtime test build. The combat shell intentionally stops
 before automatic provider adjudication. The context and challenged-verdict
-halves of the bridge are implemented and tested; provider-side answer
-adjudication and persistent combat projection are next, not more fake
+halves of the bridge are implemented and tested; verdict mutations now persist
+bounded encounter attempts/results, while provider-side answer adjudication
+and the remaining persistent combat projection are next, not more fake
 front-end combat state.

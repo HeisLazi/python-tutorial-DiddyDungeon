@@ -101,6 +101,11 @@ Hosted Auth is configured to require email confirmation (`mailer_autoconfirm=fal
   slice. A one-time nonce binds a correct/incorrect verdict to the captured
   campaign revision and active mob; only canonical objective Impact, rewards,
   armor and counterattack values can be applied by the state service.
+- A verdict for an available objective now records the encounter attempt in
+  the canonical encounter projection and Codex. Correct outcomes add verified
+  evidence; incorrect outcomes retain the question type, result and bounded
+  note without granting mastery evidence. The route returns these validated
+  mutation/event details for the existing live projection and reward queue.
 
 ## Supabase project and schema
 
