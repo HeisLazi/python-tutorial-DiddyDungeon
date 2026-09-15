@@ -1010,3 +1010,18 @@ PTY labels remained `CONNECTED`. The exact temporary runtime and state folder
 were removed afterward. The dirty user save, root Campaign `tutor.py`,
 long-lived runtimes and hosted state were untouched. This closes local F-009;
 provider-authenticated hosted adjudication remains gated by F-001/F-010.
+
+### Targeted frontend dependency audit — 2026-09-16
+
+The installed frontend tree was audited read-only with `npm audit --json`.
+There are two advisories (one low and one moderate), both on Monaco's
+DOMPurify path; no high or critical findings were reported. The direct editor
+is `monaco-editor` 0.56.0, whose package carries DOMPurify 3.4.8 and bundles
+the sanitizer into the editor distribution. npm's automatic remediation is a
+semver-major downgrade to `monaco-editor` 0.53.0.
+
+Because that remediation changes the editor major line, no forced audit fix,
+silent downgrade or unreviewed lockfile rewrite was applied. The current
+frontend tests and production build remain green. F-050 is now a bounded
+compatibility/security decision before friend distribution is called
+security-clean; the audit did not touch player state, PTYs or hosted state.
