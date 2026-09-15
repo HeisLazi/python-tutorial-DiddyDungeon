@@ -23,6 +23,11 @@ cd ../..
 
 The frontend install is deliberately local to the checkout. Do not reuse a
 `node_modules` directory copied from a different operating system.
+When the launcher runs under WSL it checks that this install contains a native
+Linux Rollup optional package; if it reports a missing package, run `npm ci`
+again from this WSL checkout (or move the clean checkout to a Linux filesystem)
+before launching. The launcher exits before starting Forge when that check
+fails.
 
 ## Choose a quest workspace
 
