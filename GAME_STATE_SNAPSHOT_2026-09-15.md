@@ -7,7 +7,7 @@ remaining release gates. It is a snapshot, not a progression mutation.
 ## Source baseline
 
 - Branch: `feature/cloud-sync-desktop`
-- Local and remote HEAD at snapshot time: `f37602c` (`docs: record stale runtime replay`)
+- Local and remote HEAD at snapshot time: `7037e46` (`docs: record launcher custody opt-in`)
 - Canonical checkout: `/mnt/c/Users/lazar/OneDrive/Documents/ChatGPT/Python Quest Lab`
 - The checkout has user-owned working-tree state in `progress.json` and an
   untracked root `tutor.py`. Neither was staged, overwritten, or used as test
