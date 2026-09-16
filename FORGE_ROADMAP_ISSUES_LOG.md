@@ -802,3 +802,9 @@ still lacks real Windows friend-machine and hosted mailbox evidence. It keeps
 the device-ownership migration, F-039 custody, Milestone C two-device sync,
 avatar, Tauri, public web and Slice 8 behind explicit gates. No migration,
 Supabase write, save edit, runtime restart or PTY reset was performed.
+
+The post-plan regression pass at 03:26 is green: WSL backend 76/76, frontend
+33/33 and Windows Vite build successful after transforming 1,345 modules. The
+only build note is the pre-existing large-chunk warning. Windows status still
+contains only the user-owned `progress.json` and untracked root `tutor.py`;
+no semantic source or hosted state changed.

@@ -1293,3 +1293,9 @@ next real gate. It keeps device-ownership migration, F-039 save custody,
 avatar acceptance, Tauri, public web and Slice 8 behind explicit approvals and
 defines exact automated-test and pure K&M stages for each. No hosted project,
 save, runtime or PTY was changed during the review.
+
+The post-plan regression pass at 03:26 reran the full WSL backend suite
+(76/76), the frontend suite (33/33), and the Windows Vite production build
+(1,345 modules; successful with the existing chunk-size warning). The run
+left the working tree boundary unchanged: only user-owned `progress.json` is
+modified and root `tutor.py` remains untracked.
