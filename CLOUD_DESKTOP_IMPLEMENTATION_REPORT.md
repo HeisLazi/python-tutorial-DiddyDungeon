@@ -1655,3 +1655,11 @@ null `.Trim()` failure. It resolves the branch upstream with `for-each-ref`,
 checks HEAD/upstream hashes with quiet Git probes and fails closed when either
 identity is unavailable. Launcher contract tests pass **9/9** and PowerShell
 parsing passes. No launcher, save or PTY was started or changed.
+
+### Post-launch-fix regression — 2026-09-16 06:22
+
+The full WSL backend suite passed **77/77**, frontend **35/35**, Python
+`compileall -q ide` passed, launcher contracts **9/9** passed, PowerShell
+parsing passed and Vite built **1,345 modules**. Read-only Git identity checks
+resolved the current branch, upstream and equal HEAD hashes. No canonical or
+legacy save, long-lived runtime or PTY was touched.

@@ -1220,3 +1220,12 @@ upstream with `for-each-ref`, verifies HEAD/upstream hashes with quiet Git
 probes and fails closed if either identity cannot be resolved. Launcher
 contract tests pass **9/9** and PowerShell parsing passes. No launcher was
 started, and no save or PTY was touched.
+
+## 2026-09-16 06:22 — post-launch-fix regression
+
+After the launcher identity fix, the full WSL backend suite passed **77/77**,
+the frontend suite passed **35/35**, Python `compileall -q ide` passed, the
+launcher contract subset passed **9/9**, PowerShell parsing passed and Vite
+built **1,345 modules**. Git identity reads resolved the current branch,
+upstream and equal HEAD hashes. This was read/build-only; the canonical save,
+legacy evidence, long-lived runtimes and PTYs were untouched.
