@@ -39,6 +39,10 @@ desktop, public and social stages remain approval-gated.
    automation only; Playwright is prohibited.
 6. Hidden future questions/answers are never sent to the browser, Codex, or
    provider context.
+7. A mutating disposable K&M check must pass
+   `questlab-km-preflight.ps1 -RequireIsolatedState` against an explicitly
+   confirmed local cache before any browser mutation; workspace separation alone
+   is not a state-custody boundary.
 
 ## Dependency-ordered slices and gates
 
@@ -329,3 +333,15 @@ docs-only commit. Protected `progress.json` and Campaign `tutor.py` remain
 untouched and unstaged. F-039 custody, the real second-machine launch,
 provider-authenticated adjudication, hosted sync/Supabase, Tauri and social
 work remain gated as listed above.
+
+## Current checkpoint — 2026-09-16 07:38
+
+The custody guard is now executable on Windows: `-RequireIsolatedState` uses
+correct single-character separator literals and the launcher contract covers
+the fail-closed comparison. A disposable `--use-local-state` runtime passed
+the guarded preflight and pure CUA K&M verified live revision/event projection
+across HUD, Journal, Codex, Character and Homestead while both PTYs stayed
+connected. The protected canonical save remained revision 5 and was not
+mutated by this acceptance. The local authority/projection slice is green;
+the real second-Windows launch, F-039 custody decision and all hosted/Tauri/
+public/social gates remain open.

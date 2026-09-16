@@ -309,6 +309,8 @@ The mutation was disposable and both backends were stopped afterward.
 | F-049 | P2 | Clean-install launch proof | The friend distribution path had source-custody/build evidence but no fresh checkout proof that the documented backend/frontend setup launches the Forge with both PTYs and live state projection. | Fixed locally for a clean ext4 WSL checkout: cloned pushed `8f4ec71`, installed `.venv` and frontend dependencies, built 1,344 modules, launched the stable-PTY runtime, and observed a gateway reward reach the HUD without refresh. Windows friend-machine packaging/Tauri remain separate gates. |
 | F-050 | P3 | Frontend dependency audit | The locked frontend tree reports two advisories in Monaco's DOMPurify path (one low and one moderate; no high/critical findings). | Decision recorded: retain `monaco-editor` 0.56.0 / DOMPurify 3.4.8 as an accepted low/moderate risk. The 0.53.0 “fix” is rejected because its vendored DOMPurify is older 3.1.7 and merely invisible to npm audit; revisit only when upstream bundles a version above 3.4.12. |
 | F-051 | P2 | Cloud write provenance | The security-definer player-state RPC accepted a caller-supplied device UUID without proving that the device belonged to the authenticated account; the client also classified any error message containing “revision” as a conflict. | Fixed locally: migration `20260916000100_player_state_device_ownership.sql` requires an account-owned `devices` row, the fake-cloud regression enforces the same boundary, conflict handling now accepts only SQLSTATE `40001`/HTTP `409`, and the unreachable cloud-revision-zero branch was removed. The migration is committed but intentionally not applied to Supabase in this checkpoint. |
+| F-053 | P2 | Disposable K&M state custody | A separate quest workspace does not change the launcher's canonical state path; a mutating browser test can therefore write the protected save unless local custody is explicitly selected. | Fixed in the local test contract: `questlab-km-preflight.ps1 -RequireIsolatedState` now fails closed when the active path is the repository save. Mutating disposable runs must launch with an explicitly confirmed isolated local cache first; the accidental run remains auditable below and no direct JSON reset is permitted. |
+| F-054 | P3 | Windows/WSL preflight separator normalization | The first implementation of the isolated-custody comparison used a two-character PowerShell backslash literal, which failed `TrimEnd` and could miss a single separator in normalization. | Fixed locally: the guard uses single-character `\` literals for `TrimEnd`/`Replace`, the launcher contract rejects the old forms, PowerShell parsing passes, and a guarded isolated runtime passes GREEN. |
 | F-052 | P2 | Public activity automation boundary | `.github/workflows/sync-activity.yml` is the only CI writer and uses `contents: write` plus `GITHUB_TOKEN` to publish generated public activity. The boundary was not called out in the roadmap/handoff. | Fixed locally: handoff and roadmap now document the narrow `activity.json`/`README.md` output boundary, and the launcher contract suite rejects broader write scopes or player-state references. Keep the token/project permissions minimal and review again before public deployment. |
 
 ## Verification update — 2026-09-15 — WSL launcher dependency preflight
@@ -1327,3 +1329,33 @@ and the already-documented launcher fetch behavior. Claude recommends Stage A
 only until a real second-Windows environment and the explicit F-039 custody
 decision are available; hosted sync/avatar, Tauri, public and social work stay
 approval-gated.
+
+## 2026-09-16 07:23 — disposable K&M state-custody incident
+
+The fresh browser-only Dungeon check used a separate workspace but (incorrectly)
+left the launcher pointed at the protected canonical cache. The state service
+therefore recorded a Dungeon start (revision 3), a 33-byte checkpoint (revision
+4), and a bounded internal death cleanup (revision 5). No Campaign XP/coins,
+mob, Codex, equipment or player counter changed; the cleanup granted no reward.
+The resulting dead zero-score run is retained as an auditable event and does
+not block a fresh run. F-053 is now tracked: mutating disposable K&M must first
+use an explicitly confirmed isolated local cache; workspace separation alone is
+not sufficient. No direct JSON edit or destructive reset was used.
+
+## 2026-09-16 07:38 — isolated live-projection acceptance and guard correction
+
+The new `-RequireIsolatedState` preflight initially surfaced a PowerShell
+separator bug: `'\\'` was invalid for `TrimEnd` and did not normalize a single
+backslash in `Replace`. The guard now uses single-character literals, the
+launcher contract asserts both forms, and the PowerShell parser plus the
+preflight pass GREEN.
+
+A disposable WSL workspace/local cache was explicitly migrated with
+`--use-local-state --confirm-local-state`; the protected canonical save was not
+used for mutation. Pure CUA K&M verified revision 5→6 Resolve 8/8→4/8 and
+revision 6→7 Hitman defeat, the state-service's +30 XP/+15 coins, Bust Hound
+unlock, Codex growth, live HUD/Journal/Character/Homestead projection and
+`CONNECTED` shell/AI PTYs without refresh. The disposable runtime and files
+were removed. Protected revision 5/hash and user `progress.json`/`tutor.py`
+custody remain unchanged. Claude's follow-up CLI review was attempted but hit
+its session limit, so this entry carries no new peer-approval claim.

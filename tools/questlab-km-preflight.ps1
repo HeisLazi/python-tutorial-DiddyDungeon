@@ -5,7 +5,8 @@ param(
     [ValidateRange(1, 65535)]
     [int]$FrontendPort = 5173,
     [switch]$AllowStaleCheckout,
-    [switch]$SkipFrontendSource
+    [switch]$SkipFrontendSource,
+    [switch]$RequireIsolatedState
 )
 
 # Read-only gate for the manual K&M acceptance. This deliberately performs
@@ -89,6 +90,17 @@ if ($authority.legacy_authoritative) {
 if (-not $authority.canonical_path -or -not $authority.legacy_path -or $authority.canonical_path -eq $authority.legacy_path) {
     Fail 'runtime did not expose distinct canonical and legacy state paths'
 }
+if ($RequireIsolatedState) {
+    $reportedRepoRoot = ([string]$runtime.repo_root).Trim()
+    if (-not $reportedRepoRoot) {
+        Fail 'runtime did not expose repo_root for the isolated state-custody check'
+    }
+    $repoCanonical = ($reportedRepoRoot.TrimEnd('/', '\') + '/progress.json').Replace('\', '/').ToLowerInvariant()
+    $activeCanonical = ([string]$authority.canonical_path).TrimEnd('/', '\').Replace('\', '/').ToLowerInvariant()
+    if ($repoCanonical -eq $activeCanonical) {
+        Fail 'mutating K&M requires an isolated local state cache; the active canonical path is the protected repository save'
+    }
+}
 
 $revision = Get-Json "http://127.0.0.1:$BackendPort/api/state/revision"
 if ($null -eq $revision.revision) {
@@ -116,3 +128,4 @@ Write-Host "Frontend:          127.0.0.1:$FrontendPort"
 Write-Host "Campaign revision: $($revision.revision)"
 Write-Host "Canonical state:   $($authority.canonical_path)"
 Write-Host "Legacy evidence:   $($authority.legacy_path) (non-authoritative)"
+if ($RequireIsolatedState) { Write-Host 'Mutation gate:      isolated local state required and verified' }

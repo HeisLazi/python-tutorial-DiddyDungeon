@@ -1759,3 +1759,47 @@ effective Campaign `tutor.py`/Practice boundary, plus a missing CI automation
 boundary note now tracked as F-052. Stage A still needs a real second-Windows
 environment and the explicit F-039 custody decision; no hosted, Tauri, public
 or social operation was authorized or performed.
+
+### Disposable K&M state-custody incident — 2026-09-16 07:23
+
+During a fresh browser-only Dungeon check, a separate workspace was supplied
+but the launcher still correctly used the protected canonical cache. Starting
+the run and saving a 33-byte editor buffer therefore created state-service
+events at revisions 3 and 4. I stopped that runtime and used the existing
+internal `dungeon_record_death` action at revision 5 with the explicit reason
+`ephemeral browser acceptance cleanup; no reward`; no direct JSON edit, reward,
+Campaign/Codex/equipment change or PTY reset occurred. The player state remains
+Level 2 / 50 XP / 55 coins / The Hitman 8/8. The dead zero-score test run is
+retained for audit and does not block a fresh run. F-053 requires all future
+mutating disposable K&M sessions to opt into an explicitly confirmed isolated
+local cache before interaction; a separate workspace alone is not enough.
+
+### Isolated K&M projection acceptance and custody-guard correction — 2026-09-16 07:38
+
+The first attempt to exercise `-RequireIsolatedState` exposed a real
+PowerShell portability defect: a two-character `'\\'` literal was passed to
+`TrimEnd`, and the separator replacement would not normalize a single
+backslash. Both literals are now single-character PowerShell strings and the
+launcher contract asserts the corrected forms; the script parses and the
+preflight passes on Windows.
+
+I then launched the full stable-PTY stack with `--use-local-state`
+`--confirm-local-state`, `QUESTLAB_LOCAL_STATE_ROOT` pointed at a disposable
+WSL cache, and a separate disposable quest workspace. Preflight passed GREEN
+with `-RequireIsolatedState` at revision 5. Pure CUA K&M (click/type/scroll and
+observation only; no refresh or Playwright) verified the actual live projection:
+an internal state-service objective moved The Hitman Resolve from 8/8 to 4/8
+at revision 6, and a second verified objective moved revision 6 to 7, awarded
+the service's own +30 XP/+15 coins, defeated The Hitman, unlocked The Bust Hound,
+and created the Hitman Codex evidence. HUD, Journal, Codex, Character and
+Homestead reflected those changes without refresh; shell and AI PTY labels
+stayed `CONNECTED` throughout. The screenshot showed visible heart, coin and
+flame SVG icons without nested pills.
+
+The disposable runtime, tab, workspace and local cache were stopped/removed.
+The protected canonical save remained revision 5 with SHA-256
+`5618f9dd9ae2fc0724056ea08448e1736479772b59ada949bec08b5340fbd6f0`; no
+canonical or Campaign `tutor.py` write occurred. The exact evidence is in
+`GAME_STATE_SNAPSHOT_2026-09-16_0738.md`. A follow-up Claude Sonnet review was
+attempted but the CLI reported its session limit until reset, so no new Claude
+approval claim is made for this checkpoint.

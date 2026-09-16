@@ -106,3 +106,24 @@ evidence requires a real second Windows environment and the operator's F-039
 custody decision. Until those inputs exist, the safe work is local guardrail
 tests and documentation; Stages B–F remain approval-gated and must not be
 represented as complete.
+
+## Custody correction from the follow-up K&M run
+
+A separate workspace does not itself redirect the launcher's state path. A
+fresh Dungeon K&M check therefore wrote only its own test run/checkpoint into
+the protected cache before it was closed through the named no-reward death
+action. The local preflight now has `-RequireIsolatedState`, which fails closed
+when the active path is the repository save; all future mutating disposable
+checks must use that gate after an explicit local-cache custody opt-in.
+
+## Follow-up verification — 2026-09-16 07:38
+
+The guard was exercised against an explicitly migrated disposable cache. A
+PowerShell separator-literal defect found during the first run was corrected,
+and the parser, launcher contract and guarded preflight now pass. Pure CUA K&M
+then verified two trusted objective mutations (Resolve 8/8→4/8, then Hitman
+defeat with the service-owned +30 XP/+15 coins and Bust Hound unlock) reaching
+all local projections without refresh while both PTYs remained connected. The
+protected save stayed at revision 5. A new Claude CLI review was attempted but
+the service reported its session limit, so the prior read-only plan remains the
+latest Claude review rather than claiming a fresh approval.
