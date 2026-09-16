@@ -1428,3 +1428,23 @@ source regression assertion. Claude also noted that the frontend tests are
 source-regex tripwires rather than rendered-DOM tests; this is a known P3 test
 boundary, not a release blocker. Claude did not run tests or browser actions
 and did not touch `progress.json`, `tutor.py`, runtimes or PTYs.
+
+## Verification update — 2026-09-16 — end-to-end bug hunt and CachyOS target
+
+The repeatable bug hunt is persisted in `BUG_HUNT_LOG_2026-09-16.md`. Claude
+Sonnet and Copilot reviewed the current branch, and the primary agent ran the
+browser checkpoint with keyboard/mouse/scroll/type only. The three defects
+below were reproduced or confirmed, repaired, and regression-checked; no new
+primary-agent K&M defect was scored.
+
+| ID | Severity | Area | Finding | Status |
+|---|---|---|---|---|
+| F-055 | P2 | PYR context isolation | The context bridge stored the latest PYR context in a process-global slot. A second tab could therefore read the first tab's marker/context through `GET /api/pyr/context`, even though challenge writes were intended to be tab-scoped. | Fixed locally: named clients now have isolated context records, the GET route accepts the opaque `client_id`, and a two-tab regression proves marker A cannot read marker B (or vice versa). |
+| F-056 | P2 | PTY command resolution | New PTYs prepended the repository root to `PATH`. A workspace file named `python3`, `git` or `curl` could shadow the real tool and change shell/PYR behavior. | Fixed locally: PTY environments inherit the host `PATH` and append the repository root only for the supported `questlab-state` wrapper. The PATH-order regression passes for both PTY bridges. |
+| F-057 | P3 | Release documentation | The implementation report still described Dungeon/Practice as missing while the current branch already contained the local playable slice, which could cause an unnecessary scope rollback or incorrect release decision. | Fixed locally: the report now separates local Dungeon/Practice proof from the still-open hosted persistence gate (F-018). |
+| F-058 | P2 | Native Linux distribution | Friend onboarding covered Windows/WSL and ext4 smoke only; the requested CachyOS laptop had no explicit native-Linux install, launch, dependency or PTY acceptance gate. | Open roadmap gate: CachyOS is now an explicit Arch-based target. It is not certified until a clean native Linux checkout passes the install/build/launch, canonical-state, live-projection and shell/AI PTY K&M checks on that laptop. |
+
+The reviewer score was Copilot **2 unique findings / 5 points** and Claude
+Sonnet **1 unique finding / 4 points**; the primary K&M pass found **0 new
+scored defects**. F-058 is a distribution requirement, not a claim that the
+current Windows/WSL evidence certifies CachyOS.

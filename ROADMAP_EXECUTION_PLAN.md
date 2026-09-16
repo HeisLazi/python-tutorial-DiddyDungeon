@@ -1,8 +1,9 @@
 # Forge roadmap execution plan
 
 Status: local roadmap slices 0–6 implemented and verified; friend-ready
-launcher/health foundation added; hosted distribution/social slices remain
-explicitly gated — 2026-09-16
+launcher/health foundation added; CachyOS native-Linux support is an explicit
+open distribution gate; hosted distribution/social slices remain explicitly
+gated — 2026-09-16
 
 Claude Sonnet review was previously attempted from WSL while the configured
 CLI returned `Not logged in · Please run /login`. The current checkpoint has
@@ -123,12 +124,39 @@ desktop, public and social stages remain approval-gated.
 - Provide a guarded Windows/WSL launcher and onboarding contract that refuses a
   stale branch by default, injects the canonical platform state path and keeps
   backend reload disabled for stable PTYs.
+- Add a native Linux distribution matrix with CachyOS as the first explicitly
+  requested desktop target. Keep the checkout and dependencies on a native
+  Linux filesystem, preserve the executable `questlab-state` gateway and prove
+  both PTYs plus live revision projection on the actual laptop before calling
+  the distro supported (F-058).
 - Finish local/offline sync conflict UX and account-scoped storage boundaries;
   do not seed Supabase until provider-authenticated state acceptance passes.
 - Package a Windows desktop build/installer and a documented friend onboarding
   path. Sharing is opt-in and exposes stats/progression, never code/private
   notes.
 - Gate: two-device mailbox acceptance, clean install/launch, K&M smoke test.
+
+### CachyOS native Linux target — new distribution gate (F-058)
+
+CachyOS is an Arch-based rolling-release target for the user's laptop. The
+existing WSL/ext4 evidence does not certify it, and this gate must remain open
+until it is run on the real machine. The target acceptance is:
+
+- clone the reviewed branch into a native Linux filesystem (for example
+  `~/projects/python-tutorial-DiddyDungeon`), never a `/mnt/c` or OneDrive
+  mount used as a live dependency tree;
+- install the distro-provided Git, Python/venv, Node.js and npm toolchain, then
+  create `.venv`, install `ide/server/requirements.txt`, and run `npm ci` in
+  `ide/frontend` so Rollup uses native Linux optional packages;
+- launch with the module-safe `PYTHONPATH=. .venv/bin/python -m ide.quest`
+  command and a separate quest workspace; keep backend reload disabled so
+  shell/AI PTYs remain stable;
+- verify `questlab-state runtime`, `authority` and `campaign` report one
+  canonical state path, then use browser K&M to prove live HUD/Journal/Codex/
+  Character/Homestead projection, save authority and both connected PTYs;
+- record the CachyOS kernel/package versions, ports, test counts and any
+  native dependency remediation in the issue log before changing F-058 to
+  **Verified**. No Supabase seed or hosted-state claim is part of this gate.
 
 ### Slice 8 — hosted social layer (last)
 
@@ -299,7 +327,7 @@ does not weaken any approval gate.
 | A. Local authority/projection | `ide/server/state.py`, `app_v2.py`, `AppV2.jsx`, `RpgViews.jsx`, `syncEngine.js`; one canonical save, revision polling and validated events | workspace-file isolation, revision/event polling, reward authority, stale revision handling; full backend/frontend/build gates | disposable current-branch runtime; trigger one gateway mutation; HUD, Journal, Codex, Character, Homestead agree without refresh; shell/AI remain connected | **Green locally**; keep regression gates running |
 | B. Campaign/Boss/Codex/Homestead | state-service encounter/boss/equipment actions; React renders only returned events; Campaign Tutor remains `tutor.py`, Practice stays separate | objective impact/Resolve, mob clear/unlock/Codex, boss evidence completeness, bounded notes, purchase/equip conflicts | verified objective, mob clear, next encounter, Codex growth and coin/equipment projection with no refresh | **Green locally**; provider-authenticated trust still open |
 | C. Dungeon/Practice | canonical Dungeon checkpoint/run state and independent Practice session/history; no Campaign rewards or notebook writes | restart/checkpoint, stale question, blank rotation, room/economy/death, mixed Practice and no-cross-mode writes | start run, type/checkpoint, rotate, REST/MARKET, purchase/bank or die; separately repeat Practice; record PTY continuity | **Green locally**; hosted persistence is F-018 |
-| D. Local distribution | `tools/questlab-launch.ps1`, `questlab-package.ps1`, onboarding and preflight; committed HEAD only | launcher/package custody, dependency preflight, branch/runtime identity, clean install | clean WSL/ext4 launch and gateway reward; real Windows second-machine launch still required | **Ext4 green; Windows gate open** |
+| D. Local distribution | `tools/questlab-launch.ps1`, `questlab-package.ps1`, onboarding and preflight; committed HEAD only | launcher/package custody, dependency preflight, branch/runtime identity, clean install, CachyOS native-Linux matrix | clean WSL/ext4 launch and gateway reward; real Windows second-machine and CachyOS laptop launches still required | **Ext4 green; Windows + CachyOS gates open** |
 | E. Hosted sync/avatar | existing auth/profile/device, bounded `syncEngine.js`, SQL migrations/RLS and avatar boundary; no broad state transport | linked migrations/RLS, CAS conflicts, offline outbox, account/device privacy, avatar storage denials | two signed-in devices, offline/reconnect/conflict choices, live projections and PTYs | **Approval required**; do not seed Supabase |
 | F. Desktop/public/social | thin Tauri sidecar, safe public allowlist, then friends/presence/raids | child-process cleanup, route allowlist, RLS/privacy and two-account tests | desktop close/PID proof, deployed public routes, two-account privacy run | **Blocked by E and explicit infrastructure approval** |
 
@@ -384,3 +412,18 @@ Codex fallback that could loosely shelve entries without `page_id` was
 tightened to an exact/prefix concept match and source-tested. The review also
 records the known P3 boundary that frontend checks are source-regex tripwires,
 not a replacement for rendered-DOM/K&M evidence.
+
+## Current checkpoint — 2026-09-16 — bug-hunt closure and CachyOS planning
+
+The persistent bug hunt found and fixed F-055 (cross-tab PYR context reads),
+F-056 (repository-root PTY `PATH` shadowing) and F-057 (stale Dungeon/Practice
+release wording). Copilot scored two unique defects / five points; Claude
+Sonnet scored one / four; the primary K&M pass scored zero new defects. Full
+reproduction and repair evidence is in `BUG_HUNT_LOG_2026-09-16.md` and the
+issue log.
+
+F-058 adds the requested CachyOS native-Linux distribution gate. Native
+checkout/dependency installation, launch, one canonical state path, live
+projection and shell/AI PTY continuity must be proven on the actual CachyOS
+laptop before the distro is marked supported. Until then, WSL/ext4 is the only
+Linux evidence and no hosted/Supabase state work is implied.

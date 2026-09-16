@@ -31,6 +31,44 @@ repairing dependencies. When the launcher runs under WSL it checks that this
 install contains a native Linux Rollup optional package and exits before
 starting Forge if that check fails.
 
+## CachyOS native Linux setup (target; not yet certified)
+
+CachyOS is now an explicit native-Linux target for this branch. The checklist
+below is the intended laptop path, but it is not a support claim until the
+actual machine completes the acceptance run recorded in F-058.
+
+Use a native Linux filesystem such as `~/projects`; do not run the live app
+from `/mnt/c`, OneDrive or a copied Windows `node_modules` tree:
+
+```bash
+sudo pacman -S --needed git base-devel python nodejs npm
+mkdir -p ~/projects
+cd ~/projects
+git clone https://github.com/HeisLazi/python-tutorial-DiddyDungeon.git
+cd python-tutorial-DiddyDungeon
+git switch feature/cloud-sync-desktop
+python -m venv .venv
+.venv/bin/python -m pip install -r ide/server/requirements.txt
+cd ide/frontend
+npm ci
+cd ../..
+git worktree add ../questlab-blackjack feature/quest-lab-ide
+PYTHONPATH=. .venv/bin/python -m ide.quest \
+  --workspace ../questlab-blackjack \
+  --backend-port 7331 --frontend-port 5173 --no-browser
+```
+
+Before accepting the install, confirm that `questlab-state runtime`,
+`questlab-state authority` and `questlab-state campaign` expose one canonical
+state path. Then open the printed Forge URL and run the manual K&M preflight:
+trigger one validated local mutation, check live HUD/Journal/Codex/
+Character/Homestead projection, and confirm both shell and AI PTYs remain
+`CONNECTED` without a refresh. Keep backend reload disabled. Record the
+CachyOS kernel/package versions and test evidence in the issue log; if Rollup
+or another native optional dependency is missing, rerun `npm ci` inside this
+Linux checkout rather than repairing the OneDrive tree. Do not seed Supabase
+as part of this local distribution gate.
+
 ## Choose a quest workspace
 
 The Forge platform checkout owns the canonical local player state. A quest
