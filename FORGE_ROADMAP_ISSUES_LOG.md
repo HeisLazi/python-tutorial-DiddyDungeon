@@ -1477,3 +1477,14 @@ snapshot's SHA-256 is checked before and after; no root or legacy
 | ID | Severity | Area | Finding | Status |
 |---|---|---|---|---|
 | F-060 | P3 | Local sync confidence | Until now there was no executable local two-device scenario to exercise CAS conflicts, offline divergence and an explicit resolution without touching the protected save. | Fixed locally: the simulator and launcher contract test pass, report the conflict/revisions/final projection as JSON, and are documented for native Linux/WSL. This raises local confidence only; hosted mailbox/auth, real second-device and OneDrive custody gates remain open. |
+
+## Verification update — 2026-09-16 — current committed friend bundle
+
+The existing committed-source packager was smoke-tested at HEAD
+`fdb4526a18177094e49a3aff69716c2d0b0f526b` into a disposable Windows temp
+directory. The generated `QuestLab-fdb4526` bundle and zip were created
+successfully; the packed `progress.json` matched the Git blob at HEAD,
+`tutor.py` was absent, and `QUESTLAB_BUNDLE.txt` stated the committed-source
+boundary. The package output was removed after inspection. This confirms
+F-046's custody guard on the current tip; it does not certify a friend's clean
+Windows/CachyOS launch or hosted sync.

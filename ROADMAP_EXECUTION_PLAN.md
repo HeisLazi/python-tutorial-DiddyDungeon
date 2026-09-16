@@ -454,3 +454,9 @@ Python compilation and a **1,345-module Vite build**. The latest disposable
 CUA K&M checkpoint used an isolated cache, kept both PTYs connected and showed
 the validated reward projection live without a browser refresh. Protected
 player files remain unstaged.
+
+The current committed-source friend bundle was also smoke-tested at pushed
+HEAD `fdb4526`: the packager produced a directory and zip whose `progress.json`
+matched the Git blob, omitted the untracked Campaign `tutor.py`, and left no
+temp output. This closes the current local package-custody check; friend
+Windows/CachyOS launch and hosted sync remain external gates.

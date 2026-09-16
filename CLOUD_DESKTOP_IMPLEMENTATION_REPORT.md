@@ -1949,3 +1949,14 @@ The direct CLI is module-safe and should be run with the checkout venv:
 `.venv/bin/python tools/questlab-local-sync-sim.py --source progress.json`.
 The simulator is deliberately bounded evidence, not proof of Supabase auth,
 RLS, hosted mailbox transport, OneDrive custody or real two-device behavior.
+
+## Current committed friend-bundle smoke — 2026-09-16
+
+`tools/questlab-package.ps1` was run at pushed HEAD
+`fdb4526a18177094e49a3aff69716c2d0b0f526b` with a disposable temp output.
+The `QuestLab-fdb4526` directory and zip were created successfully. Its
+packed `progress.json` matched the committed Git blob, the untracked Campaign
+`tutor.py` was not present, and the generated `QUESTLAB_BUNDLE.txt` recorded
+the committed-source-only boundary. The temp output was removed afterward.
+This is source-custody evidence only; clean friend-machine and hosted sync
+acceptance remain open.
