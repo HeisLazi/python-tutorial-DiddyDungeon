@@ -1381,3 +1381,7 @@ running canonical projection at revision 2. It confirms the reconciled Level
 records. It also records that the existing 7333/5174 runtime is stale for
 branch-aware acceptance and that the user's dirty `progress.json` and
 untracked `tutor.py` remain untouched.
+
+The focused launcher/HUD contract suite is now **9/9**; the added regression
+asserts that stat pills stay direct-child scoped, nested SVG/value spans are
+reset to non-pill styling, and `uiPolish.js` only mutates direct stat nodes.

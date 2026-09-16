@@ -884,3 +884,8 @@ The canonical projection remains revision 2 with Level 2, 50/100 XP, 150
 lifetime XP, 55 coins, three cleared mobs, The Hitman at 8/8 Resolve, 38%
 progress, First Blood and three evidence-backed Codex records. No hosted
 transport, migration, legacy-file write or player-save overwrite occurred.
+
+The focused launcher/HUD contract suite is **9/9** after adding a regression
+for F-048: broad descendant `.top-stats span` selectors are rejected, the
+adventurer selector remains direct-child scoped, and the SVG/value reset plus
+direct-child `uiPolish.js` query are required.
