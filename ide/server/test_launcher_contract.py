@@ -37,6 +37,21 @@ class LauncherContractTests(unittest.TestCase):
         self.assertIn("--confirm-local-state", python_launcher)
         self.assertIn("prepare_local_state", python_launcher)
 
+    def test_km_preflight_is_read_only_and_rejects_stale_frontend_source(self):
+        preflight = (ROOT / "tools" / "questlab-km-preflight.ps1").read_text(encoding="utf-8")
+        self.assertIn("$expectedBranch = 'feature/cloud-sync-desktop'", preflight)
+        self.assertIn("/api/runtime", preflight)
+        self.assertIn("/api/state/revision", preflight)
+        self.assertIn("/src/AppV2.jsx", preflight)
+        self.assertIn("campaignReady", preflight)
+        self.assertIn("data-react-stat", preflight)
+        self.assertIn("canonical_authoritative", preflight)
+        self.assertIn("legacy_authoritative", preflight)
+        self.assertIn("SkipFrontendSource", preflight)
+        self.assertNotIn("-Method Post", preflight)
+        self.assertNotIn("git -C $repoRoot fetch", preflight)
+        self.assertNotIn("Remove-Item", preflight)
+
     def test_launcher_rejects_confirmation_without_local_state_opt_in(self):
         with patch.object(
             quest,
