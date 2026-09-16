@@ -50,6 +50,25 @@ if (-not $AllowStaleCheckout -and $upstreamSha -and $repoGit.head_sha -ne $upstr
     Fail "backend HEAD $($repoGit.head_sha) does not match origin/$expectedBranch $upstreamSha"
 }
 
+# The browser talks to /api through Vite's proxy. Compare that identity with
+# the direct backend probe so a stale/mismatched frontend cannot be accepted
+# merely because its source contains the expected marker strings.
+$frontendRuntime = Get-Json "http://127.0.0.1:$FrontendPort/api/runtime"
+$frontendRepoGit = $frontendRuntime.repo_git
+if (-not $frontendRepoGit -or -not $frontendRepoGit.head_sha) {
+    Fail 'frontend /api proxy does not expose repo HEAD identity'
+}
+if ($frontendRepoGit.branch -and $frontendRepoGit.branch -ne $repoGit.branch) {
+    Fail "frontend /api proxy branch '$($frontendRepoGit.branch)' differs from backend '$($repoGit.branch)'"
+}
+if ($frontendRepoGit.head_sha -ne $repoGit.head_sha) {
+    Fail "frontend /api proxy HEAD $($frontendRepoGit.head_sha) differs from backend $($repoGit.head_sha)"
+}
+if ($frontendRuntime.state_authority.canonical_path -ne $runtime.state_authority.canonical_path -or
+    $frontendRuntime.state_authority.legacy_path -ne $runtime.state_authority.legacy_path) {
+    Fail 'frontend /api proxy state paths differ from the backend authority'
+}
+
 $authority = $runtime.state_authority
 if (-not $authority.canonical_authoritative) {
     Fail 'runtime did not mark one canonical state path authoritative'
