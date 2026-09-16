@@ -808,3 +808,16 @@ The post-plan regression pass at 03:26 is green: WSL backend 76/76, frontend
 only build note is the pre-existing large-chunk warning. Windows status still
 contains only the user-owned `progress.json` and untracked root `tutor.py`;
 no semantic source or hosted state changed.
+
+## K&M verification update — 2026-09-16 03:29 — current HEAD
+
+A current-HEAD disposable ext4 clone at
+`26ad97b24b8b0e9167d525008a8c660775236db4` passed
+`tools/questlab-km-preflight.ps1` on `7345/5179` at revision 0. Pure K&M
+observed `SYNCING` settling without refresh, then two validated Battle
+mutations at revisions 1 and 2: Resolve 4/4→2/4 with `OBJECTIVE VERIFIED`,
+followed by `MOB DEFEATED`, `+25 XP`, `+10 Coins`, `NEXT ENCOUNTER` and
+`First Blood`. Journal showed The Dealer's Hand, Codex showed the defeated
+encounter, and Character/Homestead showed the same 10 coins. Shell and AI PTYs
+remained `CONNECTED`. No Playwright, user-save/legacy edit, hosted write or
+long-lived process restart occurred; the disposable runtime was removed.

@@ -1299,3 +1299,17 @@ The post-plan regression pass at 03:26 reran the full WSL backend suite
 (1,345 modules; successful with the existing chunk-size warning). The run
 left the working tree boundary unchanged: only user-owned `progress.json` is
 modified and root `tutor.py` remains untracked.
+
+### Current-HEAD K&M checkpoint — 2026-09-16 03:29
+
+A fresh ext4 clone of the pushed HEAD `26ad97b24b8b0e9167d525008a8c660775236db4`
+passed the read-only preflight on `7345/5179` at revision 0. Pure K&M opened
+the tab in `SYNCING`, then settled without refresh to the starter projection
+with both shell and raw AI PTYs `CONNECTED`. Two validated state-service Battle
+objectives advanced the disposable revision 0→1→2: Journal Resolve moved
+4/4→2/4 with an `OBJECTIVE VERIFIED` toast, then the mob clear showed
+`25/100 XP`, `10c`, `MOB DEFEATED`, `NEXT ENCOUNTER`, and `First Blood`.
+The same tab confirmed The Dealer's Hand in the Journal, the defeated record in
+Codex, and matching Character/Homestead coin projections. No Playwright,
+refresh, long-lived runtime restart, user-save edit or hosted write occurred;
+the exact disposable runtime was closed and removed afterward.
