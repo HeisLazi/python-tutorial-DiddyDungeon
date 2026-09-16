@@ -2117,3 +2117,8 @@ the device containing the desired source. The full WSL backend suite passed
 legacy evidence, running PTY or Supabase state was changed. This local/Git
 channel is deliberately separate from the still-unimplemented hosted source
 artifact transport.
+
+The first slice is intentionally disk/CLI based. A pull should be performed
+after saving or closing an open Monaco buffer: the helper can protect dirty
+on-disk Git files, but it cannot observe unsaved browser text and therefore
+does not attempt a live editor hot-reload.

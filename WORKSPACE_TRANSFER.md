@@ -68,6 +68,12 @@ replacement. A pull never deletes a local file that is absent from the bundle.
 Afterward the received files remain ordinary working-tree files; commit them
 on the project branch when you are satisfied.
 
+Save/close the corresponding Monaco buffer before applying a pull. The helper
+can see the workspace's on-disk Git state, but it cannot see unsaved browser
+text; it deliberately does not hot-reload or overwrite an open editor buffer.
+Launch Forge (or use its normal file reload) after the transfer has been
+reviewed.
+
 ## Boundaries
 
 - The transfer list is currently exactly `blackjack.py`, `tutor.py`, and
