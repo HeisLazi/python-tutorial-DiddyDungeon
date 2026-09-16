@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import importlib.util
 import tempfile
+import threading
 import unittest
 from types import SimpleNamespace
 from pathlib import Path
@@ -10,6 +11,7 @@ from unittest.mock import patch
 
 from ide import quest
 from ide.server import app_v2
+from ide.server.state import LocalStateService
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -298,6 +300,50 @@ class LauncherContractTests(unittest.TestCase):
                 app_v2.REPO_ROOT = original_app_root
                 app_v2.WORKSPACE = original_workspace
                 app_v2.PROGRESS_PATH = original_progress
+
+    def test_launcher_resumes_verified_local_custody_after_local_progress(self):
+        original_quest_root = quest.REPO_ROOT
+        original_app_root = app_v2.REPO_ROOT
+        original_workspace = app_v2.WORKSPACE
+        original_progress = app_v2.PROGRESS_PATH
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory) / "platform"
+            workspace = Path(directory) / "quest"
+            local_root = Path(directory) / "local"
+            root.mkdir()
+            workspace.mkdir()
+            canonical = root / "progress.json"
+            canonical.write_text(json.dumps({"meta": {"revision": 2}, "player": {"coins": 55}}), encoding="utf-8")
+            quest.REPO_ROOT = root
+            app_v2.REPO_ROOT = root
+            app_v2.WORKSPACE = workspace
+            app_v2.PROGRESS_PATH = canonical
+            try:
+                with patch.dict("os.environ", {"QUESTLAB_LOCAL_STATE_ROOT": str(local_root)}):
+                    destination = quest.prepare_local_state(
+                        workspace,
+                        use_local_state=True,
+                        confirm_local_state=True,
+                    )
+                    local_service = LocalStateService(destination, threading.RLock())
+                    advanced = json.loads(destination.read_text(encoding="utf-8"))
+                    advanced["player"]["coins"] = 56
+                    local_service.persist(advanced)
+
+                    resumed = quest.prepare_local_state(
+                        workspace,
+                        use_local_state=True,
+                        confirm_local_state=False,
+                    )
+                    resumed_coins = json.loads(destination.read_text(encoding="utf-8"))["player"]["coins"]
+            finally:
+                quest.REPO_ROOT = original_quest_root
+                app_v2.REPO_ROOT = original_app_root
+                app_v2.WORKSPACE = original_workspace
+                app_v2.PROGRESS_PATH = original_progress
+
+        self.assertEqual(resumed, destination)
+        self.assertEqual(resumed_coins, 56)
 
 
 if __name__ == "__main__":

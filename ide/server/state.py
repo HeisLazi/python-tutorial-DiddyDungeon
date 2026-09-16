@@ -357,6 +357,65 @@ def _read_state_file(path: Path) -> dict[str, Any] | None:
     return value if isinstance(value, dict) else None
 
 
+def _custody_marker_path(destination: Path) -> Path:
+    """Return the provenance marker paired with a derived local cache."""
+
+    return destination.with_name(f".{destination.name}.custody.json")
+
+
+def _read_custody_marker(path: Path) -> dict[str, Any] | None:
+    """Read a regular, non-symlink custody marker if one is present."""
+
+    if path.is_symlink() or not path.is_file():
+        return None
+    return _read_state_file(path)
+
+
+def _custody_marker_allows_resume(
+    marker: Mapping[str, Any] | None,
+    *,
+    source_digest: str | None,
+    source_revision: object,
+    destination_digest: str | None,
+    destination_revision: object,
+) -> bool:
+    """Validate provenance for a previously approved, advanced local cache.
+
+    A marker is evidence that the destination was copied through the gateway;
+    it is not a newest-file heuristic.  The reviewed source bytes and
+    revision must still be identical, and the destination may only have
+    advanced through normal revisioned state-service writes.  An unchanged
+    destination must still match its recorded digest, so a direct edit fails
+    closed rather than becoming an implicit authority.
+    """
+
+    if not isinstance(marker, Mapping):
+        return False
+    if marker.get("schema_version") != CUSTODY_MARKER_VERSION:
+        return False
+    if not isinstance(source_digest, str) or marker.get("source_digest") != source_digest:
+        return False
+    if marker.get("source_revision") != source_revision:
+        return False
+    marker_destination_revision = marker.get("destination_revision")
+    if isinstance(marker_destination_revision, bool) or not isinstance(marker_destination_revision, int):
+        return False
+    if marker_destination_revision < 0:
+        return False
+    marker_destination_digest = marker.get("destination_digest")
+    if not isinstance(marker_destination_digest, str) or not re.fullmatch(r"[0-9a-f]{64}", marker_destination_digest):
+        return False
+    if isinstance(destination_revision, bool) or not isinstance(destination_revision, int):
+        return False
+    if destination_revision < marker_destination_revision:
+        return False
+    if destination_revision == marker_destination_revision:
+        return destination_digest == marker_destination_digest
+    # A later revision is accepted only when the source identity remains the
+    # one that the owner explicitly reviewed during migration.
+    return True
+
+
 def _active_project(value: Mapping[str, Any]) -> Mapping[str, Any]:
     projects = value.get("projects")
     if not isinstance(projects, list):
@@ -478,8 +537,10 @@ def state_custody_report(canonical_path: Path, proposed_path: Path | None) -> di
 
     This is intentionally read-only.  It compares exact file digests when a
     destination already exists; revision numbers are reported for context, but
-    are never used to choose a winner.  A caller must use a future explicit
-    gateway migration command after human approval.
+    are never used to choose a winner.  A previously approved destination may
+    resume only when its gateway-written provenance marker still matches the
+    reviewed source bytes and revision.  A caller must use the explicit gateway
+    migration command for any unmarked or divergent destination.
     """
 
     canonical = canonical_path.resolve()
@@ -499,6 +560,11 @@ def state_custody_report(canonical_path: Path, proposed_path: Path | None) -> di
         except (FileNotFoundError, OSError):
             pass
 
+    marker_path = _custody_marker_path(proposed) if proposed is not None else None
+    marker = _read_custody_marker(marker_path) if marker_path is not None else None
+    marker_verified = False
+    resume_authorized = False
+
     if source is None:
         status = "no-source-found"
     elif proposed is None:
@@ -509,6 +575,21 @@ def state_custody_report(canonical_path: Path, proposed_path: Path | None) -> di
         status = "approval-required"
     elif source_digest == destination_digest:
         status = "already-local"
+    elif _custody_marker_allows_resume(
+        marker,
+        source_digest=source_digest,
+        source_revision=(source.get("meta") or {}).get("revision") if isinstance(source.get("meta"), dict) else None,
+        destination_digest=destination_digest,
+        destination_revision=(destination.get("meta") or {}).get("revision") if isinstance(destination.get("meta"), dict) else None,
+    ):
+        # The explicit --use-local-state choice has already established this
+        # derived cache as the active device authority.  Do not copy, merge or
+        # select by timestamp on a later launch; simply resume it.  A changed
+        # source digest, malformed marker or unmarked destination remains a
+        # conflict below.
+        status = "already-local"
+        marker_verified = True
+        resume_authorized = True
     else:
         status = "conflict"
 
@@ -524,6 +605,9 @@ def state_custody_report(canonical_path: Path, proposed_path: Path | None) -> di
         "destination_revision": revision(destination),
         "source_digest": source_digest,
         "destination_digest": destination_digest,
+        "custody_marker_path": str(marker_path) if marker_path is not None else None,
+        "custody_marker_verified": marker_verified,
+        "custody_resume_authorized": resume_authorized,
         "migration_write_performed": False,
         "migration_note": "Read-only preview. No automatic copy, merge, newest-revision choice or source deletion is performed.",
     }

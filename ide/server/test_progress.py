@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import os
 import tempfile
+import threading
 import unittest
 from pathlib import Path
 from unittest.mock import patch
@@ -10,7 +11,7 @@ from unittest.mock import patch
 from fastapi.testclient import TestClient
 
 from ide.server import app_v2
-from ide.server.state import CUSTODY_CONFIRMATION_TOKEN, state_custody_report
+from ide.server.state import CUSTODY_CONFIRMATION_TOKEN, LocalStateService, state_custody_report
 
 
 class ProgressRevisionTests(unittest.TestCase):
@@ -122,6 +123,60 @@ class ProgressRevisionTests(unittest.TestCase):
             self.assertTrue(conflict["approval_required"])
             self.assertEqual(conflict["source_revision"], 3)
             self.assertEqual(conflict["destination_revision"], 99)
+
+    def test_custody_preview_resumes_gateway_migrated_destination_after_local_progress(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            canonical = root / "canonical.json"
+            proposed = root / "local" / "progress.json"
+            canonical.write_text(json.dumps({"meta": {"revision": 3}, "player": {"coins": 55}}), encoding="utf-8")
+
+            source_service = LocalStateService(canonical, threading.RLock())
+            source_service.migrate_local_state(
+                proposed,
+                expected_source_revision=3,
+                confirmation_token=CUSTODY_CONFIRMATION_TOKEN,
+                forbidden_paths=(root / "legacy" / "progress.json",),
+            )
+            local_service = LocalStateService(proposed, threading.RLock())
+            advanced = json.loads(proposed.read_text(encoding="utf-8"))
+            advanced["player"]["coins"] = 56
+            persisted = local_service.persist(advanced)
+            self.assertEqual(persisted["revision"], 4)
+
+            report = state_custody_report(canonical, proposed)
+
+        self.assertEqual(report["status"], "already-local")
+        self.assertFalse(report["approval_required"])
+        self.assertTrue(report["custody_marker_verified"])
+        self.assertTrue(report["custody_resume_authorized"])
+        self.assertEqual(report["source_revision"], 3)
+        self.assertEqual(report["destination_revision"], 4)
+
+    def test_custody_preview_rejects_advanced_destination_when_reviewed_source_changed(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            canonical = root / "canonical.json"
+            proposed = root / "local" / "progress.json"
+            canonical.write_text(json.dumps({"meta": {"revision": 3}, "player": {"coins": 55}}), encoding="utf-8")
+            source_service = LocalStateService(canonical, threading.RLock())
+            source_service.migrate_local_state(
+                proposed,
+                expected_source_revision=3,
+                confirmation_token=CUSTODY_CONFIRMATION_TOKEN,
+            )
+            local_service = LocalStateService(proposed, threading.RLock())
+            advanced = json.loads(proposed.read_text(encoding="utf-8"))
+            advanced["player"]["coins"] = 56
+            local_service.persist(advanced)
+            canonical.write_text(json.dumps({"meta": {"revision": 4}, "player": {"coins": 57}}), encoding="utf-8")
+
+            report = state_custody_report(canonical, proposed)
+
+        self.assertEqual(report["status"], "conflict")
+        self.assertTrue(report["approval_required"])
+        self.assertFalse(report["custody_marker_verified"])
+        self.assertFalse(report["custody_resume_authorized"])
 
     def test_custody_migration_route_is_opt_in_and_uses_derived_destination(self):
         original_root = app_v2.REPO_ROOT
