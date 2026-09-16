@@ -75,4 +75,3 @@ claiming that the real Level 2 save was changed by the test.
 - Remaining local-distribution gate: clean Linux/WSL dependency install and a
   real second-Windows launch; the OneDrive checkout still fails closed on
   missing Linux Rollup optional dependencies.
-
