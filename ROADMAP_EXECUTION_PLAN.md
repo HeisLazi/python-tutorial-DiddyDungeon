@@ -263,3 +263,17 @@ the baseline save and onboarding guide but not the user's untracked `tutor.py`.
 Only documentation changed after the exact code tip used for the latest pure
 K&M run, so that browser evidence remains applicable; a real second-Windows
 launch and F-039 custody choice are still open.
+
+## Current checkpoint — 2026-09-16 06:04
+
+The pushed branch is now `3ae4d6c` (code fix `c8dba22`, followed by the review
+and K&M evidence commit). The authenticated Claude Opus read-only review found
+no P0/P1 issues; its P2 preflight null-ref and lower-revision projection
+findings, plus the explicit-null boss-reward edge case, are fixed. The current
+regression counts are **77 backend / 35 frontend**, PowerShell preflight parse
+pass and a **1,345-module** Vite build. A disposable exact-tip K&M run showed
+the monochrome HUD icons, both connected PTYs and live Resolve **4/4 → 2/4**
+after a state-service verdict without refresh. The Windows save and Campaign
+`tutor.py` remain protected dirty user data. Hosted two-device sync, F-039
+custody approval, provider-authenticated adjudication, Tauri packaging and
+Slice 8 social work remain gated and were not started.
