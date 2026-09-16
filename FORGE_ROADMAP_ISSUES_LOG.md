@@ -723,3 +723,19 @@ instead of `—c`; once the canonical revision is present it renders the
 formatted `Nc` value. This closes the remaining loading-only width change in
 the stat row. The regression is covered by the 33-test frontend suite and is
 committed as `ecffa40`.
+
+## Snapshot and K&M verification update — 2026-09-16 02:52
+
+`GAME_STATE_SNAPSHOT_2026-09-16_0252.md` confirms the canonical local save at
+revision 2: Level 2, 50/100 XP, 150 lifetime XP, 55 coins, The Hitman 8/8,
+three defeated mobs, 38% Blackjack progress and three Codex encounter records.
+
+The stale-runtime boundary is now explicit: long-lived 5174 runs from the
+current OneDrive cwd but serves an older cached AppV2 transform (emoji stat
+glyphs and no loading guard). It was not restarted, preserving the user's
+runtime/PTYs. A fresh branch-aware ext4 disposable clone at HEAD `71fdb9e`
+served the current source on 5177/7343; its health matched
+`feature/cloud-sync-desktop` and upstream. Pure K&M clicks, with no refresh and
+no Playwright, observed the initial `SYNCING` state, live Resolve reduction,
+reward/achievement/next-mob presentation, Journal/Codex updates and connected
+shell/AI PTYs. The disposable runtime was then closed.

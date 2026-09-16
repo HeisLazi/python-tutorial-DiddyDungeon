@@ -1209,3 +1209,20 @@ until the campaign revision arrives, then switches atomically to the formatted
 `Nc` value. This removes the last loading-only suffix width change. The
 regression is included in the 33-test frontend suite and the follow-up commit
 is `ecffa40`.
+
+### Current state and branch-aware K&M snapshot — 2026-09-16 02:52
+
+`GAME_STATE_SNAPSHOT_2026-09-16_0252.md` re-read the canonical local state at
+revision 2 (Level 2, 50/100 XP, 150 lifetime XP, 55 coins, The Hitman 8/8,
+three defeated mobs, 38% Blackjack progress and three Codex records). It also
+records a newly confirmed runtime boundary: long-lived 5174 has the current
+OneDrive cwd but serves an older cached AppV2 transform, so it remains a
+known F-025/F-035 stale-runtime process and was not restarted.
+
+A fresh ext4 clone at branch `feature/cloud-sync-desktop`, HEAD
+`71fdb9e1dedf3aee0474ac7c259b6cc6b420c46e`, served the current SVG/loading
+source on 5177/7343. Pure K&M acceptance there observed revision-aware
+Resolve reduction, reward/achievement/next-mob presentation, Journal/Codex
+projection and connected shell/AI PTYs without a refresh or Playwright. The
+disposable runtime was closed afterward; user save files and long-lived PTYs
+were untouched.
