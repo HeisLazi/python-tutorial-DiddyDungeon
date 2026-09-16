@@ -1603,3 +1603,23 @@ Focused transfer tests cover sanitized trees, protected-save preservation,
 clean-device updates, dirty-conflict refusal/backup and dirty-file reporting.
 The helper is local/Git-backed by design; it does not start Supabase source-file
 transport or change the campaign state authority.
+
+## Operational diagnosis — 2026-09-17 — first source bundle published / portrait session
+
+The transfer channel was initially empty because no device had published a
+bundle. The current reviewed workspace was then published without touching its
+save: `questlab-files/01-blackjack` now points to
+`64696bee98228b342404525994122f69af4bbdaf`, and the helper reports matching
+hashes for `blackjack.py`, Campaign `tutor.py` and `dungeon.py`. The other
+device still needs the explicit pull documented in `WORKSPACE_TRANSFER.md`;
+this is intentionally not an automatic branch merge.
+
+The current Forge browser also reports `Sign in to sync`, so it is anonymous.
+Portraits are account-private Supabase assets and are not part of Git or the
+campaign save. No portrait can appear in that session until the same Quest Lab
+account is signed in (or the account's `avatar_path`/Storage migration is
+verified). No credentials, avatar data or PTY was changed during this check.
+
+| ID | Severity | Area | Finding | Status |
+|---|---|---|---|---|
+| F-063 | P2 | Avatar identity visibility | An anonymous Forge session has no account identity from which to download the private portrait, making the rail/Character avatar look unsynced. | Confirmed operational blocker. Sign in on both devices with the same Quest Lab account, then verify the account name and portrait; hosted Storage/RLS acceptance remains unverified here. |

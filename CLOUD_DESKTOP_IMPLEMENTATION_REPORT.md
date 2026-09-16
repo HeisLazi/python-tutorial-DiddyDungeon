@@ -2111,12 +2111,17 @@ The source, CLI wrapper, documentation and four focused tests are:
 - `WORKSPACE_TRANSFER.md`
 - `ide/server/test_workspace_transfer.py`
 
-The transfer ref is currently empty until the player explicitly pushes from
-the device containing the desired source. The full WSL backend suite passed
+The first source bundle was published from the reviewed WSL workspace on
+2026-09-17 at `questlab-files/01-blackjack`, commit
+`64696bee98228b342404525994122f69af4bbdaf`. Its manifest contains only the
+three allowlisted files (748, 3396 and 0 bytes respectively); the local status
+report confirms all three hashes match. The full WSL backend suite passed
 **88/88** after this slice and Python compilation passed. No protected save,
 legacy evidence, running PTY or Supabase state was changed. This local/Git
 channel is deliberately separate from the still-unimplemented hosted source
-artifact transport.
+artifact transport. A second device must still run the documented preview and
+explicit pull; the transfer helper does not silently overwrite an open or
+dirty workspace.
 
 The first slice is intentionally disk/CLI based. A pull should be performed
 after saving or closing an open Monaco buffer: the helper can protect dirty
