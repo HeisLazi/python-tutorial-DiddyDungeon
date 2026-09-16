@@ -54,4 +54,3 @@ Canonical revision remains **2**:
   tracked cache.
 - Hosted provider-authenticated sync/avatar, Tauri, public web and social
   stages remain approval-gated; no Supabase seed or write was made.
-
