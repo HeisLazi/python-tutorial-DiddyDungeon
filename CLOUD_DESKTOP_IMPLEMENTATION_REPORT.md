@@ -1141,3 +1141,9 @@ They verify the `public.devices`/`auth.uid()` guard occurs before validation
 and row locking, preserve the authenticated-only RPC grant, and require the
 fixture's foreign-device rejection plus owned-device CAS path. The focused
 contract test passes 2/2; it performs no Supabase connection or hosted write.
+
+The post-change verification also passes the full WSL backend suite (71 tests),
+the frontend suite (33 tests), Python compilation, `git diff --check`, and the
+Windows Vite production build (1,345 modules). A first full-suite run exposed
+one transient websocket cancellation; the immediate rerun passed cleanly. No
+browser/runtime or PTY was restarted for this documentation/test-only change.

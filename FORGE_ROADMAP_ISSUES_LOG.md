@@ -641,6 +641,13 @@ and that the executable SQL fixture exercises both a foreign-device rejection
 and an owned-device CAS write. These are static/local checks only; no linked
 Supabase project was contacted. The focused contract test passes 2/2.
 
+The same checkpoint's complete verification is 71 WSL backend tests, 33
+frontend tests, Python compilation, `git diff --check`, and a successful
+Windows Vite production build covering 1,345 modules. One initial full-suite
+run hit a transient websocket cancellation; the immediate rerun passed. Since
+the change only adds contract coverage and evidence, the prior disposable
+K&M/PTY evidence remains the applicable UI proof.
+
 ## Review update — 2026-09-16 — Claude checkpoint plan
 
 Claude Sonnet read the fresh `GAME_STATE_SNAPSHOT_2026-09-16_0206.md`, handoff,
