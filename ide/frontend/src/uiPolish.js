@@ -10,6 +10,9 @@ const ICON = {
 }
 
 function replaceTopStat(node) {
+  // Forge v2 owns the stat markup in React. The legacy glyph bridge must
+  // never rewrite those nodes during a revision poll or a React rerender.
+  if (node.dataset.reactStat === 'true') return
   if (node.dataset.iconCleaned) {
     const value = node.querySelector('[data-stat-value]')
     if (value && node.dataset.campaignStatValue !== undefined && value.textContent !== node.dataset.campaignStatValue) value.textContent = node.dataset.campaignStatValue

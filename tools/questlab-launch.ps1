@@ -80,7 +80,9 @@ if (-not $repoWsl -or -not $workspaceWsl) {
     throw 'Could not convert the launcher paths to WSL paths. Confirm that Ubuntu/WSL is installed.'
 }
 
-$command = "cd $(Quote-BashLiteral $repoWsl) && exec .venv/bin/python ide/quest.py --workspace $(Quote-BashLiteral $workspaceWsl) --backend-port $BackendPort --frontend-port $FrontendPort"
+# Run the launcher as a module so Python can resolve the repository's `ide`
+# package even when this command is invoked from a mounted Windows checkout.
+$command = "cd $(Quote-BashLiteral $repoWsl) && exec env PYTHONPATH=. .venv/bin/python -m ide.quest --workspace $(Quote-BashLiteral $workspaceWsl) --backend-port $BackendPort --frontend-port $FrontendPort"
 if ($NoBrowser) { $command += ' --no-browser' }
 if ($MigrateLocalState) { $command += ' --use-local-state' }
 

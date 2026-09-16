@@ -487,7 +487,13 @@ function Codex({ progress, revision, codexProjection, saveCodexNote, busy }) {
     ...(entry.weaknesses || []),
     ...(entry.notes || []),
   ].filter(Boolean).join(' ').toLowerCase()
-  const entryBelongsToPage = (entry, page) => entry.page_id === page.id || (!entry.page_id && entry.concept?.toLowerCase().includes(page.title?.split(' ')[0]?.toLowerCase() || ''))
+  const entryBelongsToPage = (entry, page) => {
+    if (entry.page_id === page.id) return true
+    if (entry.page_id || !page.title || typeof entry.concept !== 'string') return false
+    const pageKey = page.title.split('&')[0]?.trim().toLowerCase()
+    const concept = entry.concept.trim().toLowerCase()
+    return Boolean(pageKey && (concept === pageKey || concept.startsWith(`${pageKey} `)))
+  }
   const filteredPages = pages.filter((page) => {
     if (!normalizedQuery) return true
     const pageText = [
@@ -503,6 +509,14 @@ function Codex({ progress, revision, codexProjection, saveCodexNote, busy }) {
   const selectedEntries = entries.filter((entry) => selectedPage && entryBelongsToPage(entry, selectedPage))
   const selectedEntry = selectedEntries.find((entry) => entry.id === selectedEntryId) || selectedEntries[0]
   const selectedEntryIds = selectedEntries.map((entry) => entry.id).join('|')
+  const codexMetrics = {
+    booksWithEvidence: pages.filter((page) => (page.encounter_ids || []).length > 0).length,
+    encounters: entries.length,
+    notes: entries.reduce((total, entry) => total + (entry.player_notes?.length || 0), 0),
+    verifiedResults: entries.reduce((total, entry) => total + (entry.results?.length || 0), 0),
+  }
+  const pageQuestionTypes = Array.from(new Set(selectedEntries.flatMap((entry) => entry.question_types || []))).slice(0, 8)
+  const pageWeaknesses = Array.from(new Set(selectedEntries.flatMap((entry) => entry.weaknesses || []))).slice(0, 8)
 
   useEffect(() => {
     if (!selectedEntries.some((entry) => entry.id === selectedEntryId)) setSelectedEntryId(selectedEntries[0]?.id || '')
@@ -535,7 +549,13 @@ function Codex({ progress, revision, codexProjection, saveCodexNote, busy }) {
           <h2>What you face becomes knowledge.</h2>
           <p>Read a concept page, inspect validated encounter evidence, and keep your own field notes. Exact hidden answers stay hidden.</p>
         </div>
-        <div className="codex-count"><strong>{skills.length + entries.length}</strong><span>records indexed</span></div>
+        <div className="codex-summary-grid" aria-label="Codex records summary">
+          <div><strong>{skills.length + entries.length}</strong><span>records indexed</span></div>
+          <div><strong>{codexMetrics.booksWithEvidence}</strong><span>books with evidence</span></div>
+          <div><strong>{codexMetrics.encounters}</strong><span>encounters logged</span></div>
+          <div><strong>{codexMetrics.verifiedResults}</strong><span>verified results</span></div>
+          <div><strong>{codexMetrics.notes}</strong><span>field notes</span></div>
+        </div>
       </div>
 
       <section className="codex-library game-card">
@@ -555,10 +575,10 @@ function Codex({ progress, revision, codexProjection, saveCodexNote, busy }) {
         <article className="codex-book-page">
           {selectedPage ? (
             <>
-              <div className="codex-page-heading"><span className="screen-kicker">CONCEPT PAGE</span><h3>{selectedPage.title}</h3><p>{selectedPage.definition}</p></div>
+              <div className="codex-page-heading"><span className="screen-kicker">CONCEPT PAGE</span><h3>{selectedPage.title}</h3><p>{selectedPage.definition}</p><div className="codex-page-summary" data-testid="codex-page-summary"><span><b>{selectedEntries.length}</b> encounters</span><span><b>{pageQuestionTypes.length}</b> question lenses</span><span><b>{pageWeaknesses.length}</b> recorded patterns</span></div></div>
               <div className="codex-page-grid">
                 <div><small className="codex-label">GENERIC EXAMPLES</small><div className="codex-examples">{(selectedPage.examples || []).map((example, index) => <pre key={index}>{example}</pre>)}</div></div>
-                <div><small className="codex-label">QUESTION LENS</small><div className="codex-tags">{(selectedPage.question_types || []).map((type) => <span key={type}>{type}</span>)}</div><small className="codex-label">ENCOUNTERS ON THIS PAGE</small><div className="codex-entry-picker">{selectedEntries.map((entry) => <button key={entry.id} type="button" className={selectedEntry?.id === entry.id ? 'active' : ''} onClick={() => setSelectedEntryId(entry.id)}>{entry.mob_name}<small>{entry.status}</small></button>)}{!selectedEntries.length && <span className="empty-state">No encounter recorded yet.</span>}</div></div>
+                <div><small className="codex-label">QUESTION LENS</small><div className="codex-tags">{(selectedPage.question_types || []).map((type) => <span key={type}>{type}</span>)}</div><small className="codex-label">RECORDED SIGNALS</small><div className="codex-tags codex-recorded-signals">{pageQuestionTypes.length ? pageQuestionTypes.map((type) => <span key={type}>{type}</span>) : <span className="empty-state">No question type recorded yet.</span>}{pageWeaknesses.map((weakness) => <span key={`weakness-${weakness}`}>{weakness}</span>)}</div><small className="codex-label">ENCOUNTERS ON THIS PAGE</small><div className="codex-entry-picker">{selectedEntries.map((entry) => <button key={entry.id} type="button" className={selectedEntry?.id === entry.id ? 'active' : ''} onClick={() => setSelectedEntryId(entry.id)}>{entry.mob_name}<small>{entry.status}</small></button>)}{!selectedEntries.length && <span className="empty-state">No encounter recorded yet.</span>}</div></div>
               </div>
               {selectedEntry && (
                 <section className="codex-entry-detail">
@@ -655,6 +675,7 @@ function CharacterSheet({ progress, revision }) {
 function Homestead({ progress, revision, purchaseCosmetic, equipCosmetic, busy }) {
   const player = progress.player || {}
   const homestead = progress.homestead || {}
+  const equipment = progress.equipment || {}
   const catalog = homestead.catalog || []
   const owned = new Set(homestead.owned_cosmetics || [])
   const equipped = homestead.equipped || {}
@@ -669,7 +690,19 @@ function Homestead({ progress, revision, purchaseCosmetic, equipCosmetic, busy }
         <div className="homestead-shelf"><span>◇ ◇ ◇</span><small>TROPHY SHELF</small></div>
         <div className="homestead-title"><span className="screen-kicker">HOMESTEAD</span><h2>{homestead.name || 'Your Forge'}</h2><p>Your environment grows with the things you earn while learning.</p></div>
         <div className="coin-purse"><small>PURSE</small><strong>{player.coins ?? 0}c</strong></div>
+        <div className="homestead-scene-badge"><span aria-hidden="true">●</span> LIVE CAMPAIGN · REV {revision ?? 0}</div>
       </div>
+
+      <section className="game-card homestead-overview" data-testid="homestead-live-status">
+        <div className="card-heading"><span>LIVE LOADOUT</span><b>CANONICAL REV {revision ?? 0}</b></div>
+        <div className="homestead-overview-grid">
+          <div><small>LEVEL</small><strong>LV {player.level ?? 1}</strong><span>{player.xp ?? 0}/{player.xp_next ?? 100} XP</span></div>
+          <div><small>ARMOR</small><strong>{equipment.armor || 'None'}</strong><span>Campaign slot</span></div>
+          <div><small>TRINKET</small><strong>{equipment.trinket || 'None'}</strong><span>Campaign slot</span></div>
+          <div><small>COINS</small><strong>{player.coins ?? 0}c</strong><span>Purchase balance</span></div>
+        </div>
+        <p className="context-note">This loadout and purse are read from the same campaign revision as the top HUD. Purchases and equips are recorded by the state gateway.</p>
+      </section>
 
       {grouped.map((kind) => (
         <section className="game-card" key={kind}>

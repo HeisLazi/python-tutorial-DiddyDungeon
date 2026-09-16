@@ -66,7 +66,7 @@ If that worktree already exists, skip those commands and use its existing path.
 Then launch:
 
 ```bash
-.venv/bin/python ide/quest.py --workspace ../questlab-blackjack
+PYTHONPATH=. .venv/bin/python -m ide.quest --workspace ../questlab-blackjack
 ```
 
 Quest Lab opens at:

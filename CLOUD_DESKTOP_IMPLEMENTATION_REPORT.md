@@ -1837,3 +1837,39 @@ revision 5 with SHA-256
 `5618f9dd9ae2fc0724056ea08448e1736479772b59ada949bec08b5340fbd6f0`; the
 disposable cache and runtime were removed afterward. This checkpoint closes
 the local Dungeon/Practice projection proof; hosted persistence remains F-018.
+
+## Codex/Homestead presentation checkpoint — 2026-09-16 10:44
+
+The local UI polish pass stayed within the existing state-service contract.
+Codex derives a compact evidence summary from the safe `codex_projection`
+(indexed records, books with evidence, encounters, verified results and field
+notes) and shows page-level encounter/question-pattern counts without exposing
+future prompts or answer keys. Homestead now includes a live-loadout card for
+campaign level/XP, canonical armor/trinket, coins and the source revision, so
+the purchase balance is visibly tied to the same projection as the HUD.
+
+The guarded Windows launcher was corrected to run the package as
+`PYTHONPATH=. .venv/bin/python -m ide.quest`; direct script invocation from a
+mounted checkout could not import `ide` during the custody preflight. Handoff
+examples were updated accordingly. This did not change save custody, cloud
+transport or terminal lifecycle.
+
+Verification: WSL backend **78/78**, frontend **36/36**, Python compileall,
+PowerShell preflight parse and Vite **1,345-module** production build all
+passed. A disposable explicit-local-state browser run used only CUA
+keyboard/mouse/scroll actions (no Playwright) and visibly showed Level 2,
+50 XP, 55 coins, all five monochrome stat icons, the Codex evidence metrics,
+the Homestead live-loadout card and `CONNECTED` shell/AI surfaces. The
+disposable runtime/cache were removed; the protected canonical save,
+legacy evidence and Campaign `tutor.py` were untouched.
+
+### Claude Sonnet follow-up — 2026-09-16 10:50
+
+The authenticated read-only review found no P0/P1 issue. It confirmed that the
+new Codex/Homestead fields come only from the safe canonical projection, that
+the React-owned HUD icon guard prevents DOM clobbering, and that the module
+launcher command is valid. A pre-existing P2 fuzzy Codex fallback for records
+without `page_id` was tightened to an exact/prefix concept match and covered by
+a source assertion. Claude noted the frontend suite is source-regex based
+rather than rendered-DOM based (known P3 boundary); it did not run commands or
+touch the save, notebook, runtimes or PTYs.

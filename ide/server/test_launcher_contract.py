@@ -25,6 +25,8 @@ class LauncherContractTests(unittest.TestCase):
         self.assertIn("--backend-port $BackendPort", launcher)
         self.assertIn("--frontend-port $FrontendPort", launcher)
         self.assertIn("$command = \"cd $(Quote-BashLiteral $repoWsl) && exec", launcher)
+        self.assertIn("env PYTHONPATH=. .venv/bin/python -m ide.quest", launcher)
+        self.assertNotIn("exec .venv/bin/python ide/quest.py", launcher)
         self.assertNotIn("$command -join", launcher)
         self.assertNotIn("--reload-backend", launcher)
         self.assertIn("-AllowOtherBranch", launcher)

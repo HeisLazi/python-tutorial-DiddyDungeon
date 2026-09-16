@@ -218,6 +218,8 @@ test('Codex renders a searchable concept library and writes bounded field notes 
   assert.match(views, /Add a field note/)
   assert.match(views, /codex-page-/)
   assert.match(views, /entrySearchText/)
+  assert.ok(views.includes('concept === pageKey || concept.startsWith(`${pageKey} `)'))
+  assert.doesNotMatch(views, /entry\.concept\?\.toLowerCase\(\)\.includes\(page\.title/)
   assert.match(views, /page\.examples/)
   assert.match(views, /WEAKNESSES \/ PATTERNS/)
   assert.match(views, /VERIFIED RESULTS/)
@@ -227,6 +229,21 @@ test('Codex renders a searchable concept library and writes bounded field notes 
   assert.match(state, /"record_codex_note": ActionDefinition\(frozenset\(\{"player"\}\)\)/)
   assert.match(state, /MAX_CODEX_NOTE_BYTES/)
   assert.match(state, /def codex_projection\(/)
+})
+
+test('Codex and Homestead expose live evidence and loadout summaries', () => {
+  const views = source('../RpgViews.jsx')
+
+  assert.match(views, /codex-summary-grid/)
+  assert.match(views, /codex-page-summary/)
+  assert.match(views, /codexMetrics\.verifiedResults/)
+  assert.match(views, /pageQuestionTypes/)
+  assert.match(views, /pageWeaknesses/)
+  assert.match(views, /homestead-live-status/)
+  assert.match(views, /homestead-overview-grid/)
+  assert.match(views, /CANONICAL REV/)
+  assert.match(views, /equipment\.armor/)
+  assert.match(views, /equipment\.trinket/)
 })
 
 test('top HUD stat pills style only direct stats and reset nested SVG content', () => {
@@ -246,6 +263,7 @@ test('top HUD stat pills style only direct stats and reset nested SVG content', 
   assert.match(v2, /top-stats\s*>\s*span\s+\.quest-icon/)
   assert.ok(polish.includes("querySelectorAll('.top-stats > span')"))
   assert.match(polish, /data-stat-value/)
+  assert.match(polish, /function replaceTopStat\(node\) \{[\s\S]*node\.dataset\.reactStat === 'true'/)
   assert.match(app, /function StatIcon\(\{ name \}\)/)
   for (const icon of ['heart', 'coin', 'flame', 'shield', 'sword']) assert.match(app, new RegExp(`name="${icon}"`))
   assert.match(polish, /dataset\.reactStat === 'true'/)

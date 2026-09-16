@@ -358,3 +358,29 @@ AI PTYs again. The canonical save stayed revision 5 and the legacy evidence
 was untouched. This closes the local C-slice proof; F-018 hosted persistence,
 the real second-Windows launch and F-039 custody decision remain open before
 Milestone C.
+
+## Current checkpoint — 2026-09-16 10:44
+
+The Codex/Homestead presentation slice is complete locally. Codex now exposes
+service-projected library/evidence metrics and page-level recorded signals;
+Homestead shows a canonical live-loadout/economy summary with revision, level,
+XP, armor, trinket and coins. The legacy icon bridge explicitly skips
+React-owned stat nodes so revision polling cannot recreate nested pills.
+
+The friend launcher now runs the package as `PYTHONPATH=. .venv/bin/python -m
+ide.quest`, fixing the mounted-checkout import failure found during the
+disposable custody launch. Handoff examples match the module-safe command.
+
+Gates are green at **78 backend / 36 frontend / 1,345-module Vite build**;
+compileall and PowerShell preflight parsing pass. Pure CUA K&M on an explicitly
+isolated disposable cache showed the new Codex/Homestead surfaces, visible
+monochrome HUD icons and both `CONNECTED` PTYs. The protected save and
+Campaign `tutor.py` remain untouched. The real second-Windows launch,
+F-039 save-custody choice, provider-authenticated adjudication and hosted
+Milestone C remain approval-gated.
+
+Claude Sonnet's 10:50 read-only follow-up found no P0/P1 issue. A pre-existing
+Codex fallback that could loosely shelve entries without `page_id` was
+tightened to an exact/prefix concept match and source-tested. The review also
+records the known P3 boundary that frontend checks are source-regex tripwires,
+not a replacement for rendered-DOM/K&M evidence.

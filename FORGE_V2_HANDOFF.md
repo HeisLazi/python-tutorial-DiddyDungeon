@@ -157,7 +157,7 @@ From the platform checkout:
 
 ```bash
 git pull --ff-only
-.venv/bin/python ide/quest.py --workspace ../questlab-blackjack
+PYTHONPATH=. .venv/bin/python -m ide.quest --workspace ../questlab-blackjack
 ```
 
 Test:

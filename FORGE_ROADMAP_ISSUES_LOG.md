@@ -1385,3 +1385,46 @@ accepted again. The normal launcher correctly reported `status: conflict` when
 asked to migrate the already-diverged local cache, so no implicit merge or
 newest-revision selection was used. Full details are in
 `GAME_STATE_SNAPSHOT_2026-09-16_1014.md`.
+
+## 2026-09-16 10:44 — Codex/Homestead presentation and launcher module path
+
+The next local polish slice keeps the canonical revision/event architecture
+unchanged while making the evidence surfaces easier to read. Codex now shows
+service-projected record metrics (indexed records, books with evidence,
+encounters, verified results and player field notes), per-page encounter and
+recorded-signal summaries, and keeps the existing bounded encounter detail
+and note action. Homestead now shows a live-loadout/economy card with level,
+XP, campaign armor/trinket, coins and the canonical revision, plus a small
+scene badge. Every value is read from the same campaign projection as the
+HUD; React does not calculate rewards or unlocks.
+
+The acceptance launch also found that invoking `ide/quest.py` as a script from
+the mounted checkout failed during local-state setup because Python did not
+include the repository root on `sys.path`. `tools/questlab-launch.ps1` now
+executes `PYTHONPATH=. .venv/bin/python -m ide.quest`, and the two handoff
+command examples use the same module-safe form. This is a launcher/import
+fix only; no save, cloud resource or PTY was changed.
+
+Focused/source checks and the full WSL backend suite passed **78/78**; the
+frontend source suite passed **36/36**; Python compilation and PowerShell
+preflight parsing passed; and the Windows Vite build transformed **1,345**
+modules successfully (existing large-chunk advisory only). A disposable
+current-branch runtime with an explicitly migrated local cache showed the
+canonical Level 2 / 50 XP / 55 coins projection, visible monochrome HUD
+icons, the Codex metrics/evidence view and the Homestead live-loadout card.
+Both shell and AI PTY labels remained `CONNECTED`; the disposable runtime
+and state roots were stopped and removed afterward. No Playwright was used.
+
+## 2026-09-16 10:50 — Claude Sonnet review of the polish slice
+
+Authenticated Claude Sonnet performed a strictly read-only review of the
+current source and checkpoint. It found no P0 or P1 issue and confirmed that
+Codex/Homestead render only the safe canonical projection, do not leak hidden
+answers or invent rewards, the React-owned icon guard is sound, and the module
+launcher invocation is valid. It identified one pre-existing P2 edge case:
+entries missing `page_id` used a loose first-word substring fallback that could
+mis-shelve a legacy Codex record. The fallback is now exact/prefix-only, with a
+source regression assertion. Claude also noted that the frontend tests are
+source-regex tripwires rather than rendered-DOM tests; this is a known P3 test
+boundary, not a release blocker. Claude did not run tests or browser actions
+and did not touch `progress.json`, `tutor.py`, runtimes or PTYs.
