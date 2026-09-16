@@ -1181,3 +1181,12 @@ submission/verdict changed Resolve **4/4 → 2/4** and added the validated
 `OBJECTIVE VERIFIED` reward card. The runtime, clone and disposable workspace
 were stopped and removed; canonical `progress.json` and Campaign `tutor.py`
 remained untouched.
+
+## 2026-09-16 06:06 — preflight cross-shell hardening
+
+The read-only Git probes now rely on quiet `rev-parse --verify` exit status
+without native stderr redirection, avoiding the Windows PowerShell 5.1
+`$ErrorActionPreference='Stop'` edge case called out in review. PowerShell
+parsing and the focused frontend suite remain green (**35/35**); no runtime,
+save or PTY was touched. This is a compatibility hardening of the existing
+preflight gate, not a new acceptance claim.

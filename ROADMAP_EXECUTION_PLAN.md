@@ -266,8 +266,9 @@ launch and F-039 custody choice are still open.
 
 ## Current checkpoint — 2026-09-16 06:04
 
-The pushed branch is now `3ae4d6c` (code fix `c8dba22`, followed by the review
-and K&M evidence commit). The authenticated Claude Opus read-only review found
+The 06:04 evidence run was on `3ae4d6c` (code fix `c8dba22`, followed by the
+review and K&M evidence commit); subsequent docs and preflight hardening are
+now pushed through `3ba37c3`. The authenticated Claude Opus read-only review found
 no P0/P1 issues; its P2 preflight null-ref and lower-revision projection
 findings, plus the explicit-null boss-reward edge case, are fixed. The current
 regression counts are **77 backend / 35 frontend**, PowerShell preflight parse
