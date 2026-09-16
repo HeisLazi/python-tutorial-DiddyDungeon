@@ -961,6 +961,10 @@ prompt/answer was exposed, and neither PTY was remounted. The temporary
 runtime/save was removed; user state, legacy evidence and hosted state were
 untouched.
 
+The current issue ledger now treats F-025 as fixed for new guarded launches;
+only the pre-existing legacy listeners remain open as a user-controlled
+restart choice.
+
 ### HUD sync layout stability — 2026-09-16
 
 The HUD icon regression fix now also reserves a compact slot for each direct
