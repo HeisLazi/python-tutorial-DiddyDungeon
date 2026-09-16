@@ -473,3 +473,15 @@ machine launch, actual CachyOS K&M certification, Tauri packaging and hosted
 Milestone C remain external gates. The public activity-only tip merged during
 this checkpoint is `cab6b0c`; no cloud seed or protected player-file edit was
 performed.
+
+## Post-merge regression gate — 2026-09-16
+
+The public activity fast-forward and documentation commit were followed by a
+fresh local regression: backend **81/81**, frontend **36/36**, Python
+`compileall`, and the **1,345-module** Vite build passed. The two-cache local
+sync simulator again preserved the source digest, rejected stale mailbox and
+local pulls with `409`, and recorded explicit `sync_apply_cloud` resolution.
+The committed-source bundle at `f5e2a4119f9555e72d7b13d300bb91d00b91a773`
+matched the `HEAD:progress.json` Git blob, omitted `tutor.py`, and left no
+temporary output. These are local checks only; no second-device, cloud seed,
+or protected-save mutation was performed.

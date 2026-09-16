@@ -1503,3 +1503,15 @@ launch, native CachyOS support or Tauri. Those gates remain open by design.
 The only upstream change merged in this checkpoint was the public
 activity-only commit `cab6b0c`; no cloud seed or legacy `progress.json` edit
 was made.
+
+## Verification update — 2026-09-16 — post-merge local regression
+
+At current refs `feature/cloud-sync-desktop` and `main` (`f5e2a41`), the fresh
+WSL backend suite passed **81/81**, the frontend suite **36/36**, Python
+compilation passed, and Vite built **1,345 modules**. The local two-cache sync
+simulator preserved the source digest, rejected stale mailbox/local pulls with
+`409`, and recorded the explicit `sync_apply_cloud` resolution. The committed
+bundle's packed `progress.json` matched `git rev-parse HEAD:progress.json`,
+`tutor.py` was absent, the manifest was present, and temporary output was
+removed. This was a no-code/docs/activity checkpoint; no cloud seed, legacy
+edit, protected-save write or second-device claim was made.

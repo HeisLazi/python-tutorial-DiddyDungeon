@@ -1982,3 +1982,20 @@ approved per-device save-custody migration, a clean friend Windows launch, a
 native CachyOS certification, or a Tauri desktop proof. No cloud seed or
 legacy-save edit was performed while recording this boundary. The public
 activity-only tip merged during this checkpoint is `cab6b0c`.
+
+## Post-merge regression and bundle verification — 2026-09-16
+
+After the public activity fast-forward and the documentation checkpoint, the
+full local gates were rerun against the unchanged implementation: WSL
+backend **81/81**, frontend **36/36**, Python `compileall`, and the Windows
+Vite build (**1,345 modules**) all passed. The cloud-free two-cache simulator
+also passed; it rejected stale mailbox and stale local pulls with `409`,
+performed an explicit keep-device `sync_apply_cloud`, and left the protected
+save digest unchanged.
+
+The committed-source packager was rerun at `f5e2a4119f9555e72d7b13d300bb91d00b91a773`.
+The packed `progress.json` Git blob exactly matched `git rev-parse
+HEAD:progress.json`, `tutor.py` was absent, the bundle manifest was present,
+and the disposable output was removed. No new code, cloud state or player
+file was written by this checkpoint; the latest browser K&M evidence therefore
+remains the previously recorded isolated-cache run.
