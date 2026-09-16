@@ -1326,3 +1326,15 @@ gap: the preceding K&M run used docs-only parent `26ad97b`; a fresh exact-tip
 preflight then passed GREEN at `0722036` on `7346/5180`, revision 0, with the
 canonical and legacy paths distinct. No runtime, PTY, save or hosted state was
 changed by the review or preflight.
+
+### Friend bundle custody smoke — 2026-09-16 03:35
+
+`tools/questlab-package.ps1` was rerun against committed HEAD
+`4f6a98fd44b2f3cfd1bcc6dd48d9915d3b7fbb21` while the working tree still held
+the user's dirty `progress.json` and untracked `tutor.py`. The package and ZIP
+were created in an exact disposable temp directory, the manifest identified
+the expected branch/HEAD, and inspection confirmed `tutor.py` was absent while
+the committed baseline `progress.json`, snapshot and plan were present. The
+temporary bundle was removed after inspection. This is committed-source
+distribution evidence only; it is not a Windows installer, Tauri or hosted
+two-device proof.

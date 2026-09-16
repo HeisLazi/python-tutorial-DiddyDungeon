@@ -834,3 +834,14 @@ was that the current-HEAD K&M runtime had been tested at docs-only parent
 `26ad97b`; an exact-tip read-only preflight subsequently passed GREEN at
 `0722036` on `7346/5180`, revision 0. The release recommendation remains to
 hold hosted work for explicit F-039 custody approval and Milestone C.
+
+## Verification update — 2026-09-16 03:35 — friend bundle custody
+
+The committed-HEAD package smoke was rerun with the dirty player save and
+untracked Campaign notebook still present. `tools/questlab-package.ps1` created
+the bundle/ZIP from HEAD `4f6a98f`, and inspection confirmed the manifest's
+branch/SHA, absence of `tutor.py`, and presence only of committed baseline
+`progress.json` plus the committed snapshot/plan. The exact temporary bundle
+directory was removed afterward. F-046 remains locally fixed; a real Windows
+friend-machine launch, Tauri desktop proof and hosted mailbox acceptance remain
+separate gates.
