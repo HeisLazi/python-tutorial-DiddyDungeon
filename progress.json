@@ -10,13 +10,13 @@
     "name": "Lazi",
     "title": "Apprentice Coder",
     "rank": "F",
-    "level": 2,
-    "xp": 70,
-    "xp_next": 100,
-    "lifetime_xp": 170,
+    "level": 3,
+    "xp": 120,
+    "xp_next": 200,
+    "lifetime_xp": 220,
     "hp": 100,
     "max_hp": 100,
-    "coins": 55,
+    "coins": 75,
     "potions": 2
   },
   "streak": {
@@ -84,7 +84,7 @@
     "sessions": 1,
     "projects_cleared": 0,
     "bosses_defeated": 0,
-    "mobs_defeated": 3,
+    "mobs_defeated": 4,
     "interviews_passed": 0,
     "interviews_failed": 0,
     "mastery_shields_earned": 0,
@@ -103,11 +103,12 @@
   ],
   "projects": [
     {"order": 0, "branch": "00-rps-tournament", "name": "Rock Paper Scissors Tournament", "status": "available", "progress": 0, "boss": "The Pattern Warden"},
-    {"order": 1, "branch": "01-blackjack", "name": "Blackjack", "status": "active", "progress": 38, "boss": "The House", "mobs": [
+    {"order": 1, "branch": "01-blackjack", "name": "Blackjack", "status": "active", "progress": 50, "boss": "The House", "mobs": [
       {"name": "The Empty Table", "status": "defeated"},
       {"name": "The Dealer's Hand", "status": "defeated"},
       {"name": "The Count Keeper", "status": "defeated"},
-      {"name": "The Hitman", "status": "available"},
+      {"name": "The Hitman", "status": "defeated"},
+      {"name": "The Bust Hound", "status": "available"},
       {"name": "The House Clerk", "status": "locked"},
       {"name": "The Rematch Shade", "status": "locked"}
     ]},
