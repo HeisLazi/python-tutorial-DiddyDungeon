@@ -1203,3 +1203,9 @@ then opened Quest Journal (three cleared mobs, The Hitman, Resolve 8/8) and
 Codex (three defeated encounter records) in the same tab. The tab was closed
 after the read-only check; no state mutation, PTY reset or Playwright action
 was used.
+
+The active AppV2 path also keeps the loading coin placeholder as a bare `—`
+until the campaign revision arrives, then switches atomically to the formatted
+`Nc` value. This removes the last loading-only suffix width change. The
+regression is included in the 33-test frontend suite and the follow-up commit
+is `ecffa40`.

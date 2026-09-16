@@ -717,3 +717,9 @@ showed Quest Journal with the three cleared Blackjack mobs and The Hitman at
 8/8 Resolve, followed by Codex with three defeated encounter records. The
 tab was closed after this read-only check; no Playwright action, save mutation
 or PTY reset occurred.
+
+The active AppV2 HUD now keeps the loading coin placeholder as a bare `—`
+instead of `—c`; once the canonical revision is present it renders the
+formatted `Nc` value. This closes the remaining loading-only width change in
+the stat row. The regression is covered by the 33-test frontend suite and is
+committed as `ecffa40`.
