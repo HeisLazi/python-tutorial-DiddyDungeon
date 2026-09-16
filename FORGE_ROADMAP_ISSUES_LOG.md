@@ -821,3 +821,16 @@ followed by `MOB DEFEATED`, `+25 XP`, `+10 Coins`, `NEXT ENCOUNTER` and
 encounter, and Character/Homestead showed the same 10 coins. Shell and AI PTYs
 remained `CONNECTED`. No Playwright, user-save/legacy edit, hosted write or
 long-lived process restart occurred; the disposable runtime was removed.
+
+## Review update — 2026-09-16 03:31 — Claude evidence audit
+
+Claude Sonnet read HEAD `0722036`, the current snapshot, detailed plan,
+implementation report and this issue log without editing or mutating anything.
+It found the latest K&M evidence, 76 backend/33 frontend/build counts and
+canonical-versus-legacy custody boundary internally consistent. It correctly
+identified that the disposable revision-2 starter save is not the real
+canonical revision-2 restored save, not a contradiction. The only minor gap
+was that the current-HEAD K&M runtime had been tested at docs-only parent
+`26ad97b`; an exact-tip read-only preflight subsequently passed GREEN at
+`0722036` on `7346/5180`, revision 0. The release recommendation remains to
+hold hosted work for explicit F-039 custody approval and Milestone C.

@@ -1313,3 +1313,16 @@ The same tab confirmed The Dealer's Hand in the Journal, the defeated record in
 Codex, and matching Character/Homestead coin projections. No Playwright,
 refresh, long-lived runtime restart, user-save edit or hosted write occurred;
 the exact disposable runtime was closed and removed afterward.
+
+### Claude checkpoint review — 2026-09-16 03:31
+
+Claude Sonnet reviewed HEAD `0722036`, the snapshot, roadmap plan, report and
+issue ledger read-only. It found the current K&M evidence, 76/33/build counts,
+and canonical/legacy custody statements internally consistent. It explicitly
+distinguished the disposable revision-2 starter state from the real canonical
+revision-2 restored save, found no contradiction, and recommended holding
+mainline/hosted work behind F-039 and Milestone C. It noted one minor evidence
+gap: the preceding K&M run used docs-only parent `26ad97b`; a fresh exact-tip
+preflight then passed GREEN at `0722036` on `7346/5180`, revision 0, with the
+canonical and legacy paths distinct. No runtime, PTY, save or hosted state was
+changed by the review or preflight.
