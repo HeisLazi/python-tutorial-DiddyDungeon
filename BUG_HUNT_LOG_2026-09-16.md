@@ -165,9 +165,9 @@ touched.
 The local two-device simulator was exercised from pushed commit
 `322d5ffc144f0c06d7528a3bb83b31e657c1c517` with the protected repository save
 as a read-only source. Two temporary `LocalStateService` caches and an
-in-memory compare-and-swap mailbox produced cloud revisions `1 → 3`; the
-offline stale pull was rejected with `409`, and an explicit keep-device
-resolution emitted `sync_apply_cloud`. The source digest stayed
+in-memory compare-and-swap mailbox produced cloud revisions `1 → 3`; both a
+stale mailbox push and the offline stale pull were rejected with `409`, and an
+explicit keep-device resolution emitted `sync_apply_cloud`. The source digest stayed
 `5618f9dd9ae2fc0724056ea08448e1736479772b59ada949bec08b5340fbd6f0` before
 and after. The contract test and CLI both passed; no finding was scored.
 

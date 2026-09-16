@@ -448,3 +448,9 @@ canonical save remains byte-for-byte unchanged. This closes a local confidence
 gap only; hosted/authenticated mailbox sync, OneDrive custody, a clean Windows
 friend machine and the actual CachyOS laptop remain required gates before
 Milestone C/public distribution.
+
+The current deterministic gates are **81/81 backend**, **36/36 frontend**,
+Python compilation and a **1,345-module Vite build**. The latest disposable
+CUA K&M checkpoint used an isolated cache, kept both PTYs connected and showed
+the validated reward projection live without a browser refresh. Protected
+player files remain unstaged.
