@@ -1051,3 +1051,8 @@ OneDrive WSL `node_modules` tree lacks Linux Rollup's optional native package.
 No listener appeared on either disposable port and Windows status remained
 only protected `progress.json` plus untracked `tutor.py`. A clean Linux/WSL
 dependency install is still required for the real second-Windows launch gate.
+
+The friend guide now states explicitly that excluding an untracked `tutor.py`
+from a committed distribution bundle is a custody safeguard, not removal of
+the Campaign Tutor Notebook. The workspace-scoped Campaign endpoint creates
+or reads that notebook on first use; Practice remains unable to write it.
