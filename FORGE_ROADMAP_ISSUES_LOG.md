@@ -707,3 +707,13 @@ Regression evidence: frontend tests 33/33 passed and the Windows Vite build
 transformed 1,345 modules successfully. Commit `304fe76` is pushed to
 `feature/cloud-sync-desktop`. The user-owned `progress.json` and untracked
 root `tutor.py` remain unstaged and untouched.
+
+## K&M verification update — 2026-09-16 02:38 — post-change smoke
+
+The disposable in-app-browser tab at `127.0.0.1:5174` settled, without a
+refresh, on the canonical Level 2 / 50 XP / 55 coin projection with The Hitman
+active and the raw CLI PTY visibly `CONNECTED`. Accessibility-only clicks then
+showed Quest Journal with the three cleared Blackjack mobs and The Hitman at
+8/8 Resolve, followed by Codex with three defeated encounter records. The
+tab was closed after this read-only check; no Playwright action, save mutation
+or PTY reset occurred.

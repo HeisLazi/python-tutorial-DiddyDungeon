@@ -1193,3 +1193,13 @@ The post-change frontend suite passes 33/33 tests and the Windows Vite build
 passes after transforming 1,345 modules. The change is committed as
 `304fe76` and pushed to `feature/cloud-sync-desktop`. `progress.json` and the
 untracked root `tutor.py` remain deliberately unstaged and untouched.
+
+### Post-change K&M smoke — 2026-09-16 02:38
+
+On a disposable in-app-browser tab at `127.0.0.1:5174`, the initial runtime
+settled without a refresh to the canonical projection: Level 2, 50/100 XP,
+55 coins, The Hitman, and a connected raw CLI PTY. Pure accessibility clicks
+then opened Quest Journal (three cleared mobs, The Hitman, Resolve 8/8) and
+Codex (three defeated encounter records) in the same tab. The tab was closed
+after the read-only check; no state mutation, PTY reset or Playwright action
+was used.
