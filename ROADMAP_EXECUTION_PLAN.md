@@ -192,15 +192,24 @@ The read-only `tools/questlab-km-preflight.ps1` gate now runs before manual K&M
 evidence. It rejects a stale/mismatched runtime and requires the current
 branch/HEAD, canonical authority and served SVG/loading markers without
 fetching, mutating state or restarting PTYs. The 2026-09-16 isolated run
-passed this gate at HEAD `5a051fb` and captured revision-aware Resolve,
-reward/Journal/Codex projection and both connected PTYs without a refresh.
+passed this gate at the current code tip `c4b08da` (the pushed HEAD is now
+documentation-only `c52206a`) on disposable ports `7356/5192` and captured
+revision-aware Resolve, reward/Journal/Codex projection and both connected
+PTYs without a refresh.
 
 The current snapshot and Claude Sonnet's detailed dependency/test/K&M plan are
-recorded in `GAME_STATE_SNAPSHOT_2026-09-16_0510.md` and
+recorded in `GAME_STATE_SNAPSHOT_2026-09-16_0526.md` and
 `ROADMAP_CLAUDE_IMPLEMENTATION_PLAN_2026-09-16_0438.md`. The next hosted gate
 is device-ownership migration plus real two-device acceptance; it remains
 approval-gated. No local code-safe regression is justified by the current
 evidence, and no Supabase, Tauri or Slice 8 work should leapfrog that gate.
+
+The 05:26 exact-tip run was disposable: its starter save advanced through a
+valid state-service objective, the HUD changed to 25 XP/10 coins, the Journal
+unlocked The Dealer's Hand, Codex/Character/Homestead reflected the same
+revision, and both PTYs stayed connected. The disposable clone and mutated
+save were removed; the user's Level 2 canonical save and Campaign `tutor.py`
+were not touched.
 
 The 04:20 snapshot is refreshed in `GAME_STATE_SNAPSHOT_2026-09-16_0420.md`.
 Claude Sonnet's 04:24 read-only audit found the local Stages 1–4 evidence
