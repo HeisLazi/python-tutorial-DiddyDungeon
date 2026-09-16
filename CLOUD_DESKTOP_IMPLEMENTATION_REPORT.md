@@ -1412,3 +1412,11 @@ are stale-runtime evidence rather than a current state-service projection.
 The tab was closed; the long-lived backend/frontend/PTys and both save paths
 were left untouched. Use the paired preflight before accepting any browser
 result from a runtime port.
+
+The exact pushed tip `d97bb2c` was also checked in a clean ext4 disposable
+clone at backend `7351` / frontend `5186`. The paired preflight passed at
+revision 0. In-app-browser K&M showed the React SVG heart, coin, flame, shield
+and sword icons as visible nested content (not pills), both terminal labels
+connected, and a gateway learning-event mutation advanced revision 0→1; the
+HUD projection updated in place without a refresh. The disposable runtime and
+state were stopped and removed.

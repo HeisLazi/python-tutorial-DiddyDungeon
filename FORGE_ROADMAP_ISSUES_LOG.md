@@ -920,3 +920,11 @@ No backend, frontend, PTY, canonical save, legacy evidence file, or cloud state
 was restarted or edited. Current-branch evidence must use the paired preflight
 and a matched runtime launched through `tools/questlab-launch.ps1` (or an
 isolated disposable clone).
+
+The exact pushed tip `d97bb2c` then passed the paired preflight on a clean ext4
+clone at `7351/5186` (revision 0). Pure in-app-browser K&M showed the current
+React SVG heart/coin/flame/shield/sword icons with no nested pills and both PTY
+indicators `CONNECTED`. A disposable `record_learning_event` gateway mutation
+advanced revision 0→1; the same tab updated its campaign projection without a
+refresh and retained the SVG HUD. The disposable clone/runtime was stopped and
+removed afterward.
