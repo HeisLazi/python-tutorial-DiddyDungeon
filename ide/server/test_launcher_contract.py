@@ -24,6 +24,15 @@ class LauncherContractTests(unittest.TestCase):
         spec.loader.exec_module(module)
         return module
 
+    def _local_sync_sim_module(self):
+        path = ROOT / "tools" / "questlab-local-sync-sim.py"
+        spec = importlib.util.spec_from_file_location("questlab_local_sync_sim", path)
+        self.assertIsNotNone(spec)
+        self.assertIsNotNone(spec.loader)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        return module
+
     def test_native_linux_preflight_is_read_only_and_checks_isolated_authority(self):
         preflight = (ROOT / "tools" / "questlab-km-preflight.py").read_text(encoding="utf-8")
         self.assertIn("CachyOS", (ROOT / "FRIEND_ONBOARDING.md").read_text(encoding="utf-8"))
@@ -73,6 +82,26 @@ class LauncherContractTests(unittest.TestCase):
             ):
                 with self.assertRaisesRegex(module.PreflightError, "isolated local state"):
                     module.run_preflight(args)
+
+    def test_local_sync_simulator_uses_real_state_service_and_never_writes_source(self):
+        simulator = self._local_sync_sim_module()
+        source = ROOT / "progress.json"
+        before = source.read_bytes()
+
+        result = simulator.run_simulation(source)
+
+        self.assertTrue(result["ok"])
+        self.assertEqual(result["source_digest_before"], result["source_digest_after"])
+        self.assertEqual(source.read_bytes(), before)
+        self.assertEqual(result["conflict"]["status_code"], 409)
+        self.assertEqual(result["resolution"], "keep-device")
+        self.assertEqual(result["sync_event_action"], "sync_apply_cloud")
+        initial_player = result["initial_player"]
+        final_player = result["final_player"]
+        # The explicit keep-device choice retains B's first push (+2) and
+        # offline reward (+5); A's intervening +3 is intentionally discarded.
+        self.assertEqual(final_player["coins"], initial_player["coins"] + 7)
+        self.assertEqual(final_player["lifetime_xp"], initial_player["lifetime_xp"] + 5)
 
     def test_windows_launcher_requires_the_intended_checkout_and_stable_pty_mode(self):
         launcher = (ROOT / "tools" / "questlab-launch.ps1").read_text(encoding="utf-8")

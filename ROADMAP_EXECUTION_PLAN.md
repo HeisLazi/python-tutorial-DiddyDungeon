@@ -437,3 +437,14 @@ passed the native preflight at revisions 5 and 7 and visited all RPG/learning
 surfaces; the reward toast, live projection, five SVG icons and both connected
 PTY labels remained healthy without refresh. Those results are local tooling
 evidence, not CachyOS certification.
+
+## Current checkpoint — 2026-09-16 — local sync simulator
+
+F-060 is closed locally: `tools/questlab-local-sync-sim.py` and its contract
+test run the real `LocalStateService` through two disposable device caches,
+exercise mailbox CAS revisions, reject an offline stale pull with `409`, and
+apply an explicit keep-device resolution that emits `sync_apply_cloud`. The
+canonical save remains byte-for-byte unchanged. This closes a local confidence
+gap only; hosted/authenticated mailbox sync, OneDrive custody, a clean Windows
+friend machine and the actual CachyOS laptop remain required gates before
+Milestone C/public distribution.

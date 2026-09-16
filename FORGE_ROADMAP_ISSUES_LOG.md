@@ -1462,3 +1462,17 @@ cannot write state, call Supabase, restart Forge or touch a PTY.
 | ID | Severity | Area | Finding | Status |
 |---|---|---|---|---|
 | F-059 | P3 | Native Linux preflight | CachyOS and other native Linux installs had no executable preflight equivalent to the Windows/WSL PowerShell gate, leaving identity and state-custody checks undocumented or dependent on a second shell. | Fixed locally: `tools/questlab-km-preflight.py` is cross-platform, its isolation/authority behavior is covered by the launcher contract suite, its `--help` path runs under WSL Python, and the CachyOS onboarding command is documented. Actual CachyOS K&M acceptance remains F-058 and is still open. |
+
+## Verification update — 2026-09-16 — local two-device sync simulator
+
+The local sync boundary now has a repeatable, cloud-free contract exercise at
+`tools/questlab-local-sync-sim.py`. It copies the canonical snapshot into two
+temporary device caches, uses the real `LocalStateService` for rewards and
+cloud projection imports, models a compare-and-swap mailbox, proves a stale
+offline pull returns `409`, then performs an explicit keep-device resolution
+that records `sync_apply_cloud`. The source snapshot's SHA-256 is checked
+before and after; no root or legacy `progress.json` is written.
+
+| ID | Severity | Area | Finding | Status |
+|---|---|---|---|---|
+| F-060 | P3 | Local sync confidence | Until now there was no executable local two-device scenario to exercise CAS conflicts, offline divergence and an explicit resolution without touching the protected save. | Fixed locally: the simulator and launcher contract test pass, report the conflict/revisions/final projection as JSON, and are documented for native Linux/WSL. This raises local confidence only; hosted mailbox/auth, real second-device and OneDrive custody gates remain open. |

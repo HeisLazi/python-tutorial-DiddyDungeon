@@ -77,6 +77,17 @@ gate:
   --backend-port 7331 --frontend-port 5173 --require-isolated-state
 ```
 
+For a local, cloud-free two-device contract smoke (it uses temporary device
+caches and never writes the canonical or legacy save), run:
+
+```bash
+.venv/bin/python tools/questlab-local-sync-sim.py --source progress.json
+```
+
+This proves revision-aware compare-and-swap conflict detection and an explicit
+keep-device resolution through `LocalStateService`; it is not hosted-sync or
+two-machine acceptance.
+
 ## Choose a quest workspace
 
 The Forge platform checkout owns the canonical local player state. A quest

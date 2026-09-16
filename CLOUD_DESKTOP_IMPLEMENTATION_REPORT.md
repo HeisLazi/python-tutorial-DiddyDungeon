@@ -1931,3 +1931,20 @@ Journal projection and three Codex encounter books remained coherent. Both
 PTY labels stayed `CONNECTED`, all five SVG icons remained visible and the
 browser error/warning log was empty. The disposable runtime/cache/workspace
 were removed afterward.
+
+## Local two-device sync simulator checkpoint — 2026-09-16
+
+`tools/questlab-local-sync-sim.py` now exercises the real local sync contract
+without a cloud account or a second machine. It starts two temporary
+`LocalStateService` caches from the canonical snapshot, applies validated
+learning rewards on each side, pushes through a small in-memory CAS mailbox,
+and verifies that an offline stale pull is rejected with HTTP-style `409`
+conflict semantics. The scenario then chooses **keep this device** explicitly,
+imports through `sync_apply_cloud`, and checks that the two final projections
+match. The source save digest is unchanged before/after and the temporary
+device caches are removed automatically.
+
+The direct CLI is module-safe and should be run with the checkout venv:
+`.venv/bin/python tools/questlab-local-sync-sim.py --source progress.json`.
+The simulator is deliberately bounded evidence, not proof of Supabase auth,
+RLS, hosted mailbox transport, OneDrive custody or real two-device behavior.
