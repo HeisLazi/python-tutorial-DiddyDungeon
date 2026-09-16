@@ -907,3 +907,16 @@ frontend `/api/runtime` proxy to the direct backend for branch, HEAD and both
 state paths. A clean ext4 current-branch runtime passed the paired check on
 7349/5183. The existing stale 7333/5174 runtime was not restarted; F-025 stays
 open until that user-owned runtime is replaced through the normal launcher.
+
+## 2026-09-16 04:10 — stale browser port reproduced
+
+The user-visible browser tab at `http://127.0.0.1:5174/` was inspected with
+the allowed in-app browser K&M surface. It rendered the starter Level 1 / 0 XP
+shell, showed `Sign in to sync`, and its `/api/runtime` proxy exposed only the
+legacy `{shell, python, commands}` health shape. This is the old long-lived
+runtime, not the current `feature/cloud-sync-desktop` Forge; it explains the
+empty-pill HUD and starter campaign view. The tab was closed after inspection.
+No backend, frontend, PTY, canonical save, legacy evidence file, or cloud state
+was restarted or edited. Current-branch evidence must use the paired preflight
+and a matched runtime launched through `tools/questlab-launch.ps1` (or an
+isolated disposable clone).

@@ -1404,3 +1404,11 @@ backend probe. A clean ext4 runtime at `9dfb1cd` passed this paired-identity
 gate on `7349/5183` at revision 0; the disposable runtime was removed after
 capture. This closes the evidence gap exposed by a mismatched disposable Vite
 proxy while keeping F-025's old long-lived runtime open and untouched.
+
+At 04:10 the current in-app browser tab on port `5174` was inspected without a
+refresh using the K&M surface. It served the older Level 1 / 0 XP UI and the
+legacy runtime health response, so its empty stat pills and starter campaign
+are stale-runtime evidence rather than a current state-service projection.
+The tab was closed; the long-lived backend/frontend/PTys and both save paths
+were left untouched. Use the paired preflight before accepting any browser
+result from a runtime port.
