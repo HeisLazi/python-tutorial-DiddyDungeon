@@ -1084,3 +1084,14 @@ test. The persistent canonical baseline is recorded in
 `GAME_STATE_SNAPSHOT_2026-09-16_0526.md`. Remaining gates are a clean
 Linux/WSL dependency install plus a real second-Windows launch; hosted sync,
 avatar, Tauri, public and social work remain approval-gated.
+
+## 2026-09-16 05:32 — current pushed-tip regression gates
+
+At pushed HEAD `8cdd15136ead00d40777feb9fca8ed9770d54fe3`, the project WSL
+virtualenv passed **77/77** backend tests and Python `compileall -q ide`
+passed. The Windows frontend passed **33/33** tests and the production Vite
+build transformed **1,345 modules** with only the existing large-chunk
+advisory. These were read/build-only checks: the canonical `progress.json`,
+untracked Campaign `tutor.py`, long-lived shell/AI PTYs and hosted resources
+were not changed. The current K&M evidence remains the disposable exact-tip
+run recorded above; no Playwright was used.

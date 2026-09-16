@@ -1539,3 +1539,13 @@ removed. The user's canonical save, legacy evidence and untracked Campaign
 exact pushed tip without fabricating a canonical migration. See
 `GAME_STATE_SNAPSHOT_2026-09-16_0526.md` and the issue log for the bounded
 evidence and remaining local-distribution/hosted gates.
+
+### Current pushed-tip regression gates — 2026-09-16 05:32
+
+The pushed documentation checkpoint `8cdd15136ead00d40777feb9fca8ed9770d54fe3`
+was rechecked without changing the player state. The project WSL virtualenv
+passed **77/77** backend tests and `compileall -q ide`; the Windows frontend
+passed **33/33** tests and Vite built **1,345 modules** with only the existing
+large-chunk advisory. No save, Campaign `tutor.py`, PTY or hosted resource was
+changed. This confirms the exact-tip K&M evidence remains applicable because
+the intervening commits are documentation-only.
