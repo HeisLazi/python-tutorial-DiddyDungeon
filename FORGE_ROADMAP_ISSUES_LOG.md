@@ -1034,3 +1034,20 @@ and legacy hashes remain separately recorded, and only the protected local
 implementation stage remains local distribution: a real second-Windows launch
 and the explicit F-039 custody decision. Hosted sync, avatar, Tauri, public and
 social stages remain approval-gated.
+
+## 2026-09-16 05:11 — local distribution custody and launcher gate
+
+The committed-source package was rebuilt from HEAD `794c1a2`. Its manifest
+carried the exact source SHA and the bundle included the committed baseline
+`progress.json` while excluding the user's untracked root `tutor.py` and dirty
+save bytes. The temporary package was inspected and removed. This preserves
+the friend-bundle custody boundary; the Campaign notebook remains local
+user-owned data and is not silently distributed.
+
+The guarded Windows launcher was then invoked on disposable ports `7355/5191`.
+It printed the branch, upstream, canonical path and stable-PTY mode, warned
+about the dirty player save, and failed closed before spawning because the
+OneDrive WSL `node_modules` tree lacks Linux Rollup's optional native package.
+No listener appeared on either disposable port and Windows status remained
+only protected `progress.json` plus untracked `tutor.py`. A clean Linux/WSL
+dependency install is still required for the real second-Windows launch gate.

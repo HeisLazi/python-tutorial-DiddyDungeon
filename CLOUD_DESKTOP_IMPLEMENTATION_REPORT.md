@@ -1494,10 +1494,26 @@ continues to rely on the earlier paired-runtime K&M evidence.
 ### Current game snapshot before local distribution — 2026-09-16 05:10
 
 `GAME_STATE_SNAPSHOT_2026-09-16_0510.md` is the current read-only campaign
-baseline at pushed HEAD `c5c3535`. It confirms canonical revision 2 with Level
+baseline at pushed HEAD `794c1a2`. It confirms canonical revision 2 with Level
 2, 50/100 XP, 150 lifetime XP, 55 coins, three cleared mobs, The Hitman at
 8/8 Resolve, First Blood and three validated Codex encounter records. The
 canonical/legacy hashes remain distinct and the protected local save plus
 untracked Campaign `tutor.py` remain untouched. The evidence ordering still
 points to real second-Windows distribution and the F-039 custody choice before
 any hosted Supabase, avatar, Tauri, public or social work.
+
+### Local distribution custody and launcher gate — 2026-09-16 05:11
+
+The current HEAD `794c1a2` was packaged through
+`tools/questlab-package.ps1`. The manifest recorded the exact SHA; committed
+baseline `progress.json` was present, while untracked Campaign `tutor.py` and
+the dirty player save were excluded. The temporary package was removed after
+inspection.
+
+The Windows launcher was exercised on disposable ports `7355/5191`. It
+reported the expected branch/upstream/canonical path and stable PTY mode,
+warned about the protected local save, then failed closed before spawning on
+the known OneDrive WSL dependency boundary (missing Linux Rollup optional
+package). No disposable listener remained and no long-lived PTY or save was
+changed. A clean WSL/Linux dependency install remains the prerequisite for
+real second-Windows K&M acceptance.
