@@ -737,3 +737,22 @@ served the current source on 5177/7343; its health matched
 no Playwright, observed the initial `SYNCING` state, live Resolve reduction,
 reward/achievement/next-mob presentation, Journal/Codex updates and connected
 shell/AI PTYs. The disposable runtime was then closed.
+
+## Review update — 2026-09-16 03:01 — Claude Sonnet HUD/state review
+
+Claude reviewed HEAD `66e2d37` read-only and found no correctness bugs in the
+loading guard, React SVG ownership, `uiPolish.js` skip path, or the branch-aware
+K&M sequence. It kept one medium process gap open: stale WSL-mounted Vite
+source is honestly disclosed but not automatically detected. Two low notes
+were non-blocking (upstream metadata is intentionally fail-open without an
+upstream, and the legacy/current coin construction differs cosmetically).
+
+The release recommendation is to keep the local checkpoint green but hold
+mainline release for hosted Milestone C and the explicit F-039 custody choice;
+Milestone D avatar acceptance and Milestone E Tauri remain ordered after them.
+
+Claude reported many modified files because its WSL Git view exposes
+cross-shell line-ending differences. A same-checkout verification confirms
+the Windows status is only user-owned `progress.json` plus untracked `tutor.py`;
+WSL `git diff --ignore-space-at-eol --stat` also leaves only `progress.json`.
+No source was normalized, reverted or staged.

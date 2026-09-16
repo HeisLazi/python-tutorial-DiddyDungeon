@@ -1225,3 +1225,21 @@ Resolve reduction, reward/achievement/next-mob presentation, Journal/Codex
 projection and connected shell/AI PTYs without a refresh or Playwright. The
 disposable runtime was closed afterward; user save files and long-lived PTYs
 were untouched.
+
+### Claude Sonnet read-only review — 2026-09-16 03:01
+
+Claude reviewed HEAD `66e2d37`, the snapshot, handoff, roadmap, issue/report
+ledger and HUD/state source without editing or mutating anything. It found no
+correctness bugs in the `campaignReady` loading guard, React-owned SVG stats,
+`uiPolish.js` bridge, or branch-aware K&M evidence. It rated the stale 5174
+disclosure as accurate, while keeping F-025/F-035 open because there is not
+yet an automated source/HMR drift tripwire. It also noted only a cosmetic
+legacy/current coin-construction difference. Claude recommends no release to
+main until hosted Milestone C and the explicit F-039 save-custody decision;
+Milestone D and Tauri remain behind those gates.
+
+Claude's note about a large modified-file count was a WSL presentation
+artifact, not additional semantic work: the Windows checkout reports only the
+user-owned `progress.json` plus untracked `tutor.py`, and WSL
+`git diff --ignore-space-at-eol --stat` likewise leaves only `progress.json`.
+No cross-shell line-ending normalization or infrastructure change was made.
