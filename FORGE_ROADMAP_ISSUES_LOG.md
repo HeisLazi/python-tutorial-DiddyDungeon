@@ -1488,3 +1488,18 @@ successfully; the packed `progress.json` matched the Git blob at HEAD,
 boundary. The package output was removed after inspection. This confirms
 F-046's custody guard on the current tip; it does not certify a friend's clean
 Windows/CachyOS launch or hosted sync.
+
+## Capability boundary — 2026-09-16
+
+No-input work that remains safe and useful is limited to local deterministic
+tests, isolated WSL/ext4 browser K&M, launcher/preflight/package custody,
+build/compile checks, and persistent documentation/review. These can verify
+state authority, revision/event projection, conflict handling, mode boundaries,
+PTY continuity and source custody without touching the protected save.
+
+They cannot prove a real PC/laptop cloud round-trip, authenticated Supabase
+RLS, the approved per-device save-custody migration, clean friend-machine
+launch, native CachyOS support or Tauri. Those gates remain open by design.
+The only upstream change merged in this checkpoint was the public
+activity-only commit `cab6b0c`; no cloud seed or legacy `progress.json` edit
+was made.

@@ -1960,3 +1960,25 @@ packed `progress.json` matched the committed Git blob, the untracked Campaign
 the committed-source-only boundary. The temp output was removed afterward.
 This is source-custody evidence only; clean friend-machine and hosted sync
 acceptance remain open.
+
+## What can be completed without another device — 2026-09-16
+
+The local implementation and verification surface is now exhausted for this
+checkpoint. Without another machine, account-authorized hosted state, or a
+native CachyOS session, work can continue safely in these bounded areas:
+
+- deterministic state-service, sync-conflict, migration, mode-boundary and
+  projection tests;
+- disposable WSL/ext4 launch and browser K&M checks using an explicitly
+  isolated cache, including reward/Resolve/Codex/Character/Homestead/Dungeon/
+  Practice flows and PTY continuity;
+- source-custody, launcher/preflight, dependency/build and committed-bundle
+  checks; and
+- issue-log, onboarding and release-readiness documentation.
+
+The following claims cannot be made from this workstation alone: a real
+PC-to-laptop cloud round-trip, authenticated Supabase/RLS acceptance, the
+approved per-device save-custody migration, a clean friend Windows launch, a
+native CachyOS certification, or a Tauri desktop proof. No cloud seed or
+legacy-save edit was performed while recording this boundary. The public
+activity-only tip merged during this checkpoint is `cab6b0c`.

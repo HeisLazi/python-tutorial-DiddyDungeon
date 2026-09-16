@@ -460,3 +460,16 @@ HEAD `fdb4526`: the packager produced a directory and zip whose `progress.json`
 matched the Git blob, omitted the untracked Campaign `tutor.py`, and left no
 temp output. This closes the current local package-custody check; friend
 Windows/CachyOS launch and hosted sync remain external gates.
+
+## No-input execution boundary — 2026-09-16
+
+At the current local checkpoint, the primary agent can keep running bounded
+unit/contract tests, disposable isolated-cache WSL/ext4 K&M checks, launcher
+and package-custody preflights, build/compile gates, and documentation/review
+updates without user input. Those checks strengthen local confidence but
+cannot substitute for a real second-device cloud round-trip. Authenticated
+Supabase/RLS acceptance, the explicit F-039 save-custody choice, clean friend
+machine launch, actual CachyOS K&M certification, Tauri packaging and hosted
+Milestone C remain external gates. The public activity-only tip merged during
+this checkpoint is `cab6b0c`; no cloud seed or protected player-file edit was
+performed.
