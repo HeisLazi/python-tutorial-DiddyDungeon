@@ -875,3 +875,12 @@ This closes the local K&M evidence gap for the current Dungeon/Practice
 source. It does not close hosted F-018, provider-authenticated adjudication,
 F-039 custody, or Milestone C; no Supabase write was made. The disposable
 runtime was removed after capture.
+
+## Snapshot update — 2026-09-16 03:53
+
+`GAME_STATE_SNAPSHOT_2026-09-16_0353.md` refreshes the read-only campaign
+evidence at current pushed HEAD `6e366015275ca231b7e37c485754a09e856154a8`.
+The canonical projection remains revision 2 with Level 2, 50/100 XP, 150
+lifetime XP, 55 coins, three cleared mobs, The Hitman at 8/8 Resolve, 38%
+progress, First Blood and three evidence-backed Codex records. No hosted
+transport, migration, legacy-file write or player-save overwrite occurred.

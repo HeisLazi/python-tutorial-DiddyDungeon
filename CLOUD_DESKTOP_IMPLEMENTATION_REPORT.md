@@ -1371,3 +1371,13 @@ The run proves the local mode boundary and blank-buffer rotation against one
 current-tip backend/frontend pair. Hosted Dungeon persistence, hosted
 leaderboards, and provider-authenticated adjudication remain behind F-018 and
 Milestone C; this disposable verdict is not a claim of hosted AI validation.
+
+### Current campaign snapshot — 2026-09-16 03:53
+
+`GAME_STATE_SNAPSHOT_2026-09-16_0353.md` is a fresh read-only capture of the
+running canonical projection at revision 2. It confirms the reconciled Level
+2 / 50 XP / 55 coin campaign, three cleared Blackjack mobs, The Hitman at
+8/8 Resolve, 38% project progress, First Blood and three Codex encounter
+records. It also records that the existing 7333/5174 runtime is stale for
+branch-aware acceptance and that the user's dirty `progress.json` and
+untracked `tutor.py` remain untouched.
