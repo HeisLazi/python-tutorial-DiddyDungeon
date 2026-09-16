@@ -131,3 +131,31 @@ Provider-authenticated adjudication, hosted Dungeon/cross-device state,
 explicit real-save custody migration, the OneDrive WSL native-dependency
 limitation, and real second-Windows/Tauri proof remain approval-gated until
 this hunt produces evidence to change them.
+
+## Follow-up milestone — 2026-09-16 — native Linux preflight and K&M smoke
+
+The native Linux preflight milestone ran from commit
+`4801fd93a04e0a7cf0650be1e60313f6a65cceea` on disposable ports `7415/5225`
+with workspace `/tmp/questlab-km-linux-ws-20260916-a` and state root
+`/tmp/questlab-km-linux-state-20260916-a`. The Python preflight returned
+**GREEN** before and after mutation at revisions 5 and 7, confirmed the
+current branch/HEAD, distinct canonical/legacy paths and isolated custody, and
+used only Git reads and HTTP GETs.
+
+Pure in-app-browser K&M then opened Forge and visited Forge, Character, Quest
+Journal, Codex, Homestead, Campaign Tutor, Infinite Dungeon, Practice and
+Settings. A visible shell PTY recorded one learning event and one trusted
+state-service reward; without a browser refresh the reward toast appeared,
+HUD coins changed 55 → 56, Character showed Level 2 / 51 XP / 56 coins,
+Journal retained The Hitman at 8/8, Codex retained three encounter books and
+Homestead showed canonical revision 7 / 56 coins. Shell and AI labels remained
+`CONNECTED`, and the browser error/warning log was empty. The five SVG HUD
+icons remained visible with no nested pills.
+
+The first direct test command used system `python3` from the quest workspace
+and failed to import the backend's optional `fastapi` dependency; this was a
+test-harness command mistake, not an app path or state mutation. The supported
+`questlab-state` wrapper and the absolute project virtualenv command succeeded;
+it was not scored as a product bug. Disposable runtime, cache and workspace
+were stopped and removed; protected user files and existing PTYs were not
+touched.

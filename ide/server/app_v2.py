@@ -601,10 +601,10 @@ def terminal_environment(role: str) -> dict[str, str]:
     env["PYTHONPATH"] = os.pathsep.join(
         item for item in (str(REPO_ROOT), env.get("PYTHONPATH", "")) if item
     )
-    # Keep inherited tools ahead of repository files.  Prepending REPO_ROOT
-    # lets an editable workspace shadow `python`, `git`, or another command
-    # with an accidental file; the Quest Lab wrapper remains discoverable at
-    # the end of PATH without changing normal command resolution.
+    # Keep inherited tools ahead of repository files.  Appending REPO_ROOT
+    # keeps an editable workspace from shadowing `python`, `git`, or another
+    # command with an accidental file; the Quest Lab wrapper remains
+    # discoverable at the end of PATH without changing normal resolution.
     env["PATH"] = os.pathsep.join(
         item for item in (env.get("PATH", ""), str(REPO_ROOT)) if item
     )

@@ -432,4 +432,8 @@ F-059 is now closed locally: `tools/questlab-km-preflight.py` provides a
 PowerShell-free equivalent for native Linux, including the fail-closed
 isolated-state check. Its contract test and `--help` invocation pass. This
 removes a tooling gap but does not change F-058's requirement for real
-CachyOS-machine evidence.
+CachyOS-machine evidence. A disposable WSL K&M smoke on `7415/5225` then
+passed the native preflight at revisions 5 and 7 and visited all RPG/learning
+surfaces; the reward toast, live projection, five SVG icons and both connected
+PTY labels remained healthy without refresh. Those results are local tooling
+evidence, not CachyOS certification.

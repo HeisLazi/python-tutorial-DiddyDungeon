@@ -1921,3 +1921,13 @@ PowerShell-free contract are covered by the backend launcher tests. This is
 tooling evidence only; F-058 still requires the actual CachyOS laptop's clean
 install, browser K&M projection and connected shell/AI PTY proof before native
 Linux support is marked verified.
+
+Follow-up K&M on disposable ports `7415/5225` used the same native Linux
+preflight at revisions 5 and 7. Forge, Character, Quest Journal, Codex,
+Homestead, Campaign Tutor, Infinite Dungeon, Practice and Settings were
+visited without a refresh. A visible state-service reward produced the
+validated reward toast and live HUD/Character/Homestead updates; The Hitman
+Journal projection and three Codex encounter books remained coherent. Both
+PTY labels stayed `CONNECTED`, all five SVG icons remained visible and the
+browser error/warning log was empty. The disposable runtime/cache/workspace
+were removed afterward.
