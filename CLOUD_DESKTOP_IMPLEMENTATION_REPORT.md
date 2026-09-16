@@ -1158,3 +1158,21 @@ save after the avatar-contract slice. Revision 2 is unchanged: Level 2,
 The Hitman at 8/8 Resolve and three Codex encounter records. The read-only
 capture confirms no unsupported equipment, mastery, companion or interview
 rewards were inferred and that the dirty save/notebook boundary remains intact.
+
+### K&M projection recheck — 2026-09-16 02:29
+
+Using the in-app browser's accessibility/click surface only (no Playwright), a
+disposable tab on the current-branch runtime at `127.0.0.1:5174` settled on
+the canonical projection without a browser refresh. The visible HUD showed
+Level 2, 50/100 XP and 55 coins; the heart, coin, flame, shield and sword SVG
+icons were visible rather than nested pills. Navigation in the same tab showed
+the Quest Journal with three defeated mobs and The Hitman at 8/8 Resolve, the
+Codex with three encounter records, Character with 55 coins, and Homestead with
+the same 55-coin purse. The raw CLI terminal remained `CONNECTED`; the prior
+disposable run also recorded the AI PTY as `CONNECTED` through the same flow.
+
+The first accessibility snapshot from this long-lived development runtime
+briefly showed its old starter bootstrap before the current projection landed;
+the subsequent no-refresh state was canonical. This remains the documented
+F-035/F-025 dev-HMR/stale-runtime caveat, not hosted-state evidence. No
+long-lived runtime or PTY was restarted.

@@ -675,3 +675,19 @@ XP, 55 coins, three defeated Blackjack mobs, The Hitman at 8/8 Resolve and
 three Codex encounter records. The capture is read-only; the dirty
 `progress.json` and untracked Campaign `tutor.py` remain user-owned and no
 hosted state was contacted.
+
+## K&M verification update — 2026-09-16 02:29 — live projection recheck
+
+Pure in-app-browser accessibility/click navigation on a disposable `5174`
+tab (no Playwright and no refresh) showed the current canonical HUD at Level 2,
+50/100 XP and 55 coins with visible heart/coin/flame/shield/sword SVG icons.
+The same tab showed three defeated mobs plus The Hitman at 8/8 Resolve, three
+Codex encounter records, Character at 55 coins and Homestead at a 55-coin
+purse. The raw CLI PTY was visibly `CONNECTED`; the previous disposable K&M
+run recorded the AI PTY as `CONNECTED` as well.
+
+The first accessibility capture from the already-running development runtime
+briefly exposed its old starter bootstrap before the canonical projection
+arrived. The next no-refresh capture was correct; this is retained under the
+known F-035/F-025 stale-HMR/runtime caveat, and no long-lived process was
+restarted.
