@@ -27,21 +27,21 @@ function Get-Json([string]$Uri) {
     }
 }
 
-$branchOutput = & git -C $repoRoot branch --show-current 2>$null
+$branchOutput = & git -C $repoRoot branch --show-current
 $branchExit = $LASTEXITCODE
 $branch = if ($branchExit -eq 0) { ([string]$branchOutput).Trim() } else { '' }
 if (-not $AllowStaleCheckout -and $branch -ne $expectedBranch) {
     Fail "checkout branch is '$branch'; expected '$expectedBranch'"
 }
 
-$headOutput = & git -C $repoRoot rev-parse --verify --quiet HEAD 2>$null
+$headOutput = & git -C $repoRoot rev-parse --verify --quiet HEAD
 $headExit = $LASTEXITCODE
 $headSha = if ($headExit -eq 0) { ([string]$headOutput).Trim() } else { '' }
 if (-not $headSha) {
     Fail 'could not resolve checkout HEAD'
 }
 
-$upstreamOutput = & git -C $repoRoot rev-parse --verify --quiet "refs/remotes/origin/$expectedBranch" 2>$null
+$upstreamOutput = & git -C $repoRoot rev-parse --verify --quiet "refs/remotes/origin/$expectedBranch"
 $upstreamExit = $LASTEXITCODE
 $upstreamSha = if ($upstreamExit -eq 0) { ([string]$upstreamOutput).Trim() } else { '' }
 if (-not $AllowStaleCheckout -and $upstreamSha -and $headSha -ne $upstreamSha) {
