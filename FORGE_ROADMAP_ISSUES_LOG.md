@@ -1210,3 +1210,13 @@ command availability and omit `repo_git`, `expected_branch` and
 evidence. Port `5180` was not listening. The existing processes were not
 restarted or killed; F-025/F-031 remain open until the user launches the
 guarded current checkout.
+
+## 2026-09-16 06:20 — Windows launcher identity hardening
+
+F-025/F-031 remain open for the already-running legacy processes, but the
+guarded launcher itself is now safer on fresh Windows/WSL checkouts. It no
+longer calls `.Trim()` on a missing upstream ref; it resolves the branch
+upstream with `for-each-ref`, verifies HEAD/upstream hashes with quiet Git
+probes and fails closed if either identity cannot be resolved. Launcher
+contract tests pass **9/9** and PowerShell parsing passes. No launcher was
+started, and no save or PTY was touched.

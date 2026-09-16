@@ -1647,3 +1647,11 @@ Read-only probes found legacy listeners on `5173`, `5174`, `7332`, `7333` and
 `state_authority`, so they are not current-branch acceptance evidence. `5180`
 was not listening. No existing process, PTY or save was restarted or killed;
 the safe path remains a guarded launch from the current checkout.
+
+### Windows launcher identity hardening — 2026-09-16 06:20
+
+The guarded launcher now handles a checkout with no upstream ref without a
+null `.Trim()` failure. It resolves the branch upstream with `for-each-ref`,
+checks HEAD/upstream hashes with quiet Git probes and fails closed when either
+identity is unavailable. Launcher contract tests pass **9/9** and PowerShell
+parsing passes. No launcher, save or PTY was started or changed.
