@@ -52,6 +52,19 @@ class LauncherContractTests(unittest.TestCase):
         self.assertNotIn("git -C $repoRoot fetch", preflight)
         self.assertNotIn("Remove-Item", preflight)
 
+    def test_hud_icon_contract_scopes_stat_pills_to_direct_children(self):
+        styles = (ROOT / "ide" / "frontend" / "src" / "styles.css").read_text(encoding="utf-8")
+        polish = (ROOT / "ide" / "frontend" / "src" / "uiPolish.js").read_text(encoding="utf-8")
+
+        self.assertIn(".top-stats > span,.git-pill", styles)
+        self.assertIn('.app-shell[data-hud="hud-adventurer"] .top-stats > span', styles)
+        self.assertNotIn(".top-stats span,", styles)
+        self.assertNotIn('.app-shell[data-hud="hud-adventurer"] .top-stats span', styles)
+        self.assertIn(".top-stats > span .quest-icon", styles)
+        self.assertIn(".top-stats > span [data-stat-value]", styles)
+        self.assertIn("border:0;padding:0;border-radius:0;background:transparent", styles)
+        self.assertIn("querySelectorAll('.top-stats > span')", polish)
+
     def test_launcher_rejects_confirmation_without_local_state_opt_in(self):
         with patch.object(
             quest,
