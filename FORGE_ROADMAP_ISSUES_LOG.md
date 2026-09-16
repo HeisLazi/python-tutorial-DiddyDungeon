@@ -976,3 +976,12 @@ social stages. It found no local code-safe shortcut around those gates and
 specifically kept F-001/F-010 provider-authenticated adjudication as a
 Milestone-C co-requisite. No file, save, runtime, PTY or hosted resource was
 changed during the review.
+
+## 2026-09-16 04:45 — post-plan regression rerun
+
+After committing the fresh snapshot and Claude plan, the project WSL virtualenv
+again passed **77/77** backend tests and the frontend suite passed **33/33**.
+The custody tests exercised preview-only and explicit opt-in copy paths inside
+temporary fixtures; no real save was migrated. The working tree still contains
+only the protected `progress.json` modification and untracked `tutor.py`.
+The stale long-lived runtime remains untouched.

@@ -1450,3 +1450,11 @@ friend launch, F-039 custody choice, hosted two-device sync, hosted avatar,
 Tauri, public web and social privacy proofs remain ordered gates. The review
 made no edits, ran no commands against the game, touched no PTY and performed
 no hosted operation.
+
+### Post-plan regression rerun — 2026-09-16 04:45
+
+After the snapshot and Claude plan were committed, the project WSL virtualenv
+again passed **77/77** backend tests and the frontend suite passed **33/33**.
+Custody migration tests remained isolated to temporary fixtures; the real
+canonical save, legacy evidence, long-lived PTYs and stale runtime were not
+changed.
