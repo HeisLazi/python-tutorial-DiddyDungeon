@@ -1429,3 +1429,13 @@ the legacy runtime health shape without branch/HEAD/state-authority identity,
 the Forge footer says `RUNTIME STALE · use current launcher`. This is passive,
 does not remount or reconnect either PTY, and does not alter any save or cloud
 state.
+
+### Current-tip regression rerun — 2026-09-16 04:35
+
+The pushed `0d83bd6` documentation checkpoint was revalidated without touching
+the player save or long-lived runtimes. The project WSL virtualenv ran the full
+backend suite at **77/77**; the frontend suite passed **33/33**; Python
+`compileall` passed; and the Windows Vite build passed after transforming 1,345
+modules. The only build output is the existing large-chunk advisory. An
+initial system-Python invocation lacked FastAPI/Pydantic and was not treated
+as a product failure; subsequent project-venv evidence is authoritative.

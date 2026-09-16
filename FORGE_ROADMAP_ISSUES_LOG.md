@@ -945,3 +945,14 @@ state-authority contract. This makes an old backend visible in Forge without
 restarting PTYs or blocking local play. The frontend source regression passes;
 hosted Milestone C, avatar, F-039 custody, Tauri and provider-authenticated
 adjudication remain correctly gated and unchanged.
+
+## 2026-09-16 04:35 — current-tip regression rerun
+
+The current pushed tip `0d83bd6` was rechecked after the documentation-only
+checkpoint. The first WSL command used the system Python and correctly failed
+closed because it has no project FastAPI/Pydantic dependencies; the repository
+`.venv/bin/python` rerun passed **77/77** backend tests. The frontend suite
+passed **33/33**, Python `compileall` passed, and the Windows Vite production
+build passed with 1,345 transformed modules and only the existing large-chunk
+warning. No state file, tutor notebook, PTY, listener, or cloud resource was
+changed by these checks.
