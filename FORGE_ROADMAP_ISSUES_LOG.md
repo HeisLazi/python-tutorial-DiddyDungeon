@@ -1620,6 +1620,12 @@ campaign save. No portrait can appear in that session until the same Quest Lab
 account is signed in (or the account's `avatar_path`/Storage migration is
 verified). No credentials, avatar data or PTY was changed during this check.
 
+The current-tip runtime is the separately launched `5176` endpoint and reports
+`feature/cloud-sync-desktop`; the long-lived `5173` endpoint still serves the
+older checkout. Opening the old tab can therefore show both the old UI and an
+anonymous/local avatar even when the current branch is healthy. Use the guarded
+launcher and its printed URL, then sign in on that origin.
+
 | ID | Severity | Area | Finding | Status |
 |---|---|---|---|---|
 | F-063 | P2 | Avatar identity visibility | An anonymous Forge session has no account identity from which to download the private portrait, making the rail/Character avatar look unsynced. | Confirmed operational blocker. Sign in on both devices with the same Quest Lab account, then verify the account name and portrait; hosted Storage/RLS acceptance remains unverified here. |
