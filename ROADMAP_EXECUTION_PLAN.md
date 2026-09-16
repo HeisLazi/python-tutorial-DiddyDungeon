@@ -198,7 +198,7 @@ revision-aware Resolve, reward/Journal/Codex projection and both connected
 PTYs without a refresh.
 
 The current snapshot and Claude Sonnet's detailed dependency/test/K&M plan are
-recorded in `GAME_STATE_SNAPSHOT_2026-09-16_0625.md` (with earlier baselines
+recorded in `GAME_STATE_SNAPSHOT_2026-09-16_0631.md` (with earlier baselines
 preserved) and `ROADMAP_CLAUDE_IMPLEMENTATION_PLAN_2026-09-16_0438.md`. The next hosted gate
 is device-ownership migration plus real two-device acceptance; it remains
 approval-gated. No local code-safe regression is justified by the current

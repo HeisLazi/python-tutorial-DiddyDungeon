@@ -1689,3 +1689,12 @@ owner decision and Milestones C–F, hosted Dungeon, provider authentication and
 Slice 8 behind their existing approvals. Stale mid-document test/snapshot
 references were corrected in `ROADMAP_EXECUTION_PLAN.md`; no code, save,
 runtime or PTY was changed.
+
+### Persistent state snapshot — 2026-09-16 06:31
+
+`GAME_STATE_SNAPSHOT_2026-09-16_0631.md` records the read-only continuation
+checkpoint: canonical/legacy hashes, the reconciled Level 2 / 50 XP / 55 coin
+state, three cleared Blackjack mobs with The Hitman at 8/8, three Codex
+encounter records, green 77/35/9/build gates, current-tip pure K&M evidence
+and the remaining Windows/hosted approval gates. No save, runtime or PTY was
+changed.

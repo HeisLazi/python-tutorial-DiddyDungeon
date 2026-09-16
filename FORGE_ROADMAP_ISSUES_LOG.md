@@ -1253,3 +1253,13 @@ provider authentication and Slice 8 blocked behind their explicit approvals.
 It also identified stale mid-document counts/snapshot pointers, which were
 corrected in `ROADMAP_EXECUTION_PLAN.md`. No code, save, runtime or PTY was
 changed by the review.
+
+## 2026-09-16 06:31 — persistent state snapshot
+
+The read-only continuation checkpoint is recorded in
+`GAME_STATE_SNAPSHOT_2026-09-16_0631.md`. It preserves the canonical and
+legacy SHA-256 values, the reconciled Level 2 / 50 XP / 55 coin state, the
+three cleared mobs and The Hitman 8/8 projection, the three Codex encounter
+records, the green 77/35/9/build gates, the current-tip pure K&M evidence and
+the remaining Windows/hosted approval gates. No save, runtime or PTY was
+changed.
