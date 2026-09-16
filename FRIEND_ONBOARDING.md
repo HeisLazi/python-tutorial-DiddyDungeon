@@ -154,6 +154,13 @@ The launcher prints the source/destination/revision report and asks for
 normal later launch stays on the tracked cache until custody is selected
 again. It never merges or deletes a workspace/legacy save.
 
+If that local cache is later advanced through the state gateway, an explicit
+future `-MigrateLocalState` launch can resume the same cache when the reviewed
+source digest and revision are unchanged. The gateway-written custody marker
+is the only resume proof; an unmarked cache, changed source, or ambiguous
+divergence still stops for review. A normal launch remains on the tracked
+cache, and no workspace/legacy `progress.json` becomes authoritative.
+
 ## Health checks
 
 With Forge running, the shell PTY can inspect the same backend that powers the

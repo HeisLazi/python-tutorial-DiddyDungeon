@@ -2036,3 +2036,29 @@ The disposable runtime, browser tab, cache and workspace were stopped and
 removed. The protected repository save and Campaign `tutor.py` were not
 opened for writing. This is a local isolated-cache proof, not a second-device,
 Supabase/RLS, cloud-mailbox or native CachyOS certification.
+
+## Custody resume hardening — 2026-09-16
+
+The disposable bug hunt found that an explicitly migrated per-device cache
+could be advanced by the canonical state gateway but was then rejected as a
+generic conflict on the next explicit local launch. That would strand a valid
+Dungeon checkpoint after a normal Forge/runtime restart. The protected
+repository `progress.json`, legacy/workspace save and root `tutor.py` were not
+edited.
+
+Commit `3def7a3` adds a gateway-written custody provenance marker containing
+the reviewed source digest/revision and destination revision. A later local
+launch reports `already-local` and resumes only when the source digest/revision
+match and the destination is strictly advanced by the gateway. Unmarked,
+malformed, changed-source or lower/equal-revision divergence still refuses;
+there is no timestamp/newest-file merge and no second authoritative save.
+
+Focused contract tests passed **21/21**; the full WSL backend suite passed
+**84/84**, frontend **36/36**, Python compilation passed and Vite built **1,345
+modules**. A disposable ext4 runtime relaunched through the guarded launcher,
+restored the saved Dungeon Floor 1 / Room 1 checkpoint and code buffer, and
+K&M inspection confirmed the HUD projection, Journal/Codex records and both
+shell/AI PTY labels `CONNECTED`. No fresh external reviewer verdict was
+available for this follow-up, so this is test-backed primary evidence rather
+than a peer approval claim. Real F-039 migration approval and PC↔laptop
+cloud/authenticated sync remain outside what this workstation can prove.

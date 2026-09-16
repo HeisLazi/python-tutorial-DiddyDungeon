@@ -186,3 +186,36 @@ The first shell probe placed the global `--backend-port` option after its
 subcommand and argparse rejected it; the corrected command succeeded. This
 was a test-harness usage error, did not mutate state, and was not scored as a
 product bug. No new primary K&M defect was confirmed.
+
+## Follow-up finding — 2026-09-16 — custody resume after a valid local migration
+
+### BUG-2026-09-16-004 — P2 — fixed
+
+- Reporter: Primary (disposable launcher and browser K&M verification)
+- Surface: `questlab-launch.ps1` / `state_custody_report` local-cache resume
+- Problem: after an explicitly confirmed gateway migration advanced the
+  derived cache from source revision 0 to revision 6, a later explicit local
+  launch treated the valid destination as `conflict` and refused to start.
+  This stranded a legitimate Dungeon checkpoint/reward cache on restart even
+  though the source digest and reviewed source revision were unchanged.
+- Reproduction: run `questlab-launch.ps1 -UseLocalState -ConfirmLocalState`
+  (or the equivalent migration), apply a state-service mutation, stop the
+  disposable runtime, then launch local mode again. Before the repair the
+  launcher reported `source_revision: 0`, `destination_revision: 6`,
+  `status: conflict` and exited.
+- Repair: the gateway now writes a custody provenance marker during the
+  confirmed migration. A later local launch may resume only when that marker's
+  source digest/revision match the current reviewed source and the destination
+  revision is strictly advanced by the gateway; unmarked, malformed, changed
+  or lower/equal-revision divergence still refuses. This is provenance
+  validation, not a newest-file or timestamp merge.
+- Evidence: commit `3def7a3`; focused contract tests **21/21**, full backend
+  **84/84**, frontend **36/36**, Python compilation and Vite **1,345-module**
+  build passed. The disposable runtime then relaunched with
+  `status: already-local`, `custody_marker_verified: true` and
+  `custody_resume_authorized: true`; K&M showed the saved Floor 1 / Room 1
+  Dungeon checkpoint, editor buffer, HUD projection, Journal/Codex records,
+  and both PTY labels `CONNECTED` without touching the protected save.
+- Peer review: no fresh Claude/Copilot verdict was available for this small
+  follow-up; tests and primary evidence are recorded without an approval claim.
+- Score: 4 (P2=3 plus one minimal-reproduction point).

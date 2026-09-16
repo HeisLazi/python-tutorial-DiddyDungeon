@@ -502,3 +502,20 @@ PTY labels stayed `CONNECTED`; browser error/warning logs were empty.
 The runtime, browser tab, workspace and derived cache were removed after the
 check. This strengthens the local gate only; it cannot replace real
 PC↔laptop cloud sync, Supabase/RLS, CachyOS, friend-machine or Tauri proof.
+
+## Current checkpoint — 2026-09-16 — custody resume hardening
+
+Commit `3def7a3` closes the restart edge found in the disposable K&M hunt:
+after an approved state-gateway migration, a later explicit local launch can
+resume a cache only when its gateway-written source digest/revision marker
+still matches and the destination revision is strictly advanced. Changed,
+unmarked or ambiguous divergence remains a conflict. The protected repository
+save and root `tutor.py` were not staged or written.
+
+Evidence is green for focused custody tests (**21/21**), the full WSL backend
+suite (**84/84**), frontend (**36/36**), Python compilation and the Vite
+**1,345-module** build. A disposable runtime relaunched the saved Dungeon
+Floor 1 / Room 1 checkpoint, restored its editor buffer and kept shell/AI PTY
+labels connected. This is local provenance evidence only; F-039's real save
+custody choice, hosted/authenticated two-device sync, clean friend launch and
+CachyOS/Tauri gates remain external.

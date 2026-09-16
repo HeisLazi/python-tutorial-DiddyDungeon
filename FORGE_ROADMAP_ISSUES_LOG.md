@@ -1546,3 +1546,19 @@ afterward; the protected save and `tutor.py` were untouched.
 This closes no external issue. Real laptop↔PC sync, authenticated hosted
 state, native CachyOS certification, friend-machine packaging and Tauri remain
 the open gates listed under F-018, F-039, F-050, F-058 and Milestone C.
+
+## Verification update — 2026-09-16 — verified local custody resume
+
+The explicit local-custody path had one restart edge: a cache that was
+advanced through the state gateway after migration was later rejected as a
+generic conflict. F-061 records that defect. Commit `3def7a3` adds a
+gateway-written provenance marker and lets a later local launch resume only
+when the reviewed source digest/revision still match and the destination is
+strictly advanced. Unmarked or changed-source divergence remains blocked for
+review; no newest-file merge was added. Focused tests **21/21**, backend
+**84/84**, frontend **36/36**, compile and Vite build passed, and disposable
+K&M relaunched the saved Dungeon checkpoint with both PTYs connected.
+
+| ID | Severity | Area | Finding | Status |
+|---|---|---|---|---|
+| F-061 | P2 | Local custody restart | A valid state-service-advanced per-device cache was rejected on the next explicit local launch, stranding checkpoints after restart. | Fixed locally in `3def7a3` with source-digest/revision provenance validation; real user-save migration and F-039 custody choice remain open. |
