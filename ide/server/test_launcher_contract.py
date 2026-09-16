@@ -87,6 +87,8 @@ class LauncherContractTests(unittest.TestCase):
         self.assertIn("native\nLinux Rollup", onboarding)
         self.assertIn("npm ci", onboarding)
         self.assertIn("Linux filesystem", onboarding)
+        self.assertIn("custody boundary, not a mode removal", onboarding)
+        self.assertIn("workspace-scoped `/api/tutor`", onboarding)
 
     def test_friend_bundle_archives_committed_source_without_personal_worktree_files(self):
         packager = (ROOT / "tools" / "questlab-package.ps1").read_text(encoding="utf-8")
