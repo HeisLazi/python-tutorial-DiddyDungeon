@@ -43,9 +43,9 @@ were inferred.
 
 ## Verification context
 
-- Local contract suite: 4/4 focused tests passed, including private avatar RLS
-  coverage.
-- Full WSL backend suite: 73 tests passed.
+- Local contract suite: 6/6 focused tests passed, including private avatar,
+  identity-RLS and bounded player-state coverage.
+- Full WSL backend suite: 75 tests passed.
 - Frontend suite: 33 tests passed.
 - Windows Vite production build: 1,345 modules transformed successfully.
 - Prior disposable K&M evidence remains green for live HUD, Resolve, mob

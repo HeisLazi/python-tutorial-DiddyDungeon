@@ -14,6 +14,9 @@ MIGRATION = ROOT / "supabase" / "migrations" / "20260916000100_player_state_devi
 RLS_TEST = ROOT / "supabase" / "tests" / "player_state_rls.sql"
 AVATAR_MIGRATION = ROOT / "supabase" / "migrations" / "20260915000400_avatar_storage.sql"
 AVATAR_RLS_TEST = ROOT / "supabase" / "tests" / "avatar_storage_rls.sql"
+IDENTITY_MIGRATION = ROOT / "supabase" / "migrations" / "20260914000100_profiles_devices.sql"
+IDENTITY_RLS_TEST = ROOT / "supabase" / "tests" / "profiles_devices_rls.sql"
+BOUNDS_MIGRATION = ROOT / "supabase" / "migrations" / "20260915000300_player_state_value_bounds.sql"
 
 
 class CloudMigrationContractTests(unittest.TestCase):
@@ -68,6 +71,33 @@ class CloudMigrationContractTests(unittest.TestCase):
         self.assertIn("Avatar RLS failure: User B can read User A portrait", sql)
         self.assertIn("00000000-0000-0000-0000-000000000201/avatar.webp", sql)
         self.assertIn("00000000-0000-0000-0000-000000000202/avatar.webp", sql)
+
+    def test_identity_migration_and_fixture_keep_account_rows_private(self):
+        migration = IDENTITY_MIGRATION.read_text(encoding="utf-8")
+        fixture = IDENTITY_RLS_TEST.read_text(encoding="utf-8")
+
+        self.assertIn("alter table public.profiles enable row level security", migration)
+        self.assertIn("alter table public.devices enable row level security", migration)
+        self.assertIn("revoke all on public.profiles from anon", migration)
+        self.assertIn("revoke all on public.devices from anon", migration)
+        self.assertIn("using ((select auth.uid()) = id)", migration)
+        self.assertIn("using ((select auth.uid()) = user_id)", migration)
+        self.assertIn("RLS failure: User B can see another users private rows", fixture)
+        self.assertIn("RLS failure: User A inserted User B profile", fixture)
+        self.assertIn("RLS failure: User A inserted User B device", fixture)
+
+    def test_player_state_bounds_migration_keeps_projection_limits_explicit(self):
+        sql = BOUNDS_MIGRATION.read_text(encoding="utf-8")
+
+        for phrase in (
+            "player.xp must be below player.xp_next",
+            "player.hp must not exceed player.max_hp",
+            "player counters are outside their bounds",
+            "owned_cosmetics entries must be safe identifiers",
+            "equipped values must be safe identifiers",
+            "revoke all on function public.validate_player_state_projection(jsonb) from public;",
+        ):
+            self.assertIn(phrase, sql)
 
 
 if __name__ == "__main__":

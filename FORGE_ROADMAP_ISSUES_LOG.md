@@ -634,15 +634,16 @@ hosted Milestone C approval gate is opened.
 
 ## Verification update — 2026-09-16 — hosted migration contract coverage
 
-The unapplied device-ownership migration now has four repository contract
+The unapplied device-ownership migration now has six repository contract
 tests. They verify that the security-definer RPC checks `public.devices` and
 `auth.uid()` before validation/locking, retains the authenticated-only grant,
 and that the executable SQL fixtures exercise the foreign-device rejection,
-owned-device CAS write, and private cross-account avatar paths. These are
-static/local checks only; no linked Supabase project was contacted. The focused
-contract suite passes 4/4.
+owned-device CAS write, private cross-account avatar paths, account-private
+identity rows and bounded player-state values. These are static/local checks
+only; no linked Supabase project was contacted. The focused contract suite
+passes 6/6.
 
-The same checkpoint's complete verification is 73 WSL backend tests, 33
+The same checkpoint's complete verification is 75 WSL backend tests, 33
 frontend tests, Python compilation, `git diff --check`, and a successful
 Windows Vite production build covering 1,345 modules. One initial full-suite
 run hit a transient websocket cancellation; the immediate rerun passed. Since
