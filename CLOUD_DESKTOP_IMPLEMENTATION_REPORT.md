@@ -1439,3 +1439,14 @@ backend suite at **77/77**; the frontend suite passed **33/33**; Python
 modules. The only build output is the existing large-chunk advisory. An
 initial system-Python invocation lacked FastAPI/Pydantic and was not treated
 as a product failure; subsequent project-venv evidence is authoritative.
+
+### Fresh snapshot and Claude dependency plan — 2026-09-16 04:40
+
+`GAME_STATE_SNAPSHOT_2026-09-16_0438.md` is the current read-only campaign and
+runtime baseline. Claude Sonnet's follow-up plan is versioned at
+`ROADMAP_CLAUDE_IMPLEMENTATION_PLAN_2026-09-16_0438.md`. It confirms that the
+local slices and fake-cloud boundaries are implemented, while real Windows
+friend launch, F-039 custody choice, hosted two-device sync, hosted avatar,
+Tauri, public web and social privacy proofs remain ordered gates. The review
+made no edits, ran no commands against the game, touched no PTY and performed
+no hosted operation.

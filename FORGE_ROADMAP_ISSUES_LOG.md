@@ -956,3 +956,23 @@ passed **33/33**, Python `compileall` passed, and the Windows Vite production
 build passed with 1,345 transformed modules and only the existing large-chunk
 warning. No state file, tutor notebook, PTY, listener, or cloud resource was
 changed by these checks.
+
+## 2026-09-16 04:40 — fresh snapshot and Claude dependency plan
+
+The read-only snapshot `GAME_STATE_SNAPSHOT_2026-09-16_0438.md` records the
+canonical revision-2 campaign: Level 2, 50/100 XP, 150 lifetime XP, 55 coins,
+three cleared Blackjack mobs, The Hitman at 8/8 Resolve, First Blood and three
+Codex records. It also records the stale long-lived runtime boundary, separate
+canonical/legacy hashes, protected dirty `progress.json`/`tutor.py`, and the
+current test/build evidence.
+
+Claude Sonnet then performed a second read-only synthesis of the snapshot,
+roadmap, handoff, implementation report and issue log. The detailed plan is
+versioned at `ROADMAP_CLAUDE_IMPLEMENTATION_PLAN_2026-09-16_0438.md`. Claude's
+key ordering decision is to finish the only non-hosted work first (real
+Windows friend launch plus the explicit F-039 save-custody decision), then the
+approval-gated hosted two-device sync, hosted avatar, Tauri, public web and
+social stages. It found no local code-safe shortcut around those gates and
+specifically kept F-001/F-010 provider-authenticated adjudication as a
+Milestone-C co-requisite. No file, save, runtime, PTY or hosted resource was
+changed during the review.
