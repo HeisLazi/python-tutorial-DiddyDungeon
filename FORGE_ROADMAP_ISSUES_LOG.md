@@ -1515,3 +1515,15 @@ bundle's packed `progress.json` matched `git rev-parse HEAD:progress.json`,
 `tutor.py` was absent, the manifest was present, and temporary output was
 removed. This was a no-code/docs/activity checkpoint; no cloud seed, legacy
 edit, protected-save write or second-device claim was made.
+
+## Security review update — 2026-09-16 — F-050 sanitizer recheck
+
+DOMPurify `3.4.15` is available, but Monaco `0.56.0` pins and bundles
+DOMPurify `3.4.8` inside its own editor module. A temporary nested npm override
+was verified in an isolated install: `npm ls` showed `3.4.15` and `npm audit`
+showed zero advisories, yet the actual Monaco bundle still contained the
+`3.4.8` sanitizer. The override and lockfile change were reverted, and the
+working dependency tree was restored to the committed graph. F-050 therefore
+remains an explicit accepted low/moderate risk until an upstream Monaco bundle
+or separately reviewed patched build replaces the embedded sanitizer. No
+package workaround was committed or described as a security fix.

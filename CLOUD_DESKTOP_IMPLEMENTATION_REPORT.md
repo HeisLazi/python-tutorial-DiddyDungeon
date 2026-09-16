@@ -1999,3 +1999,14 @@ HEAD:progress.json`, `tutor.py` was absent, the bundle manifest was present,
 and the disposable output was removed. No new code, cloud state or player
 file was written by this checkpoint; the latest browser K&M evidence therefore
 remains the previously recorded isolated-cache run.
+
+### F-050 sanitizer recheck — 2026-09-16
+
+DOMPurify `3.4.15` was evaluated without changing the release dependency
+graph. A temporary npm override made the audit report zero advisories, but
+Monaco `0.56.0` loads its own bundled
+`esm/vs/base/browser/dompurify/dompurify.js` at `3.4.8`; the override does not
+replace that module. The override and lockfile change were reverted, the
+working dependency tree was restored to the committed graph, and F-050 remains
+open pending an upstream Monaco bundle with a patched embedded sanitizer. No
+package workaround is being presented as a security fix.
