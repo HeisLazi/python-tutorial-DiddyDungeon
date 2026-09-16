@@ -1385,3 +1385,7 @@ untracked `tutor.py` remain untouched.
 The focused launcher/HUD contract suite is now **9/9**; the added regression
 asserts that stat pills stay direct-child scoped, nested SVG/value spans are
 reset to non-pill styling, and `uiPolish.js` only mutates direct stat nodes.
+
+After restoring the missing `httpx2` package in the Quest Lab WSL test venv
+(environment-only; no repository or save change), the full backend suite is
+**77/77** and the frontend suite remains **33/33**.

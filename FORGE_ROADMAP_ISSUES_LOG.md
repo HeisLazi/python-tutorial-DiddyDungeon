@@ -889,3 +889,6 @@ The focused launcher/HUD contract suite is **9/9** after adding a regression
 for F-048: broad descendant `.top-stats span` selectors are rejected, the
 adventurer selector remains direct-child scoped, and the SVG/value reset plus
 direct-child `uiPolish.js` query are required.
+
+The full WSL backend suite is **77/77** after restoring its missing
+`httpx2` TestClient dependency, and the frontend suite remains **33/33**.
