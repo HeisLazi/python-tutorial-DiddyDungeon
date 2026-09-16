@@ -86,9 +86,11 @@ class LauncherContractTests(unittest.TestCase):
         self.assertIn("legacy evidence", onboarding)
         self.assertIn("Do not copy", onboarding)
         self.assertIn("two-device sync acceptance", onboarding)
-        self.assertIn("native\nLinux Rollup", onboarding)
+        self.assertIn("native Linux Rollup", onboarding)
         self.assertIn("npm ci", onboarding)
         self.assertIn("Linux filesystem", onboarding)
+        self.assertIn("Never run\n`npm install` or `npm ci`", onboarding)
+        self.assertIn("separate workspace", onboarding)
         self.assertIn("custody boundary, not a mode removal", onboarding)
         self.assertIn("workspace-scoped `/api/tutor`", onboarding)
 

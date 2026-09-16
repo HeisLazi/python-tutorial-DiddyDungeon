@@ -7,8 +7,10 @@ to the repository or to the public web page.
 ## Windows + WSL setup
 
 Install Ubuntu in WSL and make sure `git`, `python3`, `python3-venv`, `npm` and
-`node` are available inside Ubuntu. Then clone the repository and select the
-Quest Lab branch:
+`node` are available inside Ubuntu. Prefer cloning inside Ubuntu's Linux
+filesystem (for example `~/projects`) rather than under a OneDrive-mounted
+`/mnt/c` path; native dependency installs are reliable there. Then clone the
+repository and select the Quest Lab branch:
 
 ```bash
 git clone https://github.com/HeisLazi/python-tutorial-DiddyDungeon.git
@@ -22,19 +24,20 @@ cd ../..
 ```
 
 The frontend install is deliberately local to the checkout. Do not reuse a
-`node_modules` directory copied from a different operating system.
-When the launcher runs under WSL it checks that this install contains a native
-Linux Rollup optional package; if it reports a missing package, run `npm ci`
-again from this WSL checkout (or move the clean checkout to a Linux filesystem)
-before launching. The launcher exits before starting Forge when that check
-fails.
+`node_modules` directory copied from a different operating system. Never run
+`npm install` or `npm ci` against the live OneDrive-mounted
+`ide/frontend/node_modules` from WSL; use a disposable ext4/Linux checkout when
+repairing dependencies. When the launcher runs under WSL it checks that this
+install contains a native Linux Rollup optional package and exits before
+starting Forge if that check fails.
 
 ## Choose a quest workspace
 
 The Forge platform checkout owns the canonical local player state. A quest
-workspace is only the coding directory for Monaco and the two PTYs. A friend
-can use the platform checkout as the workspace initially, or create a separate
-worktree for a campaign project:
+workspace is only the coding directory for Monaco and the two PTYs. Use a
+separate workspace (a sibling worktree is recommended) so health preflight can
+prove that the legacy workspace path is distinct from the canonical platform
+save:
 
 ```bash
 git fetch --all
