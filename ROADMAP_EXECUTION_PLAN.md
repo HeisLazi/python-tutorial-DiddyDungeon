@@ -202,6 +202,16 @@ is device-ownership migration plus real two-device acceptance; it remains
 approval-gated. No local code-safe regression is justified by the current
 evidence, and no Supabase, Tauri or Slice 8 work should leapfrog that gate.
 
+The 04:20 snapshot is refreshed in `GAME_STATE_SNAPSHOT_2026-09-16_0420.md`.
+Claude Sonnet's 04:24 read-only audit found the local Stages 1–4 evidence
+consistent and confirmed the numeric test counts against the source. Its only
+local finding was the known WSL CRLF/LF status-noise ambiguity, now stated
+explicitly in the snapshot. The bounded follow-up at `ea8f878` adds a passive
+`RUNTIME STALE · use current launcher` footer when `/api/runtime` lacks the
+branch/HEAD/state-authority contract. An exact-tip ext4 pair at `7352/5187`
+passed preflight and pure K&M showed connected PTYs, visible SVG HUD icons and
+revision-aware UI update without refresh; the disposable runtime was removed.
+
 The local Slice 5 loop is also covered by the 2026-09-16 isolated K&M run
 recorded in `FORGE_ROADMAP_ISSUES_LOG.md` and
 `CLOUD_DESKTOP_IMPLEMENTATION_REPORT.md`: provider verdict, blank-on-rotation,
