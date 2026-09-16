@@ -1000,3 +1000,25 @@ whose authority points at `/tmp/questlab-browser-final/progress.json`. None was
 restarted or used as current-user evidence. The paired preflight remains the
 required K&M gate because it rejects the legacy health shape and temporary or
 mismatched state authority instead of silently trusting a stale tab.
+
+## 2026-09-16 05:06 — Codex evidence projection and current-pair K&M
+
+The Codex projection now searches validated encounter text (mob, concept,
+question types, weaknesses and notes), keeps legacy records without an
+explicit `page_id` attached to their concept page, and presents validated
+weakness/pattern, result/evidence and interview-history sections. React only
+renders those state-service fields; it does not calculate rewards, mastery or
+Resolve. The source regression was extended for the new search and insight
+surface.
+
+The current branch tip `f8634b4` passed the paired current-source preflight on
+backend `7354` / frontend `5190` at campaign revision 2. Pure in-app-browser
+K&M (no Playwright) searched `legacy`, searched `append`, cleared the filter,
+opened Lists & collections, and visibly showed its definition, example,
+validated Dealer's Hand result and the new insight headings without a browser
+refresh. A Forge screenshot also showed the React SVG heart, coin and streak
+icons rendered as icons rather than nested empty pills. The disposable Vite
+and backend were stopped afterward; long-lived shell/AI PTYs and both save
+files were not restarted or changed. The disposable backend intentionally did
+not claim PTY connectivity, so PTY survival remains covered by the prior
+paired-runtime evidence rather than this isolated UI run.

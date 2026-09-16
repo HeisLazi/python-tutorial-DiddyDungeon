@@ -1470,3 +1470,23 @@ and a branch-aware disposable 7341 backend whose canonical path is a temporary
 `/tmp/questlab-browser-final/progress.json`. None was restarted or treated as
 current-user evidence; branch-aware paired preflight remains the required K&M
 gate for avoiding stale or temporary projections.
+
+### Codex evidence projection and current-pair K&M — 2026-09-16 05:06
+
+Codex now indexes validated encounter text in its search and shows the
+state-service-provided weakness/pattern, verified-result/evidence and optional
+interview-history sections for the selected encounter. Legacy records without
+`page_id` still resolve through the existing concept fallback; no reward,
+mastery or Resolve values are invented in React. The focused frontend source
+regression covers this projection.
+
+The exact current source `f8634b4` passed paired K&M preflight on backend
+`7354` and frontend `5190`, revision 2. Using only in-app-browser accessibility
+actions (no Playwright), the test searched `legacy`, searched `append`, cleared
+the filter, opened Lists & collections, and verified its definition/example,
+Dealer's Hand result, and the new insight headings without refreshing. A
+Forge screenshot showed the heart, coin and streak SVG icons visibly rendered
+inside their stat pills. The disposable UI/backend were shut down after the
+run; long-lived PTYs and canonical/legacy state were left untouched. This
+isolated disposable backend rejected PTY websockets by design, so PTY survival
+continues to rely on the earlier paired-runtime K&M evidence.

@@ -480,9 +480,27 @@ function Codex({ progress, revision, codexProjection, saveCodexNote, busy }) {
   }, [pages, selectedPageId])
 
   const normalizedQuery = query.trim().toLowerCase()
-  const filteredPages = pages.filter((page) => !normalizedQuery || `${page.title} ${page.definition}`.toLowerCase().includes(normalizedQuery))
+  const entrySearchText = (entry) => [
+    entry.mob_name,
+    entry.concept,
+    ...(entry.question_types || []),
+    ...(entry.weaknesses || []),
+    ...(entry.notes || []),
+  ].filter(Boolean).join(' ').toLowerCase()
+  const entryBelongsToPage = (entry, page) => entry.page_id === page.id || (!entry.page_id && entry.concept?.toLowerCase().includes(page.title?.split(' ')[0]?.toLowerCase() || ''))
+  const filteredPages = pages.filter((page) => {
+    if (!normalizedQuery) return true
+    const pageText = [
+      page.title,
+      page.definition,
+      ...(page.examples || []),
+      ...(page.question_types || []),
+    ].filter(Boolean).join(' ').toLowerCase()
+    const pageEntries = entries.filter((entry) => entryBelongsToPage(entry, page))
+    return pageText.includes(normalizedQuery) || pageEntries.some((entry) => entrySearchText(entry).includes(normalizedQuery))
+  })
   const selectedPage = pages.find((page) => page.id === selectedPageId) || filteredPages[0] || pages[0]
-  const selectedEntries = entries.filter((entry) => entry.page_id === selectedPage?.id || (!entry.page_id && entry.concept?.toLowerCase().includes(selectedPage?.title?.split(' ')[0]?.toLowerCase() || '')))
+  const selectedEntries = entries.filter((entry) => selectedPage && entryBelongsToPage(entry, selectedPage))
   const selectedEntry = selectedEntries.find((entry) => entry.id === selectedEntryId) || selectedEntries[0]
   const selectedEntryIds = selectedEntries.map((entry) => entry.id).join('|')
 
@@ -546,6 +564,11 @@ function Codex({ progress, revision, codexProjection, saveCodexNote, busy }) {
                 <section className="codex-entry-detail">
                   <div className="card-heading"><span>{selectedEntry.mob_name} · OBSERVATION</span><b>{String(selectedEntry.status || 'observed').toUpperCase()}</b></div>
                   <div className="codex-entry-meta"><span>{selectedEntry.attempts ?? 0} attempts</span><span>{(selectedEntry.question_types || []).join(' · ') || 'type pending'}</span><span>{(selectedEntry.weaknesses || []).length} weaknesses</span><span>Mastery {selectedEntry.mastery?.evidence ?? 0}</span></div>
+                  <div className="codex-entry-insights" data-testid="codex-entry-insights">
+                    <div><small className="codex-label">WEAKNESSES / PATTERNS</small>{selectedEntry.weaknesses?.length ? <ul className="codex-insight-list">{selectedEntry.weaknesses.map((weakness) => <li key={weakness}>{weakness}</li>)}</ul> : <p className="codex-insight-empty">No weakness pattern recorded yet.</p>}</div>
+                    <div><small className="codex-label">VERIFIED RESULTS</small>{selectedEntry.results?.length ? <ul className="codex-insight-list">{selectedEntry.results.map((result, index) => <li key={`${result.outcome || 'result'}-${index}`}><strong>{result.outcome || 'recorded'}</strong>{result.evidence_id ? <span>{result.evidence_id}</span> : null}</li>)}</ul> : <p className="codex-insight-empty">No result history recorded yet.</p>}</div>
+                    {selectedEntry.interview_history?.length ? <div><small className="codex-label">INTERVIEW HISTORY</small><ul className="codex-insight-list">{selectedEntry.interview_history.map((item, index) => <li key={`${item.outcome || 'interview'}-${index}`}>{item.outcome || item.status || 'recorded'}</li>)}</ul></div> : null}
+                  </div>
                   <p>{selectedEntry.notes?.at(-1) || 'The encounter has been observed through verified learning evidence.'}</p>
                   {selectedEntry.player_notes?.length > 0 && <div className="codex-notes"><small className="codex-label">YOUR FIELD NOTES</small>{selectedEntry.player_notes.map((item, index) => <p key={`${item}-${index}`}>{item}</p>)}</div>}
                   <form className="codex-note-form" onSubmit={submitNote}><label><span>Add a field note</span><textarea value={note} onChange={(event) => setNote(event.target.value)} maxLength={2_000} rows={3} placeholder="What did you notice, or what should you revisit?" disabled={busy} /></label><button type="submit" disabled={busy || !note.trim()}>Save note</button></form>
