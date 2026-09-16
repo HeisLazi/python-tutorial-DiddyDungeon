@@ -159,3 +159,30 @@ test-harness command mistake, not an app path or state mutation. The supported
 it was not scored as a product bug. Disposable runtime, cache and workspace
 were stopped and removed; protected user files and existing PTYs were not
 touched.
+
+## Follow-up milestone — 2026-09-16 — local sync simulator and current-tip K&M
+
+The local two-device simulator was exercised from pushed commit
+`322d5ffc144f0c06d7528a3bb83b31e657c1c517` with the protected repository save
+as a read-only source. Two temporary `LocalStateService` caches and an
+in-memory compare-and-swap mailbox produced cloud revisions `1 → 3`; the
+offline stale pull was rejected with `409`, and an explicit keep-device
+resolution emitted `sync_apply_cloud`. The source digest stayed
+`5618f9dd9ae2fc0724056ea08448e1736479772b59ada949bec08b5340fbd6f0` before
+and after. The contract test and CLI both passed; no finding was scored.
+
+A fresh isolated runtime on backend `7425` / frontend `5235` passed the native
+Linux preflight at revision 5, then pure in-app-browser click/scroll/type K&M
+recorded a visible learning event (revision 6) and trusted state-service
+reward (revision 7). Without refresh, the reward toast showed `+1 XP · +1
+Coins`, the HUD changed to Level 2 / 51 XP / 56 coins, Character and
+Homestead showed the same projection, Quest Journal retained three cleared
+mobs with The Hitman at `8 / 8`, and Codex retained three encounter books.
+Both shell and AI PTY labels stayed `CONNECTED`; all five monochrome SVG icons
+remained visible. The isolated cache, runtime and browser tab were removed
+afterward; the protected save and root `tutor.py` were untouched.
+
+The first shell probe placed the global `--backend-port` option after its
+subcommand and argparse rejected it; the corrected command succeeded. This
+was a test-harness usage error, did not mutate state, and was not scored as a
+product bug. No new primary K&M defect was confirmed.
