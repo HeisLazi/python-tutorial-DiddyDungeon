@@ -1338,3 +1338,36 @@ the committed baseline `progress.json`, snapshot and plan were present. The
 temporary bundle was removed after inspection. This is committed-source
 distribution evidence only; it is not a Windows installer, Tauri or hosted
 two-device proof.
+
+### Current-tip Dungeon and Practice K&M — 2026-09-16 03:48
+
+A fresh ext4 clone of pushed HEAD `9b7c10f589923708593b20e53d833cf349448ab7`
+was served on backend `7348` and frontend `5182`. The read-only preflight was
+GREEN at campaign revision 4 and confirmed the canonical clone save plus a
+distinct non-authoritative workspace legacy path. The previous disposable
+frontend/backend pair was closed after it was found to be proxying an older
+runtime; no long-lived process or user-owned save was touched.
+
+Pure in-app-browser K&M (no Playwright, no refresh) then:
+
+- opened Infinite Dungeon, started a fresh starter-loadout run, and observed
+  the state-service `DUNGEON RUN STARTED` reward presentation;
+- typed a Lists/random-selection answer into `dungeon.py` and saved a
+  checkpoint through the gateway;
+- applied one disposable provider-bound state-service verdict using the exact
+  nonce/submission/digest binding. Revision 2 → 3 changed the live UI to Floor
+  1 · Room 2, score 10, run coins 5, a new multiple-choice question and an
+  empty `dungeon.py` buffer. The UI showed `LAST RESULT CORRECT` with `+10
+  score · +5 coins`;
+- opened Practice, selected Lists, and requested a Tier 1 multiple-choice
+  drill. The live Practice projection showed one history session and the
+  explicit `no Campaign or Dungeon rewards` boundary. The campaign player
+  stayed Level 1, 0 XP, 0 coins while the Dungeon score remained 10/5;
+- kept the shell and raw AI PTY indicators connected during the visible
+  checks. A disposable Codex update prompt appeared; the update process was
+  stopped and the disposable runtime will be removed below.
+
+The run proves the local mode boundary and blank-buffer rotation against one
+current-tip backend/frontend pair. Hosted Dungeon persistence, hosted
+leaderboards, and provider-authenticated adjudication remain behind F-018 and
+Milestone C; this disposable verdict is not a claim of hosted AI validation.

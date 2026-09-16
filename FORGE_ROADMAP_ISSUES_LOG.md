@@ -845,3 +845,33 @@ branch/SHA, absence of `tutor.py`, and presence only of committed baseline
 directory was removed afterward. F-046 remains locally fixed; a real Windows
 friend-machine launch, Tauri desktop proof and hosted mailbox acceptance remain
 separate gates.
+
+## Verification update — 2026-09-16 03:48 — current-tip Dungeon and Practice
+
+The first disposable run for this pass was rejected as evidence because its
+Vite proxy was serving an older disposable backend. It was stopped and
+removed. A fresh ext4 clone at current pushed HEAD
+`9b7c10f589923708593b20e53d833cf349448ab7` was then launched as one matched
+pair on `7348/5182`; the read-only preflight passed GREEN at revision 4.
+
+Pure in-app-browser K&M, with click/scroll/type only and no Playwright or
+refresh, verified:
+
+1. Infinite Dungeon opened with no active run, started a fresh loadout, and
+   rendered the validated `DUNGEON RUN STARTED` notification.
+2. A typed Lists/random-selection answer checkpointed through the state
+   gateway. A nonce-bound disposable provider verdict advanced revision 2→3.
+   The same tab live-rendered Floor 1 · Room 2, score 10, run coins 5, a new
+   question, `LAST RESULT CORRECT`, and a blank `dungeon.py` buffer.
+3. Practice selected Lists and opened one Tier 1 multiple-choice session. The
+   history count became 1 and the boundary text explicitly said no Campaign
+   or Dungeon rewards. Campaign Level/XP/coins stayed 1/0/0 and the Dungeon
+   score stayed 10 with 5 run coins.
+4. Shell and raw AI PTY indicators remained connected during the visible
+   checks; the Codex update process seen in this disposable PTY was stopped
+   without touching the long-lived runtimes.
+
+This closes the local K&M evidence gap for the current Dungeon/Practice
+source. It does not close hosted F-018, provider-authenticated adjudication,
+F-039 custody, or Milestone C; no Supabase write was made. The disposable
+runtime is removed after this entry.
