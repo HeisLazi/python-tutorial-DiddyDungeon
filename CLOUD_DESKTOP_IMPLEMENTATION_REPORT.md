@@ -1389,3 +1389,8 @@ reset to non-pill styling, and `uiPolish.js` only mutates direct stat nodes.
 After restoring the missing `httpx2` package in the Quest Lab WSL test venv
 (environment-only; no repository or save change), the full backend suite is
 **77/77** and the frontend suite remains **33/33**.
+
+The committed-source friend bundle smoke was rerun at HEAD `7e1a5e2`: the
+manifest carried that exact source SHA, `progress.json` was present from
+committed source, and the user's untracked `tutor.py` was absent. The bundle
+and ZIP were removed from the disposable Temp directory after inspection.

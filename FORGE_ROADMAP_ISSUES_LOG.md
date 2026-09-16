@@ -892,3 +892,9 @@ direct-child `uiPolish.js` query are required.
 
 The full WSL backend suite is **77/77** after restoring its missing
 `httpx2` TestClient dependency, and the frontend suite remains **33/33**.
+
+The current-HEAD friend packaging smoke also passed at `7e1a5e2`: committed
+source was archived, `tutor.py` stayed out of the bundle, and the disposable
+bundle/ZIP was removed after inspection. F-046 remains locally fixed; hosted
+mailbox acceptance, Windows friend-machine launch and Tauri proof remain
+separate gates.
