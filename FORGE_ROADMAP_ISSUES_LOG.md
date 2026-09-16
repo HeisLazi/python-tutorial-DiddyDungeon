@@ -1468,10 +1468,11 @@ cannot write state, call Supabase, restart Forge or touch a PTY.
 The local sync boundary now has a repeatable, cloud-free contract exercise at
 `tools/questlab-local-sync-sim.py`. It copies the canonical snapshot into two
 temporary device caches, uses the real `LocalStateService` for rewards and
-cloud projection imports, models a compare-and-swap mailbox, proves a stale
-offline pull returns `409`, then performs an explicit keep-device resolution
-that records `sync_apply_cloud`. The source snapshot's SHA-256 is checked
-before and after; no root or legacy `progress.json` is written.
+cloud projection imports, models a compare-and-swap mailbox, proves both a
+stale mailbox push and a stale offline pull return `409`, then performs an
+explicit keep-device resolution that records `sync_apply_cloud`. The source
+snapshot's SHA-256 is checked before and after; no root or legacy
+`progress.json` is written.
 
 | ID | Severity | Area | Finding | Status |
 |---|---|---|---|---|

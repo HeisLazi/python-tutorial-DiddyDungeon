@@ -126,6 +126,17 @@ def run_simulation(source_path: Path) -> dict[str, Any]:
         b_metadata_offline = service_b.metadata()
         cloud_projection_2, _ = mailbox.read()
         try:
+            mailbox.save(a_projection_2, expected_revision=cloud_revision_1)
+        except MailboxConflict as exc:
+            mailbox_conflict_status = {
+                "status_code": 409,
+                "detail": str(exc),
+                "expected_revision": cloud_revision_1,
+                "actual_revision": cloud_revision_2,
+            }
+        else:
+            raise RuntimeError("stale mailbox push unexpectedly overwrote the cloud projection")
+        try:
             service_b.apply_cloud_projection(
                 cloud_projection_2,
                 expected_revision=b_metadata_1["revision"],
@@ -176,6 +187,7 @@ def run_simulation(source_path: Path) -> dict[str, Any]:
             "cloud_revision_after_first_push": cloud_revision_1,
             "cloud_revision_after_second_push": cloud_revision_2,
             "cloud_revision_after_keep_device": cloud_revision_3,
+            "mailbox_conflict": mailbox_conflict_status,
             "conflict": local_conflict_status,
             "resolution": "keep-device",
             "final_revision_a": int(a_final_metadata["revision"]),

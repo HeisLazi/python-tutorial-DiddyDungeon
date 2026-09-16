@@ -93,6 +93,7 @@ class LauncherContractTests(unittest.TestCase):
         self.assertTrue(result["ok"])
         self.assertEqual(result["source_digest_before"], result["source_digest_after"])
         self.assertEqual(source.read_bytes(), before)
+        self.assertEqual(result["mailbox_conflict"]["status_code"], 409)
         self.assertEqual(result["conflict"]["status_code"], 409)
         self.assertEqual(result["resolution"], "keep-device")
         self.assertEqual(result["sync_event_action"], "sync_apply_cloud")

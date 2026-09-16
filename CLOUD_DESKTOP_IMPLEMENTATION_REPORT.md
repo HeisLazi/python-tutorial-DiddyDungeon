@@ -1938,8 +1938,9 @@ were removed afterward.
 without a cloud account or a second machine. It starts two temporary
 `LocalStateService` caches from the canonical snapshot, applies validated
 learning rewards on each side, pushes through a small in-memory CAS mailbox,
-and verifies that an offline stale pull is rejected with HTTP-style `409`
-conflict semantics. The scenario then chooses **keep this device** explicitly,
+and verifies that both a stale mailbox push and an offline stale pull are
+rejected with HTTP-style `409` conflict semantics. The scenario then chooses
+**keep this device** explicitly,
 imports through `sync_apply_cloud`, and checks that the two final projections
 match. The source save digest is unchanged before/after and the temporary
 device caches are removed automatically.
