@@ -58,6 +58,7 @@ test('campaign loading never presents starter values as a reset', () => {
 
   assert.match(app, /const campaignReady = Boolean\(campaign && campaign\.progress/)
   assert.match(app, /campaignReady \? `LV \$\{player\.level/)
+  assert.match(app, /campaignReady \? `\$\{player\.coins \?\? 0\}c` : '—'/)
   assert.match(app, /campaignReady \? `\$\{player\.xp \?\? 0\}/)
   assert.match(app, /Syncing campaign state/)
   assert.match(views, /data-testid="campaign-loading"/)
