@@ -345,3 +345,16 @@ connected. The protected canonical save remained revision 5 and was not
 mutated by this acceptance. The local authority/projection slice is green;
 the real second-Windows launch, F-039 custody decision and all hosted/Tauri/
 public/social gates remain open.
+
+## Current checkpoint — 2026-09-16 10:14
+
+The local Dungeon/Practice slice is now browser-certified on a disposable
+cache. A state-service Dungeon verdict advanced the run, emitted the validated
+score/run-coin event and reset the editor buffer before the next question;
+Practice created independent reviewed history with zero Campaign/Dungeon
+rewards. After a runtime restart, Forge resumed the active Dungeon checkpoint
+at the same room with a blank buffer, and the backend accepted both shell and
+AI PTYs again. The canonical save stayed revision 5 and the legacy evidence
+was untouched. This closes the local C-slice proof; F-018 hosted persistence,
+the real second-Windows launch and F-039 custody decision remain open before
+Milestone C.

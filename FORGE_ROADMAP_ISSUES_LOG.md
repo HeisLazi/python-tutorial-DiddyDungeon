@@ -1359,3 +1359,29 @@ unlock, Codex growth, live HUD/Journal/Character/Homestead projection and
 were removed. Protected revision 5/hash and user `progress.json`/`tutor.py`
 custody remain unchanged. Claude's follow-up CLI review was attempted but hit
 its session limit, so this entry carries no new peer-approval claim.
+
+## 2026-09-16 10:14 — isolated Dungeon/Practice savestate checkpoint
+
+The guarded disposable runtime passed `-RequireIsolatedState` on `7373/5203`.
+Pure CUA K&M started a fresh Dungeon run, saved a typed checkpoint, and used a
+visible shell command to invoke the internal `dungeon_record_verdict` action.
+Revision `7 → 8` emitted the validated `+10` score / `+5` run-coin event,
+showed the `DUNGEON ROOM CLEARED` feedback card, advanced to Floor 1 Room 2 and
+cleared the editor buffer before the next prompt. The Dungeon state remained
+separate from Campaign rewards and the shell/AI PTYs stayed connected.
+
+Practice navigation confirmed its no-cost, non-Campaign boundary. The UI guard
+blocked a request before a provider was selected. A separate state-service
+check then created one `practice_session_started` row and one
+`practice_record_attempt` (`reviewed`) at revisions `9` and `10`, with zero XP
+and zero coins. Forge rendered both Practice feedback cards and one history
+row; Campaign HUD, Dungeon score/run currency and `tutor.py` did not change.
+
+For the savestate proof, the backend/frontend were stopped and relaunched
+against the same explicitly approved disposable cache. A fresh browser tab
+reopened the active run at Floor 1 Room 2 with score 10, 5 run coins and a
+blank editor buffer. Both `/ws/terminal/shell` and `/ws/terminal/ai` were
+accepted again. The normal launcher correctly reported `status: conflict` when
+asked to migrate the already-diverged local cache, so no implicit merge or
+newest-revision selection was used. Full details are in
+`GAME_STATE_SNAPSHOT_2026-09-16_1014.md`.

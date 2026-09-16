@@ -1803,3 +1803,37 @@ canonical or Campaign `tutor.py` write occurred. The exact evidence is in
 `GAME_STATE_SNAPSHOT_2026-09-16_0738.md`. A follow-up Claude Sonnet review was
 attempted but the CLI reported its session limit until reset, so no new Claude
 approval claim is made for this checkpoint.
+
+### Isolated Dungeon/Practice savestate acceptance — 2026-09-16 10:14
+
+The next bounded local slice was exercised in a disposable WSL cache and
+workspace after the custody guard passed. Pure in-app-browser K&M (click,
+scroll, typing and observation only; no Playwright) started an Infinite Dungeon
+run, typed a code checkpoint, saved it, and submitted a state-service verdict
+through the visible shell PTY. Revision `7 → 8` produced the service-owned
+`+10` run score / `+5` run coins, a `DUNGEON ROOM CLEARED` notification, Floor 1
+Room 2 and a blank editor buffer. The live Forge projection showed the new
+question and retained both PTY connections.
+
+Practice was opened separately. Its no-provider guard did not create a
+session. A bounded gateway check then recorded a `Conditionals` / `multiple_choice`
+Practice session and a provider-reviewed attempt at revisions `9` and `10`;
+the rendered history showed `0 / 1 correct`, while the event returned
+`reward_xp: 0` and `reward_coins: 0`. Campaign HUD, Dungeon score/currency and
+the Campaign `tutor.py` boundary stayed unchanged. The UI displayed both
+`PRACTICE DRILL READY` and `PRACTICE RESULT RECORDED` feedback cards.
+
+After stopping and relaunching the runtime against the same disposable cache,
+a fresh browser tab reopened the active run at Floor 1 / Room 2 with score 10,
+5 run coins and a blank `dungeon.py` buffer. The backend log accepted both
+`/ws/terminal/shell` and `/ws/terminal/ai` again. The normal launcher correctly
+refused to treat the already-diverged disposable cache as a new migration
+(`status: conflict`), so this restart proof used an explicit, already-approved
+`QUESTLAB_STATE_PATH`; no merge or newest-revision choice was made.
+
+Exact state, event and custody evidence is preserved in
+`GAME_STATE_SNAPSHOT_2026-09-16_1014.md`. The protected canonical save stayed
+revision 5 with SHA-256
+`5618f9dd9ae2fc0724056ea08448e1736479772b59ada949bec08b5340fbd6f0`; the
+disposable cache and runtime were removed afterward. This checkpoint closes
+the local Dungeon/Practice projection proof; hosted persistence remains F-018.
