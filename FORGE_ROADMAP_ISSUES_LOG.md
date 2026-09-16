@@ -1562,3 +1562,26 @@ K&M relaunched the saved Dungeon checkpoint with both PTYs connected.
 | ID | Severity | Area | Finding | Status |
 |---|---|---|---|---|
 | F-061 | P2 | Local custody restart | A valid state-service-advanced per-device cache was rejected on the next explicit local launch, stranding checkpoints after restart. | Fixed locally in `3def7a3` with source-digest/revision provenance validation; real user-save migration and F-039 custody choice remain open. |
+
+## Operational diagnosis — 2026-09-16 — stale Forge endpoint on the PC
+
+The user's visible old Forge was confirmed to be the pre-existing long-lived
+`5173 → 7332` pair from `~/projects/python-tutorial-DiddyDungeon`. A second
+manual pair exposed a related mismatch: the current-checkout frontend on
+`5174` was configured for backend `7333`, but that backend was also running
+with the old repository environment. This is the already-tracked F-025/F-031
+stale-runtime/checkout choice, not a new source-state split-brain path.
+
+No existing process or PTY was killed. A separate current-tip hybrid was
+started for verification with the Windows frontend on `5176` and the current
+WSL backend on `7335`. Its runtime report showed branch
+`feature/cloud-sync-desktop`, HEAD `d7110b7`, canonical state revision 5,
+Level 2 / 50 XP / 55 coins and The Hitman. The in-app browser hydrated the
+same projection without a refresh; the protected save digest remained
+unchanged. Use the guarded launcher or the printed current-tip URL rather
+than reusing a manually paired old port.
+
+The WSL OneDrive frontend dependency guard correctly rejects the mounted
+Windows `node_modules` tree when Linux Rollup is absent (F-033); the temporary
+hybrid used native Windows Vite plus the WSL backend only to make the current
+PC endpoint usable without modifying dependencies or the save.

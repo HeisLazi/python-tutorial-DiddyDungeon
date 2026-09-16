@@ -2062,3 +2062,25 @@ shell/AI PTY labels `CONNECTED`. No fresh external reviewer verdict was
 available for this follow-up, so this is test-backed primary evidence rather
 than a peer approval claim. Real F-039 migration approval and PC↔laptop
 cloud/authenticated sync remain outside what this workstation can prove.
+
+## PC stale-runtime diagnosis — 2026-09-16
+
+The PC browser was still using the long-lived `5173 → 7332` Forge from
+`~/projects/python-tutorial-DiddyDungeon` (F-025/F-031). The apparent current
+frontend on `5174` was also pointed at backend `7333`, whose inherited
+environment identified the old repository, so changing only the browser URL
+would not have fixed the projection.
+
+Without touching either existing process or PTY, a temporary current-tip
+hybrid was launched: native Windows Vite on `5176` and the current WSL
+`feature/cloud-sync-desktop` backend on `7335`. `/api/runtime` reported HEAD
+`d7110b7`, canonical revision 5, the current repository path and the distinct
+quest workspace; `/api/campaign` and in-app-browser K&M showed Level 2,
+50/100 XP, 55 coins and The Hitman. The browser initially displayed the
+explicit `SYNCING` state, then hydrated the canonical projection without a
+refresh. The protected save digest stayed
+`5618f9dd9ae2fc0724056ea08448e1736479772b59ada949bec08b5340fbd6f0`.
+
+This is an operational stale-runtime correction, not a cloud-sync result.
+The WSL OneDrive Rollup guard remains intentional; a permanent friend setup
+should use the guarded launcher from a clean ext4/Linux dependency tree.

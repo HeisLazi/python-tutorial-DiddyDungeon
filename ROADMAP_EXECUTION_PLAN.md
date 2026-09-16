@@ -519,3 +519,14 @@ Floor 1 / Room 1 checkpoint, restored its editor buffer and kept shell/AI PTY
 labels connected. This is local provenance evidence only; F-039's real save
 custody choice, hosted/authenticated two-device sync, clean friend launch and
 CachyOS/Tauri gates remain external.
+
+## Operational checkpoint — 2026-09-16 — PC stale endpoint diagnosis
+
+The PC's visible `5173` endpoint was an older long-lived checkout and the
+manual `5174` frontend was paired with an old backend port. This is the
+existing F-025/F-031 runtime-choice boundary, not a second authoritative save.
+Existing processes and PTYs were left running. A temporary current-tip hybrid
+on `5176/7335` verified branch `feature/cloud-sync-desktop`, HEAD `d7110b7`,
+revision 5 and the Level 2 / 50 XP / 55 coin projection without refresh. The
+mounted OneDrive WSL Rollup guard remains intentional; clean ext4 dependencies
+are still the supported all-WSL launch path.
