@@ -1022,3 +1022,15 @@ and backend were stopped afterward; long-lived shell/AI PTYs and both save
 files were not restarted or changed. The disposable backend intentionally did
 not claim PTY connectivity, so PTY survival remains covered by the prior
 paired-runtime evidence rather than this isolated UI run.
+
+## 2026-09-16 05:10 — current game snapshot before local distribution
+
+The fresh read-only snapshot `GAME_STATE_SNAPSHOT_2026-09-16_0510.md` confirms
+the same canonical revision-2 campaign after the Codex-only change: Level 2,
+50/100 XP, 150 lifetime XP, 55 coins, three cleared Blackjack mobs, The Hitman
+at 8/8 Resolve, First Blood and three validated Codex records. The canonical
+and legacy hashes remain separately recorded, and only the protected local
+`progress.json` plus untracked Campaign `tutor.py` are dirty. The next
+implementation stage remains local distribution: a real second-Windows launch
+and the explicit F-039 custody decision. Hosted sync, avatar, Tauri, public and
+social stages remain approval-gated.
