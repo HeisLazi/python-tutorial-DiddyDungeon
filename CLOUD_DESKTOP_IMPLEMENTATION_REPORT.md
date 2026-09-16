@@ -2084,3 +2084,36 @@ refresh. The protected save digest stayed
 This is an operational stale-runtime correction, not a cloud-sync result.
 The WSL OneDrive Rollup guard remains intentional; a permanent friend setup
 should use the guarded launcher from a clean ext4/Linux dependency tree.
+
+## Workspace source-transfer implementation — 2026-09-17
+
+The missing-file behavior was a source-custody gap rather than a progression
+sync failure: player state is intentionally owned by the Quest Lab state
+service, while `blackjack.py`, Campaign `tutor.py` and `dungeon.py` remain
+workspace files. The new `questlab-files` helper transfers those three files
+through a dedicated `questlab-files/<project-branch>` Git ref and a sanitized
+manifest. It does not push the workspace branch or any history, so
+`progress.json`, session notes, `.env` files, caches and PTY state are never
+included.
+
+Push and pull are explicit. Push requires `PUSH_WORKSPACE_FILES`; pull first
+returns a hash preview and requires `PULL_WORKSPACE_FILES` to write. A clean
+checkout with an older tracked file may be updated. A dirty local allowlisted
+file is a conflict and refuses by default; `--allow-overwrite` is a separate
+opt-in that backs up the old file before an atomic replacement. Pull never
+deletes a local file absent from the bundle. Paths, symlinks, UTF-8 text,
+per-file size and SHA-256 values are validated on both sides.
+
+The source, CLI wrapper, documentation and four focused tests are:
+
+- `ide/workspace_transfer.py`
+- `questlab-files`
+- `WORKSPACE_TRANSFER.md`
+- `ide/server/test_workspace_transfer.py`
+
+The transfer ref is currently empty until the player explicitly pushes from
+the device containing the desired source. The full WSL backend suite passed
+**88/88** after this slice and Python compilation passed. No protected save,
+legacy evidence, running PTY or Supabase state was changed. This local/Git
+channel is deliberately separate from the still-unimplemented hosted source
+artifact transport.

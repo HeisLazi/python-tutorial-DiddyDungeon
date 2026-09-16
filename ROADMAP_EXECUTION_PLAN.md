@@ -530,3 +530,22 @@ on `5176/7335` verified branch `feature/cloud-sync-desktop`, HEAD `d7110b7`,
 revision 5 and the Level 2 / 50 XP / 55 coin projection without refresh. The
 mounted OneDrive WSL Rollup guard remains intentional; clean ext4 dependencies
 are still the supported all-WSL launch path.
+
+## Current checkpoint — 2026-09-17 — explicit workspace source transfer
+
+F-062 is closed locally. `questlab-files` provides a separate, explicit
+Git-backed transfer ref for the player-authored source needed on another
+device. Its tree is limited to `blackjack.py`, Campaign `tutor.py` and
+`dungeon.py` plus a bounded SHA-256 manifest; it never pushes the workspace
+branch wholesale, reads or writes `progress.json`, or carries session notes,
+secrets, Git history or PTY state. Pull previews first, updates a clean older
+file without friction, and refuses dirty conflicts unless the player opts in
+to an overwrite after a temporary backup is created.
+
+The implementation and focused tests live in `ide/workspace_transfer.py`,
+`ide/server/test_workspace_transfer.py`, `questlab-files` and
+`WORKSPACE_TRANSFER.md`. The full backend suite and Python compilation pass.
+This is not a hosted source-file channel and does not claim a PC↔laptop
+round-trip until the player runs the explicit push on the edited device and
+pull/verification on the other one. Campaign `tutor.py` remains part of the
+Campaign surface; Practice still cannot write it.

@@ -1585,3 +1585,21 @@ The WSL OneDrive frontend dependency guard correctly rejects the mounted
 Windows `node_modules` tree when Linux Rollup is absent (F-033); the temporary
 hybrid used native Windows Vite plus the WSL backend only to make the current
 PC endpoint usable without modifying dependencies or the save.
+
+## Workspace source-transfer slice — 2026-09-17
+
+The player-source problem is separate from campaign-state sync. The canonical
+state service can move progression, but a workspace's edited `blackjack.py`,
+Campaign `tutor.py` and `dungeon.py` were not transported to the other device;
+the committed-source packager also intentionally omitted untracked personal
+files. A direct branch push would be unsafe because the workspace branch can
+contain `progress.json`, session notes or credentials.
+
+| ID | Severity | Area | Finding | Status |
+|---|---|---|---|---|
+| F-062 | P2 | Workspace source custody | PC/laptop source files did not have an explicit transfer channel, so a saved campaign could arrive without the code/notebook needed to continue it. | Fixed locally with `questlab-files`: a separate `questlab-files/<project-branch>` ref carries only the UTF-8 allowlist (`blackjack.py`, Campaign `tutor.py`, `dungeon.py`) plus a bounded hash manifest. Push/pull require distinct confirmation tokens; `progress.json`, notes, secrets, Git history and PTYs are excluded. Clean older files update normally; dirty conflicts refuse by default and explicit overwrite creates a backup. Real device round-trip remains user-run evidence. |
+
+Focused transfer tests cover sanitized trees, protected-save preservation,
+clean-device updates, dirty-conflict refusal/backup and dirty-file reporting.
+The helper is local/Git-backed by design; it does not start Supabase source-file
+transport or change the campaign state authority.

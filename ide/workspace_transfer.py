@@ -1,0 +1,641 @@
+"""Explicit, allowlisted transfer of Quest Lab workspace source files.
+
+Campaign progression and source files deliberately use different authorities:
+``progress.json`` belongs to the local state gateway/cloud projection, while
+project files belong to the player's Git workspace.  This module provides a
+small Git-backed transfer channel for the latter without pushing the local
+workspace branch wholesale (which could contain a save or private notes).
+
+The transfer ref is a history of sanitized commits whose tree contains only
+the allowlisted source files and a bounded manifest.  It is intentionally
+separate from a project branch such as ``01-blackjack``.  Push and pull are
+explicit operations; a dirty/conflicting local file is never overwritten by
+default.
+"""
+
+from __future__ import annotations
+
+import argparse
+import hashlib
+import json
+import os
+import re
+import shutil
+import subprocess
+import sys
+import tempfile
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Any, Iterable
+
+
+TRANSFER_VERSION = 1
+MANIFEST_NAME = "QUESTLAB_WORKSPACE_TRANSFER.json"
+TRANSFER_REF_PREFIX = "questlab-files"
+CONFIRM_PUSH = "PUSH_WORKSPACE_FILES"
+CONFIRM_PULL = "PULL_WORKSPACE_FILES"
+DEFAULT_REMOTE = "origin"
+DEFAULT_REMOTE_BRANCH = "01-blackjack"
+MAX_FILE_BYTES = 2_000_000
+MAX_MANIFEST_BYTES = 32_000
+MAX_MESSAGE_LENGTH = 160
+
+# Keep this list deliberately narrow.  Add a file only when it is known to be
+# player-authored project source and safe to transfer.  In particular,
+# progress.json is never an allowed file, even if it appears in Git history.
+ALLOWED_FILES = ("blackjack.py", "tutor.py", "dungeon.py")
+ALLOWED_FILE_SET = frozenset(ALLOWED_FILES)
+PROTECTED_FILES = frozenset(
+    {
+        "progress.json",
+        ".env",
+        ".env.local",
+        "SESSION_NOTES.md",
+        MANIFEST_NAME,
+    }
+)
+BRANCH_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._/-]{0,119}$")
+MESSAGE_RE = re.compile(r"^[^\x00-\x1f\x7f]{1,160}$")
+
+
+class TransferError(RuntimeError):
+    """A safe, user-facing transfer failure."""
+
+
+def _redact(value: str) -> str:
+    """Avoid echoing credentials embedded in a Git remote error."""
+
+    return re.sub(r"(https?://)[^/@\s]+@", r"\1***@", value)
+
+
+def _git(
+    workspace: Path,
+    *args: str,
+    input_bytes: bytes | None = None,
+    env: dict[str, str] | None = None,
+    check: bool = True,
+) -> bytes:
+    command = ["git", "-C", str(workspace), *args]
+    try:
+        result = subprocess.run(
+            command,
+            input=input_bytes,
+            capture_output=True,
+            check=False,
+            env=env,
+        )
+    except OSError as exc:
+        raise TransferError(f"Could not run Git: {exc}") from exc
+    if check and result.returncode != 0:
+        detail = (result.stderr or result.stdout or b"Git command failed").decode("utf-8", "replace").strip()
+        raise TransferError(_redact(detail[-1200:]))
+    return result.stdout or b""
+
+
+def _git_text(
+    workspace: Path,
+    *args: str,
+    check: bool = True,
+    env: dict[str, str] | None = None,
+) -> str:
+    return _git(workspace, *args, check=check, env=env).decode("utf-8", "replace").strip()
+
+
+def _workspace_root(value: str | os.PathLike[str] | None) -> Path:
+    candidate = value or os.getenv("QUESTLAB_WORKSPACE") or os.getcwd()
+    workspace = Path(candidate).expanduser().resolve()
+    if not workspace.exists() or not workspace.is_dir():
+        raise TransferError(f"Workspace does not exist: {workspace}")
+    try:
+        git_root = Path(_git_text(workspace, "rev-parse", "--show-toplevel"))
+    except TransferError as exc:
+        raise TransferError(f"Workspace is not a Git checkout: {workspace}") from exc
+    if git_root.resolve() != workspace:
+        raise TransferError(
+            "Workspace must be the Git repository root; refusing to transfer from a nested path."
+        )
+    return workspace
+
+
+def _validate_branch(value: str, field: str) -> str:
+    normalized = str(value or "").strip()
+    if (
+        not normalized
+        or not BRANCH_RE.fullmatch(normalized)
+        or normalized.startswith("/")
+        or normalized.endswith("/")
+        or "//" in normalized
+        or ".." in normalized
+        or any(part in {".", ".."} for part in normalized.split("/"))
+    ):
+        raise TransferError(f"{field} is not a safe Git ref name")
+    return normalized
+
+
+def transfer_branch(remote_branch: str) -> str:
+    return _validate_branch(f"{TRANSFER_REF_PREFIX}/{remote_branch}", "transfer branch")
+
+
+def _validate_message(value: str) -> str:
+    message = str(value or "").strip()
+    if not MESSAGE_RE.fullmatch(message) or len(message) > MAX_MESSAGE_LENGTH:
+        raise TransferError("Commit message must be bounded text without control characters")
+    return message
+
+
+def _require_remote(workspace: Path, remote: str) -> str:
+    remote_name = str(remote or DEFAULT_REMOTE).strip()
+    if not re.fullmatch(r"[A-Za-z0-9_.-]{1,64}", remote_name):
+        raise TransferError("Remote name is invalid")
+    if not _git_text(workspace, "remote", "get-url", remote_name, check=False):
+        raise TransferError(f"Git remote '{remote_name}' is not configured")
+    return remote_name
+
+
+def _validate_file_name(name: str) -> str:
+    normalized = str(name or "")
+    if normalized not in ALLOWED_FILE_SET or "/" in normalized or "\\" in normalized:
+        raise TransferError(f"File is not in the transfer allowlist: {normalized or '(empty)'}")
+    return normalized
+
+
+def _safe_file_path(workspace: Path, name: str) -> Path:
+    normalized = _validate_file_name(name)
+    target = workspace / normalized
+    if target.is_symlink():
+        raise TransferError(f"Refusing to transfer symlinked file: {normalized}")
+    if target.resolve().parent != workspace.resolve():
+        raise TransferError(f"File path escaped the workspace: {normalized}")
+    return target
+
+
+def _file_payload(workspace: Path, name: str) -> dict[str, Any] | None:
+    target = _safe_file_path(workspace, name)
+    if not target.exists():
+        return None
+    if not target.is_file():
+        raise TransferError(f"Allowed path is not a regular file: {name}")
+    size = target.stat().st_size
+    if size > MAX_FILE_BYTES:
+        raise TransferError(f"{name} is larger than the {MAX_FILE_BYTES} byte transfer limit")
+    try:
+        content = target.read_bytes()
+        content.decode("utf-8")
+    except UnicodeDecodeError as exc:
+        raise TransferError(f"{name} is not UTF-8 text") from exc
+    if b"\x00" in content:
+        raise TransferError(f"{name} contains binary data")
+    return {
+        "path": name,
+        "bytes": len(content),
+        "sha256": hashlib.sha256(content).hexdigest(),
+        "content": content,
+    }
+
+
+def _local_payloads(workspace: Path) -> list[dict[str, Any]]:
+    return [payload for name in ALLOWED_FILES if (payload := _file_payload(workspace, name)) is not None]
+
+
+def _manifest(payloads: Iterable[dict[str, Any]], remote_branch: str) -> dict[str, Any]:
+    return {
+        "version": TRANSFER_VERSION,
+        "kind": "questlab-workspace-transfer",
+        "remote_branch": remote_branch,
+        "files": [
+            {"path": item["path"], "bytes": item["bytes"], "sha256": item["sha256"], "encoding": "utf-8"}
+            for item in payloads
+        ],
+    }
+
+
+def _manifest_bytes(manifest: dict[str, Any]) -> bytes:
+    encoded = json.dumps(manifest, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    if len(encoded) > MAX_MANIFEST_BYTES:
+        raise TransferError("Workspace transfer manifest is too large")
+    return encoded + b"\n"
+
+
+def _validate_manifest(value: Any, expected_remote_branch: str) -> dict[str, Any]:
+    if not isinstance(value, dict) or value.get("version") != TRANSFER_VERSION or value.get("kind") != "questlab-workspace-transfer":
+        raise TransferError("Remote transfer manifest is missing or unsupported")
+    if value.get("remote_branch") != expected_remote_branch:
+        raise TransferError("Remote transfer manifest targets a different project branch")
+    entries = value.get("files")
+    if not isinstance(entries, list) or not entries or len(entries) > len(ALLOWED_FILES):
+        raise TransferError("Remote transfer manifest has no valid allowlisted files")
+    seen: set[str] = set()
+    normalized: list[dict[str, Any]] = []
+    for entry in entries:
+        if not isinstance(entry, dict):
+            raise TransferError("Remote transfer manifest contains an invalid file entry")
+        name = _validate_file_name(entry.get("path", ""))
+        if name in seen:
+            raise TransferError("Remote transfer manifest contains duplicate files")
+        seen.add(name)
+        size = entry.get("bytes")
+        digest = entry.get("sha256")
+        if not isinstance(size, int) or size < 0 or size > MAX_FILE_BYTES:
+            raise TransferError(f"Remote transfer size is invalid for {name}")
+        if not isinstance(digest, str) or not re.fullmatch(r"[0-9a-f]{64}", digest):
+            raise TransferError(f"Remote transfer digest is invalid for {name}")
+        if entry.get("encoding") != "utf-8":
+            raise TransferError(f"Remote transfer encoding is invalid for {name}")
+        normalized.append({"path": name, "bytes": size, "sha256": digest, "encoding": "utf-8"})
+    return {
+        "version": TRANSFER_VERSION,
+        "kind": "questlab-workspace-transfer",
+        "remote_branch": expected_remote_branch,
+        "files": normalized,
+    }
+
+
+def _remote_sha(workspace: Path, remote: str, branch: str) -> str | None:
+    result = _git_text(workspace, "ls-remote", "--refs", remote, f"refs/heads/{branch}", check=True)
+    if not result:
+        return None
+    first = result.splitlines()[0].split()
+    if len(first) != 2 or first[1] != f"refs/heads/{branch}" or not re.fullmatch(r"[0-9a-f]{40}", first[0]):
+        raise TransferError("Git remote returned an invalid transfer ref")
+    return first[0]
+
+
+def _fetch_remote(workspace: Path, remote: str, branch: str) -> str | None:
+    sha = _remote_sha(workspace, remote, branch)
+    if sha is None:
+        return None
+    _git(workspace, "fetch", "--no-tags", "--quiet", remote, f"refs/heads/{branch}")
+    fetched = _git_text(workspace, "rev-parse", "FETCH_HEAD^{commit}")
+    if fetched != sha:
+        raise TransferError("Transfer ref changed while it was being fetched; retry the preview")
+    return sha
+
+
+def _remote_manifest(workspace: Path, commit: str, remote_branch: str) -> dict[str, Any]:
+    try:
+        raw = _git(workspace, "show", f"{commit}:{MANIFEST_NAME}")
+        if len(raw) > MAX_MANIFEST_BYTES:
+            raise TransferError("Remote transfer manifest is too large")
+        parsed = json.loads(raw.decode("utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise TransferError("Remote transfer manifest is not valid UTF-8 JSON") from exc
+    return _validate_manifest(parsed, remote_branch)
+
+
+def _remote_payload(workspace: Path, commit: str, entry: dict[str, Any]) -> bytes:
+    name = _validate_file_name(entry["path"])
+    content = _git(workspace, "show", f"{commit}:{name}")
+    if len(content) != entry["bytes"] or hashlib.sha256(content).hexdigest() != entry["sha256"]:
+        raise TransferError(f"Remote transfer content failed validation for {name}")
+    try:
+        content.decode("utf-8")
+    except UnicodeDecodeError as exc:
+        raise TransferError(f"Remote transfer content is not UTF-8 for {name}") from exc
+    if b"\x00" in content:
+        raise TransferError(f"Remote transfer content is binary for {name}")
+    return content
+
+
+def _status_entries(workspace: Path) -> list[dict[str, str]]:
+    raw = _git(workspace, "status", "--porcelain=v1", "-z", "--untracked-files=all")
+    records = [record for record in raw.decode("utf-8", "replace").split("\x00") if record]
+    entries: list[dict[str, str]] = []
+    for record in records:
+        if len(record) < 4:
+            continue
+        status = record[:2]
+        path = record[3:]
+        entries.append({"status": status, "path": path})
+    return entries
+
+
+def _branch_name(workspace: Path) -> str:
+    return _git_text(workspace, "branch", "--show-current") or "detached"
+
+
+def _local_commit_identity(workspace: Path) -> tuple[str, str]:
+    name = _git_text(workspace, "config", "--get", "user.name", check=False) or "Quest Lab player"
+    email = _git_text(workspace, "config", "--get", "user.email", check=False) or "questlab-local@localhost"
+    return name[:120], email[:200]
+
+
+def _build_transfer_commit(
+    workspace: Path,
+    payloads: list[dict[str, Any]],
+    manifest: dict[str, Any],
+    parent: str | None,
+    message: str,
+) -> tuple[str, str]:
+    """Build a commit using a temporary index, leaving the user's index alone."""
+
+    index_fd, index_name = tempfile.mkstemp(prefix="questlab-transfer-index-")
+    os.close(index_fd)
+    index_path = Path(index_name)
+    try:
+        custom_env = os.environ.copy()
+        custom_env["GIT_INDEX_FILE"] = str(index_path)
+        _git(workspace, "read-tree", "--empty", env=custom_env)
+        for item in payloads:
+            _git(workspace, "add", "--", item["path"], env=custom_env)
+
+        manifest_blob = _git(workspace, "hash-object", "-w", "--stdin", input_bytes=_manifest_bytes(manifest))
+        manifest_sha = manifest_blob.decode("ascii", "strict").strip()
+        if not re.fullmatch(r"[0-9a-f]{40}", manifest_sha):
+            raise TransferError("Git did not return a valid manifest blob")
+        _git(
+            workspace,
+            "update-index",
+            "--add",
+            "--cacheinfo",
+            f"100644,{manifest_sha},{MANIFEST_NAME}",
+            env=custom_env,
+        )
+        tree = _git_text(workspace, "write-tree", env=custom_env)
+        if not re.fullmatch(r"[0-9a-f]{40}", tree):
+            raise TransferError("Git did not return a valid transfer tree")
+
+        name, email = _local_commit_identity(workspace)
+        commit_env = os.environ.copy()
+        commit_env.update(
+            {
+                "GIT_AUTHOR_NAME": name,
+                "GIT_AUTHOR_EMAIL": email,
+                "GIT_COMMITTER_NAME": name,
+                "GIT_COMMITTER_EMAIL": email,
+            }
+        )
+        args = ["commit-tree", tree]
+        if parent:
+            args.extend(["-p", parent])
+        args.extend(["-m", message])
+        commit = _git_text(workspace, *args, env=commit_env)
+        if not re.fullmatch(r"[0-9a-f]{40}", commit):
+            raise TransferError("Git did not return a valid transfer commit")
+        return commit, tree
+    finally:
+        try:
+            index_path.unlink()
+        except FileNotFoundError:
+            pass
+
+
+def _file_comparison(workspace: Path, remote_manifest: dict[str, Any] | None) -> list[dict[str, Any]]:
+    remote_by_name = {entry["path"]: entry for entry in (remote_manifest or {}).get("files", [])}
+    result: list[dict[str, Any]] = []
+    for name in ALLOWED_FILES:
+        local = _file_payload(workspace, name)
+        remote = remote_by_name.get(name)
+        if local is None and remote is None:
+            continue
+        if local is None:
+            status = "remote-only"
+        elif remote is None:
+            status = "local-only"
+        elif local["sha256"] == remote["sha256"]:
+            status = "same"
+        else:
+            status = "different"
+        result.append(
+            {
+                "path": name,
+                "status": status,
+                "local_sha256": local["sha256"] if local else None,
+                "remote_sha256": remote["sha256"] if remote else None,
+                "local_bytes": local["bytes"] if local else None,
+                "remote_bytes": remote["bytes"] if remote else None,
+            }
+        )
+    return result
+
+
+def status(
+    workspace_value: str | os.PathLike[str] | None = None,
+    *,
+    remote: str = DEFAULT_REMOTE,
+    remote_branch: str = DEFAULT_REMOTE_BRANCH,
+) -> dict[str, Any]:
+    workspace = _workspace_root(workspace_value)
+    remote_name = _require_remote(workspace, remote)
+    project_branch = _validate_branch(remote_branch, "remote branch")
+    transfer_ref = transfer_branch(project_branch)
+    remote_commit = _fetch_remote(workspace, remote_name, transfer_ref)
+    manifest = _remote_manifest(workspace, remote_commit, project_branch) if remote_commit else None
+    changes = _status_entries(workspace)
+    allowed_dirty = [entry for entry in changes if entry["path"] in ALLOWED_FILE_SET]
+    blocked_dirty = [entry for entry in changes if entry["path"] not in ALLOWED_FILE_SET]
+    return {
+        "ok": True,
+        "workspace": str(workspace),
+        "project_branch": project_branch,
+        "local_branch": _branch_name(workspace),
+        "remote": remote_name,
+        "transfer_branch": transfer_ref,
+        "remote_commit": remote_commit,
+        "manifest": manifest,
+        "files": _file_comparison(workspace, manifest),
+        "allowed_dirty": allowed_dirty,
+        "blocked_dirty": blocked_dirty,
+        "protected_files_excluded": sorted(PROTECTED_FILES),
+        "note": "Only allowlisted source files are transferable; Git workspace history and player state are not uploaded.",
+    }
+
+
+def push(
+    workspace_value: str | os.PathLike[str] | None = None,
+    *,
+    remote: str = DEFAULT_REMOTE,
+    remote_branch: str = DEFAULT_REMOTE_BRANCH,
+    confirmation: str | None = None,
+    message: str = "sync(workspace): transfer allowlisted project files",
+) -> dict[str, Any]:
+    if confirmation != CONFIRM_PUSH:
+        raise TransferError(f"Push requires --confirm {CONFIRM_PUSH}")
+    workspace = _workspace_root(workspace_value)
+    remote_name = _require_remote(workspace, remote)
+    project_branch = _validate_branch(remote_branch, "remote branch")
+    transfer_ref = transfer_branch(project_branch)
+    commit_before = _fetch_remote(workspace, remote_name, transfer_ref)
+    previous_manifest = _remote_manifest(workspace, commit_before, project_branch) if commit_before else None
+    payloads = _local_payloads(workspace)
+    if not payloads:
+        raise TransferError("No allowlisted project files exist in this workspace")
+    manifest = _manifest(payloads, project_branch)
+    if previous_manifest == manifest:
+        return {
+            "ok": True,
+            "applied": False,
+            "reason": "already-current",
+            "remote_commit": commit_before,
+            "transfer_branch": transfer_ref,
+            "files": [item["path"] for item in payloads],
+        }
+    commit_message = _validate_message(message)
+    commit, tree = _build_transfer_commit(workspace, payloads, manifest, commit_before, commit_message)
+    # The parent is the previewed remote tip, so a concurrent update fails as a
+    # normal non-fast-forward push.  Never force-push a workspace transfer ref.
+    _git(workspace, "push", "--porcelain", remote_name, f"{commit}:refs/heads/{transfer_ref}")
+    return {
+        "ok": True,
+        "applied": True,
+        "commit": commit,
+        "tree": tree,
+        "previous_commit": commit_before,
+        "transfer_branch": transfer_ref,
+        "files": [
+            {"path": item["path"], "bytes": item["bytes"], "sha256": item["sha256"]} for item in payloads
+        ],
+        "protected_files_excluded": sorted(PROTECTED_FILES),
+    }
+
+
+def _atomic_write(target: Path, content: bytes) -> None:
+    # Create the sibling temporary file exclusively so a pre-existing symlink
+    # cannot redirect the incoming bytes outside the workspace.
+    fd, temporary_name = tempfile.mkstemp(prefix=f".{target.name}.questlab-transfer-", dir=target.parent)
+    temporary = Path(temporary_name)
+    try:
+        with os.fdopen(fd, "wb") as handle:
+            handle.write(content)
+            handle.flush()
+            os.fsync(handle.fileno())
+        temporary.replace(target)
+    finally:
+        try:
+            temporary.unlink()
+        except FileNotFoundError:
+            pass
+
+
+def pull(
+    workspace_value: str | os.PathLike[str] | None = None,
+    *,
+    remote: str = DEFAULT_REMOTE,
+    remote_branch: str = DEFAULT_REMOTE_BRANCH,
+    confirmation: str | None = None,
+    allow_overwrite: bool = False,
+) -> dict[str, Any]:
+    workspace = _workspace_root(workspace_value)
+    remote_name = _require_remote(workspace, remote)
+    project_branch = _validate_branch(remote_branch, "remote branch")
+    transfer_ref = transfer_branch(project_branch)
+    commit = _fetch_remote(workspace, remote_name, transfer_ref)
+    if commit is None:
+        raise TransferError(f"No transfer bundle exists at {remote_name}/{transfer_ref}")
+    manifest = _remote_manifest(workspace, commit, project_branch)
+    incoming: list[dict[str, Any]] = []
+    conflicts: list[str] = []
+    # A clean local checkout may legitimately contain an older revision of a
+    # transferred file.  Only an actual working-tree/index change is a
+    # conflict that needs an overwrite opt-in; clean files can be fast-forwarded
+    # by this file-level transfer without touching the project branch.
+    dirty_allowlisted = {
+        entry["path"] for entry in _status_entries(workspace) if entry["path"] in ALLOWED_FILE_SET
+    }
+    for entry in manifest["files"]:
+        name = entry["path"]
+        content = _remote_payload(workspace, commit, entry)
+        local = _file_payload(workspace, name)
+        if name in dirty_allowlisted and local is not None and local["sha256"] != entry["sha256"]:
+            conflicts.append(name)
+        incoming.append({"path": name, "content": content, "bytes": len(content), "sha256": entry["sha256"]})
+
+    preview = {
+        "ok": True,
+        "applied": False,
+        "remote_commit": commit,
+        "transfer_branch": transfer_ref,
+        "files": [
+            {"path": item["path"], "bytes": item["bytes"], "sha256": item["sha256"]} for item in incoming
+        ],
+        "conflicts": conflicts,
+        "requires_confirmation": confirmation != CONFIRM_PULL,
+        "requires_overwrite_opt_in": bool(conflicts) and not allow_overwrite,
+        "note": "Preview only. No workspace file was written.",
+    }
+    if confirmation != CONFIRM_PULL:
+        return preview
+    if conflicts and not allow_overwrite:
+        raise TransferError(
+            "Local files differ from the transfer. Re-run with --allow-overwrite after reviewing the preview."
+        )
+
+    backup_root: Path | None = None
+    if conflicts:
+        backup_root = Path(tempfile.mkdtemp(prefix="questlab-files-backup-"))
+        for name in conflicts:
+            target = _safe_file_path(workspace, name)
+            shutil.copy2(target, backup_root / name)
+
+    changed: list[str] = []
+    for item in incoming:
+        target = _safe_file_path(workspace, item["path"])
+        existing = target.read_bytes() if target.exists() else None
+        if existing == item["content"]:
+            continue
+        _atomic_write(target, item["content"])
+        if target.read_bytes() != item["content"]:
+            raise TransferError(f"Transfer verification failed for {item['path']}")
+        changed.append(item["path"])
+    return {
+        **preview,
+        "applied": True,
+        "changed": changed,
+        "backup_directory": str(backup_root) if backup_root else None,
+        "note": "Allowlisted files were written; progress.json and all excluded files were untouched.",
+    }
+
+
+def _parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(description="Transfer allowlisted Quest Lab workspace files through Git.")
+    parser.add_argument("--workspace", default=os.getenv("QUESTLAB_WORKSPACE"), help="Git workspace root")
+    parser.add_argument("--remote", default=os.getenv("QUESTLAB_TRANSFER_REMOTE", DEFAULT_REMOTE))
+    parser.add_argument(
+        "--remote-branch",
+        default=os.getenv("QUESTLAB_PROJECT_BRANCH", DEFAULT_REMOTE_BRANCH),
+        help="Project branch name used to namespace the sanitized transfer ref",
+    )
+    subparsers = parser.add_subparsers(dest="command", required=True)
+    subparsers.add_parser("status", help="Preview local/remote file hashes without writing")
+    push_parser = subparsers.add_parser("push", help=f"Publish files (requires {CONFIRM_PUSH})")
+    push_parser.add_argument("--confirm", choices=(CONFIRM_PUSH,), required=True)
+    push_parser.add_argument("--message", default="sync(workspace): transfer allowlisted project files")
+    pull_parser = subparsers.add_parser("pull", help=f"Preview/apply files (requires {CONFIRM_PULL} to write)")
+    pull_parser.add_argument("--confirm", choices=(CONFIRM_PULL,))
+    pull_parser.add_argument(
+        "--allow-overwrite",
+        action="store_true",
+        help="With explicit pull confirmation, overwrite differing local allowlisted files after making a backup",
+    )
+    return parser
+
+
+def _print_result(result: dict[str, Any]) -> None:
+    print(json.dumps(result, indent=2, ensure_ascii=False, sort_keys=True))
+
+
+def main(argv: list[str] | None = None) -> int:
+    args = _parser().parse_args(argv)
+    try:
+        common = {
+            "workspace_value": args.workspace,
+            "remote": args.remote,
+            "remote_branch": args.remote_branch,
+        }
+        if args.command == "status":
+            _print_result(status(**common))
+            return 0
+        if args.command == "push":
+            _print_result(push(**common, confirmation=args.confirm, message=args.message))
+            return 0
+        if args.command == "pull":
+            result = pull(**common, confirmation=args.confirm, allow_overwrite=args.allow_overwrite)
+            _print_result(result)
+            return 0
+    except TransferError as exc:
+        _print_result({"ok": False, "error": str(exc)})
+        return 1
+    return 2
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

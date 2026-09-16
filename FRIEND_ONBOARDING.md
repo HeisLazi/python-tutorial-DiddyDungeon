@@ -105,6 +105,30 @@ Never create or edit a second live save in the workspace. A workspace
 `progress.json`, if present, is legacy evidence; use `questlab-state` or the
 Forge state service for progression changes.
 
+## Move player-authored source between devices
+
+Campaign progression and project source have separate authorities. To move
+the edited `blackjack.py`, Campaign `tutor.py` or `dungeon.py` between your
+own PC and laptop, use the explicit WSL helper; do not push the whole
+workspace branch because it may contain a legacy save or private notes:
+
+```bash
+workspace_root="$(git rev-parse --show-toplevel)"
+bash /path/to/python-tutorial-DiddyDungeon/questlab-files \
+  --workspace "$workspace_root" --remote-branch 01-blackjack status
+```
+
+On the device containing the desired edits, review the status and then run
+`push --confirm PUSH_WORKSPACE_FILES`. On the other device, run `pull` for a
+hash preview, then `pull --confirm PULL_WORKSPACE_FILES`. A dirty local source
+file is not overwritten unless `--allow-overwrite` is also supplied; that
+operation makes a temporary backup first. Full commands and the exact
+allowlist are in [`WORKSPACE_TRANSFER.md`](./WORKSPACE_TRANSFER.md).
+
+This channel never moves `progress.json`, session notes, secrets, Git history,
+or PTYs. It is local/Git-backed for now; signed-in campaign state continues
+through the Quest Lab state service/cloud projection.
+
 ## Launch from Windows
 
 To prepare a friend-safe source bundle from a reviewed commit, run this from
