@@ -1517,3 +1517,25 @@ the known OneDrive WSL dependency boundary (missing Linux Rollup optional
 package). No disposable listener remained and no long-lived PTY or save was
 changed. A clean WSL/Linux dependency install remains the prerequisite for
 real second-Windows K&M acceptance.
+
+### Exact current-tip live progression K&M — 2026-09-16 05:26
+
+The paired current-source preflight was GREEN at `c4b08da` on disposable
+backend `7356` / frontend `5192`, with the starter test revision at 0. Pure
+in-app-browser keyboard/mouse actions only (no Playwright, no browser refresh)
+used valid provider-bound state-service requests typed through the shell PTY.
+The Empty Table Resolve changed 4/4 to 2/4 live; the next valid objective then
+cleared it and advanced the disposable revision 0 to 1 to 2. The live HUD
+showed 25 XP / 10 coins and queued the validated mob-defeat, next-encounter
+unlock and First Blood notifications. Quest Journal showed the cleared mob,
+Dealer's Hand 6/6, progress 12% and weekly progress 1/2. Codex showed eight
+records indexed with validated result/evidence, Character showed the live
+XP/coins and achievement, and Homestead showed the live purse. Both the Forge
+terminal and AI PTY stayed CONNECTED throughout.
+
+The disposable clone, runtime and mutated starter save were stopped and
+removed. The user's canonical save, legacy evidence and untracked Campaign
+`tutor.py` were not touched. This validates the live projection path at the
+exact pushed tip without fabricating a canonical migration. See
+`GAME_STATE_SNAPSHOT_2026-09-16_0526.md` and the issue log for the bounded
+evidence and remaining local-distribution/hosted gates.

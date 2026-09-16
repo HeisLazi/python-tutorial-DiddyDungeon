@@ -1056,3 +1056,31 @@ The friend guide now states explicitly that excluding an untracked `tutor.py`
 from a committed distribution bundle is a custody safeguard, not removal of
 the Campaign Tutor Notebook. The workspace-scoped Campaign endpoint creates
 or reads that notebook on first use; Practice remains unable to write it.
+
+## 2026-09-16 05:26 — exact current-tip live progression K&M
+
+The disposable paired preflight was GREEN on backend `7356` and frontend
+`5192` at source `c4b08da556f8ccc8f9a5bdf18be452e323e2ed74`, starting at
+campaign revision 0. The backend was configured with the current checkout as
+the repository/state authority and a separate disposable workspace; the
+canonical Windows save and user-owned Campaign `tutor.py` were not involved.
+
+Using only in-app-browser accessibility keyboard/mouse actions (no Playwright
+and no browser refresh), the shell PTY issued valid provider-bound context,
+submission and verdict requests. The Empty Table Resolve changed from 4/4 to
+2/4 live, then a second valid objective cleared it and advanced the disposable
+revision 0 to 1 to 2. The HUD immediately showed 25 XP and 10 coins; queued
+validated notifications showed the mob defeat, The Dealer's Hand unlock and
+First Blood. Quest Journal then showed the cleared mob, The Dealer's Hand at
+6/6, progress 12% and weekly progress 1/2. Codex showed 8 indexed records,
+the encounter evidence/result entries and no hidden future answers. Character
+and Homestead reflected the same live XP/coins and First Blood. Both Forge
+terminal and AI PTY remained CONNECTED throughout.
+
+The disposable Vite/backend, clone and mutated starter save were stopped and
+removed after the run. This is exact current-tip live-projection evidence; it
+does not claim that the user's Level 2 canonical save was modified by the
+test. The persistent canonical baseline is recorded in
+`GAME_STATE_SNAPSHOT_2026-09-16_0526.md`. Remaining gates are a clean
+Linux/WSL dependency install plus a real second-Windows launch; hosted sync,
+avatar, Tauri, public and social work remain approval-gated.
