@@ -1122,3 +1122,13 @@ The refreshed read-only baseline is `GAME_STATE_SNAPSHOT_2026-09-16_0539.md`.
 It records the unchanged canonical revision-2 Level 2 campaign, current
 pushed HEAD, separate canonical/legacy hashes, green regression gates and the
 clean ext4 K&M evidence without treating disposable state as player progress.
+
+## 2026-09-16 05:40 — current bundle custody recheck
+
+`tools/questlab-package.ps1` packaged pushed HEAD `6629364` into an exact
+temporary directory. Inspection confirmed the committed baseline
+`progress.json` and `QUESTLAB_BUNDLE.txt` were present while the user's
+untracked Campaign `tutor.py` was absent. The manifest repeated the local-first
+no-copy rule and WSL `npm ci` onboarding instruction. The exact temporary
+bundle directory and ZIP were removed after inspection; the live save and
+notebook were not staged or copied.

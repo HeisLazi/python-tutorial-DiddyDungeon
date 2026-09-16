@@ -1572,3 +1572,10 @@ gate.
 The refreshed read-only baseline is `GAME_STATE_SNAPSHOT_2026-09-16_0539.md`;
 it confirms the canonical revision-2 Level 2 save and the protected
 `progress.json`/`tutor.py` custody boundary after this evidence run.
+
+### Current bundle custody recheck — 2026-09-16 05:40
+
+The committed-source packager was rerun at pushed HEAD `6629364` into an
+exact temporary directory. The bundle contained committed `progress.json` and
+the manifest, excluded the untracked Campaign `tutor.py`, and was removed
+after inspection. No live save, notebook, PTY or hosted resource was changed.
