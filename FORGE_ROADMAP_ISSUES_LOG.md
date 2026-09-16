@@ -901,3 +901,9 @@ separate gates.
 
 The Windows Vite production build remains green at 1,345 transformed modules;
 the only output warning is the existing large-chunk advisory.
+
+F-025 evidence is tighter now: `tools/questlab-km-preflight.ps1` compares the
+frontend `/api/runtime` proxy to the direct backend for branch, HEAD and both
+state paths. A clean ext4 current-branch runtime passed the paired check on
+7349/5183. The existing stale 7333/5174 runtime was not restarted; F-025 stays
+open until that user-owned runtime is replaced through the normal launcher.

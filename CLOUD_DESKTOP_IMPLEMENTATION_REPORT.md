@@ -1397,3 +1397,10 @@ and ZIP were removed from the disposable Temp directory after inspection.
 
 The Windows production build also remains green: Vite transformed 1,345
 modules and completed in 36.25s with only the existing large-chunk warning.
+
+The K&M preflight now also probes `/api/runtime` through the frontend and
+requires its branch, HEAD and canonical/legacy paths to match the direct
+backend probe. A clean ext4 runtime at `9dfb1cd` passed this paired-identity
+gate on `7349/5183` at revision 0; the disposable runtime was removed after
+capture. This closes the evidence gap exposed by a mismatched disposable Vite
+proxy while keeping F-025's old long-lived runtime open and untouched.
