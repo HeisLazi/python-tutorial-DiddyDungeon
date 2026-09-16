@@ -1588,3 +1588,15 @@ contains `boss_reward_xp` or `reward_xp`. The focused regression passed,
 backend passed **77/77**, frontend **34/34**, compileall passed and Vite built
 **1,345 modules**. This preserves the rule that React renders validated events
 and never invents progression rewards.
+
+### Post-fix exact-tip K&M — 2026-09-16 05:47
+
+A clean ext4 clone at pushed HEAD `6095aaa` passed paired preflight on backend
+`7358` / frontend `5194`. Using only in-app-browser keyboard/mouse actions
+(no Playwright and no refresh), the Forge showed both shell and AI PTYs
+`CONNECTED`; a shell-typed valid state-service Battle objective produced an
+`OBJECTIVE VERIFIED` toast and live Resolve **4/4 → 2/4**. The exact-tip
+runtime, clone and disposable save were stopped and removed. The canonical
+Level 2 save and Campaign `tutor.py` were untouched. This smoke confirms that
+the live projection path remains healthy after the validated reward-rendering
+hardening.

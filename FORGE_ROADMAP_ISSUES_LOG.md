@@ -1144,3 +1144,14 @@ regression covers the absence of the old fallback. Backend remained **77/77**,
 frontend **34/34**, Python compileall passed and the production build passed
 with **1,345 modules**. No save, PTY, hosted resource or Campaign notebook was
 changed.
+
+## 2026-09-16 05:47 — post-fix exact-tip K&M
+
+A clean ext4 clone at pushed HEAD `6095aaa` passed paired preflight on backend
+`7358` / frontend `5194`. Pure in-app-browser actions only (no Playwright and
+no refresh) showed both shell and AI PTYs `CONNECTED`, then a shell-typed valid
+state-service Battle objective produced an `OBJECTIVE VERIFIED` toast and live
+Resolve **4/4 → 2/4**. The exact current-tip runtime was stopped and its clone
+and disposable save removed; canonical Level 2 save and Campaign `tutor.py`
+were untouched. The boss reward fallback fix was source-tested; this smoke
+confirms the general live projection path remains healthy after it.
