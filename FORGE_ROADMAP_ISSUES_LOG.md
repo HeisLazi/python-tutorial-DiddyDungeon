@@ -1303,3 +1303,13 @@ PTY labels `CONNECTED`. No mutation was issued because this runtime pointed
 at the protected canonical save; the earlier disposable current-tip K&M
 mutation remains the reward/Resolve evidence. The runtime and workspace were
 closed and cleaned; long-lived runtimes and PTYs were untouched.
+
+## 2026-09-16 07:01 — friend onboarding guardrails
+
+Committed and pushed `5f678e7` with a narrow onboarding/test update. New friend
+instructions prefer an Ubuntu/ext4 checkout, explicitly prohibit `npm install`
+or `npm ci` against the live OneDrive-mounted `ide/frontend/node_modules` from
+WSL, and require a separate quest workspace so the preflight can prove distinct
+canonical and legacy paths. The launcher contract test covers both statements.
+This is documentation/test-only: the protected save and Campaign `tutor.py`
+remain dirty but unstaged, and no runtime or PTY was touched.

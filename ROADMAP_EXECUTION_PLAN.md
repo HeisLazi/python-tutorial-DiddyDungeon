@@ -309,3 +309,18 @@ monochrome HUD icons were visible, both PTYs stayed connected, and a validated
 state-service verdict changed Resolve **4/4 → 2/4** without refresh. This
 closes the local launcher checkpoint; the real Windows, hosted and approval
 gates listed above remain open.
+
+## Current checkpoint — 2026-09-16 07:01
+
+The pushed branch is now `5f678e7` after a documentation-only onboarding
+guardrail slice. Friend setup prefers a Linux/ext4 checkout, explicitly forbids
+running `npm install` or `npm ci` against the live OneDrive-mounted frontend
+dependency tree from WSL, and requires a separate quest workspace so canonical
+and legacy paths remain provably distinct. The full 77/77 backend, 35/35
+frontend, 9/9 launcher-contract, compile and 1,345-module build gates remain
+green. The latest pure K&M runtime evidence is still the 06:50 Windows
+preflight checkpoint; no runtime, save, or PTY was started or changed for this
+docs-only commit. Protected `progress.json` and Campaign `tutor.py` remain
+untouched and unstaged. F-039 custody, the real second-machine launch,
+provider-authenticated adjudication, hosted sync/Supabase, Tauri and social
+work remain gated as listed above.

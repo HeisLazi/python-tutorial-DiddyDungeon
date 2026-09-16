@@ -1737,3 +1737,12 @@ PTY labels `CONNECTED`. No mutation was issued because this runtime pointed
 at the protected canonical save; earlier disposable current-tip K&M covers the
 reward/Resolve mutation. The runtime and workspace were closed and cleaned;
 long-lived runtimes and PTYs were untouched.
+
+### Friend onboarding guardrails — 2026-09-16 07:01
+
+Pushed `5f678e7` with a documentation/test-only hardening slice. Friend setup
+now prefers an Ubuntu/ext4 checkout, forbids WSL `npm install`/`npm ci` against
+the live OneDrive-mounted frontend dependency tree, and requires a separate
+quest workspace for the canonical-versus-legacy path preflight. The launcher
+contract test asserts both guardrails. No code, save, runtime or PTY changed;
+the protected `progress.json` and Campaign `tutor.py` remain unstaged.
