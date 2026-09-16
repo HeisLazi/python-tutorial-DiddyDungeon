@@ -991,3 +991,12 @@ touching the worktree: 113 committed entries included the baseline
 `progress.json` and `FRIEND_ONBOARDING.md`, while the user's untracked
 `tutor.py` was absent. This confirms the packager's committed-source custody
 boundary at `444fef7`; real second-Windows launch evidence remains open.
+
+## 2026-09-16 04:50 — runtime inventory clarification
+
+Read-only socket/process inspection found the old OneDrive/runtime listeners
+on 7332–7334 and 5173–5175, plus a branch-aware disposable backend on 7341
+whose authority points at `/tmp/questlab-browser-final/progress.json`. None was
+restarted or used as current-user evidence. The paired preflight remains the
+required K&M gate because it rejects the legacy health shape and temporary or
+mismatched state authority instead of silently trusting a stale tab.

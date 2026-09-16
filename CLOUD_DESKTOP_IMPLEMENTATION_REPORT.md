@@ -1464,3 +1464,9 @@ The current `HEAD` archive was inspected without creating a persistent bundle:
 `FRIEND_ONBOARDING.md`, while the user's untracked `tutor.py` was absent. This
 confirms the friend-bundle custody boundary at `444fef7`; a real second-Windows
 launch is still required before Slice 7 can be called complete.
+
+Read-only listener inspection also found legacy 7332–7334/5173–5175 runtimes
+and a branch-aware disposable 7341 backend whose canonical path is a temporary
+`/tmp/questlab-browser-final/progress.json`. None was restarted or treated as
+current-user evidence; branch-aware paired preflight remains the required K&M
+gate for avoiding stale or temporary projections.
