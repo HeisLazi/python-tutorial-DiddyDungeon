@@ -1680,3 +1680,12 @@ Battle context/submission/verdict changed The Empty Table Resolve **4/4 →
 reward card. The clone, runtime and mutated starter save were removed; the
 canonical save, legacy evidence, Campaign `tutor.py` and long-lived PTYs were
 untouched.
+
+### Narrow Claude roadmap refresh — 2026-09-16 06:30
+
+Claude Sonnet's read-only refresh confirmed the real Windows friend-machine
+launch as the only locally implementable roadmap gap. It kept F-039 as an
+owner decision and Milestones C–F, hosted Dungeon, provider authentication and
+Slice 8 behind their existing approvals. Stale mid-document test/snapshot
+references were corrected in `ROADMAP_EXECUTION_PLAN.md`; no code, save,
+runtime or PTY was changed.

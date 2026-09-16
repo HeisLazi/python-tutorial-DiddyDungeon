@@ -183,7 +183,7 @@ Campaign surface; it was not removed or merged into Practice.
 - Slice 8 (hosted friends/presence/raids) remains last and is intentionally not
   seeded or claimed complete.
 
-Latest gates: 77 WSL backend tests, 33 frontend tests, Windows Vite build, and
+Latest gates: 77 WSL backend tests, 35 frontend tests, Windows Vite build, and
 manual browser K&M acceptance on an isolated current-branch runtime. The
 frontend count includes source tripwires as well as behavioural sync tests. No
 Playwright was used.
@@ -198,7 +198,7 @@ revision-aware Resolve, reward/Journal/Codex projection and both connected
 PTYs without a refresh.
 
 The current snapshot and Claude Sonnet's detailed dependency/test/K&M plan are
-recorded in `GAME_STATE_SNAPSHOT_2026-09-16_0605.md` (with the 05:39 baseline
+recorded in `GAME_STATE_SNAPSHOT_2026-09-16_0625.md` (with earlier baselines
 preserved) and `ROADMAP_CLAUDE_IMPLEMENTATION_PLAN_2026-09-16_0438.md`. The next hosted gate
 is device-ownership migration plus real two-device acceptance; it remains
 approval-gated. No local code-safe regression is justified by the current
