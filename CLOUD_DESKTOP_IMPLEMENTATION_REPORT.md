@@ -1579,3 +1579,12 @@ The committed-source packager was rerun at pushed HEAD `6629364` into an
 exact temporary directory. The bundle contained committed `progress.json` and
 the manifest, excluded the untracked Campaign `tutor.py`, and was removed
 after inspection. No live save, notebook, PTY or hosted resource was changed.
+
+### Reward authority hardening — 2026-09-16 05:45
+
+The frontend reward queue had a hardcoded boss `+100 XP` fallback. That was
+removed: boss XP is now displayed only when the validated state-service event
+contains `boss_reward_xp` or `reward_xp`. The focused regression passed,
+backend passed **77/77**, frontend **34/34**, compileall passed and Vite built
+**1,345 modules**. This preserves the rule that React renders validated events
+and never invents progression rewards.

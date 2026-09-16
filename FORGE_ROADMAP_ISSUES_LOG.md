@@ -1132,3 +1132,15 @@ untracked Campaign `tutor.py` was absent. The manifest repeated the local-first
 no-copy rule and WSL `npm ci` onboarding instruction. The exact temporary
 bundle directory and ZIP were removed after inspection; the live save and
 notebook were not staged or copied.
+
+## 2026-09-16 05:45 — reward authority hardening
+
+Review of the live reward presentation found one frontend fallback that could
+have displayed `+100 XP` for a boss event even when the validated state event
+did not supply a reward amount. `AppV2` now renders the amount only when
+`boss_reward_xp` or `reward_xp` is present in the event; otherwise it shows
+the verified boss-clear label without inventing a number. A focused source
+regression covers the absence of the old fallback. Backend remained **77/77**,
+frontend **34/34**, Python compileall passed and the production build passed
+with **1,345 modules**. No save, PTY, hosted resource or Campaign notebook was
+changed.
