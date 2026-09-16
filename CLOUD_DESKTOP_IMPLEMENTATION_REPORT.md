@@ -1148,3 +1148,12 @@ the frontend suite (33 tests), Python compilation, `git diff --check`, and the
 Windows Vite production build (1,345 modules). A first full-suite run exposed
 one transient websocket cancellation; the immediate rerun passed cleanly. No
 browser/runtime or PTY was restarted for this documentation/test-only change.
+
+### Current state snapshot — 2026-09-16 02:24
+
+`GAME_STATE_SNAPSHOT_2026-09-16_0224.md` re-read the canonical working-tree
+save after the avatar-contract slice. Revision 2 is unchanged: Level 2,
+50/100 current XP, 150 lifetime XP, 55 coins, three defeated Blackjack mobs,
+The Hitman at 8/8 Resolve and three Codex encounter records. The read-only
+capture confirms no unsupported equipment, mastery, companion or interview
+rewards were inferred and that the dirty save/notebook boundary remains intact.

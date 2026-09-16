@@ -665,3 +665,12 @@ isolated profiles, exercise offline/reconnect CAS conflict handling and both
 explicit conflict resolutions while preserving both PTYs, then perform the
 private/offline avatar acceptance for Milestone D. This review does not claim
 those gates are complete and no hosted state was changed.
+
+## Verification update — 2026-09-16 — current state snapshot
+
+`GAME_STATE_SNAPSHOT_2026-09-16_0224.md` re-read the canonical save after the
+avatar contract slice. It confirms revision 2, Level 2, 50/100 XP, 150 lifetime
+XP, 55 coins, three defeated Blackjack mobs, The Hitman at 8/8 Resolve and
+three Codex encounter records. The capture is read-only; the dirty
+`progress.json` and untracked Campaign `tutor.py` remain user-owned and no
+hosted state was contacted.
