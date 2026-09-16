@@ -708,15 +708,13 @@ transformed 1,345 modules successfully. Commit `304fe76` is pushed to
 `feature/cloud-sync-desktop`. The user-owned `progress.json` and untracked
 root `tutor.py` remain unstaged and untouched.
 
-## K&M verification update — 2026-09-16 02:38 — post-change smoke
+## Runtime evidence correction — 2026-09-16 02:52
 
-The disposable in-app-browser tab at `127.0.0.1:5174` settled, without a
-refresh, on the canonical Level 2 / 50 XP / 55 coin projection with The Hitman
-active and the raw CLI PTY visibly `CONNECTED`. Accessibility-only clicks then
-showed Quest Journal with the three cleared Blackjack mobs and The Hitman at
-8/8 Resolve, followed by Codex with three defeated encounter records. The
-tab was closed after this read-only check; no Playwright action, save mutation
-or PTY reset occurred.
+The earlier 02:38 disposable-tab capture on `127.0.0.1:5174` is superseded:
+source inspection showed that the long-lived WSL-mounted Vite process was
+serving an older cached AppV2 transform. It remains useful only as stale-runtime
+evidence and is not current-branch UI proof. The branch-aware 5177/7343 run in
+the 02:52 entry is the authoritative post-change K&M acceptance.
 
 The active AppV2 HUD now keeps the loading coin placeholder as a bare `—`
 instead of `—c`; once the canonical revision is present it renders the

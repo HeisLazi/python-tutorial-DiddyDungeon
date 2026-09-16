@@ -1194,15 +1194,14 @@ passes after transforming 1,345 modules. The change is committed as
 `304fe76` and pushed to `feature/cloud-sync-desktop`. `progress.json` and the
 untracked root `tutor.py` remain deliberately unstaged and untouched.
 
-### Post-change K&M smoke — 2026-09-16 02:38
+### Earlier 5174 smoke superseded — 2026-09-16 02:38
 
-On a disposable in-app-browser tab at `127.0.0.1:5174`, the initial runtime
-settled without a refresh to the canonical projection: Level 2, 50/100 XP,
-55 coins, The Hitman, and a connected raw CLI PTY. Pure accessibility clicks
-then opened Quest Journal (three cleared mobs, The Hitman, Resolve 8/8) and
-Codex (three defeated encounter records) in the same tab. The tab was closed
-after the read-only check; no state mutation, PTY reset or Playwright action
-was used.
+An earlier disposable-tab capture on `127.0.0.1:5174` appeared to settle
+without a refresh, but the later source inspection in the 02:52 snapshot
+confirmed that this long-lived WSL-mounted Vite process was serving an older
+cached AppV2 transform. That capture is retained as stale-runtime evidence
+only and must not be used as current-branch UI proof. The branch-aware 5177
+K&M run below is the authoritative post-change acceptance.
 
 The active AppV2 path also keeps the loading coin placeholder as a bare `—`
 until the campaign revision arrives, then switches atomically to the formatted
