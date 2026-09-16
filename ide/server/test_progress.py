@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import tempfile
 import unittest
 from pathlib import Path
@@ -66,8 +67,9 @@ class ProgressRevisionTests(unittest.TestCase):
         self.assertEqual(environment["QUESTLAB_STATE_PATH"], str(canonical))
         self.assertEqual(environment["QUESTLAB_LEGACY_STATE_PATH"], str(workspace / "progress.json"))
         self.assertEqual(environment["QUESTLAB_TERMINAL_ROLE"], "ai")
-        self.assertIn(str(root), environment["PYTHONPATH"].split(":"))
-        self.assertIn(str(root), environment["PATH"].split(":"))
+        self.assertIn(str(root), environment["PYTHONPATH"].split(os.pathsep))
+        self.assertIn(str(root), environment["PATH"].split(os.pathsep))
+        self.assertEqual(environment["PATH"].split(os.pathsep)[-1], str(root))
 
     def test_custody_endpoint_is_a_read_only_preview(self):
         original_root = app_v2.REPO_ROOT

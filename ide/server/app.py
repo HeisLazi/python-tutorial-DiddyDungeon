@@ -481,8 +481,11 @@ def terminal_environment(role: str = "shell") -> dict[str, str]:
     env["PYTHONPATH"] = os.pathsep.join(
         item for item in (str(REPO_ROOT), env.get("PYTHONPATH", "")) if item
     )
+    # Keep inherited tools ahead of repository files so an editable workspace
+    # cannot shadow `python`, `git`, or another command by filename.  The
+    # repository wrapper remains discoverable at the end of PATH.
     env["PATH"] = os.pathsep.join(
-        item for item in (str(REPO_ROOT), env.get("PATH", "")) if item
+        item for item in (env.get("PATH", ""), str(REPO_ROOT)) if item
     )
     return env
 

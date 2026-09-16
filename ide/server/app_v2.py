@@ -143,6 +143,10 @@ PYR_CONTEXT_INPUT: dict[str, str | None] = {
     "terminal_tail": "",
     "client_id": "default",
 }
+# Context payloads are partitioned by the same opaque client id as verdict
+# challenges.  Keep the singular snapshot above for default-client and
+# in-process compatibility, but never use it to answer a named client's GET.
+PYR_CONTEXT_INPUTS: dict[str, dict[str, str | None]] = {}
 # Challenge state is partitioned by an opaque browser-tab id. Verdict calls
 # still locate the entry by their nonce, so a provider does not need to know
 # the tab id. The legacy singular names remain as compatibility snapshots for
@@ -597,8 +601,12 @@ def terminal_environment(role: str) -> dict[str, str]:
     env["PYTHONPATH"] = os.pathsep.join(
         item for item in (str(REPO_ROOT), env.get("PYTHONPATH", "")) if item
     )
+    # Keep inherited tools ahead of repository files.  Prepending REPO_ROOT
+    # lets an editable workspace shadow `python`, `git`, or another command
+    # with an accidental file; the Quest Lab wrapper remains discoverable at
+    # the end of PATH without changing normal command resolution.
     env["PATH"] = os.pathsep.join(
-        item for item in (str(REPO_ROOT), env.get("PATH", "")) if item
+        item for item in (env.get("PATH", ""), str(REPO_ROOT)) if item
     )
     return env
 
@@ -1115,15 +1123,20 @@ def _capture_pyr_context(payload: PyrContextRequest, *, rotate_challenge: bool =
         terminal_tail=terminal_tail,
         terminal_truncated=terminal_truncated,
     )
+    stored_input = {
+        "active_path": normalized_path,
+        "selection": selection,
+        "terminal_tail": terminal_tail,
+        "client_id": client_id,
+    }
     with PYR_CONTEXT_LOCK:
-        PYR_CONTEXT_INPUT.update(
-            {
-                "active_path": normalized_path,
-                "selection": selection,
-                "terminal_tail": terminal_tail,
-                "client_id": client_id,
-            }
-        )
+        if client_id == "default":
+            # Preserve the legacy default slot for older in-process callers.
+            PYR_CONTEXT_INPUT.update(stored_input)
+        else:
+            # Named tabs must retain their own context; another tab's POST may
+            # not replace what a later GET returns for this client.
+            PYR_CONTEXT_INPUTS[client_id] = stored_input
     _attach_pyr_verdict_challenge(
         context,
         revision=metadata["revision"],
@@ -1142,17 +1155,34 @@ def _capture_pyr_context(payload: PyrContextRequest, *, rotate_challenge: bool =
     return context
 
 
-def _stored_pyr_context_request() -> PyrContextRequest:
+def _stored_pyr_context_request(client_id: str = "default") -> PyrContextRequest:
+    client_key = _pyr_client_id(client_id)
     with PYR_CONTEXT_LOCK:
-        values = dict(PYR_CONTEXT_INPUT)
+        if client_key == "default":
+            # The singular slot remains the compatibility source for the
+            # default client because existing callers/tests update it
+            # directly.  Named clients never fall back to this value.
+            values = dict(PYR_CONTEXT_INPUT)
+        else:
+            values = dict(PYR_CONTEXT_INPUTS.get(client_key, {}))
+    if not values:
+        values = {
+            "active_path": None,
+            "selection": "",
+            "terminal_tail": "",
+        }
+    values["client_id"] = client_key
     return PyrContextRequest(**values)
 
 
 @app.get("/api/pyr/context")
-def read_pyr_context():
+def read_pyr_context(client_id: str = "default"):
     """Return the latest bounded editor/terminal context and live campaign view."""
 
-    return {"ok": True, "context": _capture_pyr_context(_stored_pyr_context_request())}
+    return {
+        "ok": True,
+        "context": _capture_pyr_context(_stored_pyr_context_request(client_id)),
+    }
 
 
 @app.post("/api/pyr/context")

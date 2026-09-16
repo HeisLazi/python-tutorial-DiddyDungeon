@@ -519,6 +519,74 @@ class PyrContextBridgeTests(unittest.TestCase):
                 app_v2.PYR_CONTEXT_CHALLENGES.clear()
                 app_v2.PYR_DUNGEON_CHALLENGES.clear()
 
+    def test_context_reads_are_isolated_per_tab(self):
+        original_workspace = app_v2.WORKSPACE
+        original_progress = app_v2.PROGRESS_PATH
+        original_context_input = dict(app_v2.PYR_CONTEXT_INPUT)
+        original_context_inputs = {
+            key: dict(value) for key, value in app_v2.PYR_CONTEXT_INPUTS.items()
+        }
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            workspace = root / "quest"
+            workspace.mkdir()
+            canonical = root / "platform" / "progress.json"
+            canonical.parent.mkdir()
+            canonical.write_text(json.dumps(context_progress()), encoding="utf-8")
+            app_v2.WORKSPACE = workspace
+            app_v2.PROGRESS_PATH = canonical
+            with app_v2.PYR_CONTEXT_LOCK:
+                app_v2.PYR_CONTEXT_INPUTS.clear()
+                app_v2.PYR_CONTEXT_INPUT.update(
+                    {"active_path": None, "selection": "", "terminal_tail": "", "client_id": "default"}
+                )
+            try:
+                client = TestClient(app_v2.app, base_url="http://127.0.0.1")
+                posted_a = client.post(
+                    "/api/pyr/context",
+                    headers={"host": "127.0.0.1"},
+                    json={"client_id": "tab-a", "selection": "marker-A", "terminal_tail": "tail-A"},
+                )
+                posted_b = client.post(
+                    "/api/pyr/context",
+                    headers={"host": "127.0.0.1"},
+                    json={"client_id": "tab-b", "selection": "marker-B", "terminal_tail": "tail-B"},
+                )
+                self.assertEqual(posted_a.status_code, 200, posted_a.text)
+                self.assertEqual(posted_b.status_code, 200, posted_b.text)
+
+                read_a = client.get(
+                    "/api/pyr/context",
+                    params={"client_id": "tab-a"},
+                    headers={"host": "127.0.0.1"},
+                )
+                read_b = client.get(
+                    "/api/pyr/context",
+                    params={"client_id": "tab-b"},
+                    headers={"host": "127.0.0.1"},
+                )
+                self.assertEqual(read_a.status_code, 200, read_a.text)
+                self.assertEqual(read_b.status_code, 200, read_b.text)
+                self.assertEqual(read_a.json()["context"]["selection"]["text"], "marker-A")
+                self.assertEqual(read_a.json()["context"]["terminal"]["tail"], "tail-A")
+                self.assertEqual(read_b.json()["context"]["selection"]["text"], "marker-B")
+                self.assertEqual(read_b.json()["context"]["terminal"]["tail"], "tail-B")
+
+                default = client.get(
+                    "/api/pyr/context", headers={"host": "127.0.0.1"}
+                )
+                self.assertEqual(default.status_code, 200, default.text)
+                self.assertNotIn("marker-A", json.dumps(default.json()["context"]))
+                self.assertNotIn("marker-B", json.dumps(default.json()["context"]))
+            finally:
+                app_v2.WORKSPACE = original_workspace
+                app_v2.PROGRESS_PATH = original_progress
+                with app_v2.PYR_CONTEXT_LOCK:
+                    app_v2.PYR_CONTEXT_INPUTS.clear()
+                    app_v2.PYR_CONTEXT_INPUTS.update(original_context_inputs)
+                    app_v2.PYR_CONTEXT_INPUT.clear()
+                    app_v2.PYR_CONTEXT_INPUT.update(original_context_input)
+
     def test_boss_challenges_are_isolated_and_default_slot_stays_compatible(self):
         original_workspace = app_v2.WORKSPACE
         original_progress = app_v2.PROGRESS_PATH

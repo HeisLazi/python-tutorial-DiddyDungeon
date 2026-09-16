@@ -197,12 +197,14 @@ newer cloud revision is never replaced by an older device snapshot.
   local context/submission/verdict boundary and Journal form are implemented,
   but the raw local AI terminal remains a trusted caller; do not treat an
   unauthenticated caller-supplied verdict as proof of learning.
-- Infinite Dungeon currently has the local checkpoint/projection foundation
-  and starter UI only. Question generation/verdict progression, rest/market
-  rooms, death UI, scoring and leaderboard persistence are not complete.
-- Practice currently sends bounded teaching requests to the selected provider;
-  its persistent session history and validated learning-evidence recording are
-  still future work.
+- Infinite Dungeon's local checkpoint/projection slice now includes question
+  generation, state-service verdict progression, room rotation, rest/market
+  rooms, death/reset handling, score/currency and local leaderboard persistence;
+  the K&M acceptance is recorded below. Hosted/provider persistence remains
+  gated by F-018.
+- Practice now records bounded sessions, provider-reviewed results and local
+  history through the state service; provider authentication and hosted
+  persistence remain future gates rather than local implementation gaps.
 - The durable review findings for the context/verdict/Battle slices are tracked
   in `FORGE_ROADMAP_ISSUES_LOG.md`; open trust and concurrency gates remain
   listed there.
@@ -1873,3 +1875,31 @@ without `page_id` was tightened to an exact/prefix concept match and covered by
 a source assertion. Claude noted the frontend suite is source-regex based
 rather than rendered-DOM based (known P3 boundary); it did not run commands or
 touch the save, notebook, runtimes or PTYs.
+
+## End-to-end bug hunt and hardening — 2026-09-16
+
+The persistent bug ledger is [BUG_HUNT_LOG_2026-09-16.md](BUG_HUNT_LOG_2026-09-16.md).
+The run used a disposable WSL workspace/cache on backend `7395` and frontend
+`5215`, with pure in-app-browser keyboard/mouse/screenshot checks and no
+Playwright. The protected repository save stayed revision 5 with SHA-256
+`5618f9dd9ae2fc0724056ea08448e1736479772b59ada949bec08b5340fbd6f0`; the
+root Campaign `tutor.py` remained untouched and untracked.
+
+Two reviewer defects were repaired. Claude **Sonnet** found that prepending
+the repository root to PTY `PATH` allowed editable files to shadow inherited
+commands; both launchers now append the root and a regression test checks the
+ordering. Copilot found that the PYR context GET path read a process-global
+singleton across tabs; named contexts are now partitioned by `client_id`, with
+coverage for independent tab-A/tab-B reads. Copilot also identified stale
+Dungeon/Practice wording in this report; the Known Limitations now separates
+the completed local slice from hosted/provider gates.
+
+The patched runtime passed backend **79/79**, frontend **36/36**, Python
+`compileall`, PowerShell preflight parsing and the Vite **1,345-module** build.
+The live K&M pass showed the five monochrome HUD SVG icons, state-service
+reward toasts, live HUD/Journal/Codex/Character updates, four cleared mobs and
+the unlocked `The Bust Hound`, while both PTYs stayed `CONNECTED`. A visible
+shell probe returned `CTX marker-A marker-B`, and a synthetic Level 99/999
+coins workspace save left the HUD unchanged; the authority report marked the
+workspace path non-authoritative. Copilot won the bug hunt with 5 weighted
+points versus Claude Sonnet's 4; no new primary K&M defects were confirmed.
