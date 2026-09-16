@@ -1107,3 +1107,12 @@ removed. The Supabase migration is committed for the next approved deploy but
 was not applied or seeded in this checkpoint. The frontend suite passes 33
 tests, including foreign-device rejection and strict conflict handling; the
 SQL test is updated but remains unapplied pending the real Milestone C gate.
+
+Claude's follow-up review of commit `6b301fa` found no correctness bugs and
+marked the slice safe to keep. The review confirmed that the replacement RPC
+retains the bounded validator and grants, that SQLSTATE `40001`/HTTP `409` are
+the reachable conflict signals, and that the fake-cloud and SQL regressions
+match the migration history. It also records the remaining evidence boundary:
+the migration has not been applied to Supabase, the SQL test has not been run
+against Postgres, and the real two-device authenticated acceptance is still a
+Milestone C gate.

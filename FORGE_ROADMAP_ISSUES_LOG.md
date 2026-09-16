@@ -623,3 +623,11 @@ The SQL regression now creates account-owned devices and attempts a
 cross-account device UUID before the valid CAS write. The real linked SQL
 test was deliberately not run because applying or seeding hosted state is
 still an explicit Milestone C gate.
+
+Claude's follow-up review of commit `6b301fa` found no correctness bugs. It
+confirmed that the replacement RPC retains the bounded validator and grants,
+that SQLSTATE `40001`/HTTP `409` are the complete reachable conflict signals,
+and that the fake-cloud and SQL regressions match the migration history. The
+slice is safe to keep. Live migration application, Postgres SQLSTATE/RLS
+execution and two-device acceptance remain intentionally unverified until the
+hosted Milestone C approval gate is opened.
