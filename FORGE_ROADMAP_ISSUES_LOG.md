@@ -691,3 +691,19 @@ briefly exposed its old starter bootstrap before the canonical projection
 arrived. The next no-refresh capture was correct; this is retained under the
 known F-035/F-025 stale-HMR/runtime caveat, and no long-lived process was
 restarted.
+
+## Verification update — 2026-09-16 02:37 — legacy fallback HUD hardening
+
+The legacy `App.jsx` path now refuses to render starter values while the
+campaign projection is unavailable. During that short window it shows a
+`SYNCING`/campaign-state placeholder, gates the dependent activity/banner
+values, and uses React-owned monochrome heart/coin/flame/shield/sword SVGs.
+This closes the remaining fallback path that could briefly reintroduce the
+Level 1 / 0 XP / 0 coin HUD or emoji/nested-pill icons during stale HMR or
+runtime startup. It is still fed only by the canonical campaign projection;
+no local save path or PTY lifecycle changed.
+
+Regression evidence: frontend tests 33/33 passed and the Windows Vite build
+transformed 1,345 modules successfully. Commit `304fe76` is pushed to
+`feature/cloud-sync-desktop`. The user-owned `progress.json` and untracked
+root `tutor.py` remain unstaged and untouched.

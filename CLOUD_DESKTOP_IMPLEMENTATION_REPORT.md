@@ -1176,3 +1176,20 @@ briefly showed its old starter bootstrap before the current projection landed;
 the subsequent no-refresh state was canonical. This remains the documented
 F-035/F-025 dev-HMR/stale-runtime caveat, not hosted-state evidence. No
 long-lived runtime or PTY was restarted.
+
+### Legacy HUD loading hardening — 2026-09-16 02:37
+
+The legacy `App.jsx` fallback was hardened so a campaign that has not yet
+arrived from the revision-aware state service cannot flash starter Level 1 / 0
+XP / 0 coins values while the current projection is loading. It now presents a
+small `SYNCING`/campaign-state placeholder, gates the dependent banner and
+activity values, and renders the same monochrome React-owned heart, coin,
+flame, shield and sword SVG icons used by the current Forge projection. The
+existing direct-child `.top-stats > span` rules keep the icon/value spans from
+becoming nested pills. This is a fallback guard only; it does not create a
+second state authority or alter either save file.
+
+The post-change frontend suite passes 33/33 tests and the Windows Vite build
+passes after transforming 1,345 modules. The change is committed as
+`304fe76` and pushed to `feature/cloud-sync-desktop`. `progress.json` and the
+untracked root `tutor.py` remain deliberately unstaged and untouched.
