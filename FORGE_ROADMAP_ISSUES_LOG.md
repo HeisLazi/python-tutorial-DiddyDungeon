@@ -632,6 +632,15 @@ slice is safe to keep. Live migration application, Postgres SQLSTATE/RLS
 execution and two-device acceptance remain intentionally unverified until the
 hosted Milestone C approval gate is opened.
 
+## Verification update — 2026-09-16 — hosted migration contract coverage
+
+The unapplied device-ownership migration now has two repository contract
+tests. They verify that the security-definer RPC checks `public.devices` and
+`auth.uid()` before validation/locking, retains the authenticated-only grant,
+and that the executable SQL fixture exercises both a foreign-device rejection
+and an owned-device CAS write. These are static/local checks only; no linked
+Supabase project was contacted. The focused contract test passes 2/2.
+
 ## Review update — 2026-09-16 — Claude checkpoint plan
 
 Claude Sonnet read the fresh `GAME_STATE_SNAPSHOT_2026-09-16_0206.md`, handoff,

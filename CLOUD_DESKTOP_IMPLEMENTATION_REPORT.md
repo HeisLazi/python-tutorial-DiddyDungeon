@@ -1132,3 +1132,12 @@ including offline/reconnect CAS conflict handling, both explicit conflict
 resolutions and PTY survival, followed by Milestone D private/offline avatar
 acceptance. The pending ownership migration remains committed but unapplied;
 this checkpoint did not sign in, seed Supabase or mutate hosted state.
+
+### Hosted migration contract coverage — 2026-09-16
+
+Because the ownership migration remains unapplied by policy, two local
+repository contract tests now keep its SQL and executable RLS fixture aligned.
+They verify the `public.devices`/`auth.uid()` guard occurs before validation
+and row locking, preserve the authenticated-only RPC grant, and require the
+fixture's foreign-device rejection plus owned-device CAS path. The focused
+contract test passes 2/2; it performs no Supabase connection or hosted write.
