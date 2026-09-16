@@ -1117,3 +1117,8 @@ Character showed the same XP/coins/achievement, and Homestead showed the live
 purse. The disposable runtime, clone and mutated save were stopped and
 removed; the canonical Windows save, legacy evidence, Campaign `tutor.py` and
 long-lived PTYs were untouched.
+
+The refreshed read-only baseline is `GAME_STATE_SNAPSHOT_2026-09-16_0539.md`.
+It records the unchanged canonical revision-2 Level 2 campaign, current
+pushed HEAD, separate canonical/legacy hashes, green regression gates and the
+clean ext4 K&M evidence without treating disposable state as player progress.

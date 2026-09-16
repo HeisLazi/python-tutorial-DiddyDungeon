@@ -1568,3 +1568,7 @@ CONNECTED. The runtime, clone and disposable save were stopped and removed;
 the user's canonical save and Campaign notebook were not touched. This is a
 clean Linux distribution proof, not the still-open real Windows friend-machine
 gate.
+
+The refreshed read-only baseline is `GAME_STATE_SNAPSHOT_2026-09-16_0539.md`;
+it confirms the canonical revision-2 Level 2 save and the protected
+`progress.json`/`tutor.py` custody boundary after this evidence run.
