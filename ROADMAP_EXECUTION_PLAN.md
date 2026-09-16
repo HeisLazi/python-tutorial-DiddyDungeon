@@ -195,6 +195,13 @@ fetching, mutating state or restarting PTYs. The 2026-09-16 isolated run
 passed this gate at HEAD `5a051fb` and captured revision-aware Resolve,
 reward/Journal/Codex projection and both connected PTYs without a refresh.
 
+The current snapshot and Claude Sonnet's detailed dependency/test/K&M plan are
+recorded in `GAME_STATE_SNAPSHOT_2026-09-16_0315.md` and
+`ROADMAP_CLAUDE_IMPLEMENTATION_PLAN_2026-09-16_0315.md`. The next hosted gate
+is device-ownership migration plus real two-device acceptance; it remains
+approval-gated. No local code-safe regression is justified by the current
+evidence, and no Supabase, Tauri or Slice 8 work should leapfrog that gate.
+
 The local Slice 5 loop is also covered by the 2026-09-16 isolated K&M run
 recorded in `FORGE_ROADMAP_ISSUES_LOG.md` and
 `CLOUD_DESKTOP_IMPLEMENTATION_REPORT.md`: provider verdict, blank-on-rotation,

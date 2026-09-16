@@ -1273,3 +1273,23 @@ The focused launcher contract suite is 8/8, the full WSL backend suite is
 76/76, and the PowerShell preflight script parses successfully. The preflight
 is now a manual K&M release gate for catching the F-025/F-035 stale-mounted
 Vite condition before relying on browser evidence.
+
+### Current snapshot and Claude roadmap plan — 2026-09-16 03:15
+
+`GAME_STATE_SNAPSHOT_2026-09-16_0315.md` captures the live canonical
+projection at revision 2: Level 2, 50/100 XP, 150 lifetime XP, 55 coins,
+100/100 HP, three cleared Blackjack mobs, The Hitman at 8/8 Resolve, 38%
+project progress, three Codex encounter records and First Blood. Equipment,
+companion and mastery fields are recorded exactly as present; unsupported
+legacy rewards remain un-inferred. The snapshot also records the dirty
+`progress.json`/untracked `tutor.py` boundary and the older 7333/5174 runtime
+that must not be used as current-branch acceptance evidence.
+
+Claude Sonnet then reviewed the snapshot, roadmap, handoff, implementation
+report and issue ledger read-only. The resulting dependency-ordered plan is
+`ROADMAP_CLAUDE_IMPLEMENTATION_PLAN_2026-09-16_0315.md`. It confirms local
+Slices 0–6 are implemented, Slice 7 is partial, and hosted Milestone C is the
+next real gate. It keeps device-ownership migration, F-039 save custody,
+avatar acceptance, Tauri, public web and Slice 8 behind explicit approvals and
+defines exact automated-test and pure K&M stages for each. No hosted project,
+save, runtime or PTY was changed during the review.

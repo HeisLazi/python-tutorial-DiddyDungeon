@@ -783,3 +783,22 @@ development-runtime custody/HMR risk, but the new gate prevents stale runtime
 evidence from being accepted as current-branch proof. Hosted Milestone C,
 F-039 custody approval, Milestone D and Tauri remain blocked by their existing
 explicit gates.
+
+## Snapshot/review update — 2026-09-16 03:15 — current game and full roadmap plan
+
+`GAME_STATE_SNAPSHOT_2026-09-16_0315.md` is the current read-only canonical
+capture: revision 2, Level 2, 50/100 XP, 150 lifetime XP, 55 coins, 100/100 HP,
+three defeated Blackjack mobs, The Hitman at 8/8 Resolve, 38% progress,
+three Codex records and First Blood. It preserves the exact equipment,
+companion, mastery and evidence-backed fields without inferring unsupported
+legacy rewards. The snapshot also records the live authority/legacy paths,
+dirty user save/notebook boundary and stale-runtime caveat.
+
+Claude Sonnet completed a second read-only roadmap review. Its detailed
+dependency/test/K&M plan is persisted in
+`ROADMAP_CLAUDE_IMPLEMENTATION_PLAN_2026-09-16_0315.md`. The review confirms
+that local Slices 0–6 are implemented and that Slice 7 is locally prepared but
+still lacks real Windows friend-machine and hosted mailbox evidence. It keeps
+the device-ownership migration, F-039 custody, Milestone C two-device sync,
+avatar, Tauri, public web and Slice 8 behind explicit gates. No migration,
+Supabase write, save edit, runtime restart or PTY reset was performed.
