@@ -298,3 +298,14 @@ Every stage ends with focused tests, full applicable regression, snapshot and
 issue-log entry, a semantic commit/push, and a K&M run using only click,
 scroll, typing and observation. No stage may stage `progress.json` or root
 `tutor.py`, infer rewards in React, reveal future questions, or reset a PTY.
+
+## Latest evidence checkpoint — 2026-09-16 06:25
+
+`GAME_STATE_SNAPSHOT_2026-09-16_0625.md` supersedes the 06:08 snapshot for
+current-state reporting. The pushed branch is `825d740`; launcher contracts
+and the full **77/77 backend / 35/35 frontend / 1,345-module build** gates are
+green. A fresh ext4 current-tip runtime passed pure K&M on `7361/5197`: the
+monochrome HUD icons were visible, both PTYs stayed connected, and a validated
+state-service verdict changed Resolve **4/4 → 2/4** without refresh. This
+closes the local launcher checkpoint; the real Windows, hosted and approval
+gates listed above remain open.
