@@ -1903,3 +1903,21 @@ shell probe returned `CTX marker-A marker-B`, and a synthetic Level 99/999
 coins workspace save left the HUD unchanged; the authority report marked the
 workspace path non-authoritative. Copilot won the bug hunt with 5 weighted
 points versus Claude Sonnet's 4; no new primary K&M defects were confirmed.
+
+## Native Linux/CachyOS preflight checkpoint — 2026-09-16
+
+To make the requested CachyOS laptop a first-class distribution target without
+changing the state or cloud architecture, the branch now includes the
+PowerShell-free read-only gate `tools/questlab-km-preflight.py`. It checks the
+active branch/HEAD, backend and frontend proxy identity, one canonical state
+authority, distinct legacy evidence, current revision and served SVG/loading
+markers. `--require-isolated-state` refuses a mutating check against the
+protected repository cache. The script performs no POST, state write,
+Supabase call, process restart or PTY operation.
+
+The onboarding guide documents a native CachyOS checkout, native `npm ci`, the
+module-safe launcher and this preflight. The script's isolation checks and the
+PowerShell-free contract are covered by the backend launcher tests. This is
+tooling evidence only; F-058 still requires the actual CachyOS laptop's clean
+install, browser K&M projection and connected shell/AI PTY proof before native
+Linux support is marked verified.

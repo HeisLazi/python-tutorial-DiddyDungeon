@@ -1448,3 +1448,17 @@ The reviewer score was Copilot **2 unique findings / 5 points** and Claude
 Sonnet **1 unique finding / 4 points**; the primary K&M pass found **0 new
 scored defects**. F-058 is a distribution requirement, not a claim that the
 current Windows/WSL evidence certifies CachyOS.
+
+## Verification update — 2026-09-16 — native Linux preflight
+
+The CachyOS gate now has a PowerShell-free, read-only preflight at
+`tools/questlab-km-preflight.py`. It performs the same branch/upstream
+identity, backend/frontend proxy identity, canonical-versus-legacy authority,
+revision and served-AppV2 marker checks as the Windows PowerShell gate. The
+`--require-isolated-state` option fails closed when a mutating K&M run points at
+the protected repository save. It uses only Git reads and HTTP GETs, so it
+cannot write state, call Supabase, restart Forge or touch a PTY.
+
+| ID | Severity | Area | Finding | Status |
+|---|---|---|---|---|
+| F-059 | P3 | Native Linux preflight | CachyOS and other native Linux installs had no executable preflight equivalent to the Windows/WSL PowerShell gate, leaving identity and state-custody checks undocumented or dependent on a second shell. | Fixed locally: `tools/questlab-km-preflight.py` is cross-platform, its isolation/authority behavior is covered by the launcher contract suite, its `--help` path runs under WSL Python, and the CachyOS onboarding command is documented. Actual CachyOS K&M acceptance remains F-058 and is still open. |

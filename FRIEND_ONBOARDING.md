@@ -69,6 +69,14 @@ or another native optional dependency is missing, rerun `npm ci` inside this
 Linux checkout rather than repairing the OneDrive tree. Do not seed Supabase
 as part of this local distribution gate.
 
+The native Linux preflight is the PowerShell-free equivalent of the Windows
+gate:
+
+```bash
+.venv/bin/python tools/questlab-km-preflight.py \
+  --backend-port 7331 --frontend-port 5173 --require-isolated-state
+```
+
 ## Choose a quest workspace
 
 The Forge platform checkout owns the canonical local player state. A quest

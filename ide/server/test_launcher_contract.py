@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import importlib.util
 import tempfile
 import unittest
 from types import SimpleNamespace
@@ -14,6 +15,65 @@ ROOT = Path(__file__).resolve().parents[2]
 
 
 class LauncherContractTests(unittest.TestCase):
+    def _native_preflight_module(self):
+        path = ROOT / "tools" / "questlab-km-preflight.py"
+        spec = importlib.util.spec_from_file_location("questlab_native_preflight", path)
+        self.assertIsNotNone(spec)
+        self.assertIsNotNone(spec.loader)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        return module
+
+    def test_native_linux_preflight_is_read_only_and_checks_isolated_authority(self):
+        preflight = (ROOT / "tools" / "questlab-km-preflight.py").read_text(encoding="utf-8")
+        self.assertIn("CachyOS", (ROOT / "FRIEND_ONBOARDING.md").read_text(encoding="utf-8"))
+        self.assertIn("urlopen", preflight)
+        self.assertIn('method="GET"', preflight)
+        self.assertNotIn('method="POST"', preflight)
+        self.assertIn("--require-isolated-state", preflight)
+        self.assertIn("canonical_authoritative", preflight)
+        self.assertIn("legacy_authoritative", preflight)
+
+        module = self._native_preflight_module()
+        self.assertEqual(module.normalize_path(r"C:\Quest Lab\progress.json"), "c:/quest lab/progress.json")
+        self.assertEqual(module.normalize_path("/tmp/state/progress.json"), "/tmp/state/progress.json")
+
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            authority = {
+                "canonical_path": str(root / "device" / "progress.json"),
+                "legacy_path": str(root / "workspace" / "progress.json"),
+                "canonical_authoritative": True,
+                "legacy_authoritative": False,
+            }
+            runtime = {
+                "repo_git": {"branch": "feature/cloud-sync-desktop", "head_sha": "abc123"},
+                "state_authority": authority,
+            }
+            args = SimpleNamespace(
+                repo_root=str(root),
+                backend_port=7395,
+                frontend_port=5215,
+                allow_stale_checkout=True,
+                skip_frontend_source=False,
+                require_isolated_state=True,
+            )
+            with patch.object(module, "_git", side_effect=["feature/cloud-sync-desktop", "abc123", ""]), patch.object(
+                module, "_read_json", side_effect=[runtime, runtime, {"revision": 5}]
+            ), patch.object(module, "_read_text", return_value="campaignReady data-react-stat top-stats"):
+                result = module.run_preflight(args)
+            self.assertEqual(result["revision"], 5)
+            self.assertTrue(result["isolated_state_required"])
+
+            protected = dict(authority)
+            protected["canonical_path"] = str(root / "progress.json")
+            protected_runtime = {**runtime, "state_authority": protected}
+            with patch.object(module, "_git", side_effect=["feature/cloud-sync-desktop", "abc123", ""]), patch.object(
+                module, "_read_json", side_effect=[protected_runtime, protected_runtime, {"revision": 5}]
+            ):
+                with self.assertRaisesRegex(module.PreflightError, "isolated local state"):
+                    module.run_preflight(args)
+
     def test_windows_launcher_requires_the_intended_checkout_and_stable_pty_mode(self):
         launcher = (ROOT / "tools" / "questlab-launch.ps1").read_text(encoding="utf-8")
         python_launcher = (ROOT / "ide" / "quest.py").read_text(encoding="utf-8")
@@ -99,6 +159,8 @@ class LauncherContractTests(unittest.TestCase):
         self.assertIn("npm ci", onboarding)
         self.assertIn("Linux filesystem", onboarding)
         self.assertIn("Never run\n`npm install` or `npm ci`", onboarding)
+        self.assertIn("tools/questlab-km-preflight.py", onboarding)
+        self.assertIn("--require-isolated-state", onboarding)
         self.assertIn("separate workspace", onboarding)
         self.assertIn("custody boundary, not a mode removal", onboarding)
         self.assertIn("workspace-scoped `/api/tutor`", onboarding)

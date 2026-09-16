@@ -427,3 +427,9 @@ checkout/dependency installation, launch, one canonical state path, live
 projection and shell/AI PTY continuity must be proven on the actual CachyOS
 laptop before the distro is marked supported. Until then, WSL/ext4 is the only
 Linux evidence and no hosted/Supabase state work is implied.
+
+F-059 is now closed locally: `tools/questlab-km-preflight.py` provides a
+PowerShell-free equivalent for native Linux, including the fail-closed
+isolated-state check. Its contract test and `--help` invocation pass. This
+removes a tooling gap but does not change F-058's requirement for real
+CachyOS-machine evidence.
