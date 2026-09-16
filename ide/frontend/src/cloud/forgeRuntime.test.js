@@ -277,9 +277,20 @@ test('legacy reconciliation renders validated restoration feedback without inven
 test('reward presentation never invents a boss XP amount', () => {
   const app = source('../AppV2.jsx')
 
-  assert.match(app, /const bossRewardXp = Number\.isFinite\(Number\(event\.boss_reward_xp \?\? event\.reward_xp\)\)/)
+  assert.match(app, /const bossRewardValue = event\.boss_reward_xp \?\? event\.reward_xp/)
+  assert.match(app, /typeof bossRewardValue === 'number' && Number\.isFinite\(bossRewardValue\)/)
   assert.match(app, /bossRewardXp !== null \? `\+\$\{bossRewardXp\} XP` : ''/)
   assert.doesNotMatch(app, /event\.boss_reward_xp \?\? event\.reward_xp \?\? 100/)
+})
+
+test('campaign projection accepts a deliberate revision rollback as a new authority', () => {
+  const app = source('../AppV2.jsx')
+
+  assert.match(app, /const revisionRegressed = campaignInitializedRef\.current && campaignRevisionRef\.current !== null && nextRevision < campaignRevisionRef\.current/)
+  assert.match(app, /campaignInitializedRef\.current = false/)
+  assert.match(app, /campaignRevisionRef\.current = null/)
+  assert.match(app, /seenStateEventsRef\.current = new Set\(\)/)
+  assert.doesNotMatch(app, /nextRevision < campaignRevisionRef\.current\) return/)
 })
 
 test('bounded player-state sync stays behind one engine with revision/conflict controls', () => {

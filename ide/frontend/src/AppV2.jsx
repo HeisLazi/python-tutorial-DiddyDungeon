@@ -403,8 +403,9 @@ function AppV2() {
         }
       }
     } else if (action === 'record_boss_clear' && event.boss_defeated) {
-      const bossRewardXp = Number.isFinite(Number(event.boss_reward_xp ?? event.reward_xp))
-        ? Number(event.boss_reward_xp ?? event.reward_xp)
+      const bossRewardValue = event.boss_reward_xp ?? event.reward_xp
+      const bossRewardXp = typeof bossRewardValue === 'number' && Number.isFinite(bossRewardValue)
+        ? bossRewardValue
         : null
       notifications.push({
         id: `${event.id}:boss`,
@@ -655,7 +656,15 @@ function AppV2() {
     if (!next || typeof next !== 'object') return
     if (next.sync_storage_namespace) syncEngine.setCheckoutIdentity(next.sync_storage_namespace)
     const nextRevision = Number(next.revision ?? next.progress?.meta?.revision ?? 0)
-    if (campaignInitializedRef.current && campaignRevisionRef.current !== null && nextRevision < campaignRevisionRef.current) return
+    const revisionRegressed = campaignInitializedRef.current && campaignRevisionRef.current !== null && nextRevision < campaignRevisionRef.current
+    if (revisionRegressed) {
+      // A deliberate local reset or canonical-save restore can move the
+      // revision backwards. Accept that new authority instead of freezing on
+      // stale UI while the one-second poller retries the same snapshot.
+      campaignInitializedRef.current = false
+      campaignRevisionRef.current = null
+      seenStateEventsRef.current = new Set()
+    }
     const events = Array.isArray(next.progress?.state_events) ? next.progress.state_events : []
     if (!campaignInitializedRef.current) {
       events.forEach((event) => event?.id && seenStateEventsRef.current.add(event.id))
