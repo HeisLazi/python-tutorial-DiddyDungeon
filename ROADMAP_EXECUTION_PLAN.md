@@ -196,8 +196,8 @@ passed this gate at HEAD `5a051fb` and captured revision-aware Resolve,
 reward/Journal/Codex projection and both connected PTYs without a refresh.
 
 The current snapshot and Claude Sonnet's detailed dependency/test/K&M plan are
-recorded in `GAME_STATE_SNAPSHOT_2026-09-16_0420.md` and
-`ROADMAP_CLAUDE_IMPLEMENTATION_PLAN_2026-09-16_0315.md`. The next hosted gate
+recorded in `GAME_STATE_SNAPSHOT_2026-09-16_0438.md` and
+`ROADMAP_CLAUDE_IMPLEMENTATION_PLAN_2026-09-16_0438.md`. The next hosted gate
 is device-ownership migration plus real two-device acceptance; it remains
 approval-gated. No local code-safe regression is justified by the current
 evidence, and no Supabase, Tauri or Slice 8 work should leapfrog that gate.
@@ -246,3 +246,11 @@ single revision timer), preserves the Linux executable bit on `questlab-state`,
 and partitions browser sync metadata by an opaque checkout namespace before
 cloud auth restoration. Existing legacy metadata is not merged or deleted;
 normal revision/conflict handling remains the authority for any new checkout.
+
+The 04:38 snapshot and 04:40 Claude plan were committed at `70997d3`. A
+post-plan full regression at 04:45 passed 77 backend tests and 33 frontend
+tests. The current committed archive was inspected at `c1911a0`: it contains
+the baseline save and onboarding guide but not the user's untracked `tutor.py`.
+Only documentation changed after the exact code tip used for the latest pure
+K&M run, so that browser evidence remains applicable; a real second-Windows
+launch and F-039 custody choice are still open.
