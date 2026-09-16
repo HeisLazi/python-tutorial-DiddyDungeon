@@ -1746,3 +1746,16 @@ the live OneDrive-mounted frontend dependency tree, and requires a separate
 quest workspace for the canonical-versus-legacy path preflight. The launcher
 contract test asserts both guardrails. No code, save, runtime or PTY changed;
 the protected `progress.json` and Campaign `tutor.py` remain unstaged.
+
+### Claude Sonnet roadmap plan — 2026-09-16 07:14
+
+Authenticated Claude Sonnet re-audited the current handoff, 07:05 snapshot,
+roadmap, issue log, source and tests in read-only plan mode. It found no P0/P1
+correctness issues and returned the dependency-ordered implementation and K&M
+acceptance plan persisted at
+`ROADMAP_CLAUDE_IMPLEMENTATION_PLAN_2026-09-16_0705.md`. The review identified
+only documentation precision around the internal-only `system` actor and the
+effective Campaign `tutor.py`/Practice boundary, plus a missing CI automation
+boundary note now tracked as F-052. Stage A still needs a real second-Windows
+environment and the explicit F-039 custody decision; no hosted, Tauri, public
+or social operation was authorized or performed.

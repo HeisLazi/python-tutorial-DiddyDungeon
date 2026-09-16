@@ -17,6 +17,11 @@ independent Practice sessions/validated history, Codex library projection and
 runtime checkout diagnostics. The Campaign Tutor Notebook remains part of the
 Campaign surface; it was not removed or merged into Practice.
 
+The latest authenticated Claude Sonnet dependency plan is persisted in
+`ROADMAP_CLAUDE_IMPLEMENTATION_PLAN_2026-09-16_0705.md`. It adds the CI/public
+activity-writer boundary to the review surface and confirms that hosted,
+desktop, public and social stages remain approval-gated.
+
 ## Non-negotiable invariants
 
 1. `LocalStateService` is the only progression writer. The backend anchors the

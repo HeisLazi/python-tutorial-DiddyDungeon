@@ -42,6 +42,11 @@ The current working runtime is valuable. Preserve it.
   launcher must inject the platform package path, backend port and canonical
   state path. Use the `questlab-state` wrapper from a terminal; a workspace
   `progress.json` is legacy evidence and direct edits do not update Forge.
+- `.github/workflows/sync-activity.yml` is a separate public-activity
+  automation boundary. It is the only workflow that needs `contents: write`,
+  uses the ephemeral `GITHUB_TOKEN`, and may publish only the generated
+  `activity.json`/`README.md` block to `main`; it must never receive player
+  state, PTY, local-code or AI-credential data.
 
 ## Working style
 

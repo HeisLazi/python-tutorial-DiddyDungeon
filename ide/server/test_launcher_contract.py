@@ -105,6 +105,20 @@ class LauncherContractTests(unittest.TestCase):
         self.assertIn("npm ci", packager)
         self.assertNotIn("Copy-Item -LiteralPath (Join-Path $repoRoot 'progress.json')", packager)
 
+    def test_public_activity_workflow_has_a_narrow_write_boundary(self):
+        workflow = (ROOT / ".github" / "workflows" / "sync-activity.yml").read_text(encoding="utf-8")
+        activity = (ROOT / "tools" / "sync_activity.py").read_text(encoding="utf-8")
+        self.assertIn("permissions:\n  contents: write", workflow)
+        self.assertIn("if: github.actor != 'github-actions[bot]'", workflow)
+        self.assertIn("paths-ignore:", workflow)
+        self.assertIn("git add activity.json README.md", workflow)
+        self.assertNotIn("issues: write", workflow)
+        self.assertNotIn("pull-requests: write", workflow)
+        self.assertNotIn("progress.json", workflow)
+        self.assertIn("GITHUB_TOKEN", activity)
+        self.assertIn("ACTIVITY_PATH.write_text", activity)
+        self.assertIn("README_PATH.write_text", activity)
+
     @patch("ide.quest.running_under_wsl", return_value=True)
     def test_wsl_launcher_detects_missing_native_rollup_optional_dependency(self, _running):
         import tempfile

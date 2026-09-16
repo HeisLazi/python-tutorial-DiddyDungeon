@@ -309,6 +309,7 @@ The mutation was disposable and both backends were stopped afterward.
 | F-049 | P2 | Clean-install launch proof | The friend distribution path had source-custody/build evidence but no fresh checkout proof that the documented backend/frontend setup launches the Forge with both PTYs and live state projection. | Fixed locally for a clean ext4 WSL checkout: cloned pushed `8f4ec71`, installed `.venv` and frontend dependencies, built 1,344 modules, launched the stable-PTY runtime, and observed a gateway reward reach the HUD without refresh. Windows friend-machine packaging/Tauri remain separate gates. |
 | F-050 | P3 | Frontend dependency audit | The locked frontend tree reports two advisories in Monaco's DOMPurify path (one low and one moderate; no high/critical findings). | Decision recorded: retain `monaco-editor` 0.56.0 / DOMPurify 3.4.8 as an accepted low/moderate risk. The 0.53.0 “fix” is rejected because its vendored DOMPurify is older 3.1.7 and merely invisible to npm audit; revisit only when upstream bundles a version above 3.4.12. |
 | F-051 | P2 | Cloud write provenance | The security-definer player-state RPC accepted a caller-supplied device UUID without proving that the device belonged to the authenticated account; the client also classified any error message containing “revision” as a conflict. | Fixed locally: migration `20260916000100_player_state_device_ownership.sql` requires an account-owned `devices` row, the fake-cloud regression enforces the same boundary, conflict handling now accepts only SQLSTATE `40001`/HTTP `409`, and the unreachable cloud-revision-zero branch was removed. The migration is committed but intentionally not applied to Supabase in this checkpoint. |
+| F-052 | P2 | Public activity automation boundary | `.github/workflows/sync-activity.yml` is the only CI writer and uses `contents: write` plus `GITHUB_TOKEN` to publish generated public activity. The boundary was not called out in the roadmap/handoff. | Fixed locally: handoff and roadmap now document the narrow `activity.json`/`README.md` output boundary, and the launcher contract suite rejects broader write scopes or player-state references. Keep the token/project permissions minimal and review again before public deployment. |
 
 ## Verification update — 2026-09-15 — WSL launcher dependency preflight
 
@@ -1313,3 +1314,16 @@ WSL, and require a separate quest workspace so the preflight can prove distinct
 canonical and legacy paths. The launcher contract test covers both statements.
 This is documentation/test-only: the protected save and Campaign `tutor.py`
 remain dirty but unstaged, and no runtime or PTY was touched.
+
+## 2026-09-16 07:14 — Claude Sonnet roadmap plan
+
+Authenticated Claude Sonnet completed the requested read-only re-audit of the
+handoff, current snapshot, roadmap, source and tests. It found no P0/P1
+correctness issue. The detailed dependency-ordered plan is persisted in
+`ROADMAP_CLAUDE_IMPLEMENTATION_PLAN_2026-09-16_0705.md`. Findings were limited
+to precise wording about the internal-only `system` actor, the effective
+Campaign `tutor.py` versus Practice boundary, the CI activity writer (F-052),
+and the already-documented launcher fetch behavior. Claude recommends Stage A
+only until a real second-Windows environment and the explicit F-039 custody
+decision are available; hosted sync/avatar, Tauri, public and social work stay
+approval-gated.
