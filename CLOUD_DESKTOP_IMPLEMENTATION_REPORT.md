@@ -1698,3 +1698,12 @@ state, three cleared Blackjack mobs with The Hitman at 8/8, three Codex
 encounter records, green 77/35/9/build gates, current-tip pure K&M evidence
 and the remaining Windows/hosted approval gates. No save, runtime or PTY was
 changed.
+
+### OneDrive WSL dependency caveat — 2026-09-16 06:37
+
+The guarded launcher was exercised on unused ports `7370/5200` and correctly
+refused the OneDrive-mounted dependency tree because Linux Rollup was absent.
+Both WSL `npm ci` and `npm install --include=optional` hit `EIO`/`ENOENT` while
+replacing the mounted Windows `esbuild` package. The preflight remains strict;
+the documented clean Linux/ext4 checkout path is the validated local launch
+route. No tracked file, save, runtime or PTY changed.

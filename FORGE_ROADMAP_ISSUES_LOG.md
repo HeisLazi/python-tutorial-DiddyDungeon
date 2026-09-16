@@ -1263,3 +1263,14 @@ three cleared mobs and The Hitman 8/8 projection, the three Codex encounter
 records, the green 77/35/9/build gates, the current-tip pure K&M evidence and
 the remaining Windows/hosted approval gates. No save, runtime or PTY was
 changed.
+
+## 2026-09-16 06:37 — OneDrive WSL dependency caveat reproduced
+
+The guarded Windows/WSL launcher was tried on unused ports `7370/5200`. It
+failed closed because the OneDrive-mounted checkout contains a Windows
+`node_modules` tree without a Linux Rollup optional package. A WSL `npm ci`
+and a follow-up `npm install --include=optional` both failed with `EIO`/`ENOENT`
+while replacing the mounted `esbuild` tree. No tracked file, save, runtime or
+PTY was changed. F-033 remains bounded: install dependencies in a clean Linux
+checkout/ext4 clone before launching; do not weaken the native-dependency
+preflight or mutate the user's active runtime tree.
