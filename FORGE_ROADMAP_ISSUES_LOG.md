@@ -126,7 +126,7 @@ processes and their PTYs were not restarted.
 | F-030 | P2 | Dungeon progression | The local loop lacked adaptive focus, room transitions, rest/market actions and a bounded leaderboard. | Fixed locally: adaptive focus uses only recorded Codex weakness/incorrect-result evidence; encounters, rest, market, death, banked runs and leaderboard summaries are canonical and answer-free. Hosted transport remains gated. |
 | F-031 | P2 | Runtime checkout | An older long-lived 5173 process can still show a different checkout if it was started before the launcher fix. | Fixed for new launches: `ide/quest.py` exports the expected branch and `/api/runtime` exposes workspace/repo/canonical paths plus branch mismatch health. Existing 5173 is intentionally left running and remains a user restart/launch choice. |
 | F-032 | P3 | Codex usability | The Codex needed a searchable book/page projection with encounter records and bounded player notes. | Fixed: source/route tests and K&M verified search, concept pages, validated encounter records, and a live saved field note (`CODEX NOTE SAVED`) on the disposable copy. |
-| F-033 | P2 | WSL frontend packaging | WSL Vite cannot resolve the Linux Rollup optional package from the shared Windows `node_modules`; this is an environment/dependency-install issue, not a source failure. | Open but bounded: a clean ext4 archive passed WSL `npm ci` and `npm run build`; the launcher now fails early with an actionable Linux Rollup dependency message instead of starting a broken runtime. Install Linux dependencies in a disposable WSL checkout rather than reusing the shared OneDrive tree. |
+| F-033 | P2 | WSL frontend packaging | WSL Vite cannot resolve the Linux Rollup optional package from the shared Windows `node_modules`; this is an environment/dependency-install issue, not a source failure. | Open but bounded: a clean ext4 archive passed WSL `npm ci` and `npm run build`; the launcher now fails early with an actionable Linux Rollup dependency message instead of starting a broken runtime. Never run `npm install`/`npm ci` against the live OneDrive-mounted `ide/frontend/node_modules` from WSL; install Linux dependencies in a disposable WSL checkout instead. |
 | F-034 | P2 | Secondary review | Claude Code was previously unauthenticated in the WSL CLI despite the separate desktop login. | Fixed for this checkpoint: authenticated WSL Claude Code completed a read-only roadmap/source review and returned the next-slice plan. It did not edit files or touch `progress.json`/`tutor.py`; its findings are recorded below and remain secondary review, not approval. |
 | F-035 | P3 | Dev HMR lifecycle | Editing the running Vite source caused one disposable-runtime terminal websocket reconnect; normal revision polling/navigation did not remount it. | Open dev-only limitation: use the built/started runtime for the acceptance gate. The user's existing PTYs were never restarted; the current disposable children remained stable after HMR settled. |
 
@@ -1274,3 +1274,32 @@ while replacing the mounted `esbuild` tree. No tracked file, save, runtime or
 PTY was changed. F-033 remains bounded: install dependencies in a clean Linux
 checkout/ext4 clone before launching; do not weaken the native-dependency
 preflight or mutate the user's active runtime tree.
+
+## 2026-09-16 06:47 — Claude Sonnet local-slice review
+
+Claude Sonnet completed a read-only review of the current branch, launch
+scripts, handoff, roadmap and persistent logs. It found no P0 correctness
+issues and confirmed the local slice/authority/revision/event/PTY claims are
+coherent. It reiterated three bounded items: F-039 tracked-save custody is
+still an explicit owner decision; F-033 must forbid dependency installs in the
+live OneDrive WSL tree (the row above now says this directly); and the WSL
+checkout has recurring CRLF/LF review noise. The suggested `.gitattributes`
+normalisation is deferred because it would rewrite many tracked files while
+the protected save and Campaign notebook are dirty; it needs a deliberate
+separate change window. Recommendation: proceed only with the local Slice 7
+Windows/ext4 launch gate and hold hosted/Tauri/social work behind approvals.
+
+## 2026-09-16 06:50 — current Windows launcher preflight
+
+After restoring the ignored Linux Rollup/esbuild packages from temporary
+registry archives (the tracked source was unchanged), the guarded launcher
+started the current checkout on `7370/5200` with a distinct disposable quest
+workspace. `questlab-km-preflight.ps1` passed GREEN at HEAD
+`4f5bbaaa04c2ad2f9f7219f6b210a30c76a1ae4d`, revision 2, and exposed distinct
+canonical/legacy paths. Pure K&M navigation (no refresh, no Playwright)
+showed Level 2 / 50 XP / 55 coins, The Hitman 8/8, three cleared mobs, three
+validated Codex encounter records, visible monochrome HUD SVG icons and both
+PTY labels `CONNECTED`. No mutation was issued because this runtime pointed
+at the protected canonical save; the earlier disposable current-tip K&M
+mutation remains the reward/Resolve evidence. The runtime and workspace were
+closed and cleaned; long-lived runtimes and PTYs were untouched.

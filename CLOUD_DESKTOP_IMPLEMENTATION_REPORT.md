@@ -1707,3 +1707,33 @@ Both WSL `npm ci` and `npm install --include=optional` hit `EIO`/`ENOENT` while
 replacing the mounted Windows `esbuild` package. The preflight remains strict;
 the documented clean Linux/ext4 checkout path is the validated local launch
 route. No tracked file, save, runtime or PTY changed.
+
+### Claude Sonnet local-slice review — 2026-09-16 06:47
+
+Claude Sonnet performed a read-only review of the current branch, launch
+scripts, handoff, roadmap and persistent logs. It found no P0 correctness
+issues and confirmed that the local slice/authority/revision/event/PTY claims
+are coherent. It reiterated that F-039 tracked-save custody remains an owner
+decision, F-033 should explicitly forbid WSL dependency installs in the live
+OneDrive tree, and CRLF/LF noise remains a review-process issue. The proposed
+`.gitattributes` normalisation is deliberately deferred because it would
+rewrite many tracked files while protected `progress.json` and Campaign
+`tutor.py` are dirty; it requires a separate approved change window. The
+recommendation is to proceed only with the local Slice 7 Windows/ext4 launch
+gate and hold hosted/Tauri/social work behind approvals. No code, save,
+runtime or PTY was changed by the review.
+
+### Current Windows launcher preflight — 2026-09-16 06:50
+
+After restoring the ignored Linux Rollup/esbuild packages from temporary
+registry archives (no tracked source change), the guarded launcher served the
+current checkout on `7370/5200` with a distinct disposable quest workspace.
+`questlab-km-preflight.ps1` passed GREEN at HEAD
+`4f5bbaaa04c2ad2f9f7219f6b210a30c76a1ae4d`, revision 2, with distinct
+canonical/legacy paths. Pure K&M navigation (no refresh, no Playwright) showed
+Level 2 / 50 XP / 55 coins, The Hitman 8/8, three cleared mobs, three
+validated Codex encounter records, visible monochrome HUD SVG icons and both
+PTY labels `CONNECTED`. No mutation was issued because this runtime pointed
+at the protected canonical save; earlier disposable current-tip K&M covers the
+reward/Resolve mutation. The runtime and workspace were closed and cleaned;
+long-lived runtimes and PTYs were untouched.
