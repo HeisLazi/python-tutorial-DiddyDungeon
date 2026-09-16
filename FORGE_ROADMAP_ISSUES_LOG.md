@@ -756,3 +756,30 @@ cross-shell line-ending differences. A same-checkout verification confirms
 the Windows status is only user-owned `progress.json` plus untracked `tutor.py`;
 WSL `git diff --ignore-space-at-eol --stat` also leaves only `progress.json`.
 No source was normalized, reverted or staged.
+
+## Verification update — 2026-09-16 03:11 — read-only K&M runtime preflight
+
+`tools/questlab-km-preflight.ps1` now provides a read-only manual gate for the
+browser checkpoint. It validates the expected branch/upstream SHA, backend
+repository branch/HEAD, one canonical state authority with a distinct
+non-authoritative legacy path, current revision and served `AppV2` loading/SVG
+markers. It performs only local Git reads and HTTP GETs; static contract
+coverage rejects POST/fetch/delete/restart behavior. The known stale
+`7333/5174` runtime failed closed because it lacked backend repo HEAD identity.
+
+A fresh ext4 clone at branch `feature/cloud-sync-desktop`, HEAD
+`5a051fb84cb2192e5cab42f3bf8e5df14f7c5a32`, passed the gate GREEN on
+`7344/5178` (revision 0, then revision 2 after the disposable test mutation).
+Pure in-app-browser K&M (no Playwright, no refresh) observed `SYNCING` settling,
+Resolve 4/4 → 2/4, a validated mob clear, live HUD XP/coin changes, reward and
+achievement notifications, next encounter unlock, Journal/Codex updates,
+Character/Homestead projection, and `CONNECTED` shell/AI PTY labels. The
+isolated runtime was closed and no long-lived process or user-owned save was
+changed.
+
+Focused launcher contracts pass 8/8; the complete WSL backend suite passes
+76/76; the preflight PowerShell source parses. F-025/F-035 remain open as a
+development-runtime custody/HMR risk, but the new gate prevents stale runtime
+evidence from being accepted as current-branch proof. Hosted Milestone C,
+F-039 custody approval, Milestone D and Tauri remain blocked by their existing
+explicit gates.

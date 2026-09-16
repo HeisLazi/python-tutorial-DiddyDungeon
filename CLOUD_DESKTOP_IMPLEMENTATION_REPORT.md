@@ -1243,3 +1243,33 @@ artifact, not additional semantic work: the Windows checkout reports only the
 user-owned `progress.json` plus untracked `tutor.py`, and WSL
 `git diff --ignore-space-at-eol --stat` likewise leaves only `progress.json`.
 No cross-shell line-ending normalization or infrastructure change was made.
+
+### Read-only K&M runtime preflight — 2026-09-16 03:11
+
+The new `tools/questlab-km-preflight.ps1` gate is deliberately read-only: it
+checks the expected branch and local upstream ref, backend repository identity,
+canonical/legacy state authority, current campaign revision, and served
+`AppV2` loading/SVG markers using HTTP GETs only. It does not fetch, mutate the
+save, restart a process, or touch either PTY. Against the known stale
+long-lived `7333/5174` runtime it failed closed because that backend did not
+expose a matching repository HEAD. A fresh ext4 clone of
+`feature/cloud-sync-desktop` at `5a051fb84cb2192e5cab42f3bf8e5df14f7c5a32`
+passed GREEN on `7344/5178`, reporting canonical revision 0 and a distinct
+non-authoritative workspace legacy path; after the disposable acceptance
+mutation it still passed at revision 2.
+
+The pure in-app-browser K&M run on that branch-matched runtime started at the
+visible `SYNCING` placeholder and settled without refresh. A validated
+state-service objective changed The Empty Table Resolve from 4/4 to 2/4 and
+rendered an objective toast. A second validated objective defeated it; the
+same tab then showed `25/100 XP`, `10c`, the `MOB DEFEATED`, `NEXT ENCOUNTER`
+and `First Blood` notifications, The Dealer's Hand unlocked in the Quest
+Journal, the defeated encounter in Codex, and the same coins/equipment in
+Character and Homestead. Shell and raw AI PTYs remained `CONNECTED`. No
+Playwright, browser refresh, long-lived runtime restart or user-save mutation
+was used. The isolated runtime was closed after capture.
+
+The focused launcher contract suite is 8/8, the full WSL backend suite is
+76/76, and the PowerShell preflight script parses successfully. The preflight
+is now a manual K&M release gate for catching the F-025/F-035 stale-mounted
+Vite condition before relying on browser evidence.

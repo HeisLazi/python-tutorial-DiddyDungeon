@@ -138,3 +138,18 @@ The current branch does not expose PTYs, local files or AI credentials to a
 public web deployment. Friends/presence, hosted dungeon scores and weekly raid
 combat remain intentionally deferred until authenticated provider verdicts and
 two-device sync acceptance are complete.
+
+## Manual K&M preflight
+
+Before accepting a browser checkpoint from a local runtime, run the read-only
+gate from the checkout root:
+
+```powershell
+pwsh -NoProfile -File .\tools\questlab-km-preflight.ps1 -BackendPort 7331 -FrontendPort 5173
+```
+
+It must report `K&M preflight: GREEN`. If it fails on repository identity or
+served source markers, do not trust that tab as current-branch UI evidence;
+use the runtime's printed ports or restart only through the normal launcher
+after preserving any active PTYs. The gate does not write saves, call hosted
+state, or restart processes.

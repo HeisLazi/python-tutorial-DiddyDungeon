@@ -183,10 +183,17 @@ Campaign surface; it was not removed or merged into Practice.
 - Slice 8 (hosted friends/presence/raids) remains last and is intentionally not
   seeded or claimed complete.
 
-Latest gates: 75 WSL backend tests, 33 frontend tests, Windows Vite build, and
+Latest gates: 76 WSL backend tests, 33 frontend tests, Windows Vite build, and
 manual browser K&M acceptance on an isolated current-branch runtime. The
 frontend count includes source tripwires as well as behavioural sync tests. No
 Playwright was used.
+
+The read-only `tools/questlab-km-preflight.ps1` gate now runs before manual K&M
+evidence. It rejects a stale/mismatched runtime and requires the current
+branch/HEAD, canonical authority and served SVG/loading markers without
+fetching, mutating state or restarting PTYs. The 2026-09-16 isolated run
+passed this gate at HEAD `5a051fb` and captured revision-aware Resolve,
+reward/Journal/Codex projection and both connected PTYs without a refresh.
 
 The local Slice 5 loop is also covered by the 2026-09-16 isolated K&M run
 recorded in `FORGE_ROADMAP_ISSUES_LOG.md` and
