@@ -1630,3 +1630,12 @@ native stderr redirection, avoiding the Windows PowerShell 5.1
 `$ErrorActionPreference='Stop'` edge case identified in review. PowerShell
 parsing and the focused frontend suite remain green (**35/35**); no runtime,
 save or PTY was touched.
+
+### Snapshot and fallback roadmap plan — 2026-09-16 06:08
+
+The read-only checkpoint `GAME_STATE_SNAPSHOT_2026-09-16_0608.md` records the
+current branch, canonical revision/state, hashes and dirty-file boundary. A
+new Claude Sonnet planning request exceeded the five-minute response window;
+the earlier Claude plan remains valid and the dependency-ordered fallback
+matrix is recorded in `ROADMAP_EXECUTION_PLAN.md`. No code, runtime, save or
+PTY was changed by the timeout.

@@ -278,3 +278,23 @@ after a state-service verdict without refresh. The Windows save and Campaign
 `tutor.py` remain protected dirty user data. Hosted two-device sync, F-039
 custody approval, provider-authenticated adjudication, Tauri packaging and
 Slice 8 social work remain gated and were not started.
+
+## Fallback execution matrix — 2026-09-16 06:08
+
+The fresh Claude roadmap-planning request was allowed five minutes and returned
+no output, so this matrix is the primary agent's explicit fallback plan. It
+does not weaken any approval gate.
+
+| Stage | Implementation boundary | Required tests | Pure K&M acceptance | Status/gate |
+|---|---|---|---|---|
+| A. Local authority/projection | `ide/server/state.py`, `app_v2.py`, `AppV2.jsx`, `RpgViews.jsx`, `syncEngine.js`; one canonical save, revision polling and validated events | workspace-file isolation, revision/event polling, reward authority, stale revision handling; full backend/frontend/build gates | disposable current-branch runtime; trigger one gateway mutation; HUD, Journal, Codex, Character, Homestead agree without refresh; shell/AI remain connected | **Green locally**; keep regression gates running |
+| B. Campaign/Boss/Codex/Homestead | state-service encounter/boss/equipment actions; React renders only returned events; Campaign Tutor remains `tutor.py`, Practice stays separate | objective impact/Resolve, mob clear/unlock/Codex, boss evidence completeness, bounded notes, purchase/equip conflicts | verified objective, mob clear, next encounter, Codex growth and coin/equipment projection with no refresh | **Green locally**; provider-authenticated trust still open |
+| C. Dungeon/Practice | canonical Dungeon checkpoint/run state and independent Practice session/history; no Campaign rewards or notebook writes | restart/checkpoint, stale question, blank rotation, room/economy/death, mixed Practice and no-cross-mode writes | start run, type/checkpoint, rotate, REST/MARKET, purchase/bank or die; separately repeat Practice; record PTY continuity | **Green locally**; hosted persistence is F-018 |
+| D. Local distribution | `tools/questlab-launch.ps1`, `questlab-package.ps1`, onboarding and preflight; committed HEAD only | launcher/package custody, dependency preflight, branch/runtime identity, clean install | clean WSL/ext4 launch and gateway reward; real Windows second-machine launch still required | **Ext4 green; Windows gate open** |
+| E. Hosted sync/avatar | existing auth/profile/device, bounded `syncEngine.js`, SQL migrations/RLS and avatar boundary; no broad state transport | linked migrations/RLS, CAS conflicts, offline outbox, account/device privacy, avatar storage denials | two signed-in devices, offline/reconnect/conflict choices, live projections and PTYs | **Approval required**; do not seed Supabase |
+| F. Desktop/public/social | thin Tauri sidecar, safe public allowlist, then friends/presence/raids | child-process cleanup, route allowlist, RLS/privacy and two-account tests | desktop close/PID proof, deployed public routes, two-account privacy run | **Blocked by E and explicit infrastructure approval** |
+
+Every stage ends with focused tests, full applicable regression, snapshot and
+issue-log entry, a semantic commit/push, and a K&M run using only click,
+scroll, typing and observation. No stage may stage `progress.json` or root
+`tutor.py`, infer rewards in React, reveal future questions, or reset a PTY.

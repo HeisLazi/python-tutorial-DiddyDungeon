@@ -1190,3 +1190,13 @@ without native stderr redirection, avoiding the Windows PowerShell 5.1
 parsing and the focused frontend suite remain green (**35/35**); no runtime,
 save or PTY was touched. This is a compatibility hardening of the existing
 preflight gate, not a new acceptance claim.
+
+## 2026-09-16 06:08 — snapshot and roadmap fallback plan
+
+The read-only current checkpoint is `GAME_STATE_SNAPSHOT_2026-09-16_0608.md`.
+It records pushed HEAD `e0e04a9`, canonical revision 2 / Level 2 / 50 XP / 55
+coins, the unchanged canonical SHA-256 and the protected dirty boundary. A new
+Claude Sonnet roadmap-planning request was given five minutes and returned no
+output; the existing Claude plan plus the explicit fallback execution matrix
+in `ROADMAP_EXECUTION_PLAN.md` remain active. No code/runtime/save/PTY change
+was made by the timeout.
