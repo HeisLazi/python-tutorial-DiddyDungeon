@@ -12,6 +12,8 @@ import unittest
 ROOT = Path(__file__).resolve().parents[2]
 MIGRATION = ROOT / "supabase" / "migrations" / "20260916000100_player_state_device_ownership.sql"
 RLS_TEST = ROOT / "supabase" / "tests" / "player_state_rls.sql"
+AVATAR_MIGRATION = ROOT / "supabase" / "migrations" / "20260915000400_avatar_storage.sql"
+AVATAR_RLS_TEST = ROOT / "supabase" / "tests" / "avatar_storage_rls.sql"
 
 
 class CloudMigrationContractTests(unittest.TestCase):
@@ -39,6 +41,33 @@ class CloudMigrationContractTests(unittest.TestCase):
         self.assertIn("00000000-0000-0000-0000-000000000112", sql)
         self.assertIn("00000000-0000-0000-0000-000000000111", sql)
         self.assertIn("select revision into saved_revision", sql)
+
+    def test_avatar_storage_is_private_and_account_scoped(self):
+        sql = AVATAR_MIGRATION.read_text(encoding="utf-8")
+
+        self.assertIn("public = false", sql)
+        self.assertIn("  1048576,", sql)
+        self.assertIn("array['image/webp']::text[]", sql)
+        self.assertIn("profiles_avatar_path_safe", sql)
+        self.assertIn("avatar_path = (id::text || '/avatar.webp')", sql)
+        for policy in (
+            "avatars_objects_select_own",
+            "avatars_objects_insert_own",
+            "avatars_objects_update_own",
+            "avatars_objects_delete_own",
+        ):
+            self.assertIn(policy, sql)
+        self.assertEqual(sql.count("((select auth.uid())::text || '/avatar.webp')"), 5)
+
+    def test_avatar_rls_fixture_exercises_private_cross_account_paths(self):
+        sql = AVATAR_RLS_TEST.read_text(encoding="utf-8")
+
+        self.assertIn("avatar-a@example.test", sql)
+        self.assertIn("avatar-b@example.test", sql)
+        self.assertIn("Avatar RLS failure: User A inserted User B portrait", sql)
+        self.assertIn("Avatar RLS failure: User B can read User A portrait", sql)
+        self.assertIn("00000000-0000-0000-0000-000000000201/avatar.webp", sql)
+        self.assertIn("00000000-0000-0000-0000-000000000202/avatar.webp", sql)
 
 
 if __name__ == "__main__":

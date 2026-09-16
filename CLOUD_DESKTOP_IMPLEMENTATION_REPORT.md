@@ -1135,14 +1135,15 @@ this checkpoint did not sign in, seed Supabase or mutate hosted state.
 
 ### Hosted migration contract coverage — 2026-09-16
 
-Because the ownership migration remains unapplied by policy, two local
-repository contract tests now keep its SQL and executable RLS fixture aligned.
-They verify the `public.devices`/`auth.uid()` guard occurs before validation
-and row locking, preserve the authenticated-only RPC grant, and require the
-fixture's foreign-device rejection plus owned-device CAS path. The focused
-contract test passes 2/2; it performs no Supabase connection or hosted write.
+Because the ownership migration remains unapplied by policy, four local
+repository contract tests now keep the hosted SQL and executable RLS fixtures
+aligned. They verify the `public.devices`/`auth.uid()` guard occurs before
+validation and row locking, preserve the authenticated-only RPC grant, and
+cover both the player-state foreign-device path and the private account-scoped
+avatar bucket. The focused contract suite passes 4/4; it performs no Supabase
+connection or hosted write.
 
-The post-change verification also passes the full WSL backend suite (71 tests),
+The post-change verification also passes the full WSL backend suite (73 tests),
 the frontend suite (33 tests), Python compilation, `git diff --check`, and the
 Windows Vite production build (1,345 modules). A first full-suite run exposed
 one transient websocket cancellation; the immediate rerun passed cleanly. No
