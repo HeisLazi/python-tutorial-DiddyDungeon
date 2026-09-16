@@ -1600,3 +1600,25 @@ runtime, clone and disposable save were stopped and removed. The canonical
 Level 2 save and Campaign `tutor.py` were untouched. This smoke confirms that
 the live projection path remains healthy after the validated reward-rendering
 hardening.
+
+### Claude review and rollback hardening — 2026-09-16 06:03
+
+Claude Opus performed a read-only review of the pushed tree and found no P0 or
+P1 findings. The two P2 items are fixed: Git preflight now handles missing
+remote refs without null `.Trim()` failures, and a lower campaign revision is
+treated as a deliberate new authority with a fresh event baseline rather than
+leaving revision polling stuck on stale UI. A P3 numeric guard also prevents an
+explicit null boss reward from becoming `+0 XP`. Focused frontend tests pass
+**35/35**, backend **77/77**, PowerShell parsing passes and Vite builds **1,345
+modules**.
+
+### Current-tip K&M after review fixes — 2026-09-16 06:04
+
+A disposable ext4 clone at pushed HEAD `c8dba22` ran on backend `7359` and
+frontend `5195`. Pure in-app-browser keyboard/mouse actions (no Playwright and
+no refresh) visibly showed the monochrome heart, coin, streak, shield and boss
+icons; both shell and AI PTYs stayed `CONNECTED`; a shell-typed state-service
+Battle submission/verdict changed Resolve **4/4 → 2/4** and added the validated
+`OBJECTIVE VERIFIED` reward card. The runtime, clone and disposable workspace
+were stopped and removed; canonical `progress.json` and Campaign `tutor.py`
+were untouched.

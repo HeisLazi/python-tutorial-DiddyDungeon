@@ -1155,3 +1155,29 @@ Resolve **4/4 → 2/4**. The exact current-tip runtime was stopped and its clone
 and disposable save removed; canonical Level 2 save and Campaign `tutor.py`
 were untouched. The boss reward fallback fix was source-tested; this smoke
 confirms the general live projection path remains healthy after it.
+
+## 2026-09-16 06:03 — Claude review and rollback hardening
+
+Claude Opus completed a read-only review of the pushed tree and found no P0 or
+P1 issues. It identified two P2 hardening items and one P3 edge case. The
+preflight script now checks native Git exit codes and uses `rev-parse
+--verify --quiet` so a missing remote ref cannot trigger a null `.Trim()` crash;
+the campaign projection now accepts a deliberate lower revision (local reset
+or canonical-save restore) after clearing the prior event baseline instead of
+polling forever on stale UI; and boss XP is accepted only when the validated
+event contains a finite numeric value, never `+0` from an explicit null.
+Focused frontend tests are **35/35**, backend **77/77**, PowerShell parsing and
+Vite **1,345-module** build pass. Remaining risks are the known behavioral
+runtime-harness gap, per-WebSocket PTY loss on a real proxy/HMR drop, and the
+approval-gated hosted/Tauri/two-device gates.
+
+## 2026-09-16 06:04 — current-tip K&M after review fixes
+
+A disposable ext4 clone at pushed HEAD `c8dba22` was launched on backend `7359`
+and frontend `5195`. Pure in-app-browser keyboard/mouse actions (no Playwright,
+no refresh) showed the monochrome heart/coin/streak/shield/boss HUD icons, both
+shell and AI PTYs `CONNECTED`, then a shell-typed state-service Battle
+submission/verdict changed Resolve **4/4 → 2/4** and added the validated
+`OBJECTIVE VERIFIED` reward card. The runtime, clone and disposable workspace
+were stopped and removed; canonical `progress.json` and Campaign `tutor.py`
+remained untouched.
