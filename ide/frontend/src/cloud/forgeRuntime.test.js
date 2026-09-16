@@ -54,6 +54,7 @@ test('campaign projections use revision polling and state-service events', () =>
 test('campaign loading never presents starter values as a reset', () => {
   const app = source('../AppV2.jsx')
   const views = source('../RpgViews.jsx')
+  const legacy = source('../App.jsx')
 
   assert.match(app, /const campaignReady = Boolean\(campaign && campaign\.progress/)
   assert.match(app, /campaignReady \? `LV \$\{player\.level/)
@@ -62,6 +63,12 @@ test('campaign loading never presents starter values as a reset', () => {
   assert.match(views, /data-testid="campaign-loading"/)
   assert.match(views, /No starter values are being substituted/)
   assert.match(views, /campaignReady = true/)
+  assert.match(legacy, /const campaignReady = Boolean\(campaign && campaign\.progress/)
+  assert.match(legacy, /campaignReady \? `LV \$\{player\.level/)
+  assert.match(legacy, /: 'SYNCING'/)
+  assert.match(legacy, /function LegacyStatIcon/)
+  assert.match(legacy, /campaignReady=\{campaignReady\}/)
+  assert.doesNotMatch(legacy, /♥ \{player\.hp \?\? 100\}/)
 })
 
 test('PYR context submissions use the bounded local bridge and current editor selection', () => {
