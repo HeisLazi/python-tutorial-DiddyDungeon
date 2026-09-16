@@ -2010,3 +2010,29 @@ replace that module. The override and lockfile change were reverted, the
 working dependency tree was restored to the committed graph, and F-050 remains
 open pending an upstream Monaco bundle with a patched embedded sanitizer. No
 package workaround is being presented as a security fix.
+
+## Clean ext4 live projection checkpoint — 2026-09-16
+
+The current committed branch was cloned into the disposable WSL ext4 checkout
+`/tmp/questlab-km-linux-repo-20260916-d`; the runtime used an isolated derived
+cache and workspace on ports `7435/5245`. Native `npm ci`, the 1,345-module
+Vite build, backend **81/81**, Python compilation and the Linux preflight all
+passed before the browser check. The preflight confirmed the branch/HEAD,
+distinct canonical and legacy paths, and `--require-isolated-state` custody.
+
+Pure in-app-browser keyboard/mouse testing opened Forge, Character,
+Homestead, Quest Journal and Codex. A visible Forge-shell call to the trusted
+state service awarded `+35 XP / +20 Coins`; revision polling updated the HUD,
+Character and Homestead without a refresh. Two visible trusted objective
+mutations then cleared **The Empty Table**. The reward layer showed the
+validated `+25 XP / +10 Coins`, `NEXT ENCOUNTER The Dealer's Hand`, and
+`ACHIEVEMENT UNLOCKED First Blood`. Quest Journal moved to **The Dealer's
+Hand (6/6 Resolve)** and Codex showed the defeated encounter with two verified
+results and its evidence IDs. The five monochrome SVG HUD icons were visible
+with no nested pills. Forge shell and AI terminal labels stayed `CONNECTED`,
+and the browser error/warning log was empty.
+
+The disposable runtime, browser tab, cache and workspace were stopped and
+removed. The protected repository save and Campaign `tutor.py` were not
+opened for writing. This is a local isolated-cache proof, not a second-device,
+Supabase/RLS, cloud-mailbox or native CachyOS certification.

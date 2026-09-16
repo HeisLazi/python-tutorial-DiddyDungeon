@@ -1527,3 +1527,22 @@ working dependency tree was restored to the committed graph. F-050 therefore
 remains an explicit accepted low/moderate risk until an upstream Monaco bundle
 or separately reviewed patched build replaces the embedded sanitizer. No
 package workaround was committed or described as a security fix.
+
+## Verification update — 2026-09-16 — clean ext4 live projection
+
+The current branch was installed and built in a disposable WSL ext4 clone and
+launched with an isolated derived state cache on ports `7435/5245`. Native
+`npm ci`, backend **81/81**, Python compilation, Vite (**1,345 modules**) and
+the PowerShell-free Linux preflight passed. Pure in-app-browser K&M used
+click/type/scroll only: the trusted reward path updated HUD, Character and
+Homestead live; two verified objectives cleared **The Empty Table**, emitted
+validated reward/next-encounter/achievement notifications, advanced Quest
+Journal to **The Dealer's Hand 6/6**, and added the defeated encounter with
+verified evidence to Codex. All five monochrome SVG icons rendered without
+empty nested pills, both PTY labels stayed `CONNECTED`, and the browser
+error/warning log was empty. The isolated runtime and files were removed
+afterward; the protected save and `tutor.py` were untouched.
+
+This closes no external issue. Real laptop↔PC sync, authenticated hosted
+state, native CachyOS certification, friend-machine packaging and Tauri remain
+the open gates listed under F-018, F-039, F-050, F-058 and Milestone C.

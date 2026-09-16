@@ -485,3 +485,20 @@ The committed-source bundle at `f5e2a4119f9555e72d7b13d300bb91d00b91a773`
 matched the `HEAD:progress.json` Git blob, omitted `tutor.py`, and left no
 temporary output. These are local checks only; no second-device, cloud seed,
 or protected-save mutation was performed.
+
+## Clean ext4 live-projection gate — 2026-09-16
+
+A disposable native Linux checkout passed `npm ci`, the backend **81/81**
+suite, Python compilation, the **1,345-module** Vite build and the
+PowerShell-free isolated-state preflight. In-app-browser keyboard/mouse
+testing then used the visible Forge shell to apply one trusted reward and two
+verified Battle objectives. Without refresh, HUD/Character/Homestead reflected
+the new revision, Quest Journal advanced from **The Empty Table** to **The
+Dealer's Hand (6/6)**, Codex recorded the defeated encounter and evidence,
+and reward notifications displayed the service-returned XP/coins, next
+encounter and First Blood. The five SVG icons remained visible and shell/AI
+PTY labels stayed `CONNECTED`; browser error/warning logs were empty.
+
+The runtime, browser tab, workspace and derived cache were removed after the
+check. This strengthens the local gate only; it cannot replace real
+PC↔laptop cloud sync, Supabase/RLS, CachyOS, friend-machine or Tauri proof.
