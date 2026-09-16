@@ -898,3 +898,6 @@ source was archived, `tutor.py` stayed out of the bundle, and the disposable
 bundle/ZIP was removed after inspection. F-046 remains locally fixed; hosted
 mailbox acceptance, Windows friend-machine launch and Tauri proof remain
 separate gates.
+
+The Windows Vite production build remains green at 1,345 transformed modules;
+the only output warning is the existing large-chunk advisory.

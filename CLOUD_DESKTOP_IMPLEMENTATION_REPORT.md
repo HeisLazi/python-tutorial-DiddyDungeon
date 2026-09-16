@@ -1394,3 +1394,6 @@ The committed-source friend bundle smoke was rerun at HEAD `7e1a5e2`: the
 manifest carried that exact source SHA, `progress.json` was present from
 committed source, and the user's untracked `tutor.py` was absent. The bundle
 and ZIP were removed from the disposable Temp directory after inspection.
+
+The Windows production build also remains green: Vite transformed 1,345
+modules and completed in 36.25s with only the existing large-chunk warning.
