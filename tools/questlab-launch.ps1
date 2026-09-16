@@ -33,25 +33,36 @@ Require-Path (Join-Path $repoRoot 'ide/quest.py') 'Quest Lab launcher'
 Require-Path (Join-Path $repoRoot '.venv/bin/python') 'WSL Python environment'
 Require-Path (Join-Path $repoRoot 'ide/frontend/node_modules') 'frontend dependencies'
 
-$branch = (& git -C $repoRoot branch --show-current).Trim()
+$branchOutput = & git -C $repoRoot branch --show-current
+$branchExit = $LASTEXITCODE
+$branch = if ($branchExit -eq 0) { ([string]$branchOutput).Trim() } else { '' }
 if (-not $AllowOtherBranch -and $branch -ne $expectedBranch) {
     throw "Wrong Quest Lab checkout branch '$branch'. Switch to '$expectedBranch' or pass -AllowOtherBranch explicitly."
 }
 
-$upstreamRef = (& git -C $repoRoot rev-parse --abbrev-ref --symbolic-full-name '@{u}' 2>$null).Trim()
+$upstreamRefOutput = if ($branch) { & git -C $repoRoot for-each-ref --format='%(upstream:short)' "refs/heads/$branch" } else { @() }
+$upstreamRefExit = $LASTEXITCODE
+$upstreamRef = if ($upstreamRefExit -eq 0) { ([string]$upstreamRefOutput).Trim() } else { '' }
 if ($upstreamRef -and -not $AllowStaleCheckout) {
     & git -C $repoRoot fetch --quiet origin
     if ($LASTEXITCODE -ne 0) {
         throw "Could not refresh '$upstreamRef'. Re-run with -AllowStaleCheckout only when offline use is intentional."
     }
-    $headSha = (& git -C $repoRoot rev-parse HEAD).Trim()
-    $upstreamSha = (& git -C $repoRoot rev-parse '@{u}').Trim()
+    $headOutput = & git -C $repoRoot rev-parse --verify --quiet HEAD
+    $headExit = $LASTEXITCODE
+    $headSha = if ($headExit -eq 0) { ([string]$headOutput).Trim() } else { '' }
+    $upstreamOutput = & git -C $repoRoot rev-parse --verify --quiet "refs/remotes/$upstreamRef"
+    $upstreamExit = $LASTEXITCODE
+    $upstreamSha = if ($upstreamExit -eq 0) { ([string]$upstreamOutput).Trim() } else { '' }
+    if (-not $headSha -or -not $upstreamSha) {
+        throw "Could not resolve checkout or upstream identity for '$upstreamRef'. Re-run with -AllowStaleCheckout only when offline use is intentional."
+    }
     if ($headSha -ne $upstreamSha) {
         throw "Checkout is not at upstream '$upstreamRef'. Run git pull --ff-only origin $expectedBranch or pass -AllowStaleCheckout explicitly."
     }
 }
 
-$progressStatus = (& git -C $repoRoot status --short -- progress.json).Trim()
+$progressStatus = ([string](& git -C $repoRoot status --short -- progress.json)).Trim()
 if ($progressStatus) {
     Write-Warning 'Canonical progress.json has local player-state changes; the launcher will not overwrite or reconcile them.'
 }
