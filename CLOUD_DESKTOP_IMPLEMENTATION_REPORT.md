@@ -1458,3 +1458,9 @@ again passed **77/77** backend tests and the frontend suite passed **33/33**.
 Custody migration tests remained isolated to temporary fixtures; the real
 canonical save, legacy evidence, long-lived PTYs and stale runtime were not
 changed.
+
+The current `HEAD` archive was inspected without creating a persistent bundle:
+113 committed entries included the baseline `progress.json` and
+`FRIEND_ONBOARDING.md`, while the user's untracked `tutor.py` was absent. This
+confirms the friend-bundle custody boundary at `444fef7`; a real second-Windows
+launch is still required before Slice 7 can be called complete.

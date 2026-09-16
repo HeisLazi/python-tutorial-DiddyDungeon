@@ -985,3 +985,9 @@ The custody tests exercised preview-only and explicit opt-in copy paths inside
 temporary fixtures; no real save was migrated. The working tree still contains
 only the protected `progress.json` modification and untracked `tutor.py`.
 The stale long-lived runtime remains untouched.
+
+The current `HEAD` archive was also inspected without creating a bundle or
+touching the worktree: 113 committed entries included the baseline
+`progress.json` and `FRIEND_ONBOARDING.md`, while the user's untracked
+`tutor.py` was absent. This confirms the packager's committed-source custody
+boundary at `444fef7`; real second-Windows launch evidence remains open.
