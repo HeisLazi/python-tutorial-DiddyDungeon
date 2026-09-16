@@ -403,12 +403,18 @@ function AppV2() {
         }
       }
     } else if (action === 'record_boss_clear' && event.boss_defeated) {
+      const bossRewardXp = Number.isFinite(Number(event.boss_reward_xp ?? event.reward_xp))
+        ? Number(event.boss_reward_xp ?? event.reward_xp)
+        : null
       notifications.push({
         id: `${event.id}:boss`,
         kind: 'defeat',
         title: 'BOSS DEFEATED',
         body: event.boss_name || 'Project boss',
-        detail: `+${Number(event.boss_reward_xp ?? event.reward_xp ?? 100)} XP · ${event.project_name || 'Project complete'}`,
+        detail: [
+          bossRewardXp !== null ? `+${bossRewardXp} XP` : '',
+          event.project_name || 'Project complete',
+        ].filter(Boolean).join(' · '),
       })
       if (event.project_completed) {
         notifications.push({

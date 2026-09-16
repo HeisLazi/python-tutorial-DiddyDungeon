@@ -274,6 +274,14 @@ test('legacy reconciliation renders validated restoration feedback without inven
   assert.match(app, /CODEX UPDATED/)
 })
 
+test('reward presentation never invents a boss XP amount', () => {
+  const app = source('../AppV2.jsx')
+
+  assert.match(app, /const bossRewardXp = Number\.isFinite\(Number\(event\.boss_reward_xp \?\? event\.reward_xp\)\)/)
+  assert.match(app, /bossRewardXp !== null \? `\+\$\{bossRewardXp\} XP` : ''/)
+  assert.doesNotMatch(app, /event\.boss_reward_xp \?\? event\.reward_xp \?\? 100/)
+})
+
 test('bounded player-state sync stays behind one engine with revision/conflict controls', () => {
   const app = source('../AppV2.jsx')
   const views = source('../RpgViews.jsx')
