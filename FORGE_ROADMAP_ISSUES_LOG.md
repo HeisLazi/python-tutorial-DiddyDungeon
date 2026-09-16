@@ -1229,3 +1229,16 @@ launcher contract subset passed **9/9**, PowerShell parsing passed and Vite
 built **1,345 modules**. Git identity reads resolved the current branch,
 upstream and equal HEAD hashes. This was read/build-only; the canonical save,
 legacy evidence, long-lived runtimes and PTYs were untouched.
+
+## 2026-09-16 06:25 — current-tip launcher checkpoint K&M
+
+A fresh ext4 clone at pushed HEAD `55acb0b` installed its WSL virtualenv and
+frontend dependencies, then served the stable-PTY runtime on backend `7361`
+and frontend `5197`. Pure in-app-browser click/type/scroll actions only (no
+Playwright and no refresh) showed the current branch, visible monochrome HUD
+icons and both terminal surfaces `CONNECTED`. A shell-typed state-service
+Battle context/submission/verdict changed The Empty Table Resolve **4/4 →
+2/4**; Quest Journal then showed **2/4** and the validated `OBJECTIVE VERIFIED`
+reward card. The clone, runtime and mutated starter save were removed; the
+canonical save, legacy evidence, Campaign `tutor.py` and long-lived PTYs were
+untouched.

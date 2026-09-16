@@ -1663,3 +1663,16 @@ The full WSL backend suite passed **77/77**, frontend **35/35**, Python
 parsing passed and Vite built **1,345 modules**. Read-only Git identity checks
 resolved the current branch, upstream and equal HEAD hashes. No canonical or
 legacy save, long-lived runtime or PTY was touched.
+
+### Current-tip launcher checkpoint K&M — 2026-09-16 06:25
+
+A fresh ext4 clone at pushed HEAD `55acb0b` installed its WSL virtualenv and
+frontend dependencies, then served the stable-PTY runtime on backend `7361`
+and frontend `5197`. Pure in-app-browser click/type/scroll actions only (no
+Playwright and no refresh) showed the current branch, visible monochrome HUD
+icons and both terminal surfaces `CONNECTED`. A shell-typed state-service
+Battle context/submission/verdict changed The Empty Table Resolve **4/4 →
+2/4**; Quest Journal then showed **2/4** and the validated `OBJECTIVE VERIFIED`
+reward card. The clone, runtime and mutated starter save were removed; the
+canonical save, legacy evidence, Campaign `tutor.py` and long-lived PTYs were
+untouched.
