@@ -12,8 +12,11 @@ hosted project was changed while taking it.
 - Legacy evidence only: `/home/lazi/projects/questlab-blackjack/progress.json`
 - Canonical revision: `2`
 - Canonical device id: `local-forge`
-- Windows worktree boundary: modified `progress.json` and untracked `tutor.py`
-  are user-owned and were not staged, overwritten, or reconciled in this pass.
+- Windows worktree boundary: `progress.json` and untracked `tutor.py` have real
+  user-owned changes and were not staged, overwritten, or reconciled in this
+  pass. Other apparent modified files in a WSL Git view are CRLF/LF checkout
+  noise; Windows `git diff --ignore-space-at-eol` leaves only `progress.json`
+  as a real tracked content diff.
 
 ## Canonical campaign projection
 

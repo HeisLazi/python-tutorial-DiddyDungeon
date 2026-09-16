@@ -341,6 +341,14 @@ function AppV2() {
   const runtimeBranch = runtime?.repo_git?.branch || 'checking branch…'
   const runtimeMismatch = Boolean(runtime?.expected_branch && runtimeBranch !== runtime.expected_branch)
   const runtimeStale = Boolean(runtime?.repo_git?.behind_upstream > 0)
+  const runtimeContractMissing = Boolean(
+    runtime && (
+      !runtime.expected_branch
+      || !runtime.repo_git?.head_sha
+      || !runtime.state_authority?.canonical_path
+      || !runtime.state_authority?.legacy_path
+    ),
+  )
 
   const shields = useMemo(
     () => (progress.skills || []).filter((skill) => skill.shield?.tier && skill.shield.tier !== 'none').length,
@@ -1752,8 +1760,10 @@ function AppV2() {
 
       <footer className="statusbar">
         <span>{notice || `Runtime: ${runtime?.shell || 'checking shell…'}`}</span>
-        <span className={`runtime-identity ${runtimeMismatch || runtimeStale ? 'warning' : ''}`} title={runtime?.repo_root || ''}>
-          {runtimeMismatch
+        <span className={`runtime-identity ${runtimeContractMissing || runtimeMismatch || runtimeStale ? 'warning' : ''}`} title={runtime?.repo_root || ''}>
+          {runtimeContractMissing
+            ? 'RUNTIME STALE · use current launcher'
+            : runtimeMismatch
             ? `CHECKOUT MISMATCH · ${runtimeBranch}`
             : runtimeStale
               ? `CHECKOUT STALE · ${runtimeBranch}`

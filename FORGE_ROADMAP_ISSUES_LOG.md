@@ -928,3 +928,20 @@ indicators `CONNECTED`. A disposable `record_learning_event` gateway mutation
 advanced revision 0→1; the same tab updated its campaign projection without a
 refresh and retained the SVG HUD. The disposable clone/runtime was stopped and
 removed afterward.
+
+## 2026-09-16 04:24 — Claude audit and runtime guard
+
+Claude Sonnet completed a read-only audit of the fresh snapshot, roadmap plan,
+execution plan, handoff, implementation report and issue log. It found no
+fabricated Stage 1–4 evidence and confirmed the 77 backend / 33 frontend test
+counts against the source. Its only local finding was a wording ambiguity:
+cross-shell CRLF/LF noise makes WSL `git status` look broadly dirty even though
+the Windows content diff contains only the user save. The snapshot now states
+that boundary explicitly.
+
+The bounded code-safe follow-up adds a passive `RUNTIME STALE · use current
+launcher` footer warning when the served `/api/runtime` lacks the branch/HEAD/
+state-authority contract. This makes an old backend visible in Forge without
+restarting PTYs or blocking local play. The frontend source regression passes;
+hosted Milestone C, avatar, F-039 custody, Tauri and provider-authenticated
+adjudication remain correctly gated and unchanged.

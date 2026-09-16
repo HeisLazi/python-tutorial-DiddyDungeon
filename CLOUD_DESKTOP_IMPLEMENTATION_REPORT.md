@@ -1420,3 +1420,12 @@ and sword icons as visible nested content (not pills), both terminal labels
 connected, and a gateway learning-event mutation advanced revision 0→1; the
 HUD projection updated in place without a refresh. The disposable runtime and
 state were stopped and removed.
+
+Claude Sonnet's 04:24 read-only audit confirmed the Stage 1–4 evidence and
+identified no unsupported release claim. It did flag the need to distinguish
+real save changes from WSL CRLF/LF noise; the 04:20 snapshot now records that
+boundary. A small local guard was added after the review: if the frontend sees
+the legacy runtime health shape without branch/HEAD/state-authority identity,
+the Forge footer says `RUNTIME STALE · use current launcher`. This is passive,
+does not remount or reconnect either PTY, and does not alter any save or cloud
+state.

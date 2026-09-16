@@ -200,6 +200,8 @@ test('runtime health exposes the checkout and one canonical state authority', ()
   assert.match(launcher, /QUESTLAB_EXPECTED_BRANCH/)
   assert.match(views, /CHECKOUT MISMATCH/)
   assert.match(views, /CHECKOUT STALE/)
+  assert.match(views, /runtimeContractMissing/)
+  assert.match(views, /RUNTIME STALE · use current launcher/)
   assert.match(views, /setCheckoutIdentity\(next\.sync_storage_namespace\)/)
 })
 
