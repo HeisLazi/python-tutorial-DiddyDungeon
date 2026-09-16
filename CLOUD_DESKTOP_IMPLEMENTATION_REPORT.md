@@ -1639,3 +1639,11 @@ new Claude Sonnet planning request exceeded the five-minute response window;
 the earlier Claude plan remains valid and the dependency-ordered fallback
 matrix is recorded in `ROADMAP_EXECUTION_PLAN.md`. No code, runtime, save or
 PTY was changed by the timeout.
+
+### Stale runtime audit — 2026-09-16 06:09
+
+Read-only probes found legacy listeners on `5173`, `5174`, `7332`, `7333` and
+`7334`. Their `/api/runtime` responses lack `repo_git`, `expected_branch` and
+`state_authority`, so they are not current-branch acceptance evidence. `5180`
+was not listening. No existing process, PTY or save was restarted or killed;
+the safe path remains a guarded launch from the current checkout.

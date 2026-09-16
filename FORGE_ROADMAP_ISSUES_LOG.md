@@ -1200,3 +1200,13 @@ Claude Sonnet roadmap-planning request was given five minutes and returned no
 output; the existing Claude plan plus the explicit fallback execution matrix
 in `ROADMAP_EXECUTION_PLAN.md` remain active. No code/runtime/save/PTY change
 was made by the timeout.
+
+## 2026-09-16 06:09 — stale runtime audit
+
+Read-only probes found listeners on legacy ports `5173`, `5174`, `7332`,
+`7333` and `7334`. Their `/api/runtime` responses expose only shell/Python/
+command availability and omit `repo_git`, `expected_branch` and
+`state_authority`, so they cannot be accepted as current-branch Forge
+evidence. Port `5180` was not listening. The existing processes were not
+restarted or killed; F-025/F-031 remain open until the user launches the
+guarded current checkout.
