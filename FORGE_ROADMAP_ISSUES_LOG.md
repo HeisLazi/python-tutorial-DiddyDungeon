@@ -631,3 +631,20 @@ and that the fake-cloud and SQL regressions match the migration history. The
 slice is safe to keep. Live migration application, Postgres SQLSTATE/RLS
 execution and two-device acceptance remain intentionally unverified until the
 hosted Milestone C approval gate is opened.
+
+## Review update — 2026-09-16 — Claude checkpoint plan
+
+Claude Sonnet read the fresh `GAME_STATE_SNAPSHOT_2026-09-16_0206.md`, handoff,
+roadmap plan, issue ledger, implementation report and current source in
+read-only mode. It found no new local defect and confirmed the ownership
+migration matches its documented behavior. It recommends no additional
+Dungeon/Codex/Practice mechanics before Milestone C; the remaining local
+decision is the explicit F-039 save-custody choice for the tracked
+`progress.json`/OneDrive third writer.
+
+The next required evidence is procedural and hosted: apply the committed
+device-ownership migration, sign into the same account on two devices or
+isolated profiles, exercise offline/reconnect CAS conflict handling and both
+explicit conflict resolutions while preserving both PTYs, then perform the
+private/offline avatar acceptance for Milestone D. This review does not claim
+those gates are complete and no hosted state was changed.

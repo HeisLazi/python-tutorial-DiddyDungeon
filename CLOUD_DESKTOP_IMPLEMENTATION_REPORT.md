@@ -1116,3 +1116,19 @@ match the migration history. It also records the remaining evidence boundary:
 the migration has not been applied to Supabase, the SQL test has not been run
 against Postgres, and the real two-device authenticated acceptance is still a
 Milestone C gate.
+
+### Fresh roadmap checkpoint review — 2026-09-16 02:06
+
+The new read-only snapshot records the reconciled local campaign at revision 2
+(Level 2, 50/100 XP, 150 lifetime XP, 55 coins, three cleared Blackjack mobs,
+The Hitman at 8/8 and three Codex encounter records). Claude Sonnet reviewed
+that snapshot against the handoff, roadmap and current source and found no new
+local defect. It recommends no further local gameplay expansion before
+Milestone C; the remaining local decision is the explicit F-039 save-custody
+choice for tracked `progress.json`/OneDrive custody.
+
+The next evidence package is the hosted eight-step two-device acceptance,
+including offline/reconnect CAS conflict handling, both explicit conflict
+resolutions and PTY survival, followed by Milestone D private/offline avatar
+acceptance. The pending ownership migration remains committed but unapplied;
+this checkpoint did not sign in, seed Supabase or mutate hosted state.
