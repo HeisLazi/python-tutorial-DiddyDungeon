@@ -1095,3 +1095,25 @@ advisory. These were read/build-only checks: the canonical `progress.json`,
 untracked Campaign `tutor.py`, long-lived shell/AI PTYs and hosted resources
 were not changed. The current K&M evidence remains the disposable exact-tip
 run recorded above; no Playwright was used.
+
+## 2026-09-16 05:37 — current ext4 distribution K&M
+
+A fresh ext4 clone of the pushed `e1d8a03` branch installed the backend
+virtualenv requirements and frontend dependencies with `npm ci`; its Vite
+build transformed **1,345 modules**. The stable-PTY launcher then served the
+clone on backend `7357` / frontend `5193`, and the read-only paired preflight
+was GREEN at campaign revision 0 with the clone as canonical authority and a
+separate workspace legacy path.
+
+Pure in-app-browser keyboard/mouse/type actions (no Playwright and no refresh)
+verified the live path. Both terminal surfaces initially showed CONNECTED. A
+typed, valid state-service Battle objective changed The Empty Table Resolve
+from **4/4 to 2/4** and displayed the validated objective toast. A second
+typed, valid objective advanced the disposable revision and immediately
+showed **25 XP / 10 coins**, `MOB DEFEATED`, The Dealer's Hand as the next
+encounter and First Blood. Without refreshing, Quest Journal showed the next
+mob at **6/6**, Codex showed the new encounter record and verified evidence,
+Character showed the same XP/coins/achievement, and Homestead showed the live
+purse. The disposable runtime, clone and mutated save were stopped and
+removed; the canonical Windows save, legacy evidence, Campaign `tutor.py` and
+long-lived PTYs were untouched.

@@ -1549,3 +1549,22 @@ passed **33/33** tests and Vite built **1,345 modules** with only the existing
 large-chunk advisory. No save, Campaign `tutor.py`, PTY or hosted resource was
 changed. This confirms the exact-tip K&M evidence remains applicable because
 the intervening commits are documentation-only.
+
+### Current ext4 distribution K&M — 2026-09-16 05:37
+
+A fresh ext4 clone of pushed `e1d8a03` installed the backend requirements and
+frontend dependencies with `npm ci`, then built **1,345 modules**. The
+stable-PTY runtime served the clone on `7357/5193`; paired preflight was
+GREEN at revision 0 and confirmed the canonical/legacy authority split.
+
+Using only in-app-browser click/scroll/type actions, the shell issued valid
+state-service Battle requests. Resolve changed **4/4 → 2/4** with an
+`OBJECTIVE VERIFIED` toast; the next valid objective produced live **25 XP /
+10 coins**, mob-defeat/next-encounter/First-Blood notifications, and revision
+polling updated the UI without refresh. Quest Journal showed Dealer's Hand
+6/6, Codex showed the encounter record and verified evidence, Character and
+Homestead showed the same live projection, and both shell and AI PTYs stayed
+CONNECTED. The runtime, clone and disposable save were stopped and removed;
+the user's canonical save and Campaign notebook were not touched. This is a
+clean Linux distribution proof, not the still-open real Windows friend-machine
+gate.

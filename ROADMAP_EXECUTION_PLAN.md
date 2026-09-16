@@ -193,7 +193,7 @@ evidence. It rejects a stale/mismatched runtime and requires the current
 branch/HEAD, canonical authority and served SVG/loading markers without
 fetching, mutating state or restarting PTYs. The 2026-09-16 isolated run
 passed this gate at the current code tip `c4b08da` (the pushed HEAD is now
-documentation-only `8cdd151`) on disposable ports `7356/5192` and captured
+documentation-only `e1d8a03`) on disposable ports `7356/5192` and captured
 revision-aware Resolve, reward/Journal/Codex projection and both connected
 PTYs without a refresh.
 
