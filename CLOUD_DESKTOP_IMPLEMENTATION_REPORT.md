@@ -1365,7 +1365,7 @@ Pure in-app-browser K&M (no Playwright, no refresh) then:
   stayed Level 1, 0 XP, 0 coins while the Dungeon score remained 10/5;
 - kept the shell and raw AI PTY indicators connected during the visible
   checks. A disposable Codex update prompt appeared; the update process was
-  stopped and the disposable runtime will be removed below.
+  stopped and the disposable runtime was removed after capture.
 
 The run proves the local mode boundary and blank-buffer rotation against one
 current-tip backend/frontend pair. Hosted Dungeon persistence, hosted

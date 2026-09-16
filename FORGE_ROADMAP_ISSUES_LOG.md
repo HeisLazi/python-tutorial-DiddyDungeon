@@ -874,4 +874,4 @@ refresh, verified:
 This closes the local K&M evidence gap for the current Dungeon/Practice
 source. It does not close hosted F-018, provider-authenticated adjudication,
 F-039 custody, or Milestone C; no Supabase write was made. The disposable
-runtime is removed after this entry.
+runtime was removed after capture.
