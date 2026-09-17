@@ -453,3 +453,13 @@ workspace file, cloud migration or PTY was changed by the verification run.
 | F-104 | P1 | The full-width Hub/Character/Homestead presentation removed the activity rail but did not provide an alternate route bar, leaving Homestead and Hub as navigation dead ends. | Fixed with a compact, horizontally scrollable navigation bar rendered inside the wide surface. It includes Hub, Forge, Tutor, Journal, Codex, Character, Homestead, Dungeon and Settings, with active-route and keyboard-accessible states. |
 
 No canonical state, PTY, cloud transport or personal workspace file was changed.
+
+## Navigation icon consistency hunt — 2026-09-17 (F-105)
+
+| ID | Severity | Finding | Status |
+|---|---|---|---|
+| F-105 | P3 | The ActivityRail still used legacy glyph/emoji values while the new wide route bar used SVG icons, leaving the route chrome inconsistent and vulnerable to another blank-icon regression. | Fixed by routing both navigation surfaces through the same inline monochrome `RouteIcon` map and adding direct SVG sizing/stroke rules. |
+
+Staged frontend tests passed **49/49** and the production build transformed
+**1,346 modules**. This was a presentation-only change; canonical state,
+cloud transport and PTY lifecycles were untouched.

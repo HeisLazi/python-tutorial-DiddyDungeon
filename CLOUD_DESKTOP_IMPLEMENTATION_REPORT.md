@@ -2536,3 +2536,15 @@ remains parked unless explicitly opened.
 
 Verification: frontend tests **49/49** and Vite production build (**1,346
 modules**). Fresh browser K&M could not be attached in this environment.
+
+### Navigation icon consistency repair — F-105
+
+The persistent ActivityRail now uses the same inline monochrome SVG `RouteIcon`
+set as the full-width Hub/Character/Homestead route bar. Legacy glyph/emoji
+values were removed from the route metadata, and the rail's nested SVGs have
+direct sizing/stroke rules so they cannot become nested stat-like pills. This
+does not alter the canonical state authority, revision polling, cloud transport
+or either PTY.
+
+Verification: staged frontend tests **49/49** and Vite production build
+(**1,346 modules**). Fresh browser K&M remains an environment gate.
