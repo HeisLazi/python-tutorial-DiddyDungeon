@@ -2548,3 +2548,16 @@ or either PTY.
 
 Verification: staged frontend tests **49/49** and Vite production build
 (**1,346 modules**). Fresh browser K&M remains an environment gate.
+
+### React navigation ownership repair — F-106
+
+The React ActivityRail now declares its markup ownership explicitly. The legacy
+`forgeEnhancements.js` icon bridge yields to that rail instead of replacing its
+SVG children during MutationObserver passes, preventing a second writer from
+competing with revision-driven React renders. The compatibility bridge remains
+available for older non-React markup.
+
+Verification: staged frontend tests **50/50**, WSL backend **105/105**, and
+Vite production build (**1,346 modules**). No canonical save, cloud transport
+or PTY lifecycle changed; fresh browser K&M remains unavailable in this
+environment.

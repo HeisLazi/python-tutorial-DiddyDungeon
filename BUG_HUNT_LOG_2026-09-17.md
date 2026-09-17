@@ -463,3 +463,12 @@ No canonical state, PTY, cloud transport or personal workspace file was changed.
 Staged frontend tests passed **49/49** and the production build transformed
 **1,346 modules**. This was a presentation-only change; canonical state,
 cloud transport and PTY lifecycles were untouched.
+
+## React navigation ownership hunt — 2026-09-17 (F-106)
+
+| ID | Severity | Finding | Status |
+|---|---|---|---|
+| F-106 | P2 | The legacy MutationObserver-based icon bridge could rewrite the React ActivityRail after a revision or route render, competing with React and making the icon rail susceptible to layout churn. | Fixed with a `data-react-owned` rail boundary. The legacy enhancer exits for that rail while retaining its compatibility path for older markup. |
+
+Verification: staged frontend tests **50/50**, WSL backend **105/105**, and
+Vite production build **1,346 modules**. No canonical save or PTY was touched.
