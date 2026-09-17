@@ -660,3 +660,13 @@ learner file or PTY was touched.
 Verification: current-source Forge tests **36/36**. Clean archive frontend
 tests/build and browser K&M remain publication gates; hosted two-device sync
 is still external evidence.
+
+## Workspace transfer verification hunt — 2026-09-17 (F-125)
+
+| ID | Severity | Finding | Status |
+|---|---|---|---|
+| F-125 | P1 | Forge hid the local/remote hashes already produced by the transfer gateway. A player could see “different” but not which file was stale or whether protected changes were excluded before applying a pull. | Fixed with digest prefixes, mismatch feedback, reviewed-edit count and excluded-change count. The preview, confirmation and overwrite gates remain explicit. |
+
+Verification: current-source Forge tests **37/37**. Clean archive frontend
+tests/build and browser K&M remain publication gates; actual device round-trip
+is still external evidence.
