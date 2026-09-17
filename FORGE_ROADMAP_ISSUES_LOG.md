@@ -1685,3 +1685,13 @@ Evidence for the repair: backend **97/97**, frontend **37/37**, Python
 frontend dependency/build attempt is documented as an environment-only
 mounted-tree/Node memory limitation; no source failure is claimed from that
 attempt.
+
+## Native Linux launch slice — 2026-09-17
+
+| ID | Severity | Area | Finding | Status |
+|---|---|---|---|---|
+| F-077 | P2 | CachyOS distribution | The branch had a native-Linux setup checklist but no guarded launcher equivalent to the Windows wrapper, leaving branch freshness, workspace identity and stable-PTY expectations to manual shell commands. | Fixed locally with `tools/questlab-launch.sh`; it validates the intended branch/upstream, checks native venv/frontend prerequisites, warns on protected-save dirtiness, forwards explicit workspace/port/custody flags to `python -m ide.quest`, and never enables backend reload. Actual CachyOS installation and K&M acceptance remain open under F-058. |
+
+The wrapper passed `bash -n`, `--help`, the launcher contract suite (**14/14**)
+and the full WSL backend suite (**98/98**). No save, workspace source file,
+legacy evidence or existing runtime was changed.

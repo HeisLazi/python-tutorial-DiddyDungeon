@@ -133,6 +133,20 @@ class LauncherContractTests(unittest.TestCase):
         self.assertIn("--confirm-local-state", python_launcher)
         self.assertIn("prepare_local_state", python_launcher)
 
+    def test_native_linux_launcher_requires_intended_checkout_and_stable_pty_mode(self):
+        launcher = (ROOT / "tools" / "questlab-launch.sh").read_text(encoding="utf-8")
+        self.assertIn("expected_branch='feature/cloud-sync-desktop'", launcher)
+        self.assertIn("git -C \"$repo_root\" fetch --quiet origin", launcher)
+        self.assertIn("for-each-ref --format='%(upstream:short)'", launcher)
+        self.assertIn("rev-parse --verify --quiet", launcher)
+        self.assertIn("--allow-other-branch", launcher)
+        self.assertIn("--allow-stale-checkout", launcher)
+        self.assertIn("--migrate-local-state", launcher)
+        self.assertIn("PYTHONPATH=. \"${launcher[@]}\"", launcher)
+        self.assertIn('"$repo_root/.venv/bin/python" -m ide.quest', launcher)
+        self.assertNotIn("--reload-backend", launcher)
+        self.assertIn("progress.json has local player-state changes", launcher)
+
     def test_km_preflight_is_read_only_and_rejects_stale_frontend_source(self):
         preflight = (ROOT / "tools" / "questlab-km-preflight.ps1").read_text(encoding="utf-8")
         self.assertIn("$expectedBranch = 'feature/cloud-sync-desktop'", preflight)

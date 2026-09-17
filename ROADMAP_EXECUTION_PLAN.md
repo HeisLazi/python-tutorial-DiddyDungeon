@@ -1,9 +1,9 @@
 # Forge roadmap execution plan
 
-Status: local roadmap slices 0–6 implemented and verified; friend-ready
-launcher/health foundation added; CachyOS native-Linux support is an explicit
-open distribution gate; hosted distribution/social slices remain explicitly
-gated — 2026-09-17
+Status: local roadmap slices 0–6 implemented and verified; guarded Windows and
+native-Linux friend launchers/health foundations added; CachyOS native-Linux
+support is an explicit open distribution gate; hosted distribution/social
+slices remain explicitly gated — 2026-09-17
 
 Claude Sonnet review was previously attempted from WSL while the configured
 CLI returned `Not logged in · Please run /login`. The current checkpoint has

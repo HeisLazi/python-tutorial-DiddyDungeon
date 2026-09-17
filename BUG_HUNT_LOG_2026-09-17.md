@@ -193,3 +193,12 @@ only the issued encounter carried the descriptor. Shell and AI remained
 `CONNECTED`, and browser warning/error logs were empty before teardown.
 Backend tests cover the descriptor and verdict event (`97/97` total); the
 frontend source suite is **39/39**.
+
+## Native Linux launcher gate — 2026-09-17
+
+The new `tools/questlab-launch.sh` wrapper passed `bash -n`, `--help`, the
+launcher contract suite (**14/14**) and the full WSL backend suite (**98/98**).
+It refuses an unexpected branch or stale upstream by default, keeps backend
+reload disabled for PTY continuity, and forwards workspace/port/local-custody
+choices to the module-safe Python launcher. This is tooling evidence only;
+the actual CachyOS install and browser K&M run remain the F-058 external gate.
