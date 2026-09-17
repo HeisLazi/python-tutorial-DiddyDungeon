@@ -2364,3 +2364,12 @@ though the PTY lifecycle and revision state were unchanged. Both states now use
 the same description, with a regression guarding against the stale phrase.
 Frontend verification remains **42/42** and the clean build transforms
 **1,346 modules**.
+
+### F-084 — native macOS friend onboarding
+
+The friend guide now includes a native macOS path using Python, npm and the
+existing guarded `tools/questlab-launch.sh`; it does not require WSL or a new
+desktop runtime. The instructions preserve sibling-workspace separation,
+gateway-owned state and stable PTYs. No Mac hardware was available for this
+pass, so native install, live projection and PTY continuity remain explicitly
+unverified.

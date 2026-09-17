@@ -645,3 +645,8 @@ signed-in frame and the settled account state now name the same Campaign,
 Journal and Codex gateway surfaces, so the status text does not change merely
 because account registration completed. This is a presentation repair only;
 hosted migration and real two-device acceptance remain approval-gated.
+
+The friend-distribution review also closed the documentation gap F-084: native
+macOS setup now has the same branch, sibling-workspace, executable-bit and
+stable-launch instructions as the Linux path. The actual Mac machine still
+needs its own install/K&M/PTY acceptance before being called certified.
