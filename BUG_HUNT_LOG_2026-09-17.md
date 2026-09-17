@@ -601,3 +601,22 @@ hosted player-state sync.
 Verification: current-source Forge runtime tests **32/32** and CSS regression
 assertions reject the old outer-scroll fallback. Browser K&M remains the
 environment-gated visual check.
+
+## Account portrait projection hunt — 2026-09-17 (F-119)
+
+| ID | Severity | Finding | Status |
+|---|---|---|---|
+| F-119 | P1 | Avatar sync updated a DOM enhancement listener, but the React-owned ActivityRail/Character surfaces still rendered initials. A signed-in portrait could therefore exist in the account cache while the visible Forge UI stayed stale or was rewritten on a revision render. | Fixed by carrying the validated avatar data URL in the local SyncEngine view state, rendering it directly in React on the rail and Character sheet, and making the legacy enhancer yield to those ownership markers. Account-scoped cache fallback and cloud upload/remove boundaries remain unchanged. |
+
+Verification: current-source Forge runtime tests **32/32**. Real PC/laptop
+account portrait round-trip remains the user-owned hosted acceptance gate.
+
+## Codex finite-book navigation hunt — 2026-09-17 (F-120)
+
+| ID | Severity | Finding | Status |
+|---|---|---|---|
+| F-120 | P1 | The Codex pane was bounded, but the selected book still read as a long scroll and had no next/previous book controls. On smaller windows the mobile override could also restore a book-level overflow owner, recreating the reported infinite-scroll feel. | Fixed by making the book page a fixed shell, giving only the active book section a contained scroll, adding previous/next book controls with an explicit position indicator, and animating page turns when the book or section changes. The narrow override now keeps the same bounded ownership. |
+
+Verification: current-source Forge runtime tests **32/32**. Clean archive
+frontend tests/build and browser K&M remain the publication checks; no state,
+learner file or PTY was touched.

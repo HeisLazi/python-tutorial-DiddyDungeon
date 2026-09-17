@@ -178,9 +178,10 @@
 .codex-screen > .codex-mode-tabs { align-self: start; margin: 0 0 9px; }
 .codex-screen > .codex-tab-page { display: flex; min-height: 0; overflow: hidden; }
 .codex-screen > .codex-tab-page[data-codex-tab="battle"] { display: block; overflow: auto; padding: 1px 2px 16px; overscroll-behavior: contain; }
+.codex-screen > .codex-tab-page.page-turn { animation: codex-page-turn .22s ease-out; transform-origin: 48% 7%; }
 .codex-screen .codex-library { display: grid; grid-template-columns: minmax(238px, .3fr) minmax(0, 1fr); min-height: 0; height: 100%; margin-bottom: 0; padding: 0; overflow: hidden; border-color: color-mix(in srgb, var(--gold) 28%, var(--line)); background: linear-gradient(125deg, color-mix(in srgb, var(--gold) 5%, var(--panel2)), var(--panel)); box-shadow: 0 14px 28px rgba(0,0,0,.12); }
 .codex-screen .codex-index { min-height: 0; overflow-y: auto; padding: 12px 11px 14px 13px; border-right: 1px solid color-mix(in srgb, var(--gold) 22%, var(--line)); scrollbar-width: thin; overscroll-behavior: contain; }
-.codex-screen .codex-book-page { min-height: 0; overflow-y: auto; padding: 16px 21px 22px; background: color-mix(in srgb, var(--panel) 82%, transparent); scrollbar-width: thin; overscroll-behavior: contain; }
+.codex-screen .codex-book-page { display: flex; flex-direction: column; min-height: 0; overflow: hidden; padding: 16px 21px 22px; background: color-mix(in srgb, var(--panel) 82%, transparent); overscroll-behavior: contain; }
 .codex-screen .codex-page-list { max-height: none; overflow: visible; }
 .codex-screen .codex-entry-picker { max-height: 190px; }
 .codex-screen .codex-page-heading { padding-bottom: 16px; }
@@ -205,11 +206,16 @@
 .codex-screen .codex-mastery-panel .skill-meta,
 .codex-screen .codex-mastery-panel .shield-line { font-size: 8px; }
 .codex-book-page { display: flex; flex-direction: column; min-width: 0; }
+.codex-page-controls { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex: 0 0 auto; margin: 0 0 9px; padding: 6px 0 9px; border-bottom: 1px solid var(--line); }
+.codex-page-controls button { min-width: 92px; padding: 5px 8px; border-color: color-mix(in srgb, var(--gold) 28%, var(--line)); background: color-mix(in srgb, var(--panel3) 78%, transparent); color: var(--muted); font: 800 9px ui-monospace, monospace; }
+.codex-page-controls button:hover:not(:disabled), .codex-page-controls button:focus-visible { border-color: var(--gold); color: var(--text); background: color-mix(in srgb, var(--gold) 9%, var(--panel2)); }
+.codex-page-controls button:disabled { opacity: .38; }
+.codex-page-controls span { color: var(--dim); font: 800 9px ui-monospace, monospace; letter-spacing: .12em; }
 .codex-book-tabs { display: flex; flex: 0 0 auto; gap: 5px; margin: 0 0 13px; padding: 4px; border: 1px solid color-mix(in srgb, var(--gold) 25%, var(--line)); border-radius: 9px; background: color-mix(in srgb, var(--panel3) 88%, transparent); }
 .codex-book-tabs button { flex: 0 0 auto; min-height: 30px; padding: 6px 10px; border: 1px solid transparent; border-radius: 6px; background: transparent; color: var(--muted); font: 800 9px ui-monospace, monospace; letter-spacing: .05em; text-transform: uppercase; }
 .codex-book-tabs button:hover, .codex-book-tabs button:focus-visible { border-color: var(--line2); background: color-mix(in srgb, var(--panel2) 85%, transparent); color: var(--text); }
 .codex-book-tabs button.active { border-color: color-mix(in srgb, var(--gold) 45%, var(--line)); background: color-mix(in srgb, var(--gold) 13%, var(--panel2)); color: var(--gold); }
-.codex-book-section { min-height: 0; animation: codex-section-in .18s ease-out; }
+.codex-book-section { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 0 8px 8px 0; scrollbar-width: thin; overscroll-behavior: contain; animation: codex-section-in .18s ease-out; }
 .codex-section-heading { display: flex; align-items: end; justify-content: space-between; gap: 12px; margin: 2px 0 12px; padding-bottom: 9px; border-bottom: 1px solid var(--line); }
 .codex-section-heading h4 { margin: 4px 0 0; color: var(--text); font: 800 18px/1.2 ui-monospace, monospace; }
 .codex-section-heading > span { color: var(--dim); font: 9px ui-monospace, monospace; text-transform: uppercase; letter-spacing: .08em; }
@@ -218,6 +224,7 @@
 .codex-entry-picker-inline { grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); max-height: none; margin-bottom: 14px; }
 .codex-book-section .codex-entry-detail { padding-top: 3px; }
 @keyframes codex-section-in { from { opacity: .45; transform: translateY(3px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes codex-page-turn { from { opacity: .42; transform: perspective(1100px) rotateY(-2deg) translateX(6px); } to { opacity: 1; transform: perspective(1100px) rotateY(0) translateX(0); } }
 .workspace-transfer-card { grid-column: 1 / -1; }
 .workspace-transfer-meta { display: flex; justify-content: space-between; gap: 10px; margin: 9px 0; color: var(--dim); font: 9px ui-monospace, monospace; }
 .workspace-transfer-files { display: grid; gap: 5px; padding: 9px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel3); }
@@ -415,5 +422,5 @@
   .codex-screen > .codex-tab-page[data-codex-tab="battle"] { display: block; overflow: auto; }
   .codex-screen .codex-library { grid-template-columns: 1fr; height: 100%; min-height: 0; flex: 1 1 auto; overflow: hidden; }
   .codex-screen .codex-index { min-height: 0; max-height: min(31vh, 220px); overflow-y: auto; border-right: 0; border-bottom: 1px solid color-mix(in srgb, var(--gold) 22%, var(--line)); }
-  .codex-screen .codex-book-page { min-height: 0; overflow-y: auto; padding: 14px 14px 20px; }
+  .codex-screen .codex-book-page { min-height: 0; overflow: hidden; padding: 14px 14px 20px; }
 }

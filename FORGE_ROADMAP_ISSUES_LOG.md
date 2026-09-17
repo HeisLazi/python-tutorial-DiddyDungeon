@@ -2015,3 +2015,21 @@ Verification: focused WSL API tests **10/10** and current-source Forge tests
 
 Verification: current-source Forge tests **32/32**, with a regression rejecting
 the old `height: auto` outer-scroll rule. Browser K&M remains environment-gated.
+
+## Account portrait projection — F-119
+
+| ID | Severity | Area | Finding | Status |
+|---|---|---|---|---|
+| F-119 | P1 | Avatar / identity | Cloud/avatar events were handled by a legacy DOM enhancer while React-owned rail and Character nodes continued to render initials, allowing a valid signed-in portrait to look stale or be overwritten during campaign polling. | Fixed: SyncEngine view state now carries the validated data URL in memory; ActivityRail and Character render it directly, while the enhancer yields to `data-react-avatar` ownership markers. Account-scoped caching, private storage and anonymous fallback boundaries remain intact. |
+
+Verification: current-source Forge tests **32/32**. The user's real PC/laptop
+portrait round-trip remains the hosted acceptance gate.
+
+## Codex finite-book navigation — F-120
+
+| ID | Severity | Area | Finding | Status |
+|---|---|---|---|---|
+| F-120 | P1 | Codex presentation | The Codex reading pane still felt like an infinite scroll and lacked book navigation; a compact override could restore a page-level scroll owner. | Fixed with a fixed-height book shell, a single contained scroll owner for the active section, explicit Previous/Next book controls, a BOOK n / total indicator, and page-turn animation keyed to book/section changes. |
+
+Verification: current-source Forge tests **32/32**. Clean archive frontend
+tests/build and browser K&M remain publication gates.

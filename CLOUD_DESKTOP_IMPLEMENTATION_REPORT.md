@@ -2740,3 +2740,30 @@ lifecycle changed.
 Current-source Forge tests pass **32/32**, including a regression that rejects
 the old outer-scroll rule. Browser K&M remains an environment-gated visual
 check because no Codex browser tab could attach.
+
+### Account portrait projection repair — F-119
+
+The portrait path now has one clear rendering owner. SyncEngine keeps the
+validated account-scoped data URL in its in-memory view state, React renders it
+on both the ActivityRail avatar and Character sheet, and the legacy enhancer
+skips those marked nodes instead of replacing them during revision updates.
+The existing private Storage path, account-scoped cache, anonymous local
+fallback and remove behavior are unchanged.
+
+Current-source Forge tests pass **32/32**. A real user-account PC/laptop
+portrait round-trip is still an external hosted acceptance gate and is not
+claimed here.
+
+### Codex finite-book navigation repair — F-120
+
+The Codex presentation now behaves like a finite field library rather than a
+single endless page. The outer book page is fixed inside the Forge viewport;
+only the active Read, Encounters, Notes or Mastery section can scroll, and the
+compact layout preserves that ownership. Previous/Next book controls expose a
+clear `BOOK n / total` position, and changing a book or section uses the page-
+turn animation. The controls remain projection-backed and do not create,
+calculate or reveal progression facts.
+
+Current-source Forge tests pass **32/32**. Clean archive frontend tests/build
+and browser K&M remain publication checks; no state, learner file, PTY or
+hosted transport changed.

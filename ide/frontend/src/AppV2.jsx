@@ -1913,7 +1913,7 @@ function AppV2() {
       </div>
 
       <main className="workspace-grid" style={gridStyle}>
-        {!wideSurface && <ActivityRail activeView={activeView} setActiveView={setActiveView} player={player} campaignReady={campaignReady} />}
+        {!wideSurface && <ActivityRail activeView={activeView} setActiveView={setActiveView} player={player} avatarDataUrl={cloudState.avatar?.dataUrl || ''} campaignReady={campaignReady} />}
 
         {!wideSurface && <aside className="left-panel panel">
           <ContextPanel
@@ -2037,6 +2037,7 @@ function AppV2() {
               activeView={activeView}
               progress={progress}
               revision={campaign?.revision ?? 0}
+              avatarDataUrl={cloudState.avatar?.dataUrl || ''}
               codexProjection={campaign?.codex_projection}
               practiceProjection={campaign?.practice_projection}
               equipmentProjection={campaign?.equipment_projection}
