@@ -310,6 +310,9 @@ authoritative collection navigation, while code examples and long notes keep
 their intentional local reading scroll.
 F-150 also removes the legacy mobile `max-height: 180px` bookshelf cap so a
 compatibility stylesheet order cannot reintroduce a narrow-window scrollbar.
+F-151 closes a separate information-leak path: Hub and compatibility Journal
+surfaces now render locked chapters/encounters as unknown silhouettes rather
+than exposing future names or concepts.
 
 Remaining release gates are intentionally unchanged:
 

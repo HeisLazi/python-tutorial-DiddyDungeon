@@ -3162,3 +3162,10 @@ no state, learner file, PTY or hosted migration changed.
 Removed the final legacy mobile `max-height: 180px` bookshelf fallback. Narrow
 Codex windows now keep collection navigation paged by React without a second
 list scrollbar; intentional code-example and long-note reading scroll remains.
+
+### Locked future identity/silhouette cleanup — F-151 (2026-09-17)
+
+Hub and compatibility Journal contexts now hide locked chapter/mob names and
+concepts until the state service unlocks them. The visible cards keep a dashed
+silhouette/unknown treatment; active and defeated encounters still show their
+validated names. No question, answer, reward or progression data is invented.

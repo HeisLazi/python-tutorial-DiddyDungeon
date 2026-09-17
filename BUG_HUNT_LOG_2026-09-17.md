@@ -929,3 +929,13 @@ modules**, and the supported WSL backend suite is **116/116**; `git diff
 Verification: Windows frontend tests **72/72**, Vite transforms **1,346
 modules**, and `git diff --check` passes; no state, learner file, PTY or
 hosted migration changed.
+
+## Hub exposed locked future identities — 2026-09-17 (F-151)
+
+| ID | Severity | Finding | Status |
+|---|---|---|---|
+| F-151 | P1 | Hub, legacy quest context and the compatibility journal rendered names/concepts for locked chapters or encounters. That leaked future campaign identity instead of preserving the silhouette/unknown contract used by Codex and Dungeon. | Fixed by rendering `Unknown chapter`/`Unknown encounter` and generic hidden-until-clear labels for locked projections, with a dashed silhouette treatment. Active and defeated records remain fully named. |
+
+Verification: Windows frontend tests **73/73**, Vite transforms **1,346
+modules**, and the supported WSL backend suite is **116/116**; no state,
+learner file, PTY or hosted migration changed.

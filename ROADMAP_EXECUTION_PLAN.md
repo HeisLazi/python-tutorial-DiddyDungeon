@@ -1027,3 +1027,7 @@ to the live port in this session.
 
 F-150 removes the remaining mobile `max-height: 180px` bookshelf fallback;
 narrow Codex windows now use the same explicit React paging contract.
+
+F-151 also hides locked future chapter/encounter identities in Hub and legacy
+Journal contexts, preserving the no-future-question/answer disclosure rule
+while leaving active and defeated records state-owned and visible.

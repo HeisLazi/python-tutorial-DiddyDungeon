@@ -2333,3 +2333,14 @@ blocked by F-080.
 Verification: Windows frontend source tests are **72/72**, Vite transforms
 **1,346 modules**, and `git diff --check` passes; no state, learner file, PTY
 or hosted migration changed. Browser K&M remains blocked by F-080.
+
+## Hub exposed locked future identities — F-151
+
+| ID | Severity | Area | Finding | Status |
+|---|---|---|---|---|
+| F-151 | P1 | Hub / Journal presentation | Hub, legacy quest context and the compatibility journal rendered names/concepts for locked chapters or encounters, leaking future campaign identity instead of preserving the silhouette/unknown contract. | Fixed by hiding locked names behind `Unknown chapter`/`Unknown encounter`, using generic hidden-until-clear labels, and adding a dashed locked-silhouette treatment. |
+
+Verification: Windows frontend source tests are **73/73**, Vite transforms
+**1,346 modules**, and the WSL backend suite is **116/116**; no state,
+learner file, PTY or hosted migration changed. Browser K&M remains blocked by
+F-080.

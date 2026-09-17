@@ -791,6 +791,22 @@
   scrollbar-width: thin;
 }
 
+/* F-151: future chapters and encounters stay silhouettes until the campaign
+   state service unlocks them. Keep their identity hidden without making the
+   locked path look like a broken/missing card. */
+.chapter-card.locked .chapter-art,
+.encounter-silhouette.locked > span {
+  color: var(--dim);
+  border-style: dashed;
+  background: color-mix(in srgb, var(--panel3) 72%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--line2) 38%, transparent);
+}
+.encounter-silhouette.locked strong {
+  color: var(--muted);
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
 /* F-136: finish SVG parity on route, quest and Dungeon markers. Decorative
    status marks remain paired with visible labels; only their font-dependent
    glyphs are removed. */

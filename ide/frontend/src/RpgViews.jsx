@@ -185,7 +185,7 @@ export function ContextPanel({ activeView, campaign, files, activePath, openFile
               {(activeProject?.mobs || []).map((mob) => (
                 <div key={mob.name} className={`context-row ${mob.status}`}>
                   <span aria-hidden="true"><RouteIcon id={mob.status === 'available' ? 'flame' : isMobDefeated(mob.status) ? 'shield' : 'lock'} /></span>
-                  <span>{mob.name}</span>
+                  <span>{mob.status === 'locked' ? 'Unknown encounter' : mob.name}</span>
                 </div>
               ))}
             </div>
@@ -425,13 +425,13 @@ function HubScreen({ progress, revision, onOpen }) {
         <div className="card-heading"><span>MAIN QUEST · CHAPTERS</span><b>{activeProject.progress ?? 0}%</b></div>
         <div className="chapter-grid">{projects.map((project, index) => {
           const locked = project.status === 'locked' || (project.status !== 'active' && !project.completed)
-          return <article key={project.id || project.name || index} className={`chapter-card ${locked ? 'locked' : project.completed ? 'complete' : 'active'}`}><div className="chapter-art" aria-hidden="true"><RouteIcon id={locked ? 'lock' : project.completed ? 'shield' : 'codex'} /></div><div><span className="chapter-category">{project.category || project.type || 'chapter'}</span><h3>{locked ? (project.name || `Chapter ${index + 1}`) : project.name}</h3><p>{locked ? 'Future chapter · details unlock after the previous clear.' : project.summary || project.description || (project.status === 'active' ? 'Continue the current learning path.' : 'Verified chapter complete.')}</p></div>{project.status === 'active' && <button type="button" onClick={() => onOpen?.('codex')}>Open Codex quest</button>}</article>
+          return <article key={project.id || project.name || index} className={`chapter-card ${locked ? 'locked' : project.completed ? 'complete' : 'active'}`}><div className="chapter-art" aria-hidden="true"><RouteIcon id={locked ? 'lock' : project.completed ? 'shield' : 'codex'} /></div><div><span className="chapter-category">{project.category || project.type || 'chapter'}</span><h3>{locked ? 'Unknown chapter' : project.name || `Chapter ${index + 1}`}</h3><p>{locked ? 'Future chapter · details unlock after the previous clear.' : project.summary || project.description || (project.status === 'active' ? 'Continue the current learning path.' : 'Verified chapter complete.')}</p></div>{project.status === 'active' && <button type="button" onClick={() => onOpen?.('codex')}>Open Codex quest</button>}</article>
         })}</div>
         {!projects.length && <p className="context-note">The campaign chapter list will appear after the state service loads.</p>}
       </section>
       <section className="game-card hub-encounters">
         <div className="card-heading"><span>ENCOUNTER PATH</span><b>{mobs.filter((mob) => isMobDefeated(mob.status)).length}/{mobs.length} cleared</b></div>
-        <div className="encounter-silhouette-grid">{mobs.map((mob, index) => { const locked = mob.status === 'locked'; return <article key={mob.name || index} className={`encounter-silhouette ${locked ? 'locked' : mob.status}`}><span aria-hidden="true"><RouteIcon id={locked ? 'lock' : isMobDefeated(mob.status) ? 'shield' : 'flame'} /></span><div><strong>{mob.name || `Encounter ${index + 1}`}</strong><small>{mob.category || mob.concept || 'Encounter'}</small></div></article> })}</div>
+        <div className="encounter-silhouette-grid">{mobs.map((mob, index) => { const locked = mob.status === 'locked'; return <article key={mob.name || index} className={`encounter-silhouette ${locked ? 'locked' : mob.status}`}><span aria-hidden="true"><RouteIcon id={locked ? 'lock' : isMobDefeated(mob.status) ? 'shield' : 'flame'} /></span><div><strong>{locked ? 'Unknown encounter' : mob.name || `Encounter ${index + 1}`}</strong><small>{locked ? 'Hidden until previous clear' : mob.category || mob.concept || 'Encounter'}</small></div></article> })}</div>
       </section>
     </div>
   )
@@ -714,9 +714,9 @@ function QuestJournal({ progress, revision, encounter, submitBattle, submitBoss,
           )}
           <div className="mob-path">
             {mobs.map((mob, index) => (
-              <div key={mob.name} className={`mob-node ${mob.status} ${index === currentIndex ? 'current' : ''}`}>
-                <span aria-hidden="true"><RouteIcon id={isMobDefeated(mob.status) ? 'shield' : index === currentIndex ? 'flame' : 'target'} /></span>
-                <div><strong>{mob.name}</strong><small>{mob.status === 'locked' ? 'Encounter hidden' : mob.concept || 'Encounter details pending'}</small></div>
+                <div key={mob.name} className={`mob-node ${mob.status} ${index === currentIndex ? 'current' : ''}`}>
+                  <span aria-hidden="true"><RouteIcon id={isMobDefeated(mob.status) ? 'shield' : index === currentIndex ? 'flame' : 'target'} /></span>
+                <div><strong>{mob.status === 'locked' ? 'Unknown encounter' : mob.name}</strong><small>{mob.status === 'locked' ? 'Encounter hidden' : mob.concept || 'Encounter details pending'}</small></div>
               </div>
             ))}
           </div>

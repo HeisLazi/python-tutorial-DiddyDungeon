@@ -223,6 +223,18 @@ test('legacy shell wires wide-route navigation back to the active view', () => {
   assert.match(legacy, /value === 'quests' \? 'codex'/)
 })
 
+test('Hub and legacy quest context hide locked future identities behind silhouettes', () => {
+  const views = source('../RpgViews.jsx')
+  const foundation = source('../foundation.css')
+
+  assert.match(views, /mob\.status === 'locked' \? 'Unknown encounter' : mob\.name/)
+  assert.match(views, /locked \? 'Unknown chapter' : project\.name/)
+  assert.match(views, /locked \? 'Hidden until previous clear' : mob\.category/)
+  assert.match(views, /mob\.status === 'locked' \? 'Unknown encounter' : mob\.name/)
+  assert.match(foundation, /F-151: future chapters and encounters stay silhouettes/)
+  assert.match(foundation, /\.chapter-card\.locked \.chapter-art,[\s\S]*?\.encounter-silhouette\.locked > span/)
+})
+
 test('legacy rail icon enhancement yields to the React-owned SVG rail', () => {
   const views = source('../RpgViews.jsx')
   const enhancements = source('../forgeEnhancements.js')
