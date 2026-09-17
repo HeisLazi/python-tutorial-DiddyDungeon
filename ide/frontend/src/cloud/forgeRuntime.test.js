@@ -318,7 +318,7 @@ test('Codex bookshelf uses finite pages and a calmer reading-room hierarchy', ()
   assert.match(views, /const bookShelfPageSize = 5/)
   assert.match(views, /shelfPages\.map\(\(page\)/)
   assert.match(views, /const bookPages = normalizedQuery \? filteredPages : pages/)
-  assert.match(views, /RouteIcon id=\{locked \? 'codex' : project\.completed \? 'shield'/)
+  assert.match(views, /data-testid="codex-chapter-select"/)
   assert.match(foundation, /F-133: make the Codex a quiet reading room/)
   assert.match(foundation, /\.codex-screen \.codex-page-list \{[\s\S]*?overflow: visible;/)
   assert.match(foundation, /\.codex-shelf-controls \{[\s\S]*?grid-template-columns: 23px auto 23px;/)
@@ -368,6 +368,19 @@ test('route, quest and Dungeon markers use the shared SVG vocabulary', () => {
   for (const icon of ['check', 'target', 'lock', 'plus']) assert.match(views, new RegExp(`['"]${icon}['"]`))
   assert.match(foundation, /F-136: finish SVG parity on route, quest and Dungeon markers/)
   assert.match(foundation, /\.dungeon-map-node > span svg,[\s\S]*?\.panel-title > button svg/)
+})
+
+test('Codex active quest rail stays compact while preserving chapter selection', () => {
+  const views = source('../RpgViews.jsx')
+  const foundation = source('../foundation.css')
+
+  assert.match(views, /data-testid="codex-chapter-select"/)
+  assert.match(views, /Choose campaign chapter/)
+  assert.match(views, /setSelectedChapterId\(event\.target\.value\)/)
+  assert.doesNotMatch(views, /className="codex-chapter-list"/)
+  assert.doesNotMatch(foundation, /\.codex-chapter-list/)
+  assert.match(foundation, /F-137: keep the active-quest rail compact/)
+  assert.match(foundation, /\.codex-screen \.codex-chapter-select select \{[\s\S]*?min-height: 31px;/)
 })
 
 test('friend packages strip tracked player state before archive output', () => {

@@ -2980,6 +2980,21 @@ Current-source Forge tests pass **46/46**. A clean Linux archive passed
 Browser K&M remains unavailable because the in-app webview could not attach
 (F-080); no visual-device acceptance claim is made.
 
+### Codex compact active-quest rail — F-137
+
+The left Codex rail now keeps the active chapter chooser as a bounded native
+selector rather than stacking every chapter card beside the bookshelf. Locked,
+current, complete and available labels remain in the options; the current mob
+summary remains visible below it, and the bookshelf/page controls retain their
+finite behavior. The obsolete chapter-list CSS was removed so the old stacked
+rail cannot reappear through a stale selector. No projection, reward, state
+authority, revision polling, learner-file or PTY behavior changed.
+
+Current-source Forge tests pass **47/47**. A clean Linux archive passed
+**66/66** frontend tests and a Vite build transforming **1,346 modules**.
+Browser K&M remains unavailable because the in-app webview could not attach
+(F-080), so no visual-device acceptance claim is made.
+
 ### Local sync simulator recheck — F-126
 
 The current branch was rechecked with

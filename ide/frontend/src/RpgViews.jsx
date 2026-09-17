@@ -994,13 +994,14 @@ function Codex({ progress, revision, codexProjection, encounter, submitBattle, s
             <h3>{chapterSelection.name || 'No active chapter'}</h3>
             <p>{progress.current_quest || chapterSelection.summary || chapterSelection.description || 'Choose a chapter to inspect its current path.'}</p>
             <div className="codex-sidebar-progress"><span>{chapterSelection.progress ?? 0}% complete</span><span>{chapterSelection.id === activeProject.id || chapterSelection.branch === activeProject.branch ? `${clearedMobCount}/${mobs.length} cleared` : 'chapter record'}</span></div>
-            <div className="codex-chapter-list" aria-label="Campaign chapters">
+            <label className="codex-chapter-select" data-testid="codex-chapter-select"><span>CHAPTER PATH</span><select value={String(selectedChapterId)} onChange={(event) => setSelectedChapterId(event.target.value)} aria-label="Choose campaign chapter">
               {(progress.projects || []).map((project, index) => {
                 const locked = project.status === 'locked' || (project.status !== 'active' && !project.completed)
                 const projectId = String(project.id || project.branch || project.name || index)
-                return <button key={projectId} type="button" className={`${projectId === String(selectedChapterId) ? 'active ' : ''}${locked ? 'locked' : ''}`} onClick={() => !locked && setSelectedChapterId(projectId)} disabled={locked} data-testid={`codex-chapter-${projectId}`}><span aria-hidden="true"><RouteIcon id={locked ? 'codex' : project.completed ? 'shield' : project.status === 'active' ? 'flame' : 'codex'} /></span><strong>{locked ? 'Unknown chapter' : project.name || `Chapter ${index + 1}`}</strong><small>{locked ? 'Locked' : project.status === 'active' ? 'Current chapter' : project.completed ? 'Complete' : 'Available'}</small></button>
+                const suffix = locked ? 'Locked' : project.status === 'active' ? 'Current chapter' : project.completed ? 'Complete' : 'Available'
+                return <option key={projectId} value={projectId} disabled={locked}>{locked ? 'Unknown chapter' : project.name || `Chapter ${index + 1}`} · {suffix}</option>
               })}
-            </div>
+            </select></label>
             <div className="codex-sidebar-mobs" aria-label="Current chapter encounters">
               {(chapterSelection.mobs || []).map((mob, index) => {
                 const isCurrent = chapterSelection.id === activeProject.id || chapterSelection.branch === activeProject.branch ? index === currentIndex : mob.status === 'available'

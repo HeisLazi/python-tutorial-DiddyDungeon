@@ -782,3 +782,13 @@ remains blocked by F-080; no save, learner file, PTY or hosted transport changed
 Verification: current-source Forge runtime tests **46/46**, clean archive
 frontend tests **65/65**, and Vite build **1,346 modules** passed. Browser K&M
 remains blocked by F-080; no save, learner file, PTY or hosted transport changed.
+
+## Codex active-quest rail still felt like an infinite feed — 2026-09-17 (F-137)
+
+| ID | Severity | Finding | Status |
+|---|---|---|---|
+| F-137 | P1 | Eight chapter buttons sat beside the bookshelf in the same left rail. Even with the finite shelf and page body, the active-quest area dominated the Codex and read like another growing scroll column. | Fixed with a native bounded chapter selector and a compact state-owned mob summary. Removed the obsolete chapter-list rules and kept chapter lock/current/completed labels in the selector options. |
+
+Verification: current-source Forge tests **47/47**; clean archive frontend
+tests **66/66** and Vite build **1,346 modules**. Browser K&M remains blocked by
+F-080; no state, learner file, PTY or hosted transport changed.

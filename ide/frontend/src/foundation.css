@@ -138,16 +138,7 @@
 .codex-active-quest-sidebar h3 { margin: 0; color: var(--text); font: 800 14px ui-monospace, monospace; }
 .codex-active-quest-sidebar p { margin: 0; color: var(--muted); font-size: 10px; line-height: 1.45; }
 .codex-sidebar-progress { display: flex; justify-content: space-between; gap: 7px; color: var(--dim); font: 8px ui-monospace, monospace; text-transform: uppercase; }
-.codex-chapter-list,.codex-sidebar-mobs { display: grid; gap: 4px; }
-.codex-chapter-list { padding-top: 7px; border-top: 1px solid var(--line); }
-.codex-chapter-list button { display: grid; grid-template-columns: 18px 1fr; gap: 1px 6px; align-items: center; padding: 6px 7px; border: 1px solid transparent; border-radius: 7px; background: transparent; text-align: left; color: var(--muted); }
-.codex-chapter-list button > span { grid-row: 1 / 3; display: grid; place-items: center; width: 17px; height: 17px; border: 1px solid var(--line2); border-radius: 50%; color: var(--dim); font-size: 9px; }
-.codex-chapter-list button strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 800 9px ui-monospace, monospace; }
-.codex-chapter-list button small { font: 8px ui-monospace, monospace; color: var(--dim); }
-.codex-chapter-list button:hover:not(:disabled),.codex-chapter-list button:focus-visible,.codex-chapter-list button.active { border-color: color-mix(in srgb, var(--gold) 45%, var(--line)); background: color-mix(in srgb, var(--gold) 9%, var(--panel2)); color: var(--text); }
-.codex-chapter-list button.active > span { border-color: var(--gold); color: var(--gold); }
-.codex-chapter-list button.locked { opacity: .48; cursor: not-allowed; }
-.codex-sidebar-mobs { margin-top: 2px; }
+.codex-sidebar-mobs { display: grid; gap: 4px; margin-top: 2px; }
 .codex-sidebar-mobs > div { display: grid; grid-template-columns: 18px minmax(0,1fr) auto; gap: 6px; align-items: center; padding: 4px 6px; color: var(--muted); }
 .codex-sidebar-mobs > div > span { display: grid; place-items: center; width: 17px; height: 17px; border: 1px solid var(--line2); border-radius: 50%; font-size: 8px; }
 .codex-sidebar-mobs > div strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 9px ui-monospace, monospace; }
@@ -689,9 +680,7 @@
 .codex-screen .codex-page-list button small { color: var(--dim); text-align: right; }
 .codex-screen .codex-page-list button.active { border-color: color-mix(in srgb, var(--gold) 50%, var(--line)); background: color-mix(in srgb, var(--gold) 10%, var(--panel)); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--gold) 9%, transparent); }
 .codex-screen .codex-page-list button.active::before { background: var(--gold); }
-.codex-screen .codex-chapter-list button > span,
 .codex-screen .codex-sidebar-mobs > div > span { border: 0; background: transparent; }
-.codex-screen .codex-chapter-list button > span svg,
 .codex-screen .codex-sidebar-mobs > div > span svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
 .codex-screen .codex-book-page {
   padding: 21px 26px 24px;
@@ -830,3 +819,39 @@
 .dungeon-mob-sigil svg { width: 17px; height: 17px; }
 .boss-phase-list b { display: inline-grid; place-items: center; }
 .panel-title > button { display: inline-grid; place-items: center; }
+
+/* F-137: keep the active-quest rail compact so the bookshelf, not an eight
+   chapter list, owns the Codex's visual weight. Native select navigation keeps
+   every unlocked chapter reachable without another scrolling column. */
+.codex-screen .codex-chapter-select {
+  display: grid;
+  gap: 5px;
+  margin: 9px 0 4px;
+  padding-top: 9px;
+  border-top: 1px solid var(--line);
+}
+.codex-screen .codex-chapter-select > span {
+  color: var(--dim);
+  font: 800 8px ui-monospace, monospace;
+  letter-spacing: .1em;
+}
+.codex-screen .codex-chapter-select select {
+  width: 100%;
+  min-width: 0;
+  min-height: 31px;
+  padding: 6px 8px;
+  border: 1px solid color-mix(in srgb, var(--gold) 28%, var(--line));
+  border-radius: 7px;
+  background: color-mix(in srgb, var(--panel2) 84%, transparent);
+  color: var(--text);
+  font: 800 9px ui-monospace, monospace;
+}
+.codex-screen .codex-chapter-select select:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--gold) 60%, transparent);
+  outline-offset: 1px;
+}
+.codex-screen .codex-sidebar-mobs {
+  margin-top: 5px;
+  padding-top: 5px;
+  border-top: 1px solid color-mix(in srgb, var(--line) 75%, transparent);
+}

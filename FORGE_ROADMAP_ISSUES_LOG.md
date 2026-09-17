@@ -2189,3 +2189,14 @@ Verification: current-source Forge runtime tests pass **46/46**; clean Linux
 archive frontend tests pass **65/65** and Vite transforms **1,346 modules**.
 Browser K&M remains unavailable in this environment (F-080), so visual-device
 acceptance is still open.
+
+## Codex compact active-quest rail — F-137
+
+| ID | Severity | Area | Finding | Status |
+|---|---|---|---|---|
+| F-137 | P1 | Codex presentation | The active quest sidebar rendered every chapter as a stacked button list beside the bookshelf, consuming the finite rail and recreating the crowded/infinite-feed feel as chapters accumulated. | Fixed with a bounded native chapter selector, preserving unlocked/locked status and selected chapter state while leaving the current mob summary and finite bookshelf visible. The obsolete chapter-list CSS was removed so the legacy stack cannot return accidentally. |
+
+Verification: current-source Forge runtime tests pass **47/47**. The clean
+Linux archive passed **66/66** frontend tests and the Vite build transformed
+**1,346 modules**. Browser K&M remains unavailable in this environment (F-080),
+so visual-device acceptance is still open.

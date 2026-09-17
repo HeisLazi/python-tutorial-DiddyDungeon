@@ -865,3 +865,19 @@ Current-source Forge tests are **46/46**. Clean Linux archive frontend tests
 pass **65/65** and the Vite build transforms **1,346 modules**. Browser K&M
 remains the visual publication gate (F-080); hosted sync and real-device
 acceptance remain separate roadmap gates.
+
+## Current checkpoint — 2026-09-17 — Codex compact active-quest rail
+
+F-137 removes the last stacked chapter rail from the Codex reading room. The
+active chapter is selected through a bounded native selector with state-owned
+locked/current/complete labels; the current encounter summary remains visible,
+while the bookshelf stays paged and the selected book keeps its bounded reader.
+The obsolete chapter-list CSS is gone, preventing the old infinite-feed shape
+from returning through a legacy rule. This is presentation-only: state-service
+authority, reward events, revision polling, learner files and PTY lifecycles
+remain unchanged.
+
+Current-source Forge tests are **47/47**. Clean Linux archive frontend tests
+pass **66/66** and the Vite build transforms **1,346 modules**. Browser K&M
+remains the visual publication gate (F-080); hosted sync and real-device
+acceptance remain separate roadmap gates.
