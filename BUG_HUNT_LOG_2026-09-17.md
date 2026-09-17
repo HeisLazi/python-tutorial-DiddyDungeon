@@ -161,6 +161,15 @@ The in-app browser again timed out before attaching a tab to the isolated
 runtime, so no new browser K&M score is claimed for this account pass. No
 Playwright, user-save edit, or existing PTY restart was used.
 
+## Browser attach recheck — exact-tip disposable runtime (F-080)
+
+An exact-tip clean ext4 archive launched successfully on disposable ports
+`7462/5262` with an explicitly migrated local cache; the guarded backend and
+Vite server both reached ready state. The Codex in-app browser then timed out
+waiting for its webview to attach before any click, key, scroll or typing
+action. The runtime, temporary checkout and derived cache were stopped/removed,
+so this remains an environment limitation and provides no new K&M claim.
+
 ## Sync-status copy recheck — 2026-09-17
 
 The signed-in cache detail still described Projects and Codex as local even
