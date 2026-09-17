@@ -21,7 +21,6 @@ const commands = [
   { label: 'Submit recent run to PYR', keys: 'Ctrl+Shift+Enter', run: () => document.querySelector('[data-qol-submit]')?.click() },
   { label: 'Open Forge', run: () => clickRail('Forge') },
   { label: 'Open Tutor Notebook', run: () => clickRail('Tutor Notebook') },
-  { label: 'Open Quest Journal', run: () => clickRail('Quest Journal') },
   { label: 'Open Codex', run: () => clickRail('Codex') },
   { label: 'Open Character', run: () => clickRail('Character') },
   { label: 'Open Homestead', run: () => clickRail('Homestead') },
