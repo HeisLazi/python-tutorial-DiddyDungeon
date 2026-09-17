@@ -166,3 +166,14 @@ pre-existing runtimes.
 | Code editor → Map & route | passed | Map retained Floor 1 / Room 4 and route cells after switching tabs |
 | Runtime continuity | passed | shell and AI both showed `CONNECTED`; no PTY reset |
 | Browser diagnostics | passed | no warning/error entries before disposable runtime teardown |
+
+## Follow-up slice — adaptive Dungeon mob identity — 2026-09-17
+
+The next disposable runtime rehydrated the current Dungeon checkpoint with the
+patched state service. Browser K&M showed the state-owned current mob banner:
+`The Boundary Hunter`, `bug hunt · Input loops and control flow`, `PHASE I`, and
+`DIFFICULTY 1`. The selector still exposed no future mob names or questions;
+only the issued encounter carried the descriptor. Shell and AI remained
+`CONNECTED`, and browser warning/error logs were empty before teardown.
+Backend tests cover the descriptor and verdict event (`97/97` total); the
+frontend source suite is **39/39**.

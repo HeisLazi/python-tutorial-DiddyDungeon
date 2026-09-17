@@ -53,8 +53,11 @@ gate.
 
 Supported question types include true/false, multiple choice, short explanation,
 code tracing, output prediction, bug hunting and refactoring. A custom mob is
-named for the weak concept it tests; a boss combines several different types
-instead of inventing arbitrary rewards.
+named by the state service for the current question style and carries the
+recorded weak concept as its focus; its phase rises with validated difficulty.
+The public projection contains only that current mob identity, never future
+rooms, hidden answer keys or an invented reward. A boss combines several
+different types instead of inventing arbitrary rewards.
 
 Difficulty rises from validated evidence (weak concepts recur, demonstrated
 mastery unlocks harder variants) with bounded recovery questions after misses.

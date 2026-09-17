@@ -1016,6 +1016,7 @@ function DungeonScreen({ dungeon, revision, onStart, onChoose, onRest, onMarketP
           <div className="screen-grid two">
             <section className={`game-card dungeon-room-card ${run.room_type || 'selector'}`}>
               <div className="card-heading"><span>CURRENT ROOM</span><b>{String(run.room_type || 'encounter').toUpperCase()}</b></div>
+              {run.room_type === 'encounter' && run.encounter && <div className="dungeon-mob-banner" aria-label="Current adaptive learning mob"><span className="dungeon-mob-sigil" aria-hidden="true">◆</span><div><small>ADAPTIVE MOB · PHASE {run.encounter.phase || 'I'}</small><strong>{run.encounter.name}</strong><span>{run.encounter.category} · {run.encounter.concept_id}</span></div><b>DIFFICULTY {run.encounter.difficulty ?? question.difficulty ?? 1}</b></div>}
               {run.room_type === 'selector' ? (
                 <div className="dungeon-room-action"><h3>Route selector</h3><p>Choose a room on the map above. The next challenge is issued only after the route is committed.</p></div>
               ) : run.room_type === 'rest' ? (

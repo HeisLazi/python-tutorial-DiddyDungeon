@@ -156,6 +156,16 @@ test('Dungeon exposes a state-preserving map and editable code-editor tab', () =
   assert.match(views, /Open code editor/)
 })
 
+test('Dungeon renders state-owned adaptive mob identity and reward feedback', () => {
+  const views = source('../RpgViews.jsx')
+  const app = source('../AppV2.jsx')
+
+  assert.match(views, /dungeon-mob-banner/)
+  assert.match(views, /run\.encounter\.name/)
+  assert.match(app, /title: event\.mob_name \? 'MOB DEFEATED'/)
+  assert.match(app, /event\.mob_name \? 'MOB COUNTERATTACK'/)
+})
+
 test('Campaign completion keeps the boss gate and state-service boundary explicit', () => {
   const app = source('../AppV2.jsx')
   const views = source('../RpgViews.jsx')

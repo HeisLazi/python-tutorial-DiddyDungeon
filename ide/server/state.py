@@ -98,6 +98,22 @@ DUNGEON_ROUTE_CHOICES: tuple[dict[str, str], ...] = (
     },
 )
 
+# A Dungeon room is a custom learning mob, not a second campaign enemy list.
+# These names are server-owned presentation labels for the currently issued
+# question type; the concept focus, phase and all score/reward values remain
+# derived from the canonical run/question and are never guessed by React.
+DUNGEON_MOB_ARCHETYPES: dict[str, dict[str, str]] = {
+    "true_false": {"name": "The Verdict Wisp", "category": "signal check"},
+    "multiple_choice": {"name": "The Forked Path", "category": "choice reasoning"},
+    "short_explanation": {"name": "The Echo Scribe", "category": "explanation"},
+    "code_trace": {"name": "The Trace Weaver", "category": "execution trace"},
+    "bug_hunt": {"name": "The Boundary Hunter", "category": "bug hunt"},
+    "code_checkpoint": {"name": "The Checkpoint Golem", "category": "code craft"},
+    "output_prediction": {"name": "The Output Oracle", "category": "prediction"},
+    "refactoring": {"name": "The Shape Shifter", "category": "refactoring"},
+}
+_DUNGEON_MOB_PHASES = ("I", "II", "III", "IV")
+
 PUBLIC_ACTORS = frozenset({"player", "pyr"})
 SYSTEM_ACTOR = "system"
 
@@ -1328,6 +1344,40 @@ class LocalStateService:
         )
 
     @classmethod
+    def _dungeon_mob_spec(cls, run: Mapping[str, Any]) -> dict[str, Any] | None:
+        """Return the safe identity for the currently issued learning mob.
+
+        A mob exists only for the current encounter question.  Selector rooms
+        deliberately return ``None`` so the browser cannot discover future
+        enemies, prompts or answer keys before it commits a route.
+        """
+
+        if run.get("room_type") != "encounter":
+            return None
+        question = run.get("question")
+        if not isinstance(question, Mapping):
+            return None
+        question_type = str(question.get("question_type") or "question")
+        archetype = DUNGEON_MOB_ARCHETYPES.get(
+            question_type,
+            {"name": "The Unwritten Trial", "category": "adaptive challenge"},
+        )
+        try:
+            difficulty = max(1, min(MAX_DUNGEON_DIFFICULTY, int(question.get("difficulty", 1))))
+        except (TypeError, ValueError):
+            difficulty = 1
+        phase_index = min(len(_DUNGEON_MOB_PHASES) - 1, (difficulty - 1) // 3)
+        return {
+            "id": f"{question.get('id', 'dungeon-question')}-mob",
+            "name": archetype["name"],
+            "category": archetype["category"],
+            "concept_id": str(question.get("concept_id") or run.get("concept_id") or "python-basics")[:MAX_IDENTIFIER_LENGTH],
+            "question_type": question_type,
+            "difficulty": difficulty,
+            "phase": _DUNGEON_MOB_PHASES[phase_index],
+        }
+
+    @classmethod
     def _dungeon_route_choices(cls, run: Mapping[str, Any]) -> list[dict[str, str]]:
         """Build the answer-free route selector for the current map node."""
 
@@ -1399,6 +1449,7 @@ class LocalStateService:
         run["editor_content"] = ""
         run["updated_at"] = _utc_now()
         question_id = None
+        mob = None
         if kind == "encounter":
             run["concept_id"] = self._dungeon_adaptive_concept(progress, str(run.get("concept_id") or "python-basics"))
             run["question_number"] = self._counter(run, "question_number") + 1
@@ -1409,6 +1460,7 @@ class LocalStateService:
             )
             run["question"] = question
             question_id = question["id"]
+            mob = self._dungeon_mob_spec(run)
         else:
             run["question"] = None
         return Mutation(
@@ -1421,6 +1473,9 @@ class LocalStateService:
                 "choice_id": choice_id,
                 "room_type": kind,
                 "question_id": question_id,
+                "mob_name": mob["name"] if mob else None,
+                "mob_category": mob["category"] if mob else None,
+                "mob_phase": mob["phase"] if mob else None,
                 "editor_reset": True,
                 "reason": "dungeon_route_selected",
             },
@@ -1482,6 +1537,7 @@ class LocalStateService:
             "ended_at": run.get("ended_at"),
             "loadout": {},
             "question": None,
+            "encounter": None,
             "room_choices": [],
             "editor_content": "",
             "last_result": None,
@@ -1509,6 +1565,7 @@ class LocalStateService:
                 for field in ("id", "question_type", "concept_id", "difficulty", "prompt", "options")
                 if field in question
             }
+            projection["encounter"] = self._dungeon_mob_spec(run)
         elif status == "active" and run.get("room_type") not in {"rest", "market", "selector"}:
             raise StateCommandError("Active Dungeon run has no current question", status_code=500)
         raw_choices = run.get("room_choices", [])
@@ -1533,7 +1590,7 @@ class LocalStateService:
         if isinstance(last_result, Mapping):
             projection["last_result"] = {
                 key: last_result[key]
-                for key in ("outcome", "question_id", "score_delta", "coins_delta", "damage", "evidence_id", "reason")
+                for key in ("outcome", "question_id", "mob_name", "score_delta", "coins_delta", "damage", "evidence_id", "reason")
                 if key in last_result
             }
         history = run.get("history")
@@ -1541,7 +1598,7 @@ class LocalStateService:
             projection["history"] = [
                 {
                     key: item[key]
-                    for key in ("room", "floor", "question_id", "outcome", "evidence_id", "score_delta", "coins_delta", "damage")
+                    for key in ("room", "floor", "question_id", "mob_name", "outcome", "evidence_id", "score_delta", "coins_delta", "damage")
                     if key in item
                 }
                 for item in history[-50:]
@@ -1701,6 +1758,7 @@ class LocalStateService:
                 "updated_at": _utc_now(),
             }
         )
+        mob = self._dungeon_mob_spec(run)
         return Mutation(
             True,
             {"run": self.dungeon_projection(progress)},
@@ -1712,6 +1770,9 @@ class LocalStateService:
                 "question_id": question["id"],
                 "question_type": question["question_type"],
                 "concept_id": question["concept_id"],
+                "mob_name": mob["name"] if mob else None,
+                "mob_category": mob["category"] if mob else None,
+                "mob_phase": mob["phase"] if mob else None,
                 "previous_question_id": previous_question.get("id"),
                 "editor_reset": True,
                 "reason": "dungeon_question_rotated",
@@ -1739,6 +1800,7 @@ class LocalStateService:
         question = run.get("question") if isinstance(run.get("question"), Mapping) else None
         if question is None or question.get("id") != question_id or run.get("room_type") != "encounter":
             raise StateCommandError("Dungeon question changed; reload the current room", status_code=409)
+        mob = self._dungeon_mob_spec(run)
         difficulty = self._integer(question.get("difficulty", 1), "question.difficulty", minimum=1, maximum=MAX_DUNGEON_DIFFICULTY)
         run["attempts"] = self._counter(run, "attempts") + 1
         score_delta = 0
@@ -1764,6 +1826,7 @@ class LocalStateService:
         result_record = {
             "outcome": verdict,
             "question_id": question_id,
+            "mob_name": mob["name"] if mob else None,
             "score_delta": score_delta,
             "coins_delta": coins_delta,
             "damage": damage,
@@ -1789,6 +1852,9 @@ class LocalStateService:
             "floor": run.get("floor", 1),
             "room": run.get("room", 1),
             "question_id": question_id,
+            "mob_name": mob["name"] if mob else None,
+            "mob_category": mob["category"] if mob else None,
+            "mob_phase": mob["phase"] if mob else None,
             "outcome": verdict,
             "score_delta": score_delta,
             "coins_delta": coins_delta,

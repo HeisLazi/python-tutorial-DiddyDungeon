@@ -538,16 +538,18 @@ function AppV2() {
         notifications.push({
           id: `${event.id}:dungeon-clear`,
           kind: 'objective',
-          title: 'DUNGEON ROOM CLEARED',
-          body: `+${Number(event.score_delta ?? 0)} score · +${Number(event.coins_delta ?? 0)} run coins`,
-          detail: `Next room ${event.next_room ?? 'ready'} · ${event.next_room_type || 'encounter'}`,
+          title: event.mob_name ? 'MOB DEFEATED' : 'DUNGEON ROOM CLEARED',
+          body: event.mob_name || `+${Number(event.score_delta ?? 0)} score · +${Number(event.coins_delta ?? 0)} run coins`,
+          detail: event.mob_name
+            ? `+${Number(event.score_delta ?? 0)} score · +${Number(event.coins_delta ?? 0)} run coins · next room ${event.next_room ?? 'ready'}`
+            : `Next room ${event.next_room ?? 'ready'} · ${event.next_room_type || 'encounter'}`,
         })
       } else {
         notifications.push({
           id: `${event.id}:dungeon-hit`,
           kind: 'warning',
-          title: event.run_died ? 'DUNGEON RUN ENDED' : 'DUNGEON COUNTERATTACK',
-          body: event.run_died ? `Score ${event.score ?? 0}` : `−${Number(event.damage ?? 0)} HP`,
+          title: event.run_died ? 'DUNGEON RUN ENDED' : event.mob_name ? 'MOB COUNTERATTACK' : 'DUNGEON COUNTERATTACK',
+          body: event.run_died ? `Score ${event.score ?? 0}` : event.mob_name ? `${event.mob_name} · −${Number(event.damage ?? 0)} HP` : `−${Number(event.damage ?? 0)} HP`,
           detail: event.run_died ? 'Death resets this run; Campaign is untouched' : 'Validated result; the current room remains active',
         })
       }

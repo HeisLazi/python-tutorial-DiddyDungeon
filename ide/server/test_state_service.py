@@ -228,6 +228,9 @@ class StateServiceBehaviorTests(unittest.TestCase):
         run = chosen["result"]["run"]
         self.assertEqual(run["room_type"], "encounter")
         self.assertIsNotNone(run["question"])
+        self.assertEqual(run["encounter"]["name"], "The Verdict Wisp")
+        self.assertEqual(run["encounter"]["category"], "signal check")
+        self.assertEqual(run["encounter"]["phase"], "I")
 
         saved = service.apply(
             "dungeon_save_editor",
@@ -345,6 +348,7 @@ class StateServiceBehaviorTests(unittest.TestCase):
                 },
             )
             self.assertEqual(result["result"]["outcome"], "correct")
+            self.assertTrue(result["event"]["mob_name"])
             if index < 3:
                 selector = service.dungeon_projection(service.snapshot())
                 run = service.apply("dungeon_choose_room", {"run_id": run["run_id"], "choice_id": selector["room_choices"][0]["id"]}, "player")["result"]["run"]
