@@ -945,3 +945,14 @@ player state.
 The guard returned **MIGRATION GUARD: GREEN** and its focused tests pass **5/5**.
 Applying the migration, authenticated two-device projection and PTY acceptance
 remain approval-gated.
+
+## Current checkpoint — 2026-09-17 — Codex primitive height cleanup
+
+F-143 removes the stale 620px minimum from the shared `.codex-library`
+primitive. The viewport-pinned Codex now owns its height from the first matching
+rule, reducing compatibility-shell cascade risk while retaining the finite
+bookshelf, encounter/notes and mastery pagers. A frontend source assertion
+guards the primitive against any future 5xx/6xx feed-sized minimum. Windows
+frontend tests **69/69** and the Vite build (**1,346 modules**) pass. No state,
+sync, learner-file or PTY behavior changed; visual K&M (F-080) remains the
+relevant unverified check.

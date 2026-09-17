@@ -840,3 +840,13 @@ K&M remains environment-blocked by F-080.
 
 Verification: guarded read-only run **GREEN**, focused tests **5/5**. No
 Supabase write, seed, save or PTY change occurred.
+
+## Codex primitive still carried a feed-sized minimum — 2026-09-17 (F-143)
+
+| ID | Severity | Finding | Status |
+|---|---|---|---|
+| F-143 | P1 | The shared `.codex-library` rule still declared `min-height: 620px`. Later overrides normally bounded it, but that stale primitive could win in a compatibility/cascade path and recreate the infinite-scroll layout. | Changed the shared primitive to `min-height: 0` and added a frontend regression assertion for the exact rule plus a guard against 5xx/6xx minimum heights. |
+
+Verification: Windows frontend tests **69/69** and Vite build **1,346 modules**
+passed. No protected save, learner file, PTY or hosted state was touched; browser
+K&M remains environment-blocked by F-080.

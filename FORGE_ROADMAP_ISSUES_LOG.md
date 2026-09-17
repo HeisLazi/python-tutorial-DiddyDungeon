@@ -2250,3 +2250,12 @@ visual-device acceptance claim.
 Verification: the guarded default run returned **MIGRATION GUARD: GREEN** against
 linked project `ajnxexxcqfbozszwpjpk`; focused guard tests pass **5/5**. No hosted
 migration or seed was applied. Authenticated two-device acceptance remains open.
+
+## Codex shared height primitive retained a feed-sized minimum — F-143
+
+| ID | Severity | Area | Finding | Status |
+|---|---|---|---|---|
+| F-143 | P1 | Codex presentation | The final folio constraints were bounded, but the shared `.codex-library` primitive still declared a legacy 620px minimum. A compatibility shell or a reordered stylesheet could therefore reintroduce a feed-sized Codex before the viewport rules ran. | Fixed at the primitive: `.codex-library` now starts with `min-height: 0`; the viewport-pinned Codex remains the sole height owner. Added a source regression assertion so the legacy 5xx/6xx minimum cannot return. No state, reward, sync, learner-file or PTY behavior changed. |
+
+Verification: Windows frontend tests **69/69** and Vite build **1,346 modules**
+passed. Browser K&M remains environment-blocked by F-080.

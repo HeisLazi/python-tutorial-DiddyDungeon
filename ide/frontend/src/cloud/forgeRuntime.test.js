@@ -409,6 +409,14 @@ test('Codex folio fits the Forge viewport without inheriting the legacy 520px fe
   assert.match(foundation, /\.codex-screen \.codex-book-section \{[\s\S]*?flex: 1 1 0;[\s\S]*?height: auto;/)
 })
 
+test('Codex shared library primitive cannot reintroduce a feed-sized minimum', () => {
+  const foundation = source('../foundation.css')
+
+  assert.match(foundation, /\/\* The Codex owns its height from the viewport-pinned shell below\./)
+  assert.match(foundation, /\.codex-library \{ grid-template-columns: minmax\(210px, \.28fr\) minmax\(0, 1fr\); min-height: 0; \}/)
+  assert.doesNotMatch(foundation, /\.codex-library \{[^}]*min-height: (?:5|6)\d\dpx/)
+})
+
 test('friend packages strip tracked player state before archive output', () => {
   const packager = source('../../../../tools/questlab-package.ps1')
 

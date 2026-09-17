@@ -3072,3 +3072,16 @@ authority, revision, reward, sync, learner-file or PTY behavior changed.
 
 Verification: Windows frontend tests **68/68** and Vite build **1,346 modules**.
 Browser K&M remains blocked by F-080.
+
+### Codex primitive height cleanup — F-143 (2026-09-17)
+
+The finite Codex folio already pinned its viewport, but the shared
+`.codex-library` declaration still carried a legacy 620px minimum. That was a
+cascade risk for compatibility shells and could bring back the infinite-feed
+feel before the later folio rules applied. The primitive now starts at
+`min-height: 0`, and the frontend source suite asserts both the bounded rule and
+the absence of a 5xx/6xx legacy minimum. This is presentation-only: no state,
+reward, sync, learner-file, or PTY behavior changed.
+
+Verification: Windows frontend tests **69/69** and Vite build **1,346 modules**
+passed. Browser K&M remains blocked by F-080.
