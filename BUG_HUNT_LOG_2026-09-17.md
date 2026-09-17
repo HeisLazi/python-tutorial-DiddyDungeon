@@ -472,3 +472,12 @@ cloud transport and PTY lifecycles were untouched.
 
 Verification: staged frontend tests **50/50**, WSL backend **105/105**, and
 Vite production build **1,346 modules**. No canonical save or PTY was touched.
+
+## Friend bundle protection hunt — 2026-09-17 (F-107)
+
+| ID | Severity | Finding | Status |
+|---|---|---|---|
+| F-107 | P2 | `questlab-package.ps1` refused the ordinary learner checkout because untracked `dungeon.py` is protected workspace data, even though the bundle archives `HEAD` and should omit it. | Fixed the dirty-tree allowlist for `dungeon.py` and untracked `notes/`; committed source edits remain fail-closed and the archive still comes only from `git archive HEAD`. |
+
+The launcher contract regression passes. A post-commit package smoke is the
+release evidence for omission of protected files.

@@ -221,6 +221,8 @@ class LauncherContractTests(unittest.TestCase):
         self.assertIn("git archive", packager)
         self.assertIn("uncommitted progress.json", packager)
         self.assertIn("untracked tutor.py", packager)
+        self.assertIn("untracked tutor.py/dungeon.py", packager)
+        self.assertIn("notes(?:/|\\\\)", packager)
         self.assertIn("Compress-Archive", packager)
         self.assertIn("FRIEND_ONBOARDING.md", packager)
         self.assertIn("npm ci", packager)

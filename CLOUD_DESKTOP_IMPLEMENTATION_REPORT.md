@@ -2561,3 +2561,11 @@ Verification: staged frontend tests **50/50**, WSL backend **105/105**, and
 Vite production build (**1,346 modules**). No canonical save, cloud transport
 or PTY lifecycle changed; fresh browser K&M remains unavailable in this
 environment.
+
+### Friend bundle protected-file repair — F-107
+
+The guarded source packager now tolerates the normal learner checkout's
+untracked `dungeon.py` and `notes/` alongside the already-protected local save
+and `tutor.py`. It still refuses any committed-source edits and archives only
+`git archive HEAD`, so protected workspace files cannot leak into a friend
+bundle. A post-commit package smoke is required before calling this gate green.

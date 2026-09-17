@@ -25,7 +25,10 @@ if ($branch -ne $expectedBranch) {
 
 $dirty = @(& git -C $repoRoot status --porcelain=v1)
 $unexpected = @($dirty | Where-Object {
-    $_ -and $_ -notmatch '(^|\s)(progress\.json|tutor\.py)$'
+    # These are player/workspace files, not committed distribution source.
+    # They must never enter the bundle, but their presence must not prevent a
+    # friend package from being built.
+    $_ -and $_ -notmatch '(^|\s)(progress\.json|tutor\.py|dungeon\.py)$' -and $_ -notmatch '^\?\? notes(?:/|\\)'
 })
 if ($unexpected.Count -gt 0) {
     throw "Refusing to package a checkout with uncommitted source changes:`n$($unexpected -join "`n")"
@@ -47,8 +50,9 @@ $staging = Join-Path $tempRoot 'staging'
 New-Item -ItemType Directory -Path $staging -Force | Out-Null
 
 try {
-    # Archive HEAD, never the working tree: uncommitted progress.json and an
-    # untracked tutor.py can therefore never leak into a friend bundle.
+    # Archive HEAD, never the working tree: uncommitted progress.json,
+    # untracked tutor.py/dungeon.py and student notes can therefore never leak
+    # into a friend bundle.
     & git -C $repoRoot archive --format=tar --output=$archive HEAD
     if ($LASTEXITCODE -ne 0) { throw 'git archive failed.' }
     & tar -xf $archive -C $staging
