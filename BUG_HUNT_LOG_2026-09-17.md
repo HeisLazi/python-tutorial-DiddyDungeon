@@ -802,3 +802,13 @@ F-080; no state, learner file, PTY or hosted transport changed.
 Verification: Windows frontend tests **66/66**, Windows Vite build **1,346
 modules**, focused launcher tests **15/15**, and WSL backend tests **109/109**.
 No protected save, learner file or PTY was changed.
+
+## Codex folio overflow follow-up — 2026-09-17 (F-139)
+
+| ID | Severity | Finding | Status |
+|---|---|---|---|
+| F-139 | P1 | The Codex had shelf/record pagers, but the selected book body still exposed a full-height scrollbar. That left the exact “infinite scroll” feel the user reported, especially in compact Forge windows. | Fixed by making each visible book section a bounded folio page, paging mastery records four at a time, and keeping only the small workspace-note box scrollable when its content is long. |
+
+Verification: Windows frontend tests **67/67** and Vite build **1,346 modules**.
+No protected save, learner file, PTY or state-service behavior changed. Browser
+K&M remains environment-blocked by F-080.

@@ -855,3 +855,42 @@
   padding-top: 5px;
   border-top: 1px solid color-mix(in srgb, var(--line) 75%, transparent);
 }
+
+/* F-139: the Codex is a folio, not a social feed. Every visible book section
+   is a single bounded page; the bookshelf, book/section controls and the
+   record/mastery pagers decide what is visible. This removes the last
+   full-height reading scrollbar that made a small evidence set feel endless. */
+.codex-screen .codex-book-section {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  max-height: 100%;
+  overflow: hidden;
+  scrollbar-width: none;
+  overscroll-behavior: none;
+}
+.codex-screen .codex-book-section::-webkit-scrollbar { display: none; }
+.codex-screen .codex-page-grid {
+  min-height: 0;
+  overflow: hidden;
+}
+.codex-screen .codex-entry-detail,
+.codex-screen .codex-entry-insights,
+.codex-screen .codex-mastery-panel .skill-grid {
+  min-height: 0;
+  overflow: hidden;
+}
+.codex-screen .codex-entry-pager { margin-top: -2px; }
+.codex-screen .codex-mastery-pager { justify-content: space-between; }
+.codex-screen .codex-notes.workspace-notebook pre {
+  max-height: 9.5em;
+  overflow: auto;
+  scrollbar-width: thin;
+  overscroll-behavior: contain;
+}
+@media (max-width: 760px) {
+  /* The narrow index may still scroll between its chapter card and five-book
+     shelf, but the selected book itself remains a fixed folio page. */
+  .codex-screen .codex-index { overflow-y: auto; scrollbar-width: thin; }
+  .codex-screen .codex-book-section { overflow: hidden; }
+}

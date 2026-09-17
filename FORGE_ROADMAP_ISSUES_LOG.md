@@ -2211,3 +2211,13 @@ Verification: Windows frontend tests **66/66**, Windows Vite build **1,346
 modules**, focused launcher tests **15/15**, and WSL backend suite **109/109**.
 Browser K&M remains blocked by F-080; no protected save, learner file or PTY
 was changed.
+
+## Codex folio overflow follow-up — F-139
+
+| ID | Severity | Area | Finding | Status |
+|---|---|---|---|---|
+| F-139 | P1 | Codex presentation | The bookshelf and encounter paging were present, but the selected book still owned a full-height vertical scrollbar. On a small Forge window that made the Codex read like an infinite feed and hid the page/section controls behind scroll. | Fixed with a final folio rule: the visible book section is a bounded, non-scrolling page; encounter/notes targets and mastery records are explicitly paged, and only a bounded workspace-note box may scroll when a learner note is genuinely long. No state, reward, sync, learner-file or PTY behavior changed. |
+
+Verification: Windows frontend tests **67/67** and Vite build **1,346 modules**
+passed. Browser K&M remains blocked by F-080, so this is not presented as a
+visual-device acceptance claim.

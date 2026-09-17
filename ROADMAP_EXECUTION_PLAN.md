@@ -896,3 +896,17 @@ Windows frontend tests are **66/66**, the Windows Vite build transforms
 **1,346 modules**, focused launcher tests are **15/15**, and WSL backend tests
 are **109/109**. Browser K&M remains the visual gate (F-080); hosted sync and
 real-device acceptance remain separate roadmap gates.
+
+## Current checkpoint — 2026-09-17 — Codex folio overflow repair
+
+F-139 closes the remaining visible Codex complaint after the bookshelf and
+active-quest compaction work. The selected concept is now rendered as one
+bounded folio page instead of a full-height reading scrollbar. Encounter/Notes
+targets and mastery records use explicit pagers; only an individual long
+workspace note can scroll inside its own small note box. This remains a
+presentation-only slice and does not change state authority, revision polling,
+rewards, sync, learner files or PTYs.
+
+Windows frontend tests are **67/67** and the Vite build transforms **1,346
+modules**. Browser K&M remains the visual publication gate (F-080), while
+hosted/device milestones remain unchanged.

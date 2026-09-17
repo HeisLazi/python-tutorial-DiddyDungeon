@@ -785,6 +785,7 @@ function Codex({ progress, revision, codexProjection, encounter, submitBattle, s
   const [codexView, setCodexView] = useState('books')
   const [codexSection, setCodexSection] = useState('read')
   const [selectedChapterId, setSelectedChapterId] = useState(activeProject.id || activeProject.branch || activeProject.name || '')
+  const [masteryPage, setMasteryPage] = useState(0)
 
   const projectKey = (project) => String(project?.id || project?.branch || project?.name || '')
   const chapterSelection = (progress.projects || []).find((project) => projectKey(project) === String(selectedChapterId)) || activeProject
@@ -838,6 +839,10 @@ function Codex({ progress, revision, codexProjection, encounter, submitBattle, s
   const safeEntryShelfPage = Math.min(entryShelfPage, entryShelfCount - 1)
   const visibleEntries = selectedEntries.slice(safeEntryShelfPage * entryShelfPageSize, (safeEntryShelfPage + 1) * entryShelfPageSize)
   const selectedEntry = selectedEntries.find((entry) => entry.id === selectedEntryId) || selectedEntries[0]
+  const masteryPageSize = 4
+  const masteryPageCount = Math.max(1, Math.ceil(skills.length / masteryPageSize))
+  const safeMasteryPage = Math.min(masteryPage, masteryPageCount - 1)
+  const visibleSkills = skills.slice(safeMasteryPage * masteryPageSize, (safeMasteryPage + 1) * masteryPageSize)
   const selectedEntryIds = selectedEntries.map((entry) => entry.id).join('|')
   const codexMetrics = {
     booksWithEvidence: pages.filter((page) => (page.encounter_ids || []).length > 0).length,
@@ -873,6 +878,10 @@ function Codex({ progress, revision, codexProjection, encounter, submitBattle, s
   useEffect(() => {
     if (entryShelfPage >= entryShelfCount) setEntryShelfPage(Math.max(0, entryShelfCount - 1))
   }, [entryShelfCount, entryShelfPage])
+
+  useEffect(() => {
+    if (masteryPage >= masteryPageCount) setMasteryPage(Math.max(0, masteryPageCount - 1))
+  }, [masteryPage, masteryPageCount])
 
   useEffect(() => {
     setCodexSection('read')
@@ -1093,8 +1102,9 @@ function Codex({ progress, revision, codexProjection, encounter, submitBattle, s
               {codexSection === 'mastery' && (
                 <section className="codex-book-section codex-mastery-panel" data-testid="codex-mastery">
                   <div className="codex-section-heading"><div><span className="screen-kicker">MASTERY SIGNALS</span><h4>Validated growth</h4></div><span>{skills.length} concepts</span></div>
+                  {skills.length > masteryPageSize && <div className="codex-entry-pager codex-mastery-pager" data-testid="codex-mastery-pager"><button type="button" onClick={() => setMasteryPage((page) => Math.max(0, page - 1))} disabled={safeMasteryPage <= 0} aria-label="Previous mastery records">←</button><span>MASTERY {safeMasteryPage + 1} / {masteryPageCount}</span><button type="button" onClick={() => setMasteryPage((page) => Math.min(masteryPageCount - 1, page + 1))} disabled={safeMasteryPage >= masteryPageCount - 1} aria-label="Next mastery records">→</button></div>}
                   <div className="skill-grid">
-                    {skills.map((skill) => (
+                    {visibleSkills.map((skill) => (
                       <article key={skill.name} className={`skill-card ${skill.status}`}>
                         <div className="skill-icon" data-skill-shield={skill.shield?.tier || 'none'}><RouteIcon id={skill.shield?.tier !== 'none' ? 'shield' : 'codex'} /></div>
                         <div><small>{skill.name}</small><h3>{skill.concept}</h3></div>

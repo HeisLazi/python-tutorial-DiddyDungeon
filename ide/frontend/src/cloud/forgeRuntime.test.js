@@ -383,6 +383,19 @@ test('Codex active quest rail stays compact while preserving chapter selection',
   assert.match(foundation, /\.codex-screen \.codex-chapter-select select \{[\s\S]*?min-height: 31px;/)
 })
 
+test('Codex folio has no unbounded reading scroll and pages mastery records', () => {
+  const views = source('../RpgViews.jsx')
+  const foundation = source('../foundation.css')
+
+  assert.match(views, /const masteryPageSize = 4/)
+  assert.match(views, /data-testid="codex-mastery-pager"/)
+  assert.match(views, /visibleSkills\.map\(\(skill\)/)
+  assert.match(foundation, /F-139: the Codex is a folio, not a social feed/)
+  assert.match(foundation, /\.codex-screen \.codex-book-section \{[\s\S]*?overflow: hidden;[\s\S]*?scrollbar-width: none;/)
+  assert.match(foundation, /\.codex-screen \.codex-page-grid \{[\s\S]*?overflow: hidden;/)
+  assert.match(foundation, /\.codex-screen \.codex-book-section::-webkit-scrollbar \{ display: none; \}/)
+})
+
 test('friend packages strip tracked player state before archive output', () => {
   const packager = source('../../../../tools/questlab-package.ps1')
 

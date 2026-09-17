@@ -3022,3 +3022,16 @@ answer-free Dungeon checkpoint), detected stale mailbox/local revisions, and
 completed the explicit keep-device conflict choice. The source save digest was
 identical before and after the run. This validates local compare-and-swap
 behavior only; it does not replace an authenticated Supabase two-device run.
+
+### Codex folio overflow repair — F-139 (2026-09-17)
+
+The Codex bookshelf was already paged, but the selected book still had a
+full-height vertical scroll owner. That made a finite set of concepts look like
+an endless feed. The visible book section is now a bounded folio with no page
+scrollbar; encounter/Notes records remain paged and mastery records are paged
+four at a time. A learner's workspace note may still scroll inside its own
+small note box when necessary. This is presentation-only and does not change
+campaign authority, revisions, reward events, sync, learner files or PTYs.
+
+Verification: Windows frontend tests **67/67** and Vite build **1,346 modules**.
+Browser K&M remains blocked by F-080.
