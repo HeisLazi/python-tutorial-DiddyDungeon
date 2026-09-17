@@ -11,12 +11,12 @@
     "title": "Apprentice Coder",
     "rank": "F",
     "level": 3,
-    "xp": 120,
+    "xp": 170,
     "xp_next": 200,
-    "lifetime_xp": 220,
+    "lifetime_xp": 270,
     "hp": 100,
     "max_hp": 100,
-    "coins": 75,
+    "coins": 95,
     "potions": 2
   },
   "streak": {
@@ -84,7 +84,7 @@
     "sessions": 1,
     "projects_cleared": 0,
     "bosses_defeated": 0,
-    "mobs_defeated": 4,
+    "mobs_defeated": 6,
     "interviews_passed": 0,
     "interviews_failed": 0,
     "mastery_shields_earned": 0,
@@ -103,14 +103,14 @@
   ],
   "projects": [
     {"order": 0, "branch": "00-rps-tournament", "name": "Rock Paper Scissors Tournament", "status": "available", "progress": 0, "boss": "The Pattern Warden"},
-    {"order": 1, "branch": "01-blackjack", "name": "Blackjack", "status": "active", "progress": 50, "boss": "The House", "mobs": [
+    {"order": 1, "branch": "01-blackjack", "name": "Blackjack", "status": "active", "progress": 75, "boss": "The House", "mobs": [
       {"name": "The Empty Table", "status": "defeated"},
       {"name": "The Dealer's Hand", "status": "defeated"},
       {"name": "The Count Keeper", "status": "defeated"},
       {"name": "The Hitman", "status": "defeated"},
-      {"name": "The Bust Hound", "status": "available"},
-      {"name": "The House Clerk", "status": "locked"},
-      {"name": "The Rematch Shade", "status": "locked"}
+      {"name": "The Bust Hound", "status": "defeated"},
+      {"name": "The House Clerk", "status": "defeated"},
+      {"name": "The Rematch Shade", "status": "available"}
     ]},
     {"order": 2, "branch": "02-detective-game", "name": "Guess Who / Detective Game", "status": "available", "progress": 0, "boss": "The False Alibi"},
     {"order": 3, "branch": "03-pokemon-battle", "name": "Creature Battle Simulator", "status": "available", "progress": 0, "boss": "The Arena Champion"},
