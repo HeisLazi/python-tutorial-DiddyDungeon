@@ -571,3 +571,23 @@ archive frontend tests **51/51**, and Vite production build **1,346 modules**.
 The existing Windows `node_modules` tree still has a locked esbuild binary, so
 the clean archive was used for dependency/build proof; protected learner files
 and PTYs were not touched.
+
+## Codex book-section overflow hunt — 2026-09-17 (F-116)
+
+| ID | Severity | Finding | Status |
+|---|---|---|---|
+| F-116 | P1 | Even after the bounded shell, the selected concept page still appended examples, evidence, notes and mastery into one long reading column. The result looked like an infinite feed and buried the actual book content. | Fixed by splitting the selected book into Read, Encounters, Notes and Mastery sections. Only one section is visible at a time; the index and book remain bounded panes, and all content remains projection-backed. |
+
+Verification: current-source Forge runtime tests **32/32**. The clean archive
+frontend suite/build and browser K&M remain the next publication checks; no
+state, learner file or PTY was touched.
+
+## Forge workspace-transfer UI hunt — 2026-09-17 (F-117)
+
+| ID | Severity | Finding | Status |
+|---|---|---|---|
+| F-117 | P1 | The reviewed `questlab-files` source-transfer helper existed only as a CLI workflow, so a learner could not safely inspect or transfer `blackjack.py`, `tutor.py`, `dungeon.py` and notes from Forge itself. | Fixed by adding a Settings panel backed by the existing helper. Push/pull uses explicit confirmation tokens, redacts local paths, previews conflicts, creates a backup before overwrite, and never transfers `progress.json`, PTYs or private logs. |
+
+Verification: focused WSL API tests **10/10** and current-source Forge runtime
+tests **32/32**. This remains source-file transfer only; it does not claim
+hosted player-state sync.

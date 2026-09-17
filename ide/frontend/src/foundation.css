@@ -204,6 +204,29 @@
 .codex-screen .codex-mastery-panel .skill-card h3 { font-size: 12px; }
 .codex-screen .codex-mastery-panel .skill-meta,
 .codex-screen .codex-mastery-panel .shield-line { font-size: 8px; }
+.codex-book-page { display: flex; flex-direction: column; min-width: 0; }
+.codex-book-tabs { display: flex; flex: 0 0 auto; gap: 5px; margin: 0 0 13px; padding: 4px; border: 1px solid color-mix(in srgb, var(--gold) 25%, var(--line)); border-radius: 9px; background: color-mix(in srgb, var(--panel3) 88%, transparent); }
+.codex-book-tabs button { flex: 0 0 auto; min-height: 30px; padding: 6px 10px; border: 1px solid transparent; border-radius: 6px; background: transparent; color: var(--muted); font: 800 9px ui-monospace, monospace; letter-spacing: .05em; text-transform: uppercase; }
+.codex-book-tabs button:hover, .codex-book-tabs button:focus-visible { border-color: var(--line2); background: color-mix(in srgb, var(--panel2) 85%, transparent); color: var(--text); }
+.codex-book-tabs button.active { border-color: color-mix(in srgb, var(--gold) 45%, var(--line)); background: color-mix(in srgb, var(--gold) 13%, var(--panel2)); color: var(--gold); }
+.codex-book-section { min-height: 0; animation: codex-section-in .18s ease-out; }
+.codex-section-heading { display: flex; align-items: end; justify-content: space-between; gap: 12px; margin: 2px 0 12px; padding-bottom: 9px; border-bottom: 1px solid var(--line); }
+.codex-section-heading h4 { margin: 4px 0 0; color: var(--text); font: 800 18px/1.2 ui-monospace, monospace; }
+.codex-section-heading > span { color: var(--dim); font: 9px ui-monospace, monospace; text-transform: uppercase; letter-spacing: .08em; }
+.codex-section-hint { margin: 18px 0 0; padding: 10px 11px; border-left: 2px solid color-mix(in srgb, var(--gold) 44%, var(--line)); color: var(--muted); font-size: 10px; line-height: 1.5; background: color-mix(in srgb, var(--gold) 4%, transparent); }
+.codex-entry-picker-expanded { grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); max-height: none; margin-bottom: 14px; }
+.codex-entry-picker-inline { grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); max-height: none; margin-bottom: 14px; }
+.codex-book-section .codex-entry-detail { padding-top: 3px; }
+@keyframes codex-section-in { from { opacity: .45; transform: translateY(3px); } to { opacity: 1; transform: translateY(0); } }
+.workspace-transfer-card { grid-column: 1 / -1; }
+.workspace-transfer-meta { display: flex; justify-content: space-between; gap: 10px; margin: 9px 0; color: var(--dim); font: 9px ui-monospace, monospace; }
+.workspace-transfer-files { display: grid; gap: 5px; padding: 9px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel3); }
+.workspace-transfer-files > div { display: flex; justify-content: space-between; gap: 10px; color: var(--text); font: 10px ui-monospace, monospace; }
+.transfer-file-status { color: var(--muted); font-size: 8px; text-transform: uppercase; letter-spacing: .06em; }
+.transfer-file-status.different { color: var(--gold); }
+.transfer-file-status.dirty { color: var(--ember); }
+.workspace-transfer-conflict { margin: 9px 0 0; padding: 8px 10px; border: 1px solid color-mix(in srgb, var(--danger) 48%, var(--line)); border-radius: 7px; color: var(--danger); background: color-mix(in srgb, var(--danger) 7%, var(--panel)); font-size: 10px; line-height: 1.45; }
+.workspace-transfer-actions { margin-top: 10px; }
 .dungeon-inventory-list { display: grid; gap: 7px; margin: 8px 0 12px; }
 .dungeon-inventory-item { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: center; padding: 9px; border: 1px solid var(--line); border-radius: 9px; background: var(--panel3); }
 .dungeon-inventory-item.equipped { border-color: color-mix(in srgb, var(--gold) 55%, var(--line)); background: color-mix(in srgb, var(--gold) 7%, var(--panel3)); }
@@ -343,6 +366,8 @@
   .journal-mode-tabs button { min-width: 0; flex: 1; padding-inline: 5px; }
   .codex-mode-tabs { width: 100%; }
   .codex-mode-tabs button { min-width: 0; flex: 1; padding-inline: 5px; }
+  .codex-book-tabs { overflow-x: auto; }
+  .codex-book-tabs button { flex: 1 0 auto; }
   .battle-stat-grid { grid-template-columns: 1fr 1fr; }
   .journal-battle-link { align-items: flex-start; flex-direction: column; }
   .battle-screen-submit .battle-answer-editor { min-height: 220px; }
