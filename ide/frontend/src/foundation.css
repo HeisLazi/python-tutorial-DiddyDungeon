@@ -271,3 +271,19 @@
 .shop-icon { display: grid; place-items: center; width: 31px; height: 31px; color: var(--gold); }
 .shop-icon svg { width: 28px; height: 28px; fill: none; stroke: currentColor; stroke-width: 1.35; stroke-linecap: round; stroke-linejoin: round; }
 .daily-shop { border-color: color-mix(in srgb, var(--gold) 24%, var(--line)); }
+.campaign-loadout { border-color: color-mix(in srgb, var(--ember) 24%, var(--line)); }
+.campaign-loadout-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.campaign-loadout-slot { display: grid; gap: 8px; padding: 11px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel3); }
+.campaign-loadout-heading { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
+.campaign-loadout-heading span { color: var(--gold); font: 800 9px ui-monospace, monospace; letter-spacing: .12em; }
+.campaign-loadout-heading strong { color: var(--text); font: 800 12px ui-monospace, monospace; text-align: right; }
+.campaign-loadout-items { display: grid; gap: 7px; }
+.campaign-loadout-item { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 9px; align-items: center; padding: 9px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel2); }
+.campaign-loadout-item.equipped { border-color: color-mix(in srgb, var(--green) 45%, var(--line)); background: color-mix(in srgb, var(--green) 6%, var(--panel2)); }
+.campaign-loadout-item > div { display: grid; gap: 2px; min-width: 0; }
+.campaign-loadout-item small { color: var(--muted); font: 8px ui-monospace, monospace; text-transform: uppercase; }
+.campaign-loadout-item strong { color: var(--text); font: 800 11px ui-monospace, monospace; }
+.campaign-loadout-item span { color: var(--gold); font-size: 10px; line-height: 1.35; }
+.campaign-loadout-item p { margin: 1px 0 0; color: var(--muted); font-size: 9px; line-height: 1.35; }
+.campaign-loadout-item button { padding: 5px 8px; font-size: 9px; }
+@media (max-width: 720px) { .campaign-loadout-grid { grid-template-columns: 1fr; } }

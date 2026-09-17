@@ -330,6 +330,28 @@ test('Codex and Homestead expose live evidence and loadout summaries', () => {
   assert.match(views, /equipment\.trinket/)
 })
 
+test('campaign equipment loadout stays bounded and state-service sourced', () => {
+  const app = source('../AppV2.jsx')
+  const views = source('../RpgViews.jsx')
+  const sync = source('./syncEngine.js')
+  const server = source('../../../server/app_v2.py')
+  const state = source('../../../server/state.py')
+
+  assert.match(server, /@app\.post\("\/api\/equipment\/equip"\)/)
+  assert.match(server, /equipment_projection/)
+  assert.match(state, /"equip_equipment": ActionDefinition\(frozenset\(\{"player"\}\)\)/)
+  assert.match(state, /"record_equipment_unlock": ActionDefinition\(frozenset\(\{SYSTEM_ACTOR\}\), internal=True\)/)
+  assert.match(state, /def equipment_projection\(/)
+  assert.match(state, /Unlock this campaign item before equipping it/)
+  assert.match(app, /const equipCampaignItem = async/)
+  assert.match(app, /\/api\/equipment\/equip/)
+  assert.match(views, /data-testid="campaign-loadout"/)
+  assert.match(views, /Future loot stays hidden/)
+  assert.match(views, /equipCampaignItem/)
+  assert.match(sync, /owned_armor/)
+  assert.match(sync, /owned_trinkets/)
+})
+
 test('top HUD stat pills style only direct stats and reset nested SVG content', () => {
   const styles = source('../styles.css')
   const v2 = source('../v2.css')

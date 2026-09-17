@@ -73,6 +73,7 @@ MAX_DUNGEON_OPTIONS = 8
 MAX_DUNGEON_FLOOR = 1_000_000
 MAX_DUNGEON_ROOM = 1_000_000
 MAX_DUNGEON_DIFFICULTY = 10
+MAX_EQUIPMENT_ITEMS = 24
 DUNGEON_SCORE_BY_DIFFICULTY = (0, 10, 15, 20, 30, 45, 60, 80, 105, 135, 170)
 DUNGEON_COIN_BY_DIFFICULTY = (0, 5, 8, 11, 15, 20, 26, 33, 41, 50, 60)
 DUNGEON_REST_HEAL = 30
@@ -83,6 +84,25 @@ DUNGEON_MARKET_CATALOG: tuple[dict[str, Any], ...] = (
     {"id": "dungeon-ward", "name": "Ember Ward", "price": 24, "kind": "armor", "armor": "Ember Ward", "description": "Reduce the next counterattack."},
     {"id": "dungeon-lens", "name": "Scholar Lens", "price": 30, "kind": "trinket", "trinket": "Scholar Lens", "description": "A cosmetic run trophy for careful reasoning."},
 )
+
+# Campaign equipment is a separate, validated loadout from Homestead
+# cosmetics.  The browser only receives items that are already present in the
+# canonical owned lists (or the currently equipped legacy value), so this
+# catalogue never reveals future loot by itself.
+EQUIPMENT_CATALOG: tuple[dict[str, Any], ...] = (
+    {"id": "armor-apprentice-coat", "name": "Apprentice Coat", "kind": "armor", "effect": "10% Battle damage reduction", "description": "Starter armor for the campaign."},
+    {"id": "armor-leather-guard", "name": "Leather Guard", "kind": "armor", "effect": "20% Battle damage reduction", "description": "A light guard earned through steady practice."},
+    {"id": "armor-runic-mail", "name": "Runic Mail", "kind": "armor", "effect": "30% Battle damage reduction", "description": "Runes reinforce the answer under pressure."},
+    {"id": "armor-emberplate", "name": "Emberplate", "kind": "armor", "effect": "40% Battle damage reduction", "description": "A warm plate for difficult encounters."},
+    {"id": "armor-guardian-aegis", "name": "Guardian Aegis", "kind": "armor", "effect": "50% Battle damage reduction", "description": "A heavy ward against a hard lesson."},
+    {"id": "armor-mythril-archive-plate", "name": "Mythril Archive Plate", "kind": "armor", "effect": "60% Battle damage reduction", "description": "Legendary protection for a well-kept archive."},
+    {"id": "trinket-none", "name": "None", "kind": "trinket", "effect": "No special effect", "description": "Leave the trinket slot empty."},
+    {"id": "trinket-ember-scythe", "name": "Ember Scythe", "kind": "trinket", "effect": "+1 Impact on the first verified objective", "description": "A weapon-shaped trinket; Impact remains evidence-backed."},
+    {"id": "trinket-guardian-sigil", "name": "Guardian Sigil", "kind": "trinket", "effect": "Negates one counterattack", "description": "A single bounded ward for a risky submission."},
+    {"id": "trinket-phoenix-ember", "name": "Phoenix Ember", "kind": "trinket", "effect": "Revives at 1 HP once per encounter", "description": "A last spark when an incorrect answer would down you."},
+)
+EQUIPMENT_BY_ID: dict[str, dict[str, Any]] = {item["id"]: item for item in EQUIPMENT_CATALOG}
+EQUIPMENT_ID_BY_NAME: dict[str, str] = {item["name"]: item["id"] for item in EQUIPMENT_CATALOG}
 # Route choices are intentionally answer-free.  The state service owns the
 # route ids and room types; the browser may render these labels but cannot
 # choose a question, reward, or answer key.
@@ -180,12 +200,14 @@ class ActionDefinition:
 ACTION_DEFINITIONS: dict[str, ActionDefinition] = {
     "homestead_purchase": ActionDefinition(frozenset({"player"})),
     "homestead_equip": ActionDefinition(frozenset({"player"})),
+    "equip_equipment": ActionDefinition(frozenset({"player"})),
     "record_learning_event": ActionDefinition(frozenset({"pyr"})),
     "record_reference_mode": ActionDefinition(frozenset({"pyr"})),
     "award_learning_reward": ActionDefinition(frozenset({SYSTEM_ACTOR}), internal=True),
     "player_hp_change": ActionDefinition(frozenset({SYSTEM_ACTOR}), internal=True),
     "record_achievement": ActionDefinition(frozenset({SYSTEM_ACTOR}), internal=True),
     "record_battle_objective": ActionDefinition(frozenset({SYSTEM_ACTOR}), internal=True),
+    "record_equipment_unlock": ActionDefinition(frozenset({SYSTEM_ACTOR}), internal=True),
     "complete_mob": ActionDefinition(frozenset({SYSTEM_ACTOR}), internal=True),
     "record_boss_requirement": ActionDefinition(frozenset({SYSTEM_ACTOR}), internal=True),
     "record_boss_clear": ActionDefinition(frozenset({SYSTEM_ACTOR}), internal=True),
@@ -402,7 +424,8 @@ SYNC_PLAYER_FIELDS = frozenset(
         "potions",
     }
 )
-SYNC_EQUIPMENT_FIELDS = frozenset({"armor", "trinket", "title"})
+SYNC_EQUIPMENT_FIELDS = frozenset({"armor", "trinket", "title", "owned_armor", "owned_trinkets"})
+SYNC_EQUIPMENT_LIST_FIELDS = frozenset({"owned_armor", "owned_trinkets"})
 SYNC_COMPANION_FIELDS = frozenset({"name", "form", "level", "bond", "next_form", "next_form_requirement"})
 SYNC_HOMESTEAD_FIELDS = frozenset({"name", "owned_cosmetics", "equipped"})
 SYNC_HOMESTEAD_EQUIPPED_FIELDS = frozenset({"theme", "cursor", "hud", "terminal"})
@@ -1637,11 +1660,17 @@ class LocalStateService:
             extra = set(equipment) - SYNC_EQUIPMENT_FIELDS
             if extra:
                 raise StateCommandError(f"Unsupported cloud equipment field(s): {', '.join(sorted(extra))}")
-            validated["equipment"] = {
-                field: cls._sync_text(equipment[field], f"equipment.{field}")
-                for field in SYNC_EQUIPMENT_FIELDS
-                if field in equipment
-            }
+            clean_equipment: dict[str, Any] = {}
+            for field in ("armor", "trinket", "title"):
+                if field in equipment:
+                    clean_equipment[field] = cls._sync_text(equipment[field], f"equipment.{field}")
+            for field in SYNC_EQUIPMENT_LIST_FIELDS:
+                if field in equipment:
+                    values = cls._sync_list(equipment[field], f"equipment.{field}")
+                    if any(item_id not in EQUIPMENT_BY_ID for item_id in values):
+                        raise StateCommandError(f"equipment.{field} contains an unknown item")
+                    clean_equipment[field] = values[:MAX_EQUIPMENT_ITEMS]
+            validated["equipment"] = clean_equipment
 
         companion = projection.get("companion")
         if companion is not None:
@@ -1707,6 +1736,14 @@ class LocalStateService:
 
         player = copy_fields(progress.get("player"), SYNC_PLAYER_FIELDS)
         equipment = copy_fields(progress.get("equipment"), SYNC_EQUIPMENT_FIELDS)
+        for field in SYNC_EQUIPMENT_LIST_FIELDS:
+            if isinstance(equipment.get(field), list):
+                equipment[field] = [
+                    item for item in equipment[field]
+                    if isinstance(item, str) and item in EQUIPMENT_BY_ID
+                ][:MAX_EQUIPMENT_ITEMS]
+            else:
+                equipment.pop(field, None)
         companion = copy_fields(progress.get("companion"), SYNC_COMPANION_FIELDS)
         homestead_source = progress.get("homestead")
         homestead = copy_fields(homestead_source, frozenset({"name", "owned_cosmetics", "equipped"}))
@@ -3086,16 +3123,83 @@ class LocalStateService:
             if isinstance(item, dict) and item.get("id")
         }
 
+    @classmethod
+    def equipment_projection(cls, progress: Mapping[str, Any]) -> dict[str, Any]:
+        """Return only campaign gear already owned by the canonical save.
+
+        The static catalogue is used for descriptions/effects, but it is never
+        returned wholesale.  A legacy save without owned lists exposes only
+        its currently equipped values, so the UI cannot turn future loot into
+        an apparent inventory.
+        """
+
+        raw_equipment = progress.get("equipment")
+        equipment = raw_equipment if isinstance(raw_equipment, Mapping) else {}
+        slots: list[dict[str, Any]] = []
+        for kind, owned_field, equipped_field, label in (
+            ("armor", "owned_armor", "armor", "ARMOR"),
+            ("trinket", "owned_trinkets", "trinket", "TRINKET"),
+        ):
+            current_name = str(equipment.get(equipped_field) or ("Apprentice Coat" if kind == "armor" else "None"))
+            raw_owned = equipment.get(owned_field)
+            raw_owned_values = raw_owned if isinstance(raw_owned, list) else []
+            owned_ids = [
+                item_id for item_id in raw_owned_values
+                if isinstance(item_id, str) and item_id in EQUIPMENT_BY_ID
+            ]
+            current_id = EQUIPMENT_ID_BY_NAME.get(current_name)
+            if current_id and current_id not in owned_ids:
+                owned_ids.insert(0, current_id)
+            items: list[dict[str, Any]] = []
+            for item_id in owned_ids[:MAX_EQUIPMENT_ITEMS]:
+                item = EQUIPMENT_BY_ID[item_id]
+                if item.get("kind") != kind:
+                    continue
+                items.append(
+                    {
+                        "id": item_id,
+                        "name": item["name"],
+                        "kind": kind,
+                        "effect": item["effect"],
+                        "description": item["description"],
+                        "equipped": item["name"] == current_name,
+                    }
+                )
+            if not items and current_name:
+                # Preserve an older validated value without fabricating an
+                # unlock record or silently rewriting the save.
+                items.append(
+                    {
+                        "id": f"legacy-{kind}",
+                        "name": current_name,
+                        "kind": kind,
+                        "effect": "Existing campaign loadout",
+                        "description": "Recorded in the canonical save; no new reward was inferred.",
+                        "equipped": True,
+                    }
+                )
+            slots.append(
+                {
+                    "id": kind,
+                    "label": label,
+                    "equipped": current_name,
+                    "items": items,
+                }
+            )
+        return {"slots": slots}
+
     def _dispatch(self, action: str, payload: Mapping[str, Any], progress: dict[str, Any]) -> Mutation:
         handlers = {
             "homestead_purchase": self._homestead_purchase,
             "homestead_equip": self._homestead_equip,
+            "equip_equipment": self._equip_equipment,
             "record_learning_event": self._record_learning_event,
             "record_reference_mode": self._record_reference_mode,
             "award_learning_reward": self._award_learning_reward,
             "player_hp_change": self._player_hp_change,
             "record_achievement": self._record_achievement,
             "record_battle_objective": self._record_battle_objective,
+            "record_equipment_unlock": self._record_equipment_unlock,
             "complete_mob": self._complete_mob,
             "record_boss_requirement": self._record_boss_requirement,
             "record_boss_clear": self._record_boss_clear,
@@ -3117,6 +3221,86 @@ class LocalStateService:
             "dungeon_finish_run": self._dungeon_finish_run,
         }
         return handlers[action](payload, progress)
+
+    def _equip_equipment(self, payload: Mapping[str, Any], progress: dict[str, Any]) -> Mutation:
+        """Equip an already-owned campaign armor or trinket item."""
+
+        data = self._payload(payload, {"item_id"}, {"item_id"})
+        item_id = self._text(data["item_id"], "item_id", max_length=MAX_IDENTIFIER_LENGTH, identifier=True)
+        item = EQUIPMENT_BY_ID.get(item_id)
+        if item is None:
+            raise StateCommandError("Unknown campaign equipment", status_code=404)
+        equipment = self._dict(progress, "equipment")
+        slot = "armor" if item["kind"] == "armor" else "trinket"
+        owned_field = "owned_armor" if slot == "armor" else "owned_trinkets"
+        raw_owned = equipment.get(owned_field)
+        if raw_owned is not None and not isinstance(raw_owned, list):
+            raise StateCommandError(f"Existing state field equipment.{owned_field} is invalid", status_code=500)
+        owned = [
+            value for value in (raw_owned or [])
+            if isinstance(value, str) and value in EQUIPMENT_BY_ID and EQUIPMENT_BY_ID[value]["kind"] == item["kind"]
+        ]
+        current_name = str(equipment.get(slot) or ("Apprentice Coat" if slot == "armor" else "None"))
+        current_id = EQUIPMENT_ID_BY_NAME.get(current_name)
+        if current_id and current_id not in owned:
+            owned.append(current_id)
+        if item_id not in owned:
+            raise StateCommandError("Unlock this campaign item before equipping it", status_code=409)
+        if equipment.get(slot) == item["name"]:
+            return Mutation(False, {"item": item, "equipment": self.equipment_projection(progress)})
+        equipment[slot] = item["name"]
+        if raw_owned is not None:
+            equipment[owned_field] = owned[:MAX_EQUIPMENT_ITEMS]
+        return Mutation(
+            True,
+            {"item": item, "equipment": self.equipment_projection(progress)},
+            {
+                "item_id": item_id,
+                "item_name": item["name"],
+                "slot": slot,
+                "reason": "campaign_equipment_equipped",
+            },
+        )
+
+    def _record_equipment_unlock(self, payload: Mapping[str, Any], progress: dict[str, Any]) -> Mutation:
+        """Record a validated equipment unlock from trusted game code."""
+
+        data = self._payload(payload, {"item_id", "evidence_id", "reason"}, {"item_id", "evidence_id", "reason"})
+        item_id = self._text(data["item_id"], "item_id", max_length=MAX_IDENTIFIER_LENGTH, identifier=True)
+        evidence_id = self._text(data["evidence_id"], "evidence_id", max_length=MAX_IDENTIFIER_LENGTH, identifier=True)
+        reason = self._text(data["reason"], "reason")
+        item = EQUIPMENT_BY_ID.get(item_id)
+        if item is None:
+            raise StateCommandError("Unknown campaign equipment")
+        equipment = self._dict(progress, "equipment")
+        owned_field = "owned_armor" if item["kind"] == "armor" else "owned_trinkets"
+        raw_owned = equipment.get(owned_field)
+        if raw_owned is None:
+            raw_owned = []
+            equipment[owned_field] = raw_owned
+        if not isinstance(raw_owned, list):
+            raise StateCommandError(f"Existing state field equipment.{owned_field} is invalid", status_code=500)
+        owned = [
+            value for value in raw_owned
+            if isinstance(value, str) and value in EQUIPMENT_BY_ID and EQUIPMENT_BY_ID[value]["kind"] == item["kind"]
+        ]
+        if item_id in owned:
+            return Mutation(False, {"item": item, "equipment": self.equipment_projection(progress)})
+        if len(owned) >= MAX_EQUIPMENT_ITEMS:
+            raise StateCommandError("Campaign equipment inventory is full", status_code=409)
+        owned.append(item_id)
+        equipment[owned_field] = owned
+        return Mutation(
+            True,
+            {"item": item, "equipment": self.equipment_projection(progress)},
+            {
+                "item_id": item_id,
+                "item_name": item["name"],
+                "slot": item["kind"],
+                "evidence_id": evidence_id,
+                "reason": reason,
+            },
+        )
 
     def _homestead_purchase(self, payload: Mapping[str, Any], progress: dict[str, Any]) -> Mutation:
         data = self._payload(payload, {"item_id"}, {"item_id"})

@@ -22,7 +22,8 @@ export const CHECKOUT_NAMESPACE_RE = /^checkout-[0-9a-f]{8,64}$/i
 export const MAX_SYNC_OUTBOX_ENTRIES = 8
 
 const SYNC_PLAYER_FIELDS = ['name', 'title', 'rank', 'level', 'xp', 'xp_next', 'lifetime_xp', 'hp', 'max_hp', 'coins', 'potions']
-const SYNC_EQUIPMENT_FIELDS = ['armor', 'trinket', 'title']
+const SYNC_EQUIPMENT_FIELDS = ['armor', 'trinket', 'title', 'owned_armor', 'owned_trinkets']
+const SYNC_EQUIPMENT_LIST_FIELDS = ['owned_armor', 'owned_trinkets']
 const SYNC_COMPANION_FIELDS = ['name', 'form', 'level', 'bond', 'next_form', 'next_form_requirement']
 const SYNC_HOMESTEAD_EQUIPPED_FIELDS = ['theme', 'cursor', 'hud', 'terminal']
 const SYNC_PROJECT_FIELDS = ['order', 'branch', 'name', 'status', 'progress', 'boss', 'boss_status', 'clean_clear_eligible', 'completed', 'completed_at', 'clean_clear', 'mob_sequence_complete', 'creative_discoveries', 'boss_validation']
@@ -133,9 +134,14 @@ export function projectPlayerState(progress = {}) {
   const equipped = isRecord(homestead.equipped)
     ? copyFields(homestead.equipped, SYNC_HOMESTEAD_EQUIPPED_FIELDS)
     : {}
+  const equipment = copyFields(progress.equipment, SYNC_EQUIPMENT_FIELDS)
+  for (const field of SYNC_EQUIPMENT_LIST_FIELDS) {
+    equipment[field] = boundedTextList(equipment[field], 24)
+    if (equipment[field].length === 0 && !Array.isArray(progress.equipment?.[field])) delete equipment[field]
+  }
   return {
     player: copyFields(progress.player, SYNC_PLAYER_FIELDS),
-    equipment: copyFields(progress.equipment, SYNC_EQUIPMENT_FIELDS),
+    equipment,
     companion: copyFields(progress.companion, SYNC_COMPANION_FIELDS),
     homestead: {
       ...copyFields(homestead, ['name']),

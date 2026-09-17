@@ -435,3 +435,13 @@ Journal/Battle screen split.
 | ID | Severity | Finding | Status |
 |---|---|---|---|
 | F-102 | P2 | Boss requirement verification lived only in the short-lived provider challenge, and the documented trinkets had no state-service effect. A refresh could hide a phase already accepted by PYR, while a trinket could be shown without an auditable trigger. | Fixed locally with a canonical `record_boss_requirement` event/projection and bounded Ember Scythe, Guardian Sigil and Phoenix Ember triggers. Hosted auth/schema application remains unverified. |
+
+## Campaign loadout hunt — 2026-09-17 (F-103)
+
+| ID | Severity | Finding | Status |
+|---|---|---|---|
+| F-103 | P2 | Homestead showed the currently equipped campaign gear but did not expose a safe inventory/equip path. A naive browser catalogue would reveal future loot or allow React to invent ownership. | Fixed with a canonical, bounded equipment projection. Only the current legacy value or state-recorded owned IDs reach React; `equip_equipment` is player-authorized, unlocks are trusted internal events, and each real change increments the revision and creates a state event. |
+
+The clean staged frontend suite passed **49/49** and the Vite build transformed
+**1,346 modules**. WSL backend discovery passed **105/105**. No protected save,
+workspace file, cloud migration or PTY was changed by the verification run.

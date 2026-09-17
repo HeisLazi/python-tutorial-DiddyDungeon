@@ -166,7 +166,12 @@ Canonical combat details live in `COMBAT_SYSTEM.md`.
     canonical state service records bounded boss requirement phases and owns
     Ember Scythe, Guardian Sigil and Phoenix Ember effects; hosted rollout and
     provider-authenticated adjudication remain gated.
-12. Later: shared weekly raid transport/state and party objectives.
+12. **Implemented locally:** Campaign Armor/Trinket loadout projection. The
+    Homestead selector reads only current or state-recorded owned gear, equips
+    through `POST /api/equipment/equip`, and keeps future loot hidden. Trusted
+    game code must record an evidence-backed unlock before a new item can be
+    selected; hosted projection rollout remains approval-gated.
+13. Later: shared weekly raid transport/state and party objectives.
 
 ## PC test procedure
 
