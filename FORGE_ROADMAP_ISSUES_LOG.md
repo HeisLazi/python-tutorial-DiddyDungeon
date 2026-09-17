@@ -1906,5 +1906,7 @@ cloud transport or PTY lifecycle changed.
 |---|---|---|---|---|
 | F-107 | P2 | Distribution | The source-only friend packager allowed the dirty canonical save and `tutor.py`, but rejected an untracked protected `dungeon.py`, preventing packaging from a normal learner checkout. | Fixed: `progress.json`, `tutor.py`, `dungeon.py` and untracked `notes/` are treated as protected workspace data, never archived; committed source changes still fail closed. |
 
-Verification: the launcher contract test passes and the post-commit package
-smoke must produce a committed-HEAD-only bundle without the protected files.
+Verification: the launcher contract test passes. The post-commit package
+smoke produced `QuestLab-ed8db52` from `git archive HEAD`; `tutor.py`,
+`dungeon.py` and `notes/` were absent, and the bundled baseline
+`progress.json` matched the `HEAD` blob rather than the dirty local cache.

@@ -2568,4 +2568,7 @@ The guarded source packager now tolerates the normal learner checkout's
 untracked `dungeon.py` and `notes/` alongside the already-protected local save
 and `tutor.py`. It still refuses any committed-source edits and archives only
 `git archive HEAD`, so protected workspace files cannot leak into a friend
-bundle. A post-commit package smoke is required before calling this gate green.
+bundle. The post-commit smoke produced `QuestLab-ed8db52` from `git archive
+HEAD`, omitted `tutor.py`, `dungeon.py` and `notes/`, and proved the bundled
+baseline `progress.json` matched the `HEAD` blob rather than the dirty local
+cache.
