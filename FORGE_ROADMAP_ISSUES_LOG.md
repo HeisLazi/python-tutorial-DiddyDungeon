@@ -2466,3 +2466,9 @@ claim is made from this environment.
 Verification: frontend tests **82/82**, Vite production build **1,346
 modules**, and `git diff --check` pass. No player state, legacy save, or PTY was
 changed. Browser K&M remains blocked by F-080.
+
+## Current published SHA native Linux recheck — F-163
+
+| ID | Severity | Area | Finding | Status |
+|---|---|---|---|---|
+| F-163 | P2 | Native Linux distribution | The ext4 distribution evidence needed to be refreshed after the published merge at `1782e97`, rather than relying on an older source tip. | Rechecked in a disposable ext4 clone of `feature/cloud-sync-desktop` at `1782e97`: native Rollup `rollup-linux-x64-gnu`, backend **116/116**, frontend **82/82**, and Vite **1,346 modules** all pass. The report's one dirty path is only the disposable `.venv` symlink used to reuse the test runtime; tracked source is clean. This is WSL/ext4 evidence, not physical CachyOS or browser K&M certification. |

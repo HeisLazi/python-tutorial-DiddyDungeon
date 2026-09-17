@@ -3327,3 +3327,14 @@ bindings plus the state-owned completed count.
 Verification: frontend tests **82/82**, Vite production build **1,346
 modules**, and `git diff --check` pass. No player state, legacy save, or PTY was
 changed; fresh browser K&M remains unavailable under F-080.
+
+### Current published SHA native Linux recheck — F-163 (2026-09-17)
+
+A disposable ext4 clone of `feature/cloud-sync-desktop` was checked at
+`1782e97ebac69bea1c9f3759bf852c11bb222a9a`. The strict native report found
+`rollup-linux-x64-gnu`; the supported WSL backend suite passed **116/116**, the
+frontend suite passed **82/82**, and the Vite production build transformed
+**1,346 modules**. The report shows one dirty path only because the disposable
+clone uses an untracked `.venv` symlink to the already-installed WSL test
+runtime; tracked source is clean. This strengthens distribution evidence but
+does not certify physical CachyOS, browser K&M, hosted sync, or a second device.

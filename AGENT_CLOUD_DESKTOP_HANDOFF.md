@@ -414,3 +414,11 @@ Journal Battle Shell now passes canonical `completedObjectives` into the shared
 (**1,346 modules**) and `git diff --check` pass. No player state, legacy save or
 PTY was changed. F-080 browser K&M, F-058 physical CachyOS, and the hosted
 two-device/authentication gates remain open.
+
+F-163 rechecked the current published branch in a disposable ext4 clone at
+`1782e97ebac69bea1c9f3759bf852c11bb222a9a`: native Rollup is present, backend
+tests are **116/116**, frontend tests **82/82**, and Vite transforms **1,346
+modules**. The one reported dirty path is only the untracked disposable
+`.venv` symlink; tracked source is clean. Treat this as current WSL/ext4
+evidence, not physical CachyOS, fresh browser K&M, hosted sync, or second-device
+acceptance.

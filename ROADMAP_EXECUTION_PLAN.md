@@ -1154,3 +1154,12 @@ projection into the shared battle view, matching Codex. Commit `19b6da5` adds
 the binding and a regression tripwire. Frontend tests are **82/82** and the
 Vite build transforms **1,346 modules**. Browser K&M (F-080), physical CachyOS,
 hosted migrations and authenticated cross-device acceptance remain open.
+
+## Current checkpoint — 2026-09-17 — published native Linux recheck
+
+F-163 refreshed the native distribution evidence at the published SHA
+`1782e97`. A disposable ext4 clone has native Rollup, backend **116/116**,
+frontend **82/82**, and a **1,346-module** Vite build. Its only dirty path is
+the disposable `.venv` symlink; tracked source is clean. This remains WSL/ext4
+evidence, so physical CachyOS K&M, browser K&M, hosted migrations and
+authenticated two-device acceptance stay open.
