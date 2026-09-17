@@ -988,8 +988,8 @@ function Codex({ progress, revision, codexProjection, encounter, submitBattle, s
               )}
             </>
           ) : <div className="empty-state">The Codex library is unavailable until the state service returns a projection.</div>}
-          <section className="codex-mastery-panel" data-testid="codex-mastery">
-            <div className="card-heading"><span>MASTERY SIGNALS</span><b>{skills.length} concepts</b></div>
+          <details className="codex-mastery-panel" data-testid="codex-mastery">
+            <summary className="card-heading"><span>MASTERY SIGNALS <small>click to expand</small></span><b>{skills.length} concepts</b></summary>
             <div className="skill-grid">
               {skills.map((skill) => (
                 <article key={skill.name} className={`skill-card ${skill.status}`}>
@@ -1001,7 +1001,7 @@ function Codex({ progress, revision, codexProjection, encounter, submitBattle, s
               ))}
               {!skills.length && <p className="codex-insight-empty">Mastery signals appear after validated encounters.</p>}
             </div>
-          </section>
+          </details>
         </article>
       </section>
         </>

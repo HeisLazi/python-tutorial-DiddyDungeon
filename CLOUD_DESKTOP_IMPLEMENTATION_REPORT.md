@@ -2681,3 +2681,19 @@ that may still be present during a compatibility transition.
 Current-source Forge tests pass **32/32**. This was a navigation-only repair;
 state authority, revision polling, PTY lifecycles and cloud transport were not
 changed.
+
+### Codex infinite-scroll cleanup — F-115
+
+The first bounded Codex layout still exposed a permanent Mastery Signals tail,
+which made the reading surface feel like the old infinite feed whenever a
+player had several evidence records. The shell now uses explicit grid rows for
+the compact hero, Books/Battle Shell tabs and the bounded workspace. The Field
+Library index and selected book own their scroll independently with
+`overscroll-behavior: contain`; the mastery grid is available from an
+expandable section inside the selected book rather than growing the page by
+default. Mobile intentionally switches to one controlled column.
+
+The current-source Forge runtime suite passes **32/32**. Clean dependency and
+production-build verification is being rerun from an isolated checkout because
+the Windows working tree has a locked esbuild binary. No state, learner file,
+PTY or hosted transport changed.
