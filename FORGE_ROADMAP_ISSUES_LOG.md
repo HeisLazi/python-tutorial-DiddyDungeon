@@ -2167,3 +2167,14 @@ Verification: current-source Forge runtime tests pass **44/44**; clean Linux
 archive frontend tests pass **63/63** and Vite transforms **1,346 modules**.
 Browser K&M remains unavailable in this environment (F-080), so visual-device
 acceptance is still open.
+
+## Codex fixed-page evidence reader — F-135
+
+| ID | Severity | Area | Finding | Status |
+|---|---|---|---|---|
+| F-135 | P1 | Codex presentation | Even with the finite bookshelf, a growing encounter/notes collection could make the selected book body feel like another endless scroll and push the useful page controls away. | Fixed with a hidden outer book-body overflow contract and explicit three-record page controls for Encounter and Notes sections. The active record, definition/example page and canonical note gateway remain unchanged; no evidence is hidden from the state projection. |
+
+Verification: current-source Forge runtime tests pass **45/45**; clean Linux
+archive frontend tests pass **64/64** and Vite transforms **1,346 modules**.
+Browser K&M remains unavailable in this environment (F-080), so visual-device
+acceptance is still open.

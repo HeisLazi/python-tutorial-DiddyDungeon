@@ -743,3 +743,56 @@
 .homestead-window > svg { width: 28px; height: 28px; }
 .homestead-desk > svg { width: 29px; height: 29px; }
 .homestead-shelf > svg { width: 22px; height: 22px; }
+
+/* F-135: keep the Codex a finite reader even when encounter evidence grows.
+   The selected book owns a fixed page frame; long record/notes collections use
+   explicit page controls instead of turning the whole surface into a feed. */
+.codex-screen .codex-book-section {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+  scrollbar-width: none;
+}
+.codex-screen .codex-book-section::-webkit-scrollbar { display: none; }
+.codex-screen .codex-page-grid,
+.codex-screen .codex-entry-detail,
+.codex-screen .codex-mastery-panel .skill-grid {
+  min-height: 0;
+  overflow: hidden;
+}
+.codex-screen .codex-entry-picker-expanded,
+.codex-screen .codex-entry-picker-inline {
+  flex: 0 0 auto;
+  max-height: none;
+  overflow: visible;
+}
+.codex-entry-pager {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 7px;
+  flex: 0 0 auto;
+  margin: -5px 0 8px;
+  color: var(--dim);
+  font: 800 8px ui-monospace, monospace;
+  letter-spacing: .08em;
+}
+.codex-entry-pager button {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border-color: color-mix(in srgb, var(--gold) 22%, var(--line));
+  background: color-mix(in srgb, var(--panel2) 70%, transparent);
+  color: var(--muted);
+}
+.codex-entry-pager button:hover:not(:disabled),
+.codex-entry-pager button:focus-visible { border-color: var(--gold); color: var(--gold); }
+.codex-entry-pager button:disabled { opacity: .34; }
+.codex-screen .codex-notes.workspace-notebook pre {
+  max-height: 148px;
+  overflow: auto;
+  scrollbar-width: thin;
+}

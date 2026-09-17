@@ -347,6 +347,19 @@ test('Character and Homestead props keep the shared SVG icon language', () => {
   assert.match(foundation, /\.equipment-list > div > span svg,[\s\S]*?\.homestead-shelf > svg/)
 })
 
+test('Codex evidence stays in a finite page frame with explicit record paging', () => {
+  const views = source('../RpgViews.jsx')
+  const foundation = source('../foundation.css')
+
+  assert.match(views, /entryShelfPageSize = 3/)
+  assert.match(views, /data-testid="codex-entry-pager"/)
+  assert.match(views, /visibleEntries\.map\(\(entry\)/)
+  assert.match(views, /data-testid="codex-notes-entry-pager"/)
+  assert.match(foundation, /F-135: keep the Codex a finite reader/)
+  assert.match(foundation, /\.codex-screen \.codex-book-section \{[\s\S]*?overflow: hidden;/)
+  assert.match(foundation, /\.codex-entry-pager \{[\s\S]*?letter-spacing: \.08em;/)
+})
+
 test('friend packages strip tracked player state before archive output', () => {
   const packager = source('../../../../tools/questlab-package.ps1')
 

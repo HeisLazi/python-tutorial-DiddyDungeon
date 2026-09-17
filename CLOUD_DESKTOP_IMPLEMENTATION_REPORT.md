@@ -2952,6 +2952,20 @@ Current-source Forge tests pass **44/44**. A clean Linux archive passed
 Browser K&M remains unavailable because the in-app webview could not attach
 (F-080); no visual-device acceptance claim is made.
 
+### Codex fixed-page evidence reader — F-135
+
+The Codex book frame no longer delegates its whole selected section to a
+scrolling feed. Encounter and Notes targets are presented three at a time with
+explicit record paging, while the active encounter detail, definition/examples
+and canonical note writes stay in the same bounded book surface. The state
+projection remains the source of truth; this only changes how evidence is
+presented.
+
+Current-source Forge tests pass **45/45**. A clean Linux archive passed
+**64/64** frontend tests and a Vite build transforming **1,346 modules**.
+Browser K&M remains unavailable because the in-app webview could not attach
+(F-080); no visual-device acceptance claim is made.
+
 ### Local sync simulator recheck — F-126
 
 The current branch was rechecked with

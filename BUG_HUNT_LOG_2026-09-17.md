@@ -762,3 +762,13 @@ is claimed from automation.
 Verification: current-source Forge runtime tests **44/44**, clean archive
 frontend tests **63/63**, and Vite build **1,346 modules** passed. Browser K&M
 remains blocked by F-080; no save, learner file, PTY or hosted transport changed.
+
+## Codex fixed-page evidence reader — 2026-09-17 (F-135)
+
+| ID | Severity | Finding | Status |
+|---|---|---|---|
+| F-135 | P1 | Encounter evidence and note targets were all rendered in the selected book body. As the library grew, that could recreate the same endless-feed feel and move the page controls out of view. | Fixed with an overflow-hidden book frame and explicit three-record paging controls shared by Encounter and Notes sections. The canonical projection and selected-record detail remain state-owned. |
+
+Verification: current-source Forge runtime tests **45/45**, clean archive
+frontend tests **64/64**, and Vite build **1,346 modules** passed. Browser K&M
+remains blocked by F-080; no save, learner file, PTY or hosted transport changed.

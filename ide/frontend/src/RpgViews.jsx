@@ -772,6 +772,7 @@ function Codex({ progress, revision, codexProjection, encounter, submitBattle, s
   const [query, setQuery] = useState('')
   const [selectedPageId, setSelectedPageId] = useState(pages[0]?.id || '')
   const [bookShelfPage, setBookShelfPage] = useState(0)
+  const [entryShelfPage, setEntryShelfPage] = useState(0)
   const [selectedEntryId, setSelectedEntryId] = useState('')
   const [note, setNote] = useState('')
   const [noteStatus, setNoteStatus] = useState('')
@@ -828,6 +829,10 @@ function Codex({ progress, revision, codexProjection, encounter, submitBattle, s
   const shelfPages = bookPages.slice(safeBookShelfPage * bookShelfPageSize, (safeBookShelfPage + 1) * bookShelfPageSize)
   const selectedPageIndex = Math.max(0, bookPages.findIndex((page) => page.id === selectedPage?.id))
   const selectedEntries = entries.filter((entry) => selectedPage && entryBelongsToPage(entry, selectedPage))
+  const entryShelfPageSize = 3
+  const entryShelfCount = Math.max(1, Math.ceil(selectedEntries.length / entryShelfPageSize))
+  const safeEntryShelfPage = Math.min(entryShelfPage, entryShelfCount - 1)
+  const visibleEntries = selectedEntries.slice(safeEntryShelfPage * entryShelfPageSize, (safeEntryShelfPage + 1) * entryShelfPageSize)
   const selectedEntry = selectedEntries.find((entry) => entry.id === selectedEntryId) || selectedEntries[0]
   const selectedEntryIds = selectedEntries.map((entry) => entry.id).join('|')
   const codexMetrics = {
@@ -856,6 +861,14 @@ function Codex({ progress, revision, codexProjection, encounter, submitBattle, s
     setNote('')
     setNoteStatus('')
   }, [selectedPage?.id, selectedEntryIds, selectedEntryId])
+
+  useEffect(() => {
+    setEntryShelfPage(0)
+  }, [selectedPage?.id, selectedEntryIds])
+
+  useEffect(() => {
+    if (entryShelfPage >= entryShelfCount) setEntryShelfPage(Math.max(0, entryShelfCount - 1))
+  }, [entryShelfCount, entryShelfPage])
 
   useEffect(() => {
     setCodexSection('read')
@@ -901,6 +914,12 @@ function Codex({ progress, revision, codexProjection, encounter, submitBattle, s
     if (!bookPages.length) return
     const nextIndex = Math.min(bookPages.length - 1, Math.max(0, selectedPageIndex + delta))
     if (nextIndex !== selectedPageIndex) selectPage(bookPages[nextIndex].id)
+  }
+
+  const selectEntry = (entryId) => {
+    setSelectedEntryId(entryId)
+    const entryIndex = selectedEntries.findIndex((entry) => entry.id === entryId)
+    if (entryIndex >= 0) setEntryShelfPage(Math.floor(entryIndex / entryShelfPageSize))
   }
 
   const submitNote = async (event) => {
@@ -1035,7 +1054,8 @@ function Codex({ progress, revision, codexProjection, encounter, submitBattle, s
               {codexSection === 'encounters' && (
                 <section className="codex-book-section" data-testid="codex-encounters-section">
                   <div className="codex-section-heading"><div><span className="screen-kicker">FIELD EVIDENCE</span><h4>Encounter records</h4></div><span>{selectedEntries.length} logged</span></div>
-                  <div className="codex-entry-picker codex-entry-picker-expanded">{selectedEntries.map((entry) => <button key={entry.id} type="button" className={selectedEntry?.id === entry.id ? 'active' : ''} onClick={() => setSelectedEntryId(entry.id)}>{entry.mob_name}<small>{entry.status} · {entry.attempts ?? 0} attempts</small></button>)}{!selectedEntries.length && <span className="empty-state">No encounter recorded yet.</span>}</div>
+                  {selectedEntries.length > entryShelfPageSize && <div className="codex-entry-pager" data-testid="codex-entry-pager"><button type="button" onClick={() => setEntryShelfPage((page) => Math.max(0, page - 1))} disabled={safeEntryShelfPage <= 0} aria-label="Previous encounter records">←</button><span>RECORDS {safeEntryShelfPage + 1} / {entryShelfCount}</span><button type="button" onClick={() => setEntryShelfPage((page) => Math.min(entryShelfCount - 1, page + 1))} disabled={safeEntryShelfPage >= entryShelfCount - 1} aria-label="Next encounter records">→</button></div>}
+                  <div className="codex-entry-picker codex-entry-picker-expanded">{visibleEntries.map((entry) => <button key={entry.id} type="button" className={selectedEntry?.id === entry.id ? 'active' : ''} onClick={() => selectEntry(entry.id)}>{entry.mob_name}<small>{entry.status} · {entry.attempts ?? 0} attempts</small></button>)}{!selectedEntries.length && <span className="empty-state">No encounter recorded yet.</span>}</div>
                   {selectedEntry ? (
                     <section className="codex-entry-detail">
                       <div className="card-heading"><span>{selectedEntry.mob_name} · OBSERVATION</span><b>{String(selectedEntry.status || 'observed').toUpperCase()}</b></div>
@@ -1054,7 +1074,8 @@ function Codex({ progress, revision, codexProjection, encounter, submitBattle, s
               {codexSection === 'notes' && (
                 <section className="codex-book-section" data-testid="codex-notes-section">
                   <div className="codex-section-heading"><div><span className="screen-kicker">FIELD NOTES</span><h4>Keep the useful parts</h4></div><span>workspace + canonical</span></div>
-                  <div className="codex-entry-picker codex-entry-picker-inline">{selectedEntries.map((entry) => <button key={entry.id} type="button" className={selectedEntry?.id === entry.id ? 'active' : ''} onClick={() => setSelectedEntryId(entry.id)}>{entry.mob_name}<small>{entry.concept || 'concept'}</small></button>)}{!selectedEntries.length && <span className="empty-state">No encounter note target yet.</span>}</div>
+                  {selectedEntries.length > entryShelfPageSize && <div className="codex-entry-pager" data-testid="codex-notes-entry-pager"><button type="button" onClick={() => setEntryShelfPage((page) => Math.max(0, page - 1))} disabled={safeEntryShelfPage <= 0} aria-label="Previous note targets">←</button><span>NOTES {safeEntryShelfPage + 1} / {entryShelfCount}</span><button type="button" onClick={() => setEntryShelfPage((page) => Math.min(entryShelfCount - 1, page + 1))} disabled={safeEntryShelfPage >= entryShelfCount - 1} aria-label="Next note targets">→</button></div>}
+                  <div className="codex-entry-picker codex-entry-picker-inline">{visibleEntries.map((entry) => <button key={entry.id} type="button" className={selectedEntry?.id === entry.id ? 'active' : ''} onClick={() => selectEntry(entry.id)}>{entry.mob_name}<small>{entry.concept || 'concept'}</small></button>)}{!selectedEntries.length && <span className="empty-state">No encounter note target yet.</span>}</div>
                   {selectedEntry ? <>
                     <div className="codex-notes workspace-notebook"><small className="codex-label">WORKSPACE NOTEBOOK · notes/{noteSlug(selectedEntry)}.md</small>{workspaceNoteLoading ? <p className="codex-insight-empty">Loading your transferable notes…</p> : workspaceNote ? <pre>{workspaceNote}</pre> : <p className="codex-insight-empty">No workspace note yet. Add one below; it travels with the project.</p>}</div>
                     {selectedEntry.player_notes?.length > 0 && <div className="codex-notes"><small className="codex-label">CANONICAL FIELD NOTES</small>{selectedEntry.player_notes.map((item, index) => <p key={`${item}-${index}`}>{item}</p>)}</div>}

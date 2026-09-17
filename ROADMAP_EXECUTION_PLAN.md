@@ -838,3 +838,17 @@ Current-source Forge tests are **44/44**. Clean Linux archive frontend tests
 pass **63/63** and the Vite build transforms **1,346 modules**. Browser K&M
 remains the visual publication gate (F-080); hosted sync and real-device
 acceptance remain separate roadmap gates.
+
+## Current checkpoint — 2026-09-17 — Codex fixed-page evidence reader
+
+F-135 closes the remaining finite-reader gap after the bookshelf work. The
+selected Codex book body is viewport-bounded and no longer grows a generic
+scrolling feed; Encounter and Notes sections page their targets three at a time
+with explicit controls. Definitions, examples, active encounter detail and
+canonical note writes remain available without changing state authority,
+revision polling, learner files or PTY sessions.
+
+Current-source Forge tests are **45/45**. Clean Linux archive frontend tests
+pass **64/64** and the Vite build transforms **1,346 modules**. Browser K&M
+remains the visual publication gate (F-080); hosted sync and real-device
+acceptance remain separate roadmap gates.
