@@ -1642,3 +1642,36 @@
     overflow-y: auto;
   }
 }
+
+/* F-158: the old cascade still won on desktop because its more-specific
+   viewport rule reintroduced overflow-y:auto after the F-157 compact pass.
+   The Codex book is already paged by React, so desktop sections must be a
+   finite folio surface rather than a second document scrollbar.  Keep the
+   narrow one-column fallback scrollable when the available height genuinely
+   cannot show both the index and the page. */
+.game-screen > .codex-screen > .codex-tab-page[data-codex-tab="books"] .codex-book-section {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  max-height: 100%;
+  overflow: hidden;
+  overflow-y: hidden;
+  scrollbar-width: none;
+  overscroll-behavior: none;
+}
+.game-screen > .codex-screen > .codex-tab-page[data-codex-tab="books"] .codex-book-section::-webkit-scrollbar { display: none; }
+.game-screen > .codex-screen > .codex-tab-page[data-codex-tab="books"] [data-testid="codex-read-section"] .codex-page-grid {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+}
+@media (max-width: 760px) {
+  .game-screen > .codex-screen > .codex-tab-page[data-codex-tab="books"] .codex-book-section {
+    height: auto;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    overscroll-behavior: contain;
+  }
+}

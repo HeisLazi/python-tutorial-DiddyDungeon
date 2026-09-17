@@ -3252,3 +3252,26 @@ Verification: Windows frontend tests **78/78**, Vite production build
 passed. Browser K&M remains blocked by F-080, so this does not claim fresh
 device-level visual proof. No player state, learner file, PTY or hosted
 migration changed.
+
+### Codex desktop overflow cascade correction — F-158 (2026-09-17)
+
+The F-157 layout was present in source, but a more-specific earlier viewport
+selector still won on desktop and reintroduced `overflow-y: auto` on the
+selected book section. That was the remaining cause of the visible Codex
+infinite-scroll document. F-158 adds a final matching-specificity rule that
+keeps desktop book sections flex-bounded and clipped, leaves the React shelf,
+encounter and mastery pagers as the collection navigation, and keeps only a
+small-screen one-column fallback scrollable. Code examples and long workspace
+notes retain their intentionally local scroll surfaces.
+
+During verification the manually started Vite session had no backend child;
+the configured local backend was restored on `7341` without restarting either
+Vite process or any terminal. The active `5195` frontend now proxies to that
+backend, and `/api/runtime` plus `/api/campaign` return `200` with canonical
+revision `18` (level 3, 120 XP, 75 coins, Blackjack 38%, The Hitman 8/8).
+This is runtime recovery evidence, not a claim that a second device was
+tested. Browser K&M remains blocked by F-080.
+
+Verification: Windows frontend tests **79/79** and Vite production build
+**1,346 modules**. No player state, learner file, protected save, hosted
+migration or PTY lifecycle was changed.

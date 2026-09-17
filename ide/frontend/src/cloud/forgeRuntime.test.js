@@ -500,6 +500,15 @@ test('Codex folio pages do not become a desktop infinite-scroll document', () =>
   assert.match(foundation, /data-testid="codex-encounters-section"\] \.codex-entry-picker-expanded,[\s\S]*?max-height: 78px;/)
 })
 
+test('Codex final cascade keeps desktop folios finite after the legacy viewport rules', () => {
+  const foundation = source('../foundation.css')
+
+  assert.match(foundation, /F-158: the old cascade still won on desktop/)
+  assert.match(foundation, /\.game-screen > \.codex-screen > \.codex-tab-page\[data-codex-tab="books"\] \.codex-book-section \{[\s\S]*?display: flex;[\s\S]*?overflow-y: hidden;[\s\S]*?scrollbar-width: none;/)
+  assert.match(foundation, /\.game-screen > \.codex-screen > \.codex-tab-page\[data-codex-tab="books"\] \.codex-book-section::-webkit-scrollbar \{ display: none; \}/)
+  assert.match(foundation, /@media \(max-width: 760px\) \{[\s\S]*?\.game-screen > \.codex-screen > \.codex-tab-page\[data-codex-tab="books"\] \.codex-book-section \{[\s\S]*?overflow-y: auto;/)
+})
+
 test('friend packages strip tracked player state before archive output', () => {
   const packager = source('../../../../tools/questlab-package.ps1')
 

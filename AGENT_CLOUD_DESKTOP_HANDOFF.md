@@ -361,6 +361,18 @@ content keep bounded local fallbacks. Windows frontend tests **78/78**, Vite
 Browser K&M remains blocked by F-080; no state, learner file, PTY or hosted
 migration changed.
 
+F-158 closes a cascade defect that remained visible after F-157: an earlier
+more-specific viewport rule restored `overflow-y: auto` on desktop book
+sections. The final matching-specificity rule keeps the desktop Codex folio
+flex-bounded and clipped, preserves React page/record/mastery controls, and
+keeps only the narrow one-column fallback plus code/note bodies scrollable.
+Windows frontend tests **79/79**, Vite (**1,346 modules**) and live source
+checks on `5181` and `5195` passed. The active Vite session is now backed by
+the configured local server on `7341`; `/api/runtime` and `/api/campaign` are
+healthy at canonical revision `18` (level 3, 120 XP, 75 coins, Blackjack
+38%, The Hitman 8/8). Browser K&M remains blocked by F-080; no player state,
+learner file, protected save, hosted migration or PTY lifecycle changed.
+
 Remaining release gates are intentionally unchanged:
 
 1. Apply only the two guarded hosted migrations after explicit approval, then

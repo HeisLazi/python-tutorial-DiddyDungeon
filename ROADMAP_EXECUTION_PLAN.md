@@ -1094,3 +1094,19 @@ frontend tests are **78/78**, Vite transforms **1,346 modules**, and live Vite
 instances (`5181`, `5190`) serve the F-157 cascade. Browser K&M, hosted
 migrations, physical CachyOS and authenticated cross-device acceptance remain
 open.
+
+## Current checkpoint — 2026-09-17 — Codex desktop cascade correction
+
+F-158 closes the last local overflow mismatch found after the F-157 reader
+repair. A higher-specificity legacy viewport rule was still restoring a
+desktop scrollbar on the selected book. The final matching-specificity rule
+now makes the desktop book sections flex-bounded and clipped; React shelf,
+encounter and mastery pagers remain the navigation authority, while only the
+narrow one-column fallback, code snippets and long notes can scroll.
+
+Windows frontend tests are **79/79**, the Vite production build transforms
+**1,346 modules**, and live source checks on `5181` and `5195` serve the F-158
+cascade. The configured local backend is healthy on `7341` for the active
+session and returns campaign revision `18` with the canonical level 3 state.
+Browser K&M (F-080), hosted migrations, physical CachyOS and authenticated
+cross-device acceptance remain open.

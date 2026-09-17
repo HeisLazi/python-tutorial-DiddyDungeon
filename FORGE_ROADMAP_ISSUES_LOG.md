@@ -2411,3 +2411,17 @@ Verification: Windows frontend tests **78/78**, Vite production build
 F-157 cascade. Browser K&M remains blocked by F-080, so this is not a fresh
 device-level visual claim. No player state, learner file, PTY or hosted
 migration changed.
+
+## More-specific Codex overflow rule still won — F-158
+
+| ID | Severity | Area | Finding | Status |
+|---|---|---|---|---|
+| F-158 | P1 | Codex presentation | The F-157 desktop intent was correct, but an earlier higher-specificity viewport rule still won in the final cascade and restored `overflow-y: auto` on the selected book. That left a visible document scrollbar and preserved the exact infinite-scroll feel the reader was meant to remove. | Fixed with a final selector matching the viewport rule: desktop book sections are flex-bounded and clipped, the read grid is height-budgeted, and only the narrow one-column fallback may scroll. |
+
+Verification: Windows frontend tests **79/79**, Vite production build
+**1,346 modules**, and live source checks on `5181` and `5195` confirm the
+F-158 selector is served. The backend was restored on the configured `7341`
+port for the active Vite session; `/api/runtime` and `/api/campaign` now return
+200 with canonical revision `18` (level 3, 120 XP, 75 coins, Blackjack 38%,
+The Hitman 8/8). Browser K&M remains blocked by F-080, so no fresh visual
+device claim is made. No player state, learner file or PTY was changed.
