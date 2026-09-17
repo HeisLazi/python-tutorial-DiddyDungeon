@@ -3045,3 +3045,16 @@ and `20260917000100_player_state_campaign_projection.sql`. A dry-run push
 proposed exactly those files and no others. No hosted migration, seed or player
 state write was performed. Applying them remains approval-gated before the
 authenticated two-device/live-projection acceptance run.
+
+### Codex compact folio viewport repair — F-141 (2026-09-17)
+
+The Codex's paged bookshelf still inherited a 520px minimum height from the
+legacy feed layout. In a compact Forge viewport that made the book frame exceed
+its available space and recreated the reported infinite-scroll feel. The Codex
+now uses a shorter field-library hero and explicit bounded flex constraints for
+its tab page, library, active index and selected book. Shelf, encounter/notes
+and mastery pagers remain state-independent presentation controls; no campaign
+authority, revision, reward, sync, learner-file or PTY behavior changed.
+
+Verification: Windows frontend tests **68/68** and Vite build **1,346 modules**.
+Browser K&M remains blocked by F-080.

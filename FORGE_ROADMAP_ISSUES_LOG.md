@@ -2230,3 +2230,13 @@ visual-device acceptance claim.
 
 Evidence was captured against linked project `ajnxexxcqfbozszwpjpk` on the current
 tip. Local state, learner files, PTYs and account data were not changed.
+
+## Codex legacy feed height — F-141
+
+| ID | Severity | Area | Finding | Status |
+|---|---|---|---|---|
+| F-141 | P1 | Codex presentation | The new folio controls still inherited the legacy `.codex-library { min-height: 520px; }` rule. On compact Forge windows that forced the book frame beyond the viewport and brought back the visual feel of an infinite scrolling document. | Fixed with a compact Codex hero and final viewport constraints: the tab page, library, index, book page and visible section now share a bounded flex budget, while the shelf/record/mastery pagers remain the only navigation for growing collections. No state, reward, sync, learner-file or PTY behavior changed. |
+
+Verification: Windows frontend tests **68/68** and Vite build **1,346 modules**
+passed. Browser K&M remains blocked by F-080, so this is not presented as a
+visual-device acceptance claim.

@@ -821,3 +821,13 @@ K&M remains environment-blocked by F-080.
 
 This is a real hosted-state gate, not a local test failure. Approval is required
 before applying the two migrations and running authenticated two-device tests.
+
+## Codex folio still inherited the legacy feed height — 2026-09-17 (F-141)
+
+| ID | Severity | Finding | Status |
+|---|---|---|---|
+| F-141 | P1 | The Codex had finite shelf and record controls, but `.codex-library` still carried the old 520px minimum height. That could push the selected book outside the Forge viewport and make the UI feel like an infinite scroll page. | Fixed with a compact field-library header and final `min-height: 0`/`height: 100%` constraints on the tab page, library, index, book page and visible section. The existing pagers remain the only way to move through growing evidence. |
+
+Verification: Windows frontend tests **68/68** and Vite build **1,346 modules**.
+No protected save, learner file, PTY or state-service behavior changed. Browser
+K&M remains environment-blocked by F-080.

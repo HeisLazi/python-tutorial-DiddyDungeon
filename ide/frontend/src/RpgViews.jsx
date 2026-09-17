@@ -950,11 +950,11 @@ function Codex({ progress, revision, codexProjection, encounter, submitBattle, s
 
   return (
     <div className="codex-screen" data-testid="codex" data-campaign-revision={revision}>
-      <div className="screen-hero">
+      <div className="screen-hero codex-hero">
         <div>
           <span className="screen-kicker">CODEX / FIELD LIBRARY</span>
-          <h2>What you face becomes knowledge.</h2>
-          <p>Read a concept page, inspect validated encounter evidence, and keep your own field notes. Exact hidden answers stay hidden.</p>
+          <h2>Field library</h2>
+          <p>Read the concepts you have earned, inspect encounter evidence, and keep notes without turning the Codex into a feed.</p>
         </div>
         <div className="codex-summary-grid" aria-label="Codex records summary">
           <div><strong>{skills.length + entries.length}</strong><span>records indexed</span></div>

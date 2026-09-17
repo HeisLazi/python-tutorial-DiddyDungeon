@@ -894,3 +894,72 @@
   .codex-screen .codex-index { overflow-y: auto; scrollbar-width: thin; }
   .codex-screen .codex-book-section { overflow: hidden; }
 }
+
+/* F-141: the Codex is a compact folio, not a second document window. The
+   legacy .codex-library min-height (520px) could force the book frame past the
+   Forge viewport, making the page feel like an endless scroll even though the
+   content was already paged. These final constraints give the header, tabs and
+   folio a real flex budget at every desktop size. */
+.codex-screen > .screen-hero.codex-hero {
+  min-height: 0;
+  max-height: 108px;
+  padding: 11px 16px;
+  gap: 16px;
+}
+.codex-screen > .screen-hero.codex-hero h2 {
+  margin: 4px 0 5px;
+  font-size: clamp(19px, 2vw, 27px);
+}
+.codex-screen > .screen-hero.codex-hero p {
+  max-width: 56ch;
+  font-size: 10px;
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+}
+.codex-screen > .codex-mode-tabs {
+  min-height: 0;
+  padding: 3px;
+}
+.codex-screen > .codex-mode-tabs button { min-height: 28px; padding-block: 5px; }
+.codex-screen > .codex-tab-page,
+.codex-screen > .codex-tab-page[data-codex-tab="books"] {
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
+}
+.codex-screen > .codex-tab-page[data-codex-tab="battle"] {
+  display: block;
+  overflow: auto;
+  scrollbar-width: thin;
+  overscroll-behavior: contain;
+}
+.codex-screen .codex-library {
+  min-height: 0;
+  height: 100%;
+  margin-bottom: 0;
+}
+.codex-screen .codex-index,
+.codex-screen .codex-book-page {
+  min-height: 0;
+  height: 100%;
+}
+.codex-screen .codex-book-page {
+  overflow: hidden;
+}
+.codex-screen .codex-book-section {
+  flex: 1 1 0;
+  min-height: 0;
+  height: auto;
+}
+.codex-screen .codex-summary-grid > div {
+  min-height: 40px;
+  padding: 4px 9px;
+}
+.codex-screen .codex-summary-grid strong { font-size: 14px; }
+
+@media (max-width: 900px) {
+  .codex-screen > .screen-hero.codex-hero { max-height: 148px; }
+}

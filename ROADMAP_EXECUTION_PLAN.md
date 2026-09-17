@@ -920,3 +920,15 @@ those two files. No hosted write or seed was performed. The next Milestone C
 step is explicit approval to apply those migrations, followed by authenticated
 two-device live-projection and PTY-preservation acceptance. Local Forge remains
 green, but this hosted gate is not complete.
+
+## Current checkpoint — 2026-09-17 — Codex compact folio viewport
+
+F-141 removed the remaining legacy 520px Codex library height that could push
+the selected book beyond the Forge viewport. The Codex hero is shorter and the
+books/battle tab page, library, index, book and visible section now share one
+bounded flex budget. Growing collections continue through explicit shelf,
+record and mastery pagers rather than a page-length scroll feed.
+
+Windows frontend tests are **68/68** and the Vite build transforms **1,346
+modules**. This is a presentation-only repair; browser K&M (F-080), hosted
+migrations and real-device acceptance remain open.
