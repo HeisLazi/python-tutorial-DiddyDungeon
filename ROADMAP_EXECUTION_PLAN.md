@@ -612,3 +612,25 @@ verification is **101/101**, clean frontend **40/40**, and the production build
 transforms **1,346 modules**. This remains source/simulator evidence only until
 the hosted migration is deliberately applied and a real authenticated
 PC↔laptop acceptance run is captured.
+
+## Current checkpoint — 2026-09-17 — disposable account and status-copy recheck
+
+The disposable-account acceptance verified profile/device registration, private
+avatar upload/download/replacement across two isolated SyncEngine clients,
+anonymous avatar/profile denial, and the explicit Git-backed transfer of
+`blackjack.py`, `tutor.py`, `dungeon.py` and bounded concept notes without
+touching `progress.json` or private session files. The account is a QA-only
+identity, not the player's personal account.
+
+The live hosted `save_player_state` RPC still rejected the source-reviewed
+campaign projection with `next_state contains unsupported domains`; this is
+F-079 and means the campaign migration remains unapplied. No hosted migration
+was run without approval. The in-app browser also failed to attach a fresh
+tab to the isolated runtime (F-080), so no new K&M claim is made for this
+account pass.
+
+One stale signed-in status message was corrected (F-081) so it names Campaign,
+Journal and Codex as shared gateway surfaces. Fresh local gates are backend
+**101/101**, frontend **41/41**, Python compilation, and a clean ext4 Vite
+build transforming **1,346 modules**. Protected `progress.json`, root
+`tutor.py`, root `dungeon.py` and existing PTYs remain untouched.
