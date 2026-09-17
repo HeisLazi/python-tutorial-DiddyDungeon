@@ -2178,3 +2178,14 @@ Verification: current-source Forge runtime tests pass **45/45**; clean Linux
 archive frontend tests pass **64/64** and Vite transforms **1,346 modules**.
 Browser K&M remains unavailable in this environment (F-080), so visual-device
 acceptance is still open.
+
+## Route/quest/Dungeon SVG marker parity — F-136
+
+| ID | Severity | Area | Finding | Status |
+|---|---|---|---|---|
+| F-136 | P2 | RPG presentation | Hub chapters, quest objectives, mob paths, boss phases and Dungeon map/room markers still depended on font glyphs, so icons could shift or disappear independently of the fixed HUD/Codex SVGs. | Fixed by routing those status markers and return controls through `RouteIcon` (`check`, `target`, `lock`, `plus`, `flame`, `shield`, `spark`) with explicit SVG sizing/strokes. Visible labels and state-owned statuses remain unchanged. |
+
+Verification: current-source Forge runtime tests pass **46/46**; clean Linux
+archive frontend tests pass **65/65** and Vite transforms **1,346 modules**.
+Browser K&M remains unavailable in this environment (F-080), so visual-device
+acceptance is still open.

@@ -360,6 +360,16 @@ test('Codex evidence stays in a finite page frame with explicit record paging', 
   assert.match(foundation, /\.codex-entry-pager \{[\s\S]*?letter-spacing: \.08em;/)
 })
 
+test('route, quest and Dungeon markers use the shared SVG vocabulary', () => {
+  const views = source('../RpgViews.jsx')
+  const foundation = source('../foundation.css')
+
+  assert.doesNotMatch(views, /[✓○◌◆◇◐⌘]/)
+  for (const icon of ['check', 'target', 'lock', 'plus']) assert.match(views, new RegExp(`['"]${icon}['"]`))
+  assert.match(foundation, /F-136: finish SVG parity on route, quest and Dungeon markers/)
+  assert.match(foundation, /\.dungeon-map-node > span svg,[\s\S]*?\.panel-title > button svg/)
+})
+
 test('friend packages strip tracked player state before archive output', () => {
   const packager = source('../../../../tools/questlab-package.ps1')
 

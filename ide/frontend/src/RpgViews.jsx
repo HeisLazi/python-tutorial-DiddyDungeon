@@ -76,7 +76,7 @@ export function ContextPanel({ activeView, campaign, files, activePath, openFile
       <>
         <div className="panel-title">
           <span>QUEST HUB</span>
-          <button onClick={() => setActiveView('forge')} title="Open Forge">⌘</button>
+          <button onClick={() => setActiveView('forge')} title="Open Forge" aria-label="Open Forge"><RouteIcon id="forge" /></button>
         </div>
         <div className="context-scroll">
           <div className="context-kicker">CAMPAIGN BRIEF</div>
@@ -85,7 +85,7 @@ export function ContextPanel({ activeView, campaign, files, activePath, openFile
           <div className="context-stat"><span>Chapter progress</span><b>{activeProject?.progress ?? 0}%</b></div>
           <div className="context-stat"><span>Mob clears</span><b>{cleared}/{activeProject?.mobs?.length ?? 0}</b></div>
           <div className="context-kicker context-kicker-spaced">TODAY</div>
-          {(goals.daily || []).slice(0, 3).map((goal) => <div key={goal.id} className="context-row stacked"><strong>{goal.done ? '✓ ' : ''}{goal.text}</strong><small>+{goal.reward_xp ?? 0} XP · +{goal.reward_coins ?? 0}c</small></div>)}
+          {(goals.daily || []).slice(0, 3).map((goal) => <div key={goal.id} className="context-row stacked"><strong><span aria-hidden="true"><RouteIcon id={goal.done ? 'check' : 'target'} /></span>{goal.text}</strong><small>+{goal.reward_xp ?? 0} XP · +{goal.reward_coins ?? 0}c</small></div>)}
           <button className="primary context-cta" type="button" onClick={() => setActiveView('forge')}>Open active project</button>
         </div>
       </>
@@ -133,7 +133,7 @@ export function ContextPanel({ activeView, campaign, files, activePath, openFile
       <>
         <div className="panel-title">
           <span>TUTOR NOTEBOOK</span>
-          <button onClick={() => setActiveView('forge')} title="Return to Forge">⌘</button>
+          <button onClick={() => setActiveView('forge')} title="Return to Forge" aria-label="Return to Forge"><RouteIcon id="forge" /></button>
         </div>
         <div className="context-scroll">
           <div className="context-kicker">COLLABORATIVE SCRATCH SPACE</div>
@@ -158,7 +158,7 @@ export function ContextPanel({ activeView, campaign, files, activePath, openFile
       <>
         <div className="panel-title">
           <span>{viewItems.find((item) => item.id === activeView)?.label?.toUpperCase()}</span>
-          <button onClick={() => setActiveView('forge')} title="Return to Forge">⌘</button>
+          <button onClick={() => setActiveView('forge')} title="Return to Forge" aria-label="Return to Forge"><RouteIcon id="forge" /></button>
         </div>
         <div className="context-scroll">
           <div className="context-kicker">CAMPAIGN SYNC</div>
@@ -173,7 +173,7 @@ export function ContextPanel({ activeView, campaign, files, activePath, openFile
     <>
       <div className="panel-title">
         <span>{viewItems.find((item) => item.id === activeView)?.label?.toUpperCase()}</span>
-        <button onClick={() => setActiveView('forge')} title="Return to Forge">⌘</button>
+          <button onClick={() => setActiveView('forge')} title="Return to Forge" aria-label="Return to Forge"><RouteIcon id="forge" /></button>
       </div>
       <div className="context-scroll">
         {activeView === 'quests' && (
@@ -184,7 +184,7 @@ export function ContextPanel({ activeView, campaign, files, activePath, openFile
             <div className="context-list">
               {(activeProject?.mobs || []).map((mob) => (
                 <div key={mob.name} className={`context-row ${mob.status}`}>
-                  <span>{mob.status === 'available' ? '◆' : isMobDefeated(mob.status) ? '✓' : '◇'}</span>
+                  <span aria-hidden="true"><RouteIcon id={mob.status === 'available' ? 'flame' : isMobDefeated(mob.status) ? 'shield' : 'lock'} /></span>
                   <span>{mob.name}</span>
                 </div>
               ))}
@@ -321,6 +321,10 @@ function RouteIcon({ id }) {
     settings: <><circle cx="12" cy="12" r="3" /><path d="M19 12a7 7 0 0 0-.1-1l2-1.5-2-3.5-2.4 1a8 8 0 0 0-1.7-1L14.5 3h-5l-.4 3a8 8 0 0 0-1.7 1L5 6 3 9.5 5.1 11a7 7 0 0 0 0 2L3 14.5 5 18l2.4-1a8 8 0 0 0 1.7 1l.4 3h5l.4-3a8 8 0 0 0 1.7-1l2.4 1 2-3.5-2.1-1.5a7 7 0 0 0 .1-1z" /></>,
     shield: <><path d="M12 3 19 6v5c0 4.5-2.8 8-7 10-4.2-2-7-5.5-7-10V6z" /><path d="m9 12 2 2 4-4" /></>,
     flame: <path d="M13 2s1 4-2 7c-2 2-3 4-2 7 1 2 3 3 5 2 3-1 5-4 4-8 3 3 4 8 1 11-4 4-12 2-13-4-1-5 3-8 7-15z" />,
+    check: <path d="m5 12 4 4L19 6" />,
+    target: <><circle cx="12" cy="12" r="7" /><circle cx="12" cy="12" r="2" /></>,
+    lock: <><rect x="5" y="10" width="14" height="10" rx="2" /><path d="M8 10V7a4 4 0 0 1 8 0v3" /></>,
+    plus: <><path d="M12 5v14M5 12h14" /></>,
     spark: <path d="m12 2 1.8 7.2L21 11l-7.2 1.8L12 20l-1.8-7.2L3 11l7.2-1.8z" />,
     window: <><rect x="4" y="5" width="16" height="14" rx="1" /><path d="M12 5v14M4 12h16" /></>,
   }
@@ -408,26 +412,26 @@ function HubScreen({ progress, revision, onOpen }) {
       <div className="hub-grid">
         <section className="game-card hub-contracts">
           <div className="card-heading"><span>TODAY'S CONTRACTS</span><b>{(goals.daily || []).filter((goal) => goal.done).length}/{(goals.daily || []).length}</b></div>
-          <div className="quest-list">{(goals.daily || []).slice(0, 5).map((goal) => <div key={goal.id} className={`quest-item ${goal.done ? 'done' : ''}`}><span>{goal.done ? '✓' : '○'}</span><div><strong>{goal.text}</strong><small>+{goal.reward_xp ?? 0} XP · +{goal.reward_coins ?? 0}c</small></div></div>)}</div>
+          <div className="quest-list">{(goals.daily || []).slice(0, 5).map((goal) => <div key={goal.id} className={`quest-item ${goal.done ? 'done' : ''}`}><span aria-hidden="true"><RouteIcon id={goal.done ? 'check' : 'target'} /></span><div><strong>{goal.text}</strong><small>+{goal.reward_xp ?? 0} XP · +{goal.reward_coins ?? 0}c</small></div></div>)}</div>
           {!(goals.daily || []).length && <p className="context-note">No daily contracts have been issued yet.</p>}
         </section>
         <section className="game-card hub-weekly">
           <div className="card-heading"><span>WEEKLY RAIDS</span><b>{(goals.weekly || []).filter((goal) => goal.done).length}/{(goals.weekly || []).length}</b></div>
           <div className="hub-raid-banner"><span className="raid-gate-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="8" cy="8" r="3" /><circle cx="16" cy="8" r="3" /><path d="M2 20a6 6 0 0 1 12 0M10 20a6 6 0 0 1 12 0" /></svg></span><div><strong>Party raid board</strong><p>Weekly goals are tracked here; shared raid combat unlocks in the multiplayer milestone.</p></div><span className="raid-locked">LOCKED</span></div>
-          <div className="quest-list compact">{(goals.weekly || []).slice(0, 4).map((goal) => <div key={goal.id} className={`quest-item ${goal.done ? 'done' : ''}`}><span>{goal.done ? '✓' : '○'}</span><div><strong>{goal.text}</strong><small>{goal.progress ?? 0}/{goal.target ?? 1}</small></div></div>)}</div>
+          <div className="quest-list compact">{(goals.weekly || []).slice(0, 4).map((goal) => <div key={goal.id} className={`quest-item ${goal.done ? 'done' : ''}`}><span aria-hidden="true"><RouteIcon id={goal.done ? 'check' : 'target'} /></span><div><strong>{goal.text}</strong><small>{goal.progress ?? 0}/{goal.target ?? 1}</small></div></div>)}</div>
         </section>
       </div>
       <section className="game-card hub-chapters">
         <div className="card-heading"><span>MAIN QUEST · CHAPTERS</span><b>{activeProject.progress ?? 0}%</b></div>
         <div className="chapter-grid">{projects.map((project, index) => {
           const locked = project.status === 'locked' || (project.status !== 'active' && !project.completed)
-          return <article key={project.id || project.name || index} className={`chapter-card ${locked ? 'locked' : project.completed ? 'complete' : 'active'}`}><div className="chapter-art" aria-hidden="true">{locked ? '◌' : project.completed ? '✓' : '◆'}</div><div><span className="chapter-category">{project.category || project.type || 'chapter'}</span><h3>{locked ? (project.name || `Chapter ${index + 1}`) : project.name}</h3><p>{locked ? 'Future chapter · details unlock after the previous clear.' : project.summary || project.description || (project.status === 'active' ? 'Continue the current learning path.' : 'Verified chapter complete.')}</p></div>{project.status === 'active' && <button type="button" onClick={() => onOpen?.('codex')}>Open Codex quest</button>}</article>
+          return <article key={project.id || project.name || index} className={`chapter-card ${locked ? 'locked' : project.completed ? 'complete' : 'active'}`}><div className="chapter-art" aria-hidden="true"><RouteIcon id={locked ? 'lock' : project.completed ? 'shield' : 'codex'} /></div><div><span className="chapter-category">{project.category || project.type || 'chapter'}</span><h3>{locked ? (project.name || `Chapter ${index + 1}`) : project.name}</h3><p>{locked ? 'Future chapter · details unlock after the previous clear.' : project.summary || project.description || (project.status === 'active' ? 'Continue the current learning path.' : 'Verified chapter complete.')}</p></div>{project.status === 'active' && <button type="button" onClick={() => onOpen?.('codex')}>Open Codex quest</button>}</article>
         })}</div>
         {!projects.length && <p className="context-note">The campaign chapter list will appear after the state service loads.</p>}
       </section>
       <section className="game-card hub-encounters">
         <div className="card-heading"><span>ENCOUNTER PATH</span><b>{mobs.filter((mob) => isMobDefeated(mob.status)).length}/{mobs.length} cleared</b></div>
-        <div className="encounter-silhouette-grid">{mobs.map((mob, index) => { const locked = mob.status === 'locked'; return <article key={mob.name || index} className={`encounter-silhouette ${locked ? 'locked' : mob.status}`}><span>{locked ? '◐' : isMobDefeated(mob.status) ? '✓' : index + 1}</span><div><strong>{mob.name || `Encounter ${index + 1}`}</strong><small>{mob.category || mob.concept || 'Encounter'}</small></div></article> })}</div>
+        <div className="encounter-silhouette-grid">{mobs.map((mob, index) => { const locked = mob.status === 'locked'; return <article key={mob.name || index} className={`encounter-silhouette ${locked ? 'locked' : mob.status}`}><span aria-hidden="true"><RouteIcon id={locked ? 'lock' : isMobDefeated(mob.status) ? 'shield' : 'flame'} /></span><div><strong>{mob.name || `Encounter ${index + 1}`}</strong><small>{mob.category || mob.concept || 'Encounter'}</small></div></article> })}</div>
       </section>
     </div>
   )
@@ -582,7 +586,7 @@ function QuestBattleScreen({ activeProject, currentMob, encounter, resolve, maxR
             {bossRequirements.map((requirement) => {
               const verified = verifiedBossRequirements.includes(requirement)
               const current = !verified && requirement === bossPhase
-              return <span key={requirement} className={`${verified ? 'verified' : ''} ${current ? 'current' : ''}`}><b>{verified ? '✓' : current ? '◆' : '○'}</b>{String(requirement).replaceAll('_', ' ')}</span>
+              return <span key={requirement} className={`${verified ? 'verified' : ''} ${current ? 'current' : ''}`}><b aria-hidden="true"><RouteIcon id={verified ? 'check' : current ? 'flame' : 'target'} /></b>{String(requirement).replaceAll('_', ' ')}</span>
             })}
           </div>
           <small className="context-note">{remainingBossRequirements?.length ? `${remainingBossRequirements.length} phase${remainingBossRequirements.length === 1 ? '' : 's'} remain. PYR supplies each bounded challenge.` : 'All phases are verified; the integrated clear can be recorded.'}</small>
@@ -711,7 +715,7 @@ function QuestJournal({ progress, revision, encounter, submitBattle, submitBoss,
           <div className="mob-path">
             {mobs.map((mob, index) => (
               <div key={mob.name} className={`mob-node ${mob.status} ${index === currentIndex ? 'current' : ''}`}>
-                <span>{isMobDefeated(mob.status) ? '✓' : index + 1}</span>
+                <span aria-hidden="true"><RouteIcon id={isMobDefeated(mob.status) ? 'shield' : index === currentIndex ? 'flame' : 'target'} /></span>
                 <div><strong>{mob.name}</strong><small>{mob.status === 'locked' ? 'Encounter hidden' : mob.concept || 'Encounter details pending'}</small></div>
               </div>
             ))}
@@ -723,7 +727,7 @@ function QuestJournal({ progress, revision, encounter, submitBattle, submitBoss,
           <div className="quest-list">
             {(goals.daily || []).map((goal) => (
               <div key={goal.id} className={`quest-item ${goal.done ? 'done' : ''}`}>
-                <span>{goal.done ? '✓' : '○'}</span>
+                <span aria-hidden="true"><RouteIcon id={goal.done ? 'check' : 'target'} /></span>
                 <div><strong>{goal.text}</strong><small>+{goal.reward_xp ?? 0} XP · +{goal.reward_coins ?? 0}c</small></div>
               </div>
             ))}
@@ -732,7 +736,7 @@ function QuestJournal({ progress, revision, encounter, submitBattle, submitBoss,
           <div className="quest-list compact">
             {(goals.weekly || []).map((goal) => (
               <div key={goal.id} className={`quest-item ${goal.done ? 'done' : ''}`}>
-                <span>{goal.done ? '✓' : '○'}</span>
+                <span aria-hidden="true"><RouteIcon id={goal.done ? 'check' : 'target'} /></span>
                 <div><strong>{goal.text}</strong><small>{goal.progress ?? 0}/{goal.target ?? 1}</small></div>
               </div>
             ))}
@@ -1288,12 +1292,12 @@ function DungeonMap({ run, onChoose, busy }) {
     <section className="game-card dungeon-map-card" data-testid="dungeon-map">
       <div className="card-heading"><span>RUN MAP</span><b>FLOOR {currentFloor}</b></div>
       <div className="dungeon-map-grid" aria-label={`Dungeon map floor ${currentFloor}`}>
-        {nodes.map((node) => <div key={node.key} className={`dungeon-map-node ${node.isCurrent ? 'current' : ''} ${node.seen ? 'seen' : ''} ${node.type}`}><span aria-hidden="true">{node.isCurrent ? '◆' : node.type === 'rest' ? '✚' : node.type === 'market' ? '◇' : node.type === 'cleared' ? '✓' : '○'}</span><small>{node.isCurrent ? 'YOU ARE HERE' : node.type.toUpperCase()}</small><strong>R{node.room}</strong></div>)}
+        {nodes.map((node) => <div key={node.key} className={`dungeon-map-node ${node.isCurrent ? 'current' : ''} ${node.seen ? 'seen' : ''} ${node.type}`}><span aria-hidden="true"><RouteIcon id={node.isCurrent ? 'flame' : node.type === 'rest' ? 'plus' : node.type === 'market' ? 'spark' : node.type === 'cleared' ? 'shield' : 'target'} /></span><small>{node.isCurrent ? 'YOU ARE HERE' : node.type.toUpperCase()}</small><strong>R{node.room}</strong></div>)}
       </div>
       {Array.isArray(run.room_choices) && run.room_choices.length > 0 && <div className="dungeon-route-choices" aria-label="Choose your next room">
         <div className="dungeon-route-heading"><span>CHOOSE YOUR NEXT ROOM</span><small>The state service reveals the question only after you choose.</small></div>
         {run.room_choices.map((choice) => <button key={choice.id} type="button" className={`dungeon-route-choice ${choice.kind || ''}`} onClick={() => onChoose?.(run.run_id, choice.id)} disabled={busy || !onChoose}>
-          <span className="dungeon-route-glyph" aria-hidden="true">{choice.kind === 'rest' ? '✚' : choice.kind === 'market' ? '◇' : '◆'}</span>
+           <span className="dungeon-route-glyph" aria-hidden="true"><RouteIcon id={choice.kind === 'rest' ? 'plus' : choice.kind === 'market' ? 'spark' : 'flame'} /></span>
           <span><strong>{choice.label}</strong><small>{choice.description}</small></span>
           <b aria-hidden="true">→</b>
         </button>)}
@@ -1368,7 +1372,7 @@ function DungeonScreen({ dungeon, revision, onStart, onChoose, onRest, onMarketP
           <div className="screen-grid two">
             <section className={`game-card dungeon-room-card ${run.room_type || 'selector'}`}>
               <div className="card-heading"><span>CURRENT ROOM</span><b>{String(run.room_type || 'encounter').toUpperCase()}</b></div>
-              {run.room_type === 'encounter' && run.encounter && <div className="dungeon-mob-banner" aria-label="Current adaptive learning mob"><span className="dungeon-mob-sigil" aria-hidden="true">◆</span><div><small>ADAPTIVE MOB · PHASE {run.encounter.phase || 'I'}</small><strong>{run.encounter.name}</strong><span>{run.encounter.category} · {run.encounter.concept_id}</span></div><b>DIFFICULTY {run.encounter.difficulty ?? question.difficulty ?? 1}</b></div>}
+              {run.room_type === 'encounter' && run.encounter && <div className="dungeon-mob-banner" aria-label="Current adaptive learning mob"><span className="dungeon-mob-sigil" aria-hidden="true"><RouteIcon id="flame" /></span><div><small>ADAPTIVE MOB · PHASE {run.encounter.phase || 'I'}</small><strong>{run.encounter.name}</strong><span>{run.encounter.category} · {run.encounter.concept_id}</span></div><b>DIFFICULTY {run.encounter.difficulty ?? question.difficulty ?? 1}</b></div>}
               {run.room_type === 'selector' ? (
                 <div className="dungeon-room-action"><h3>Route selector</h3><p>Choose a room on the map above. The next challenge is issued only after the route is committed.</p></div>
               ) : run.room_type === 'rest' ? (

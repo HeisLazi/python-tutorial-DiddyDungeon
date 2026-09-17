@@ -772,3 +772,13 @@ remains blocked by F-080; no save, learner file, PTY or hosted transport changed
 Verification: current-source Forge runtime tests **45/45**, clean archive
 frontend tests **64/64**, and Vite build **1,346 modules** passed. Browser K&M
 remains blocked by F-080; no save, learner file, PTY or hosted transport changed.
+
+## Route/quest/Dungeon SVG marker parity — 2026-09-17 (F-136)
+
+| ID | Severity | Finding | Status |
+|---|---|---|---|
+| F-136 | P2 | Hub chapters, quest objectives, mob paths, boss phases and Dungeon map/room markers still used font glyphs beside the corrected HUD/Codex SVG system. | Fixed with shared `RouteIcon` status markers and explicit SVG sizing/strokes for route, quest and Dungeon surfaces. |
+
+Verification: current-source Forge runtime tests **46/46**, clean archive
+frontend tests **65/65**, and Vite build **1,346 modules** passed. Browser K&M
+remains blocked by F-080; no save, learner file, PTY or hosted transport changed.

@@ -2966,6 +2966,19 @@ Current-source Forge tests pass **45/45**. A clean Linux archive passed
 Browser K&M remains unavailable because the in-app webview could not attach
 (F-080); no visual-device acceptance claim is made.
 
+### Route/quest/Dungeon SVG marker parity — F-136
+
+The shared monochrome SVG language now covers the remaining RPG status marks:
+Hub chapter cards, daily/weekly objectives, active/cleared/locked mob paths,
+boss validation phases, Dungeon map nodes, route choices and adaptive-mob
+badges. This removes host-font-dependent glyphs without changing the
+state-service status, reward or revision contracts.
+
+Current-source Forge tests pass **46/46**. A clean Linux archive passed
+**65/65** frontend tests and a Vite build transforming **1,346 modules**.
+Browser K&M remains unavailable because the in-app webview could not attach
+(F-080); no visual-device acceptance claim is made.
+
 ### Local sync simulator recheck — F-126
 
 The current branch was rechecked with

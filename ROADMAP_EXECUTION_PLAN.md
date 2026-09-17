@@ -852,3 +852,15 @@ Current-source Forge tests are **45/45**. Clean Linux archive frontend tests
 pass **64/64** and the Vite build transforms **1,346 modules**. Browser K&M
 remains the visual publication gate (F-080); hosted sync and real-device
 acceptance remain separate roadmap gates.
+
+## Current checkpoint — 2026-09-17 — Route/quest/Dungeon SVG marker parity
+
+F-136 finishes the local status-icon consistency pass. Font-dependent symbols
+were removed from Hub chapters, quest objectives/mob paths, boss phases and
+Dungeon map/room markers; `RouteIcon` now supplies their monochrome paths with
+explicit sizing. Labels and state-owned status semantics remain intact.
+
+Current-source Forge tests are **46/46**. Clean Linux archive frontend tests
+pass **65/65** and the Vite build transforms **1,346 modules**. Browser K&M
+remains the visual publication gate (F-080); hosted sync and real-device
+acceptance remain separate roadmap gates.

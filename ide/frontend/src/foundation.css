@@ -796,3 +796,35 @@
   overflow: auto;
   scrollbar-width: thin;
 }
+
+/* F-136: finish SVG parity on route, quest and Dungeon markers. Decorative
+   status marks remain paired with visible labels; only their font-dependent
+   glyphs are removed. */
+.chapter-art svg,
+.encounter-silhouette > span svg,
+.mob-node > span svg,
+.quest-item > span svg,
+.boss-phase-list b svg,
+.dungeon-map-node > span svg,
+.dungeon-route-glyph svg,
+.dungeon-mob-sigil svg,
+.context-row > span svg,
+.context-row.stacked strong > span svg,
+.panel-title > button svg {
+  display: block;
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.45;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.chapter-art svg { width: 20px; height: 20px; }
+.encounter-silhouette > span svg,
+.mob-node > span svg,
+.dungeon-map-node > span svg,
+.dungeon-route-glyph svg,
+.dungeon-mob-sigil svg { width: 17px; height: 17px; }
+.boss-phase-list b { display: inline-grid; place-items: center; }
+.panel-title > button { display: inline-grid; place-items: center; }
