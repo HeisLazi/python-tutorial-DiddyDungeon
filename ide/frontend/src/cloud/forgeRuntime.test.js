@@ -271,6 +271,15 @@ test('Codex book surface keeps readable paper hierarchy across themes', () => {
   assert.doesNotMatch(foundation, /\.codex-screen \.codex-examples pre \{[\s\S]*?background: #090b09/)
 })
 
+test('Codex stays a bounded book surface instead of growing an outer feed', () => {
+  const foundation = source('../foundation.css')
+
+  assert.match(foundation, /\.forge-v2 \.game-screen \{ position: relative; min-width: 0; min-height: 0; \}/)
+  assert.match(foundation, /\.forge-v2 \.game-screen > \.codex-screen \{ position: absolute; inset: 0; width: 100%; max-height: 100%; \}/)
+  assert.match(foundation, /\.codex-book-section \{ overflow: hidden; \}/)
+  assert.match(foundation, /\.codex-screen \.codex-index \{ min-height: 0; overflow-y: auto;/)
+})
+
 test('Dungeon renders state-owned adaptive mob identity and reward feedback', () => {
   const views = source('../RpgViews.jsx')
   const app = source('../AppV2.jsx')

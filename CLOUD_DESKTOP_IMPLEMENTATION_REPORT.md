@@ -2794,3 +2794,16 @@ revision polling, rewards, notes, or PTY lifecycle.
 Current-source Forge tests pass **34/34**. Clean archive frontend tests/build
 and browser K&M remain the visual publication checks; no state, learner file,
 PTY or hosted transport changed.
+
+### Codex outer-feed regression repair — F-123
+
+The Codex now has an explicit viewport boundary instead of relying on the
+parent grid's automatic sizing. Forge establishes a bounded game-surface
+positioning context and pins the Codex shell to it, while the active book
+section no longer creates a second vertical feed. The Field Library index is
+the sole intentional navigation scroll owner; the visible page is advanced by
+the existing Previous/Next controls and section tabs.
+
+Current-source Forge tests pass **35/35**. Clean archive frontend tests/build
+and browser K&M remain the visual publication checks; no state, learner file,
+PTY or hosted transport changed.

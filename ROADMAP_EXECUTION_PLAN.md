@@ -683,3 +683,15 @@ the fixed shell and one contained section scroll owner remain unchanged.
 Current-source Forge tests are **34/34**. Clean archive frontend tests/build
 and browser K&M remain visual publication checks; no state, learner file, PTY
 or hosted transport changed.
+
+## Current checkpoint — 2026-09-17 — Codex outer-feed boundary
+
+F-123 repairs the remaining finite-book presentation regression. The Codex is
+now pinned to the bounded Forge game surface, and active book sections cannot
+turn the screen into an endless vertical feed. Only the Field Library index
+retains a contained navigation scroll; the reading surface is advanced with
+explicit book/section controls.
+
+Current-source Forge tests are **35/35**. Clean archive frontend tests/build
+and browser K&M remain visual publication checks; no state, learner file, PTY
+or hosted transport changed.
