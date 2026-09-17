@@ -327,6 +327,17 @@ const redactErrorMessage = (value) =>
     .replace(/eyJ[A-Za-z0-9_-]{20,}/g, '[redacted-token]')
 
 const asError = (error, fallback = 'Cloud request failed') => {
+  const fingerprint = [error?.code, error?.error_code, error?.name, error?.message]
+    .filter(Boolean)
+    .join(' ')
+  if (/over_email_send_rate_limit|email[\s_-]*send[\s_-]*rate[\s_-]*limit/i.test(fingerprint)) {
+    const friendly = new Error('Email delivery is temporarily rate-limited. Try again later; no account was created.')
+    if (error && typeof error === 'object') {
+      if (error.code) friendly.code = error.code
+      if (error.error_code) friendly.error_code = error.error_code
+    }
+    return friendly
+  }
   if (error instanceof Error) {
     error.message = redactErrorMessage(error.message)
     return error
