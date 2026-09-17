@@ -10,6 +10,7 @@ def deal_card():
 def calculate_score(hand):
     return sum(hand)
 
+
 player_hand = [deal_card(), deal_card()]
 dealer_hand = [deal_card(), deal_card()]
 
@@ -22,32 +23,31 @@ p_score = calculate_score(player_hand)
 player_turn = True
 while player_turn:
     choice = input(f"\nwhat do yu want to do BOY (hit / stand): ").strip().lower()
-    if choice == "hit" and p_score < 21:
+    if choice == "hit":
         player_hand.append(deal_card())
-        dealer_hand.append(deal_card())
-        print(
-            f"\nEKSE my outtie you got a {player_hand} in your hand now its {p_score} btw \ncause ik you cant do maths lol. \n \njrr i got a {dealer_hand} \nyoh i have {d_score}"
-        )
-        if p_score == d_score and p_score < 21:
-            print(f"\nwe inna stand off rn who gon hit first tehehe")
+        p_score = calculate_score(player_hand)
+        print(f"You ahh got {p_score} LMAOOO")
+
+        if p_score > 21:
+            print("I JUST BUSTED ALL OVER YOOOOOUUUUUU")
             player_turn = False
-        elif p_score > 21:
-            print(f"\n{p_score} lamooooo WE just busted all over you")
+        elif p_score == 21:
+            print("u gotta be kavango or smth??? i refuse to believe u beat me")
             player_turn = False
 
     elif choice == "stand":
-        if p_score > d_score and d_score > 18:
-            dealer_hand.append(deal_card)
+        while d_score < 17:
+            dealer_hand.append(deal_card())
+            d_score = calculate_score(dealer_hand)
+            print(f"rah my ahh got {d_score}")
 
-        elif p_score > d_score and d_score > 21:
-            print("\naint no way u won ts play me again mxm")
+        if d_score > 21 or p_score > d_score:
+            print("aint no way this nigga gotta be cheating run ts back!" )
+            player_turn = False
+        elif p_score == d_score:
+            print("Push / Standoff!")
         else:
-            print("\nwhy u chicken out bruh u coulda won it you hit trust me 😏")
+            print("I won lmaooooooo!")
         player_turn = False
-
-    elif choice == "hit" and p_score == 21:
-        print(f"\netche you won???")
-        player_turn = False
-
     else:
-        print("\nHella man I said hit or stand")
+        print("Hella man i said hit or stand mxm!")
