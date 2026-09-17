@@ -71,6 +71,29 @@ def _load_source(path: Path) -> bytes:
     return source_bytes
 
 
+def _campaign_summary(projection: dict[str, Any]) -> dict[str, Any]:
+    """Expose the campaign domains this simulator specifically proves."""
+
+    campaign = projection.get("campaign") if isinstance(projection.get("campaign"), dict) else {}
+    projects = campaign.get("projects") if isinstance(campaign.get("projects"), list) else []
+    codex = campaign.get("codex") if isinstance(campaign.get("codex"), dict) else {}
+    encounters = codex.get("encounters") if isinstance(codex.get("encounters"), list) else []
+    dungeon = campaign.get("dungeon_run") if isinstance(campaign.get("dungeon_run"), dict) else None
+    return {
+        "project_count": len(projects),
+        "cleared_mob_count": sum(
+            1
+            for project in projects
+            if isinstance(project, dict)
+            for mob in (project.get("mobs") if isinstance(project.get("mobs"), list) else [])
+            if isinstance(mob, dict) and mob.get("status") in {"defeated", "cleared"}
+        ),
+        "codex_encounter_count": len(encounters),
+        "dungeon_run_id": dungeon.get("run_id") if dungeon else None,
+        "dungeon_editor_bytes": len(str(dungeon.get("editor_content") or "").encode("utf-8")) if dungeon else 0,
+    }
+
+
 def run_simulation(source_path: Path) -> dict[str, Any]:
     """Run the bounded two-device scenario and return auditable evidence."""
 
@@ -95,6 +118,7 @@ def run_simulation(source_path: Path) -> dict[str, Any]:
             key: initial_projection.get("player", {}).get(key)
             for key in ("level", "xp", "coins", "lifetime_xp")
         }
+        initial_campaign = _campaign_summary(initial_projection)
         mailbox = FakeMailbox(initial_projection)
 
         service_a.apply_internal(
@@ -169,6 +193,9 @@ def run_simulation(source_path: Path) -> dict[str, Any]:
 
         if a_final_projection != b_final_projection:
             raise RuntimeError("explicit device resolution left device projections divergent")
+        final_campaign = _campaign_summary(a_final_projection)
+        if final_campaign != _campaign_summary(b_final_projection):
+            raise RuntimeError("explicit device resolution left campaign projections divergent")
         if a_final_metadata["revision"] != a_metadata_before_resolution["revision"] + 1:
             raise RuntimeError("cloud resolution did not create exactly one local revision")
         if a_resolution.get("event", {}).get("action") != "sync_apply_cloud":
@@ -199,6 +226,8 @@ def run_simulation(source_path: Path) -> dict[str, Any]:
                 "lifetime_xp": a_final_projection.get("player", {}).get("lifetime_xp"),
             },
             "initial_player": initial_player,
+            "initial_campaign": initial_campaign,
+            "final_campaign": final_campaign,
             "sync_event_action": a_resolution["event"]["action"],
         }
 
