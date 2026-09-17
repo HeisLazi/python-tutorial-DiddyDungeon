@@ -807,5 +807,7 @@ Homestead presentation. These surfaces now use explicit monochrome SVG shield,
 flame and book icons, keeping metrics stable across Windows/Linux fonts while
 leaving state authority, rewards and PTY behavior unchanged.
 
-Current-source Forge tests are **42/42**. Browser K&M remains the visual gate;
-hosted/device milestones are unchanged.
+Current-source Forge tests are **42/42**; clean archive frontend tests/build
+passed **61/61** and **1,346 modules**, and WSL backend discovery passed
+**108/108**. Browser K&M remains the visual gate; hosted/device milestones are
+unchanged.
