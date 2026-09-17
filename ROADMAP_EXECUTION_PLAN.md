@@ -1193,3 +1193,16 @@ The smoke run served `/` **200**, `/api/runtime` **200** and `/api/campaign`
 and exactly one canonical state authority. Frontend tests are **82/82**. No
 save, learner file, PTY or hosted state changed. Browser K&M, physical CachyOS,
 hosted migrations and authenticated cross-device acceptance remain open.
+
+## Current checkpoint — 2026-09-17 — Forge black-screen boot repair
+
+F-167 fixed a P0 React render crash in the initial terminal state. The reconnect
+button now calls the declared `reconnectTerminal` session handler instead of the
+missing `connect` symbol, and the legacy Quest Journal declares the canonical
+completed-objective projection before rendering its Battle Shell. A clean
+launcher restart confirmed the patched Vite transform; CUA visual inspection
+now shows the live Forge HUD, Mob 3 `The Hitman`, Resolve `8/8`, editor and both
+connected PTYs. Frontend tests pass **84/84**. No player state, learner file,
+legacy save, hosted state or protected PTY changed. The Windows packaged/Tauri
+app, physical CachyOS acceptance, hosted migrations and authenticated
+cross-device acceptance remain separate roadmap gates.

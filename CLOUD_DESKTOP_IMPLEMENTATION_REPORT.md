@@ -3379,3 +3379,19 @@ Verification: the guarded WSL launcher started Vite on `5173` and Uvicorn on
 `feature/cloud-sync-desktop`, HEAD `d6a0c370`, one canonical authority and no
 legacy authority, and `/api/campaign` returned **200**. Frontend tests pass
 **82/82**. Browser K&M remains blocked by F-080.
+
+### Initial black-screen crash repair — F-167 (2026-09-17)
+
+The first patched launcher exposed a React boot crash that had been hidden by a
+stale Vite transform. `TerminalPane` referenced an undefined `connect` symbol
+while its initial terminal state was `connecting`; React therefore failed before
+painting the app. A second latent render error existed in the legacy Quest
+Journal Battle Shell, which passed `completedObjectives` without declaring it.
+
+The UI now uses `reconnectTerminal` for both terminal reconnect paths and binds
+`encounter.completed_objectives` before rendering the legacy Battle Shell. After
+a clean launcher restart, Vite serves the new handler. The CUA browser rendered
+the live Forge without a blank screen: HUD, Mob 3 `The Hitman`, Resolve `8/8`,
+editor, and both shell/AI PTYs were visible and connected. Frontend tests pass
+**84/84**. This was a source/runtime repair only; no save, learner file, legacy
+progress, hosted state or PTY was reset.

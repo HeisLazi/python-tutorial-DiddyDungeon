@@ -2496,3 +2496,15 @@ Verification: WSL launcher smoke served `/` **200**, `/api/runtime` **200** and
 `feature/cloud-sync-desktop`, HEAD `d6a0c370`, canonical authority true and
 legacy authority false. Frontend tests **82/82** pass. No save, learner file,
 PTY or hosted state changed. Browser K&M remains blocked by F-080.
+
+## Forge rendered a black screen on initial terminal state — F-167
+
+| ID | Severity | Area | Finding | Status |
+|---|---|---|---|---|
+| F-167 | P0 | Boot / React runtime | `TerminalPane` rendered its reconnect control with `onClick={connect}`, but no `connect` binding existed. The initial `connecting` state evaluated that JSX and crashed React before the Forge could paint, even though Vite and the API were healthy. The legacy Quest Journal also passed an undefined `completedObjectives` binding into its Battle Shell. | Fixed with one `reconnectTerminal` session handler shared by the imperative ref and reconnect button, plus a state-owned completed-objectives binding in `QuestJournal`. Added source regression tests for both crash paths. |
+
+Verification: the launcher was restarted cleanly so Vite served the patched source;
+the live Forge now renders the Forge shell, campaign HUD, Mob 3 `The Hitman`,
+enemy Resolve `8/8`, editor and both connected PTYs in the CUA browser without
+a refresh after the initial reload. Frontend tests **84/84** pass. No player
+state, learner file, legacy save, hosted state or protected PTY was changed.

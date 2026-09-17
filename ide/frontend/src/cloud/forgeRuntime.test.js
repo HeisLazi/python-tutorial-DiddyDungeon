@@ -648,6 +648,20 @@ test('runtime health exposes the checkout and one canonical state authority', ()
   assert.match(views, /setCheckoutIdentity\(next\.sync_storage_namespace\)/)
 })
 
+test('terminal reconnect control uses the stable session handler', () => {
+  const app = source('../AppV2.jsx')
+  assert.match(app, /const reconnectTerminal = \(\) => \{/)
+  assert.match(app, /reconnect: reconnectTerminal/)
+  assert.match(app, /onClick=\{reconnectTerminal\}/)
+  assert.doesNotMatch(app, /onClick=\{connect\}/)
+})
+
+test('legacy Quest Journal binds completed objectives before rendering Battle Shell', () => {
+  const journal = source('../RpgViews.jsx')
+  assert.match(journal, /function QuestJournal\([\s\S]*?const completedObjectives = encounter\?\.completed_objectives \|\| \[\]/)
+  assert.match(journal, /completedObjectives=\{completedObjectives\}/)
+})
+
 test('Codex renders a searchable concept library and writes bounded field notes through the gateway', () => {
   const app = source('../AppV2.jsx')
   const views = source('../RpgViews.jsx')

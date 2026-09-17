@@ -258,6 +258,15 @@ const TerminalPane = forwardRef(function TerminalPane(
     }
   }
 
+  const reconnectTerminal = () => {
+    const session = sessionRef.current || terminalSessionFor(role)
+    sessionRef.current = session
+    const socket = session.socket
+    if (socket && socket.readyState < WebSocket.CLOSING) socket.close()
+    clearTerminalTimer(session, 'reconnectTimer')
+    session.reconnectTimer = setTimeout(() => connectTerminalSession(session, banner), 80)
+  }
+
   useImperativeHandle(ref, () => ({
     send(text) {
       const session = sessionRef.current || terminalSessionFor(role)
@@ -288,14 +297,7 @@ const TerminalPane = forwardRef(function TerminalPane(
       }
       return lines.join('\n').replace(/\s+$/g, '').trim()
     },
-    reconnect() {
-      const session = sessionRef.current || terminalSessionFor(role)
-      sessionRef.current = session
-      const socket = session.socket
-      if (socket && socket.readyState < WebSocket.CLOSING) socket.close()
-      clearTerminalTimer(session, 'reconnectTimer')
-      session.reconnectTimer = setTimeout(() => connectTerminalSession(session, banner), 80)
-    },
+    reconnect: reconnectTerminal,
     fit() {
       fitAndSync()
     },
@@ -371,7 +373,7 @@ const TerminalPane = forwardRef(function TerminalPane(
     <div className="terminal-v2-wrap">
       <div className="terminal-host" ref={hostRef} />
       {state !== 'connected' && (
-        <button className={`terminal-reconnect state-${state}`} onClick={connect} title="Reconnect terminal">
+        <button className={`terminal-reconnect state-${state}`} onClick={reconnectTerminal} title="Reconnect terminal">
           {state === 'connecting' ? 'connecting…' : state === 'reconnecting' ? 'reconnecting…' : 'reconnect'}
         </button>
       )}

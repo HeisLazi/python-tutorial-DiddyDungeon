@@ -623,6 +623,7 @@ function QuestJournal({ progress, revision, encounter, submitBattle, submitBoss,
   const verifiedBossRequirements = encounter?.verified_boss_requirements || []
   const remainingBossRequirements = encounter?.remaining_boss_requirements || bossRequirements.filter((requirement) => !verifiedBossRequirements.includes(requirement))
   const codexEntries = progress.codex?.encounters || []
+  const completedObjectives = encounter?.completed_objectives || []
   const [page, setPage] = useState(0)
   const [journalView, setJournalView] = useState('journal')
 

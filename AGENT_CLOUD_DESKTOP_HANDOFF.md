@@ -444,3 +444,13 @@ returned **200** for `/`, `/api/runtime` and `/api/campaign`; frontend tests
 remain **82/82**. No save, learner file, PTY, hosted migration or hosted
 player-state write changed. Browser K&M (F-080), physical CachyOS (F-058) and
 hosted two-device/authentication gates remain open.
+
+F-167 fixes the P0 black-screen boot crash found after F-166. The terminal
+reconnect button referenced a nonexistent `connect` binding during the initial
+`connecting` render; the legacy Journal Battle Shell also had an undeclared
+`completedObjectives` prop. Both now use state-owned, declared handlers/data.
+After restarting only the managed launcher, CUA visual inspection showed the
+Forge shell, HUD, Mob 3 `The Hitman`, Resolve `8/8`, editor, and connected shell
+and AI PTYs. Frontend tests are **84/84**. No save, learner file, legacy
+progress, hosted state or protected PTY was changed. The launcher still requires
+manual navigation to `http://127.0.0.1:5173/` when WSL has no browser opener.
