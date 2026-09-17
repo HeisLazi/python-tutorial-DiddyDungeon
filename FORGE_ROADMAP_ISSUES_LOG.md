@@ -2098,3 +2098,12 @@ Milestone C acceptance claim.
 Verification: current-source Forge tests **38/38**. The change is presentation-only;
 canonical state, revision polling, rewards, notes, learner files and PTYs were not
 touched. Browser K&M remains the publication visual gate in this environment.
+
+## Legacy shell Codex boundary parity — F-129
+
+| ID | Severity | Area | Finding | Status |
+|---|---|---|---|---|
+| F-129 | P2 | Codex presentation | The bounded Codex selector was scoped to `.forge-v2`, while the compatibility `App.jsx` shell uses the shared `.game-screen` without that class. A stale/legacy shell could therefore miss the viewport-pinned boundary and regress to the old feed behavior. | Fixed by moving the positioning and overflow contract to the shared `.game-screen > .codex-screen` boundary. Current AppV2 and the legacy compatibility shell now receive the same finite-book containment. |
+
+Verification: current-source Forge tests **39/39**. Clean archive build and
+browser K&M remain publication gates; no state, learner file or PTY changed.

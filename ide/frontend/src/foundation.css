@@ -481,8 +481,8 @@
 
 /* Keep the Codex inside the Forge viewport. Its book pages are finite UI
    panels; the surrounding game surface must never grow into a feed. */
-.forge-v2 .game-screen { position: relative; min-width: 0; min-height: 0; }
-.forge-v2 .game-screen > .codex-screen {
+.game-screen { position: relative; min-width: 0; min-height: 0; }
+.game-screen > .codex-screen {
   position: absolute;
   inset: 0;
   width: 100%;
@@ -503,5 +503,5 @@
 }
 
 @media (max-width: 1050px) {
-  .forge-v2 .game-screen > .codex-screen { padding: 12px; }
+  .game-screen > .codex-screen { padding: 12px; }
 }
