@@ -178,6 +178,11 @@ browser attach service did not provide a fresh tab for the preview, so no
 production-preview K&M claim is made; the earlier dev-runtime K&M remains the
 behavioral evidence.
 
+The cloud-free two-device simulator also passed against the protected-save
+digest: it advanced two disposable device revisions, rejected stale mailbox and
+local pulls with `409`, applied an explicit `keep-device` resolution, and left
+the source digest unchanged.
+
 ## Follow-up slice — adaptive Dungeon mob identity — 2026-09-17
 
 The next disposable runtime rehydrated the current Dungeon checkpoint with the
