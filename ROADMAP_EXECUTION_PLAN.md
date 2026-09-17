@@ -604,3 +604,11 @@ projection in outbox/pull/conflict paths. The hosted SQL migration is committed
 but deliberately unapplied; authenticated two-device and Supabase/RLS tests
 remain Milestone C gates. Current local contracts: state service **40/40**,
 migration contracts **7/7**, and the protected projection is **9,897 bytes**.
+
+The follow-up Codex-note pass now transports both canonical `notes` and
+player-authored `player_notes` through the same bounded projection and retains
+local-only `learning_state.last_teachback` during cloud merges. Backend
+verification is **101/101**, clean frontend **40/40**, and the production build
+transforms **1,346 modules**. This remains source/simulator evidence only until
+the hosted migration is deliberately applied and a real authenticated
+PC↔laptop acceptance run is captured.

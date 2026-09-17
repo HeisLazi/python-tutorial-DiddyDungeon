@@ -1707,7 +1707,12 @@ looked like a starter cache.
 
 | ID | Severity | Area | Finding | Status |
 |---|---|---|---|---|
-| F-078 | P1 | Cross-device campaign coherence | The revision/CAS sync row omitted validated campaign evidence and restart-safe Dungeon state, so a cloud pull could not hydrate Journal/Codex/current encounter or resume a Dungeon checkpoint. | Fixed in source: the local projection, browser SyncEngine and unapplied hosted migration now carry a bounded `campaign` domain. Projects/mobs, Codex results/notes/mastery evidence, skills/goals/streak/achievements, Practice history and the answer-free current Dungeon checkpoint use the same revision/CAS flow. Unknown fields, future rewards and Dungeon answer keys are rejected. Hosted migration, authenticated two-device pull/push and real laptop/PC K&M remain open gates. |
+| F-078 | P1 | Cross-device campaign coherence | The revision/CAS sync row omitted validated campaign evidence and restart-safe Dungeon state, so a cloud pull could not hydrate Journal/Codex/current encounter or resume a Dungeon checkpoint. | Fixed in source: the local projection, browser SyncEngine and unapplied hosted migration now carry a bounded `campaign` domain. Projects/mobs, Codex results/notes/player-authored notes/mastery evidence, skills/goals/streak/achievements, Practice history and the answer-free current Dungeon checkpoint use the same revision/CAS flow. Unknown fields, future rewards and Dungeon answer keys are rejected; cloud merges retain local-only `learning_state.last_teachback`. Hosted migration, authenticated two-device pull/push and real laptop/PC K&M remain open gates. |
+
+The Codex-note recheck passed WSL backend **101/101**, migration contracts
+**7/7**, clean frontend **40/40**, and the **1,346-module** build. The
+protected-save simulator retained campaign evidence on both disposable
+devices without changing the source digest.
 
 Local proof: state-service focused tests **40/40**, migration contracts **7/7**;
 the projection measured **9,897 UTF-8 bytes** for the current protected save,

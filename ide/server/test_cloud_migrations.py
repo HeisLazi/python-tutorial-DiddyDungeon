@@ -111,6 +111,8 @@ class CloudMigrationContractTests(unittest.TestCase):
             "campaign projection contains unsupported domains",
             "project mobs must be a bounded array",
             "codex encounter contains unsupported fields",
+            "player_notes",
+            "codex player notes must be bounded",
             "dungeon question contains unsupported or hidden fields",
             "perform public.validate_player_state_projection_base(base_state)",
             "revoke all on function public.validate_player_state_projection(jsonb) from public;",

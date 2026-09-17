@@ -341,7 +341,7 @@ test('player-state projection carries bounded campaign evidence but excludes loc
   const projection = projectPlayerState({
     player: { level: 3, coins: 20, secret: 'local' },
     projects: [{ name: 'Blackjack' }],
-    codex: { encounters: [{ mob_name: 'hidden' }] },
+    codex: { encounters: [{ mob_name: 'hidden', player_notes: ['Review indexing before the next encounter.'] }] },
     skills: [{ concept: 'Variables' }],
     homestead: {
       owned_cosmetics: ['cursor-basic', 'cursor-basic', 7],
@@ -353,7 +353,7 @@ test('player-state projection carries bounded campaign evidence but excludes loc
   assert.deepEqual(projection.player, { level: 3, coins: 20 })
   assert.deepEqual(projection.homestead, { owned_cosmetics: ['cursor-basic'], equipped: { cursor: 'cursor-basic' } })
   assert.deepEqual(projection.campaign.projects, [{ name: 'Blackjack' }])
-  assert.deepEqual(projection.campaign.codex, { encounters: [{ mob_name: 'hidden' }] })
+  assert.deepEqual(projection.campaign.codex, { encounters: [{ mob_name: 'hidden', player_notes: ['Review indexing before the next encounter.'] }] })
   assert.deepEqual(projection.campaign.skills, [{ concept: 'Variables' }])
   assert.equal(Object.prototype.hasOwnProperty.call(projection, 'state_events'), false)
   assert.equal(Object.prototype.hasOwnProperty.call(projection.campaign, 'profile'), false)
@@ -366,7 +366,7 @@ test('campaign evidence and a Dungeon checkpoint travel through the same cloud r
   const user = { id: '00000000-0000-4000-8000-000000000022', email: 'campaign@example.test' }
   const source = campaign(55, 2)
   source.projects = [{ branch: '01-blackjack', name: 'Blackjack', status: 'active', progress: 38, mobs: [{ name: 'The Empty Table', status: 'defeated' }, { name: 'The Hitman', status: 'available', resolve: 8, max_resolve: 8 }] }]
-  source.codex = { encounters: [{ id: 'blackjack-empty-table', project_id: '01-blackjack', mob_name: 'The Empty Table', concept: 'Variables', status: 'defeated', results: [{ outcome: 'defeated', evidence_id: 'legacy-1' }] }] }
+  source.codex = { encounters: [{ id: 'blackjack-empty-table', project_id: '01-blackjack', mob_name: 'The Empty Table', concept: 'Variables', status: 'defeated', player_notes: ['Review indexing before the next encounter.'], results: [{ outcome: 'defeated', evidence_id: 'legacy-1' }] }] }
   source.dungeon_run = {
     status: 'active', run_id: 'dungeon-1', floor: 2, room: 4, room_type: 'encounter', editor_content: 'answer = 1',
     question: { id: 'question-1', question_type: 'code_checkpoint', concept_id: 'variables', difficulty: 2, prompt: 'Use a variable.', options: [], answer_key: 'must-not-travel' },
@@ -385,6 +385,7 @@ test('campaign evidence and a Dungeon checkpoint travel through the same cloud r
   const cloudCampaign = cloudStore.playerRows.get(user.id).state.campaign
   assert.equal(cloudCampaign.projects[0].mobs[0].status, 'defeated')
   assert.equal(cloudCampaign.codex.encounters[0].mob_name, 'The Empty Table')
+  assert.deepEqual(cloudCampaign.codex.encounters[0].player_notes, ['Review indexing before the next encounter.'])
   assert.equal(cloudCampaign.dungeon_run.run_id, 'dungeon-1')
   assert.equal(Object.prototype.hasOwnProperty.call(cloudCampaign.dungeon_run.question, 'answer_key'), false)
 
@@ -393,6 +394,7 @@ test('campaign evidence and a Dungeon checkpoint travel through the same cloud r
   await engineB.sync()
   assert.equal(localB.getProgress().projects[0].mobs[1].name, 'The Hitman')
   assert.equal(localB.getProgress().codex.encounters[0].mob_name, 'The Empty Table')
+  assert.deepEqual(localB.getProgress().codex.encounters[0].player_notes, ['Review indexing before the next encounter.'])
   assert.equal(localB.getProgress().dungeon_run.run_id, 'dungeon-1')
   engineA.dispose()
   engineB.dispose()

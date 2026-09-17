@@ -237,3 +237,20 @@ not just purse values. Against the protected save it retained 8 projects, 3
 cleared mobs, 3 Codex encounters and the active Dungeon run/editor checkpoint
 across both disposable caches, rejected stale mailbox/local revisions with
 409, and left the source digest unchanged.
+
+## Codex notes transport recheck — 2026-09-17
+
+The campaign projection recheck found one remaining coherence edge: canonical
+player-authored Codex notes (`player_notes`) were present in the local Codex
+projection but omitted from the cross-device allowlist. A cloud pull could
+therefore restore the encounter while silently dropping the learner's note.
+This was scored as a **P1 extension of F-078** and fixed before publication.
+
+The Python validator/source projection, browser SyncEngine, and unapplied
+Supabase validator now all allow bounded `player_notes` arrays. The campaign
+merge also updates sync-owned mapping fields without deleting local-only
+`learning_state.last_teachback`. Regression coverage passed: backend **101/101**,
+migration contracts **7/7**, clean frontend **40/40**, Vite **1,346 modules**,
+and the protected-save two-device simulator retained the same campaign summary
+with an unchanged source digest. No new browser defect was scored; hosted
+authenticated sync and real CachyOS K&M remain external gates.
