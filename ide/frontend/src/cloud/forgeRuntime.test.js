@@ -217,6 +217,8 @@ test('Journal and Codex keep the active encounter projection visible', () => {
   assert.match(views, /data-testid="codex-mode-tabs"/)
   assert.match(views, /data-testid="battle-story-background"/)
   assert.match(views, /data-testid="battle-encounter-details"/)
+  assert.match(views, /function QuestBattleScreen\(\{ activeProject, currentMob, encounter, resolve/)
+  assert.match(views, /currentMob=\{battleMob\}\s+encounter=\{encounter\}/)
   assert.match(views, /function Codex\(\{ progress, revision, codexProjection, encounter, submitBattle, submitBoss/)
   assert.doesNotMatch(views, /id: 'quests', label:/)
   assert.match(app, /value === 'quests' \? 'codex'/)
