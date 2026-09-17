@@ -2128,8 +2128,10 @@ not touched. Clean archive build and fresh browser K&M remain publication gates.
 |---|---|---|---|---|
 | F-132 | P2 | Codex/Homestead presentation | The bounded Codex still had emoji glyphs in mastery and companion surfaces while the HUD/navigation used monochrome SVGs. Glyph metrics and color varied by OS/font, making the book surface look like a mixed legacy dashboard. | Fixed in source with SVG shield/flame/book icons and shared stroke sizing for mastery, companion and Homestead hearth surfaces. No state or reward semantics changed. |
 
-Verification: current-source Forge tests **42/42**. Browser K&M remains the
-visual publication gate; no save, learner file, PTY or hosted transport changed.
+Verification: current-source Forge tests **42/42**; clean archive frontend
+tests **61/61**, Vite build **1,346 modules**, and WSL backend tests **108/108**
+passed. Browser K&M remains the visual publication gate; no save, learner file,
+PTY or hosted transport changed.
 
 ## Friend bundle tracked-save leak — F-131
 

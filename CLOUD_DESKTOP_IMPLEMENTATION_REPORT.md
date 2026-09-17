@@ -2917,8 +2917,9 @@ are rendered through `RouteIcon` with explicit sizing/strokes, removing
 OS-dependent emoji metrics without changing any canonical state or reward
 behavior.
 
-Current-source Forge tests pass **42/42**. Browser K&M remains the visual
-publication gate.
+Current-source Forge tests pass **42/42**. The clean archive passed **61/61**
+frontend tests and a **1,346-module** Vite build; the WSL backend suite passed
+**108/108**. Browser K&M remains the visual publication gate.
 
 ### Local sync simulator recheck — F-126
 
