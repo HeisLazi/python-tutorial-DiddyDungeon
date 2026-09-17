@@ -489,6 +489,17 @@ test('Codex reader chrome uses a single field-guide visual language', () => {
   assert.match(foundation, /\.codex-screen \.codex-examples pre \{[\s\S]*?border-left: 3px solid/)
 })
 
+test('Codex folio pages do not become a desktop infinite-scroll document', () => {
+  const foundation = source('../foundation.css')
+
+  assert.match(foundation, /F-157: the Codex is a page-turning folio/)
+  assert.match(foundation, /\.game-screen > \.codex-screen \{[\s\S]*?grid-template-rows: auto minmax\(96px, auto\) minmax\(0, 1fr\);/)
+  assert.match(foundation, /\.game-screen > \.codex-screen > \.codex-mode-tabs \{[\s\S]*?grid-row: 2;[\s\S]*?align-self: end;/)
+  assert.match(foundation, /\.codex-screen \.codex-book-section \{[\s\S]*?overflow: hidden;[\s\S]*?scrollbar-width: none;/)
+  assert.match(foundation, /data-testid="codex-read-section"\] \.codex-page-grid \{[\s\S]*?overflow: hidden;/)
+  assert.match(foundation, /data-testid="codex-encounters-section"\] \.codex-entry-picker-expanded,[\s\S]*?max-height: 78px;/)
+})
+
 test('friend packages strip tracked player state before archive output', () => {
   const packager = source('../../../../tools/questlab-package.ps1')
 

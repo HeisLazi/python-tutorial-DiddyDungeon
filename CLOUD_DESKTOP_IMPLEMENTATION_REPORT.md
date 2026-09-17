@@ -3236,3 +3236,19 @@ Verification: Windows frontend tests **77/77**, Vite production build
 passed. Browser K&M remains blocked by F-080, and authenticated PC/laptop
 portrait round-trip remains an external gate. No player state, learner file,
 PTY or hosted migration changed.
+
+### Codex finite folio cleanup — F-157 (2026-09-17)
+
+Live use still made the Codex selected book feel like a long dashboard feed:
+the outer viewport was clipped, but the section itself owned a document-length
+scroll and the mode tabs consumed a separate stacked row. The final cascade now
+shares the Books/Battle Shell tabs with the compact folio header, keeps the
+desktop book frame page-sized, and relies on the existing React shelf/record
+pagers for collection navigation. Only bounded narrow-device, code-snippet and
+note-body fallbacks can scroll; the desktop Codex page itself cannot grow.
+
+Verification: Windows frontend tests **78/78**, Vite production build
+**1,346 modules**, and live HMR source checks on ports `5181` and `5190` all
+passed. Browser K&M remains blocked by F-080, so this does not claim fresh
+device-level visual proof. No player state, learner file, PTY or hosted
+migration changed.

@@ -2399,3 +2399,15 @@ Verification: Windows frontend tests **77/77**, Vite production build **1,346
 modules**, and live HMR source checks on ports `5181` and `5190` confirm the
 F-156 Account UI is served. No player state, learner file, PTY or hosted
 migration changed. Browser K&M remains blocked by F-080.
+
+## Codex still felt like an infinite-scroll dashboard — F-157
+
+| ID | Severity | Area | Finding | Status |
+|---|---|---|---|---|
+| F-157 | P1 | Codex presentation | Live use still exposed the selected book as a long scrolling document despite the outer viewport being clipped. The separate mode-tab row also made the folio feel like stacked dashboard panels instead of a page-turning library. | Fixed with a final compact folio pass: Books/Battle Shell tabs share the header row, the desktop reader frame has no page-length scroll owner, shelf and encounter lists remain React-paged, and only bounded narrow-device/code/note fallbacks can scroll. |
+
+Verification: Windows frontend tests **78/78**, Vite production build
+**1,346 modules**, and live HMR checks on ports `5181` and `5190` serve the
+F-157 cascade. Browser K&M remains blocked by F-080, so this is not a fresh
+device-level visual claim. No player state, learner file, PTY or hosted
+migration changed.

@@ -352,6 +352,15 @@ frontend tests **77/77**, Vite (**1,346 modules**) and live HMR checks on ports
 `5181` and `5190` passed. Browser K&M and the user's real PC/laptop portrait
 round-trip remain external gates.
 
+F-157 is the follow-up Codex presentation repair from live use: the selected
+book no longer owns a desktop document-length scroll, Books/Battle Shell tabs
+share the compact header, and React shelf/record/mastery pagers remain the
+collection navigation authority. Narrow-device and genuinely long code/note
+content keep bounded local fallbacks. Windows frontend tests **78/78**, Vite
+(**1,346 modules**) and live HMR checks on ports `5181` and `5190` passed.
+Browser K&M remains blocked by F-080; no state, learner file, PTY or hosted
+migration changed.
+
 Remaining release gates are intentionally unchanged:
 
 1. Apply only the two guarded hosted migrations after explicit approval, then

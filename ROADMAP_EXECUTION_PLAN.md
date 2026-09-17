@@ -1082,3 +1082,15 @@ tests are **77/77**, the Vite production build transforms **1,346 modules**,
 and live Vite instances (`5181`, `5190`) serve the F-156 UI via HMR. This is
 presentation-only; authenticated PC/laptop portrait round-trip, browser K&M,
 hosted migrations and physical CachyOS acceptance remain open.
+
+## Current checkpoint — 2026-09-17 — Codex finite page frame
+
+F-157 responds to the remaining live-use Codex complaint: the selected book no
+longer presents as a long scrolling document. Books/Battle Shell tabs share the
+compact header, the desktop folio clips its page content, and React shelf,
+encounter and mastery pagers remain the navigation authority. Narrow-device
+and genuinely long code/note content retain bounded local fallbacks. Windows
+frontend tests are **78/78**, Vite transforms **1,346 modules**, and live Vite
+instances (`5181`, `5190`) serve the F-157 cascade. Browser K&M, hosted
+migrations, physical CachyOS and authenticated cross-device acceptance remain
+open.

@@ -1518,3 +1518,127 @@
   color: var(--dim);
   font-size: 9px;
 }
+
+/* F-157: the Codex is a page-turning folio, not a document inside a
+   document.  The previous cascade correctly clipped the outer shell but
+   still left the selected section as a visible long-scroll surface.  Keep
+   desktop pages finite and let React-owned shelf/record pagers decide what
+   is shown.  Narrow windows retain a bounded fallback scroll because a
+   single-column phone layout cannot display both book columns at once. */
+.game-screen > .codex-screen {
+  grid-template-rows: auto minmax(96px, auto) minmax(0, 1fr);
+  gap: 8px;
+}
+.game-screen > .codex-screen > .screen-hero.codex-hero {
+  grid-row: 2;
+  min-height: 96px;
+  max-height: 112px;
+  padding: 13px 16px 42px;
+  overflow: hidden;
+}
+.game-screen > .codex-screen > .codex-mode-tabs {
+  grid-row: 2;
+  align-self: end;
+  justify-self: start;
+  position: relative;
+  z-index: 2;
+  margin: 0 0 10px 16px;
+  padding: 3px;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--panel3) 78%, transparent);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, .12);
+}
+.game-screen > .codex-screen > .codex-tab-page[data-codex-tab="books"],
+.game-screen > .codex-screen > .codex-tab-page[data-codex-tab="battle"] {
+  grid-row: 3;
+}
+.codex-screen .codex-book-section {
+  overflow: hidden;
+  padding-right: 2px;
+  scrollbar-width: none;
+  overscroll-behavior: none;
+}
+.codex-screen .codex-book-section::-webkit-scrollbar { display: none; }
+.codex-screen [data-testid="codex-read-section"] .codex-page-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(210px, .65fr);
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+  padding: 6px 0 0;
+  border-bottom: 0;
+}
+.codex-screen [data-testid="codex-read-section"] .codex-page-grid > div {
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+.codex-screen [data-testid="codex-read-section"] .codex-examples {
+  max-height: 220px;
+  overflow: hidden;
+}
+.codex-screen [data-testid="codex-read-section"] .codex-examples pre {
+  max-height: 104px;
+  overflow: auto;
+  scrollbar-width: thin;
+}
+.codex-screen [data-testid="codex-read-section"] .codex-mistakes,
+.codex-screen [data-testid="codex-read-section"] .codex-recorded-signals {
+  max-height: 96px;
+  overflow: hidden;
+}
+.codex-screen [data-testid="codex-encounters-section"] .codex-entry-picker-expanded,
+.codex-screen [data-testid="codex-notes-section"] .codex-entry-picker-inline {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  max-height: 78px;
+  overflow: hidden;
+  margin-bottom: 9px;
+}
+.codex-screen [data-testid="codex-encounters-section"] .codex-entry-detail,
+.codex-screen [data-testid="codex-notes-section"] > .codex-notes,
+.codex-screen [data-testid="codex-notes-section"] > .codex-note-form {
+  min-height: 0;
+  overflow: hidden;
+}
+.codex-screen [data-testid="codex-encounters-section"] .codex-entry-insights {
+  max-height: 126px;
+  overflow: hidden;
+}
+.codex-screen [data-testid="codex-encounters-section"] .codex-entry-detail > p {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow: hidden;
+}
+.codex-screen [data-testid="codex-notes-section"] .codex-notes.workspace-notebook pre {
+  max-height: 6.5em;
+  overflow: auto;
+  scrollbar-width: thin;
+}
+.codex-screen [data-testid="codex-notes-section"] .codex-note-form textarea {
+  resize: none;
+  max-height: 76px;
+}
+.codex-screen [data-testid="codex-mastery"] .skill-grid {
+  overflow: hidden;
+}
+@media (max-width: 760px) {
+  .game-screen > .codex-screen > .screen-hero.codex-hero {
+    min-height: 126px;
+    max-height: 156px;
+    padding-bottom: 42px;
+  }
+  .game-screen > .codex-screen > .codex-mode-tabs { margin-left: 8px; }
+  .codex-screen [data-testid="codex-read-section"] .codex-page-grid {
+    grid-template-columns: 1fr;
+    overflow-y: auto;
+    scrollbar-width: thin;
+  }
+  .codex-screen .codex-book-section { overflow-y: auto; scrollbar-width: thin; }
+  .codex-screen [data-testid="codex-encounters-section"] .codex-entry-picker-expanded,
+  .codex-screen [data-testid="codex-notes-section"] .codex-entry-picker-inline {
+    grid-template-columns: 1fr;
+    max-height: 128px;
+    overflow-y: auto;
+  }
+}
