@@ -615,6 +615,7 @@ function App() {
               preferences={preferences}
               setters={setters}
               resetLayout={resetLayout}
+              onNavigate={setActiveView}
               campaignReady={campaignReady}
             />
           </section>

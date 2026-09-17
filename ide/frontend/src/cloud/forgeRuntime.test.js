@@ -188,6 +188,11 @@ test('navigation keeps Tutor as the single practice workspace and parks hidden A
   assert.match(foundation, /questlab-splash-in/)
 })
 
+test('legacy shell wires wide-route navigation back to the active view', () => {
+  const legacy = source('../App.jsx')
+  assert.match(legacy, /<GameScreen[\s\S]*onNavigate=\{setActiveView\}[\s\S]*campaignReady=\{campaignReady\}/)
+})
+
 test('legacy rail icon enhancement yields to the React-owned SVG rail', () => {
   const views = source('../RpgViews.jsx')
   const enhancements = source('../forgeEnhancements.js')

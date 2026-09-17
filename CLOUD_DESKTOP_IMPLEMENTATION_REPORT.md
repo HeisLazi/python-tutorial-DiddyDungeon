@@ -2572,3 +2572,14 @@ bundle. The post-commit smoke produced `QuestLab-ed8db52` from `git archive
 HEAD`, omitted `tutor.py`, `dungeon.py` and `notes/`, and proved the bundled
 baseline `progress.json` matched the `HEAD` blob rather than the dirty local
 cache.
+
+### Wide-route callback compatibility repair — F-108
+
+The alternate legacy Forge shell could render the wide Hub/Character/Homestead
+route bar without passing the view-state callback into `GameScreen`. In that
+shell the controls were visible but inert, which stranded a learner on
+Homestead or Hub. The callback is now wired through `App.jsx`; the V2 shell was
+already connected. The regression is covered by the frontend source test.
+
+This repair only changes route navigation. It does not write campaign state,
+touch the cloud transport, or recreate either PTY.
