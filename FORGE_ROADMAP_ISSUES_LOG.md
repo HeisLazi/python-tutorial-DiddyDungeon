@@ -1910,3 +1910,14 @@ Verification: the launcher contract test passes. The post-commit package
 smoke produced `QuestLab-ed8db52` from `git archive HEAD`; `tutor.py`,
 `dungeon.py` and `notes/` were absent, and the bundled baseline
 `progress.json` matched the `HEAD` blob rather than the dirty local cache.
+
+## Wide-route callback compatibility — 2026-09-17
+
+| ID | Severity | Area | Finding | Status |
+|---|---|---|---|---|
+| F-108 | P1 | Navigation | The alternate legacy `App.jsx` shell rendered the wide Hub/Character/Homestead route bar without passing its view callback into `GameScreen`, leaving the controls visible but inert in that shell. | Fixed by wiring `onNavigate={setActiveView}` through the legacy shell and covering the callback contract with a frontend regression test. |
+
+Verification after publication: current-source navigation tests **32/32**,
+clean ext4 frontend tests **51/51**, and WSL backend tests **105/105**. The
+Codex browser could not attach a fresh tab, so no new live click-through claim
+is made here.
