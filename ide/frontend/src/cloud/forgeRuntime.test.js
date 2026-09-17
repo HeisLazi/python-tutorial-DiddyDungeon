@@ -23,6 +23,16 @@ test('terminal cosmetics update in place without changing the PTY lifecycle key'
   assert.match(app, /term\.options\.theme\s*=\s*terminalPalette\(skin\)/)
 })
 
+test('dev hot refresh rebinds terminals without closing the PTY session', () => {
+  const app = source('../AppV2.jsx')
+
+  assert.match(app, /__QUESTLAB_TERMINAL_SESSIONS__/)
+  assert.match(app, /session\.consumer\s*=\s*\{/)
+  assert.match(app, /scheduleTerminalDetach\(session\)/)
+  assert.match(app, /connectTerminalSession\(session, banner\)/)
+  assert.match(app, /if \(session\.consumer\?\.term === term\) session\.consumer = null/)
+})
+
 test('tutor polling distinguishes clean updates from dirty external conflicts', () => {
   const app = source('../AppV2.jsx')
 

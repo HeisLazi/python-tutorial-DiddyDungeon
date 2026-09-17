@@ -2847,6 +2847,19 @@ revision polling, reward authority, notes, learner files or PTY lifecycle.
 Current-source Forge tests pass **38/38**. Browser K&M remains the visual
 publication check because the in-app browser could not attach a tab here.
 
+### Dev HMR terminal retention — F-035
+
+Vite Fast Refresh no longer owns the lifetime of the shell/AI WebSocket. A
+browser-global registry keeps one role-bound session, while React effects bind
+the current xterm consumer to it. During a hot source refresh the old consumer
+detaches and the replacement rebinds within a 2-second grace period; the live
+PTY is not closed or recreated. Truly abandoned sessions still close after the
+grace period. This is local dev hardening only and does not alter state
+authority, revision polling or the user save.
+
+Current-source Forge tests pass **39/39**. Clean archive build verification is
+required; browser-HMR K&M remains unavailable under F-080.
+
 ### Local sync simulator recheck — F-126
 
 The current branch was rechecked with
