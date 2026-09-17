@@ -49,6 +49,7 @@ from ide.server.state import (
     state_custody_report,
     state_authority_info,
 )
+from ide import workspace_transfer
 
 REPO_ROOT = Path(os.getenv("QUESTLAB_REPO_ROOT", Path(__file__).resolve().parents[2])).resolve()
 WORKSPACE = Path(os.getenv("QUESTLAB_WORKSPACE", REPO_ROOT)).resolve()
@@ -229,6 +230,16 @@ class WorkspaceNoteWrite(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     content: str = Field(default="", max_length=MAX_WORKSPACE_NOTE_BYTES)
+
+
+class WorkspaceTransferRequest(BaseModel):
+    """Explicit UI control for the separate source-file transfer channel."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    action: Literal["push", "pull_preview", "pull_apply"]
+    confirmation: str | None = Field(default=None, max_length=64)
+    allow_overwrite: bool = False
 
 
 class PyrContextRequest(BaseModel):
@@ -1068,6 +1079,84 @@ def apply_cloud_state(payload: StateSyncApplyRequest):
 @app.get("/api/state/legacy")
 def state_legacy_report():
     return legacy_state_report(PROGRESS_PATH, legacy_progress_path())
+
+
+def workspace_transfer_branch() -> str:
+    """Return the explicit project namespace used by the source-transfer ref."""
+
+    return os.getenv("QUESTLAB_PROJECT_BRANCH", workspace_transfer.DEFAULT_REMOTE_BRANCH).strip() or workspace_transfer.DEFAULT_REMOTE_BRANCH
+
+
+def workspace_transfer_response(result: dict[str, object]) -> dict[str, object]:
+    """Keep transfer responses useful without exposing local absolute paths."""
+
+    response = dict(result)
+    response.pop("workspace", None)
+    backup_directory = response.pop("backup_directory", None)
+    if backup_directory is not None:
+        response["backup_created"] = True
+    return response
+
+
+def workspace_transfer_error(exc: workspace_transfer.TransferError) -> HTTPException:
+    return HTTPException(status_code=409, detail=str(exc))
+
+
+@app.get("/api/workspace-transfer")
+def workspace_transfer_status():
+    """Preview allowlisted source/notes transfer state without writing files."""
+
+    try:
+        result = workspace_transfer.status(
+            WORKSPACE,
+            remote=os.getenv("QUESTLAB_TRANSFER_REMOTE", workspace_transfer.DEFAULT_REMOTE),
+            remote_branch=workspace_transfer_branch(),
+        )
+    except workspace_transfer.TransferError as exc:
+        raise workspace_transfer_error(exc) from exc
+    return workspace_transfer_response(result)
+
+
+@app.post("/api/workspace-transfer")
+def apply_workspace_transfer(payload: WorkspaceTransferRequest):
+    """Push or pull only the explicit source-transfer allowlist.
+
+    Progression state, session logs and PTY data are never part of this
+    channel. Pull writes remain confirmation-token gated and conflicts require
+    a second explicit overwrite opt-in in the UI/CLI.
+    """
+
+    remote = os.getenv("QUESTLAB_TRANSFER_REMOTE", workspace_transfer.DEFAULT_REMOTE)
+    branch = workspace_transfer_branch()
+    try:
+        if payload.action == "push":
+            if payload.confirmation != workspace_transfer.CONFIRM_PUSH:
+                raise HTTPException(status_code=400, detail=f"Push requires {workspace_transfer.CONFIRM_PUSH}")
+            result = workspace_transfer.push(
+                WORKSPACE,
+                remote=remote,
+                remote_branch=branch,
+                confirmation=payload.confirmation,
+            )
+        elif payload.action == "pull_preview":
+            result = workspace_transfer.pull(
+                WORKSPACE,
+                remote=remote,
+                remote_branch=branch,
+            )
+        else:
+            if payload.confirmation != workspace_transfer.CONFIRM_PULL:
+                raise HTTPException(status_code=400, detail=f"Pull requires {workspace_transfer.CONFIRM_PULL}")
+            result = workspace_transfer.pull(
+                WORKSPACE,
+                remote=remote,
+                remote_branch=branch,
+                confirmation=payload.confirmation,
+                allow_overwrite=payload.allow_overwrite,
+            )
+    except workspace_transfer.TransferError as exc:
+        raise workspace_transfer_error(exc) from exc
+    return workspace_transfer_response(result)
 
 
 @app.get("/api/codex")

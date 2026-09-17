@@ -2698,3 +2698,31 @@ frontend install passes **51/51** and Vite transforms **1,346 modules**. The
 Windows working tree still has a locked esbuild binary, so the isolated archive
 was used for dependency/build proof. No state, learner file, PTY or hosted
 transport changed.
+
+### Codex book-section overflow cleanup — F-116
+
+The Codex no longer puts every learning surface into one long page. Each
+selected concept book now has four small, explicit sections: Read for the
+definition, examples, common mistakes and question lens; Encounters for the
+validated mob evidence and results; Notes for the canonical/workspace
+notebooks; and Mastery for recorded evidence and shields. The section switcher
+keeps the book pane bounded and makes the useful content visible immediately.
+No rewards, hidden answers or encounter facts are calculated in React.
+
+The current-source Forge runtime suite passes **32/32**. Clean archive
+frontend/build and browser K&M remain publication gates; no state, learner
+file, PTY or hosted transport changed.
+
+### Settings workspace-transfer bridge — F-117
+
+Forge Settings now exposes the existing allowlisted `questlab-files` helper so
+the learner can inspect the transfer ref, compare the four source-file groups,
+preview incoming changes, publish reviewed project files and apply a pull only
+after explicit confirmation. The API strips local absolute paths and reports
+only whether a backup was created. A pull never touches `progress.json`, PTY
+sessions or private logs, and the UI refreshes the file/tutor projections after
+an apply while warning that open editor buffers should be reopened.
+
+Focused WSL API tests pass **10/10** and current-source Forge tests pass
+**32/32**. This is source transfer only; hosted player-state synchronization
+and its approval/migration gates are unchanged.

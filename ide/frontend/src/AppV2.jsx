@@ -323,6 +323,9 @@ function AppV2() {
   const [cloudState, setCloudState] = useState(syncEngine.getState())
   const [accountBusy, setAccountBusy] = useState(false)
   const [accountNotice, setAccountNotice] = useState('')
+  const [workspaceTransfer, setWorkspaceTransfer] = useState(null)
+  const [workspaceTransferBusy, setWorkspaceTransferBusy] = useState(false)
+  const [workspaceTransferNotice, setWorkspaceTransferNotice] = useState('')
   const tutorDirtyRef = useRef(false)
   const tutorDiskRevisionRef = useRef('')
   const tutorExternalChangeRef = useRef(null)
@@ -1131,6 +1134,12 @@ function AppV2() {
   }, [])
 
   useEffect(() => {
+    if (activeView !== 'settings') return undefined
+    void refreshWorkspaceTransfer()
+    return undefined
+  }, [activeView])
+
+  useEffect(() => {
     editorSelectionRef.current = ''
   }, [activeView])
 
@@ -1767,6 +1776,61 @@ function AppV2() {
     setNotice('Kept local tutor.py edits. Save when you are ready to overwrite the external version.')
   }
 
+  const refreshWorkspaceTransfer = async () => {
+    setWorkspaceTransferBusy(true)
+    setWorkspaceTransferNotice('')
+    try {
+      const result = await api('/api/workspace-transfer')
+      setWorkspaceTransfer(result)
+      return result
+    } catch (error) {
+      setWorkspaceTransfer({ ok: false, error: error.message })
+      setWorkspaceTransferNotice(error.message)
+      return null
+    } finally {
+      setWorkspaceTransferBusy(false)
+    }
+  }
+
+  const workspaceTransferAction = async (payload) => {
+    setWorkspaceTransferBusy(true)
+    setWorkspaceTransferNotice('')
+    try {
+      const result = await api('/api/workspace-transfer', {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      })
+      setWorkspaceTransfer(result)
+      if (result.applied && payload.action === 'pull_apply') {
+        await refreshFiles()
+        if (!tutorDirtyRef.current) await refreshTutor()
+        setWorkspaceTransferNotice('Incoming project files applied. Reopen or reload any open editor buffer before continuing.')
+      } else if (payload.action === 'push') {
+        setWorkspaceTransferNotice(result.applied ? 'Reviewed project files published to the transfer ref.' : 'The transfer ref is already current.')
+      } else {
+        setWorkspaceTransferNotice('Incoming files previewed. Nothing was written.')
+      }
+      return result
+    } catch (error) {
+      setWorkspaceTransferNotice(error.message)
+      setWorkspaceTransfer((current) => ({ ...(current || {}), ok: false, error: error.message }))
+      return null
+    } finally {
+      setWorkspaceTransferBusy(false)
+    }
+  }
+
+  const pushWorkspaceFiles = () => {
+    if (typeof window !== 'undefined' && !window.confirm('Send only blackjack.py, tutor.py, dungeon.py and notes/*.md to the reviewed transfer ref? progress.json and PTYs stay local.')) return
+    return workspaceTransferAction({ action: 'push', confirmation: 'PUSH_WORKSPACE_FILES' })
+  }
+
+  const previewWorkspacePull = () => workspaceTransferAction({ action: 'pull_preview' })
+  const applyWorkspacePull = (allowOverwrite = false) => {
+    if (typeof window !== 'undefined' && !window.confirm(allowOverwrite ? 'Overwrite conflicting project files after creating a backup? Review the preview first.' : 'Apply the clean incoming project files now?')) return
+    return workspaceTransferAction({ action: 'pull_apply', confirmation: 'PULL_WORKSPACE_FILES', allow_overwrite: allowOverwrite })
+  }
+
   const signIn = ({ email, password }) => accountAction(() => syncEngine.signIn(email, password), 'Signed in. This device is registered.')
   const signUp = ({ email, password, displayName }) => accountAction(() => syncEngine.signUp(email, password, displayName), 'Account created. Check your email if confirmation is required.')
   const signOut = () => accountAction(() => syncEngine.signOut(), 'Signed out. Forge stays available locally.')
@@ -2015,6 +2079,13 @@ function AppV2() {
               onSignOut={signOut}
               onDeviceLabelSave={saveDeviceLabel}
               onResolveConflict={resolveCloudConflict}
+              workspaceTransfer={workspaceTransfer}
+              workspaceTransferBusy={workspaceTransferBusy}
+              workspaceTransferNotice={workspaceTransferNotice}
+              onWorkspaceTransferRefresh={refreshWorkspaceTransfer}
+              onWorkspaceTransferPush={pushWorkspaceFiles}
+              onWorkspaceTransferPreviewPull={previewWorkspacePull}
+              onWorkspaceTransferApplyPull={applyWorkspacePull}
               onNavigate={setActiveView}
               campaignReady={campaignReady}
             />

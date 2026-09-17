@@ -773,6 +773,7 @@ function Codex({ progress, revision, codexProjection, encounter, submitBattle, s
   const [workspaceNote, setWorkspaceNote] = useState('')
   const [workspaceNoteLoading, setWorkspaceNoteLoading] = useState(false)
   const [codexView, setCodexView] = useState('books')
+  const [codexSection, setCodexSection] = useState('read')
   const [selectedChapterId, setSelectedChapterId] = useState(activeProject.id || activeProject.branch || activeProject.name || '')
 
   const projectKey = (project) => String(project?.id || project?.branch || project?.name || '')
@@ -832,6 +833,10 @@ function Codex({ progress, revision, codexProjection, encounter, submitBattle, s
     setNote('')
     setNoteStatus('')
   }, [selectedPage?.id, selectedEntryIds, selectedEntryId])
+
+  useEffect(() => {
+    setCodexSection('read')
+  }, [selectedPage?.id])
 
   const noteSlug = (entry) => String(entry?.concept || entry?.id || entry?.mob_name || 'concept')
     .trim()
@@ -966,42 +971,74 @@ function Codex({ progress, revision, codexProjection, encounter, submitBattle, s
           {selectedPage ? (
             <>
               <div className="codex-page-heading"><span className="screen-kicker">CONCEPT PAGE</span><h3>{selectedPage.title}</h3><p>{selectedPage.definition}</p><div className="codex-page-summary" data-testid="codex-page-summary"><span><b>{selectedEntries.length}</b> encounters</span><span><b>{pageQuestionTypes.length}</b> question lenses</span><span><b>{pageWeaknesses.length}</b> recorded patterns</span></div></div>
-              <div className="codex-page-grid">
-                <div><small className="codex-label">DEFINITION &amp; GENERIC EXAMPLES</small><div className="codex-examples">{(selectedPage.examples || []).map((example, index) => <pre key={index}>{example}</pre>)}</div><small className="codex-label codex-subsection-label">COMMON MISTAKES</small><div className="codex-mistakes">{(selectedPage.common_mistakes || []).length ? selectedPage.common_mistakes.map((mistake) => <p key={mistake}>{mistake}</p>) : <p className="codex-insight-empty">No validated mistake pattern recorded for this concept yet.</p>}</div></div>
-                <div><small className="codex-label">QUESTION LENS</small><div className="codex-tags">{(selectedPage.question_types || []).map((type) => <span key={type}>{type}</span>)}</div><small className="codex-label">RECORDED SIGNALS</small><div className="codex-tags codex-recorded-signals">{pageQuestionTypes.length ? pageQuestionTypes.map((type) => <span key={type}>{type}</span>) : <span className="empty-state">No question type recorded yet.</span>}{pageWeaknesses.map((weakness) => <span key={`weakness-${weakness}`}>{weakness}</span>)}</div><small className="codex-label">ENCOUNTERS ON THIS PAGE</small><div className="codex-entry-picker">{selectedEntries.map((entry) => <button key={entry.id} type="button" className={selectedEntry?.id === entry.id ? 'active' : ''} onClick={() => setSelectedEntryId(entry.id)}>{entry.mob_name}<small>{entry.status}</small></button>)}{!selectedEntries.length && <span className="empty-state">No encounter recorded yet.</span>}</div></div>
-              </div>
-              {selectedEntry && (
-                <section className="codex-entry-detail">
-                  <div className="card-heading"><span>{selectedEntry.mob_name} · OBSERVATION</span><b>{String(selectedEntry.status || 'observed').toUpperCase()}</b></div>
-                  <div className="codex-entry-meta"><span>{selectedEntry.attempts ?? 0} attempts</span><span>{(selectedEntry.question_types || []).join(' · ') || 'type pending'}</span><span>{(selectedEntry.weaknesses || []).length} weaknesses</span><span>Mastery {selectedEntry.mastery?.evidence ?? 0}</span></div>
-                  <div className="codex-entry-insights" data-testid="codex-entry-insights">
-                    <div><small className="codex-label">WEAKNESSES / PATTERNS</small>{selectedEntry.weaknesses?.length ? <ul className="codex-insight-list">{selectedEntry.weaknesses.map((weakness) => <li key={weakness}>{weakness}</li>)}</ul> : <p className="codex-insight-empty">No weakness pattern recorded yet.</p>}</div>
-                    <div><small className="codex-label">VERIFIED RESULTS</small>{selectedEntry.results?.length ? <ul className="codex-insight-list">{selectedEntry.results.map((result, index) => <li key={`${result.outcome || 'result'}-${index}`}><strong>{result.outcome || 'recorded'}</strong>{result.evidence_id ? <span>{result.evidence_id}</span> : null}</li>)}</ul> : <p className="codex-insight-empty">No result history recorded yet.</p>}</div>
-                    {selectedEntry.interview_history?.length ? <div><small className="codex-label">INTERVIEW HISTORY</small><ul className="codex-insight-list">{selectedEntry.interview_history.map((item, index) => <li key={`${item.outcome || 'interview'}-${index}`}>{item.outcome || item.status || 'recorded'}</li>)}</ul></div> : null}
+              <nav className="codex-book-tabs" aria-label="Concept book sections" data-testid="codex-book-tabs">
+                {[
+                  ['read', 'Read'],
+                  ['encounters', `Encounters${selectedEntries.length ? ` · ${selectedEntries.length}` : ''}`],
+                  ['notes', 'Notes'],
+                  ['mastery', `Mastery${skills.length ? ` · ${skills.length}` : ''}`],
+                ].map(([section, label]) => <button key={section} type="button" className={codexSection === section ? 'active' : ''} onClick={() => setCodexSection(section)} aria-pressed={codexSection === section}>{label}</button>)}
+              </nav>
+
+              {codexSection === 'read' && (
+                <section className="codex-book-section" data-testid="codex-read-section">
+                  <div className="codex-page-grid">
+                    <div><small className="codex-label">DEFINITION &amp; GENERIC EXAMPLES</small><div className="codex-examples">{(selectedPage.examples || []).map((example, index) => <pre key={index}>{example}</pre>)}</div><small className="codex-label codex-subsection-label">COMMON MISTAKES</small><div className="codex-mistakes">{(selectedPage.common_mistakes || []).length ? selectedPage.common_mistakes.map((mistake) => <p key={mistake}>{mistake}</p>) : <p className="codex-insight-empty">No validated mistake pattern recorded for this concept yet.</p>}</div></div>
+                    <div><small className="codex-label">QUESTION LENS</small><div className="codex-tags">{(selectedPage.question_types || []).map((type) => <span key={type}>{type}</span>)}</div><small className="codex-label">RECORDED SIGNALS</small><div className="codex-tags codex-recorded-signals">{pageQuestionTypes.length ? pageQuestionTypes.map((type) => <span key={type}>{type}</span>) : <span className="empty-state">No question type recorded yet.</span>}{pageWeaknesses.map((weakness) => <span key={`weakness-${weakness}`}>{weakness}</span>)}</div><p className="codex-section-hint">Open Encounters to inspect the mobs, question types and validated results behind this book.</p></div>
                   </div>
-                  <p>{selectedEntry.notes?.at(-1) || 'The encounter has been observed through verified learning evidence.'}</p>
-                  <div className="codex-notes workspace-notebook"><small className="codex-label">WORKSPACE NOTEBOOK · notes/{noteSlug(selectedEntry)}.md</small>{workspaceNoteLoading ? <p className="codex-insight-empty">Loading your transferable notes…</p> : workspaceNote ? <pre>{workspaceNote}</pre> : <p className="codex-insight-empty">No workspace note yet. Add one below; it travels with the project.</p>}</div>
-                  {selectedEntry.player_notes?.length > 0 && <div className="codex-notes"><small className="codex-label">CANONICAL FIELD NOTES</small>{selectedEntry.player_notes.map((item, index) => <p key={`${item}-${index}`}>{item}</p>)}</div>}
-                  <form className="codex-note-form" onSubmit={submitNote}><label><span>Add a field note</span><textarea value={note} onChange={(event) => setNote(event.target.value)} maxLength={2_000} rows={3} placeholder="What did you notice, or what should you revisit?" disabled={busy} /></label><button type="submit" disabled={busy || !note.trim()}>Save note</button></form>
-                  {noteStatus && <small className="battle-submit-status" role="status">{noteStatus}</small>}
+                </section>
+              )}
+
+              {codexSection === 'encounters' && (
+                <section className="codex-book-section" data-testid="codex-encounters-section">
+                  <div className="codex-section-heading"><div><span className="screen-kicker">FIELD EVIDENCE</span><h4>Encounter records</h4></div><span>{selectedEntries.length} logged</span></div>
+                  <div className="codex-entry-picker codex-entry-picker-expanded">{selectedEntries.map((entry) => <button key={entry.id} type="button" className={selectedEntry?.id === entry.id ? 'active' : ''} onClick={() => setSelectedEntryId(entry.id)}>{entry.mob_name}<small>{entry.status} · {entry.attempts ?? 0} attempts</small></button>)}{!selectedEntries.length && <span className="empty-state">No encounter recorded yet.</span>}</div>
+                  {selectedEntry ? (
+                    <section className="codex-entry-detail">
+                      <div className="card-heading"><span>{selectedEntry.mob_name} · OBSERVATION</span><b>{String(selectedEntry.status || 'observed').toUpperCase()}</b></div>
+                      <div className="codex-entry-meta"><span>{selectedEntry.attempts ?? 0} attempts</span><span>{(selectedEntry.question_types || []).join(' · ') || 'type pending'}</span><span>{(selectedEntry.weaknesses || []).length} weaknesses</span><span>Mastery {selectedEntry.mastery?.evidence ?? 0}</span></div>
+                      <div className="codex-entry-insights" data-testid="codex-entry-insights">
+                        <div><small className="codex-label">WEAKNESSES / PATTERNS</small>{selectedEntry.weaknesses?.length ? <ul className="codex-insight-list">{selectedEntry.weaknesses.map((weakness) => <li key={weakness}>{weakness}</li>)}</ul> : <p className="codex-insight-empty">No weakness pattern recorded yet.</p>}</div>
+                        <div><small className="codex-label">VERIFIED RESULTS</small>{selectedEntry.results?.length ? <ul className="codex-insight-list">{selectedEntry.results.map((result, index) => <li key={`${result.outcome || 'result'}-${index}`}><strong>{result.outcome || 'recorded'}</strong>{result.evidence_id ? <span>{result.evidence_id}</span> : null}</li>)}</ul> : <p className="codex-insight-empty">No result history recorded yet.</p>}</div>
+                        {selectedEntry.interview_history?.length ? <div><small className="codex-label">INTERVIEW HISTORY</small><ul className="codex-insight-list">{selectedEntry.interview_history.map((item, index) => <li key={`${item.outcome || 'interview'}-${index}`}>{item.outcome || item.status || 'recorded'}</li>)}</ul></div> : null}
+                      </div>
+                      <p>{selectedEntry.notes?.at(-1) || 'The encounter has been observed through verified learning evidence.'}</p>
+                    </section>
+                  ) : <p className="codex-insight-empty">Choose a recorded encounter to inspect its validated evidence.</p>}
+                </section>
+              )}
+
+              {codexSection === 'notes' && (
+                <section className="codex-book-section" data-testid="codex-notes-section">
+                  <div className="codex-section-heading"><div><span className="screen-kicker">FIELD NOTES</span><h4>Keep the useful parts</h4></div><span>workspace + canonical</span></div>
+                  <div className="codex-entry-picker codex-entry-picker-inline">{selectedEntries.map((entry) => <button key={entry.id} type="button" className={selectedEntry?.id === entry.id ? 'active' : ''} onClick={() => setSelectedEntryId(entry.id)}>{entry.mob_name}<small>{entry.concept || 'concept'}</small></button>)}{!selectedEntries.length && <span className="empty-state">No encounter note target yet.</span>}</div>
+                  {selectedEntry ? <>
+                    <div className="codex-notes workspace-notebook"><small className="codex-label">WORKSPACE NOTEBOOK · notes/{noteSlug(selectedEntry)}.md</small>{workspaceNoteLoading ? <p className="codex-insight-empty">Loading your transferable notes…</p> : workspaceNote ? <pre>{workspaceNote}</pre> : <p className="codex-insight-empty">No workspace note yet. Add one below; it travels with the project.</p>}</div>
+                    {selectedEntry.player_notes?.length > 0 && <div className="codex-notes"><small className="codex-label">CANONICAL FIELD NOTES</small>{selectedEntry.player_notes.map((item, index) => <p key={`${item}-${index}`}>{item}</p>)}</div>}
+                    <form className="codex-note-form" onSubmit={submitNote}><label><span>Add a field note</span><textarea value={note} onChange={(event) => setNote(event.target.value)} maxLength={2_000} rows={3} placeholder="What did you notice, or what should you revisit?" disabled={busy} /></label><button type="submit" disabled={busy || !note.trim()}>Save note</button></form>
+                    {noteStatus && <small className="battle-submit-status" role="status">{noteStatus}</small>}
+                  </> : <p className="codex-insight-empty">Choose an encounter to read or add notes.</p>}
+                </section>
+              )}
+
+              {codexSection === 'mastery' && (
+                <section className="codex-book-section codex-mastery-panel" data-testid="codex-mastery">
+                  <div className="codex-section-heading"><div><span className="screen-kicker">MASTERY SIGNALS</span><h4>Validated growth</h4></div><span>{skills.length} concepts</span></div>
+                  <div className="skill-grid">
+                    {skills.map((skill) => (
+                      <article key={skill.name} className={`skill-card ${skill.status}`}>
+                        <div className="skill-icon" data-skill-shield={skill.shield?.tier || 'none'}>{skill.shield?.tier !== 'none' ? '🛡' : '◇'}</div>
+                        <div><small>{skill.name}</small><h3>{skill.concept}</h3></div>
+                        <div className="skill-meta"><span>Evidence {skill.evidence ?? 0}</span><span>Interviews {skill.interview_passes ?? 0}</span></div>
+                        <div className="shield-line"><span>{skill.shield?.tier || 'none'} shield</span><b>{skill.shield?.charges ?? 0}/{skill.shield?.max_charges ?? 0}</b></div>
+                      </article>
+                    ))}
+                    {!skills.length && <p className="codex-insight-empty">Mastery signals appear after validated encounters.</p>}
+                  </div>
                 </section>
               )}
             </>
           ) : <div className="empty-state">The Codex library is unavailable until the state service returns a projection.</div>}
-          <details className="codex-mastery-panel" data-testid="codex-mastery">
-            <summary className="card-heading"><span>MASTERY SIGNALS <small>click to expand</small></span><b>{skills.length} concepts</b></summary>
-            <div className="skill-grid">
-              {skills.map((skill) => (
-                <article key={skill.name} className={`skill-card ${skill.status}`}>
-                  <div className="skill-icon" data-skill-shield={skill.shield?.tier || 'none'}>{skill.shield?.tier !== 'none' ? '🛡' : '◇'}</div>
-                  <div><small>{skill.name}</small><h3>{skill.concept}</h3></div>
-                  <div className="skill-meta"><span>Evidence {skill.evidence ?? 0}</span><span>Interviews {skill.interview_passes ?? 0}</span></div>
-                  <div className="shield-line"><span>{skill.shield?.tier || 'none'} shield</span><b>{skill.shield?.charges ?? 0}/{skill.shield?.max_charges ?? 0}</b></div>
-                </article>
-              ))}
-              {!skills.length && <p className="codex-insight-empty">Mastery signals appear after validated encounters.</p>}
-            </div>
-          </details>
         </article>
       </section>
         </>
@@ -1458,7 +1495,39 @@ function AccountPanel({ account, busy, notice, onSignIn, onSignUp, onSignOut, on
   )
 }
 
-function SettingsScreen({ preferences, setters, resetLayout, equipped, account, accountBusy, accountNotice, onSignIn, onSignUp, onSignOut, onDeviceLabelSave, onResolveConflict, revision }) {
+function WorkspaceTransferPanel({ transfer, busy, notice, onRefresh, onPush, onPreviewPull, onApplyPull }) {
+  const files = transfer?.files || []
+  const conflicts = transfer?.conflicts || []
+  const available = Boolean(transfer?.ok)
+  const statusLabel = transfer?.remote_commit ? 'BUNDLE READY' : available ? 'NO BUNDLE' : 'UNAVAILABLE'
+  return (
+    <section className="game-card settings-card workspace-transfer-card" data-testid="workspace-transfer">
+      <div className="card-heading"><span>PROJECT FILE TRANSFER</span><b>{statusLabel}</b></div>
+      <p className="settings-note">Move reviewed project files between your devices without moving <code>progress.json</code>, PTY data or private session logs.</p>
+      {!transfer && <button type="button" onClick={onRefresh} disabled={busy}>Check transfer channel</button>}
+      {transfer && (
+        <>
+          <div className="workspace-transfer-meta"><span>{transfer.transfer_branch || 'questlab-files/01-blackjack'}</span><span>{transfer.remote_commit ? `${String(transfer.remote_commit).slice(0, 8)}…` : 'empty'}</span></div>
+          <div className="workspace-transfer-files">
+            {files.length ? files.map((file) => <div key={file.path}><span>{file.path}</span><b className={`transfer-file-status ${file.status || ''}`}>{file.status || 'tracked'}</b></div>) : <p className="context-note">No allowlisted files are available in the transfer preview yet.</p>}
+          </div>
+          {conflicts.length > 0 && <p className="workspace-transfer-conflict" role="alert">Local edits conflict with: {conflicts.join(', ')}. Preview first, then choose overwrite only after reviewing a backup.</p>}
+          <div className="account-actions workspace-transfer-actions">
+            <button type="button" disabled={busy || !available} onClick={onPush}>Send project files</button>
+            <button type="button" disabled={busy || !available} onClick={onPreviewPull}>Preview incoming</button>
+            {transfer.requires_overwrite_opt_in && <button type="button" disabled={busy} onClick={() => onApplyPull(true)}>Overwrite after backup</button>}
+            {transfer.requires_confirmation && !transfer.requires_overwrite_opt_in && <button type="button" disabled={busy} onClick={() => onApplyPull(false)}>Apply incoming</button>}
+            <button type="button" disabled={busy} onClick={onRefresh}>Refresh</button>
+          </div>
+        </>
+      )}
+      {(notice || transfer?.error) && <p className="account-message error">{notice || transfer.error}</p>}
+      <small className="settings-note">Allowlist: blackjack.py · tutor.py · dungeon.py · notes/&lt;concept&gt;.md. Progression stays in the canonical state gateway.</small>
+    </section>
+  )
+}
+
+function SettingsScreen({ preferences, setters, resetLayout, equipped, account, accountBusy, accountNotice, onSignIn, onSignUp, onSignOut, onDeviceLabelSave, onResolveConflict, revision, workspaceTransfer, workspaceTransferBusy, workspaceTransferNotice, onWorkspaceTransferRefresh, onWorkspaceTransferPush, onWorkspaceTransferPreviewPull, onWorkspaceTransferApplyPull }) {
   const { editorFontSize, terminalFontSize, hudDensity, animations, showAiTerminal, themeChoice, fontFamily } = preferences
   return (
     <div className="game-screen-scroll settings-screen" data-campaign-revision={revision}>
@@ -1468,6 +1537,7 @@ function SettingsScreen({ preferences, setters, resetLayout, equipped, account, 
 
       <div className="screen-grid two">
         <AccountPanel account={account} busy={accountBusy} notice={accountNotice} onSignIn={onSignIn} onSignUp={onSignUp} onSignOut={onSignOut} onDeviceLabelSave={onDeviceLabelSave} onResolveConflict={onResolveConflict} />
+        <WorkspaceTransferPanel transfer={workspaceTransfer} busy={workspaceTransferBusy} notice={workspaceTransferNotice} onRefresh={onWorkspaceTransferRefresh} onPush={onWorkspaceTransferPush} onPreviewPull={onWorkspaceTransferPreviewPull} onApplyPull={onWorkspaceTransferApplyPull} />
         <section className="game-card settings-card">
           <div className="card-heading"><span>EDITOR</span></div>
           <label><span>Editor font size</span><b>{editorFontSize}px</b><input type="range" min="11" max="22" value={editorFontSize} onChange={(event) => setters.setEditorFontSize(Number(event.target.value))} /></label>
@@ -1496,7 +1566,7 @@ function SettingsScreen({ preferences, setters, resetLayout, equipped, account, 
   )
 }
 
-export function GameScreen({ activeView, progress, revision, encounter, codexProjection, practiceProjection, equipmentProjection, dungeon, dungeonEditorContent, onDungeonEditorChange, onSaveDungeon, onDungeonChoose, onDungeonRest, onDungeonMarketPurchase, onDungeonEquip, onDungeonLeave, onDungeonFinish, purchaseCosmetic, equipCosmetic, equipCampaignItem, saveCodexNote, busy, dungeonSaving, submitBattle, submitBoss, submitDungeon, onStartDungeon, onPracticePrompt, preferences, setters, resetLayout, account, accountBusy, accountNotice, onSignIn, onSignUp, onSignOut, onDeviceLabelSave, onResolveConflict, onNavigate, campaignReady = true }) {
+export function GameScreen({ activeView, progress, revision, encounter, codexProjection, practiceProjection, equipmentProjection, dungeon, dungeonEditorContent, onDungeonEditorChange, onSaveDungeon, onDungeonChoose, onDungeonRest, onDungeonMarketPurchase, onDungeonEquip, onDungeonLeave, onDungeonFinish, purchaseCosmetic, equipCosmetic, equipCampaignItem, saveCodexNote, busy, dungeonSaving, submitBattle, submitBoss, submitDungeon, onStartDungeon, onPracticePrompt, preferences, setters, resetLayout, account, accountBusy, accountNotice, onSignIn, onSignUp, onSignOut, onDeviceLabelSave, onResolveConflict, workspaceTransfer, workspaceTransferBusy, workspaceTransferNotice, onWorkspaceTransferRefresh, onWorkspaceTransferPush, onWorkspaceTransferPreviewPull, onWorkspaceTransferApplyPull, onNavigate, campaignReady = true }) {
   const wideRoute = ['hub', 'character', 'homestead'].includes(activeView)
   const withWideNavigation = (screen) => wideRoute
     ? <WideSurfaceFrame activeView={activeView} onNavigate={onNavigate}>{screen}</WideSurfaceFrame>
@@ -1517,6 +1587,6 @@ export function GameScreen({ activeView, progress, revision, encounter, codexPro
   if (activeView === 'homestead') return withWideNavigation(<Homestead progress={progress} revision={revision} equipmentProjection={equipmentProjection} purchaseCosmetic={purchaseCosmetic} equipCosmetic={equipCosmetic} equipCampaignItem={equipCampaignItem} busy={busy} />)
   if (activeView === 'dungeon') return <DungeonScreen dungeon={dungeon} revision={revision} onStart={onStartDungeon} onChoose={onDungeonChoose} onRest={onDungeonRest} onMarketPurchase={onDungeonMarketPurchase} onEquip={onDungeonEquip} onLeave={onDungeonLeave} onFinish={onDungeonFinish} submitDungeon={submitDungeon} busy={busy} saving={dungeonSaving} editorContent={dungeonEditorContent} onEditorChange={onDungeonEditorChange} onSave={onSaveDungeon} />
   if (activeView === 'practice') return <PracticeScreen progress={progress} revision={revision} practiceProjection={practiceProjection} onPracticePrompt={onPracticePrompt} busy={busy} />
-  if (activeView === 'settings') return <SettingsScreen preferences={preferences} setters={setters} resetLayout={resetLayout} equipped={progress.homestead?.equipped || {}} account={account} accountBusy={accountBusy} accountNotice={accountNotice} onSignIn={onSignIn} onSignUp={onSignUp} onSignOut={onSignOut} onDeviceLabelSave={onDeviceLabelSave} onResolveConflict={onResolveConflict} revision={revision} />
+  if (activeView === 'settings') return <SettingsScreen preferences={preferences} setters={setters} resetLayout={resetLayout} equipped={progress.homestead?.equipped || {}} account={account} accountBusy={accountBusy} accountNotice={accountNotice} onSignIn={onSignIn} onSignUp={onSignUp} onSignOut={onSignOut} onDeviceLabelSave={onDeviceLabelSave} onResolveConflict={onResolveConflict} workspaceTransfer={workspaceTransfer} workspaceTransferBusy={workspaceTransferBusy} workspaceTransferNotice={workspaceTransferNotice} onWorkspaceTransferRefresh={onWorkspaceTransferRefresh} onWorkspaceTransferPush={onWorkspaceTransferPush} onWorkspaceTransferPreviewPull={onWorkspaceTransferPreviewPull} onWorkspaceTransferApplyPull={onWorkspaceTransferApplyPull} revision={revision} />
   return null
 }

@@ -1988,3 +1988,21 @@ Verification: current-source Forge suite **32/32**, clean archive frontend
 suite **51/51**, and Vite production build **1,346 modules**. The Windows
 working tree still has a locked esbuild process, but canonical state, learner
 files, PTYs and hosted transport were not changed.
+
+## Codex book-section overflow — F-116
+
+| ID | Severity | Area | Finding | Status |
+|---|---|---|---|---|
+| F-116 | P1 | Codex presentation | The bounded book pane still read as an infinite scroll because definitions, encounter evidence, notebook content and mastery were all shown in one selected-page column. | Fixed with projection-backed Read, Encounters, Notes and Mastery sections. The active section is switched in-place, while the library index and reading pane remain bounded and the Battle Shell stays a separate Codex tab. |
+
+Verification: current-source Forge tests **32/32**. Clean archive build and
+browser K&M remain publication gates.
+
+## Settings workspace transfer bridge — F-117
+
+| ID | Severity | Area | Finding | Status |
+|---|---|---|---|---|
+| F-117 | P1 | Cross-device source files | The allowlisted `questlab-files` source transfer helper was CLI-only, leaving no safe Forge UI for reviewing or moving learner-authored project files. | Fixed with a Settings panel for status, push, pull preview and confirmed pull. It transfers only `blackjack.py`, `tutor.py`, `dungeon.py` and `notes/*.md`; progress state, PTYs and private logs stay local and canonical. |
+
+Verification: focused WSL API tests **10/10** and current-source Forge tests
+**32/32**. Hosted player-state transport remains a separate approval gate.
