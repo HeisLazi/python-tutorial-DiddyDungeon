@@ -559,3 +559,14 @@ attachable tab; no visual click-through claim is made.
 
 Verification: current-source Forge tests **32/32**. No campaign state, PTY or
 cloud transport was changed.
+
+## Codex infinite-scroll regression hunt — 2026-09-17 (F-115)
+
+| ID | Severity | Finding | Status |
+|---|---|---|---|
+| F-115 | P1 | The first bounded Codex pass still left Mastery Signals as a permanent page-length tail, and the shell used a flexible column that could grow with book evidence in smaller Forge viewports. | Fixed with explicit Codex grid rows, a compact fixed hero, contained pane overscroll, and an expandable Mastery Signals section. The book index and selected book remain the only scrolling regions on desktop; mobile intentionally falls back to one controlled page. |
+
+Verification: current-source Forge runtime tests **32/32**. A full dependency
+install/build is being rerun from a clean checkout because the existing Windows
+`node_modules` tree has a locked esbuild binary; protected learner files and
+PTYs were not touched.
