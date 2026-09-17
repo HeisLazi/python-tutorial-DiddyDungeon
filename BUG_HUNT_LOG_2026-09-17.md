@@ -670,3 +670,13 @@ is still external evidence.
 Verification: current-source Forge tests **37/37**. Clean archive frontend
 tests/build and browser K&M remain publication gates; actual device round-trip
 is still external evidence.
+
+## Codex outer-feed follow-up — 2026-09-17 (F-127)
+
+| ID | Severity | Finding | Status |
+|---|---|---|---|
+| F-127 | P1 | The visible Codex still inherited the generic `game-screen-scroll` wrapper. That left two competing layout contracts: a page-level feed and the finite book grid. Depending on the bundle/window, the result could look like an ugly endless scroll even though the state projection was correct. | Fixed by removing the generic wrapper class from the Codex root, pinning a dedicated shell to the game viewport, containing overscroll, and making the selected book section (plus the Field Library index) the only intentional scroll owners. |
+
+Verification: current-source Forge tests **38/38**. No state, learner file,
+PTY or hosted transport changed. Fresh browser K&M remains unavailable because
+the Codex in-app browser tab could not attach in this environment.

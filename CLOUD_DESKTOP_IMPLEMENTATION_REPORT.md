@@ -2834,6 +2834,19 @@ Current-source Forge tests pass **37/37**. Clean archive frontend tests/build
 and browser K&M remain the visual publication checks. A real PC/laptop source
 round-trip is still external evidence.
 
+### Codex feed-boundary follow-up — F-127
+
+The Codex root no longer uses the generic `game-screen-scroll` feed wrapper.
+It is now a dedicated viewport-pinned shell with bounded overscroll. The Field
+Library index and the selected book section own their own scroll regions; the
+outer Forge surface stays fixed while Previous/Next controls and section tabs
+provide the finite-book navigation. Battle Shell remains a separate bounded
+tab. This is a UI-only repair and does not change the canonical state gateway,
+revision polling, reward authority, notes, learner files or PTY lifecycle.
+
+Current-source Forge tests pass **38/38**. Browser K&M remains the visual
+publication check because the in-app browser could not attach a tab here.
+
 ### Local sync simulator recheck — F-126
 
 The current branch was rechecked with

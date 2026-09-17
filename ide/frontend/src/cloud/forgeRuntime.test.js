@@ -234,7 +234,7 @@ test('Journal and Codex keep the active encounter projection visible', () => {
   assert.match(views, /data-testid="codex-mode-tabs"/)
   assert.match(views, /data-testid="battle-story-background"/)
   assert.match(views, /data-testid="battle-encounter-details"/)
-  assert.match(views, /className="game-screen-scroll codex-screen"/)
+  assert.match(views, /className="codex-screen"/)
   assert.match(views, /data-testid="codex-mastery"/)
   assert.match(views, /function QuestBattleScreen\(\{ activeProject, currentMob, encounter, resolve/)
   assert.match(views, /currentMob=\{battleMob\}\s+encounter=\{encounter\}/)
@@ -275,9 +275,19 @@ test('Codex stays a bounded book surface instead of growing an outer feed', () =
   const foundation = source('../foundation.css')
 
   assert.match(foundation, /\.forge-v2 \.game-screen \{ position: relative; min-width: 0; min-height: 0; \}/)
-  assert.match(foundation, /\.forge-v2 \.game-screen > \.codex-screen \{ position: absolute; inset: 0; width: 100%; max-height: 100%; \}/)
-  assert.match(foundation, /\.codex-book-section \{ overflow: hidden; \}/)
+  assert.match(foundation, /\.forge-v2 \.game-screen > \.codex-screen \{[\s\S]*?position: absolute;[\s\S]*?inset: 0;[\s\S]*?overflow: hidden;[\s\S]*?contain: layout paint;/)
+  assert.match(foundation, /\.codex-screen \.codex-book-section \{[\s\S]*?overflow-y: auto;[\s\S]*?scrollbar-gutter: stable;/)
   assert.match(foundation, /\.codex-screen \.codex-index \{ min-height: 0; overflow-y: auto;/)
+})
+
+test('Codex owns its viewport shell instead of inheriting the generic feed wrapper', () => {
+  const views = source('../RpgViews.jsx')
+  const foundation = source('../foundation.css')
+
+  assert.match(views, /<div className="codex-screen" data-testid="codex"/)
+  assert.doesNotMatch(views, /className="game-screen-scroll codex-screen"/)
+  assert.match(foundation, /\.forge-v2 \.game-screen > \.codex-screen \{[\s\S]*?padding: 18px;[\s\S]*?overscroll-behavior: none;/)
+  assert.match(foundation, /\.codex-screen \.codex-book-section \{[\s\S]*?overflow-x: hidden;/)
 })
 
 test('Dungeon renders state-owned adaptive mob identity and reward feedback', () => {
