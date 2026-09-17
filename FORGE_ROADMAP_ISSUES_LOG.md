@@ -1782,3 +1782,10 @@ transformed **1,346 modules** after this repair.
 | ID | Severity | Area | Finding | Status |
 |---|---|---|---|---|
 | F-085 | P1 | Account portrait privacy/sync | A signed-in avatar upload also populated the unscoped local avatar key. A later sign-out, account switch or remote removal could therefore display the wrong portrait or resurrect a stale local fallback even though private cloud Storage remained protected. | Fixed in `SyncEngine`: signed-in cache writes/restores are account-scoped, anonymous uploads remain local-only, and a current account with no cloud portrait resolves to an empty state instead of the unscoped fallback. Frontend avatar regressions pass in the clean ext4 suite (**43/43**). |
+
+## Handoff precision review — 2026-09-17
+
+| ID | Severity | Area | Finding | Status |
+|---|---|---|---|---|
+| F-086 | P3 | State-command documentation | The implementation already rejected internal `system` actions over HTTP and CLI, but the handoff did not state the exact public actor boundary, leaving room for a future integrator to treat `system` as a caller-supplied actor. | Fixed in `AGENT_CLOUD_DESKTOP_HANDOFF.md`: HTTP/CLI accept only `player` and `pyr`; `system` is reserved for trusted in-process `apply_internal` calls. |
+| F-087 | P3 | Tutor/Practice documentation | The implementation already shared the managed `tutor.py` and notes routes while keeping Practice progression-independent, but the handoff could be read as describing a second Practice notebook or endpoint. | Fixed in the handoff: Tutor and Practice share one managed editor/notebook and dedicated routes; only their sessions/progression boundaries differ. |

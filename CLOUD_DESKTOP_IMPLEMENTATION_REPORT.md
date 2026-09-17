@@ -2383,3 +2383,12 @@ identity, restores no unscoped portrait while signed in, and clears the visible
 avatar when that account has no cloud portrait. Anonymous/offline uploads keep
 the unscoped local behavior. Clean frontend verification passed **43/43** and
 the production build transformed **1,346 modules**.
+
+### F-086/F-087 — handoff precision
+
+The handoff now makes two existing implementation boundaries explicit: the
+public state envelope accepts only `player` and `pyr`, while `system` is
+reserved for trusted in-process actions; and Campaign Tutor/Practice share one
+managed `tutor.py`/notes surface while retaining separate Practice history and
+no-reward progression boundaries. No runtime authority or file-write surface
+was widened.

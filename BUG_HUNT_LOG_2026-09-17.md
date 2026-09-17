@@ -322,3 +322,11 @@ fail. The SyncEngine now keeps signed-in caches scoped to the account and only
 uses the unscoped key for explicitly anonymous/offline uploads. A regression
 also proves a signed-in removal cannot resurrect an unscoped portrait. Clean
 frontend verification passed **43/43** with the **1,346-module** build.
+
+## Review follow-up — handoff precision (F-086/F-087)
+
+The implementation was already safe, but the handoff wording was less precise
+than the code. It now explicitly rejects caller-supplied `system` actors over
+HTTP/CLI and describes Tutor/Practice as one managed `tutor.py`/notes surface
+with separate Practice state rather than two notebooks. This was a
+documentation-only repair; no save, runtime or PTY was touched.
