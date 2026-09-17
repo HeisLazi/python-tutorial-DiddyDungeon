@@ -2418,3 +2418,11 @@ disposable account remains the valid hosted avatar evidence; local avatar,
 workspace-transfer and revision/CAS sync checks remain green. A fresh hosted
 account and authenticated UI round-trip must be retried after the provider
 quota recovers.
+
+### Handoff contract alignment — 2026-09-17
+
+The older `FORGE_V2_HANDOFF.md` was stale relative to the current branch: it
+said Practice could not use the managed `tutor.py`, called Dungeon/Practice
+starter-only, and described verdict effects as display-only. It now matches the
+implemented local contract while keeping provider authentication, hosted
+campaign/Dungeon transport and real PC/laptop acceptance explicitly open.
