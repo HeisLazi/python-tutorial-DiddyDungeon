@@ -114,6 +114,10 @@
 .workspace-notebook { margin: 14px 0; padding: 12px 14px; border-left-width: 3px; background: color-mix(in srgb, var(--gold) 6%, var(--panel3)); }
 .workspace-notebook pre { margin: 5px 0 0; max-height: 220px; overflow: auto; white-space: pre-wrap; color: var(--text); font: 11px/1.55 ui-monospace, monospace; }
 .codex-library { grid-template-columns: minmax(210px, .28fr) minmax(0, 1fr); min-height: 620px; }
+.codex-mode-tabs { display: flex; gap: 7px; margin: 0 auto 12px; padding: 4px; border: 1px solid color-mix(in srgb, var(--gold) 22%, var(--line)); border-radius: 10px; background: color-mix(in srgb, var(--panel3) 78%, transparent); width: fit-content; }
+.codex-mode-tabs button { min-width: 150px; border: 0; background: transparent; color: var(--muted); font: 800 10px ui-monospace, monospace; letter-spacing: .06em; text-transform: uppercase; }
+.codex-mode-tabs button.active { color: var(--text); background: color-mix(in srgb, var(--gold) 15%, var(--panel2)); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--gold) 35%, transparent); }
+.codex-mode-tabs button span { margin-left: 4px; color: var(--gold); font-size: 8px; }
 .codex-book-page { padding: 8px 14px 16px; }
 .codex-page-heading h3 { font-size: 25px; }
 .codex-page-heading p { font-size: 13px; max-width: 900px; }
@@ -129,6 +133,38 @@
 .codex-chapter-status { display: grid; gap: 4px; padding: 11px; border: 1px solid var(--line); border-radius: 9px; background: color-mix(in srgb, var(--gold) 5%, var(--panel3)); }
 .codex-chapter-status span,.codex-chapter-status small { color: var(--muted); font: 9px/1.4 ui-monospace, monospace; }
 .codex-chapter-status strong { color: var(--text); font: 800 12px ui-monospace, monospace; }
+.codex-active-quest-sidebar { display: grid; gap: 7px; margin: 10px 0 13px; padding: 10px; border: 1px solid color-mix(in srgb, var(--gold) 36%, var(--line)); border-radius: 10px; background: linear-gradient(145deg, color-mix(in srgb, var(--gold) 8%, var(--panel3)), var(--panel3)); }
+.codex-sidebar-kicker { color: var(--gold); font: 800 8px ui-monospace, monospace; letter-spacing: .14em; }
+.codex-active-quest-sidebar h3 { margin: 0; color: var(--text); font: 800 14px ui-monospace, monospace; }
+.codex-active-quest-sidebar p { margin: 0; color: var(--muted); font-size: 10px; line-height: 1.45; }
+.codex-sidebar-progress { display: flex; justify-content: space-between; gap: 7px; color: var(--dim); font: 8px ui-monospace, monospace; text-transform: uppercase; }
+.codex-chapter-list,.codex-sidebar-mobs { display: grid; gap: 4px; }
+.codex-chapter-list { padding-top: 7px; border-top: 1px solid var(--line); }
+.codex-chapter-list button { display: grid; grid-template-columns: 18px 1fr; gap: 1px 6px; align-items: center; padding: 6px 7px; border: 1px solid transparent; border-radius: 7px; background: transparent; text-align: left; color: var(--muted); }
+.codex-chapter-list button > span { grid-row: 1 / 3; display: grid; place-items: center; width: 17px; height: 17px; border: 1px solid var(--line2); border-radius: 50%; color: var(--dim); font-size: 9px; }
+.codex-chapter-list button strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 800 9px ui-monospace, monospace; }
+.codex-chapter-list button small { font: 8px ui-monospace, monospace; color: var(--dim); }
+.codex-chapter-list button:hover:not(:disabled),.codex-chapter-list button:focus-visible,.codex-chapter-list button.active { border-color: color-mix(in srgb, var(--gold) 45%, var(--line)); background: color-mix(in srgb, var(--gold) 9%, var(--panel2)); color: var(--text); }
+.codex-chapter-list button.active > span { border-color: var(--gold); color: var(--gold); }
+.codex-chapter-list button.locked { opacity: .48; cursor: not-allowed; }
+.codex-sidebar-mobs { margin-top: 2px; }
+.codex-sidebar-mobs > div { display: grid; grid-template-columns: 18px minmax(0,1fr) auto; gap: 6px; align-items: center; padding: 4px 6px; color: var(--muted); }
+.codex-sidebar-mobs > div > span { display: grid; place-items: center; width: 17px; height: 17px; border: 1px solid var(--line2); border-radius: 50%; font-size: 8px; }
+.codex-sidebar-mobs > div strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 9px ui-monospace, monospace; }
+.codex-sidebar-mobs > div small { color: var(--gold); font: 7px ui-monospace, monospace; letter-spacing: .08em; }
+.codex-sidebar-mobs > div.current { border-radius: 6px; background: color-mix(in srgb, var(--gold) 9%, transparent); color: var(--text); }
+.codex-sidebar-mobs > div.current > span { border-color: var(--gold); color: var(--gold); }
+.codex-sidebar-mobs > div.locked { opacity: .45; }
+.codex-books-heading { margin-top: 4px; }
+.battle-lore-card { display: grid; grid-template-columns: minmax(0, 1fr) minmax(260px, .7fr); gap: 18px; align-items: stretch; border-color: color-mix(in srgb, var(--ember) 28%, var(--line)); background: linear-gradient(145deg, color-mix(in srgb, var(--ember) 7%, var(--panel2)), var(--panel)); }
+.battle-lore-copy { display: grid; align-content: start; gap: 7px; }
+.battle-lore-copy h3 { margin: 0; font: 800 22px/1.2 ui-monospace, monospace; color: var(--text); }
+.battle-lore-copy p { margin: 0; max-width: 760px; color: var(--muted); font-size: 12px; line-height: 1.6; }
+.battle-lore-copy .battle-lore-brief { color: var(--text); font-size: 11px; }
+.battle-stat-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; align-content: start; }
+.battle-stat-grid > div { display: grid; gap: 4px; padding: 9px; border: 1px solid var(--line); border-radius: 8px; background: color-mix(in srgb, var(--panel3) 82%, transparent); }
+.battle-stat-grid small { color: var(--muted); font: 800 8px ui-monospace, monospace; letter-spacing: .1em; }
+.battle-stat-grid strong { color: var(--gold); font: 800 12px ui-monospace, monospace; overflow-wrap: anywhere; }
 .dungeon-inventory-list { display: grid; gap: 7px; margin: 8px 0 12px; }
 .dungeon-inventory-item { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: center; padding: 9px; border: 1px solid var(--line); border-radius: 9px; background: var(--panel3); }
 .dungeon-inventory-item.equipped { border-color: color-mix(in srgb, var(--gold) 55%, var(--line)); background: color-mix(in srgb, var(--gold) 7%, var(--panel3)); }
@@ -259,12 +295,16 @@
   .hub-grid { grid-template-columns: 1fr; }
   .codex-active-chapter-grid { grid-template-columns: 1fr; }
   .battle-screen-hero { grid-template-columns: 1fr; }
+  .battle-lore-card { grid-template-columns: 1fr; }
 }
 @media (max-width: 620px) {
   .tutor-practice-bar { grid-template-columns: 1fr 1fr; }
   .tutor-practice-bar button { grid-column: 1 / -1; }
   .journal-mode-tabs { width: 100%; }
   .journal-mode-tabs button { min-width: 0; flex: 1; padding-inline: 5px; }
+  .codex-mode-tabs { width: 100%; }
+  .codex-mode-tabs button { min-width: 0; flex: 1; padding-inline: 5px; }
+  .battle-stat-grid { grid-template-columns: 1fr 1fr; }
   .journal-battle-link { align-items: flex-start; flex-direction: column; }
   .battle-screen-submit .battle-answer-editor { min-height: 220px; }
 }

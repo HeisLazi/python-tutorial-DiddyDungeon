@@ -340,10 +340,11 @@ function AppV2() {
   // Practice was an older navigation alias for the Tutor notebook. Keep old
   // localStorage/deep-link state usable, but persist the single Tutor route
   // so the rail can never grow a duplicate destination again.
-  const activeView = storedActiveView === 'practice' ? 'tutor' : storedActiveView
+  const normalizeView = (value) => value === 'practice' ? 'tutor' : value === 'quests' ? 'codex' : value
+  const activeView = normalizeView(storedActiveView)
   const setActiveView = (next) => setStoredActiveView((current) => {
     const candidate = typeof next === 'function' ? next(current) : next
-    return candidate === 'practice' ? 'tutor' : candidate
+    return normalizeView(candidate)
   })
   const [leftWidth, setLeftWidth] = usePersistentState('questlab.leftWidth', 220)
   const [rightWidth, setRightWidth] = usePersistentState('questlab.rightWidth', 410)
@@ -375,7 +376,7 @@ function AppV2() {
   const terminalSkin = equipped.terminal || 'terminal-charcoal'
   const showEditor = activeView === 'forge' || activeView === 'tutor' || activeView === 'practice'
   const tutorSurface = activeView === 'tutor' || activeView === 'practice'
-  const aiRouteHidden = ['hub', 'character', 'codex', 'quests', 'homestead', 'settings'].includes(activeView)
+  const aiRouteHidden = ['hub', 'character', 'codex', 'homestead', 'settings'].includes(activeView)
   const hubMode = activeView === 'hub'
   const wideSurface = ['hub', 'character', 'homestead'].includes(activeView)
   const aiGridVisible = showAiTerminal && !aiRouteHidden

@@ -4,7 +4,6 @@ export const viewItems = [
   { id: 'hub', label: 'Quest Hub' },
   { id: 'forge', label: 'Forge' },
   { id: 'tutor', label: 'Tutor Notebook' },
-  { id: 'quests', label: 'Quest Journal' },
   { id: 'codex', label: 'Codex' },
   { id: 'character', label: 'Character' },
   { id: 'homestead', label: 'Homestead' },
@@ -418,7 +417,7 @@ function HubScreen({ progress, revision, onOpen }) {
         <div className="card-heading"><span>MAIN QUEST · CHAPTERS</span><b>{activeProject.progress ?? 0}%</b></div>
         <div className="chapter-grid">{projects.map((project, index) => {
           const locked = project.status === 'locked' || (project.status !== 'active' && !project.completed)
-          return <article key={project.id || project.name || index} className={`chapter-card ${locked ? 'locked' : project.completed ? 'complete' : 'active'}`}><div className="chapter-art" aria-hidden="true">{locked ? '◌' : project.completed ? '✓' : '◆'}</div><div><span className="chapter-category">{project.category || project.type || 'chapter'}</span><h3>{locked ? (project.name || `Chapter ${index + 1}`) : project.name}</h3><p>{locked ? 'Future chapter · details unlock after the previous clear.' : project.summary || project.description || (project.status === 'active' ? 'Continue the current learning path.' : 'Verified chapter complete.')}</p></div>{project.status === 'active' && <button type="button" onClick={() => onOpen?.('quests')}>Open journal</button>}</article>
+          return <article key={project.id || project.name || index} className={`chapter-card ${locked ? 'locked' : project.completed ? 'complete' : 'active'}`}><div className="chapter-art" aria-hidden="true">{locked ? '◌' : project.completed ? '✓' : '◆'}</div><div><span className="chapter-category">{project.category || project.type || 'chapter'}</span><h3>{locked ? (project.name || `Chapter ${index + 1}`) : project.name}</h3><p>{locked ? 'Future chapter · details unlock after the previous clear.' : project.summary || project.description || (project.status === 'active' ? 'Continue the current learning path.' : 'Verified chapter complete.')}</p></div>{project.status === 'active' && <button type="button" onClick={() => onOpen?.('codex')}>Open Codex quest</button>}</article>
         })}</div>
         {!projects.length && <p className="context-note">The campaign chapter list will appear after the state service loads.</p>}
       </section>
@@ -527,10 +526,22 @@ function BossSubmission({ requirements, verifiedRequirements = [], onSubmit, bus
   )
 }
 
-function QuestBattleScreen({ activeProject, currentMob, resolve, maxResolve, availableObjectives, bossUnlocked, projectComplete, bossRequirements, verifiedBossRequirements, bossPhase, bossPhaseLabel, remainingBossRequirements, submitBattle, submitBoss, busy, onBack }) {
+function QuestBattleScreen({ activeProject, currentMob, resolve, maxResolve, availableObjectives, completedObjectives = [], bossUnlocked, projectComplete, bossRequirements, verifiedBossRequirements, bossPhase, bossPhaseLabel, remainingBossRequirements, submitBattle, submitBoss, busy, onBack }) {
   const mobName = currentMob?.name || activeProject.boss || 'Current encounter'
   const concept = currentMob?.concept || 'Integrated campaign challenge'
   const battleStatus = projectComplete ? 'CHAPTER COMPLETE' : bossUnlocked ? 'BOSS GATE' : 'LIVE ENCOUNTER'
+  const story = currentMob?.background || currentMob?.story || activeProject.summary || activeProject.description || 'The campaign record has not supplied a story background for this encounter yet.'
+  const encounterBrief = currentMob?.encounter || (bossUnlocked ? 'The chapter is clear. The remaining work is the validated boss gate.' : 'The state service will reveal the next bounded objective when it is available.')
+  const completedObjectiveCount = Array.isArray(completedObjectives) ? completedObjectives.length : 0
+  const objectiveTotal = completedObjectiveCount + availableObjectives.length
+  const detailRows = [
+    ['CONCEPT', concept],
+    ['STATUS', battleStatus],
+    ['TARGET BOSS', activeProject.boss || 'Not revealed'],
+    ['ATTEMPTS', String(currentMob?.objective_attempts ?? 0)],
+    ['OBJECTIVES', objectiveTotal ? `${completedObjectiveCount}/${objectiveTotal}` : 'Pending'],
+    ['QUESTION LENS', (encounter?.question_types || availableObjectives.map((objective) => objective.question_type)).join(' · ') || 'Pending'],
+  ]
   return (
     <div className="quest-battle-screen" data-testid="quest-battle-screen">
       <section className="game-card battle-screen-hero">
@@ -541,8 +552,20 @@ function QuestBattleScreen({ activeProject, currentMob, resolve, maxResolve, ava
         </div>
         <div className="battle-resolve-hero" data-testid="encounter-resolve">
           <small>{bossUnlocked ? 'BOSS GATE' : 'ENEMY RESOLVE'}</small>
-          <strong>{projectComplete ? 'CLEAR' : `${resolve}/${maxResolve}`}</strong>
-          {!projectComplete && <ProgressBar value={resolve} max={maxResolve} label="Resolve" className="resolve" />}
+          <strong>{projectComplete ? 'CLEAR' : bossUnlocked ? `${verifiedBossRequirements.length}/${bossRequirements.length}` : `${resolve}/${maxResolve}`}</strong>
+          {!projectComplete && !bossUnlocked && <ProgressBar value={resolve} max={maxResolve} label="Resolve" className="resolve" />}
+        </div>
+      </section>
+
+      <section className="game-card battle-lore-card" data-testid="battle-story-background">
+        <div className="battle-lore-copy">
+          <span className="screen-kicker">FIELD RECORD · STORY BACKGROUND</span>
+          <h3>{mobName}</h3>
+          <p>{story}</p>
+          <p className="battle-lore-brief">{encounterBrief}</p>
+        </div>
+        <div className="battle-stat-grid" data-testid="battle-encounter-details">
+          {detailRows.map(([label, value]) => <div key={label}><small>{label}</small><strong>{value}</strong></div>)}
         </div>
       </section>
 
@@ -717,11 +740,27 @@ function QuestJournal({ progress, revision, encounter, submitBattle, submitBoss,
   )
 }
 
-function Codex({ progress, revision, codexProjection, saveCodexNote, busy }) {
+function Codex({ progress, revision, codexProjection, encounter, submitBattle, submitBoss, saveCodexNote, busy }) {
   const activeProject = (progress.projects || []).find((project) => project.status === 'active') || {}
-  const activeMob = (activeProject.mobs || []).find((mob) => mob.status === 'available')
-    || (activeProject.mobs || []).find((mob) => !isMobDefeated(mob.status) && mob.status !== 'locked')
-  const clearedMobCount = (activeProject.mobs || []).filter((mob) => isMobDefeated(mob.status)).length
+  const mobs = activeProject.mobs || []
+  const projectedIndex = encounter?.mob_name ? mobs.findIndex((mob) => mob.name === encounter.mob_name) : -1
+  const firstAvailable = mobs.findIndex((mob) => mob.status === 'available')
+  const firstUncleared = mobs.findIndex((mob) => !isMobDefeated(mob.status) && mob.status !== 'locked')
+  const currentIndex = projectedIndex >= 0 ? projectedIndex : firstAvailable >= 0 ? firstAvailable : firstUncleared
+  const activeMob = currentIndex >= 0 ? mobs[currentIndex] : undefined
+  const clearedMobCount = mobs.filter((mob) => isMobDefeated(mob.status)).length
+  const rawMaxResolve = encounter?.max_resolve ?? activeMob?.max_resolve ?? encounter?.resolve ?? activeMob?.resolve ?? 0
+  const maxResolve = Math.max(1, Number(rawMaxResolve) || 1)
+  const resolve = Math.max(0, Math.min(maxResolve, Number(encounter?.resolve ?? activeMob?.resolve ?? maxResolve) || 0))
+  const availableObjectives = encounter?.available_objectives || []
+  const completedObjectives = encounter?.completed_objectives || []
+  const bossStatus = encounter?.boss_status || activeProject.boss_status || 'locked'
+  const bossUnlocked = encounter?.status === 'boss_available' || bossStatus === 'available'
+  const projectComplete = encounter?.status === 'complete' || encounter?.project_complete === true || activeProject.completed === true || bossStatus === 'defeated'
+  const bossRequirements = encounter?.boss_requirements || ['required_behavior', 'explanation', 'interview']
+  const verifiedBossRequirements = encounter?.verified_boss_requirements || []
+  const remainingBossRequirements = encounter?.remaining_boss_requirements || bossRequirements.filter((requirement) => !verifiedBossRequirements.includes(requirement))
+  const battleMob = bossUnlocked || projectComplete ? undefined : activeMob
   const skills = progress.skills || []
   const pages = codexProjection?.pages || []
   const entries = codexProjection?.entries || progress.codex?.encounters || []
@@ -732,6 +771,17 @@ function Codex({ progress, revision, codexProjection, saveCodexNote, busy }) {
   const [noteStatus, setNoteStatus] = useState('')
   const [workspaceNote, setWorkspaceNote] = useState('')
   const [workspaceNoteLoading, setWorkspaceNoteLoading] = useState(false)
+  const [codexView, setCodexView] = useState('books')
+  const [selectedChapterId, setSelectedChapterId] = useState(activeProject.id || activeProject.branch || activeProject.name || '')
+
+  const projectKey = (project) => String(project?.id || project?.branch || project?.name || '')
+  const chapterSelection = (progress.projects || []).find((project) => projectKey(project) === String(selectedChapterId)) || activeProject
+
+  useEffect(() => {
+    const activeId = projectKey(activeProject)
+    const selectedStillExists = (progress.projects || []).some((project) => projectKey(project) === String(selectedChapterId))
+    if (!selectedStillExists || !selectedChapterId) setSelectedChapterId(activeId)
+  }, [activeProject.id, activeProject.branch, activeProject.name, progress.projects, selectedChapterId])
 
   useEffect(() => {
     if (!pages.some((page) => page.id === selectedPageId)) setSelectedPageId(pages[0]?.id || '')
@@ -846,9 +896,59 @@ function Codex({ progress, revision, codexProjection, saveCodexNote, busy }) {
         </div>
       </div>
 
+      <div className="codex-mode-tabs" role="tablist" aria-label="Codex screens" data-testid="codex-mode-tabs">
+        <button type="button" role="tab" aria-selected={codexView === 'books'} className={codexView === 'books' ? 'active' : ''} onClick={() => setCodexView('books')}>Field library / books</button>
+        <button type="button" role="tab" aria-selected={codexView === 'battle'} className={codexView === 'battle' ? 'active' : ''} onClick={() => setCodexView('battle')}>Battle shell <span>{projectComplete ? 'CLEAR' : bossUnlocked ? 'BOSS' : 'LIVE'}</span></button>
+      </div>
+
+      <div key={codexView} className="codex-tab-page page-turn" data-codex-tab={codexView}>
+      {codexView === 'battle' ? (
+        <QuestBattleScreen
+          activeProject={activeProject}
+          currentMob={battleMob}
+          resolve={resolve}
+          maxResolve={maxResolve}
+          availableObjectives={availableObjectives}
+          completedObjectives={completedObjectives}
+          bossUnlocked={bossUnlocked}
+          projectComplete={projectComplete}
+          bossRequirements={bossRequirements}
+          verifiedBossRequirements={verifiedBossRequirements}
+          bossPhase={encounter?.boss_phase}
+          bossPhaseLabel={encounter?.boss_phase_label}
+          remainingBossRequirements={remainingBossRequirements}
+          submitBattle={submitBattle}
+          submitBoss={submitBoss}
+          busy={busy}
+          onBack={() => setCodexView('books')}
+        />
+      ) : (
+        <>
+
       <section className="codex-library game-card">
         <aside className="codex-index" aria-label="Codex concept index">
-          <div className="card-heading"><span>BOOKS</span><b>{pages.length}</b></div>
+          <div className="card-heading"><span>FIELD LIBRARY</span><b>{pages.length} books</b></div>
+          <section className="codex-active-quest-sidebar" data-testid="codex-active-quest">
+            <div className="codex-sidebar-kicker">ACTIVE QUEST</div>
+            <h3>{chapterSelection.name || 'No active chapter'}</h3>
+            <p>{progress.current_quest || chapterSelection.summary || chapterSelection.description || 'Choose a chapter to inspect its current path.'}</p>
+            <div className="codex-sidebar-progress"><span>{chapterSelection.progress ?? 0}% complete</span><span>{chapterSelection.id === activeProject.id || chapterSelection.branch === activeProject.branch ? `${clearedMobCount}/${mobs.length} cleared` : 'chapter record'}</span></div>
+            <div className="codex-chapter-list" aria-label="Campaign chapters">
+              {(progress.projects || []).map((project, index) => {
+                const locked = project.status === 'locked' || (project.status !== 'active' && !project.completed)
+                const projectId = String(project.id || project.branch || project.name || index)
+                return <button key={projectId} type="button" className={`${projectId === String(selectedChapterId) ? 'active ' : ''}${locked ? 'locked' : ''}`} onClick={() => !locked && setSelectedChapterId(projectId)} disabled={locked} data-testid={`codex-chapter-${projectId}`}><span>{locked ? '◌' : project.completed ? '✓' : project.status === 'active' ? '◆' : '◇'}</span><strong>{locked ? 'Unknown chapter' : project.name || `Chapter ${index + 1}`}</strong><small>{locked ? 'Locked' : project.status === 'active' ? 'Current chapter' : project.completed ? 'Complete' : 'Available'}</small></button>
+              })}
+            </div>
+            <div className="codex-sidebar-mobs" aria-label="Current chapter encounters">
+              {(chapterSelection.mobs || []).map((mob, index) => {
+                const isCurrent = chapterSelection.id === activeProject.id || chapterSelection.branch === activeProject.branch ? index === currentIndex : mob.status === 'available'
+                const hidden = mob.status === 'locked'
+                return <div key={mob.name || index} className={`${isCurrent ? 'current ' : ''}${hidden ? 'locked' : ''}`}><span>{hidden ? '◐' : isMobDefeated(mob.status) ? '✓' : index + 1}</span><strong>{hidden ? 'Unknown encounter' : mob.name}</strong>{isCurrent && <small>CURRENT</small>}</div>
+              })}
+            </div>
+          </section>
+          <div className="card-heading codex-books-heading"><span>BOOKS</span><b>{pages.length}</b></div>
           <label className="codex-search"><span>Search library</span><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="lists, loops…" aria-label="Search Codex" /></label>
           <div className="codex-page-list">
             {filteredPages.map((page) => (
@@ -889,14 +989,6 @@ function Codex({ progress, revision, codexProjection, saveCodexNote, busy }) {
         </article>
       </section>
 
-      <section className="game-card codex-active-chapter" data-testid="codex-active-chapter">
-        <div className="card-heading"><span>ACTIVE CHAPTER</span><b>{activeProject.progress ?? 0}%</b></div>
-        <div className="codex-active-chapter-grid">
-          <div><small className="codex-label">FIELD LIBRARY CONTEXT</small><h3>{activeProject.name || 'No active chapter'}</h3><p>{progress.current_quest || activeProject.summary || 'Choose a chapter from the Quest Hub to begin.'}</p></div>
-          <div className="codex-chapter-status"><span>{clearedMobCount}/{(activeProject.mobs || []).length} encounters cleared</span><strong>{activeMob?.name || (activeProject.completed ? 'Chapter complete' : 'Next encounter is not yet revealed')}</strong><small>{activeMob?.concept || 'The state service will reveal the next concept when it is unlocked.'}</small></div>
-        </div>
-      </section>
-
       <section className="game-card">
         <div className="card-heading"><span>CONCEPT MASTERY</span></div>
         <div className="skill-grid">
@@ -910,6 +1002,7 @@ function Codex({ progress, revision, codexProjection, saveCodexNote, busy }) {
           ))}
         </div>
       </section>
+        </>
     </div>
   )
 }
@@ -1211,6 +1304,7 @@ function DungeonScreen({ dungeon, revision, onStart, onChoose, onRest, onMarketP
           </section>}
         </>
       )}
+      </div>
     </div>
   )
 }
@@ -1380,7 +1474,7 @@ function SettingsScreen({ preferences, setters, resetLayout, equipped, account, 
           <label><span>Theme</span><select value={themeChoice || ''} onChange={(event) => setters.setThemeChoice(event.target.value)}><option value="">Homestead equipped theme</option><option value="gruvbox-dark">Gruvbox Dark</option><option value="gruvbox-light">Gruvbox Light</option><option value="github-dark">GitHub Dark</option><option value="github-light">GitHub Light</option><option value="deep-forest">Deep Forest</option><option value="void-scholar">Void Scholar</option><option value="ancient-archive">Ancient Archive</option></select></label>
           <label><span>Interface font</span><select value={fontFamily || 'inter'} onChange={(event) => setters.setFontFamily(event.target.value)}><option value="inter">Inter · neutral</option><option value="ibm-plex">IBM Plex Sans · readable</option><option value="atkinson">Atkinson Hyperlegible · high clarity</option><option value="system">System UI</option></select></label>
           <label className="toggle-row"><span>AI terminal visible</span><input type="checkbox" checked={showAiTerminal !== false} onChange={(event) => setters.setShowAiTerminal(event.target.checked)} /></label>
-          <p className="settings-note">AI stays hidden on Codex, Quest Journal, Homestead and Settings so those pages can breathe. The PTY remains mounted and reconnect-free.</p>
+          <p className="settings-note">AI stays hidden on Codex, Homestead and Settings so those pages can breathe. The PTY remains mounted and reconnect-free.</p>
         </section>
 
         <section className="game-card settings-card">
@@ -1415,8 +1509,7 @@ export function GameScreen({ activeView, progress, revision, encounter, codexPro
     )
   }
   if (activeView === 'hub') return withWideNavigation(<HubScreen progress={progress} revision={revision} onOpen={onNavigate} />)
-  if (activeView === 'quests') return <QuestJournal progress={progress} revision={revision} encounter={encounter} submitBattle={submitBattle} submitBoss={submitBoss} busy={busy} />
-  if (activeView === 'codex') return <Codex progress={progress} revision={revision} codexProjection={codexProjection} saveCodexNote={saveCodexNote} busy={busy} />
+  if (activeView === 'quests' || activeView === 'codex') return <Codex progress={progress} revision={revision} codexProjection={codexProjection} encounter={encounter} submitBattle={submitBattle} submitBoss={submitBoss} saveCodexNote={saveCodexNote} busy={busy} />
   if (activeView === 'character') return withWideNavigation(<CharacterSheet progress={progress} revision={revision} />)
   if (activeView === 'homestead') return withWideNavigation(<Homestead progress={progress} revision={revision} equipmentProjection={equipmentProjection} purchaseCosmetic={purchaseCosmetic} equipCosmetic={equipCosmetic} equipCampaignItem={equipCampaignItem} busy={busy} />)
   if (activeView === 'dungeon') return <DungeonScreen dungeon={dungeon} revision={revision} onStart={onStartDungeon} onChoose={onDungeonChoose} onRest={onDungeonRest} onMarketPurchase={onDungeonMarketPurchase} onEquip={onDungeonEquip} onLeave={onDungeonLeave} onFinish={onDungeonFinish} submitDungeon={submitDungeon} busy={busy} saving={dungeonSaving} editorContent={dungeonEditorContent} onEditorChange={onDungeonEditorChange} onSave={onSaveDungeon} />

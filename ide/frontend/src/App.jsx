@@ -186,7 +186,10 @@ function App() {
   const [busy, setBusy] = useState(false)
   const [notice, setNotice] = useState('')
 
-  const [activeView, setActiveView] = usePersistentState('questlab.activeView', 'forge')
+  const [storedActiveView, setStoredActiveView] = usePersistentState('questlab.activeView', 'forge')
+  const normalizeView = (value) => value === 'practice' ? 'tutor' : value === 'quests' ? 'codex' : value
+  const activeView = normalizeView(storedActiveView)
+  const setActiveView = (next) => setStoredActiveView((current) => normalizeView(typeof next === 'function' ? next(current) : next))
   const [leftWidth, setLeftWidth] = usePersistentState('questlab.leftWidth', 220)
   const [rightWidth, setRightWidth] = usePersistentState('questlab.rightWidth', 390)
   const [terminalHeight, setTerminalHeight] = usePersistentState('questlab.terminalHeight', 245)
