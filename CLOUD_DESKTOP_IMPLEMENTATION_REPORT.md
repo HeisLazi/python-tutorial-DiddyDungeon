@@ -3289,3 +3289,28 @@ transport.
 
 Verification: Windows frontend tests **80/80** and Vite production build
 **1,346 modules** pass. Browser K&M remains blocked by F-080.
+
+### Current-SHA native Linux distribution recheck — F-160 (2026-09-17)
+
+A disposable ext4 clone of the published `feature/cloud-sync-desktop` branch
+was rechecked after F-158/F-159. The native report is **GREEN** at
+`0e9b307c6a8e5882e70cf9a8dbe39a2cde1a0f12`: branch/upstream match, zero dirty
+paths, native Linux Rollup present, backend **116/116**, frontend **80/80**,
+and Vite production build **1,346 modules**. The live OneDrive WSL tree still
+fails only the native-Rollup check, and no install was attempted against that
+protected dependency tree. This strengthens the distribution evidence but does
+not certify the physical CachyOS laptop or browser K&M.
+
+### Codex wide-surface mount — F-161 (2026-09-17)
+
+The Codex was the remaining wide RPG route rendered directly inside the generic
+Forge grid. Its own navigation plus absolute overflow rules made the reader
+feel like a page nested inside another page. Commit `4c8a279` moves Codex into
+the same bounded `WideSurfaceFrame` used by Hub, Character and Homestead, hides
+the duplicate inner route bar, and gives the finite Books/Battle regions an
+explicit height budget. React shelf, encounter and mastery paging remains the
+navigation authority; no state projection or PTY lifecycle changed.
+
+Verification: frontend tests **81/81** and Vite production build **1,346
+modules** pass. Fresh browser K&M could not be claimed because F-080's browser
+attachment remains unavailable.

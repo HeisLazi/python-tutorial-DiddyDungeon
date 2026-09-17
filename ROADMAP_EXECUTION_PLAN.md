@@ -1095,6 +1095,16 @@ instances (`5181`, `5190`) serve the F-157 cascade. Browser K&M, hosted
 migrations, physical CachyOS and authenticated cross-device acceptance remain
 open.
 
+## Current checkpoint — 2026-09-17 — current-SHA native Linux recheck
+
+F-160 re-runs the native distribution gate in a disposable ext4 clone at the
+published SHA `0e9b307c6a8e5882e70cf9a8dbe39a2cde1a0f12`. The report is GREEN:
+native Rollup is present, the branch/upstream match, dirty paths are zero,
+backend tests are **116/116**, frontend tests are **80/80**, and the Vite build
+transforms **1,346 modules**. The physical CachyOS acceptance, browser K&M and
+hosted two-device gates remain open; the live OneDrive WSL dependency tree was
+not modified.
+
 ## Current checkpoint — 2026-09-17 — Codex desktop cascade correction
 
 F-158 closes the last local overflow mismatch found after the F-157 reader
@@ -1123,3 +1133,15 @@ Windows frontend tests are **80/80** and the Vite production build transforms
 **1,346 modules**. This is diagnostic-only; Browser K&M (F-080), hosted
 migrations, physical CachyOS and authenticated cross-device acceptance remain
 open.
+
+## Current checkpoint — 2026-09-17 — Codex wide-surface frame
+
+F-161 fixes the remaining structural cause of the Codex infinite-page feel.
+Codex now runs inside the shared bounded wide-surface frame instead of being
+positioned directly in the generic Forge grid. The shared frame owns the route
+navigation, while the book shelf/pagers and bounded Battle region own their
+content budget. Commit: `4c8a279`.
+
+Frontend tests are **81/81** and the Vite build transforms **1,346 modules**.
+Browser K&M (F-080), physical CachyOS, hosted migrations and authenticated
+cross-device acceptance remain open.

@@ -381,6 +381,14 @@ healthy. Windows frontend tests **80/80** and the Vite production build
 (**1,346 modules**) pass. The change is diagnostic-only: no state, PTY or
 hosted transport changed. Browser K&M remains blocked by F-080.
 
+F-160 rechecked the published branch in a disposable ext4 clone at
+`0e9b307c6a8e5882e70cf9a8dbe39a2cde1a0f12`: native Rollup is present, branch
+and upstream match, dirty paths are zero, backend **116/116**, frontend
+**80/80**, and the Vite build transforms **1,346 modules**. The OneDrive WSL
+tree still lacks native Rollup and was not modified. This is current-SHA Linux
+evidence, not physical CachyOS or browser K&M certification; F-058/F-080 and
+the hosted two-device gates remain open.
+
 Remaining release gates are intentionally unchanged:
 
 1. Apply only the two guarded hosted migrations after explicit approval, then
@@ -392,3 +400,10 @@ Remaining release gates are intentionally unchanged:
 
 No hosted migration, seed, player-state write, protected-save migration or PTY
 restart was performed in this checkpoint.
+
+F-161 (`4c8a279`) moves Codex into the shared bounded wide-surface frame used by
+the other full-width RPG routes. The duplicate inner navigation is suppressed
+when Forge owns the frame; the Books and Battle regions are height-budgeted so
+the Codex cannot become a page-long document. Frontend tests **81/81** and the
+Vite build (**1,346 modules**) pass. This does not substitute for fresh browser
+K&M (F-080) or physical CachyOS acceptance (F-058).

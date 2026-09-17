@@ -2436,3 +2436,23 @@ Verification: Windows frontend tests **80/80** and the Vite production build
 **1,346 modules** pass. The fallback is diagnostic-only; it does not restart
 PTYs, change state custody or infer a second save. Browser K&M remains blocked
 by F-080.
+
+## Current-SHA native Linux distribution recheck — F-160
+
+| ID | Severity | Area | Finding | Status |
+|---|---|---|---|---|
+| F-160 | P2 | Native Linux distribution | The previous ext4/native-Linux evidence predates the final Codex/runtime-identity commits, so it did not prove the current published branch was installable with native Rollup. | Rechecked in a disposable ext4 clone at `0e9b307c6a8e5882e70cf9a8dbe39a2cde1a0f12`: branch/upstream match, zero dirty paths, native Rollup present, backend **116/116**, frontend **80/80**, and Vite build **1,346 modules**. Physical CachyOS install/K&M/PTY acceptance remains open under F-058. |
+
+The live OneDrive WSL tree continues to fail the native report by design because
+its shared Windows `node_modules` lacks the Linux Rollup package; no dependency
+install was attempted there.
+
+## Codex was mounted as a page inside the Forge grid — F-161
+
+| ID | Severity | Area | Finding | Status |
+|---|---|---|---|---|
+| F-161 | P1 | Codex presentation | Codex was the only wide RPG surface mounted directly in the generic Forge grid. Its internal route navigation then relied on an absolute-positioned overflow cascade, making the reader feel like an infinite page inside a page and duplicating the navigation treatment. | Fixed in `4c8a279`: Codex now mounts in the shared bounded wide-surface frame, the frame owns navigation, and the book/battle regions receive an explicit finite viewport budget. The React shelf and record pagers remain the content navigation authority; only the narrow fallback and deliberately long code/note bodies scroll. |
+
+Verification: frontend tests **81/81** and Vite production build **1,346
+modules** pass. Browser K&M remains blocked by F-080, so no fresh visual device
+claim is made from this environment.
