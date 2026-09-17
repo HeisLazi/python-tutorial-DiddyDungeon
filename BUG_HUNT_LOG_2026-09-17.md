@@ -868,3 +868,12 @@ and frontend dependencies, passed frontend **69/69**, Vite (**1,346 modules**)
 and backend **115/115**, then was removed and verified absent. The physical
 CachyOS and live K&M/PTY gates remain unverified rather than being inferred
 from this clean-filesystem run.
+
+## Native Linux acceptance had no one-shot environment report — 2026-09-17 (F-145)
+
+| ID | Severity | Finding | Status |
+|---|---|---|---|
+| F-145 | P2 | CachyOS acceptance required manually collecting kernel, toolchain, checkout and native dependency identity before the live run. | Added read-only `tools/questlab-native-report.py --strict`; it fails closed on branch/upstream or native dependency mismatch and never writes state. |
+
+The report is a pre-launch evidence aid, not a substitute for the physical
+CachyOS live-projection/PTY test.

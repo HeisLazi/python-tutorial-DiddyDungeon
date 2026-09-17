@@ -289,6 +289,8 @@ Current verification:
 - native Linux launcher/preflight `--help` and shell syntax checks: green;
 - fresh disposable ext4 clone: `npm ci`, frontend **69/69**, Vite (**1,346
   modules**) and backend **115/115** passed; the temp checkout was removed;
+- native Linux pre-launch report: `tools/questlab-native-report.py --strict`
+  now captures kernel/toolchain/checkout/native-Rollup evidence read-only;
 - browser K&M attach: still blocked by F-080, so no new visual-device claim.
 
 Remaining release gates are intentionally unchanged:

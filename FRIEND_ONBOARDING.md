@@ -103,6 +103,19 @@ or another native optional dependency is missing, rerun `npm ci` inside this
 Linux checkout rather than repairing the OneDrive tree. Do not seed Supabase
 as part of this local distribution gate.
 
+Capture the read-only machine/toolchain report before launching Forge:
+
+```bash
+.venv/bin/python tools/questlab-native-report.py --strict
+```
+
+It prints the kernel/distribution, Git branch/HEAD, Python/Node/npm versions,
+native Rollup package and required frontend-manifest checks. It never writes a
+report, fetches Git, installs packages or touches player state. A report run
+from the OneDrive-mounted Windows tree is expected to fail if it has the wrong
+native optional dependency; run the strict command from the clean native
+Linux/CachyOS checkout instead.
+
 The native Linux preflight is the PowerShell-free equivalent of the Windows
 gate:
 

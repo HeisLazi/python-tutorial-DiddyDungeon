@@ -157,6 +157,18 @@ class LauncherContractTests(unittest.TestCase):
         self.assertNotIn("--reload-backend", launcher)
         self.assertIn("progress.json has local player-state changes", launcher)
 
+    def test_native_linux_report_is_read_only_and_captures_toolchain_identity(self):
+        report = (ROOT / "tools" / "questlab-native-report.py").read_text(encoding="utf-8")
+        onboarding = (ROOT / "FRIEND_ONBOARDING.md").read_text(encoding="utf-8")
+        self.assertIn("Read-only native Linux/CachyOS environment report", report)
+        self.assertIn("EXPECTED_BRANCH = \"feature/cloud-sync-desktop\"", report)
+        self.assertIn("native_rollup_packages", report)
+        self.assertIn("--strict", report)
+        self.assertNotIn("write_text", report)
+        self.assertNotIn("os.remove", report)
+        self.assertIn("questlab-native-report.py", onboarding)
+        self.assertIn("--strict", onboarding)
+
     def test_km_preflight_is_read_only_and_rejects_stale_frontend_source(self):
         preflight = (ROOT / "tools" / "questlab-km-preflight.ps1").read_text(encoding="utf-8")
         self.assertIn("$expectedBranch = 'feature/cloud-sync-desktop'", preflight)

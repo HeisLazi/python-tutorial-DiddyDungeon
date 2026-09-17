@@ -977,3 +977,12 @@ native Linux toolchain; frontend tests **69/69**, Vite (**1,346 modules**) and
 backend tests **115/115** passed. The temporary checkout was removed and its
 absence verified. This strengthens F-033/F-058 distribution evidence without
 claiming the real CachyOS laptop, live projection K&M or physical PTY gate.
+
+## Current checkpoint — 2026-09-17 — native Linux pre-launch report
+
+F-145 adds `tools/questlab-native-report.py --strict`, a read-only one-shot
+report for the physical CachyOS acceptance. It checks platform/kernel,
+toolchain versions, expected branch/upstream, executable launcher/state CLI,
+frontend manifests and native Rollup presence before Forge launch. It does not
+install, fetch, write a report, call Supabase or touch player state. Actual
+CachyOS live projection, K&M and PTY acceptance remain F-058 gates.

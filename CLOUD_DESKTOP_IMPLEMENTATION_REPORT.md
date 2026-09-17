@@ -3109,3 +3109,14 @@ outside OneDrive, installed with a fresh Python virtual environment and
 **115/115**. The temp checkout was confirmed absent after the run. This closes
 the clean ext4 dependency/build confidence gap, but does not certify the actual
 CachyOS laptop, live projection K&M, or physical shell/AI PTY preservation.
+
+### Native Linux pre-launch environment report — F-145 (2026-09-17)
+
+Added `tools/questlab-native-report.py --strict` as a read-only evidence aid
+for the physical CachyOS run. It captures distribution/kernel, Git branch and
+HEAD/upstream identity, Python/Node/npm versions, executable launcher/state
+CLI checks, required frontend manifests and the native Linux Rollup package.
+It never fetches Git, installs packages, writes a report, calls Supabase or
+touches player state. The strict command is intended for the clean native
+Linux checkout; the OneDrive-mounted Windows tree is not a supported native
+dependency target.
