@@ -2524,3 +2524,15 @@ tests **49/49**, and Vite production build (**1,346 modules**). The protected
 save, root `tutor.py`, root `dungeon.py`, shell PTY and AI PTY were untouched.
 Fresh browser K&M remains unavailable because the Codex in-app browser could
 not attach a tab.
+
+### Wide-route navigation repair — 2026-09-17
+
+Full-width presentation routes no longer strand the player. Hub, Character and
+Homestead now render a compact `Wide route navigation` bar instead of relying
+on the hidden activity rail. It routes through the existing React view state,
+marks the active page, remains horizontally usable on small screens, and does
+not recreate either PTY. The presentation surfaces stay full-width and the AI
+remains parked unless explicitly opened.
+
+Verification: frontend tests **49/49** and Vite production build (**1,346
+modules**). Fresh browser K&M could not be attached in this environment.
