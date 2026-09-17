@@ -220,6 +220,22 @@ test('signed-in status names the campaign surfaces that share the sync gateway',
   engine.dispose()
 })
 
+test('email delivery rate limits use a bounded sign-up message', async () => {
+  const config = resolveCloudConfig({ VITE_SUPABASE_URL: 'https://example.supabase.co', VITE_SUPABASE_ANON_KEY: 'public-anon-key' })
+  const user = { id: '00000000-0000-4000-8000-000000000012', email: 'rate-limit@example.test' }
+  const client = fakeCloudClient(user)
+  client.auth.signUp = async () => ({ data: { session: null }, error: { status: 429, error_code: 'over_email_send_rate_limit', message: 'email rate limit exceeded' } })
+  const engine = new SyncEngine({ config, clientFactory: () => client, storage: new MemoryStorage(), fetchImpl: fakeLocalApi(campaign(0), 0).fetch })
+  engine.initialize()
+  await engine.restoreSession()
+
+  await assert.rejects(() => engine.signUp(user.email, 'not-a-real-password', 'Codex QA'), /Email delivery is temporarily rate-limited\. Try again later; no account was created\./)
+  assert.equal(engine.getState().label, 'Sign-up failed')
+  assert.match(engine.getState().detail, /Try again later/)
+  assert.doesNotMatch(engine.getState().detail, /over_email_send_rate_limit/)
+  engine.dispose()
+})
+
 test('device labels are friendly names and per-account IDs never contain filesystem paths', () => {
   const storage = new MemoryStorage()
   assert.equal(normalizeDeviceLabel('  Papasmurff   Desktop  '), 'Papasmurff Desktop')

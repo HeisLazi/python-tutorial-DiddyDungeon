@@ -1800,5 +1800,7 @@ transformed **1,346 modules** after this repair.
 
 | F-090 | P3 | Stale v2 handoff contract | `FORGE_V2_HANDOFF.md` still described Practice as unable to use the managed `tutor.py`, Dungeon/Practice as starter-only and combat as display-only, contradicting the current local state-service implementation. | Fixed in the handoff: shared Tutor/Practice notebook boundary, local Dungeon/Practice loop and provider-validated local verdict outputs are described accurately; hosted/authenticated and real-device gates remain explicit. |
 
+| F-091 | P3 | Sign-up quota feedback | A real disposable signup attempt exposed Supabase's raw `over_email_send_rate_limit` text in the account panel, which was provider jargon and did not tell the learner whether an account had been created. | Fixed in `SyncEngine`: the bounded provider code now becomes a clear retry-later message that explicitly says no account was created; the diagnostic code remains attached and clean ext4 frontend coverage passes **45/45**. |
+
 This is a local editor-flow repair only. Provider-authenticated adjudication and
 the hosted campaign migration remain separate Milestone C gates.

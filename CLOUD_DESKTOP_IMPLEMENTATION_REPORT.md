@@ -2426,3 +2426,11 @@ said Practice could not use the managed `tutor.py`, called Dungeon/Practice
 starter-only, and described verdict effects as display-only. It now matches the
 implemented local contract while keeping provider authentication, hosted
 campaign/Dungeon transport and real PC/laptop acceptance explicitly open.
+
+### Sign-up quota feedback — 2026-09-17
+
+The account-panel error path now converts Supabase's raw
+`over_email_send_rate_limit` response into a bounded retry-later message that
+explicitly confirms no account was created. The provider code is retained for
+diagnostics without exposing its raw wording. Clean ext4 frontend coverage
+passed **45/45** and the production build transformed **1,346 modules**.

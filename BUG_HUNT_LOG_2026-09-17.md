@@ -380,3 +380,13 @@ already has the shared Tutor/Practice notebook boundary, local state-owned
 Dungeon loop, Practice history and provider-validated local verdict mutations.
 The handoff was aligned with those facts and continues to mark provider auth,
 hosted campaign/Dungeon transport and real PC/laptop acceptance as open gates.
+
+## Sign-up quota feedback — 2026-09-17 (F-091)
+
+The real disposable-account attempt exposed a copy/privacy issue rather than
+an authority bug: Forge would surface Supabase's raw
+`over_email_send_rate_limit` string. `SyncEngine` now maps that bounded error
+to “Email delivery is temporarily rate-limited. Try again later; no account was
+created.” while retaining the safe error code for diagnostics. The new
+regression and clean ext4 frontend suite (**45/45**) pass; no account retry or
+provider bypass is performed.
