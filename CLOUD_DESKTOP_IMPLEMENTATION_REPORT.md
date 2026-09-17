@@ -2866,6 +2866,14 @@ build transforming **1,346 modules**; the WSL backend suite passed **108/108**.
 with identical source digests before/after and preserved the campaign/Codex/
 Dungeon projection. No protected save, learner file or PTY was touched.
 
+### Legacy Codex shell parity — F-129
+
+The viewport-pinned Codex boundary now targets the shared
+`.game-screen > .codex-screen` structure rather than only the `forge-v2` shell.
+That keeps the compatibility `App.jsx` surface finite as well as the current
+AppV2 surface, without changing state authority, revision polling or terminal
+lifecycle behavior.
+
 ### Local sync simulator recheck — F-126
 
 The current branch was rechecked with

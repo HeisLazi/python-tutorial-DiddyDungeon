@@ -755,3 +755,14 @@ build transforming **1,346 modules**. WSL backend discovery passed **108/108**;
 the protected local sync simulator returned `ok: true` with an unchanged source
 digest and preserved Campaign/Codex/Dungeon fields. This is local evidence only;
 browser-HMR K&M and hosted two-device acceptance remain external gates.
+
+## Current checkpoint — 2026-09-17 — legacy Codex shell parity
+
+F-129 moves the Codex viewport boundary to the shared game-surface contract so
+the compatibility `App.jsx` shell cannot reintroduce the outer feed simply by
+omitting the `forge-v2` class. Current AppV2 and legacy routes now share the
+same pinned shell and contained scroll owners. This is a presentation-only
+repair.
+
+Current-source Forge tests remain **39/39**; clean archive build and browser
+K&M are the remaining publication checks for this small CSS scope.

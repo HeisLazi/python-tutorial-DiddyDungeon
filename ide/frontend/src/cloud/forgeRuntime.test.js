@@ -284,8 +284,8 @@ test('Codex book surface keeps readable paper hierarchy across themes', () => {
 test('Codex stays a bounded book surface instead of growing an outer feed', () => {
   const foundation = source('../foundation.css')
 
-  assert.match(foundation, /\.forge-v2 \.game-screen \{ position: relative; min-width: 0; min-height: 0; \}/)
-  assert.match(foundation, /\.forge-v2 \.game-screen > \.codex-screen \{[\s\S]*?position: absolute;[\s\S]*?inset: 0;[\s\S]*?overflow: hidden;[\s\S]*?contain: layout paint;/)
+  assert.match(foundation, /\.game-screen \{ position: relative; min-width: 0; min-height: 0; \}/)
+  assert.match(foundation, /\.game-screen > \.codex-screen \{[\s\S]*?position: absolute;[\s\S]*?inset: 0;[\s\S]*?overflow: hidden;[\s\S]*?contain: layout paint;/)
   assert.match(foundation, /\.codex-screen \.codex-book-section \{[\s\S]*?overflow-y: auto;[\s\S]*?scrollbar-gutter: stable;/)
   assert.match(foundation, /\.codex-screen \.codex-index \{ min-height: 0; overflow-y: auto;/)
 })
@@ -296,7 +296,7 @@ test('Codex owns its viewport shell instead of inheriting the generic feed wrapp
 
   assert.match(views, /<div className="codex-screen" data-testid="codex"/)
   assert.doesNotMatch(views, /className="game-screen-scroll codex-screen"/)
-  assert.match(foundation, /\.forge-v2 \.game-screen > \.codex-screen \{[\s\S]*?padding: 18px;[\s\S]*?overscroll-behavior: none;/)
+  assert.match(foundation, /\.game-screen > \.codex-screen \{[\s\S]*?padding: 18px;[\s\S]*?overscroll-behavior: none;/)
   assert.match(foundation, /\.codex-screen \.codex-book-section \{[\s\S]*?overflow-x: hidden;/)
 })
 

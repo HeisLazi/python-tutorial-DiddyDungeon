@@ -695,3 +695,12 @@ Recheck after implementation: clean archive frontend tests **58/58**, Vite
 production build **1,346 modules**, and WSL backend discovery **108/108**. The
 local sync simulator returned `ok: true`; the protected source save digest was
 identical before and after. These checks do not replace browser-HMR K&M.
+
+## Legacy Codex shell parity — 2026-09-17 (F-129)
+
+| ID | Severity | Finding | Status |
+|---|---|---|---|
+| F-129 | P2 | The Codex viewport boundary only matched the `forge-v2` class, but the compatibility App shell renders the same game surface without that class. That left a stale/legacy shell capable of bringing back the outer feed. | Fixed by scoping the pinned Codex shell to the shared `.game-screen > .codex-screen` contract. Both shells now use the same contained library/book scroll owners. |
+
+Verification: current-source Forge tests **39/39**. The change is presentation
+only; clean archive build and fresh browser K&M remain gates.
