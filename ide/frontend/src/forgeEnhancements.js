@@ -287,7 +287,8 @@ function replaceGameIcons() {
 let activeAvatar
 
 function getAvatar() {
-  return activeAvatar === undefined ? readCachedAvatar() : activeAvatar
+  if (activeAvatar !== undefined) return activeAvatar
+  return syncEngine.getState()?.avatar?.dataUrl || readCachedAvatar()
 }
 
 function setLocalAvatar(dataUrl) {
@@ -312,7 +313,7 @@ function applyAvatar(force = false) {
   const dataUrl = getAvatar()
   const version = avatarVersion(dataUrl)
   const activity = document.querySelector('.activity-avatar')
-  if (activity) {
+  if (activity && activity.dataset.reactAvatar !== 'true') {
     let slot = activity.querySelector('.quest-avatar-slot')
     if (!slot) {
       slot = activity.querySelector('span')
@@ -327,7 +328,7 @@ function applyAvatar(force = false) {
   }
 
   const sigil = document.querySelector('.character-sigil')
-  if (sigil && (force || sigil.dataset.avatarVersion !== version)) {
+  if (sigil && sigil.dataset.reactAvatar !== 'true' && (force || sigil.dataset.avatarVersion !== version)) {
     sigil.dataset.avatarVersion = version
     sigil.innerHTML = ''
     if (dataUrl) sigil.appendChild(avatarImage(dataUrl, 'quest-avatar-img character'))

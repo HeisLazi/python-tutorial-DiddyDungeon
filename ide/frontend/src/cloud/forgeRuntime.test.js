@@ -510,13 +510,22 @@ test('submit shortcut is intercepted before Monaco can insert a newline', () => 
 
 test('avatar controls use the account-scoped storage boundary with a local fallback', () => {
   const enhancements = source('../forgeEnhancements.js')
+  const views = source('../RpgViews.jsx')
+  const app = source('../AppV2.jsx')
   const engine = source('./syncEngine.js')
   const avatar = source('./avatarStorage.js')
 
   assert.match(enhancements, /syncEngine\.setAvatarDataUrl\(dataUrl\)/)
   assert.match(enhancements, /syncEngine\.removeAvatar\(\)/)
   assert.match(enhancements, /questlab:avatar-updated/)
+  assert.match(enhancements, /dataset\.reactAvatar !== 'true'/)
+  assert.match(enhancements, /syncEngine\.getState\(\)\?\.avatar\?\.dataUrl/)
+  assert.match(views, /data-react-avatar="true"/)
+  assert.match(views, /quest-avatar-img compact/)
+  assert.match(views, /quest-avatar-img character/)
+  assert.match(app, /avatarDataUrl={cloudState\.avatar\?\.dataUrl \|\| ''}/)
   assert.match(engine, /AVATAR_BUCKET/)
+  assert.match(engine, /dataUrl: normalizedDataUrl/)
   assert.match(engine, /_saveAvatarProfilePath/)
   assert.match(engine, /_pollAvatarReference/)
   assert.match(engine, /readCachedAvatar\(this\.storage, userId\)/)

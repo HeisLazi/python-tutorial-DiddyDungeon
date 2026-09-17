@@ -369,7 +369,7 @@ const initialState = (config) => ({
   localRevision: null,
   cloudRevision: null,
   conflict: null,
-  avatar: { path: null, dataUrl: '', source: 'local', status: 'idle' },
+  avatar: { path: null, dataUrl: '', source: 'local', status: 'idle', cached: false },
   authStatus: 'anonymous',
   label: config.configured && config.valid ? 'Cloud ready' : 'Offline / Local Mode',
   detail: config.reason,
@@ -648,7 +648,7 @@ export class SyncEngine {
 
   _setAvatar(path, dataUrl, source = 'local', status = 'ready') {
     const normalizedDataUrl = typeof dataUrl === 'string' ? dataUrl : ''
-    const avatar = { path: path || null, source, status, cached: Boolean(normalizedDataUrl) }
+    const avatar = { path: path || null, dataUrl: normalizedDataUrl, source, status, cached: Boolean(normalizedDataUrl) }
     this.setState({ avatar })
     if (typeof globalThis.dispatchEvent === 'function' && typeof globalThis.CustomEvent === 'function') {
       globalThis.dispatchEvent(new CustomEvent('questlab:avatar-updated', { detail: { ...avatar, dataUrl: normalizedDataUrl } }))
