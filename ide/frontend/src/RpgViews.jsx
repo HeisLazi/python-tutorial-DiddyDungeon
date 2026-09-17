@@ -584,13 +584,13 @@ function QuestBattleScreen({ activeProject, currentMob, encounter, resolve, maxR
           <small className="context-note">{remainingBossRequirements?.length ? `${remainingBossRequirements.length} phase${remainingBossRequirements.length === 1 ? '' : 's'} remain. PYR supplies each bounded challenge.` : 'All phases are verified; the integrated clear can be recorded.'}</small>
         </div>}
         {projectComplete ? (
-          <div className="campaign-victory battle-complete-note"><span className="screen-kicker">NO ACTIVE SUBMISSION</span><h3>Evidence archived</h3><p>Your completed chapter remains available in the Journal and Codex. Future questions are never exposed here.</p></div>
+          <div className="campaign-victory battle-complete-note"><span className="screen-kicker">NO ACTIVE SUBMISSION</span><h3>Evidence archived</h3><p>Your completed chapter remains available in the Codex Books and Battle Shell tabs. Future questions are never exposed here.</p></div>
         ) : bossUnlocked ? (
           <BossSubmission requirements={bossRequirements} verifiedRequirements={verifiedBossRequirements} onSubmit={submitBoss} busy={busy} large />
         ) : (
           <BattleSubmission availableObjectives={availableObjectives} onSubmit={submitBattle} busy={busy} large />
         )}
-        <button type="button" className="battle-back-button" onClick={onBack}>← Back to Journal pages</button>
+        <button type="button" className="battle-back-button" onClick={onBack}>← Back to Books</button>
       </section>
     </div>
   )
