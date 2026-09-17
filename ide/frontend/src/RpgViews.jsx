@@ -34,7 +34,7 @@ export function ActivityRail({ activeView, setActiveView, player, campaignReady 
   const displayLevel = campaignReady ? (player.level ?? 1) : '—'
   const displayName = campaignReady ? (player.name || 'Player') : 'Campaign syncing'
   return (
-    <nav className="activity-rail" aria-label="Quest Lab destinations">
+    <nav className="activity-rail" data-react-owned="true" aria-label="Quest Lab destinations">
       <div className="activity-mark"><RouteIcon id="flame" /></div>
       <div className="activity-stack">
         {viewItems.map((item) => (

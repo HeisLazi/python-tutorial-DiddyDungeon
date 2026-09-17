@@ -174,6 +174,7 @@ test('navigation keeps Tutor as the single practice workspace and parks hidden A
   assert.match(views, /aria-label="Wide route navigation"/)
   assert.match(views, /withWideNavigation/)
   assert.match(views, /function RouteIcon\(/)
+  assert.match(views, /className="activity-rail" data-react-owned="true"/)
   assert.doesNotMatch(views, /icon:\s*['"`]/)
   assert.match(foundation, /\.wide-screen-frame > \.game-screen-scroll/)
   assert.match(foundation, /\.surface-nav-link\.active/)
@@ -185,6 +186,14 @@ test('navigation keeps Tutor as the single practice workspace and parks hidden A
   assert.match(v2, /hub-mode \.game-screen\{grid-column:1/)
   assert.match(app, /initialLaunch\.returning \? `Welcome back, \$\{welcomeName\}`/)
   assert.match(foundation, /questlab-splash-in/)
+})
+
+test('legacy rail icon enhancement yields to the React-owned SVG rail', () => {
+  const views = source('../RpgViews.jsx')
+  const enhancements = source('../forgeEnhancements.js')
+  assert.match(views, /data-react-owned="true"/)
+  assert.match(enhancements, /const reactRail = document\.querySelector\('\.activity-rail\[data-react-owned="true"\]'\)/)
+  assert.match(enhancements, /if \(reactRail\) return/)
 })
 
 test('Journal and Codex keep the active encounter projection visible', () => {

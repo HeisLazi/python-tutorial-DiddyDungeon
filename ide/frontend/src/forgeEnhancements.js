@@ -232,6 +232,11 @@ function trackAIProvider() {
 }
 
 function replaceRailIcons() {
+  // React now owns the rail markup and its inline SVG icons. The legacy
+  // enhancement remains for older surfaces, but must not rewrite React
+  // children during revision polling or route changes.
+  const reactRail = document.querySelector('.activity-rail[data-react-owned="true"]')
+  if (reactRail) return
   const mark = document.querySelector('.activity-mark')
   if (mark && !mark.dataset.vectorized) {
     mark.dataset.vectorized = 'true'

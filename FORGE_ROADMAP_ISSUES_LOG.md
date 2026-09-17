@@ -1889,3 +1889,13 @@ current Codex environment, so no fresh click-through claim is made here.
 Verification for this polish pass: staged frontend tests **49/49** and Vite
 production build **1,346 modules**. No state, PTY or cloud transport behavior
 changed.
+
+## React navigation ownership — 2026-09-17
+
+| ID | Severity | Area | Finding | Status |
+|---|---|---|---|---|
+| F-106 | P2 | Navigation stability | The legacy icon enhancement observer could still rewrite the React-owned ActivityRail after route/revision renders. The replacement was SVG, but it competed with React ownership and could cause visible icon/layout churn. | Fixed: the React rail declares its ownership boundary and the legacy bridge yields to it; legacy replacement remains available only for older non-React markup. |
+
+Verification for this repair: staged frontend tests **50/50**, WSL backend
+tests **105/105**, and Vite production build **1,346 modules**. No save,
+cloud transport or PTY lifecycle changed.
