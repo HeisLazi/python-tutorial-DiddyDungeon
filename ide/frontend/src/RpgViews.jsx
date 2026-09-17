@@ -817,6 +817,8 @@ function Codex({ progress, revision, codexProjection, encounter, submitBattle, s
     return pageText.includes(normalizedQuery) || pageEntries.some((entry) => entrySearchText(entry).includes(normalizedQuery))
   })
   const selectedPage = pages.find((page) => page.id === selectedPageId) || filteredPages[0] || pages[0]
+  const bookPages = filteredPages.length ? filteredPages : pages
+  const selectedPageIndex = Math.max(0, bookPages.findIndex((page) => page.id === selectedPage?.id))
   const selectedEntries = entries.filter((entry) => selectedPage && entryBelongsToPage(entry, selectedPage))
   const selectedEntry = selectedEntries.find((entry) => entry.id === selectedEntryId) || selectedEntries[0]
   const selectedEntryIds = selectedEntries.map((entry) => entry.id).join('|')
@@ -873,6 +875,12 @@ function Codex({ progress, revision, codexProjection, encounter, submitBattle, s
     setSelectedEntryId('')
   }
 
+  const turnPage = (delta) => {
+    if (!bookPages.length) return
+    const nextIndex = Math.min(bookPages.length - 1, Math.max(0, selectedPageIndex + delta))
+    if (nextIndex !== selectedPageIndex) selectPage(bookPages[nextIndex].id)
+  }
+
   const submitNote = async (event) => {
     event.preventDefault()
     if (!selectedEntry || !note.trim() || !saveCodexNote || busy) return
@@ -908,7 +916,7 @@ function Codex({ progress, revision, codexProjection, encounter, submitBattle, s
         <button type="button" role="tab" aria-selected={codexView === 'battle'} className={codexView === 'battle' ? 'active' : ''} onClick={() => setCodexView('battle')}>Battle shell <span>{projectComplete ? 'CLEAR' : bossUnlocked ? 'BOSS' : 'LIVE'}</span></button>
       </div>
 
-      <div key={codexView} className="codex-tab-page page-turn" data-codex-tab={codexView}>
+      <div key={`${codexView}:${selectedPage?.id || 'empty'}:${codexSection}`} className="codex-tab-page page-turn" data-codex-tab={codexView}>
       {codexView === 'battle' ? (
         <QuestBattleScreen
           activeProject={activeProject}
@@ -972,6 +980,11 @@ function Codex({ progress, revision, codexProjection, encounter, submitBattle, s
           {selectedPage ? (
             <>
               <div className="codex-page-heading"><span className="screen-kicker">CONCEPT PAGE</span><h3>{selectedPage.title}</h3><p>{selectedPage.definition}</p><div className="codex-page-summary" data-testid="codex-page-summary"><span><b>{selectedEntries.length}</b> encounters</span><span><b>{pageQuestionTypes.length}</b> question lenses</span><span><b>{pageWeaknesses.length}</b> recorded patterns</span></div></div>
+              <div className="codex-page-controls" data-testid="codex-page-controls" aria-label="Codex book navigation">
+                <button type="button" onClick={() => turnPage(-1)} disabled={selectedPageIndex <= 0} aria-label="Previous Codex book">← Previous</button>
+                <span>BOOK {bookPages.length ? selectedPageIndex + 1 : 0} / {bookPages.length || 0}</span>
+                <button type="button" onClick={() => turnPage(1)} disabled={!bookPages.length || selectedPageIndex >= bookPages.length - 1} aria-label="Next Codex book">Next →</button>
+              </div>
               <nav className="codex-book-tabs" aria-label="Concept book sections" data-testid="codex-book-tabs">
                 {[
                   ['read', 'Read'],

@@ -610,3 +610,13 @@ environment-gated visual check.
 
 Verification: current-source Forge runtime tests **32/32**. Real PC/laptop
 account portrait round-trip remains the user-owned hosted acceptance gate.
+
+## Codex finite-book navigation hunt — 2026-09-17 (F-120)
+
+| ID | Severity | Finding | Status |
+|---|---|---|---|
+| F-120 | P1 | The Codex pane was bounded, but the selected book still read as a long scroll and had no next/previous book controls. On smaller windows the mobile override could also restore a book-level overflow owner, recreating the reported infinite-scroll feel. | Fixed by making the book page a fixed shell, giving only the active book section a contained scroll, adding previous/next book controls with an explicit position indicator, and animating page turns when the book or section changes. The narrow override now keeps the same bounded ownership. |
+
+Verification: current-source Forge runtime tests **32/32**. Clean archive
+frontend tests/build and browser K&M remain the publication checks; no state,
+learner file or PTY was touched.

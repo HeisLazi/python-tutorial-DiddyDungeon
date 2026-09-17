@@ -2024,3 +2024,12 @@ the old `height: auto` outer-scroll rule. Browser K&M remains environment-gated.
 
 Verification: current-source Forge tests **32/32**. The user's real PC/laptop
 portrait round-trip remains the hosted acceptance gate.
+
+## Codex finite-book navigation — F-120
+
+| ID | Severity | Area | Finding | Status |
+|---|---|---|---|---|
+| F-120 | P1 | Codex presentation | The Codex reading pane still felt like an infinite scroll and lacked book navigation; a compact override could restore a page-level scroll owner. | Fixed with a fixed-height book shell, a single contained scroll owner for the active section, explicit Previous/Next book controls, a BOOK n / total indicator, and page-turn animation keyed to book/section changes. |
+
+Verification: current-source Forge tests **32/32**. Clean archive frontend
+tests/build and browser K&M remain publication gates.
