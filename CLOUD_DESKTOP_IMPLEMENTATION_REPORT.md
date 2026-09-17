@@ -2740,3 +2740,16 @@ lifecycle changed.
 Current-source Forge tests pass **32/32**, including a regression that rejects
 the old outer-scroll rule. Browser K&M remains an environment-gated visual
 check because no Codex browser tab could attach.
+
+### Account portrait projection repair — F-119
+
+The portrait path now has one clear rendering owner. SyncEngine keeps the
+validated account-scoped data URL in its in-memory view state, React renders it
+on both the ActivityRail avatar and Character sheet, and the legacy enhancer
+skips those marked nodes instead of replacing them during revision updates.
+The existing private Storage path, account-scoped cache, anonymous local
+fallback and remove behavior are unchanged.
+
+Current-source Forge tests pass **32/32**. A real user-account PC/laptop
+portrait round-trip is still an external hosted acceptance gate and is not
+claimed here.

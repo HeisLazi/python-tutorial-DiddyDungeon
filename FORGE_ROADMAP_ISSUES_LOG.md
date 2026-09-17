@@ -2015,3 +2015,12 @@ Verification: focused WSL API tests **10/10** and current-source Forge tests
 
 Verification: current-source Forge tests **32/32**, with a regression rejecting
 the old `height: auto` outer-scroll rule. Browser K&M remains environment-gated.
+
+## Account portrait projection — F-119
+
+| ID | Severity | Area | Finding | Status |
+|---|---|---|---|---|
+| F-119 | P1 | Avatar / identity | Cloud/avatar events were handled by a legacy DOM enhancer while React-owned rail and Character nodes continued to render initials, allowing a valid signed-in portrait to look stale or be overwritten during campaign polling. | Fixed: SyncEngine view state now carries the validated data URL in memory; ActivityRail and Character render it directly, while the enhancer yields to `data-react-avatar` ownership markers. Account-scoped caching, private storage and anonymous fallback boundaries remain intact. |
+
+Verification: current-source Forge tests **32/32**. The user's real PC/laptop
+portrait round-trip remains the hosted acceptance gate.

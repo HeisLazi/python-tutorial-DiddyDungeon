@@ -601,3 +601,12 @@ hosted player-state sync.
 Verification: current-source Forge runtime tests **32/32** and CSS regression
 assertions reject the old outer-scroll fallback. Browser K&M remains the
 environment-gated visual check.
+
+## Account portrait projection hunt — 2026-09-17 (F-119)
+
+| ID | Severity | Finding | Status |
+|---|---|---|---|
+| F-119 | P1 | Avatar sync updated a DOM enhancement listener, but the React-owned ActivityRail/Character surfaces still rendered initials. A signed-in portrait could therefore exist in the account cache while the visible Forge UI stayed stale or was rewritten on a revision render. | Fixed by carrying the validated avatar data URL in the local SyncEngine view state, rendering it directly in React on the rail and Character sheet, and making the legacy enhancer yield to those ownership markers. Account-scoped cache fallback and cloud upload/remove boundaries remain unchanged. |
+
+Verification: current-source Forge runtime tests **32/32**. Real PC/laptop
+account portrait round-trip remains the user-owned hosted acceptance gate.

@@ -29,7 +29,7 @@ export function RewardQueue({ items = [] }) {
   )
 }
 
-export function ActivityRail({ activeView, setActiveView, player, campaignReady = true }) {
+export function ActivityRail({ activeView, setActiveView, player, avatarDataUrl = '', campaignReady = true }) {
   const displayLevel = campaignReady ? (player.level ?? 1) : '—'
   const displayName = campaignReady ? (player.name || 'Player') : 'Campaign syncing'
   return (
@@ -50,10 +50,11 @@ export function ActivityRail({ activeView, setActiveView, player, campaignReady 
       </div>
       <button
         className={`activity-avatar ${activeView === 'character' ? 'active' : ''}`}
+        data-react-avatar="true"
         onClick={() => setActiveView('character')}
         title={`${displayName} · ${campaignReady ? `Level ${displayLevel}` : 'waiting for state'}`}
       >
-        <span>{campaignReady ? (player.name || 'L').slice(0, 1).toUpperCase() : '…'}</span>
+        <span className="quest-avatar-slot">{avatarDataUrl ? <img className="quest-avatar-img compact" src={avatarDataUrl} alt="" /> : campaignReady ? (player.name || 'L').slice(0, 1).toUpperCase() : '…'}</span>
         <b>{displayLevel}</b>
       </button>
     </nav>
@@ -1048,7 +1049,7 @@ function Codex({ progress, revision, codexProjection, encounter, submitBattle, s
   )
 }
 
-function CharacterSheet({ progress, revision }) {
+function CharacterSheet({ progress, revision, avatarDataUrl = '' }) {
   const player = progress.player || {}
   const stats = progress.stats || {}
   const equipment = progress.equipment || {}
@@ -1060,7 +1061,7 @@ function CharacterSheet({ progress, revision }) {
       <div className="character-layout">
         <section className="character-card game-card">
           <div className="character-banner">
-            <div className="character-sigil">{(player.name || 'L').slice(0, 1)}</div>
+            <div className="character-sigil" data-react-avatar="true">{avatarDataUrl ? <img className="quest-avatar-img character" src={avatarDataUrl} alt="" /> : (player.name || 'L').slice(0, 1)}</div>
             <div><span className="screen-kicker">RANK {player.rank || 'F'}</span><h2>{player.name || 'Player'}</h2><p>{player.title || 'Apprentice Coder'}</p></div>
             <div className="level-medallion"><small>LV</small><strong>{player.level ?? 1}</strong></div>
           </div>
@@ -1566,7 +1567,7 @@ function SettingsScreen({ preferences, setters, resetLayout, equipped, account, 
   )
 }
 
-export function GameScreen({ activeView, progress, revision, encounter, codexProjection, practiceProjection, equipmentProjection, dungeon, dungeonEditorContent, onDungeonEditorChange, onSaveDungeon, onDungeonChoose, onDungeonRest, onDungeonMarketPurchase, onDungeonEquip, onDungeonLeave, onDungeonFinish, purchaseCosmetic, equipCosmetic, equipCampaignItem, saveCodexNote, busy, dungeonSaving, submitBattle, submitBoss, submitDungeon, onStartDungeon, onPracticePrompt, preferences, setters, resetLayout, account, accountBusy, accountNotice, onSignIn, onSignUp, onSignOut, onDeviceLabelSave, onResolveConflict, workspaceTransfer, workspaceTransferBusy, workspaceTransferNotice, onWorkspaceTransferRefresh, onWorkspaceTransferPush, onWorkspaceTransferPreviewPull, onWorkspaceTransferApplyPull, onNavigate, campaignReady = true }) {
+export function GameScreen({ activeView, progress, revision, avatarDataUrl = '', encounter, codexProjection, practiceProjection, equipmentProjection, dungeon, dungeonEditorContent, onDungeonEditorChange, onSaveDungeon, onDungeonChoose, onDungeonRest, onDungeonMarketPurchase, onDungeonEquip, onDungeonLeave, onDungeonFinish, purchaseCosmetic, equipCosmetic, equipCampaignItem, saveCodexNote, busy, dungeonSaving, submitBattle, submitBoss, submitDungeon, onStartDungeon, onPracticePrompt, preferences, setters, resetLayout, account, accountBusy, accountNotice, onSignIn, onSignUp, onSignOut, onDeviceLabelSave, onResolveConflict, workspaceTransfer, workspaceTransferBusy, workspaceTransferNotice, onWorkspaceTransferRefresh, onWorkspaceTransferPush, onWorkspaceTransferPreviewPull, onWorkspaceTransferApplyPull, onNavigate, campaignReady = true }) {
   const wideRoute = ['hub', 'character', 'homestead'].includes(activeView)
   const withWideNavigation = (screen) => wideRoute
     ? <WideSurfaceFrame activeView={activeView} onNavigate={onNavigate}>{screen}</WideSurfaceFrame>
@@ -1583,7 +1584,7 @@ export function GameScreen({ activeView, progress, revision, encounter, codexPro
   }
   if (activeView === 'hub') return withWideNavigation(<HubScreen progress={progress} revision={revision} onOpen={onNavigate} />)
   if (activeView === 'quests' || activeView === 'codex') return <Codex progress={progress} revision={revision} codexProjection={codexProjection} encounter={encounter} submitBattle={submitBattle} submitBoss={submitBoss} saveCodexNote={saveCodexNote} busy={busy} />
-  if (activeView === 'character') return withWideNavigation(<CharacterSheet progress={progress} revision={revision} />)
+  if (activeView === 'character') return withWideNavigation(<CharacterSheet progress={progress} revision={revision} avatarDataUrl={avatarDataUrl} />)
   if (activeView === 'homestead') return withWideNavigation(<Homestead progress={progress} revision={revision} equipmentProjection={equipmentProjection} purchaseCosmetic={purchaseCosmetic} equipCosmetic={equipCosmetic} equipCampaignItem={equipCampaignItem} busy={busy} />)
   if (activeView === 'dungeon') return <DungeonScreen dungeon={dungeon} revision={revision} onStart={onStartDungeon} onChoose={onDungeonChoose} onRest={onDungeonRest} onMarketPurchase={onDungeonMarketPurchase} onEquip={onDungeonEquip} onLeave={onDungeonLeave} onFinish={onDungeonFinish} submitDungeon={submitDungeon} busy={busy} saving={dungeonSaving} editorContent={dungeonEditorContent} onEditorChange={onDungeonEditorChange} onSave={onSaveDungeon} />
   if (activeView === 'practice') return <PracticeScreen progress={progress} revision={revision} practiceProjection={practiceProjection} onPracticePrompt={onPracticePrompt} busy={busy} />
