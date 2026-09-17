@@ -492,3 +492,8 @@ The launcher contract regression passes. The post-commit package smoke created
 
 The patch is presentation/navigation-only: no campaign state, cloud transport,
 protected learner files or PTY lifecycle changed.
+
+Verification after publication: current-source navigation tests **32/32**,
+clean ext4 frontend suite **51/51**, and WSL backend suite **105/105**. The
+Codex browser still could not attach a fresh tab, so no new live click-through
+claim is made here.
