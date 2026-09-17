@@ -2233,3 +2233,20 @@ cannot look like a second live save. The bounded context bridge now permits a
 read of the managed `tutor.py` for Tutor/Practice prompts while retaining the
 generic-route write boundary. Focused tests and the full local gates are green;
 details and scores are in `BUG_HUNT_LOG_2026-09-17.md` and issue IDs F-071–F-074.
+
+## Native Linux launcher — 2026-09-17
+
+The CachyOS target now has a guarded native-Linux entrypoint at
+`tools/questlab-launch.sh`. It mirrors the Windows launcher's safety contract:
+the intended branch and upstream are checked unless an explicit offline or
+branch override is supplied, native `.venv/bin/python`, npm and frontend
+dependencies are required, protected-save dirtiness is only warned, and the
+workspace is passed explicitly to the module-safe `python -m ide.quest`
+launcher. Backend reload is never enabled, so the shell and AI PTYs remain
+stable during normal use. Local-custody migration remains an explicit opt-in
+and still uses the state gateway's review/confirmation flow.
+
+The wrapper passed Bash syntax/help checks, launcher contract tests (**14/14**)
+and the full WSL backend suite (**98/98**). This removes the missing local
+launcher/tooling gap (F-077) but does not certify a real CachyOS machine; the
+F-058 kernel/package/install/K&M evidence gate remains open.

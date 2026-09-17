@@ -88,6 +88,32 @@ This proves revision-aware compare-and-swap conflict detection and an explicit
 keep-device resolution through `LocalStateService`; it is not hosted-sync or
 two-machine acceptance.
 
+For a repeatable native Linux launch on CachyOS, run the guarded wrapper from
+the repository root. It keeps the backend in stable mode so shell and AI PTYs
+are not remounted, refuses a stale upstream checkout by default, and passes
+the canonical state path through the Python launcher:
+
+```bash
+chmod +x tools/questlab-launch.sh
+./tools/questlab-launch.sh \
+  --workspace ../questlab-blackjack \
+  --backend-port 7331 --frontend-port 5173
+```
+
+Use `--no-browser` when opening the printed URL yourself. Use
+`--allow-stale-checkout` only for an intentional offline session and
+`--allow-other-branch` only when reviewing a different branch. Local state
+custody is still an explicit review step:
+
+```bash
+./tools/questlab-launch.sh \
+  --workspace ../questlab-blackjack \
+  --migrate-local-state
+```
+
+The wrapper never copies a workspace `progress.json`, enables backend reload,
+or turns the workspace into a second save authority.
+
 ## Choose a quest workspace
 
 The Forge platform checkout owns the canonical local player state. A quest
