@@ -509,7 +509,7 @@ export class SyncEngine {
       if (this.sessionNonce !== sessionNonce || this._userId() !== user.id) return this.state
       this._loadSyncMetadata(user.id)
       this._startSyncPolling()
-      this.setState({ profile: account.profile, device: account.device, authStatus: 'signed-in', syncStatus: 'local', label: 'Signed in · local cache', detail: 'Campaign fields will sync through the state gateway. Projects and Codex remain local in this slice.', error: null })
+      this.setState({ profile: account.profile, device: account.device, authStatus: 'signed-in', syncStatus: 'local', label: 'Signed in · local cache', detail: 'Campaign, Journal and Codex fields will sync through the state gateway.', error: null })
       void this._refreshCloudAvatar(account.profile?.avatar_path, user.id)
       void this.sync()
     } catch (error) {

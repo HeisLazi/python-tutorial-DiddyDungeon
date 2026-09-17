@@ -205,6 +205,20 @@ const campaign = (coins, level = 1) => ({
   homestead: { owned_cosmetics: ['cursor-basic'], equipped: { cursor: 'cursor-basic' } },
 })
 
+test('signed-in status names the campaign surfaces that share the sync gateway', async () => {
+  const config = resolveCloudConfig({ VITE_SUPABASE_URL: 'https://example.supabase.co', VITE_SUPABASE_ANON_KEY: 'public-anon-key' })
+  const user = { id: '00000000-0000-4000-8000-000000000011', email: 'surfaces@example.test' }
+  const engine = new SyncEngine({ config, clientFactory: () => fakeCloudClient(user), storage: new MemoryStorage(), fetchImpl: fakeLocalApi(campaign(0), 0).fetch })
+  const details = []
+  engine.subscribe((state) => details.push(state.detail))
+
+  engine.initialize()
+  await engine.restoreSession()
+
+  assert.equal(details.some((detail) => /Campaign, Journal and Codex fields will sync through the state gateway/.test(detail)), true)
+  engine.dispose()
+})
+
 test('device labels are friendly names and per-account IDs never contain filesystem paths', () => {
   const storage = new MemoryStorage()
   assert.equal(normalizeDeviceLabel('  Papasmurff   Desktop  '), 'Papasmurff Desktop')
