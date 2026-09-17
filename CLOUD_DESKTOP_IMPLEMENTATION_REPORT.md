@@ -2373,3 +2373,13 @@ desktop runtime. The instructions preserve sibling-workspace separation,
 gateway-owned state and stable PTYs. No Mac hardware was available for this
 pass, so native install, live projection and PTY continuity remain explicitly
 unverified.
+
+### F-085 — account-scoped avatar cache repair
+
+The disposable account test exposed a local-cache privacy edge that hosted RLS
+could not prevent: signed-in uploads were also written to the unscoped local
+avatar key. SyncEngine now writes signed-in fallbacks only under the account
+identity, restores no unscoped portrait while signed in, and clears the visible
+avatar when that account has no cloud portrait. Anonymous/offline uploads keep
+the unscoped local behavior. Clean frontend verification passed **43/43** and
+the production build transformed **1,346 modules**.

@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 
 import { resolveCloudConfig } from './config.js'
-import { AVATAR_MAX_BYTES, avatarObjectPath, readCachedAvatar, validateAvatarDataUrl } from './avatarStorage.js'
+import { AVATAR_MAX_BYTES, avatarObjectPath, readCachedAvatar, validateAvatarDataUrl, writeCachedAvatar } from './avatarStorage.js'
 import {
   CHECKOUT_NAMESPACE_RE,
   DEFAULT_DEVICE_LABEL,
@@ -315,6 +315,7 @@ test('avatar storage validates bounded WebP data and restores it through an acco
   assert.equal(engineA.getState().avatar.source, 'cloud')
   assert.equal(cloudStore.avatarObjects.has(path), true)
   assert.equal(readCachedAvatar(storageA, user.id), dataUrl)
+  assert.equal(readCachedAvatar(storageA), '')
 
   const storageB = new MemoryStorage()
   const engineB = new SyncEngine({ config, clientFactory: () => fakeCloudClient(user, { cloudStore }), storage: storageB })
@@ -330,6 +331,28 @@ test('avatar storage validates bounded WebP data and restores it through an acco
   assert.equal(readCachedAvatar(storageB, user.id), '')
   engineA.dispose()
   engineB.dispose()
+})
+
+test('signed-in avatar removal cannot resurrect an unscoped local portrait', async () => {
+  const config = resolveCloudConfig({
+    VITE_SUPABASE_URL: 'https://example.supabase.co',
+    VITE_SUPABASE_ANON_KEY: 'public-anon-key',
+  })
+  const user = { id: '00000000-0000-4000-8000-000000000052', email: 'avatar-removal@example.test' }
+  const storage = new MemoryStorage()
+  const staleLocal = 'data:image/webp;base64,U3RhbGUgYXZhdGFy'
+  writeCachedAvatar(staleLocal, storage)
+  const engine = new SyncEngine({ config, clientFactory: () => fakeCloudClient(user), storage })
+
+  engine.initialize()
+  await engine.restoreSession()
+  assert.equal(engine.getState().avatar.cached, false)
+  await engine._refreshCloudAvatar(null, user.id)
+
+  assert.equal(engine.getState().avatar.cached, false)
+  assert.equal(engine.getState().avatar.status, 'empty')
+  assert.equal(readCachedAvatar(storage), staleLocal)
+  engine.dispose()
 })
 
 test('sign-out returns to local Forge without deleting the local device identity', async () => {

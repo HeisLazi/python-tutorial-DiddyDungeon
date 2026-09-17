@@ -312,3 +312,13 @@ launcher only needs Python, npm and a local checkout. I added a guarded macOS
 setup with a sibling quest workspace, executable-bit repair and stable-PTY
 launch. No Mac machine was available for K&M, so this is a documentation fix,
 not a native acceptance claim.
+
+## Hunt follow-up — avatar cache custody (F-085)
+
+Static account-flow review found that a signed-in upload wrote both the
+account-scoped cache and the unscoped local avatar key. That could expose the
+previous account's portrait after sign-out or make a remote removal appear to
+fail. The SyncEngine now keeps signed-in caches scoped to the account and only
+uses the unscoped key for explicitly anonymous/offline uploads. A regression
+also proves a signed-in removal cannot resurrect an unscoped portrait. Clean
+frontend verification passed **43/43** with the **1,346-module** build.

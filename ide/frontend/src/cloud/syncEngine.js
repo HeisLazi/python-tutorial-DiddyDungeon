@@ -498,7 +498,7 @@ export class SyncEngine {
 
     // Restore the last account-scoped image before the profile request. This
     // keeps a previously synced portrait visible during a brief offline start.
-    this._restoreCachedAvatar(user.id)
+    this._restoreCachedAvatar(user.id, { allowLocalFallback: false })
     this.setState({ user: userSummary(user), authStatus: 'signed-in', syncStatus: 'local', label: 'Signed in · local cache', detail: 'Account identity restored. Campaign, Journal and Codex fields will sync through the state gateway.', error: null })
     try {
       if (!this.accountPromise || this.accountUserId !== user.id) {
@@ -630,9 +630,9 @@ export class SyncEngine {
     return avatar
   }
 
-  _restoreCachedAvatar(userId) {
+  _restoreCachedAvatar(userId, { allowLocalFallback = true } = {}) {
     const accountCached = readCachedAvatar(this.storage, userId)
-    const localCached = readCachedAvatar(this.storage)
+    const localCached = allowLocalFallback ? readCachedAvatar(this.storage) : ''
     return this._setAvatar(null, accountCached || localCached, accountCached ? 'cached-cloud' : 'local', accountCached || localCached ? 'ready' : 'empty')
   }
 
@@ -642,6 +642,7 @@ export class SyncEngine {
     const expectedPath = avatarObjectPath(userId)
     if (!path) {
       removeCachedAvatar(this.storage, userId)
+      if (this._userId() === userId) return this._setAvatar(null, '', 'local', 'empty')
       return this._restoreCachedAvatar(userId)
     }
     if (path !== expectedPath) {
@@ -686,10 +687,13 @@ export class SyncEngine {
   async setAvatarDataUrl(dataUrl) {
     const validation = validateAvatarDataUrl(dataUrl, { maxBytes: AVATAR_MAX_BYTES, allowedMimeTypes: AVATAR_CLOUD_MIME_TYPES })
     this.avatarOperation += 1
-    // Keep a local fallback even if a signed-in upload is interrupted.
-    writeCachedAvatar(dataUrl, this.storage)
     const userId = this._userId()
-    if (!userId || !this.client?.storage?.from) return this._setAvatar(null, dataUrl, 'local')
+    if (!userId || !this.client?.storage?.from) {
+      // Signed-in fallbacks stay account-scoped. An unscoped local portrait is
+      // only for an explicitly anonymous/offline upload.
+      writeCachedAvatar(dataUrl, this.storage, userId)
+      return this._setAvatar(null, dataUrl, 'local')
+    }
 
     const path = avatarObjectPath(userId)
     const blob = dataUrlToBlob(dataUrl, { maxBytes: AVATAR_MAX_BYTES, allowedMimeTypes: AVATAR_CLOUD_MIME_TYPES })
@@ -708,7 +712,7 @@ export class SyncEngine {
       // The fixed path may have replaced a previous valid image. Leave it in
       // place if profile metadata fails so an existing reference never points
       // at a deleted object; the next upload safely upserts the same path.
-      this._setAvatar(null, readCachedAvatar(this.storage), 'local', 'upload-failed')
+      this._setAvatar(null, readCachedAvatar(this.storage, userId), 'cached-cloud', 'upload-failed')
       throw asError(error, 'Avatar upload failed.')
     }
   }
@@ -717,7 +721,8 @@ export class SyncEngine {
     const userId = this._userId()
     this.avatarOperation += 1
     if (!userId || !this.client?.storage?.from) {
-      removeCachedAvatar(this.storage)
+      removeCachedAvatar(this.storage, userId)
+      if (!userId) removeCachedAvatar(this.storage)
       return this._setAvatar(null, '', 'local', 'empty')
     }
     const path = this.state.profile?.avatar_path || this.state.avatar?.path || avatarObjectPath(userId)

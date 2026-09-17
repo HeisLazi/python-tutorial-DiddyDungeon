@@ -1776,3 +1776,9 @@ transformed **1,346 modules** after this repair.
 | ID | Severity | Area | Finding | Status |
 |---|---|---|---|---|
 | F-084 | P2 | Friend distribution | The friend guide covered Windows/WSL and CachyOS but did not give a native macOS path, even though the stable Python/Vite launcher does not require WSL. | Fixed in documentation: `FRIEND_ONBOARDING.md` now provides a Homebrew-optional native macOS setup, sibling workspace, executable-bit and guarded launcher commands. Actual Mac install, K&M live projection and PTY acceptance remain unverified and are not claimed. |
+
+## Avatar cache custody — 2026-09-17
+
+| ID | Severity | Area | Finding | Status |
+|---|---|---|---|---|
+| F-085 | P1 | Account portrait privacy/sync | A signed-in avatar upload also populated the unscoped local avatar key. A later sign-out, account switch or remote removal could therefore display the wrong portrait or resurrect a stale local fallback even though private cloud Storage remained protected. | Fixed in `SyncEngine`: signed-in cache writes/restores are account-scoped, anonymous uploads remain local-only, and a current account with no cloud portrait resolves to an empty state instead of the unscoped fallback. Frontend avatar regressions pass in the clean ext4 suite (**43/43**). |
