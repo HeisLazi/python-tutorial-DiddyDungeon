@@ -264,9 +264,10 @@ Do not claim completion if PC/laptop-equivalent sync and PTY preservation have n
 
 ## Current checkpoint — 2026-09-17 — local distribution and Codex hardening
 
-The current published tip is `eb409ff` on both `feature/cloud-sync-desktop` and
-`main` (the tip also contains the public activity-sync merge). The local
-Forge/Codex work is source-complete for the requested presentation slice:
+The current published tip on `feature/cloud-sync-desktop` and its `main`
+mirror contains the public activity-sync merge and the bounded Codex reader
+slice below. The local Forge/Codex work is source-complete for the requested
+presentation slice:
 
 - the Codex is a finite, viewport-bounded folio with paged shelves,
   encounters/notes/mastery controls and a separate Battle Shell tab;
