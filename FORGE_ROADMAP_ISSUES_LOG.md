@@ -1958,3 +1958,13 @@ gate because no Codex browser tab was attachable.
 
 Verification: current-source **32/32**, clean ext4 frontend **51/51**, Vite
 build **1,346 modules**. No state, save, PTY or hosted transport was changed.
+
+## Codex bounded reading workspace — 2026-09-17
+
+| ID | Severity | Area | Finding | Status |
+|---|---|---|---|---|
+| F-113 | P1 | Codex presentation | The Codex library, evidence, notes and mastery were all siblings in the global page scroll, producing the reported infinite-scroll feeling and making the actual book content visually secondary. | Fixed: Codex now fills the Forge viewport as a bounded workstation. The header and Books/Battle Shell tabs stay in place; the left Field Library/Active Quest index and right book page scroll independently; Mastery Signals are contained in the selected book pane. Mobile uses a single controlled column rather than forcing a cramped two-pane layout. |
+
+Verification: current-source **32/32**, clean ext4 frontend **51/51**, Vite
+build **1,346 modules**. Browser K&M remains an external gate because the local
+Codex webview could not attach.
