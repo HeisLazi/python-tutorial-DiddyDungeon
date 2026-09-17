@@ -3096,5 +3096,6 @@ existing path inside the checkout. The path must be untracked and exact; the
 option cannot ignore tracked edits or all dirty source. Save/notebook stripping
 and the `HEAD`-only archive boundary are unchanged.
 
-Launcher-contract coverage is **16/16**; a post-commit bundle run must verify
-the protected path stays untouched and absent from the archive.
+Launcher-contract coverage is **16/16**. The post-commit run created a
+134-entry ZIP from `83f302c`; the protected nested path and all player-owned
+save/notebook paths were absent, while the live directory remained untouched.

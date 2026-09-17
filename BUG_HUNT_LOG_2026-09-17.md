@@ -858,4 +858,5 @@ K&M remains environment-blocked by F-080.
 | F-144 | P2 | The packager stopped on the user-owned untracked `/` nested checkout before it could create a friend bundle. Deleting, moving or staging that protected directory was out of scope. | Added exact-path `-IgnoreUntrackedPath`; it validates the path is inside the repo and untracked, while `git archive HEAD` remains the only bundle source. Unknown dirty source still fails closed. |
 
 Initial reproduction was a safe failed package attempt; no bundle or protected
-file was written. Post-commit package verification is required.
+file was written. After the fix, the exact-path package run produced a
+134-entry ZIP from `83f302c` with all protected paths absent.

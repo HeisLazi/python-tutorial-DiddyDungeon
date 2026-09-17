@@ -2266,6 +2266,7 @@ passed. Browser K&M remains environment-blocked by F-080.
 |---|---|---|---|---|
 | F-144 | P2 | Distribution custody | The strict friend packager refused a checkout containing the user-owned untracked nested `/` directory, even though the bundle is built from committed `HEAD` and would never archive that directory. Removing or staging the protected directory was not acceptable. | Fixed with an explicit `-IgnoreUntrackedPath` option. Each ignored path must exist inside the repository, be untracked, and be named exactly; no blanket dirty-source bypass exists. The archive still comes only from `HEAD`, then strips player-owned save/notebook paths. |
 
-Verification: launcher-contract coverage passes **16/16**; package execution
-after the reviewed commit must prove the exact protected path can remain in
-place without entering the bundle.
+Verification: launcher-contract coverage passes **16/16**. The packager was
+run with the exact protected directory and created a 134-entry ZIP from
+`83f302c`; `progress.json`, `tutor.py`, `dungeon.py`, `notes/` and `/` were
+absent from the archive.

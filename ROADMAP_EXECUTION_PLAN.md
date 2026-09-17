@@ -965,5 +965,6 @@ directory before archiving committed source. `tools/questlab-package.ps1` now
 accepts an exact `-IgnoreUntrackedPath` only after validating that the path is
 inside the checkout and untracked. The package still comes exclusively from
 `HEAD`, strips `progress.json`, `tutor.py`, `dungeon.py` and `notes/`, and has no
-blanket dirty-source bypass. Launcher-contract coverage is **16/16**; package
-execution remains the next acceptance check.
+blanket dirty-source bypass. Launcher-contract coverage is **16/16**; a
+post-commit run created a 134-entry ZIP from `83f302c` with every protected
+path absent and the nested directory untouched.
