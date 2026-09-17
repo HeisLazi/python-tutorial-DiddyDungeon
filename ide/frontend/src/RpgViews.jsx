@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 
 export const viewItems = [
+  { id: 'hub', icon: '⌂', label: 'Quest Hub' },
   { id: 'forge', icon: '⌘', label: 'Forge' },
   { id: 'tutor', icon: '🧪', label: 'Tutor Notebook' },
   { id: 'quests', icon: '⚔', label: 'Quest Journal' },
@@ -61,13 +62,36 @@ export function ActivityRail({ activeView, setActiveView, player, campaignReady 
   )
 }
 
-export function ContextPanel({ activeView, campaign, files, activePath, openFile, newFile, setActiveView }) {
+export function ContextPanel({ activeView, campaign, files, activePath, openFile, newFile, setActiveView, submitBattle, busy }) {
   const progress = campaign?.progress || {}
   const player = progress.player || {}
   const activeProject = (progress.projects || []).find((project) => project.status === 'active')
   const skills = progress.skills || []
   const homestead = progress.homestead || {}
   const owned = homestead.owned_cosmetics || []
+
+  if (activeView === 'hub') {
+    const goals = progress.goals || {}
+    const cleared = (activeProject?.mobs || []).filter((mob) => isMobDefeated(mob.status)).length
+    return (
+      <>
+        <div className="panel-title">
+          <span>QUEST HUB</span>
+          <button onClick={() => setActiveView('forge')} title="Open Forge">⌘</button>
+        </div>
+        <div className="context-scroll">
+          <div className="context-kicker">CAMPAIGN BRIEF</div>
+          <h3>{activeProject?.name || 'Choose your first chapter'}</h3>
+          <p>{progress.current_quest || 'Your daily contracts and chapter path will appear here.'}</p>
+          <div className="context-stat"><span>Chapter progress</span><b>{activeProject?.progress ?? 0}%</b></div>
+          <div className="context-stat"><span>Mob clears</span><b>{cleared}/{activeProject?.mobs?.length ?? 0}</b></div>
+          <div className="context-kicker context-kicker-spaced">TODAY</div>
+          {(goals.daily || []).slice(0, 3).map((goal) => <div key={goal.id} className="context-row stacked"><strong>{goal.done ? '✓ ' : ''}{goal.text}</strong><small>+{goal.reward_xp ?? 0} XP · +{goal.reward_coins ?? 0}c</small></div>)}
+          <button className="primary context-cta" type="button" onClick={() => setActiveView('forge')}>Open active project</button>
+        </div>
+      </>
+    )
+  }
 
   if (activeView === 'forge') {
     return (
@@ -91,21 +115,28 @@ export function ContextPanel({ activeView, campaign, files, activePath, openFile
             </button>
           ))}
         </div>
+        {campaign?.encounter?.available_objectives?.length > 0 && (
+          <div className="campaign-battle-sidebar">
+            <div className="panel-title"><span>ACTIVE BATTLE</span><b>{campaign.encounter.resolve ?? 0}/{campaign.encounter.max_resolve ?? 0}</b></div>
+            <div className="campaign-battle-copy"><strong>{campaign.encounter.mob_name || 'Current mob'}</strong><span>Submit verified work for this campaign file.</span></div>
+            <BattleSubmission availableObjectives={campaign.encounter.available_objectives} onSubmit={submitBattle} busy={busy} />
+          </div>
+        )}
       </>
     )
   }
 
-  if (activeView === 'tutor') {
+  if (activeView === 'tutor' || activeView === 'practice') {
     return (
       <>
         <div className="panel-title">
-          <span>TUTOR NOTEBOOK</span>
+          <span>{activeView === 'practice' ? 'PRACTICE / TUTOR' : 'TUTOR NOTEBOOK'}</span>
           <button onClick={() => setActiveView('forge')} title="Return to Forge">⌘</button>
         </div>
         <div className="context-scroll">
           <div className="context-kicker">COLLABORATIVE SCRATCH SPACE</div>
           <h3>tutor.py</h3>
-          <p>PYR may write examples here. Your real project file stays player-authored.</p>
+          <p>Choose a concept and question lens above tutor.py. PYR may write examples here; your real project file stays player-authored.</p>
           <div className="boundary-card safe">
             <strong>PYR CAN WRITE</strong>
             <span>tutor.py</span>
@@ -161,15 +192,10 @@ export function ContextPanel({ activeView, campaign, files, activePath, openFile
 
         {activeView === 'codex' && (
           <>
-            <div className="context-kicker">MASTERY INDEX</div>
+            <div className="context-kicker">FIELD LIBRARY</div>
+            <p>Open a concept book to read definitions, examples, encounter notes and validated question lenses.</p>
             <div className="context-list">
-              {skills.map((skill) => (
-                <div key={skill.name} className="context-row stacked">
-                  <strong>{skill.name}</strong>
-                  <span>{skill.concept}</span>
-                  <small>{skill.shield?.tier || 'no shield'}</small>
-                </div>
-              ))}
+              <div className="context-row stacked"><strong>{(progress.codex?.encounters || []).length} encounters logged</strong><span>{skills.length} mastery records</span><small>Knowledge grows from verified encounters.</small></div>
             </div>
           </>
         )}
@@ -250,6 +276,103 @@ function ProgressBar({ value, max, label, className = '' }) {
     <div className={`meter ${className}`}>
       <div className="meter-label"><span>{label}</span><b>{value}/{max}</b></div>
       <div className="meter-track"><span style={{ width: `${percent}%` }} /></div>
+    </div>
+  )
+}
+
+export function TutorPracticeBar({ progress, practiceProjection, onPracticePrompt, busy }) {
+  const activeProject = (progress?.projects || []).find((project) => project.status === 'active') || {}
+  const fallbackConcepts = Array.from(new Set([
+    ...(progress?.skills || []).map((skill) => skill.concept).filter(Boolean),
+    ...(activeProject.mobs || []).map((mob) => mob.concept).filter(Boolean),
+    progress?.learning_state?.concept,
+    'python-basics',
+  ].filter(Boolean)))
+  const selectorOptions = practiceProjection?.selectors || {}
+  const conceptOptions = Array.isArray(selectorOptions.concepts) && selectorOptions.concepts.length
+    ? selectorOptions.concepts
+    : fallbackConcepts.map((item) => ({ id: item, title: item }))
+  const questionOptions = Array.isArray(selectorOptions.question_types) && selectorOptions.question_types.length
+    ? selectorOptions.question_types
+    : [
+        { id: 'true_false', label: 'True / False' },
+        { id: 'multiple_choice', label: 'Multiple choice' },
+        { id: 'short_explanation', label: 'Short explanation' },
+        { id: 'code_trace', label: 'Code trace' },
+        { id: 'bug_hunt', label: 'Bug hunt' },
+      ]
+  const difficultyMin = Number(selectorOptions.difficulty?.min ?? 1)
+  const difficultyMax = Number(selectorOptions.difficulty?.max ?? 5)
+  const [concept, setConcept] = useState(conceptOptions[0]?.id || 'python-basics')
+  const [questionType, setQuestionType] = useState(questionOptions[0]?.id || 'multiple_choice')
+  const [difficulty, setDifficulty] = useState(String(difficultyMin))
+  const [status, setStatus] = useState('')
+
+  useEffect(() => {
+    if (!conceptOptions.some((item) => item.id === concept)) setConcept(conceptOptions[0]?.id || 'python-basics')
+    if (!questionOptions.some((item) => item.id === questionType)) setQuestionType(questionOptions[0]?.id || 'multiple_choice')
+    const numericDifficulty = Number(difficulty)
+    if (!Number.isFinite(numericDifficulty) || numericDifficulty < difficultyMin || numericDifficulty > difficultyMax) setDifficulty(String(difficultyMin))
+  }, [conceptOptions.map((item) => item.id).join('|'), questionOptions.map((item) => item.id).join('|'), concept, questionType, difficulty, difficultyMin, difficultyMax])
+
+  const ask = async () => {
+    if (!onPracticePrompt || busy) return
+    setStatus('Asking PYR for a bounded drill…')
+    try {
+      await onPracticePrompt({ concept, questionType, difficulty: Number(difficulty), answer: '' })
+      setStatus('Drill requested. Write your explanation or code in tutor.py, then run it when ready.')
+    } catch (error) {
+      setStatus(error?.message || 'Practice request failed.')
+    }
+  }
+
+  return (
+    <div className="tutor-practice-bar" data-testid="tutor-practice-bar">
+      <div className="tutor-practice-heading"><span className="screen-kicker">PRACTICE / TUTOR</span><small>tutor.py is the shared learning notebook and IDE</small></div>
+      <label><span>Concept</span><select value={concept} onChange={(event) => setConcept(event.target.value)} disabled={busy}>{conceptOptions.map((item) => <option key={item.id} value={item.id}>{item.title || item.id}</option>)}</select></label>
+      <label><span>Question lens</span><select value={questionType} onChange={(event) => setQuestionType(event.target.value)} disabled={busy}>{questionOptions.map((item) => <option key={item.id} value={item.id}>{item.label || item.id}</option>)}</select></label>
+      <label><span>Difficulty</span><select value={difficulty} onChange={(event) => setDifficulty(event.target.value)} disabled={busy}>{Array.from({ length: Math.max(0, difficultyMax - difficultyMin + 1) }, (_, index) => difficultyMin + index).map((level) => <option key={level} value={level}>Tier {level}</option>)}</select></label>
+      <button className="primary" type="button" onClick={ask} disabled={busy || !onPracticePrompt}>{busy ? 'Working…' : 'Ask PYR for a drill'}</button>
+      {status && <small className="tutor-practice-status" role="status">{status}</small>}
+    </div>
+  )
+}
+
+function HubScreen({ progress, revision, onOpen }) {
+  const activeProject = (progress?.projects || []).find((project) => project.status === 'active') || {}
+  const goals = progress?.goals || {}
+  const mobs = activeProject.mobs || []
+  const projects = progress?.projects || []
+  return (
+    <div className="game-screen-scroll hub-screen" data-testid="hub" data-campaign-revision={revision}>
+      <div className="screen-hero hub-hero">
+        <div><span className="screen-kicker">QUEST HUB</span><h2>Choose your next move.</h2><p>Your contracts, campaign chapters and weekly goals share the same live campaign revision. Pick a surface and keep learning.</p></div>
+        <div className="hub-hero-actions"><button className="primary" type="button" onClick={() => onOpen?.('forge')}>Open Forge</button><button type="button" onClick={() => onOpen?.('dungeon')}>Enter Dungeon</button></div>
+      </div>
+      <div className="hub-grid">
+        <section className="game-card hub-contracts">
+          <div className="card-heading"><span>TODAY'S CONTRACTS</span><b>{(goals.daily || []).filter((goal) => goal.done).length}/{(goals.daily || []).length}</b></div>
+          <div className="quest-list">{(goals.daily || []).slice(0, 5).map((goal) => <div key={goal.id} className={`quest-item ${goal.done ? 'done' : ''}`}><span>{goal.done ? '✓' : '○'}</span><div><strong>{goal.text}</strong><small>+{goal.reward_xp ?? 0} XP · +{goal.reward_coins ?? 0}c</small></div></div>)}</div>
+          {!(goals.daily || []).length && <p className="context-note">No daily contracts have been issued yet.</p>}
+        </section>
+        <section className="game-card hub-weekly">
+          <div className="card-heading"><span>WEEKLY RAIDS</span><b>{(goals.weekly || []).filter((goal) => goal.done).length}/{(goals.weekly || []).length}</b></div>
+          <div className="hub-raid-banner"><span className="raid-gate-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="8" cy="8" r="3" /><circle cx="16" cy="8" r="3" /><path d="M2 20a6 6 0 0 1 12 0M10 20a6 6 0 0 1 12 0" /></svg></span><div><strong>Party raid board</strong><p>Weekly goals are tracked here; shared raid combat unlocks in the multiplayer milestone.</p></div><span className="raid-locked">LOCKED</span></div>
+          <div className="quest-list compact">{(goals.weekly || []).slice(0, 4).map((goal) => <div key={goal.id} className={`quest-item ${goal.done ? 'done' : ''}`}><span>{goal.done ? '✓' : '○'}</span><div><strong>{goal.text}</strong><small>{goal.progress ?? 0}/{goal.target ?? 1}</small></div></div>)}</div>
+        </section>
+      </div>
+      <section className="game-card hub-chapters">
+        <div className="card-heading"><span>MAIN QUEST · CHAPTERS</span><b>{activeProject.progress ?? 0}%</b></div>
+        <div className="chapter-grid">{projects.map((project, index) => {
+          const locked = project.status === 'locked' || (project.status !== 'active' && !project.completed)
+          return <article key={project.id || project.name || index} className={`chapter-card ${locked ? 'locked' : project.completed ? 'complete' : 'active'}`}><div className="chapter-art" aria-hidden="true">{locked ? '◌' : project.completed ? '✓' : '◆'}</div><div><span className="chapter-category">{project.category || project.type || 'chapter'}</span><h3>{locked ? (project.name || `Chapter ${index + 1}`) : project.name}</h3><p>{locked ? 'Future chapter · details unlock after the previous clear.' : project.summary || project.description || (project.status === 'active' ? 'Continue the current learning path.' : 'Verified chapter complete.')}</p></div>{project.status === 'active' && <button type="button" onClick={() => onOpen?.('quests')}>Open journal</button>}</article>
+        })}</div>
+        {!projects.length && <p className="context-note">The campaign chapter list will appear after the state service loads.</p>}
+      </section>
+      <section className="game-card hub-encounters">
+        <div className="card-heading"><span>ENCOUNTER PATH</span><b>{mobs.filter((mob) => isMobDefeated(mob.status)).length}/{mobs.length} cleared</b></div>
+        <div className="encounter-silhouette-grid">{mobs.map((mob, index) => { const locked = mob.status === 'locked'; return <article key={mob.name || index} className={`encounter-silhouette ${locked ? 'locked' : mob.status}`}><span>{locked ? '◐' : isMobDefeated(mob.status) ? '✓' : index + 1}</span><div><strong>{mob.name || `Encounter ${index + 1}`}</strong><small>{mob.category || mob.concept || 'Encounter'}</small></div></article> })}</div>
+      </section>
     </div>
   )
 }
@@ -367,9 +490,10 @@ function QuestJournal({ progress, revision, encounter, submitBattle, submitBoss,
   const projectComplete = encounter?.status === 'complete' || encounter?.project_complete === true || activeProject.completed === true || bossStatus === 'defeated'
   const bossRequirements = encounter?.boss_requirements || ['required_behavior', 'explanation', 'interview']
   const codexEntries = progress.codex?.encounters || []
+  const [page, setPage] = useState(0)
 
   return (
-    <div className="game-screen-scroll" data-testid="quest-journal" data-campaign-revision={revision}>
+    <div className="game-screen-scroll quest-journal-screen" data-testid="quest-journal" data-campaign-revision={revision}>
       <div className="screen-hero quest-hero">
         <div>
           <span className="screen-kicker">{projectComplete ? 'CHAPTER COMPLETE' : bossUnlocked ? 'BOSS GATE' : 'CURRENT CHAPTER'}</span>
@@ -383,8 +507,14 @@ function QuestJournal({ progress, revision, encounter, submitBattle, submitBoss,
         </div>
       </div>
 
-      <div className="screen-grid two">
-        <section className="game-card">
+      <div className="journal-controls" role="navigation" aria-label="Quest Journal pages">
+        <button type="button" onClick={() => setPage((current) => Math.max(0, current - 1))} disabled={page === 0}>← Previous page</button>
+        <span>PAGE {page + 1} / 2</span>
+        <button type="button" onClick={() => setPage((current) => Math.min(1, current + 1))} disabled={page === 1}>Next page →</button>
+      </div>
+
+      <div key={page} className="screen-grid two journal-page page-turn" data-journal-page={page}>
+        <section className="game-card journal-main-page">
           <div className="card-heading"><span>{projectComplete ? 'CAMPAIGN COMPLETE' : bossUnlocked ? 'MOBS CLEARED' : 'MAIN QUEST'}</span><b>{activeProject.progress ?? encounter?.project_progress ?? 0}%</b></div>
           {projectComplete ? (
             <div className="campaign-victory" data-testid="campaign-complete">
@@ -439,7 +569,7 @@ function QuestJournal({ progress, revision, encounter, submitBattle, submitBoss,
           </div>
         </section>
 
-        <section className="game-card">
+        <section className="game-card journal-contract-page">
           <div className="card-heading"><span>TODAY'S CONTRACTS</span><b>{(goals.daily || []).filter((goal) => goal.done).length}/{(goals.daily || []).length}</b></div>
           <div className="quest-list">
             {(goals.daily || []).map((goal) => (
@@ -474,6 +604,8 @@ function Codex({ progress, revision, codexProjection, saveCodexNote, busy }) {
   const [selectedEntryId, setSelectedEntryId] = useState('')
   const [note, setNote] = useState('')
   const [noteStatus, setNoteStatus] = useState('')
+  const [workspaceNote, setWorkspaceNote] = useState('')
+  const [workspaceNoteLoading, setWorkspaceNoteLoading] = useState(false)
 
   useEffect(() => {
     if (!pages.some((page) => page.id === selectedPageId)) setSelectedPageId(pages[0]?.id || '')
@@ -524,6 +656,35 @@ function Codex({ progress, revision, codexProjection, saveCodexNote, busy }) {
     setNoteStatus('')
   }, [selectedPage?.id, selectedEntryIds, selectedEntryId])
 
+  const noteSlug = (entry) => String(entry?.concept || entry?.id || entry?.mob_name || 'concept')
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9._-]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 120) || 'concept'
+
+  useEffect(() => {
+    if (!selectedEntry) {
+      setWorkspaceNote('')
+      return undefined
+    }
+    const controller = new AbortController()
+    setWorkspaceNoteLoading(true)
+    fetch(`/api/notes/${encodeURIComponent(noteSlug(selectedEntry))}`, { signal: controller.signal })
+      .then((response) => (response.ok ? response.json() : null))
+      .then((result) => {
+        if (!result) return
+        setWorkspaceNote(result.note?.content || '')
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) setWorkspaceNote('')
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setWorkspaceNoteLoading(false)
+      })
+    return () => controller.abort()
+  }, [selectedEntry?.id, selectedEntry?.concept, selectedEntry?.mob_name])
+
   const selectPage = (pageId) => {
     setSelectedPageId(pageId)
     setSelectedEntryId('')
@@ -533,9 +694,10 @@ function Codex({ progress, revision, codexProjection, saveCodexNote, busy }) {
     event.preventDefault()
     if (!selectedEntry || !note.trim() || !saveCodexNote || busy) return
     try {
-      await saveCodexNote(selectedEntry.id, note)
+      const result = await saveCodexNote(selectedEntry.id, note, noteSlug(selectedEntry))
+      if (result?.workspace_note?.content !== undefined) setWorkspaceNote(result.workspace_note.content)
       setNote('')
-      setNoteStatus('Saved to the canonical Codex record.')
+      setNoteStatus('Saved to the canonical Codex record and workspace notebook.')
     } catch (error) {
       setNoteStatus(error?.message || 'Could not save the note.')
     }
@@ -577,7 +739,7 @@ function Codex({ progress, revision, codexProjection, saveCodexNote, busy }) {
             <>
               <div className="codex-page-heading"><span className="screen-kicker">CONCEPT PAGE</span><h3>{selectedPage.title}</h3><p>{selectedPage.definition}</p><div className="codex-page-summary" data-testid="codex-page-summary"><span><b>{selectedEntries.length}</b> encounters</span><span><b>{pageQuestionTypes.length}</b> question lenses</span><span><b>{pageWeaknesses.length}</b> recorded patterns</span></div></div>
               <div className="codex-page-grid">
-                <div><small className="codex-label">GENERIC EXAMPLES</small><div className="codex-examples">{(selectedPage.examples || []).map((example, index) => <pre key={index}>{example}</pre>)}</div></div>
+                <div><small className="codex-label">DEFINITION &amp; GENERIC EXAMPLES</small><div className="codex-examples">{(selectedPage.examples || []).map((example, index) => <pre key={index}>{example}</pre>)}</div><small className="codex-label codex-subsection-label">COMMON MISTAKES</small><div className="codex-mistakes">{(selectedPage.common_mistakes || []).length ? selectedPage.common_mistakes.map((mistake) => <p key={mistake}>{mistake}</p>) : <p className="codex-insight-empty">No validated mistake pattern recorded for this concept yet.</p>}</div></div>
                 <div><small className="codex-label">QUESTION LENS</small><div className="codex-tags">{(selectedPage.question_types || []).map((type) => <span key={type}>{type}</span>)}</div><small className="codex-label">RECORDED SIGNALS</small><div className="codex-tags codex-recorded-signals">{pageQuestionTypes.length ? pageQuestionTypes.map((type) => <span key={type}>{type}</span>) : <span className="empty-state">No question type recorded yet.</span>}{pageWeaknesses.map((weakness) => <span key={`weakness-${weakness}`}>{weakness}</span>)}</div><small className="codex-label">ENCOUNTERS ON THIS PAGE</small><div className="codex-entry-picker">{selectedEntries.map((entry) => <button key={entry.id} type="button" className={selectedEntry?.id === entry.id ? 'active' : ''} onClick={() => setSelectedEntryId(entry.id)}>{entry.mob_name}<small>{entry.status}</small></button>)}{!selectedEntries.length && <span className="empty-state">No encounter recorded yet.</span>}</div></div>
               </div>
               {selectedEntry && (
@@ -590,7 +752,8 @@ function Codex({ progress, revision, codexProjection, saveCodexNote, busy }) {
                     {selectedEntry.interview_history?.length ? <div><small className="codex-label">INTERVIEW HISTORY</small><ul className="codex-insight-list">{selectedEntry.interview_history.map((item, index) => <li key={`${item.outcome || 'interview'}-${index}`}>{item.outcome || item.status || 'recorded'}</li>)}</ul></div> : null}
                   </div>
                   <p>{selectedEntry.notes?.at(-1) || 'The encounter has been observed through verified learning evidence.'}</p>
-                  {selectedEntry.player_notes?.length > 0 && <div className="codex-notes"><small className="codex-label">YOUR FIELD NOTES</small>{selectedEntry.player_notes.map((item, index) => <p key={`${item}-${index}`}>{item}</p>)}</div>}
+                  <div className="codex-notes workspace-notebook"><small className="codex-label">WORKSPACE NOTEBOOK · notes/{noteSlug(selectedEntry)}.md</small>{workspaceNoteLoading ? <p className="codex-insight-empty">Loading your transferable notes…</p> : workspaceNote ? <pre>{workspaceNote}</pre> : <p className="codex-insight-empty">No workspace note yet. Add one below; it travels with the project.</p>}</div>
+                  {selectedEntry.player_notes?.length > 0 && <div className="codex-notes"><small className="codex-label">CANONICAL FIELD NOTES</small>{selectedEntry.player_notes.map((item, index) => <p key={`${item}-${index}`}>{item}</p>)}</div>}
                   <form className="codex-note-form" onSubmit={submitNote}><label><span>Add a field note</span><textarea value={note} onChange={(event) => setNote(event.target.value)} maxLength={2_000} rows={3} placeholder="What did you notice, or what should you revisit?" disabled={busy} /></label><button type="submit" disabled={busy || !note.trim()}>Save note</button></form>
                   {noteStatus && <small className="battle-submit-status" role="status">{noteStatus}</small>}
                 </section>
@@ -672,6 +835,16 @@ function CharacterSheet({ progress, revision }) {
   )
 }
 
+function CosmeticIcon({ kind }) {
+  const paths = {
+    theme: <><path d="M4 5h16v14H4z" /><path d="M7 8h10M7 12h7M7 16h4" /></>,
+    cursor: <><path d="m6 3 12 9-6 1 1 7-3 1-2-7-5 3z" /></>,
+    hud: <><rect x="3" y="4" width="18" height="16" rx="2" /><path d="M6 8h12M6 12h5M6 16h8" /></>,
+    terminal: <><path d="m5 7 5 5-5 5M12 17h7" /></>,
+  }
+  return <span className="shop-icon" aria-hidden="true"><svg viewBox="0 0 24 24">{paths[kind] || paths.theme}</svg></span>
+}
+
 function Homestead({ progress, revision, purchaseCosmetic, equipCosmetic, busy }) {
   const player = progress.player || {}
   const homestead = progress.homestead || {}
@@ -680,6 +853,27 @@ function Homestead({ progress, revision, purchaseCosmetic, equipCosmetic, busy }
   const owned = new Set(homestead.owned_cosmetics || [])
   const equipped = homestead.equipped || {}
   const grouped = ['theme', 'cursor', 'hud', 'terminal']
+  const daySeed = new Date().toISOString().slice(0, 10).split('').reduce((total, char) => total + char.charCodeAt(0), 0)
+  const dailyCatalog = catalog.filter((item, index) => (index + daySeed) % 3 === 0 || owned.has(item.id) || item.price === 0).slice(0, 8)
+  const nextRefresh = `${new Date(Date.now() + 86_400_000).toISOString().slice(0, 10)} UTC`
+
+  const renderShopCard = (item) => {
+    const kind = item.kind || 'theme'
+    const isOwned = owned.has(item.id)
+    const isEquipped = equipped[kind] === item.id
+    const canAfford = (player.coins ?? 0) >= (item.price ?? 0)
+    return (
+      <article key={item.id} className={`shop-card ${isEquipped ? 'equipped' : ''}`}>
+        <div className={`shop-swatch ${item.id}`}><CosmeticIcon kind={kind} /></div>
+        <div className="shop-copy"><small>{item.rarity || 'common'}</small><h3>{item.name}</h3><p>{item.description}</p></div>
+        <div className="shop-actions">
+          <strong>{isOwned ? (isEquipped ? 'EQUIPPED' : 'OWNED') : `${item.price ?? 0}c`}</strong>
+          {!isOwned && <button disabled={busy || !canAfford} onClick={() => purchaseCosmetic(item.id)}>{canAfford ? 'Buy' : 'Need coins'}</button>}
+          {isOwned && !isEquipped && <button disabled={busy} onClick={() => equipCosmetic(item.id)}>Equip</button>}
+        </div>
+      </article>
+    )
+  }
 
   return (
     <div className="game-screen-scroll" data-testid="homestead" data-campaign-revision={revision}>
@@ -704,30 +898,48 @@ function Homestead({ progress, revision, purchaseCosmetic, equipCosmetic, busy }
         <p className="context-note">This loadout and purse are read from the same campaign revision as the top HUD. Purchases and equips are recorded by the state gateway.</p>
       </section>
 
+      <section className="game-card daily-shop" data-testid="daily-shop">
+        <div className="card-heading"><span>DAILY SHOP · SHARED ROTATION</span><b>REFRESH {nextRefresh}</b></div>
+        <p className="context-note">Everyone sees the same daily presentation. Purchases and ownership still go through your canonical state service.</p>
+        <div className="shop-grid">{dailyCatalog.map(renderShopCard)}</div>
+      </section>
+
       {grouped.map((kind) => (
         <section className="game-card" key={kind}>
           <div className="card-heading"><span>{kind.toUpperCase()}S</span><b>{catalog.filter((item) => item.kind === kind && owned.has(item.id)).length}/{catalog.filter((item) => item.kind === kind).length}</b></div>
           <div className="shop-grid">
-            {catalog.filter((item) => item.kind === kind).map((item) => {
-              const isOwned = owned.has(item.id)
-              const isEquipped = equipped[kind] === item.id
-              const canAfford = (player.coins ?? 0) >= (item.price ?? 0)
-              return (
-                <article key={item.id} className={`shop-card ${isEquipped ? 'equipped' : ''}`}>
-                  <div className={`shop-swatch ${item.id}`}><span>{kind === 'theme' ? '◫' : kind === 'cursor' ? '│' : kind === 'hud' ? '▣' : '>_'}</span></div>
-                  <div className="shop-copy"><small>{item.rarity || 'common'}</small><h3>{item.name}</h3><p>{item.description}</p></div>
-                  <div className="shop-actions">
-                    <strong>{isOwned ? (isEquipped ? 'EQUIPPED' : 'OWNED') : `${item.price ?? 0}c`}</strong>
-                    {!isOwned && <button disabled={busy || !canAfford} onClick={() => purchaseCosmetic(item.id)}>{canAfford ? 'Buy' : 'Need coins'}</button>}
-                    {isOwned && !isEquipped && <button disabled={busy} onClick={() => equipCosmetic(item.id)}>Equip</button>}
-                  </div>
-                </article>
-              )
-            })}
+            {catalog.filter((item) => item.kind === kind).map(renderShopCard)}
           </div>
         </section>
       ))}
     </div>
+  )
+}
+
+function DungeonMap({ run }) {
+  if (!run?.active) return null
+  const currentRoom = Number(run.room || 1)
+  const currentFloor = Number(run.floor || 1)
+  const history = Array.isArray(run.history) ? run.history : []
+  const visited = new Set(history.map((item) => `${item.floor || currentFloor}:${item.room || 0}`))
+  visited.add(`${currentFloor}:${currentRoom}`)
+  const nodes = Array.from({ length: 9 }, (_, index) => {
+    const room = currentRoom - 4 + index
+    const floor = currentFloor + Math.floor(Math.max(0, room - 1) / 7)
+    const normalizedRoom = ((room - 1) % 7 + 7) % 7 + 1
+    const isCurrent = floor === currentFloor && normalizedRoom === currentRoom
+    const key = `${floor}:${normalizedRoom}`
+    const type = isCurrent ? run.room_type || 'encounter' : visited.has(key) ? 'cleared' : index % 5 === 2 ? 'rest' : index % 7 === 4 ? 'market' : 'encounter'
+    return { key: `${key}:${index}`, room: normalizedRoom, floor, type, isCurrent, seen: visited.has(key) }
+  })
+  return (
+    <section className="game-card dungeon-map-card" data-testid="dungeon-map">
+      <div className="card-heading"><span>RUN MAP</span><b>FLOOR {currentFloor}</b></div>
+      <div className="dungeon-map-grid" aria-label={`Dungeon map floor ${currentFloor}`}>
+        {nodes.map((node) => <div key={node.key} className={`dungeon-map-node ${node.isCurrent ? 'current' : ''} ${node.seen ? 'seen' : ''} ${node.type}`}><span aria-hidden="true">{node.isCurrent ? '◆' : node.type === 'rest' ? '✚' : node.type === 'market' ? '◇' : node.type === 'cleared' ? '✓' : '○'}</span><small>{node.isCurrent ? 'YOU ARE HERE' : node.type.toUpperCase()}</small><strong>R{node.room}</strong></div>)}
+      </div>
+      <p className="context-note">Choose your next room after each verified answer. The map shows room types only; future questions stay hidden until the state service issues them.</p>
+    </section>
   )
 }
 
@@ -779,6 +991,7 @@ function DungeonScreen({ dungeon, revision, onStart, onRest, onMarketPurchase, o
         </section>
       ) : (
         <>
+          <DungeonMap run={run} />
           <div className="screen-grid two">
             <section className="game-card">
               <div className="card-heading"><span>CURRENT ROOM</span><b>{String(run.room_type || 'encounter').toUpperCase()}</b></div>
@@ -862,7 +1075,7 @@ function PracticeScreen({ progress, revision, practiceProjection, onPracticeProm
       </section>
       <section className="game-card">
         <div className="card-heading"><span>PRACTICE BOUNDARY</span><b>SEPARATE MODE</b></div>
-        <p className="context-note">Practice uses the same bounded provider context as Campaign, but it never creates a leaderboard run, copies Campaign gear, or writes tutor.py.</p>
+        <p className="context-note">Practice uses the same bounded provider context as Campaign, but it never creates a leaderboard run, copies Campaign gear, or changes Campaign state. Your drills, explanations and examples stay in the shared tutor.py notebook.</p>
       </section>
       <section className="game-card">
         <div className="card-heading"><span>RECENT PRACTICE HISTORY</span><b>{practiceProjection?.count ?? 0}</b></div>
@@ -959,7 +1172,7 @@ function AccountPanel({ account, busy, notice, onSignIn, onSignUp, onSignOut, on
 }
 
 function SettingsScreen({ preferences, setters, resetLayout, equipped, account, accountBusy, accountNotice, onSignIn, onSignUp, onSignOut, onDeviceLabelSave, onResolveConflict, revision }) {
-  const { editorFontSize, terminalFontSize, hudDensity, animations } = preferences
+  const { editorFontSize, terminalFontSize, hudDensity, animations, showAiTerminal, themeChoice, fontFamily } = preferences
   return (
     <div className="game-screen-scroll settings-screen" data-campaign-revision={revision}>
       <div className="screen-hero">
@@ -974,6 +1187,10 @@ function SettingsScreen({ preferences, setters, resetLayout, equipped, account, 
           <label><span>Terminal font size</span><b>{terminalFontSize}px</b><input type="range" min="10" max="20" value={terminalFontSize} onChange={(event) => setters.setTerminalFontSize(Number(event.target.value))} /></label>
           <label><span>HUD density</span><select value={hudDensity} onChange={(event) => setters.setHudDensity(event.target.value)}><option value="full">Full</option><option value="compact">Compact</option></select></label>
           <label className="toggle-row"><span>Animations</span><input type="checkbox" checked={animations} onChange={(event) => setters.setAnimations(event.target.checked)} /></label>
+          <label><span>Theme</span><select value={themeChoice || ''} onChange={(event) => setters.setThemeChoice(event.target.value)}><option value="">Homestead equipped theme</option><option value="gruvbox-dark">Gruvbox Dark</option><option value="gruvbox-light">Gruvbox Light</option><option value="github-dark">GitHub Dark</option><option value="github-light">GitHub Light</option><option value="deep-forest">Deep Forest</option><option value="void-scholar">Void Scholar</option><option value="ancient-archive">Ancient Archive</option></select></label>
+          <label><span>Interface font</span><select value={fontFamily || 'inter'} onChange={(event) => setters.setFontFamily(event.target.value)}><option value="inter">Inter · neutral</option><option value="ibm-plex">IBM Plex Sans · readable</option><option value="atkinson">Atkinson Hyperlegible · high clarity</option><option value="system">System UI</option></select></label>
+          <label className="toggle-row"><span>AI terminal visible</span><input type="checkbox" checked={showAiTerminal !== false} onChange={(event) => setters.setShowAiTerminal(event.target.checked)} /></label>
+          <p className="settings-note">AI stays hidden on Codex, Quest Journal, Homestead and Settings so those pages can breathe. The PTY remains mounted and reconnect-free.</p>
         </section>
 
         <section className="game-card settings-card">
@@ -992,7 +1209,7 @@ function SettingsScreen({ preferences, setters, resetLayout, equipped, account, 
   )
 }
 
-export function GameScreen({ activeView, progress, revision, encounter, codexProjection, practiceProjection, dungeon, dungeonEditorContent, onDungeonEditorChange, onSaveDungeon, onDungeonRest, onDungeonMarketPurchase, onDungeonLeave, onDungeonFinish, purchaseCosmetic, equipCosmetic, saveCodexNote, busy, dungeonSaving, submitBattle, submitBoss, submitDungeon, onStartDungeon, onPracticePrompt, preferences, setters, resetLayout, account, accountBusy, accountNotice, onSignIn, onSignUp, onSignOut, onDeviceLabelSave, onResolveConflict, campaignReady = true }) {
+export function GameScreen({ activeView, progress, revision, encounter, codexProjection, practiceProjection, dungeon, dungeonEditorContent, onDungeonEditorChange, onSaveDungeon, onDungeonRest, onDungeonMarketPurchase, onDungeonLeave, onDungeonFinish, purchaseCosmetic, equipCosmetic, saveCodexNote, busy, dungeonSaving, submitBattle, submitBoss, submitDungeon, onStartDungeon, onPracticePrompt, preferences, setters, resetLayout, account, accountBusy, accountNotice, onSignIn, onSignUp, onSignOut, onDeviceLabelSave, onResolveConflict, onNavigate, campaignReady = true }) {
   if (!campaignReady && activeView !== 'settings') {
     return (
       <div className="game-screen-scroll campaign-loading" data-testid="campaign-loading" aria-live="polite">
@@ -1002,6 +1219,7 @@ export function GameScreen({ activeView, progress, revision, encounter, codexPro
       </div>
     )
   }
+  if (activeView === 'hub') return <HubScreen progress={progress} revision={revision} onOpen={onNavigate} />
   if (activeView === 'quests') return <QuestJournal progress={progress} revision={revision} encounter={encounter} submitBattle={submitBattle} submitBoss={submitBoss} busy={busy} />
   if (activeView === 'codex') return <Codex progress={progress} revision={revision} codexProjection={codexProjection} saveCodexNote={saveCodexNote} busy={busy} />
   if (activeView === 'character') return <CharacterSheet progress={progress} revision={revision} />

@@ -2,7 +2,7 @@ import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState }
 import Editor from '@monaco-editor/react'
 import { Terminal } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
-import { ActivityRail, ContextPanel, GameScreen, RewardQueue } from './RpgViews'
+import { ActivityRail, ContextPanel, GameScreen, RewardQueue, TutorPracticeBar } from './RpgViews'
 import { syncEngine } from './cloud/syncEngine.js'
 import { pyrClientId } from './cloud/pyrClient.js'
 
@@ -73,6 +73,20 @@ function usePersistentState(key, initialValue) {
   }, [key, value])
 
   return [value, setValue]
+}
+
+const LAUNCH_IDLE_MS = 20 * 60 * 1000
+
+function launchWasAwayTooLong() {
+  try {
+    const lastSeen = Number(window.localStorage.getItem('questlab.lastSeenAt') || 0)
+    const hasLaunched = window.localStorage.getItem('questlab.hasLaunched') === '1'
+    return !hasLaunched || (lastSeen > 0 && Date.now() - lastSeen > LAUNCH_IDLE_MS)
+  } catch {
+    // A storage-blocked browser should still be usable; show the lightweight
+    // splash once for this mount rather than failing the IDE boot.
+    return true
+  }
 }
 
 const terminalPalette = (skin) => {
@@ -315,7 +329,9 @@ function AppV2() {
   const seenStateEventsRef = useRef(new Set())
   const campaignRefreshInFlightRef = useRef(null)
 
-  const [activeView, setActiveView] = usePersistentState('questlab.activeView', 'forge')
+  // Hub is the first-run/default destination. A previously selected route is
+  // retained so a reload returns the learner to the screen they were using.
+  const [activeView, setActiveView] = usePersistentState('questlab.activeView', 'hub')
   const [leftWidth, setLeftWidth] = usePersistentState('questlab.leftWidth', 220)
   const [rightWidth, setRightWidth] = usePersistentState('questlab.rightWidth', 410)
   const [terminalHeight, setTerminalHeight] = usePersistentState('questlab.terminalHeight', 245)
@@ -323,6 +339,10 @@ function AppV2() {
   const [terminalFontSize, setTerminalFontSize] = usePersistentState('questlab.terminalFontSize', 13)
   const [hudDensity, setHudDensity] = usePersistentState('questlab.hudDensity', 'full')
   const [animations, setAnimations] = usePersistentState('questlab.animations', true)
+  const [showAiTerminal, setShowAiTerminal] = usePersistentState('questlab.showAiTerminal', true)
+  const [themeChoice, setThemeChoice] = usePersistentState('questlab.themeChoice', '')
+  const [fontFamily, setFontFamily] = usePersistentState('questlab.fontFamily', 'inter')
+  const [showSplash, setShowSplash] = useState(() => launchWasAwayTooLong())
 
   const progress = campaign?.progress || {}
   const player = progress.player || {}
@@ -335,9 +355,11 @@ function AppV2() {
   const dungeon = campaign?.dungeon || { active: false, status: 'idle', editor_content: '' }
   const equipped = homestead.equipped || {}
   const campaignReady = Boolean(campaign && campaign.progress && typeof campaign.progress === 'object')
-  const theme = (equipped.theme || 'theme-ember-forge').replace('theme-', '')
+  const theme = (themeChoice || equipped.theme || 'theme-ember-forge').replace('theme-', '')
   const terminalSkin = equipped.terminal || 'terminal-charcoal'
-  const showEditor = activeView === 'forge' || activeView === 'tutor'
+  const showEditor = activeView === 'forge' || activeView === 'tutor' || activeView === 'practice'
+  const tutorSurface = activeView === 'tutor' || activeView === 'practice'
+  const aiVisible = showAiTerminal && !['codex', 'quests', 'homestead', 'settings'].includes(activeView)
   const runtimeBranch = runtime?.repo_git?.branch || 'checking branch…'
   const runtimeMismatch = Boolean(runtime?.expected_branch && runtimeBranch !== runtime.expected_branch)
   const runtimeStale = Boolean(runtime?.repo_git?.behind_upstream > 0)
@@ -689,6 +711,7 @@ function AppV2() {
       try {
         const next = await api('/api/campaign')
         applyCampaign(next)
+        setNotice((current) => /^(Campaign load failed|Campaign sync check failed)/.test(current || '') ? '' : current)
         return next
       } catch (error) {
         if (!silent || !campaignInitializedRef.current) setNotice(`Campaign load failed: ${error.message}`)
@@ -716,12 +739,27 @@ function AppV2() {
   const refreshFiles = async () => {
     try {
       const result = await api('/api/tree')
-      setFiles(result.items || [])
-      if (!activePath) {
-        const preferred = (result.items || []).find(
-          (item) => item.type === 'file' && item.path.endsWith('.py') && item.path !== 'tutor.py',
-        )
+      const nextFiles = result.items || []
+      setFiles(nextFiles)
+      // The tree also contains Quest Lab infrastructure. Never open an
+      // arbitrary backend __init__.py as the learner's campaign surface;
+      // prefer the active project's conventional file and otherwise leave
+      // the editor empty until the transferred project source arrives.
+      const projectFiles = nextFiles.filter((item) => {
+        if (item.type !== 'file' || !item.path.endsWith('.py') || item.path === 'tutor.py') return false
+        const normalized = item.path.replaceAll('\\\\', '/').toLowerCase()
+        return !normalized.startsWith('ide/') && !normalized.startsWith('tools/') && !normalized.startsWith('tests/') && !normalized.includes('/test_') && !normalized.includes('/tests/')
+      })
+      const activeProjectFile = projectFiles.some((item) => item.path === activePath)
+      if (!activeProjectFile) {
+        const preferredNames = ['blackjack.py', 'campaign.py', 'main.py']
+        const preferred = preferredNames.map((name) => projectFiles.find((item) => item.path.toLowerCase() === name)).find(Boolean) || projectFiles[0]
         if (preferred) await openFile(preferred.path, false)
+        else {
+          setActivePath('')
+          setCode('')
+          setDirty(false)
+        }
       }
     } catch (error) {
       setNotice(`File tree failed: ${error.message}`)
@@ -745,7 +783,11 @@ function AppV2() {
   }
 
   const publishPyrContext = async ({ terminalTail } = {}) => {
-    const activeFile = activeView === 'tutor' ? 'tutor.py' : activeView === 'dungeon' ? 'dungeon.py' : activePath || null
+    const activeFile = activeView === 'tutor' || activeView === 'practice'
+      ? 'tutor.py'
+      : activeView === 'dungeon'
+        ? 'dungeon.py'
+        : activePath || null
     const result = await api('/api/pyr/context', {
       method: 'POST',
       body: JSON.stringify({
@@ -942,6 +984,30 @@ function AppV2() {
 
   pyrContextPublisherRef.current = publishPyrContext
 
+  // Track real use rather than treating a hot reload as an away period. The
+  // splash is an interruption only on first launch or after twenty minutes
+  // away; it never unmounts the editor or either PTY.
+  useEffect(() => {
+    const touch = () => {
+      try {
+        window.localStorage.setItem('questlab.hasLaunched', '1')
+        window.localStorage.setItem('questlab.lastSeenAt', String(Date.now()))
+      } catch {
+        // Preferences are best-effort and must not block the Forge.
+      }
+    }
+    touch()
+    const onActivity = () => touch()
+    window.addEventListener('pointerdown', onActivity, { passive: true })
+    window.addEventListener('keydown', onActivity, { passive: true })
+    const timer = window.setInterval(touch, 60_000)
+    return () => {
+      window.removeEventListener('pointerdown', onActivity)
+      window.removeEventListener('keydown', onActivity)
+      window.clearInterval(timer)
+    }
+  }, [])
+
   useEffect(() => {
     let cancelled = false
     const boot = async () => {
@@ -958,9 +1024,9 @@ function AppV2() {
     }
   }, [])
 
-  // Tutor Notebook is a Campaign surface. It shares the real shell and
-  // controlled /api/tutor boundary; Practice remains a separate provider-only
-  // drill surface and never writes tutor.py.
+  // Tutor Notebook and Practice intentionally share one tutor.py IDE surface.
+  // Practice selectors sit above this editor and provider adjudication still
+  // records bounded learning evidence through the state service.
 
   // The DOM enhancement layer and any local AI client can request this
   // explicitly captured context without knowing React's editor/terminal refs.
@@ -1052,7 +1118,7 @@ function AppV2() {
   // follows an external write immediately; a dirty editor keeps its text and
   // surfaces the external version as an explicit reload/keep decision.
   useEffect(() => {
-    if (activeView !== 'tutor') return undefined
+    if (!['tutor', 'practice'].includes(activeView)) return undefined
     let cancelled = false
 
     const pollTutor = async () => {
@@ -1104,25 +1170,39 @@ function AppV2() {
 
   useEffect(() => {
     const onKey = (event) => {
-      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 's') {
+      const modifier = event.ctrlKey || event.metaKey
+      if (modifier && !event.shiftKey && event.key === 'Enter') {
+        // Monaco treats Ctrl/Cmd+Enter as a command only when the browser
+        // event is intercepted early. Prevent the newline/space insertion and
+        // run the currently visible source through the existing save gateway.
         event.preventDefault()
-        if (activeView === 'tutor') saveTutor()
+        event.stopPropagation()
+        if (tutorSurface) void runTutor()
+        else if (activeView === 'forge') void runCurrent()
+        return
+      }
+      if (modifier && event.key.toLowerCase() === 's') {
+        event.preventDefault()
+        event.stopPropagation()
+        if (activeView === 'tutor' || activeView === 'practice') saveTutor()
         if (activeView === 'forge') saveFile()
         if (activeView === 'dungeon') saveDungeon()
       }
       if (event.shiftKey && event.altKey && event.key.toLowerCase() === 'f') {
         event.preventDefault()
-        if (activeView === 'tutor') formatTutor()
+        event.stopPropagation()
+        if (activeView === 'tutor' || activeView === 'practice') formatTutor()
         if (activeView === 'forge') formatCurrent()
       }
-      if ((event.ctrlKey || event.metaKey) && event.key === '`') {
+      if (modifier && event.key === '`') {
         event.preventDefault()
+        event.stopPropagation()
         setActiveView('forge')
         setTimeout(() => shellTerminalRef.current?.focus(), 30)
       }
     }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
+    window.addEventListener('keydown', onKey, true)
+    return () => window.removeEventListener('keydown', onKey, true)
   })
 
   useEffect(() => {
@@ -1313,7 +1393,7 @@ function AppV2() {
       submission = bound.submission
     }
     const prompt = [
-      'Quest Lab Practice mode — provider teaching request.',
+      'Quest Lab Tutor / Practice mode — provider teaching request.',
       `Provider: ${provider}`,
       `Concept: ${concept}`,
       `Question type: ${questionType}`,
@@ -1324,7 +1404,9 @@ function AppV2() {
       submission ? `Evidence ID: ${submission.evidence_id}` : '',
       submission ? `Answer digest: ${submission.answer_digest}` : '',
       hasAnswer ? 'Give feedback on the submitted practice answer below.' : 'Generate one self-contained practice question now.',
-      hasAnswer ? 'If the answer is correct, incomplete or needs review, call POST /api/pyr/practice-verdict with the exact nonce, submission_id, answer_digest, verdict (correct, incorrect or reviewed), session_id, evidence_id and a concise reason. Never award XP, coins, HP, Resolve or Dungeon score.' : 'Practice is unlimited and separate from Campaign and Dungeon. Do not issue a Battle verdict, award rewards, change HP, or reveal future Dungeon questions.',
+      hasAnswer ? 'If the answer is correct, incomplete or needs review, call POST /api/pyr/practice-verdict with the exact nonce, submission_id, answer_digest, verdict (correct, incorrect or reviewed), session_id, evidence_id and a concise reason. Never award XP, coins, HP, Resolve or Dungeon score.' : 'Tutor / Practice is unlimited and separate from Campaign and Dungeon. Do not issue a Battle verdict, award rewards, change HP, or reveal future Dungeon questions. Keep all examples and learner notes in tutor.py or the requested workspace notes file.',
+      'Teach with one short explanation, then let the learner write the answer in tutor.py, then ask for a teach-back. Never reveal the answer, answer key or a project-specific missing snippet before the learner attempts it.',
+      'If the learner is blocked, show one tiny generic example with unrelated names and values, explain only the next concept boundary, and ask for a new attempt. Do not patch blackjack.py, campaign.py or another required project file for them.',
       hasAnswer ? ['Player practice answer:', '```text', answer.trim(), '```'].join('\n') : '',
       '',
       'Use only this bounded current context for personalization:',
@@ -1462,16 +1544,38 @@ function AppV2() {
     }
   }
 
-  const saveCodexNote = async (entryId, note) => {
+  const saveCodexNote = async (entryId, note, conceptId = entryId) => {
     try {
       setBusy(true)
-      const result = await api('/api/codex/note', {
+      const canonicalResult = await api('/api/codex/note', {
         method: 'POST',
         body: JSON.stringify({ entry_id: entryId, note }),
       })
+      // Keep the learner's durable Markdown notebook beside the project so it
+      // can travel through the bounded workspace-transfer channel. The
+      // canonical Codex event above remains the validated projection source.
+      const safeConcept = String(conceptId || entryId)
+        .trim()
+        .toLowerCase()
+        .replace(/[^a-z0-9._-]+/g, '-')
+        .replace(/^-+|-+$/g, '')
+        .slice(0, 120) || 'concept'
+      const existing = await api(`/api/notes/${encodeURIComponent(safeConcept)}`)
+      const prior = existing.note?.content || ''
+      const trimmed = note.trim()
+      const priorEntries = prior.split(/\n\s*\n/).map((entry) => entry.trim()).filter(Boolean)
+      const next = priorEntries.includes(trimmed)
+        ? prior
+        : prior
+          ? `${prior.replace(/\s+$/g, '')}\n\n${trimmed}`
+          : trimmed
+      const noteResult = await api(`/api/notes/${encodeURIComponent(safeConcept)}`, {
+        method: 'PUT',
+        body: JSON.stringify({ content: next }),
+      })
       await refreshCampaign({ silent: true })
-      setNotice(result.already_saved ? 'That note is already in the Codex.' : 'Codex note saved through the state gateway.')
-      return result
+      setNotice(canonicalResult.already_saved ? 'That note is already in the Codex; the workspace notebook is up to date.' : 'Codex note saved to the canonical record and workspace notebook.')
+      return { ...canonicalResult, workspace_note: noteResult.note }
     } catch (error) {
       setNotice(`Codex note failed: ${error.message}`)
       throw error
@@ -1485,6 +1589,16 @@ function AppV2() {
     setRightWidth(410)
     setTerminalHeight(245)
     setNotice('Forge panel layout reset.')
+  }
+
+  const dismissSplash = () => {
+    setShowSplash(false)
+    try {
+      window.localStorage.setItem('questlab.hasLaunched', '1')
+      window.localStorage.setItem('questlab.lastSeenAt', String(Date.now()))
+    } catch {
+      // The overlay is still dismissible when storage is unavailable.
+    }
   }
 
   const accountAction = async (action, successMessage) => {
@@ -1531,8 +1645,8 @@ function AppV2() {
     gridTemplateColumns: `48px ${leftWidth}px 5px minmax(420px, 1fr) 5px ${rightWidth}px`,
     gridTemplateRows: `minmax(220px, 1fr) 5px ${terminalHeight}px`,
   }
-  const preferences = { editorFontSize, terminalFontSize, hudDensity, animations }
-  const setters = { setEditorFontSize, setTerminalFontSize, setHudDensity, setAnimations }
+  const preferences = { editorFontSize, terminalFontSize, hudDensity, animations, showAiTerminal, themeChoice, fontFamily }
+  const setters = { setEditorFontSize, setTerminalFontSize, setHudDensity, setAnimations, setShowAiTerminal, setThemeChoice, setFontFamily }
   const xpPercent = campaignReady ? clamp(((player.xp ?? 0) / Math.max(1, player.xp_next ?? 100)) * 100, 0, 100) : 0
   const commands = runtime?.commands || {}
 
@@ -1540,11 +1654,21 @@ function AppV2() {
     <div
       className={`app-shell forge-v2 ${hudDensity === 'compact' ? 'hud-compact' : ''} ${animations ? '' : 'no-animations'}`}
       data-theme={theme}
+      data-font={fontFamily}
       data-cursor={equipped.cursor || 'cursor-basic'}
       data-hud={equipped.hud || 'hud-forge'}
       data-terminal={terminalSkin}
       data-campaign-revision={campaign?.revision ?? ''}
     >
+      {showSplash && (
+        <div className="launch-splash" role="dialog" aria-modal="true" aria-label="Welcome to Python Quest Lab">
+          <div className="launch-splash-mark" aria-hidden="true"><StatIcon name="flame" /></div>
+          <span className="screen-kicker">PYTHON QUEST LAB</span>
+          <h2>Return to the Forge</h2>
+          <p>Your campaign, notes and checkpoint are waiting. The shell and AI sessions stay connected while this welcome screen is open.</p>
+          <button className="primary" type="button" onClick={dismissSplash}>Enter Forge</button>
+        </div>
+      )}
       <RewardQueue items={rewardQueue} />
       <header className="topbar">
         <div className="brand-lockup">
@@ -1591,22 +1715,24 @@ function AppV2() {
             openFile={openFile}
             newFile={newFile}
             setActiveView={setActiveView}
+            submitBattle={submitBattle}
+            busy={busy}
           />
         </aside>
 
         <div className="resize-handle vertical left-resizer" onPointerDown={(event) => startResize('left', event)} />
 
-        <section className={`editor-panel panel ${showEditor ? '' : 'surface-hidden'} ${activeView === 'tutor' ? 'tutor-editor-panel' : ''}`}>
+        <section className={`editor-panel panel ${showEditor ? '' : 'surface-hidden'} ${tutorSurface ? 'tutor-editor-panel' : ''}`}>
           <div className="editor-toolbar">
             <div className="active-file">
-              {activeView === 'tutor' ? (
+              {tutorSurface ? (
                 <><span className="safe-badge">PYR WRITABLE</span> tutor.py{tutorDirty ? ' •' : ''}</>
               ) : (
                 <>{activePath || 'No file selected'}{dirty ? ' •' : ''}</>
               )}
             </div>
             <div className="toolbar-actions">
-              {activeView === 'tutor' ? (
+              {tutorSurface ? (
                 <>
                   <button onClick={saveTutor} disabled={busy}>Save Tutor</button>
                   <button onClick={formatTutor} disabled={busy}>Pretty</button>
@@ -1621,12 +1747,15 @@ function AppV2() {
               )}
             </div>
           </div>
-          {activeView === 'tutor' && (
+          {tutorSurface && (
             <div className="tutor-boundary-banner">
-              <strong>Collaborative notebook:</strong> PYR may write examples here. Required project source remains yours.
+              <strong>Practice / Tutor workspace:</strong> choose a concept and question lens, then use tutor.py for your explanation and examples. Required project source remains yours.
             </div>
           )}
-          {activeView === 'tutor' && tutorExternalChange && (
+          {tutorSurface && (
+            <TutorPracticeBar progress={progress} practiceProjection={campaign?.practice_projection} onPracticePrompt={requestPracticePrompt} busy={busy} />
+          )}
+          {tutorSurface && tutorExternalChange && (
             <div className="tutor-conflict-banner" role="alert">
               <strong>External tutor.py change detected.</strong>
               <span>Your unsaved edits are preserved.</span>
@@ -1636,9 +1765,9 @@ function AppV2() {
           )}
           <div className="editor-wrap">
             <Editor
-              path={activeView === 'tutor' ? 'tutor.py' : (activePath || 'untitled.txt')}
-              language={activeView === 'tutor' ? 'python' : languageFor(activePath)}
-              value={activeView === 'tutor' ? tutorCode : code}
+              path={tutorSurface ? 'tutor.py' : (activePath || 'untitled.txt')}
+              language={tutorSurface ? 'python' : languageFor(activePath)}
+              value={tutorSurface ? tutorCode : code}
               onMount={(editor) => {
                 editorSelectionSubscriptionRef.current?.dispose()
                 const updateSelection = () => {
@@ -1650,7 +1779,7 @@ function AppV2() {
                 editorSelectionSubscriptionRef.current = editor.onDidChangeCursorSelection(updateSelection)
               }}
               onChange={(value) => {
-                if (activeView === 'tutor') {
+                if (tutorSurface) {
                   setTutorCode(value ?? '')
                   setTutorDirty(true)
                 } else {
@@ -1677,7 +1806,7 @@ function AppV2() {
 
         <section className={`terminal-panel panel ${showEditor ? '' : 'surface-hidden'}`}>
           <div className="panel-title terminal-title-v2">
-            <span>{activeView === 'tutor' ? 'TUTOR OUTPUT / TERMINAL' : 'TERMINAL'}</span>
+            <span>{tutorSurface ? 'TUTOR OUTPUT / TERMINAL' : 'TERMINAL'}</span>
             <div className="terminal-title-actions">
               <span className={`connection-pill ${shellState}`}>{shellState}</span>
               <button onClick={() => shellTerminalRef.current?.reconnect()}>↻</button>
@@ -1737,6 +1866,7 @@ function AppV2() {
               onSignOut={signOut}
               onDeviceLabelSave={saveDeviceLabel}
               onResolveConflict={resolveCloudConflict}
+              onNavigate={setActiveView}
               campaignReady={campaignReady}
             />
           </section>
@@ -1744,7 +1874,7 @@ function AppV2() {
 
         <div className="resize-handle vertical right-resizer" onPointerDown={(event) => startResize('right', event)} />
 
-        <aside className="ai-panel panel">
+        <aside className={`ai-panel panel ${aiVisible ? '' : 'surface-hidden'}`} aria-hidden={!aiVisible}>
           <div className="ai-toolbar">
             <div>
               <span className="panel-title-inline">PYR / AI</span>
@@ -1787,12 +1917,10 @@ function AppV2() {
         <span>
           {busy
             ? 'working…'
-            : activeView === 'tutor'
-              ? 'tutor.py · Ctrl+S save · Shift+Alt+F format'
+            : tutorSurface
+              ? 'tutor.py · Ctrl+S save · Ctrl+Enter run · Shift+Alt+F format'
               : activeView === 'dungeon'
                 ? `dungeon.py · ${dungeonDirty ? 'checkpoint pending' : 'checkpoint saved'}`
-                : activeView === 'practice'
-                  ? 'practice mode · no campaign or dungeon state changes'
               : activePath
                 ? `${languageFor(activePath)} · Ctrl+S save · Shift+Alt+F format`
                 : 'select a file'}

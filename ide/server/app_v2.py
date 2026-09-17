@@ -7,12 +7,14 @@ import importlib.util
 import json
 import os
 import pty
+import re
 import secrets
 import shutil
 import signal
 import struct
 import subprocess
 import sys
+import tempfile
 import termios
 import threading
 import time
@@ -107,6 +109,10 @@ def local_state_custody_report() -> dict[str, object]:
 PROGRESS_PATH = configured_progress_path()
 TUTOR_PATH = WORKSPACE / "tutor.py"
 DUNGEON_PATH = WORKSPACE / "dungeon.py"
+NOTES_DIR_NAME = "notes"
+MAX_WORKSPACE_NOTE_BYTES = 20_000
+MAX_WORKSPACE_NOTES = 100
+NOTE_IDENTIFIER_PATTERN = r"[A-Za-z0-9][A-Za-z0-9._-]{0,119}"
 MAX_TEXT_BYTES = 2_000_000
 IGNORED_DIRS = {
     ".git",
@@ -136,6 +142,7 @@ current project.
 ALLOWED_ORIGINS = allowed_origins()
 PROGRESS_LOCK = threading.RLock()
 STATE_SERVICE = LocalStateService(lambda: PROGRESS_PATH, PROGRESS_LOCK)
+WORKSPACE_NOTES_LOCK = threading.RLock()
 PYR_CONTEXT_LOCK = threading.RLock()
 PYR_CONTEXT_INPUT: dict[str, str | None] = {
     "active_path": None,
@@ -202,6 +209,20 @@ class CodexNoteRequest(BaseModel):
 
     entry_id: str = Field(min_length=1, max_length=MAX_IDENTIFIER_LENGTH)
     note: str = Field(min_length=1, max_length=MAX_CODEX_NOTE_BYTES)
+
+
+class WorkspaceNoteWrite(BaseModel):
+    """A bounded Markdown note stored in the workspace notes directory.
+
+    Workspace notes are deliberately separate from ``progress.json``. They
+    are user-authored learning artifacts that can be transferred with the
+    project, while progression and rewards continue to flow through the
+    canonical state gateway.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    content: str = Field(default="", max_length=MAX_WORKSPACE_NOTE_BYTES)
 
 
 class PyrContextRequest(BaseModel):
@@ -350,6 +371,150 @@ def legacy_progress_path() -> Path:
     return (WORKSPACE / "progress.json").resolve()
 
 
+def workspace_notes_root(*, create: bool = False) -> Path:
+    """Resolve the one controlled workspace directory for Codex Markdown.
+
+    The directory is intentionally derived from ``WORKSPACE`` at request time
+    because tests and embedded launchers may swap the configured workspace.
+    A symlinked directory is rejected so a note cannot escape the workspace.
+    """
+
+    workspace = WORKSPACE.resolve()
+    raw_root = WORKSPACE / NOTES_DIR_NAME
+    if raw_root.exists() and raw_root.is_symlink():
+        raise HTTPException(status_code=409, detail="The workspace notes directory may not be a symlink")
+    root = raw_root.resolve()
+    try:
+        root.relative_to(workspace)
+    except ValueError as exc:
+        raise HTTPException(status_code=403, detail="The workspace notes directory escaped the quest workspace") from exc
+    if root.exists() and not root.is_dir():
+        raise HTTPException(status_code=409, detail="The workspace notes path is not a directory")
+    if create:
+        try:
+            root.mkdir(parents=True, exist_ok=True)
+        except OSError as exc:
+            raise HTTPException(status_code=500, detail="The workspace notes directory could not be created") from exc
+    return root
+
+
+def workspace_note_identifier(value: str) -> str:
+    """Normalize one flat, safe concept slug used as ``notes/<slug>.md``."""
+
+    if not isinstance(value, str):
+        raise HTTPException(status_code=422, detail="concept_id must be text")
+    candidate = value.strip().casefold()
+    if not candidate or len(candidate) > MAX_IDENTIFIER_LENGTH or not re.fullmatch(NOTE_IDENTIFIER_PATTERN, candidate):
+        raise HTTPException(status_code=422, detail="concept_id must be a flat safe identifier")
+    return candidate
+
+
+def workspace_note_path(concept_id: str, *, create: bool = False) -> tuple[str, Path]:
+    """Return a safe relative path and resolved path for one concept note."""
+
+    identifier = workspace_note_identifier(concept_id)
+    root = workspace_notes_root(create=create)
+    raw_target = root / f"{identifier}.md"
+    if raw_target.exists() and raw_target.is_symlink():
+        raise HTTPException(status_code=409, detail="A workspace note may not be a symlink")
+    target = raw_target.resolve()
+    try:
+        target.relative_to(root)
+    except ValueError as exc:
+        raise HTTPException(status_code=403, detail="The workspace note escaped the notes directory") from exc
+    return f"{NOTES_DIR_NAME}/{identifier}.md", target
+
+
+def workspace_note_revision(content: str) -> str:
+    return hashlib.sha256(content.encode("utf-8")).hexdigest()
+
+
+def normalize_workspace_note(content: str) -> str:
+    if not isinstance(content, str) or "\x00" in content:
+        raise HTTPException(status_code=422, detail="Workspace notes must be valid text without NUL characters")
+    normalized = content.replace("\r\n", "\n").replace("\r", "\n")
+    if any(ord(character) < 32 and character not in {"\n", "\t"} for character in normalized):
+        raise HTTPException(status_code=422, detail="Workspace notes contain unsupported control characters")
+    try:
+        encoded = normalized.encode("utf-8")
+    except UnicodeEncodeError as exc:
+        raise HTTPException(status_code=422, detail="Workspace note is not valid UTF-8") from exc
+    if len(encoded) > MAX_WORKSPACE_NOTE_BYTES:
+        raise HTTPException(status_code=413, detail="Workspace note is too large")
+    return normalized
+
+
+def read_workspace_note(concept_id: str) -> dict[str, object]:
+    relative, target = workspace_note_path(concept_id)
+    identifier = workspace_note_identifier(concept_id)
+    if not target.exists():
+        return {
+            "concept_id": identifier,
+            "path": relative,
+            "content": "",
+            "bytes": 0,
+            "revision": workspace_note_revision(""),
+            "exists": False,
+        }
+    if not target.is_file():
+        raise HTTPException(status_code=409, detail="Workspace note is not a regular file")
+    try:
+        if target.stat().st_size > MAX_WORKSPACE_NOTE_BYTES:
+            raise HTTPException(status_code=413, detail="Workspace note is too large")
+        content = target.read_text(encoding="utf-8")
+    except UnicodeDecodeError as exc:
+        raise HTTPException(status_code=415, detail="Workspace notes must be UTF-8 Markdown") from exc
+    except OSError as exc:
+        raise HTTPException(status_code=500, detail="Workspace note could not be read") from exc
+    content = normalize_workspace_note(content)
+    return {
+        "concept_id": identifier,
+        "path": relative,
+        "content": content,
+        "bytes": len(content.encode("utf-8")),
+        "revision": workspace_note_revision(content),
+        "exists": True,
+    }
+
+
+def write_workspace_note(concept_id: str, content: str) -> dict[str, object]:
+    normalized = normalize_workspace_note(content)
+    relative, target = workspace_note_path(concept_id, create=True)
+    identifier = workspace_note_identifier(concept_id)
+    try:
+        # Write beside the destination and replace atomically so a browser
+        # refresh never sees a partially-written Markdown note. ``delete`` is
+        # intentionally false because Windows cannot replace an open handle.
+        with tempfile.NamedTemporaryFile(
+            mode="w",
+            encoding="utf-8",
+            newline="\n",
+            dir=str(target.parent),
+            prefix=f".{identifier}.",
+            suffix=".tmp",
+            delete=False,
+        ) as handle:
+            temporary = Path(handle.name)
+            handle.write(normalized)
+            handle.flush()
+            os.fsync(handle.fileno())
+        temporary.replace(target)
+    except OSError as exc:
+        try:
+            temporary.unlink(missing_ok=True)
+        except (UnboundLocalError, OSError):
+            pass
+        raise HTTPException(status_code=500, detail="Workspace note could not be written") from exc
+    return {
+        "concept_id": identifier,
+        "path": relative,
+        "content": normalized,
+        "bytes": len(normalized.encode("utf-8")),
+        "revision": workspace_note_revision(normalized),
+        "exists": True,
+    }
+
+
 def state_path_kind(target: Path) -> str | None:
     canonical = PROGRESS_PATH.resolve()
     if target.resolve() == canonical:
@@ -360,6 +525,12 @@ def state_path_kind(target: Path) -> str | None:
         return "dungeon_projection"
     if target.resolve() == (WORKSPACE / TUTOR_PATH.name).resolve():
         return "tutor_legacy"
+    try:
+        target.resolve().relative_to(workspace_notes_root())
+    except (HTTPException, ValueError):
+        pass
+    else:
+        return "workspace_note"
     return None
 
 
@@ -382,6 +553,11 @@ def reject_state_file_access(target: Path, *, allow_dungeon_projection: bool = F
             raise HTTPException(
                 status_code=403,
                 detail="tutor.py is managed by the Campaign Tutor Notebook; use its dedicated endpoint",
+            )
+        if kind == "workspace_note":
+            raise HTTPException(
+                status_code=403,
+                detail="Codex notes are managed by the dedicated workspace notes endpoint",
             )
         raise HTTPException(status_code=403, detail="progress.json is managed by the local state service")
 
@@ -528,7 +704,7 @@ def build_tree() -> list[dict]:
             return
 
         for child in children:
-            if child.name in IGNORED_DIRS or child.name in {DUNGEON_PATH.name, f"{DUNGEON_PATH.name}.tmp", TUTOR_PATH.name} or child.name.startswith(".DS_Store"):
+            if child.name in IGNORED_DIRS or child.name in {DUNGEON_PATH.name, f"{DUNGEON_PATH.name}.tmp", TUTOR_PATH.name, NOTES_DIR_NAME} or child.name.startswith(".DS_Store"):
                 continue
             try:
                 relative = child.relative_to(WORKSPACE).as_posix()
@@ -758,14 +934,22 @@ def finish_dungeon_run(payload: DungeonRunRequest):
 
 @app.get("/api/practice")
 def practice():
-    """Return independent Practice history; Campaign/Dungeon projections stay separate."""
+    """Return the answer-free Tutor/Practice projection and selectors."""
 
     try:
         progress, metadata = STATE_SERVICE.snapshot_with_metadata()
         projection = STATE_SERVICE.practice_projection(progress)
     except StateCommandError as exc:
         raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
-    return {"ok": True, "revision": metadata["revision"], "practice": projection}
+    return {
+        "ok": True,
+        "revision": metadata["revision"],
+        "practice": projection,
+        "tutor": {
+            "file": "tutor.py",
+            "notes_directory": projection["notes_directory"],
+        },
+    }
 
 
 @app.post("/api/practice/session")
@@ -857,7 +1041,16 @@ def codex():
         projection = STATE_SERVICE.codex_projection(progress)
     except StateCommandError as exc:
         raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
-    return {"ok": True, "revision": metadata["revision"], "codex": projection}
+    return {
+        "ok": True,
+        "revision": metadata["revision"],
+        "codex": projection,
+        "notes": {
+            "directory": NOTES_DIR_NAME,
+            "extension": ".md",
+            "max_bytes": MAX_WORKSPACE_NOTE_BYTES,
+        },
+    }
 
 
 PYR_VERDICT_TTL_SECONDS = 300
@@ -1850,7 +2043,17 @@ def apply_state_command(payload: StateApplyRequest):
 def read_tutor():
     target = ensure_tutor_file()
     content = target.read_text(encoding="utf-8")
-    return {"path": "tutor.py", "content": content, "revision": tutor_revision(content)}
+    return {
+        "path": "tutor.py",
+        "content": content,
+        "revision": tutor_revision(content),
+        "practice_options": LocalStateService.practice_options(),
+        "notes": {
+            "directory": NOTES_DIR_NAME,
+            "extension": ".md",
+            "max_bytes": MAX_WORKSPACE_NOTE_BYTES,
+        },
+    }
 
 
 @app.put("/api/tutor")
@@ -1860,7 +2063,18 @@ def write_tutor(payload: TutorWrite):
         raise HTTPException(status_code=413, detail="Tutor notebook is too large")
     target = ensure_tutor_file()
     target.write_text(payload.content, encoding="utf-8")
-    return {"ok": True, "path": "tutor.py", "bytes": len(encoded), "revision": tutor_revision(payload.content)}
+    return {
+        "ok": True,
+        "path": "tutor.py",
+        "bytes": len(encoded),
+        "revision": tutor_revision(payload.content),
+        "practice_options": LocalStateService.practice_options(),
+        "notes": {
+            "directory": NOTES_DIR_NAME,
+            "extension": ".md",
+            "max_bytes": MAX_WORKSPACE_NOTE_BYTES,
+        },
+    }
 
 
 def _format_file(target: Path, content: str, *, allow_tutor: bool = False) -> dict:
@@ -1921,6 +2135,98 @@ def format_tutor(payload: TutorWrite):
 @app.post("/api/format")
 def format_file(payload: FormatRequest):
     return _format_file(safe_path(payload.path), payload.content)
+
+
+@app.get("/api/notes")
+def list_workspace_notes():
+    """List bounded per-concept Markdown artifacts without reading progress.
+
+    Notes are intentionally not part of the generic file API. This endpoint
+    exposes only flat ``notes/<concept_id>.md`` files so a malformed or
+    legacy file cannot become a second state authority.
+    """
+
+    with WORKSPACE_NOTES_LOCK:
+        root = workspace_notes_root()
+        notes: list[dict[str, object]] = []
+        if root.exists():
+            try:
+                children = sorted(root.iterdir(), key=lambda item: item.name.casefold())
+            except OSError as exc:
+                raise HTTPException(status_code=500, detail="Workspace notes could not be listed") from exc
+            for child in children:
+                if len(notes) >= MAX_WORKSPACE_NOTES:
+                    break
+                if child.suffix.casefold() != ".md" or child.is_symlink() or not child.is_file():
+                    continue
+                try:
+                    identifier = workspace_note_identifier(child.stem)
+                    relative, resolved = workspace_note_path(identifier)
+                    if resolved != child.resolve():
+                        continue
+                    if child.stat().st_size > MAX_WORKSPACE_NOTE_BYTES:
+                        notes.append(
+                            {
+                                "concept_id": identifier,
+                                "path": relative,
+                                "bytes": child.stat().st_size,
+                                "revision": None,
+                                "exists": True,
+                                "too_large": True,
+                            }
+                        )
+                        continue
+                    content = child.read_text(encoding="utf-8")
+                    content = normalize_workspace_note(content)
+                except (HTTPException, UnicodeDecodeError, OSError):
+                    # Invalid legacy notes are not promoted into the active
+                    # note catalogue. The dedicated GET gives a precise error
+                    # once a user explicitly selects a valid identifier.
+                    continue
+                notes.append(
+                    {
+                        "concept_id": identifier,
+                        "path": relative,
+                        "bytes": len(content.encode("utf-8")),
+                        "revision": workspace_note_revision(content),
+                        "exists": True,
+                        "too_large": False,
+                    }
+                )
+        return {
+            "ok": True,
+            "directory": NOTES_DIR_NAME,
+            "extension": ".md",
+            "max_bytes": MAX_WORKSPACE_NOTE_BYTES,
+            "notes": notes,
+        }
+
+
+@app.get("/api/notes/{concept_id}")
+def get_workspace_note(concept_id: str):
+    """Read one concept note; an absent note is an empty editable document."""
+
+    with WORKSPACE_NOTES_LOCK:
+        return {
+            "ok": True,
+            "directory": NOTES_DIR_NAME,
+            "max_bytes": MAX_WORKSPACE_NOTE_BYTES,
+            "note": read_workspace_note(concept_id),
+        }
+
+
+@app.put("/api/notes/{concept_id}")
+def put_workspace_note(concept_id: str, payload: WorkspaceNoteWrite):
+    """Atomically save one concept note without mutating canonical state."""
+
+    with WORKSPACE_NOTES_LOCK:
+        note = write_workspace_note(concept_id, payload.content)
+    return {
+        "ok": True,
+        "directory": NOTES_DIR_NAME,
+        "max_bytes": MAX_WORKSPACE_NOTE_BYTES,
+        "note": note,
+    }
 
 
 @app.post("/api/homestead/purchase")

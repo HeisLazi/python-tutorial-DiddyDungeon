@@ -243,28 +243,6 @@ function renderQuestBattleShell() {
   `
   hero.insertAdjacentElement('afterend', card)
 
-  if (!document.querySelector('[data-raid-gate]')) {
-    const raid = document.createElement('section')
-    raid.className = 'game-card raid-gate-card'
-    raid.dataset.raidGate = 'true'
-    raid.innerHTML = `
-      <div class="raid-gate-icon">${icon('raid')}</div>
-      <div>
-        <span class="screen-kicker">FUTURE PARTY CONTENT</span>
-        <h3>Weekly Raids</h3>
-        <p>Shared mini software projects where predefined objectives deal verified Impact to one party boss.</p>
-        <div class="raid-example">
-          <span>Core system <b>25</b></span>
-          <span>Validation <b>20</b></span>
-          <span>Tests / debugging <b>20</b></span>
-          <span>Integration <b>20</b></span>
-          <span>Party review <b>15</b></span>
-        </div>
-      </div>
-      <div class="raid-locked">MULTIPLAYER LAYER NOT ENABLED</div>
-    `
-    card.insertAdjacentElement('afterend', raid)
-  }
 }
 
 function renderTrinketVault() {
@@ -295,7 +273,10 @@ function renderTrinketVault() {
 function render() {
   renderCharacterGear()
   renderQuestBattleShell()
-  renderTrinketVault()
+  // Future loot belongs in Codex, not the Homestead shop. Remove the legacy
+  // injected card as well so a hot-reloaded session cannot leave a stale
+  // second presentation behind.
+  document.querySelectorAll('[data-trinket-vault]').forEach((node) => node.remove())
 }
 
 let renderFrame = 0

@@ -34,6 +34,25 @@ MAX_CODEX_NOTES_PER_ENTRY = 20
 MAX_PRACTICE_SESSIONS = 50
 MAX_PRACTICE_ATTEMPTS_PER_SESSION = 20
 PRACTICE_QUESTION_TYPES = frozenset({"true_false", "multiple_choice", "short_explanation", "code_trace", "bug_hunt"})
+# Keep selector order and labels server-owned so Tutor and Practice cannot
+# drift into a second, answer-bearing question catalogue in the browser.
+PRACTICE_QUESTION_TYPE_ORDER: tuple[str, ...] = (
+    "true_false",
+    "multiple_choice",
+    "short_explanation",
+    "code_trace",
+    "bug_hunt",
+)
+PRACTICE_QUESTION_TYPE_LABELS: dict[str, str] = {
+    "true_false": "True or false",
+    "multiple_choice": "Multiple choice",
+    "short_explanation": "Short explanation",
+    "code_trace": "Code trace",
+    "bug_hunt": "Bug hunt",
+}
+PRACTICE_DIFFICULTY_MIN = 1
+PRACTICE_DIFFICULTY_MAX = 5
+CODEX_NOTES_DIRECTORY = "notes"
 MAX_DUNGEON_LEADERBOARD = 50
 MAX_SYNC_LIST_ITEMS = 100
 MAX_SYNC_TEXT_LENGTH = 120
@@ -2386,6 +2405,10 @@ class LocalStateService:
                 "mob_name": mob_name[:MAX_IDENTIFIER_LENGTH],
                 "concept": str(entry.get("concept") or "Unknown concept")[:MAX_REASON_LENGTH],
                 "page_id": page_id,
+                # Notes are workspace artifacts, not player-state fields. The
+                # path is a safe, deterministic link for the Codex UI; note
+                # contents are fetched through the dedicated notes endpoint.
+                "notes_path": f"{CODEX_NOTES_DIRECTORY}/{page_id}.md" if page_id else None,
                 "status": str(entry.get("status") or "observed"),
                 "attempts": max(0, int(entry.get("attempts", 0) or 0)),
                 "question_types": [item for item in entry.get("question_types", []) if isinstance(item, str)][-20:],
@@ -2427,6 +2450,7 @@ class LocalStateService:
                 "definition": str(page["definition"]),
                 "examples": list(page.get("examples", ())),
                 "question_types": list(page.get("question_types", ())),
+                "notes_path": f"{CODEX_NOTES_DIRECTORY}/{page['id']}.md",
                 "encounter_ids": page_entry_ids[str(page["id"])],
             }
             for page in CODEX_CONCEPT_PAGES
@@ -2721,6 +2745,37 @@ class LocalStateService:
         )
 
     @classmethod
+    def practice_options(cls) -> dict[str, Any]:
+        """Return safe Tutor/Practice selectors without question content.
+
+        The unified Tutor surface uses the same selectors as Practice. This
+        catalogue contains only generic concept labels and question-type
+        labels; prompts, answer keys, and provider challenge material are
+        intentionally absent.
+        """
+
+        return {
+            "concepts": [
+                {"id": str(page["id"]), "title": str(page["title"])}
+                for page in CODEX_CONCEPT_PAGES
+            ],
+            "question_types": [
+                {
+                    "id": question_type,
+                    "label": PRACTICE_QUESTION_TYPE_LABELS[question_type],
+                }
+                for question_type in PRACTICE_QUESTION_TYPE_ORDER
+                if question_type in PRACTICE_QUESTION_TYPES
+            ],
+            "difficulty": {
+                "min": PRACTICE_DIFFICULTY_MIN,
+                "max": PRACTICE_DIFFICULTY_MAX,
+            },
+            "notes_directory": CODEX_NOTES_DIRECTORY,
+            "tutor_file": "tutor.py",
+        }
+
+    @classmethod
     def practice_projection(cls, progress: Mapping[str, Any]) -> dict[str, Any]:
         """Return the bounded, answer-free Practice history projection.
 
@@ -2756,7 +2811,10 @@ class LocalStateService:
                 }
                 safe_history.append(safe_attempt)
             try:
-                difficulty = max(1, min(5, int(item.get("difficulty", 1) or 1)))
+                difficulty = max(
+                    PRACTICE_DIFFICULTY_MIN,
+                    min(PRACTICE_DIFFICULTY_MAX, int(item.get("difficulty", PRACTICE_DIFFICULTY_MIN) or PRACTICE_DIFFICULTY_MIN)),
+                )
                 attempts = max(0, int(item.get("attempts", 0) or 0))
                 correct = max(0, int(item.get("correct", 0) or 0))
             except (TypeError, ValueError) as exc:
@@ -2775,7 +2833,22 @@ class LocalStateService:
                     "history": safe_history,
                 }
             )
-        return {"sessions": sessions, "count": len(sessions)}
+        # Keep selectors next to history so a single revision-aware campaign
+        # fetch can hydrate both Tutor and Practice without another catalogue
+        # invented by React.
+        options = cls.practice_options()
+        return {
+            "sessions": sessions,
+            "count": len(sessions),
+            "selectors": options,
+            # Top-level aliases make the small /api/practice response easy to
+            # consume while retaining the nested selector contract.
+            "concepts": options["concepts"],
+            "question_types": options["question_types"],
+            "difficulty": options["difficulty"],
+            "notes_directory": options["notes_directory"],
+            "tutor_file": options["tutor_file"],
+        }
 
     def _practice_session_started(self, payload: Mapping[str, Any], progress: dict[str, Any]) -> Mutation:
         """Open one independent Practice drill without touching game state."""
@@ -2785,7 +2858,12 @@ class LocalStateService:
         question_type = self._text(data["question_type"], "question_type", max_length=MAX_IDENTIFIER_LENGTH, identifier=True)
         if question_type not in PRACTICE_QUESTION_TYPES:
             raise StateCommandError("Unsupported Practice question type")
-        difficulty = self._integer(data["difficulty"], "difficulty", minimum=1, maximum=5)
+        difficulty = self._integer(
+            data["difficulty"],
+            "difficulty",
+            minimum=PRACTICE_DIFFICULTY_MIN,
+            maximum=PRACTICE_DIFFICULTY_MAX,
+        )
         sessions = progress.setdefault("practice_sessions", [])
         if not isinstance(sessions, list):
             raise StateCommandError("Existing Practice history is invalid", status_code=500)

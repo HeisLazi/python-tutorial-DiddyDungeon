@@ -11,6 +11,7 @@ import {
 import { pyrClientId } from './cloud/pyrClient.js'
 
 const ICONS = {
+  'Quest Hub': '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 10 9-7 9 7M5 9v11h14V9M9 20v-6h6v6"/></svg>',
   Forge: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 15h16M7 15V9l5-4 5 4v6M9 19h6"/></svg>',
   'Tutor Notebook': '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3v5l-4 8a3 3 0 0 0 2.7 4h8.6A3 3 0 0 0 19 16l-4-8V3M8 11h8M9 16h6"/></svg>',
   'Quest Journal': '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 4h12v16H6zM9 8h6M9 12h6M9 16h4"/></svg>',
@@ -25,6 +26,8 @@ const ICONS = {
   Crown: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m4 7 4 4 4-7 4 7 4-4-2 11H6zM6 21h12"/></svg>',
   Trophy: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 4h8v4a4 4 0 0 1-8 0zM8 6H4v2a4 4 0 0 0 4 4M16 6h4v2a4 4 0 0 1-4 4M12 12v5M8 21h8M9 17h6"/></svg>',
   Monitor: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 21h8M12 16v5"/></svg>',
+  'Infinite Dungeon': '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 20V8l7-5 7 5v12M8 20v-5h8v5M9 9h6M12 9v3"/></svg>',
+  Practice: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h14v16H5zM8 8h8M8 12h8M8 16h5"/></svg>',
 }
 
 const icon = (name, className = 'quest-icon') => `<span class="${className}">${ICONS[name] || ICONS.Forge}</span>`
@@ -450,34 +453,41 @@ function enhance() {
 }
 
 window.addEventListener('keydown', (event) => {
+  if (event.defaultPrevented || event.__questlabHandled) return
   const modifier = event.ctrlKey || event.metaKey
   if (modifier && !event.shiftKey && event.key.toLowerCase() === 's') {
     event.preventDefault()
+    event.__questlabHandled = true
     clickSave()
     return
   }
   if (modifier && !event.shiftKey && event.key === 'Enter') {
     event.preventDefault()
+    event.__questlabHandled = true
     clickRun()
     return
   }
   if (modifier && event.shiftKey && event.key === 'Enter') {
     event.preventDefault()
+    event.__questlabHandled = true
     submitRunToAI()
     return
   }
   if (event.shiftKey && event.altKey && event.key.toLowerCase() === 'f') {
     event.preventDefault()
+    event.__questlabHandled = true
     clickPretty()
     return
   }
   if (modifier && !event.shiftKey && event.key === '`') {
     event.preventDefault()
+    event.__questlabHandled = true
     focusTerminal('.terminal-panel')
     return
   }
   if (modifier && event.shiftKey && event.key === '`') {
     event.preventDefault()
+    event.__questlabHandled = true
     focusTerminal('.ai-panel')
   }
 })

@@ -2127,3 +2127,63 @@ The first slice is intentionally disk/CLI based. A pull should be performed
 after saving or closing an open Monaco buffer: the helper can protect dirty
 on-disk Git files, but it cannot observe unsaved browser text and therefore
 does not attempt a live editor hot-reload.
+
+## Roadmap UI slice — 2026-09-17
+
+This slice turns the existing Forge shell into a coherent local learning
+surface without changing the canonical state authority or starting hosted
+player-state transport. The default landing surface is now a Quest Hub, with
+daily contracts, weekly goals, chapter progress and encounter silhouettes.
+Locked chapters expose only their name/category and a generic locked summary;
+future questions and answers remain hidden. A lightweight launch splash is
+shown on first launch and after twenty minutes away, while the last view is
+otherwise restored. The existing shell and AI WebSocket/PTY components remain
+mounted while the splash or a non-editor view is visible.
+
+Tutor Notebook and Practice now share one `tutor.py` editor surface. The
+concept, question-lens and tier selectors are populated from the state-service
+practice projection, and Ctrl+S/Ctrl+Enter/format shortcuts are captured before
+Monaco can insert a newline. The AI prompt is explicitly bounded to teach,
+practice and explain: it cannot invent Campaign/Dungeon rewards, reveal future
+questions, or supply project-specific missing snippets. Transferable concept
+notes use bounded `notes/<concept>.md` files through the notes API and the
+workspace transfer helper; canonical field notes still go through the state
+service.
+
+Codex is presented as a larger field library with definitions, generic
+examples, common mistakes, question lenses, verified encounter evidence and a
+workspace notebook. Quest Journal uses paper-style pages with Previous/Next
+controls. Homestead now shows the canonical live loadout/purse, a deterministic
+shared daily cosmetic rotation and monochrome SVG item icons; the old injected
+Future Loot/Trinket Vault and Weekly Raids blocks were removed from Homestead
+and Journal. Weekly raid planning is represented on the Hub. Infinite Dungeon
+now has a grid map of current/seen/rest/market/encounter rooms while its
+question text stays state-issued and hidden until the room is entered.
+
+The live acceptance test used only in-app-browser keyboard/mouse controls (no
+Playwright) against a disposable isolated cache on the matching Forge/backend
+pair. A valid Battle challenge/verdict reduced The Hitman from 8/8 to 4/8,
+then a second validated verdict defeated it. Without a browser refresh the
+polling projection showed:
+
+- HUD 3 / 150 XP / 90 coins;
+- a queued `OBJECTIVE VERIFIED` notification, then `MOB DEFEATED` (+30 XP,
+  +15 coins) and `NEXT ENCOUNTER The Bust Hound`;
+- Quest Journal Resolve 4/8, then 7/7 for the newly unlocked encounter;
+- Character level/XP/coins and Homestead purse/revision updated;
+- Codex entry for The Hitman with two attempts, both validated question
+  lenses, two verified evidence IDs and mastery evidence 2;
+- shell and AI PTY labels remained `CONNECTED` throughout.
+
+The protected repository save was not mutated by this test (current SHA-256
+`2FD91A49C8B8828E2AC1914275DBCCADA3733188B960AD375B068BD6AB91E0A1`). The
+disposable state cache, frontend and backend should be stopped after review;
+this is local revision-polling evidence, not a claim of second-device,
+authenticated Supabase, native CachyOS or friend-machine certification.
+
+Remaining gates are the real PC/laptop source-transfer round trip, hosted
+account/avatar acceptance, native Linux packaging and the later Milestone C
+cloud player-state transport. The existing runtime preflight may still report
+`RUNTIME STALE` when a test intentionally uses the same checkout/workspace
+path; that is a launcher/environment contract warning, not a second active
+player-state authority.

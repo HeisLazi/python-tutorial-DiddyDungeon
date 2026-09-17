@@ -1629,3 +1629,19 @@ launcher and its printed URL, then sign in on that origin.
 | ID | Severity | Area | Finding | Status |
 |---|---|---|---|---|
 | F-063 | P2 | Avatar identity visibility | An anonymous Forge session has no account identity from which to download the private portrait, making the rail/Character avatar look unsynced. | Confirmed operational blocker. Sign in on both devices with the same Quest Lab account, then verify the account name and portrait; hosted Storage/RLS acceptance remains unverified here. |
+
+## Roadmap UI / learning-surface slice — 2026-09-17
+
+| ID | Severity | Area | Finding | Status |
+|---|---|---|---|---|
+| F-064 | P1 | Tutor/Practice workflow | Practice controls lived beside a separate training form while `tutor.py` was the intended shared learning IDE; the old copy also said Practice never wrote the notebook. | Fixed in the current UI: Tutor Notebook and Practice use the same `tutor.py` editor, server-owned selectors, notes directory and bounded PYR prompt. Practice remains a separate no-reward state-service mode. |
+| F-065 | P1 | Live campaign projection | A real verified state mutation needed to reach every RPG surface without a refresh, while stale shell/AI remounts could hide whether the projection was live. | Fixed locally with revision-aware polling and event/reward queue. Isolated K&M acceptance observed Resolve, HUD, Character, Homestead, Journal and Codex changes while both PTYs stayed connected. |
+| F-066 | P2 | Homestead / Journal scope | Legacy DOM enhancement injected Future Loot/Trinket Vault into Homestead and Weekly Raids into the Journal, mixing future content into surfaces that should show current loadout and journal pages. | Fixed locally: stale injected nodes are removed and raid planning is shown on the Hub; future loot remains in Codex/validated projections only. |
+| F-067 | P2 | Codex learning depth | The previous Codex summary did not expose a usable concept-book view with generic examples, mistakes, validated question lenses and transferable notes. | Fixed locally with field-library pages, encounter evidence, bounded canonical notes and `notes/<concept>.md` workspace notebooks. Exact hidden future answers remain excluded. |
+| F-068 | P2 | Launcher continuity | A splash/route transition could obscure whether PTYs were being remounted, and fresh workspaces could open an infrastructure file instead of the player project. | Fixed locally: splash preserves mounted terminals; editor file selection filters infrastructure/tests, prefers `blackjack.py`/campaign/main, and otherwise shows No file selected. |
+| F-069 | P2 | Acceptance coverage | Static checks alone did not prove a state-service Battle mutation reached the browser projection. | Closed for local v1 with a disposable-cache, no-refresh K&M test: two validated Hitman objectives produced Resolve 4/8 → 0/0, XP/coins, next encounter, Codex evidence and persistent PTY connections. Real two-device and hosted cloud acceptance remain open. |
+
+The browser evidence above intentionally used a disposable canonical cache. It
+must not be read as permission to copy or merge the protected repository save;
+the root `progress.json` remains the only local canonical save and legacy
+workspace files remain evidence/migration inputs only.
