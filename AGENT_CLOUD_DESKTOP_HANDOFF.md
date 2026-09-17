@@ -316,6 +316,16 @@ than exposing future names or concepts.
 F-152 removes the launch-context heartbeat that masked an unattended 20-minute
 gap; `lastSeenAt` now reflects actual interaction rather than elapsed runtime.
 
+F-153 promotes Codex to the full-width surface frame. Its active-quest rail is
+still inside the Codex folio, while the shared wide navigation remains the
+route switcher. A direct flex rule gives the folio the available height after
+navigation instead of letting the Codex inherit an editor-column squeeze or
+grow into an outer feed. This is a presentation-only change; no state,
+revision, reward, notes, learner-file or PTY contract changed.
+
+F-153 verification: Windows frontend tests **74/74**, Vite (**1,346 modules**)
+and `git diff --check` pass. Browser K&M remains blocked by F-080.
+
 Remaining release gates are intentionally unchanged:
 
 1. Apply only the two guarded hosted migrations after explicit approval, then

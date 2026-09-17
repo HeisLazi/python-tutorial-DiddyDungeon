@@ -448,6 +448,11 @@
 @media (max-width: 720px) { .campaign-loadout-grid { grid-template-columns: 1fr; } }
 .wide-screen-frame { position: relative; display: flex; flex-direction: column; min-height: 0; height: 100%; background: linear-gradient(180deg, var(--panel), color-mix(in srgb, var(--bg) 75%, var(--panel))); }
 .wide-screen-frame > .game-screen-scroll { flex: 1 1 auto; min-height: 0; }
+/* Codex is rendered directly as a folio rather than through the scrolling
+   game-screen wrapper. Give it the same bounded flex budget as the wide
+   surfaces so the nav consumes its own row instead of pushing the book below
+   the viewport. */
+.wide-screen-frame > .codex-screen { flex: 1 1 auto; min-height: 0; height: auto; }
 .surface-nav { position: sticky; top: 0; z-index: 8; display: flex; align-items: center; gap: 10px; flex: 0 0 auto; min-height: 50px; padding: 7px clamp(12px, 2.4vw, 30px); border-bottom: 1px solid var(--line); background: color-mix(in srgb, var(--panel2) 96%, var(--bg)); box-shadow: 0 8px 18px rgba(0,0,0,.14); overflow-x: auto; scrollbar-width: thin; }
 .surface-nav-brand { display: inline-flex; align-items: center; gap: 7px; flex: 0 0 auto; padding: 7px 10px; border: 1px solid color-mix(in srgb, var(--gold) 30%, var(--line)); color: var(--gold); background: color-mix(in srgb, var(--gold) 7%, transparent); font: 800 10px ui-monospace, monospace; letter-spacing: .1em; white-space: nowrap; }
 .surface-nav-brand svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.45; stroke-linecap: round; stroke-linejoin: round; }

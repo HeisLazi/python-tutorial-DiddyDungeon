@@ -1034,3 +1034,14 @@ while leaving active and defeated records state-owned and visible.
 
 F-152 fixes launch continuity by removing the `lastSeenAt` background heartbeat;
 only actual user activity and explicit splash dismissal refresh the idle marker.
+
+## Current checkpoint — 2026-09-17 — Codex full-width folio route
+
+F-153 promotes Codex to the wide surface frame so its finite folio is no longer
+compressed into the editor column beside the activity/context rails. The
+active-quest rail remains inside the book, shared surface navigation stays
+available, and `.wide-screen-frame > .codex-screen` receives a direct flex
+budget so the navigation row cannot create an extra page-height overflow.
+Windows frontend tests **74/74**, Vite transforms **1,346 modules**, and
+`git diff --check` pass. Browser K&M (F-080), hosted migrations, physical
+CachyOS and two-device acceptance remain open.

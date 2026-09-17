@@ -949,3 +949,13 @@ learner file, PTY or hosted migration changed.
 Verification: Windows frontend tests **74/74**, Vite transforms **1,346
 modules**, and the supported WSL backend suite is **116/116**; no state,
 learner file, PTY or hosted migration changed.
+
+## Codex was still trapped in the narrow editor column — 2026-09-17 (F-153)
+
+| ID | Severity | Finding | Status |
+|---|---|---|---|
+| F-153 | P1 | The Codex folio had bounded internal rules, but it still rendered in the editor-column grid beside the activity/context rails. On ordinary Forge windows that made the book narrow and visually read like an endless dashboard even when collection paging was finite. | Fixed by promoting Codex to the full-width surface route. The active-quest rail stays inside the folio, the shared surface navigation remains available, and a dedicated flex budget prevents the navigation row from pushing the book below the viewport. |
+
+Verification: Windows frontend tests **74/74**, Vite transforms **1,346
+modules**, and `git diff --check` pass. No state, learner file, PTY or hosted
+migration was changed. Fresh browser K&M remains blocked by F-080.

@@ -464,7 +464,10 @@ function AppV2() {
   const tutorSurface = activeView === 'tutor' || activeView === 'practice'
   const aiRouteHidden = ['hub', 'character', 'codex', 'homestead', 'settings'].includes(activeView)
   const hubMode = activeView === 'hub'
-  const wideSurface = ['hub', 'character', 'homestead'].includes(activeView)
+  // Codex is a reading room, not another editor-column panel. Keep its
+  // active-quest rail inside the folio while giving the book the full Forge
+  // viewport so the page cannot collapse into a narrow infinite-feed shape.
+  const wideSurface = ['hub', 'character', 'homestead', 'codex'].includes(activeView)
   const aiGridVisible = showAiTerminal && !aiRouteHidden
   const aiVisible = showAiTerminal && (!aiRouteHidden || aiPopoverOpen)
   const welcomeName = cloudState.profile?.display_name || player.name || cloudState.user?.email?.split('@')?.[0] || 'Adventurer'

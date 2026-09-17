@@ -2355,3 +2355,13 @@ Verification: Windows frontend source tests are **74/74**, Vite transforms
 **1,346 modules**, and the WSL backend suite is **116/116**; no state,
 learner file, PTY or hosted migration changed. Browser K&M remains blocked by
 F-080.
+
+## Codex was still trapped in the narrow editor column — F-153
+
+| ID | Severity | Area | Finding | Status |
+|---|---|---|---|---|
+| F-153 | P1 | Codex presentation | The folio's internal height contract was bounded, but Codex still occupied the editor-column grid beside the activity/context rails. That left the reading surface cramped and made the finite UI feel like the reported infinite-scroll dashboard. | Fixed by treating Codex as a full-width surface route alongside Hub, Character and Homestead. The active-quest rail remains inside the Codex, wide navigation remains available, and a direct flex rule gives the folio the viewport left after navigation. |
+
+Verification: Windows frontend source tests **74/74**, Vite transforms **1,346
+modules**, and `git diff --check` pass. Browser K&M remains blocked by F-080;
+no state, learner file, PTY or hosted migration changed.

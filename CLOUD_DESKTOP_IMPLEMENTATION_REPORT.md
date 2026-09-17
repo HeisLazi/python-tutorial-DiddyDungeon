@@ -3175,3 +3175,17 @@ validated names. No question, answer, reward or progression data is invented.
 Removed the background `lastSeenAt` heartbeat so the returning splash can
 correctly appear after a genuinely unattended 20-minute gap. Pointer/keyboard
 activity and explicit mount/dismissal still keep launch continuity responsive.
+
+### Codex full-width folio route — F-153 (2026-09-17)
+
+Codex now uses the same wide surface frame as Hub, Character and Homestead.
+This removes the editor-column squeeze that made the finite book look like an
+ugly infinite dashboard. The active-quest chapter rail remains inside the
+Codex, the shared surface navigation is preserved, and the direct Codex child
+gets a bounded flex budget so the nav row cannot push the folio below the
+viewport. This is presentation-only; campaign state, revision polling, notes,
+rewards, learner files and both PTYs are unchanged.
+
+Verification: Windows frontend tests **74/74**, Vite (**1,346 modules**) and
+`git diff --check` pass. Browser K&M remains blocked by F-080, so no fresh
+device-level visual claim is made.
