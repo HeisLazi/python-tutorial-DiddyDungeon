@@ -2311,3 +2311,27 @@ Verification after this repair: WSL backend **101/101**, migration contracts
 protected-save two-device simulator passed with an unchanged source digest.
 No Supabase migration was applied, no hosted account was seeded, and no live
 save or PTY was touched.
+
+### Disposable account QA — 2026-09-17
+
+For account-scoped testing, a separate disposable Supabase account was used
+against isolated Forge runtimes. Profile/device registration and avatar
+transport were verified: client B downloaded the avatar uploaded by client A,
+and then picked up a replacement after the profile `updated_at` reference
+changed. This validates the account-private portrait path without using the
+user's account.
+
+The separate Git workspace-transfer check moved `blackjack.py`, `tutor.py`,
+`dungeon.py`, and `notes/lists.md` between two temporary repositories. The
+target `progress.json` and session notes were unchanged, and an unlisted
+`notes/private.txt` was not transferred.
+
+The first real authenticated campaign-sync attempt exposed a hosted
+deployment gap: the live `save_player_state` RPC rejected the current source
+projection with `next_state contains unsupported domains`, which means the
+campaign-projection migration has not been applied to that Supabase project.
+The source migration remains unapplied by design; no claim is made for real
+PC↔laptop campaign sync until the hosted migration is approved/applied and
+the two-device acceptance is repeated. The in-app browser could not attach a
+fresh tab for this isolated run, so this account pass provides no new K&M
+claim. No user save, user source file, or existing PTY was touched.

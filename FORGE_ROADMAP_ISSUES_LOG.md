@@ -1721,3 +1721,24 @@ and the campaign merge increments the canonical revision with a
 existing PTYs were not written or restarted. The mounted Windows frontend
 dependency tree still has the known F-033 missing Supabase package metadata;
 clean disposable frontend testing remains the required JS/build gate.
+
+## Disposable cloud-account acceptance — 2026-09-17
+
+To exercise account-scoped portrait and workspace behavior without touching a
+user account, a separate disposable Supabase QA account was created and used
+against isolated Forge runtimes. The account successfully registered a
+profile/device, uploaded an avatar, downloaded it from a second isolated
+client, and received a replacement avatar through the shared Storage object
+and `updated_at` reference polling. The Git-backed workspace transfer also
+passed with `blackjack.py`, `tutor.py`, `dungeon.py`, and `notes/lists.md`
+matching on the target while `progress.json`, session notes, and an unlisted
+private note remained untouched.
+
+| ID | Severity | Area | Finding | Status |
+|---|---|---|---|---|
+| F-079 | P1 | Hosted campaign sync | The live `save_player_state` RPC still runs the pre-campaign validator. A real authenticated disposable account received `next_state contains unsupported domains` when SyncEngine submitted the now-source-reviewed `campaign` projection, so hosted player/campaign sync cannot yet be claimed. | Confirmed hosted blocker. Apply and verify `20260917000100_player_state_campaign_projection.sql` through the approved Supabase migration path, then repeat authenticated two-device acceptance. No hosted migration was applied in this QA pass. |
+| F-080 | P2 | Browser QA surface | The Codex in-app browser could not attach a tab to the isolated disposable Forge URL, so this pass has no fresh browser K&M claim; API/SyncEngine and Git transfer checks are recorded separately. | Environment blocker only; no source defect claimed. Existing no-refresh K&M evidence remains documented from the prior disposable runtime. |
+
+The disposable QA account is not the user's personal account. Its portrait
+was left in place for repeatable QA; no password or token is stored in this
+repository. The protected save and existing shell/AI PTYs were not touched.

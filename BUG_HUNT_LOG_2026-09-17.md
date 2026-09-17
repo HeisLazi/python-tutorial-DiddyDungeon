@@ -138,6 +138,27 @@ connected. The tree endpoint omitted `progress.json`, while direct generic
 The primary total is 17 (6 + 4 + 6 + 1). No reviewer claim is made for the
 timed-out/unavailable tools.
 
+## Disposable account / transfer recheck — 2026-09-17
+
+A separate disposable Supabase account was used for account-scoped QA. The
+profile/device registration succeeded. Two isolated SyncEngine clients both
+downloaded the same Storage avatar, and a replacement uploaded by client A
+was picked up by client B after the profile `updated_at` reference changed. A
+separate temporary Git remote proved the allowlisted file channel transfers
+`blackjack.py`, `tutor.py`, `dungeon.py`, and `notes/lists.md`; the target's
+`progress.json` and session notes stayed byte-for-byte intact and
+`notes/private.txt` was excluded.
+
+The same authenticated account also reproduced the remaining hosted gate:
+the live player-state RPC rejected the source-reviewed campaign projection
+with `next_state contains unsupported domains`. This is logged as F-079 in
+the roadmap, not silently worked around. The campaign migration remains
+source-only until the hosted migration approval gate is satisfied.
+
+The in-app browser again timed out before attaching a tab to the isolated
+runtime, so no new browser K&M score is claimed for this account pass. No
+Playwright, user-save edit, or existing PTY restart was used.
+
 ## Remaining gates
 
 The local contract is not a hosted release claim. Provider-authenticated
