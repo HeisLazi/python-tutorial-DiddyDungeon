@@ -326,7 +326,7 @@ function RouteIcon({ id }) {
 
 function WideSurfaceFrame({ activeView, onNavigate, children }) {
   return (
-    <div className="wide-screen-frame">
+    <div className="wide-screen-frame" data-wide-route={activeView}>
       <SurfaceNavigation activeView={activeView} onNavigate={onNavigate} />
       {children}
     </div>

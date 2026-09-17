@@ -172,6 +172,8 @@ test('navigation keeps Tutor as the single practice workspace and parks hidden A
   assert.match(app, /!wideSurface && <ActivityRail/)
   assert.match(views, /data-testid="wide-route-nav"/)
   assert.match(views, /aria-label="Wide route navigation"/)
+  assert.match(views, /data-wide-route=\{activeView\}/)
+  assert.match(foundation, /\.surface-nav \{ position: sticky;/)
   assert.match(views, /withWideNavigation/)
   assert.match(views, /function RouteIcon\(/)
   assert.match(views, /className="activity-rail" data-react-owned="true"/)
