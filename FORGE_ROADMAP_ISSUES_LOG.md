@@ -2282,3 +2282,13 @@ Verification: launcher-contract coverage passes **16/16**. The packager was
 run with the exact protected directory and created a 134-entry ZIP from
 `83f302c`; `progress.json`, `tutor.py`, `dungeon.py`, `notes/` and `/` were
 absent from the archive.
+
+## Codex reader still looked like an infinite dashboard — F-146
+
+| ID | Severity | Area | Finding | Status |
+|---|---|---|---|---|
+| F-146 | P1 | Codex presentation | The earlier folio patches removed the large minimum heights, but the Codex still inherited dense dashboard styling and several competing overflow rules. That made the actual fixed shelf/book controls feel like an infinite scroll surface. | Fixed with a final reader contract in `foundation.css`: a compact Codex hero, short Books/Battle Shell tabs, a two-pane fixed-height folio, bounded active-quest rail and explicit shelf/record/mastery paging. The Codex root and Books page cannot grow with evidence; only small mobile/index, code-example and long-note bodies may scroll. |
+
+Verification: Windows frontend tests **70/70** and Vite build **1,346 modules**
+passed. No player state, learner file, PTY or hosted migration changed. Browser
+K&M remains blocked by F-080.

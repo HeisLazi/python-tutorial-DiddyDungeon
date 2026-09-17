@@ -953,8 +953,8 @@ function Codex({ progress, revision, codexProjection, encounter, submitBattle, s
       <div className="screen-hero codex-hero">
         <div>
           <span className="screen-kicker">CODEX / FIELD LIBRARY</span>
-          <h2>Field library</h2>
-          <p>Read the concepts you have earned, inspect encounter evidence, and keep notes without turning the Codex into a feed.</p>
+          <h2>Codex</h2>
+          <p>Concepts, encounter evidence, and field notes in one finite reading room.</p>
         </div>
         <div className="codex-summary-grid" aria-label="Codex records summary">
           <div><strong>{skills.length + entries.length}</strong><span>records indexed</span></div>
@@ -966,7 +966,7 @@ function Codex({ progress, revision, codexProjection, encounter, submitBattle, s
       </div>
 
       <div className="codex-mode-tabs" role="tablist" aria-label="Codex screens" data-testid="codex-mode-tabs">
-        <button type="button" role="tab" aria-selected={codexView === 'books'} className={codexView === 'books' ? 'active' : ''} onClick={() => setCodexView('books')}>Field library / books</button>
+        <button type="button" role="tab" aria-selected={codexView === 'books'} className={codexView === 'books' ? 'active' : ''} onClick={() => setCodexView('books')}>Books</button>
         <button type="button" role="tab" aria-selected={codexView === 'battle'} className={codexView === 'battle' ? 'active' : ''} onClick={() => setCodexView('battle')}>Battle shell <span>{projectComplete ? 'CLEAR' : bossUnlocked ? 'BOSS' : 'LIVE'}</span></button>
       </div>
 

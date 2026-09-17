@@ -989,3 +989,16 @@ CachyOS live projection, K&M and PTY acceptance remain F-058 gates.
 
 The strict report proof is green on a clean ext4 clone (native Rollup present;
 launcher-contract coverage **17/17**) and the temporary clone was removed.
+
+## Current checkpoint — 2026-09-17 — Codex reader contract
+
+F-146 consolidates the Codex presentation after the remaining “ugly infinite
+scroll” complaint. The surface now has a compact header, short Books/Battle
+Shell tabs and a fixed two-pane folio. The left rail is bounded, the shelf is
+five books at a time, and record/mastery collections use explicit pagers. The
+Codex root and Books tab do not own an outer vertical scrollbar; only small
+mobile/index, code-example and intentionally long note bodies can scroll.
+
+Windows frontend tests are **70/70** and Vite transforms **1,346 modules**.
+This is a local presentation repair. Browser K&M (F-080), hosted migration,
+physical CachyOS and two-device acceptance remain open.

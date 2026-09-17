@@ -966,3 +966,227 @@
 @media (max-width: 900px) {
   .codex-screen > .screen-hero.codex-hero { max-height: 148px; }
 }
+
+/* F-146: the Codex is a reader, not an infinite dashboard.  This final
+   reader contract deliberately gives every layer a flex/grid budget.  The
+   only scroll owners are the small mobile index, code examples and the
+   user's note body; the Forge page itself never grows with encounter data. */
+.game-screen > .codex-screen {
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr);
+  gap: 10px;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+  padding: clamp(12px, 1.6vw, 20px);
+}
+.codex-screen > .screen-hero.codex-hero {
+  grid-row: 1;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 18px;
+  max-height: 96px;
+  padding: 12px 16px;
+  margin: 0;
+  border-radius: 14px;
+  background:
+    linear-gradient(115deg, color-mix(in srgb, var(--gold) 12%, var(--panel2)), transparent 58%),
+    var(--panel2);
+}
+.codex-screen > .screen-hero.codex-hero h2 {
+  margin: 3px 0 4px;
+  color: var(--text);
+  font-family: inherit;
+  font-size: clamp(22px, 2.4vw, 30px);
+  letter-spacing: -.04em;
+}
+.codex-screen > .screen-hero.codex-hero p {
+  max-width: 54ch;
+  margin: 0;
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.4;
+}
+.codex-screen .codex-summary-grid {
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+  min-width: min(430px, 48vw);
+  border-left: 1px solid color-mix(in srgb, var(--gold) 22%, var(--line));
+  background: transparent;
+}
+.codex-screen .codex-summary-grid > div {
+  display: grid;
+  min-width: 68px;
+  gap: 2px;
+  padding: 3px 11px;
+  border: 0;
+  border-right: 1px solid color-mix(in srgb, var(--gold) 16%, var(--line));
+  border-radius: 0;
+  background: transparent;
+  text-align: left;
+}
+.codex-screen .codex-summary-grid > div:last-child { border-right: 0; }
+.codex-screen .codex-summary-grid strong { font-size: 15px; line-height: 1; }
+.codex-screen .codex-summary-grid span { font-size: 7px; line-height: 1.2; }
+.codex-screen > .codex-mode-tabs {
+  grid-row: 2;
+  justify-self: start;
+  min-height: 0;
+  margin: 0;
+  padding: 3px;
+  border: 1px solid color-mix(in srgb, var(--gold) 20%, var(--line));
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--panel3) 86%, transparent);
+}
+.codex-screen > .codex-mode-tabs button {
+  min-height: 29px;
+  padding: 6px 12px;
+  border-color: transparent;
+  border-radius: 6px;
+  color: var(--muted);
+  font-size: 9px;
+  letter-spacing: .04em;
+}
+.codex-screen > .codex-mode-tabs button.active {
+  border-color: color-mix(in srgb, var(--gold) 45%, var(--line));
+  background: color-mix(in srgb, var(--gold) 11%, var(--panel2));
+  color: var(--gold2);
+}
+.codex-screen > .codex-tab-page[data-codex-tab="books"] {
+  grid-row: 3;
+  display: flex;
+  min-height: 0;
+  height: auto;
+  overflow: hidden;
+}
+.codex-screen > .codex-tab-page[data-codex-tab="books"] > .codex-library {
+  display: grid;
+  grid-template-columns: minmax(218px, 252px) minmax(0, 1fr);
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 100%;
+  gap: 0;
+  padding: 0;
+  margin: 0;
+  overflow: hidden;
+  border-radius: 16px;
+  border-color: color-mix(in srgb, var(--gold) 30%, var(--line));
+  background: var(--panel2);
+  box-shadow: 0 14px 36px rgba(0, 0, 0, .18);
+}
+.codex-screen > .codex-tab-page[data-codex-tab="books"] .codex-index {
+  display: grid;
+  grid-template-rows: auto minmax(0, auto) auto auto minmax(0, 1fr);
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
+  padding: 14px 12px 14px 14px;
+  border-right: 1px solid color-mix(in srgb, var(--gold) 20%, var(--line));
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--gold) 7%, transparent), transparent 38%),
+    color-mix(in srgb, var(--panel3) 60%, var(--panel2));
+}
+.codex-screen .codex-active-quest-sidebar {
+  min-height: 0;
+  max-height: 172px;
+  margin: 9px 0 11px;
+  overflow: hidden;
+}
+.codex-screen .codex-sidebar-mobs {
+  min-height: 0;
+  max-height: 62px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+.codex-screen .codex-books-heading { margin: 0 0 7px; }
+.codex-screen .codex-search { margin: 0 0 8px; }
+.codex-screen .codex-page-list {
+  min-height: 0;
+  max-height: none;
+  overflow: visible;
+  align-content: start;
+}
+.codex-screen .codex-page-list button { min-height: 42px; }
+.codex-screen > .codex-tab-page[data-codex-tab="books"] .codex-book-page {
+  display: grid;
+  grid-template-rows: auto auto auto minmax(0, 1fr);
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
+  padding: 18px 22px 18px;
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--gold) 8%, transparent), transparent 36px),
+    radial-gradient(circle at 94% 4%, color-mix(in srgb, var(--gold) 8%, transparent), transparent 34%),
+    color-mix(in srgb, var(--panel) 90%, var(--gold) 10%);
+}
+.codex-screen .codex-page-heading {
+  min-height: 0;
+  max-height: 136px;
+  overflow: hidden;
+  padding: 0 0 12px 8px;
+}
+.codex-screen .codex-page-heading h3 {
+  margin: 4px 0 5px;
+  color: var(--text);
+  font-family: inherit;
+  font-size: clamp(24px, 2.4vw, 34px);
+  letter-spacing: -.045em;
+}
+.codex-screen .codex-page-heading p {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow: hidden;
+  max-width: 62ch;
+  font-size: 11px;
+  line-height: 1.5;
+}
+.codex-screen .codex-page-controls,
+.codex-screen .codex-book-tabs { margin-left: 8px; margin-right: 8px; }
+.codex-screen .codex-book-section {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  max-height: 100%;
+  overflow: hidden;
+  padding: 0 8px 0;
+}
+.codex-screen .codex-page-grid,
+.codex-screen .codex-entry-detail,
+.codex-screen .codex-entry-insights,
+.codex-screen .codex-mastery-panel .skill-grid {
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+.codex-screen .codex-entry-picker { max-height: 94px; overflow: hidden; }
+.codex-screen .codex-entry-picker button { min-height: 36px; }
+.codex-screen .codex-notes.workspace-notebook pre { max-height: 8em; overflow: auto; }
+.codex-screen > .codex-tab-page[data-codex-tab="battle"] {
+  grid-row: 3;
+  min-height: 0;
+  height: auto;
+  overflow: auto;
+  padding: 0 2px 12px;
+  scrollbar-width: thin;
+}
+@media (max-width: 900px) {
+  .codex-screen > .screen-hero.codex-hero { max-height: 142px; grid-template-columns: 1fr; }
+  .codex-screen .codex-summary-grid { min-width: 0; width: 100%; }
+}
+@media (max-width: 760px) {
+  .game-screen > .codex-screen { padding: 10px; }
+  .codex-screen > .codex-tab-page[data-codex-tab="books"] > .codex-library { grid-template-columns: 1fr; }
+  .codex-screen > .codex-tab-page[data-codex-tab="books"] .codex-index {
+    grid-template-rows: auto minmax(0, auto) auto auto minmax(0, 1fr);
+    max-height: min(36vh, 250px);
+    overflow-y: auto;
+    scrollbar-width: thin;
+  }
+  .codex-screen > .codex-tab-page[data-codex-tab="books"] .codex-book-page { padding: 14px 14px 16px; }
+}

@@ -879,3 +879,14 @@ The report is a pre-launch evidence aid, not a substitute for the physical
 CachyOS live-projection/PTY test. Contract coverage passed **17/17** and a
 strict clean-ext4 report returned **GREEN** with native Rollup present; the
 temporary clone was removed afterward.
+
+## Codex reader still looked like an infinite dashboard — 2026-09-17 (F-146)
+
+| ID | Severity | Finding | Status |
+|---|---|---|---|
+| F-146 | P1 | The previous height fixes bounded the Codex mathematically, but the UI still carried dense dashboard styling and several competing cascade contracts. The result could look like an ugly infinite scroll even when the shelf and record pagers existed. | Fixed with one final reader contract: a compact Codex header, short Books/Battle Shell tabs, a two-pane fixed folio, a bounded active-quest rail, a five-book shelf with visible page controls, and no outer Codex scroll. Only the small mobile index, code examples and intentionally long note body may scroll. |
+
+Verification: Windows frontend tests **70/70** and Vite build **1,346 modules**
+passed. No player state, learner file, PTY or hosted migration was touched.
+Fresh browser K&M remains blocked by F-080, so this is not presented as a
+device-level visual claim until an attachable Forge tab is available.

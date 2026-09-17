@@ -401,7 +401,7 @@ test('Codex folio fits the Forge viewport without inheriting the legacy 520px fe
   const foundation = source('../foundation.css')
 
   assert.match(views, /className="screen-hero codex-hero"/)
-  assert.match(views, /<h2>Field library<\/h2>/)
+  assert.match(views, /<h2>Codex<\/h2>/)
   assert.match(foundation, /F-141: the Codex is a compact folio/)
   assert.match(foundation, /\.codex-screen > \.codex-tab-page,\s*\.codex-screen > \.codex-tab-page\[data-codex-tab="books"\] \{[\s\S]*?height: 100%;[\s\S]*?overflow: hidden;/)
   assert.match(foundation, /\.codex-screen > \.codex-tab-page\[data-codex-tab="battle"\] \{[\s\S]*?display: block;[\s\S]*?overflow: auto;/)
@@ -415,6 +415,19 @@ test('Codex shared library primitive cannot reintroduce a feed-sized minimum', (
   assert.match(foundation, /\/\* The Codex owns its height from the viewport-pinned shell below\./)
   assert.match(foundation, /\.codex-library \{ grid-template-columns: minmax\(210px, \.28fr\) minmax\(0, 1fr\); min-height: 0; \}/)
   assert.doesNotMatch(foundation, /\.codex-library \{[^}]*min-height: (?:5|6)\d\dpx/)
+})
+
+test('Codex reader contract keeps the outer page finite and the shelf paged', () => {
+  const views = source('../RpgViews.jsx')
+  const foundation = source('../foundation.css')
+
+  assert.match(views, /<h2>Codex<\/h2>/)
+  assert.match(views, />Books<\/button>/)
+  assert.match(foundation, /F-146: the Codex is a reader, not an infinite dashboard/)
+  assert.match(foundation, /\.game-screen > \.codex-screen \{[\s\S]*?height: 100%;[\s\S]*?overflow: hidden;/)
+  assert.match(foundation, /\.codex-screen > \.codex-tab-page\[data-codex-tab="books"\] \{[\s\S]*?grid-row: 3;[\s\S]*?overflow: hidden;/)
+  assert.match(foundation, /\.codex-screen > \.codex-tab-page\[data-codex-tab="books"\] > \.codex-library \{[\s\S]*?height: 100%;[\s\S]*?overflow: hidden;/)
+  assert.match(foundation, /\.codex-screen \.codex-page-list \{[\s\S]*?overflow: visible;/)
 })
 
 test('friend packages strip tracked player state before archive output', () => {
