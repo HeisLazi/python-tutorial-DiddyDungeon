@@ -895,7 +895,7 @@ function Codex({ progress, revision, codexProjection, encounter, submitBattle, s
   }
 
   return (
-    <div className="game-screen-scroll codex-screen" data-testid="codex" data-campaign-revision={revision}>
+    <div className="codex-screen" data-testid="codex" data-campaign-revision={revision}>
       <div className="screen-hero">
         <div>
           <span className="screen-kicker">CODEX / FIELD LIBRARY</span>

@@ -2088,3 +2088,13 @@ tests/build and browser K&M remain visual publication gates.
 Verification: source digest before/after matched; no canonical or legacy save
 write occurred. This is local compare-and-swap evidence only, not a hosted
 Milestone C acceptance claim.
+
+## Codex shell still inheriting the generic feed — F-127
+
+| ID | Severity | Area | Finding | Status |
+|---|---|---|---|---|
+| F-127 | P1 | Codex presentation | The Codex root still carried the generic `game-screen-scroll` class. In a stale or compact bundle that generic height/overflow contract could compete with the bounded book grid, producing the reported infinite-page feel and making scroll ownership unclear. | Fixed by giving Codex its own viewport-pinned shell, removing the generic feed class, containing overscroll, and restoring one internal scroll owner for the selected book section plus the Field Library index. Battle Shell remains its own bounded tab. |
+
+Verification: current-source Forge tests **38/38**. The change is presentation-only;
+canonical state, revision polling, rewards, notes, learner files and PTYs were not
+touched. Browser K&M remains the publication visual gate in this environment.

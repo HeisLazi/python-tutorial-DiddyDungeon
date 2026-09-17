@@ -725,3 +725,15 @@ branch tip. Push, pull, stale-mailbox detection, local-revision conflict and
 explicit keep-device resolution all passed while the source save digest stayed
 unchanged. This strengthens the local/offline gate without claiming hosted
 Supabase acceptance.
+
+## Current checkpoint — 2026-09-17 — Codex viewport shell follow-up
+
+F-127 removes the final generic feed contract from the Codex root. The Codex
+now owns a viewport-pinned shell, contains overscroll, and gives scroll only to
+the Field Library index and the selected book section. The outer Forge surface
+does not grow as encounter evidence or notes accumulate; Battle Shell remains a
+separate bounded tab. This is a presentation repair only and does not widen
+state authority or cloud scope.
+
+Current-source Forge tests are **38/38**. Browser K&M remains a publication
+visual gate because the local Codex browser tab could not attach.
