@@ -2,11 +2,14 @@
 .forge-v2 .ai-panel-parked{position:fixed;left:-10000px;top:0;width:1px;height:1px;min-width:1px;opacity:0;overflow:hidden;pointer-events:none;z-index:-1}
 .forge-v2 .ai-panel.ai-popout{position:fixed;right:18px;bottom:46px;width:min(560px,calc(100vw - 36px));height:min(70vh,620px);z-index:120;box-shadow:0 20px 60px rgba(0,0,0,.42);border:1px solid color-mix(in srgb,var(--gold) 42%,var(--line));animation:questlab-popout-in .18s ease-out}
 .forge-v2 .ai-popout-toggle{padding:5px 8px;font-size:10px;color:var(--gold);border-color:color-mix(in srgb,var(--gold) 38%,var(--line));white-space:nowrap}
-.forge-v2.hub-mode .editor-panel,.forge-v2.hub-mode .terminal-panel,.forge-v2.hub-mode .terminal-resizer{display:none}
+.forge-v2.wide-mode .editor-panel,.forge-v2.wide-mode .terminal-panel,.forge-v2.wide-mode .terminal-resizer{display:none}
+.forge-v2.wide-mode .game-screen{grid-column:1;grid-row:1;}
 .forge-v2.hub-mode .game-screen{grid-column:1;grid-row:1;}
 .forge-v2[data-view="hub"] .game-screen-scroll{padding:clamp(18px,3vw,42px);}
 .forge-v2[data-view="hub"] .hub-screen{max-width:1440px;margin:0 auto;width:100%;}
 .forge-v2[data-view="hub"] .hub-grid{grid-template-columns:minmax(0,1fr) minmax(320px,.72fr);}
+.forge-v2[data-view="character"] .game-screen-scroll,.forge-v2[data-view="homestead"] .game-screen-scroll{padding:clamp(18px,3vw,42px);}
+.forge-v2[data-view="character"] .character-layout,.forge-v2[data-view="homestead"] .homestead-scene{max-width:1440px;margin-left:auto;margin-right:auto;width:100%;}
 @keyframes questlab-popout-in{from{opacity:0;transform:translateY(8px) scale(.98)}to{opacity:1;transform:translateY(0) scale(1)}}
 .forge-v2 .terminal-v2-wrap{position:relative;flex:1;min-height:0;background:#090b0a}
 .forge-v2 .terminal-v2-wrap>.terminal-host{position:absolute;inset:0}

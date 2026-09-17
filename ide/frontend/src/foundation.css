@@ -181,6 +181,29 @@
 
 .quest-journal-screen { background: radial-gradient(circle at 50% 0, color-mix(in srgb, var(--gold) 7%, transparent), transparent 42%); }
 .quest-journal-screen .screen-hero, .quest-journal-screen .journal-page { background: linear-gradient(135deg, color-mix(in srgb, #c6a875 10%, var(--panel2)), var(--panel)); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--gold) 5%, transparent), 0 14px 34px rgba(0,0,0,.12); }
+.journal-mode-tabs { display: flex; gap: 7px; margin: 0 auto 12px; padding: 4px; border: 1px solid color-mix(in srgb, var(--gold) 22%, var(--line)); border-radius: 10px; background: color-mix(in srgb, var(--panel3) 78%, transparent); width: fit-content; }
+.journal-mode-tabs button { min-width: 132px; border: 0; background: transparent; color: var(--muted); font: 800 10px ui-monospace, monospace; letter-spacing: .06em; text-transform: uppercase; }
+.journal-mode-tabs button.active { color: var(--text); background: color-mix(in srgb, var(--gold) 15%, var(--panel2)); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--gold) 35%, transparent); }
+.journal-mode-tabs button span { margin-left: 4px; color: var(--gold); font-size: 8px; }
+.quest-battle-screen { display: grid; gap: 14px; animation: dungeon-fade-in .22s ease-out; }
+.battle-screen-hero { display: grid; grid-template-columns: minmax(0, 1fr) minmax(220px, .35fr); gap: 18px; align-items: center; background: linear-gradient(135deg, color-mix(in srgb, var(--ember) 8%, var(--panel2)), var(--panel)); }
+.battle-screen-hero h3 { margin: 6px 0; font: 800 24px/1.15 ui-monospace, monospace; }
+.battle-screen-hero p { max-width: 760px; margin: 0; color: var(--muted); font-size: 12px; line-height: 1.55; }
+.battle-resolve-hero { display: grid; gap: 5px; padding: 13px; border: 1px solid color-mix(in srgb, var(--gold) 38%, var(--line)); border-radius: 10px; background: color-mix(in srgb, var(--gold) 6%, var(--panel3)); }
+.battle-resolve-hero small { color: var(--muted); font: 800 9px ui-monospace, monospace; letter-spacing: .12em; }
+.battle-resolve-hero strong { color: var(--gold); font: 800 20px ui-monospace, monospace; }
+.battle-workspace-card { min-height: 430px; }
+.battle-workspace-card > .context-note { max-width: 840px; }
+.battle-screen-submit { margin: 16px 0 0; padding: 0; border: 0; box-shadow: none; background: transparent; }
+.battle-screen-submit .card-heading { padding-bottom: 9px; }
+.battle-screen-submit form { max-width: 980px; }
+.battle-screen-submit .battle-answer-editor { min-height: 300px; resize: vertical; font: 12px/1.6 ui-monospace, monospace; tab-size: 4; }
+.battle-back-button { margin-top: 12px; justify-self: start; }
+.journal-battle-link { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 14px; padding: 11px; border: 1px dashed color-mix(in srgb, var(--gold) 42%, var(--line)); border-radius: 10px; background: color-mix(in srgb, var(--gold) 6%, var(--panel3)); }
+.journal-battle-link > div { display: grid; gap: 3px; }
+.journal-battle-link strong { color: var(--text); font: 800 12px ui-monospace, monospace; }
+.journal-battle-link small,.journal-battle-link > span { color: var(--muted); font-size: 10px; line-height: 1.35; }
+.journal-battle-link button { flex: 0 0 auto; }
 .journal-controls { display: flex; align-items: center; justify-content: center; gap: 12px; margin: 0 auto 12px; }
 .journal-controls span { color: var(--muted); font: 9px ui-monospace, monospace; letter-spacing: .14em; }
 .journal-controls button { padding: 6px 10px; font-size: 10px; }
@@ -227,10 +250,15 @@
   .tutor-practice-bar button { justify-self: start; }
   .hub-grid { grid-template-columns: 1fr; }
   .codex-active-chapter-grid { grid-template-columns: 1fr; }
+  .battle-screen-hero { grid-template-columns: 1fr; }
 }
 @media (max-width: 620px) {
   .tutor-practice-bar { grid-template-columns: 1fr 1fr; }
   .tutor-practice-bar button { grid-column: 1 / -1; }
+  .journal-mode-tabs { width: 100%; }
+  .journal-mode-tabs button { min-width: 0; flex: 1; padding-inline: 5px; }
+  .journal-battle-link { align-items: flex-start; flex-direction: column; }
+  .battle-screen-submit .battle-answer-editor { min-height: 220px; }
 }
 .shop-icon { display: grid; place-items: center; width: 31px; height: 31px; color: var(--gold); }
 .shop-icon svg { width: 28px; height: 28px; fill: none; stroke: currentColor; stroke-width: 1.35; stroke-linecap: round; stroke-linejoin: round; }
