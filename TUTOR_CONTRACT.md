@@ -24,7 +24,7 @@ Before tutoring, read:
 2. `LEARNING_PROTOCOL.md` on `main`;
 3. `GAME_SYSTEM.md` on `main`;
 4. `ACTIVITY_SYSTEM.md` on `main`;
-5. canonical `progress.json` on `main`;
+5. the canonical local `progress.json` on `main` when offline/anonymous, or the synchronized state supplied by the local sync service after signed-in cloud sync;
 6. machine-derived `activity.json` on `main` when available;
 7. the active branch `HANDOFF.md`;
 8. the player's current code and session notes when available.
@@ -104,7 +104,8 @@ Then:
 - do not dump the whole project;
 - mark that milestone assisted/guided;
 - increment `stats.reference_mode_uses`;
-- update `assist` state in `progress.json`;
+- ask the local state/sync service to update `assist` state (persisting the
+  local `progress.json` cache while offline/anonymous);
 - apply the 0.50 reward multiplier;
 - record lost XP in `assist.xp_forfeited`;
 - remove Clean Clear eligibility if Reference Mode was used on a required core mob/boss.
@@ -200,7 +201,10 @@ The campaign has two separate streaks and they must not be confused.
 
 ## Learning streak
 
-Stored in `progress.json`. A day requires meaningful learning: real code progress, a mob, a self-understood bug fix, a concept interview, or code the player can explain.
+Stored through the local state/sync service (in the local `progress.json`
+cache while offline/anonymous). A day requires meaningful learning: real code
+progress, a mob, a self-understood bug fix, a concept interview, or code the
+player can explain.
 
 - normal mistakes never break it;
 - failed interviews never break it;
@@ -311,13 +315,32 @@ Before awarding a boss clear:
 
 # Canon and state updates
 
-`progress.json` on `main` is canonical learning/player state.
+Before signed-in cloud sync is enabled, `progress.json` on `main` is canonical local learning/player state. After signed-in cloud sync is enabled, Supabase is the synchronized account/game-state authority and `progress.json` is the local/offline cache/device working copy. Progression mutations pass through the local state/sync service; PYR must not independently write a cloud-authoritative `progress.json` snapshot.
 
 `activity.json` on `main` is machine-derived development activity and must not be manually rewritten by PYR.
 
 `CANON_LEDGER.md` is canonical history for custom rules/rewards.
 
-When learning progress is earned, update relevant `progress.json` state honestly and refresh the README learning block when displayed stats change.
+When learning progress is earned, ask the local state/sync service to update the relevant state honestly, then refresh the README learning block when displayed stats change. In offline/anonymous mode that service persists the local `progress.json` cache.
+
+The local state gateway accepts named commands, not object paths or arbitrary
+JSON patches. PYR may submit bounded learning-evidence and Reference Mode
+events; reward, HP and achievement mutations are reserved for trusted
+in-process game code. Verified Battle objectives use the same trusted path to
+apply predefined Impact, Resolve, mob-unlock, reward and Codex projections;
+React only renders the committed result. The gateway records a concise
+`state_events` audit entry without terminal history, source text, secrets or
+private prompts. Forge polls the canonical revision and refreshes every RPG
+surface without restarting either PTY.
+
+When a confirmed account is signed in, the dedicated `SyncEngine` is the only
+browser cloud-state boundary. Its first transport slice projects player
+progression/HP, armor/trinket/title, companion state and Homestead
+ownership/equipment through the local gateway and the revision-checked
+`save_player_state` RPC. Projects, Codex/encounter history, skills/mastery,
+activity and cosmetic catalogs remain local until separately allowlisted;
+offline changes stay in a bounded per-account outbox and never bypass the
+state service.
 
 When you invent a reward or propose a mechanic, update `CANON_LEDGER.md` as required.
 

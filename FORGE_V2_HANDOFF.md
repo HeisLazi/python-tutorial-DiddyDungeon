@@ -1,6 +1,7 @@
-# Forge v2 — Test Handoff
+# Forge v2 — Current Test Handoff
 
-Forge v2 is the current Quest Lab IDE test target on `feature/quest-lab-ide`.
+Forge v2 is the current Quest Lab IDE test target on
+`feature/cloud-sync-desktop`.
 
 ## Current architecture
 
@@ -41,9 +42,15 @@ The right terminal targets:
 
 `/api/runtime` detects whether each command exists and disables missing launch buttons.
 
-## Tutor Notebook boundary
+## Tutor Notebook boundary (Campaign + Practice)
 
-`tutor.py` is collaborative scratch space.
+`tutor.py` is one managed collaborative notebook shared by the Campaign Tutor
+and Practice surfaces. The player may edit, format and run it, and the
+controlled tutor endpoint may write bounded teaching examples there only when
+the learner explicitly asks. Practice has its own unlimited, no-reward
+sessions/history and concept notes, but it uses the same notebook/editor and
+cannot write Campaign/Dungeon rewards, HP, Resolve, equipment, combat or run
+state.
 
 The controlled future PYR agent may write examples/exercises there. Required project source such as `blackjack.py` remains read-only to the tutor agent. The raw CLI terminal is intentionally powerful and is not a security sandbox.
 
@@ -58,18 +65,22 @@ The controlled future PYR agent may write examples/exercises there. Required pro
 - `Ctrl+Shift+P` command palette;
 - resizable explorer / terminal / AI panes;
 - persistent panel/font/HUD preferences;
-- custom character portrait stored locally in the browser;
+- custom character portrait with an account-scoped private cloud asset when
+  signed in, plus a bounded local/offline fallback;
 - vector UI icon pass instead of OS emoji icons.
 
 ## RPG Shell currently implemented
 
 - Forge editor and normal terminal;
 - independent AI terminal;
-- Tutor Notebook;
+- Campaign Tutor Notebook endpoint (dedicated destination; hidden from the normal project file tree);
 - Quest Journal;
 - Codex;
 - Character sheet;
 - Homestead scene + cosmetic catalog;
+- full-width Hub / Character / Homestead surfaces with a compact SVG route bar;
+- Infinite Dungeon checkpoint screen;
+- independent Practice screen;
 - cosmetic buy/equip backend;
 - themes / cursor / HUD / terminal cosmetic slots;
 - persistent local layout sizes;
@@ -101,19 +112,71 @@ The current UI slice adds:
 - a future Weekly Raid gate preview;
 - Homestead Trinket Vault concepts including Ember Scythe, Phoenix Ember, Seer's Lens and Bond of Embers.
 
-**Important:** this slice is deliberately display-only. `Submit Run` does not yet mutate HP/Resolve. State changes wait for controlled PYR adjudication so the game never damages the player based on an unverified terminal result.
+**Important:** React never invents combat changes. `Submit Run` binds the
+player evidence, the selected provider returns a validated verdict, and the
+state service derives HP/Resolve/Impact/rewards before returning the event that
+the UI renders. Provider authentication remains an external release gate.
 
 Canonical combat details live in `COMBAT_SYSTEM.md`.
 
 ## Next implementation block
 
-1. PYR context bridge: active file, selection, terminal tail, git diff, quest/mob state.
-2. Controlled PYR verdict path for Battle submissions.
-3. Persistent Resolve / armor calculation / HP / combat log.
-4. Teach Me / Quick Refresher / Test Me encounter entry.
-5. Living Codex records: attempts, weakness tags and interview history.
-6. Boss phase presentation and trinket triggers.
-7. Later: shared weekly raid transport/state and party objectives.
+1. **Implemented:** PYR context bridge at `GET/POST /api/pyr/context` captures
+   active file, selected code, terminal tail, bounded git diff, and the current
+   quest/mob/concept plus assistance/Clean Clear state. It is read-only and
+   excludes player-state/secret-looking files.
+2. **Local Battle flow implemented:** `POST /api/pyr/battle-submission` binds a
+   bounded player answer to the current objective, digest and server-issued
+   evidence ID without persisting the answer. The Quest Journal sends that
+   submission to the selected local AI terminal. `POST /api/pyr/verdict` then
+   requires the matching submission tokens and delegates to the internal state
+   service; callers cannot provide Impact, rewards, HP or counterattack values.
+   Provider authentication remains a hosted-release gate.
+3. **Local Dungeon loop implemented:** `dungeon_run` is a canonical run-scoped
+   checkpoint. `POST /api/dungeon/start`, `PUT /api/dungeon/editor` and
+   `GET /api/dungeon` restore floor/room/question/editor state after a
+   restart. The state service owns the map selector, adaptive current mob,
+   provider-gated verdict, rest/market rooms, local leaderboard and death
+   reset. `dungeon.py` is a controlled projection; internal question rotation
+   blanks it. Hosted Dungeon transport/leaderboards remain behind Milestone C.
+4. **Campaign completion gate implemented:** clearing the final mob marks the
+   mob sequence complete and exposes a boss gate. Trusted game code can record
+   a boss clear only with separate behaviour, explanation and interview
+   evidence IDs; the service derives the +100 XP reward, counters, achievements
+   and first-boss companion evolution. The UI never treats a mob clear as a
+   boss victory or reveals future interview prompts.
+5. **PTY state routing hardened:** terminal environments expose the canonical
+   repo package/path and `questlab-state` wrapper while retaining the quest
+   workspace cwd. Raw workspace `progress.json` edits remain legacy and
+   non-authoritative.
+6. Persistent Resolve / armor calculation / HP / combat log are state-service
+   outputs of the validated local verdict path.
+7. Teach Me / Quick Refresher / Test Me remain provider-driven encounter
+   choices; future exact questions are never revealed by the projection.
+8. **Implemented locally:** Living Codex records retain bounded encounter
+   attempts, question types, weakness tags, verified/incorrect results,
+   interview history, mastery evidence and player-authored notes when the state
+   service records them. Provider authentication and hosted projection remain
+   external gates.
+9. Dungeon question generation, rest/market rooms, score, death reset,
+   checkpoint resume and local run completion are implemented. Hosted Dungeon
+   sync/leaderboards remain deferred.
+10. Independent Practice history and provider-validated learning evidence are
+    implemented locally with zero Campaign/Dungeon rewards.
+11. **Implemented locally:** Boss phase presentation and trinket triggers. The
+    canonical state service records bounded boss requirement phases and owns
+    Ember Scythe, Guardian Sigil and Phoenix Ember effects; hosted rollout and
+    provider-authenticated adjudication remain gated.
+12. **Implemented locally:** Campaign Armor/Trinket loadout projection. The
+    Homestead selector reads only current or state-recorded owned gear, equips
+    through `POST /api/equipment/equip`, and keeps future loot hidden. Trusted
+    game code must record an evidence-backed unlock before a new item can be
+    selected; hosted projection rollout remains approval-gated.
+13. **Implemented locally:** Wide-route navigation. Hub, Character and
+    Homestead keep their full-width presentation but expose a compact route bar
+    for Forge, Tutor, Journal, Codex, Dungeon and Settings; the bar is React
+    view state only and does not remount either PTY.
+14. Later: shared weekly raid transport/state and party objectives.
 
 ## PC test procedure
 
@@ -121,7 +184,7 @@ From the platform checkout:
 
 ```bash
 git pull --ff-only
-.venv/bin/python ide/quest.py --workspace ../questlab-blackjack
+PYTHONPATH=. .venv/bin/python -m ide.quest --workspace ../questlab-blackjack
 ```
 
 Test:
@@ -139,4 +202,12 @@ Report broken behaviour with a screenshot and the visible launcher/terminal outp
 
 ## Current test boundary
 
-This remains a local-runtime test build. The combat shell intentionally stops before automatic verdicts/state mutation. The next high-value engineering step is the controlled PYR context/verdict bridge, not more fake front-end combat state.
+This remains a local-runtime test build. The combat shell waits for the
+selected provider to adjudicate a submitted answer; the state service then
+owns Resolve/HP/reward/Codex mutations and React renders the returned event.
+The context, answer-binding and challenged-verdict halves of the bridge are
+implemented and tested. The local Dungeon/Practice loops, checkpoints,
+adaptive rooms, rest/market, death reset, leaderboard and Practice history are
+implemented; provider authentication, hosted campaign migration, hosted
+Dungeon transport and real PC/laptop acceptance remain deliberately
+unclaimed.

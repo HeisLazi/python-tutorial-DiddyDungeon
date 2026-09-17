@@ -1,0 +1,31 @@
+# Local secrets and environment overrides
+.env
+.env.*
+!.env.example
+ide/frontend/.env
+ide/frontend/.env.*
+!ide/frontend/.env.example
+
+# Python
+.venv
+venv
+__pycache__/
+*.py[cod]
+
+# Frontend
+node_modules/
+dist/
+ide/frontend/node_modules/
+ide/frontend/dist/
+
+# Future desktop packaging output
+src-tauri/target/
+
+# Supabase CLI local state
+supabase/.temp/
+
+# Editor and OS metadata
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db

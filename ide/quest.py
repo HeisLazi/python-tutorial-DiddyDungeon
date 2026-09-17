@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import shutil
 import signal
@@ -24,6 +25,16 @@ def parse_args():
         help="Folder the editor/terminal may access. A git worktree for the active quest is recommended.",
     )
     parser.add_argument("--no-browser", action="store_true", help="Do not automatically open the browser")
+    parser.add_argument(
+        "--use-local-state",
+        action="store_true",
+        help="review and explicitly migrate to this checkout's per-device local state before launching",
+    )
+    parser.add_argument(
+        "--confirm-local-state",
+        action="store_true",
+        help="accept the reviewed custody migration without an interactive token prompt",
+    )
     parser.add_argument("--backend-port", type=int, default=7331, help="Preferred backend port (auto-falls forward if busy)")
     parser.add_argument("--frontend-port", type=int, default=5173, help="Preferred frontend port (auto-falls forward if busy)")
     parser.add_argument(
@@ -42,6 +53,22 @@ def port_available(port: int) -> bool:
         except OSError:
             return False
     return True
+
+
+def checkout_head_sha(root: Path) -> str:
+    """Return the exact checkout revision used to launch both child processes."""
+
+    try:
+        result = subprocess.run(
+            ["git", "-C", str(root), "rev-parse", "--verify", "HEAD"],
+            check=True,
+            capture_output=True,
+            text=True,
+            timeout=2,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return ""
+    return result.stdout.strip()
 
 
 def choose_port(preferred: int, *, avoid: set[int] | None = None) -> int:
@@ -70,6 +97,111 @@ def running_under_wsl() -> bool:
         return "microsoft" in Path("/proc/version").read_text(encoding="utf-8").lower()
     except OSError:
         return False
+
+
+def linux_rollup_optional_dependency_ready(frontend: Path) -> bool:
+    """Return whether a WSL frontend has a native Rollup optional package."""
+
+    if not running_under_wsl():
+        return True
+    rollup_root = frontend / "node_modules" / "@rollup"
+    return any(
+        (rollup_root / package / "package.json").is_file()
+        for package in (
+            "rollup-linux-arm-gnueabihf",
+            "rollup-linux-arm-musleabihf",
+            "rollup-linux-x64-gnu",
+            "rollup-linux-x64-musl",
+            "rollup-linux-arm64-gnu",
+            "rollup-linux-arm64-musl",
+            "rollup-linux-loong64-gnu",
+            "rollup-linux-loong64-musl",
+            "rollup-linux-ppc64-gnu",
+            "rollup-linux-ppc64-musl",
+            "rollup-linux-riscv64-gnu",
+            "rollup-linux-riscv64-musl",
+            "rollup-linux-s390x-gnu",
+        )
+    )
+
+
+def frontend_dependencies_ready(frontend: Path) -> bool:
+    """Return whether the managed frontend dependency tree is importable.
+
+    A mounted OneDrive tree can survive an interrupted install with directories
+    present but package metadata missing. Checking the package manifests here
+    keeps the launcher from starting Vite only to fail later with an opaque
+    ESM/Rollup error. The check is intentionally read-only.
+    """
+
+    node_modules = frontend / "node_modules"
+    required_manifests = (
+        node_modules / "vite" / "package.json",
+        node_modules / "@supabase" / "supabase-js" / "package.json",
+        node_modules / "@supabase" / "functions-js" / "package.json",
+    )
+    return all(path.is_file() for path in required_manifests) and linux_rollup_optional_dependency_ready(
+        frontend
+    )
+
+
+def prepare_local_state(workspace: Path, *, use_local_state: bool, confirm_local_state: bool) -> Path:
+    """Review and, only when explicitly requested, switch to local custody."""
+
+    canonical = REPO_ROOT / "progress.json"
+    if not use_local_state:
+        return canonical
+
+    # Importing the server here keeps the normal launcher path lightweight and
+    # lets this preflight use exactly the same destination derivation and state
+    # service as the running backend, without starting a second server.
+    from ide.server import app_v2
+    from ide.server.state import CUSTODY_CONFIRMATION_TOKEN, StateCommandError
+
+    original_root = app_v2.REPO_ROOT
+    original_workspace = app_v2.WORKSPACE
+    original_progress = app_v2.PROGRESS_PATH
+    app_v2.REPO_ROOT = REPO_ROOT
+    app_v2.WORKSPACE = workspace
+    app_v2.PROGRESS_PATH = canonical
+    try:
+        report = app_v2.local_state_custody_report()
+        print("\nLocal state custody preview:")
+        print(json.dumps(report, indent=2, ensure_ascii=False))
+        status = report.get("status")
+        if status in {"no-source-found", "conflict"}:
+            raise SystemExit(f"Local custody cannot proceed while preview status is '{status}'.")
+        if status == "current":
+            return canonical
+        if status != "already-local":
+            approved = confirm_local_state
+            if not approved and sys.stdin.isatty():
+                response = input(f"Type {CUSTODY_CONFIRMATION_TOKEN} to copy this snapshot: ").strip()
+                approved = response == CUSTODY_CONFIRMATION_TOKEN
+            if not approved:
+                raise SystemExit(
+                    "Custody migration was not confirmed. Review the preview and rerun with "
+                    "--confirm-local-state or an interactive token prompt."
+                )
+            expected_revision = report.get("source_revision")
+            if not isinstance(expected_revision, int) or expected_revision < 0:
+                raise SystemExit("Custody preview did not contain a valid source revision.")
+            try:
+                result = app_v2.STATE_SERVICE.migrate_local_state(
+                    app_v2.proposed_local_state_path(),
+                    expected_source_revision=expected_revision,
+                    confirmation_token=CUSTODY_CONFIRMATION_TOKEN,
+                    forbidden_paths=(app_v2.PROGRESS_PATH, app_v2.legacy_progress_path()),
+                )
+            except StateCommandError as exc:
+                raise SystemExit(f"Custody migration rejected: {exc.detail}") from exc
+            print("Local state custody result:")
+            print(json.dumps(result, indent=2, ensure_ascii=False))
+        return app_v2.proposed_local_state_path()
+    finally:
+        app_v2.REPO_ROOT = original_root
+        app_v2.WORKSPACE = original_workspace
+        app_v2.PROGRESS_PATH = original_progress
 
 
 def open_local_browser(url: str) -> bool:
@@ -106,11 +238,24 @@ def open_local_browser(url: str) -> bool:
 
 def main():
     args = parse_args()
+    if args.confirm_local_state and not args.use_local_state:
+        raise SystemExit("--confirm-local-state requires --use-local-state")
     workspace = Path(args.workspace).expanduser().resolve()
     if not workspace.exists() or not workspace.is_dir():
         raise SystemExit(f"Workspace does not exist: {workspace}")
     if not (FRONTEND / "node_modules").exists():
         raise SystemExit("Frontend dependencies are missing. Run: cd ide/frontend && npm install")
+    if not frontend_dependencies_ready(FRONTEND):
+        if running_under_wsl():
+            raise SystemExit(
+                "WSL frontend dependencies are incomplete or were installed for Windows (missing Vite/Supabase "
+                "metadata or a native Linux Rollup package). Run npm ci inside this WSL checkout or use a clean "
+                "Linux filesystem before launching Forge."
+            )
+        raise SystemExit(
+            "Frontend dependencies are incomplete (missing Vite/Supabase package metadata). "
+            "Run npm ci from a stopped native Windows Forge process before launching."
+        )
     if not shutil.which("npm"):
         raise SystemExit("npm is not on PATH")
 
@@ -119,9 +264,25 @@ def main():
 
     env = os.environ.copy()
     env["QUESTLAB_REPO_ROOT"] = str(REPO_ROOT)
+    # State is always anchored to the platform checkout; PYR/CLI processes do
+    # not infer a save path from their terminal cwd.
+    env["QUESTLAB_STATE_PATH"] = str(REPO_ROOT / "progress.json")
     env["QUESTLAB_WORKSPACE"] = str(workspace)
     env["QUESTLAB_BACKEND_PORT"] = str(backend_port)
     env["QUESTLAB_FRONTEND_PORT"] = str(frontend_port)
+    env["QUESTLAB_EXPECTED_BRANCH"] = "feature/cloud-sync-desktop"
+    # Vite embeds this marker into the frontend bundle so a stale frontend
+    # paired with a newer backend can identify itself instead of silently
+    # presenting an older UI. Manual `npm run dev` remains supported but has
+    # no authoritative marker and falls back to the branch/runtime checks.
+    env["QUESTLAB_BUILD_SHA"] = checkout_head_sha(REPO_ROOT)
+    if args.use_local_state:
+        local_state_path = prepare_local_state(
+            workspace,
+            use_local_state=True,
+            confirm_local_state=args.confirm_local_state,
+        )
+        env["QUESTLAB_STATE_PATH"] = str(local_state_path)
 
     backend_cmd = [
         sys.executable,
@@ -192,18 +353,22 @@ def main():
         else:
             print(f"   browser:   frontend was not ready yet; open manually when it starts: {url}")
 
+    exit_code = 0
     try:
         while not stopping:
             for proc in processes:
                 code = proc.poll()
                 if code is not None:
                     print(f"A Quest Lab process exited with code {code}.")
+                    if code != 0:
+                        exit_code = code
                     stop()
                     break
             time.sleep(0.5)
     finally:
         stop()
+    return exit_code
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())

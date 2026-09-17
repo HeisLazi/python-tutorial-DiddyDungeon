@@ -77,7 +77,8 @@ Python Quest Lab intentionally has **two different streaks**.
 
 ## Learning streak
 
-Stored in `progress.json` and verified by PYR.
+Stored in the local state/sync service (the `progress.json` cache while
+offline/anonymous) and verified by PYR.
 
 A learning-streak day counts when at least one of these happens:
 
@@ -159,7 +160,10 @@ Current shop:
 | Streak Ward | 120 | protect one missed learning day; max one stored |
 | Ember Crown | 250 | cosmetic title after two boss clears |
 
-The static dashboard cannot safely write to GitHub by itself. Purchases become requests to PYR, who verifies balance/requirements and updates canonical state.
+The static dashboard cannot safely write to GitHub by itself. Purchases become
+requests to PYR, who verifies balance/requirements and asks the local
+state/sync service to update the canonical local cache or synchronized cloud
+state.
 
 ---
 
@@ -267,7 +271,11 @@ That keeps the competition useful: one player can be the **most active developer
 
 The campaign is designed to be forkable.
 
-A friend can fork the repo, reset `progress.json`, change `profile.player_id`, set their GitHub username/start timestamp in `activity_config.json`, and use the same canon rules.
+A friend can fork the repo, reset the offline `progress.json` working copy,
+change `profile.player_id`, set their GitHub username/start timestamp in
+`activity_config.json`, and use the same canon rules. A signed-in account uses
+its Supabase synchronized state instead of treating GitHub as game-state
+transport.
 
 Rival comparison can show two score families side by side.
 
@@ -297,7 +305,7 @@ One-off cosmetic rewards do not affect competitive power.
 
 # Public profile rule
 
-`README.md` is the public campaign card. `progress.json` is canonical learning/player state. `activity.json` is machine-derived development activity. `CANON_LEDGER.md` is the public history of custom mechanics/rewards.
+`README.md` is the public campaign card. Before signed-in cloud sync, `progress.json` is canonical local learning/player state; after signed-in cloud sync, Supabase is synchronized account/game-state authority and `progress.json` is the local/offline cache/device working copy. `activity.json` is machine-derived development activity. `CANON_LEDGER.md` is the public history of custom mechanics/rewards.
 
 The README should show current character progress, active quest, assistance integrity, creativity/discoveries, learning streak, Dev Activity League, shields and boss progress.
 
