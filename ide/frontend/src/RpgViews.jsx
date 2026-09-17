@@ -295,6 +295,8 @@ export function SurfaceNavigation({ activeView, onNavigate }) {
             type="button"
             className={`surface-nav-link ${activeView === item.id ? 'active' : ''}`}
             onClick={() => onNavigate?.(item.id)}
+            title={item.label}
+            aria-label={item.label}
             aria-current={activeView === item.id ? 'page' : undefined}
           >
             <span aria-hidden="true">{item.icon}</span>
