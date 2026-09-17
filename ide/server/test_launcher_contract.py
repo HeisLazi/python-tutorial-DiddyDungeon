@@ -236,6 +236,16 @@ class LauncherContractTests(unittest.TestCase):
         self.assertIn("npm ci", packager)
         self.assertNotIn("Copy-Item -LiteralPath (Join-Path $repoRoot 'progress.json')", packager)
 
+    def test_packager_requires_exact_path_for_protected_untracked_data(self):
+        packager = (ROOT / "tools" / "questlab-package.ps1").read_text(encoding="utf-8")
+        onboarding = (ROOT / "FRIEND_ONBOARDING.md").read_text(encoding="utf-8")
+        self.assertIn("[string[]]$IgnoreUntrackedPath", packager)
+        self.assertIn("must stay inside the repository", packager)
+        self.assertIn("must be untracked", packager)
+        self.assertIn("$ignoredUntracked.Keys", packager)
+        self.assertIn("-IgnoreUntrackedPath", onboarding)
+        self.assertIn("blanket ignore of dirty source is not available", onboarding)
+
     def test_public_activity_workflow_has_a_narrow_write_boundary(self):
         workflow = (ROOT / ".github" / "workflows" / "sync-activity.yml").read_text(encoding="utf-8")
         activity = (ROOT / "tools" / "sync_activity.py").read_text(encoding="utf-8")

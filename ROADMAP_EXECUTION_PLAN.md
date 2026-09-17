@@ -956,3 +956,14 @@ guards the primitive against any future 5xx/6xx feed-sized minimum. Windows
 frontend tests **69/69** and the Vite build (**1,346 modules**) pass. No state,
 sync, learner-file or PTY behavior changed; visual K&M (F-080) remains the
 relevant unverified check.
+
+## Current checkpoint — 2026-09-17 — protected-path friend packaging
+
+F-144 closes a distribution edge case exposed by the current protected
+checkout: the friend packager stopped on a user-owned untracked nested
+directory before archiving committed source. `tools/questlab-package.ps1` now
+accepts an exact `-IgnoreUntrackedPath` only after validating that the path is
+inside the checkout and untracked. The package still comes exclusively from
+`HEAD`, strips `progress.json`, `tutor.py`, `dungeon.py` and `notes/`, and has no
+blanket dirty-source bypass. Launcher-contract coverage is **16/16**; package
+execution remains the next acceptance check.

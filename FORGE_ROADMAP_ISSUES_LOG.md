@@ -2259,3 +2259,13 @@ migration or seed was applied. Authenticated two-device acceptance remains open.
 
 Verification: Windows frontend tests **69/69** and Vite build **1,346 modules**
 passed. Browser K&M remains environment-blocked by F-080.
+
+## Friend packager blocked by a protected nested checkout — F-144
+
+| ID | Severity | Area | Finding | Status |
+|---|---|---|---|---|
+| F-144 | P2 | Distribution custody | The strict friend packager refused a checkout containing the user-owned untracked nested `/` directory, even though the bundle is built from committed `HEAD` and would never archive that directory. Removing or staging the protected directory was not acceptable. | Fixed with an explicit `-IgnoreUntrackedPath` option. Each ignored path must exist inside the repository, be untracked, and be named exactly; no blanket dirty-source bypass exists. The archive still comes only from `HEAD`, then strips player-owned save/notebook paths. |
+
+Verification: launcher-contract coverage passes **16/16**; package execution
+after the reviewed commit must prove the exact protected path can remain in
+place without entering the bundle.

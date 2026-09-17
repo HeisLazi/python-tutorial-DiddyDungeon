@@ -1,7 +1,8 @@
 [CmdletBinding()]
 param(
     [string]$OutputDirectory = (Join-Path (Get-Location) 'questlab-bundles'),
-    [switch]$KeepStaging
+    [switch]$KeepStaging,
+    [string[]]$IgnoreUntrackedPath = @()
 )
 
 $ErrorActionPreference = 'Stop'
@@ -24,11 +25,34 @@ if ($branch -ne $expectedBranch) {
 }
 
 $dirty = @(& git -C $repoRoot status --porcelain=v1)
+$ignoredUntracked = @{}
+foreach ($candidate in $IgnoreUntrackedPath) {
+    if ([string]::IsNullOrWhiteSpace($candidate)) {
+        throw 'IgnoreUntrackedPath cannot be empty.'
+    }
+    $candidatePath = [System.IO.Path]::GetFullPath((Join-Path $repoRoot $candidate))
+    $repoPrefix = $repoRoot.TrimEnd([System.IO.Path]::DirectorySeparatorChar, [System.IO.Path]::AltDirectorySeparatorChar) + [System.IO.Path]::DirectorySeparatorChar
+    if ($candidatePath -eq $repoRoot -or -not $candidatePath.StartsWith($repoPrefix, [System.StringComparison]::OrdinalIgnoreCase)) {
+        throw "IgnoreUntrackedPath must stay inside the repository: $candidate"
+    }
+    if (-not (Test-Path -LiteralPath $candidatePath)) {
+        throw "IgnoreUntrackedPath does not exist: $candidate"
+    }
+    $relativeCandidate = [System.IO.Path]::GetRelativePath($repoRoot, $candidatePath).Replace('\', '/')
+    $trackedCandidate = @(& git -C $repoRoot ls-files --error-unmatch -- $relativeCandidate 2>$null)
+    if ($LASTEXITCODE -eq 0 -and $trackedCandidate.Count -gt 0) {
+        throw "IgnoreUntrackedPath must be untracked: $candidate"
+    }
+    $ignoredUntracked[$relativeCandidate] = $true
+}
 $unexpected = @($dirty | Where-Object {
     # These are player/workspace files, not committed distribution source.
     # They must never enter the bundle, but their presence must not prevent a
     # friend package from being built.
-    $_ -and $_ -notmatch '(^|\s)(progress\.json|tutor\.py|dungeon\.py)$' -and $_ -notmatch '^\?\? notes(?:/|\\)'
+    $statusLine = $_
+    $normalizedStatus = if ($statusLine) { $statusLine.Replace('\', '/') } else { '' }
+    $explicitlyIgnored = @($ignoredUntracked.Keys | Where-Object { $normalizedStatus.Contains($_) }).Count -gt 0
+    $statusLine -and -not $explicitlyIgnored -and $statusLine -notmatch '(^|\s)(progress\.json|tutor\.py|dungeon\.py)$' -and $statusLine -notmatch '^\?\? notes(?:/|\\)'
 })
 if ($unexpected.Count -gt 0) {
     throw "Refusing to package a checkout with uncommitted source changes:`n$($unexpected -join "`n")"

@@ -850,3 +850,12 @@ Supabase write, seed, save or PTY change occurred.
 Verification: Windows frontend tests **69/69** and Vite build **1,346 modules**
 passed. No protected save, learner file, PTY or hosted state was touched; browser
 K&M remains environment-blocked by F-080.
+
+## Strict friend packaging rejected a protected nested checkout — 2026-09-17 (F-144)
+
+| ID | Severity | Finding | Status |
+|---|---|---|---|
+| F-144 | P2 | The packager stopped on the user-owned untracked `/` nested checkout before it could create a friend bundle. Deleting, moving or staging that protected directory was out of scope. | Added exact-path `-IgnoreUntrackedPath`; it validates the path is inside the repo and untracked, while `git archive HEAD` remains the only bundle source. Unknown dirty source still fails closed. |
+
+Initial reproduction was a safe failed package attempt; no bundle or protected
+file was written. Post-commit package verification is required.

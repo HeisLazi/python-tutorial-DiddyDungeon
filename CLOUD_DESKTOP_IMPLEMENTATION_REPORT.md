@@ -3085,3 +3085,16 @@ reward, sync, learner-file, or PTY behavior changed.
 
 Verification: Windows frontend tests **69/69** and Vite build **1,346 modules**
 passed. Browser K&M remains blocked by F-080.
+
+### Friend bundle protected-path override — F-144 (2026-09-17)
+
+The strict packager correctly rejected the checkout's user-owned untracked
+`/` nested repository, but that prevented a friend bundle even though the
+bundle is assembled from committed `HEAD` and cannot include untracked files.
+The packager now accepts an explicit `-IgnoreUntrackedPath` for a reviewed
+existing path inside the checkout. The path must be untracked and exact; the
+option cannot ignore tracked edits or all dirty source. Save/notebook stripping
+and the `HEAD`-only archive boundary are unchanged.
+
+Launcher-contract coverage is **16/16**; a post-commit bundle run must verify
+the protected path stays untouched and absent from the archive.

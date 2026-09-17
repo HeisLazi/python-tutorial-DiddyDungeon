@@ -198,6 +198,19 @@ the clean branch checkout:
 .\tools\questlab-package.ps1 -OutputDirectory .\questlab-bundles
 ```
 
+The packager fails closed on unknown untracked source. If this checkout also
+contains a deliberately protected, untracked local directory that you have
+reviewed and do not want included, name that exact path explicitly:
+
+```powershell
+.\tools\questlab-package.ps1 -OutputDirectory .\questlab-bundles `
+  -IgnoreUntrackedPath '.\protected-local-data'
+```
+
+This option accepts only existing paths inside the checkout that are not
+tracked by Git. It does not copy or inspect them: the bundle is still created
+from committed `HEAD`, and a blanket ignore of dirty source is not available.
+
 The packager archives committed `HEAD` only, then removes player-owned
 `progress.json`, `tutor.py`, `dungeon.py` and `notes/` paths from the staging
 tree. It refuses unrelated dirty source changes, so the bundle contains
