@@ -1745,3 +1745,13 @@ check.
 The disposable QA account is not the user's personal account. Its portrait
 was left in place for repeatable QA; no password or token is stored in this
 repository. The protected save and existing shell/AI PTYs were not touched.
+
+## Sync-status copy recheck — 2026-09-17
+
+| ID | Severity | Area | Finding | Status |
+|---|---|---|---|---|
+| F-081 | P3 | Account status messaging | After the campaign projection landed, the signed-in cache detail still said Projects and Codex remained local, contradicting the shared revision transport and making a healthy implementation look incomplete. | Fixed in `syncEngine.js`; the status now names Campaign, Journal and Codex as gateway-synced surfaces. A regression test covers the emitted status detail. |
+
+The focused frontend suite is now **41/41** and the clean ext4 production build
+still transforms **1,346 modules**. The protected save and user notebooks were
+not staged or written.

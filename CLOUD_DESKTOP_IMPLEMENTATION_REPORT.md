@@ -2336,3 +2336,12 @@ PC↔laptop campaign sync until the hosted migration is approved/applied and
 the two-device acceptance is repeated. The in-app browser could not attach a
 fresh tab for this isolated run, so this account pass provides no new K&M
 claim. No user save, user source file, or existing PTY was touched.
+
+### Sync-status copy repair — 2026-09-17
+
+The signed-in cache message was stale after campaign projection transport was
+added: it still said Projects and Codex remained local. The message now names
+Campaign, Journal and Codex as the surfaces sharing the state gateway, with a
+regression test covering the emitted detail. Verification after the repair was
+frontend **41/41** and a clean ext4 Vite build of **1,346 modules**; no user
+save, notebook or PTY was touched.
