@@ -304,6 +304,10 @@ surface, compact metric strip, clear shelf spine and readable example blocks).
 F-148 also removes the old `min-height: 520px` fallback from the base Codex
 primitive. These are CSS-only refinements; they do not add a scroll owner,
 change the campaign projection, or remount either PTY.
+F-149 removes the remaining base `max-height`/`overflow:auto` fallbacks from
+the paged bookshelf and encounter picker. React page controls remain the
+authoritative collection navigation, while code examples and long notes keep
+their intentional local reading scroll.
 
 Remaining release gates are intentionally unchanged:
 

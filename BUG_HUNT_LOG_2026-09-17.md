@@ -909,3 +909,13 @@ F-080, so this is not presented as a fresh device-level visual claim.
 
 Verification: Windows frontend tests **71/71** and `git diff --check` pass;
 no state, learner file, PTY or hosted migration changed.
+
+## Legacy Codex list fallbacks still owned scroll — 2026-09-17 (F-149)
+
+| ID | Severity | Finding | Status |
+|---|---|---|---|
+| F-149 | P1 | The base Codex stylesheet still gave the paged bookshelf and encounter picker their own `max-height`/`overflow:auto` fallbacks. Those redundant scroll owners could recreate the infinite-feed feel in a compatibility shell. | Fixed by making both base primitives `max-height: none; overflow: visible`; React shelf/record paging remains the only collection navigation, with the intentional note/code scroll owners preserved in the reader layer. |
+
+Verification: Windows frontend tests **72/72**, Vite transforms **1,346
+modules**, and the supported WSL backend suite is **116/116**; `git diff
+--check` passes. No state, learner file, PTY or hosted migration changed.

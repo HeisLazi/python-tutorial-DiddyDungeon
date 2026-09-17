@@ -2312,3 +2312,14 @@ F-080; no player state, learner file, PTY or hosted migration changed.
 Verification: Windows frontend tests **71/71** and `git diff --check` pass. No
 state, learner file, PTY or hosted migration changed; browser K&M remains
 blocked by F-080.
+
+## Legacy Codex list fallbacks still owned scroll — F-149
+
+| ID | Severity | Area | Finding | Status |
+|---|---|---|---|---|
+| F-149 | P1 | Codex presentation | The base Codex stylesheet still assigned `max-height` and `overflow:auto` to the already-paged bookshelf and encounter picker. Those fallback scroll owners could recreate the infinite-feed feel in a compatibility shell. | Fixed by setting both base primitives to `max-height: none; overflow: visible`; React shelf/record paging remains authoritative, while only intentional code-example and long-note bodies scroll. |
+
+Verification: Windows frontend source tests are **72/72**, Vite transforms
+**1,346 modules**, and the supported WSL backend suite is **116/116**; no
+state, learner file, PTY or hosted migration changed. Browser K&M remains
+blocked by F-080.

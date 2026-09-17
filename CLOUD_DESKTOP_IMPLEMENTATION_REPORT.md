@@ -3146,3 +3146,13 @@ source suite guards the exact stale declaration.
 
 Verification: Windows frontend tests **71/71** and `git diff --check` pass.
 No state, learner file, PTY or hosted migration changed.
+
+### Legacy Codex list overflow cleanup — F-149 (2026-09-17)
+
+Removed the base `max-height`/`overflow:auto` fallbacks from the paged Codex
+book and encounter lists. The compatibility layer now leaves collection
+navigation to the explicit React shelf/record pagers rather than introducing a
+second scroll owner.
+
+Verification: the focused frontend source guard covers both stale declarations;
+no state, learner file, PTY or hosted migration changed.

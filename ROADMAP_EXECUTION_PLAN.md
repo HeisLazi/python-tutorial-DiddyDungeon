@@ -1014,3 +1014,13 @@ revision polling and PTY lifecycle are untouched.
 Windows frontend tests are **71/71**, Vite transforms **1,346 modules**, and
 the supported WSL backend suite is **116/116**. Browser K&M (F-080), hosted
 migration, physical CachyOS and two-device acceptance remain open.
+
+## Current checkpoint — 2026-09-17 — Codex fallback scroll cleanup
+
+F-149 removes the last base stylesheet scroll owners from the Codex bookshelf
+and encounter picker (`max-height: none; overflow: visible`). React's bounded
+book/record/mastery paging remains authoritative; code examples and long note
+bodies retain only their intentional local scroll. Windows frontend source
+tests are **72/72** and the Vite production build remains green. Browser K&M
+acceptance (F-080) is still open because the local CUA browser could not attach
+to the live port in this session.

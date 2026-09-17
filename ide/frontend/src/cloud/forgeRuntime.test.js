@@ -420,6 +420,15 @@ test('Codex shared library primitive cannot reintroduce a feed-sized minimum', (
   assert.doesNotMatch(styles, /\.codex-library\{[^}]*min-height:520px\}/)
 })
 
+test('Codex base primitives leave paging in charge instead of adding fallback scrollbars', () => {
+  const styles = source('../styles.css')
+
+  assert.match(styles, /\.codex-page-list\{[^}]*max-height:none;overflow:visible\}/)
+  assert.match(styles, /\.codex-entry-picker\{[^}]*max-height:none;overflow:visible\}/)
+  assert.doesNotMatch(styles, /\.codex-page-list\{[^}]*max-height:440px;overflow:auto\}/)
+  assert.doesNotMatch(styles, /\.codex-entry-picker\{[^}]*max-height:150px;overflow:auto\}/)
+})
+
 test('Codex reader contract keeps the outer page finite and the shelf paged', () => {
   const views = source('../RpgViews.jsx')
   const foundation = source('../foundation.css')
