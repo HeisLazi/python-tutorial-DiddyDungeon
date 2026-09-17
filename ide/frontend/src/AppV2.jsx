@@ -479,12 +479,24 @@ function AppV2() {
       && runtime?.repo_git?.head_sha
       && FRONTEND_BUILD_SHA !== runtime.repo_git.head_sha,
   )
+  const runtimeAuthority = runtime?.state_authority || {}
   const runtimeContractMissing = Boolean(
     runtime && (
       !runtime.expected_branch
       || !runtime.repo_git?.head_sha
-      || !runtime.state_authority?.canonical_path
-      || !runtime.state_authority?.legacy_path
+      || !runtimeAuthority.canonical_path
+      || runtimeAuthority.canonical_authoritative !== true
+      || runtimeAuthority.legacy_authoritative !== false
+      // A canonical-root workspace intentionally has no separate legacy path.
+      // Treat null as the explicit one-authority shape, while still rejecting
+      // an omitted or malformed path from a stale backend.
+      || (
+        runtimeAuthority.legacy_path !== null
+        && (
+          typeof runtimeAuthority.legacy_path !== 'string'
+          || !runtimeAuthority.legacy_path.trim()
+        )
+      )
     ),
   )
 

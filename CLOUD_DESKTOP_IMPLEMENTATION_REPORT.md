@@ -3356,3 +3356,26 @@ form `.venv/`, so symlinks could look like source changes to strict packaging
 checks. The ignore entries now use exact names (`.venv` and `venv`), covering
 both directory and symlink forms. `git check-ignore` confirms the boundary and
 frontend tests remain **82/82**.
+
+### Canonical-root runtime contract and WSL boot repair — F-166 (2026-09-17)
+
+The local canonical-root deployment intentionally exposes one player-state
+authority. Its runtime payload therefore has `legacy_path: null` and
+`legacy_authoritative: false`; requiring a non-empty legacy path made a healthy
+Forge session render `RUNTIME STALE · use current launcher`. The frontend now
+requires explicit `canonical_authoritative: true` and
+`legacy_authoritative: false`, accepts the intentional null legacy path, and
+still rejects an omitted or malformed path from a stale backend.
+
+The reported boot failure had a separate environmental cause in the shared
+OneDrive WSL checkout: its Windows dependency tree lacked the native Linux
+Rollup optional package, so the guarded launcher stopped before starting Vite
+or Uvicorn. A read-only check confirmed the missing package; `npm ci
+--include=optional` rebuilt only the ignored `ide/frontend/node_modules` tree.
+No tracked source, save, learner file, PTY or hosted state was touched.
+
+Verification: the guarded WSL launcher started Vite on `5173` and Uvicorn on
+`7331`; `/` returned **200**, `/api/runtime` returned **200** with branch
+`feature/cloud-sync-desktop`, HEAD `d6a0c370`, one canonical authority and no
+legacy authority, and `/api/campaign` returned **200**. Frontend tests pass
+**82/82**. Browser K&M remains blocked by F-080.

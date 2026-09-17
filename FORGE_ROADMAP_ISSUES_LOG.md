@@ -2484,3 +2484,15 @@ changed. Browser K&M remains blocked by F-080.
 | ID | Severity | Area | Finding | Status |
 |---|---|---|---|---|
 | F-165 | P3 | Native distribution / packaging | The repository ignored `.venv/` directories but not a `.venv` symlink. A disposable native report that reused an existing venv therefore reported one dirty path even though no source file changed. | Fixed by using exact-name `.venv` and `venv` ignore patterns, which cover directories and symlinks. `git check-ignore` and frontend **82/82** pass; protected saves and package boundaries are unchanged. |
+
+## Healthy canonical-root runtime was shown as stale — F-166
+
+| ID | Severity | Area | Finding | Status |
+|---|---|---|---|---|
+| F-166 | P1 | Runtime identity / boot UX | The canonical-root Forge intentionally has one local authority, so `/api/runtime` returns `legacy_path: null` and `legacy_authoritative: false`. React nevertheless required a truthy legacy path and could label a healthy launch `RUNTIME STALE · use current launcher`. Separately, the shared WSL OneDrive checkout could not boot while its Windows `node_modules` lacked native Linux Rollup. | Fixed the runtime contract to require explicit authority flags and accept `legacy_path: null` as the valid one-authority shape while rejecting omitted/malformed values. Repaired the ignored dependency tree with WSL `npm ci --include=optional`; the guarded launcher now reaches Vite/backend startup. |
+
+Verification: WSL launcher smoke served `/` **200**, `/api/runtime` **200** and
+`/api/campaign` **200** on backend `7331`; runtime reported branch
+`feature/cloud-sync-desktop`, HEAD `d6a0c370`, canonical authority true and
+legacy authority false. Frontend tests **82/82** pass. No save, learner file,
+PTY or hosted state changed. Browser K&M remains blocked by F-080.

@@ -1178,3 +1178,18 @@ F-165 closes a small distribution false-positive: `.gitignore` now ignores the
 exact `.venv`/`venv` names, so both real virtualenv directories and disposable
 symlinks remain outside source-dirty checks. `git check-ignore` and frontend
 tests **82/82** pass; no state, PTY or hosted boundary changed.
+
+## Current checkpoint — 2026-09-17 — canonical runtime contract and WSL boot
+
+F-166 fixes two coupled launch diagnostics. The canonical-root runtime is a
+single-authority deployment, so `legacy_path: null` is valid; Forge now checks
+explicit canonical/legacy authority flags and no longer marks that healthy
+shape stale. The reported WSL boot failure was caused by a Windows-installed
+frontend dependency tree without native Linux Rollup. Rebuilding ignored
+`node_modules` with `npm ci --include=optional` restored the guarded launch.
+
+The smoke run served `/` **200**, `/api/runtime` **200** and `/api/campaign`
+**200** on `7331`, with branch `feature/cloud-sync-desktop`, HEAD `d6a0c370`,
+and exactly one canonical state authority. Frontend tests are **82/82**. No
+save, learner file, PTY or hosted state changed. Browser K&M, physical CachyOS,
+hosted migrations and authenticated cross-device acceptance remain open.

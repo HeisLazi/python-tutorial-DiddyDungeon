@@ -433,3 +433,14 @@ F-165 tightens source hygiene for native distribution: `.gitignore` now ignores
 exact `.venv` and `venv` names, covering both virtualenv directories and
 symlinks. `git check-ignore` and frontend **82/82** pass. This does not change
 save custody, PTYs, hosted transport or the physical CachyOS gate.
+
+F-166 fixes the healthy canonical-root runtime false positive and the observed
+WSL boot blocker. A one-authority runtime legitimately returns
+`legacy_path: null`; the frontend now validates the explicit authority flags
+instead of requiring a second path. The shared OneDrive WSL dependency tree
+was then rebuilt with `npm ci --include=optional` so native Linux Rollup is
+available in ignored `node_modules`. A guarded launch started Vite/backend and
+returned **200** for `/`, `/api/runtime` and `/api/campaign`; frontend tests
+remain **82/82**. No save, learner file, PTY, hosted migration or hosted
+player-state write changed. Browser K&M (F-080), physical CachyOS (F-058) and
+hosted two-device/authentication gates remain open.
