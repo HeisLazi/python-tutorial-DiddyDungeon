@@ -2323,3 +2323,13 @@ Verification: Windows frontend source tests are **72/72**, Vite transforms
 **1,346 modules**, and the supported WSL backend suite is **116/116**; no
 state, learner file, PTY or hosted migration changed. Browser K&M remains
 blocked by F-080.
+
+## Mobile Codex fallback still capped the bookshelf — F-150
+
+| ID | Severity | Area | Finding | Status |
+|---|---|---|---|---|
+| F-150 | P1 | Codex presentation | The legacy mobile media query still capped the paged bookshelf at 180px, leaving a compatibility-order path to a second narrow-window scrollbar. | Fixed by setting the mobile fallback to `max-height: none; overflow: visible` and guarding the stale cap in the frontend source suite. |
+
+Verification: Windows frontend source tests are **72/72**, Vite transforms
+**1,346 modules**, and `git diff --check` passes; no state, learner file, PTY
+or hosted migration changed. Browser K&M remains blocked by F-080.

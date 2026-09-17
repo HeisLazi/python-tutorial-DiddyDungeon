@@ -1024,3 +1024,6 @@ bodies retain only their intentional local scroll. Windows frontend source
 tests are **72/72** and the Vite production build remains green. Browser K&M
 acceptance (F-080) is still open because the local CUA browser could not attach
 to the live port in this session.
+
+F-150 removes the remaining mobile `max-height: 180px` bookshelf fallback;
+narrow Codex windows now use the same explicit React paging contract.

@@ -425,7 +425,9 @@ test('Codex base primitives leave paging in charge instead of adding fallback sc
 
   assert.match(styles, /\.codex-page-list\{[^}]*max-height:none;overflow:visible\}/)
   assert.match(styles, /\.codex-entry-picker\{[^}]*max-height:none;overflow:visible\}/)
+  assert.match(styles, /@media\(max-width:760px\)\{.*?\.codex-page-list\{max-height:none;overflow:visible\}.*?\.codex-page-grid\{/s)
   assert.doesNotMatch(styles, /\.codex-page-list\{[^}]*max-height:440px;overflow:auto\}/)
+  assert.doesNotMatch(styles, /\.codex-page-list\{max-height:180px\}/)
   assert.doesNotMatch(styles, /\.codex-entry-picker\{[^}]*max-height:150px;overflow:auto\}/)
 })
 

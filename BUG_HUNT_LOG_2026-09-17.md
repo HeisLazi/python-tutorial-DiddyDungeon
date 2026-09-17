@@ -919,3 +919,13 @@ no state, learner file, PTY or hosted migration changed.
 Verification: Windows frontend tests **72/72**, Vite transforms **1,346
 modules**, and the supported WSL backend suite is **116/116**; `git diff
 --check` passes. No state, learner file, PTY or hosted migration changed.
+
+## Mobile Codex fallback still capped the bookshelf — 2026-09-17 (F-150)
+
+| ID | Severity | Finding | Status |
+|---|---|---|---|
+| F-150 | P1 | The legacy mobile media query still capped `.codex-page-list` at 180px. Although the foundation stylesheet normally overrode it, a compatibility stylesheet order could reintroduce a second bookshelf scrollbar on narrow windows. | Fixed by making the mobile fallback explicitly `max-height: none; overflow: visible` and extending the source regression guard. |
+
+Verification: Windows frontend tests **72/72**, Vite transforms **1,346
+modules**, and `git diff --check` passes; no state, learner file, PTY or
+hosted migration changed.

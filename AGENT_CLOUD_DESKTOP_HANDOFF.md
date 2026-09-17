@@ -308,6 +308,8 @@ F-149 removes the remaining base `max-height`/`overflow:auto` fallbacks from
 the paged bookshelf and encounter picker. React page controls remain the
 authoritative collection navigation, while code examples and long notes keep
 their intentional local reading scroll.
+F-150 also removes the legacy mobile `max-height: 180px` bookshelf cap so a
+compatibility stylesheet order cannot reintroduce a narrow-window scrollbar.
 
 Remaining release gates are intentionally unchanged:
 

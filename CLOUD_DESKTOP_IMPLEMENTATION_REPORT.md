@@ -3156,3 +3156,9 @@ second scroll owner.
 
 Verification: the focused frontend source guard covers both stale declarations;
 no state, learner file, PTY or hosted migration changed.
+
+### Mobile Codex fallback cap cleanup — F-150 (2026-09-17)
+
+Removed the final legacy mobile `max-height: 180px` bookshelf fallback. Narrow
+Codex windows now keep collection navigation paged by React without a second
+list scrollbar; intentional code-example and long-note reading scroll remains.
