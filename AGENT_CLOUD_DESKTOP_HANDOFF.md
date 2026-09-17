@@ -286,7 +286,7 @@ presentation slice:
 Current verification:
 
 - WSL backend suite: **116/116**;
-- Windows frontend suite: **75/75**;
+- Windows frontend suite: **76/76**;
 - launcher contract suite: **17/17**;
 - Vite production build: **1,346 modules**;
 - native Linux launcher/preflight `--help` and shell syntax checks: green;
@@ -298,11 +298,11 @@ Current verification:
   `v26.7.0`, npm `11.19.0` and WSL2 kernel `6.18.33.1-microsoft-standard-WSL2`;
 - browser K&M attach: still blocked by F-080, so no new visual-device claim.
 
-The latest local presentation checkpoint is F-154: the Codex reader now uses a
+The latest local presentation checkpoint is F-155: the Codex reader now uses a
 single field-guide visual language on top of the bounded folio (quiet paper
-surface, compact metric strip, clear shelf spine and readable example blocks),
-with one intentional bounded reading scroll and an in-Codex route-navigation
-row.
+surface, readable book-face headings/prose, compact metric strip, clear shelf
+spine and readable example blocks), with one intentional bounded reading scroll
+and an in-Codex route-navigation row.
 F-148 also removes the old `min-height: 520px` fallback from the base Codex
 primitive. These are CSS-only refinements; they do not add a scroll owner,
 change the campaign projection, or remount either PTY.
@@ -336,6 +336,13 @@ shared SVG route-navigation row is rendered inside Codex so it cannot become a
 dead end. Windows frontend tests **75/75**, Vite (**1,346 modules**), supported
 WSL backend tests **116/116**, and live HMR source checks on ports `5181` and
 `5190` passed. Browser K&M remains blocked by F-080.
+
+F-155 is the follow-up visual refinement: Codex display copy uses a readable
+book face, evidence/code stays monospace, and section controls are calmer
+rectangles instead of another pill-heavy dashboard treatment. The existing
+bounded scroll contract is unchanged. Windows frontend tests **76/76**, the
+Vite production build (**1,346 modules**) and live HMR checks on ports `5181`
+and `5190` passed. Browser K&M remains blocked by F-080.
 
 Remaining release gates are intentionally unchanged:
 

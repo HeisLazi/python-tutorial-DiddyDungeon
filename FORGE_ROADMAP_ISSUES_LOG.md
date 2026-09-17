@@ -2377,3 +2377,14 @@ modules**, supported WSL backend tests **116/116**, and live source checks on
 ports `5181` and `5190` confirm the F-154 CSS is served by HMR. No player
 state, learner file, PTY or hosted migration changed. Browser K&M remains
 blocked by F-080.
+
+## Codex typography still read like a dashboard — F-155
+
+| ID | Severity | Area | Finding | Status |
+|---|---|---|---|---|
+| F-155 | P2 | Codex presentation | The bounded Codex reader no longer grew as an outer feed, but its headings and prose still inherited the dense monospace dashboard treatment. The result was technically finite yet visually tiring for the requested book/field-guide experience. | Fixed with a presentation-only typography layer: readable book-face headings and prose, monospace evidence/code, calmer rectangular section controls and smooth movement inside the existing single reading surface. No new scroll owner or state projection was introduced. |
+
+Verification: Windows frontend tests **76/76**, Vite production build **1,346
+modules**, and live HMR source checks on ports `5181` and `5190` confirm the
+F-155 CSS is served. No player state, learner file, PTY or hosted migration
+changed. Browser K&M remains blocked by F-080.

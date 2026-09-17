@@ -3207,3 +3207,17 @@ Verification: Windows frontend tests **75/75**, Vite production build
 source checks on ports `5181` and `5190` all passed. Browser K&M remains
 blocked by F-080, so this does not claim fresh device-level visual proof.
 No player state, learner file, PTY or hosted migration changed.
+
+### Codex field-guide typography refinement — F-155 (2026-09-17)
+
+The bounded Codex reader now separates readable book-face display/prose from
+monospace evidence and code. Section controls use quieter rectangular tabs and
+the existing single reading surface gets smooth in-panel movement. This is a
+presentation-only refinement; the React-owned shelf paging, viewport contract,
+state-service projections and PTY lifecycle are unchanged.
+
+Verification: Windows frontend tests **76/76**, Vite production build
+**1,346 modules**, and live HMR source checks on ports `5181` and `5190` all
+passed. Browser K&M remains blocked by F-080, so this does not claim fresh
+device-level visual proof. No player state, learner file, PTY or hosted
+migration changed.

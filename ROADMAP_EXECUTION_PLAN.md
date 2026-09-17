@@ -1061,3 +1061,14 @@ live Vite instances (`5181`, `5190`) serve the F-154 CSS via HMR. This remains
 presentation-only: no player state, learner file, PTY or hosted migration was
 changed. Browser K&M (F-080), hosted migrations, physical CachyOS and
 two-device acceptance remain open.
+
+## Current checkpoint — 2026-09-17 — Codex field-guide typography
+
+F-155 refines the bounded Codex without changing its state or scroll contract.
+Book-face typography now carries headings and explanatory prose, while code and
+validated evidence remain monospace. Rectangular section controls reduce the
+pill-heavy dashboard feel, and smooth movement stays inside the one existing
+reading surface. Windows frontend tests are **76/76**, the Vite production build
+transforms **1,346 modules**, and live Vite instances (`5181`, `5190`) serve the
+F-155 CSS via HMR. Browser K&M (F-080), hosted migrations, physical CachyOS and
+two-device acceptance remain open.

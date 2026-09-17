@@ -1426,3 +1426,65 @@
     scrollbar-width: thin;
   }
 }
+
+/* F-155: make the bounded reader feel like a field guide, not a second IDE.
+   Display copy uses a readable book face while code/evidence remains
+   deliberately monospace.  This is a presentation-only layer: the single
+   bounded reading surface and React-owned paging contract remain unchanged. */
+.codex-screen {
+  --codex-display-font: Georgia, "Iowan Old Style", "Palatino Linotype", serif;
+  --codex-body-font: "Segoe UI", system-ui, sans-serif;
+}
+.codex-screen > .screen-hero.codex-hero h2,
+.codex-screen .codex-page-heading h3,
+.codex-screen .codex-section-heading h4,
+.codex-screen .codex-entry-detail > p,
+.codex-screen .codex-mistakes p,
+.codex-screen .codex-insight-empty,
+.codex-screen .codex-section-hint {
+  font-family: var(--codex-display-font);
+}
+.codex-screen > .screen-hero.codex-hero h2 {
+  letter-spacing: -.025em;
+  font-weight: 700;
+}
+.codex-screen .codex-page-heading h3,
+.codex-screen .codex-section-heading h4 {
+  font-weight: 700;
+}
+.codex-screen .codex-page-heading p,
+.codex-screen .codex-entry-detail > p,
+.codex-screen .codex-mistakes p,
+.codex-screen .codex-insight-empty,
+.codex-screen .codex-section-hint {
+  font-family: var(--codex-body-font);
+  line-height: 1.65;
+}
+.codex-screen .codex-page-heading p {
+  font-size: 13px;
+}
+.codex-screen .codex-book-tabs {
+  border-radius: 5px;
+  background: color-mix(in srgb, var(--panel3) 58%, transparent);
+}
+.codex-screen .codex-book-tabs button {
+  border-radius: 4px;
+  font-family: var(--codex-body-font);
+  font-size: 10px;
+  letter-spacing: .08em;
+}
+.codex-screen .codex-page-controls,
+.codex-screen .codex-entry-pager,
+.codex-screen .codex-shelf-controls {
+  font-family: var(--codex-body-font);
+}
+.codex-screen .codex-page-summary span,
+.codex-screen .codex-tags span,
+.codex-screen .codex-entry-meta,
+.codex-screen .codex-entry-picker button small,
+.codex-screen .codex-page-list button small {
+  font-family: var(--codex-body-font);
+}
+.codex-screen .codex-book-section {
+  scroll-behavior: smooth;
+}

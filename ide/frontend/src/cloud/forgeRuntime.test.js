@@ -757,6 +757,16 @@ test('top HUD SVG icons are nested content, not nested stat pills', () => {
   assert.match(styles, /\.top-stats\s+\.cloud-pill\{[^}]*min-width:15ch/)
 })
 
+test('Codex reader typography stays book-like without adding another scroll owner', () => {
+  const foundation = source('../foundation.css')
+
+  assert.match(foundation, /F-155: make the bounded reader feel like a field guide/)
+  assert.match(foundation, /--codex-display-font: Georgia/)
+  assert.match(foundation, /\.codex-screen \.codex-page-heading h3,[\s\S]*font-family: var\(--codex-display-font\)/)
+  assert.match(foundation, /\.codex-screen \.codex-book-tabs button[\s\S]*font-family: var\(--codex-body-font\)/)
+  assert.match(foundation, /\.codex-screen \.codex-book-section \{[\s\S]*scroll-behavior: smooth;/)
+})
+
 test('submit shortcut is intercepted before Monaco can insert a newline', () => {
   const app = source('../AppV2.jsx')
 
