@@ -634,3 +634,8 @@ Journal and Codex as shared gateway surfaces. Fresh local gates are backend
 **101/101**, frontend **41/41**, Python compilation, and a clean ext4 Vite
 build transforming **1,346 modules**. Protected `progress.json`, root
 `tutor.py`, root `dungeon.py` and existing PTYs remain untouched.
+
+The hosted-validator failure path now distinguishes an outdated campaign
+schema from a generic sync error: Forge names the required migration and keeps
+the local outbox queued. The repair is covered by frontend **42/42** and the
+same **1,346-module** clean build; it does not apply or bypass Supabase SQL.

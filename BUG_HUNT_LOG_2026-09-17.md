@@ -286,3 +286,11 @@ migration contracts **7/7**, clean frontend **40/40**, Vite **1,346 modules**,
 and the protected-save two-device simulator retained the same campaign summary
 with an unchanged source digest. No new browser defect was scored; hosted
 authenticated sync and real CachyOS K&M remain external gates.
+
+## Hosted-schema failure UX — 2026-09-17
+
+The live RPC's `next_state contains unsupported domains` response previously
+appeared as a generic cloud error. F-082 is fixed: SyncEngine now labels the
+state `Cloud schema needs migration`, names the required migration, and leaves
+the local outbox queued instead of implying data loss. The regression suite
+passed **42/42** and the clean build transformed **1,346 modules**.
