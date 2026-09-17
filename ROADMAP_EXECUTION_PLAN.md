@@ -795,5 +795,7 @@ longer describes a committed baseline save as part of the bundle. This keeps
 player state behind the canonical gateway and does not alter the live checkout,
 PTYs or hosted scope.
 
-The post-fix package audit and current-source tests are the next publication
-checks; real friend-machine installation remains a separate acceptance gate.
+Post-fix package `QuestLab-2f5a4fe` folder/ZIP scans returned no protected save
+or notebook paths, while the manifest and key onboarding/launcher files were
+present. Clean archive frontend tests/build passed **60/60** and **1,346
+modules**. Real friend-machine installation remains a separate acceptance gate.

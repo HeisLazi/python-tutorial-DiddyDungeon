@@ -725,6 +725,8 @@ changed.
 |---|---|---|---|
 | F-131 | P1 | A clean package audit showed `progress.json` in the friend folder and ZIP because it is tracked at `HEAD`; the previous dirty-tree guard only protected uncommitted saves. That could distribute one player's starter/current cache and undermine the single-state authority boundary. | Fixed in source: the packager strips tracked `progress.json`, `tutor.py`, `dungeon.py` and `notes/` from a temporary staging tree, verifies none remain, and updates the onboarding/manifest wording. |
 
-Verification: the pre-fix disposable audit reproduced the leak. The post-fix
-folder/ZIP audit and clean archive tests are required before publication; the
-live save and PTYs were not touched.
+Verification: the pre-fix disposable audit reproduced the leak. Post-fix
+`QuestLab-2f5a4fe` folder/ZIP scans returned **NONE** for all protected paths;
+the manifest and key onboarding/launcher files were present. Clean archive
+frontend tests/build passed **60/60** and **1,346 modules**. The live save and
+PTYs were not touched.
