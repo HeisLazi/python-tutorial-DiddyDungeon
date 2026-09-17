@@ -2345,3 +2345,12 @@ Campaign, Journal and Codex as the surfaces sharing the state gateway, with a
 regression test covering the emitted detail. Verification after the repair was
 frontend **41/41** and a clean ext4 Vite build of **1,346 modules**; no user
 save, notebook or PTY was touched.
+
+### Hosted-schema failure UX — 2026-09-17
+
+The hosted campaign validator's rejection was previously surfaced as a
+generic cloud error. SyncEngine now reports `Cloud schema needs migration`,
+names `20260917000100_player_state_campaign_projection.sql`, and keeps the
+local outbox queued. A clean ext4 frontend run passed **42/42** with a
+**1,346-module** build after the repair. This improves diagnostics only; it
+does not bypass or apply the hosted migration.

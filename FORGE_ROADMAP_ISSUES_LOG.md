@@ -1755,3 +1755,12 @@ repository. The protected save and existing shell/AI PTYs were not touched.
 The focused frontend suite is now **41/41** and the clean ext4 production build
 still transforms **1,346 modules**. The protected save and user notebooks were
 not staged or written.
+
+## Hosted-schema failure UX — 2026-09-17
+
+| ID | Severity | Area | Finding | Status |
+|---|---|---|---|---|
+| F-082 | P2 | Cloud sync diagnostics | When an older hosted validator rejected the new campaign projection, Forge only showed a generic cloud error even though the local outbox safely retained the change. | Fixed in `syncEngine.js`: the UI now reports `Cloud schema needs migration`, names the exact campaign migration, and keeps the queued local change visible. A regression test covers the rejection path. |
+
+The clean ext4 frontend suite passed **42/42** and the production build
+transformed **1,346 modules** after this repair.
