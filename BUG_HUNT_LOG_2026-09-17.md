@@ -630,3 +630,13 @@ learner file or PTY was touched.
 Verification: current-source Forge runtime tests **33/33** and launcher
 contract tests **14/14**. Clean archive frontend tests/build and browser K&M
 remain the publication checks; no state, learner file or PTY was touched.
+
+## Codex paper-surface polish hunt — 2026-09-17 (F-122)
+
+| ID | Severity | Finding | Status |
+|---|---|---|---|
+| F-122 | P2 | The finite Codex behavior was correct, but the page still read like a dense dark dashboard: code examples ignored the selected theme, headings stayed monospaced, and the book/index hierarchy lacked a calmer paper surface. | Fixed with scoped Codex-only paper gradients, themed example blocks, clearer inherited display typography, softer page/index hierarchy and restrained book shadows. The finite layout and single contained scroll owner are unchanged. |
+
+Verification: current-source Forge tests **34/34**. Clean archive frontend
+tests/build and browser K&M remain the visual publication checks; no state,
+learner file or PTY was touched.

@@ -261,6 +261,16 @@ test('Journal and Codex keep the active encounter projection visible', () => {
   assert.match(app, /onWorkspaceTransferApplyPull/)
 })
 
+test('Codex book surface keeps readable paper hierarchy across themes', () => {
+  const foundation = source('../foundation.css')
+
+  assert.match(foundation, /\.codex-screen \.codex-library \{\r?\n  border-radius: 16px;/)
+  assert.match(foundation, /\.codex-screen \.codex-book-page \{\r?\n  position: relative;/)
+  assert.match(foundation, /\.codex-screen \.codex-page-heading h3,[\s\S]*?font-family: inherit;/)
+  assert.match(foundation, /\.codex-screen \.codex-examples pre \{[\s\S]*?color: var\(--text\);[\s\S]*?border-left: 3px solid/)
+  assert.doesNotMatch(foundation, /\.codex-screen \.codex-examples pre \{[\s\S]*?background: #090b09/)
+})
+
 test('Dungeon renders state-owned adaptive mob identity and reward feedback', () => {
   const views = source('../RpgViews.jsx')
   const app = source('../AppV2.jsx')

@@ -672,3 +672,14 @@ when the frontend is stale. This is a diagnostic/launch hardening slice only:
 it does not restart PTYs, change state custody or alter hosted gates.
 
 Current-source Forge tests are **33/33** and launcher contract tests **14/14**.
+
+## Current checkpoint — 2026-09-17 — Codex paper surface
+
+F-122 keeps the finite Codex book readable and visually intentional instead of
+leaving a dense dashboard behind the scroll repair. The index/page hierarchy,
+display typography and example blocks are now theme-aware and paper-like while
+the fixed shell and one contained section scroll owner remain unchanged.
+
+Current-source Forge tests are **34/34**. Clean archive frontend tests/build
+and browser K&M remain visual publication checks; no state, learner file, PTY
+or hosted transport changed.

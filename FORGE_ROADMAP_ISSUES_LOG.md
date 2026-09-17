@@ -2042,3 +2042,12 @@ tests/build and browser K&M remain publication gates.
 
 Verification: current-source Forge tests **33/33** and launcher contract tests
 **14/14**. Clean archive frontend tests/build and browser K&M remain gates.
+
+## Codex paper-surface polish — F-122
+
+| ID | Severity | Area | Finding | Status |
+|---|---|---|---|---|
+| F-122 | P2 | Codex presentation | The new finite book prevented the reported infinite-scroll failure, but the surface still looked like a dense dark dashboard and example blocks ignored light/theme selection. | Fixed with a scoped paper/library treatment, inherited display typography, themed readable example blocks and clearer index/page hierarchy. No projection, scroll ownership or reward behavior changed. |
+
+Verification: current-source Forge tests **34/34**. Clean archive frontend
+tests/build and browser K&M remain visual publication gates.

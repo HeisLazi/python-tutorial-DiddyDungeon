@@ -225,6 +225,56 @@
 .codex-book-section .codex-entry-detail { padding-top: 3px; }
 @keyframes codex-section-in { from { opacity: .45; transform: translateY(3px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes codex-page-turn { from { opacity: .42; transform: perspective(1100px) rotateY(-2deg) translateX(6px); } to { opacity: 1; transform: perspective(1100px) rotateY(0) translateX(0); } }
+
+/* The field library should read like a finite book, not a dark dashboard
+   bolted onto the shell. Keep the layout mechanics above unchanged while
+   giving the index, page and examples a calmer paper hierarchy in every
+   supported theme. */
+.codex-screen .codex-library {
+  border-radius: 16px;
+  background:
+    radial-gradient(circle at 90% 8%, color-mix(in srgb, var(--gold) 10%, transparent), transparent 32%),
+    linear-gradient(135deg, color-mix(in srgb, var(--gold) 7%, var(--panel2)), var(--panel));
+  box-shadow: 0 18px 36px color-mix(in srgb, var(--text) 12%, transparent), inset 0 0 0 1px color-mix(in srgb, var(--gold) 9%, transparent);
+}
+.codex-screen .codex-index {
+  background: color-mix(in srgb, var(--panel2) 58%, transparent);
+}
+.codex-screen .codex-index > .card-heading,
+.codex-screen .codex-books-heading {
+  letter-spacing: .1em;
+}
+.codex-screen .codex-book-page {
+  position: relative;
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--gold) 7%, transparent), transparent 26px),
+    radial-gradient(circle at 95% 2%, color-mix(in srgb, var(--gold) 7%, transparent), transparent 30%),
+    color-mix(in srgb, var(--panel) 92%, var(--gold) 8%);
+  box-shadow: inset 1px 0 0 color-mix(in srgb, var(--gold) 18%, transparent);
+}
+.codex-screen .codex-page-heading h3,
+.codex-screen .codex-section-heading h4,
+.codex-screen .codex-active-quest-sidebar h3 {
+  font-family: inherit;
+  letter-spacing: -.025em;
+}
+.codex-screen .codex-page-heading h3 { font-weight: 850; }
+.codex-screen .codex-page-heading p { color: color-mix(in srgb, var(--text) 68%, var(--muted)); }
+.codex-screen .codex-page-summary span {
+  background: color-mix(in srgb, var(--panel2) 72%, transparent);
+  box-shadow: inset 0 -1px 0 color-mix(in srgb, var(--gold) 12%, transparent);
+}
+.codex-screen .codex-examples pre {
+  background: color-mix(in srgb, var(--panel3) 80%, var(--gold) 4%);
+  color: var(--text);
+  border-left: 3px solid color-mix(in srgb, var(--gold) 62%, var(--line));
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--text) 5%, transparent);
+}
+.codex-screen .codex-book-tabs,
+.codex-screen .codex-page-controls {
+  background: color-mix(in srgb, var(--panel2) 62%, transparent);
+}
+.codex-screen .codex-section-hint { border-radius: 0 8px 8px 0; }
 .workspace-transfer-card { grid-column: 1 / -1; }
 .workspace-transfer-meta { display: flex; justify-content: space-between; gap: 10px; margin: 9px 0; color: var(--dim); font: 9px ui-monospace, monospace; }
 .workspace-transfer-files { display: grid; gap: 5px; padding: 9px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel3); }
