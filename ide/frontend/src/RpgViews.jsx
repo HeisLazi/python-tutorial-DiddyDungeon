@@ -928,7 +928,7 @@ function CosmeticIcon({ kind }) {
   return <span className="shop-icon" aria-hidden="true"><svg viewBox="0 0 24 24">{paths[kind] || paths.theme}</svg></span>
 }
 
-function Homestead({ progress, revision, purchaseCosmetic, equipCosmetic, busy }) {
+function Homestead({ progress, revision, equipmentProjection, purchaseCosmetic, equipCosmetic, equipCampaignItem, busy }) {
   const player = progress.player || {}
   const homestead = progress.homestead || {}
   const equipment = progress.equipment || {}
@@ -979,6 +979,26 @@ function Homestead({ progress, revision, purchaseCosmetic, equipCosmetic, busy }
           <div><small>COINS</small><strong>{player.coins ?? 0}c</strong><span>Purchase balance</span></div>
         </div>
         <p className="context-note">This loadout and purse are read from the same campaign revision as the top HUD. Purchases and equips are recorded by the state gateway.</p>
+      </section>
+
+      <section className="game-card campaign-loadout" data-testid="campaign-loadout">
+        <div className="card-heading"><span>CAMPAIGN LOADOUT</span><b>ARMOR · TRINKET</b></div>
+        <p className="context-note">Choose only from gear already recorded in your canonical save. Future loot stays hidden until the state service validates an unlock.</p>
+        <div className="campaign-loadout-grid">
+          {(equipmentProjection?.slots || []).map((slot) => (
+            <div className="campaign-loadout-slot" key={slot.id}>
+              <div className="campaign-loadout-heading"><span>{slot.label}</span><strong>{slot.equipped || 'None'}</strong></div>
+              <div className="campaign-loadout-items">
+                {(slot.items || []).map((item) => (
+                  <article key={item.id} className={`campaign-loadout-item ${item.equipped ? 'equipped' : ''}`}>
+                    <div><small>{item.kind}</small><strong>{item.name}</strong><span>{item.effect}</span><p>{item.description}</p></div>
+                    <button type="button" onClick={() => equipCampaignItem?.(item.id)} disabled={busy || item.equipped || !equipCampaignItem}>{item.equipped ? 'Equipped' : 'Equip'}</button>
+                  </article>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
       </section>
 
       <section className="game-card daily-shop" data-testid="daily-shop">
@@ -1328,7 +1348,7 @@ function SettingsScreen({ preferences, setters, resetLayout, equipped, account, 
   )
 }
 
-export function GameScreen({ activeView, progress, revision, encounter, codexProjection, practiceProjection, dungeon, dungeonEditorContent, onDungeonEditorChange, onSaveDungeon, onDungeonChoose, onDungeonRest, onDungeonMarketPurchase, onDungeonEquip, onDungeonLeave, onDungeonFinish, purchaseCosmetic, equipCosmetic, saveCodexNote, busy, dungeonSaving, submitBattle, submitBoss, submitDungeon, onStartDungeon, onPracticePrompt, preferences, setters, resetLayout, account, accountBusy, accountNotice, onSignIn, onSignUp, onSignOut, onDeviceLabelSave, onResolveConflict, onNavigate, campaignReady = true }) {
+export function GameScreen({ activeView, progress, revision, encounter, codexProjection, practiceProjection, equipmentProjection, dungeon, dungeonEditorContent, onDungeonEditorChange, onSaveDungeon, onDungeonChoose, onDungeonRest, onDungeonMarketPurchase, onDungeonEquip, onDungeonLeave, onDungeonFinish, purchaseCosmetic, equipCosmetic, equipCampaignItem, saveCodexNote, busy, dungeonSaving, submitBattle, submitBoss, submitDungeon, onStartDungeon, onPracticePrompt, preferences, setters, resetLayout, account, accountBusy, accountNotice, onSignIn, onSignUp, onSignOut, onDeviceLabelSave, onResolveConflict, onNavigate, campaignReady = true }) {
   if (!campaignReady && activeView !== 'settings') {
     return (
       <div className="game-screen-scroll campaign-loading" data-testid="campaign-loading" aria-live="polite">
@@ -1342,7 +1362,7 @@ export function GameScreen({ activeView, progress, revision, encounter, codexPro
   if (activeView === 'quests') return <QuestJournal progress={progress} revision={revision} encounter={encounter} submitBattle={submitBattle} submitBoss={submitBoss} busy={busy} />
   if (activeView === 'codex') return <Codex progress={progress} revision={revision} codexProjection={codexProjection} saveCodexNote={saveCodexNote} busy={busy} />
   if (activeView === 'character') return <CharacterSheet progress={progress} revision={revision} />
-  if (activeView === 'homestead') return <Homestead progress={progress} revision={revision} purchaseCosmetic={purchaseCosmetic} equipCosmetic={equipCosmetic} busy={busy} />
+  if (activeView === 'homestead') return <Homestead progress={progress} revision={revision} equipmentProjection={equipmentProjection} purchaseCosmetic={purchaseCosmetic} equipCosmetic={equipCosmetic} equipCampaignItem={equipCampaignItem} busy={busy} />
   if (activeView === 'dungeon') return <DungeonScreen dungeon={dungeon} revision={revision} onStart={onStartDungeon} onChoose={onDungeonChoose} onRest={onDungeonRest} onMarketPurchase={onDungeonMarketPurchase} onEquip={onDungeonEquip} onLeave={onDungeonLeave} onFinish={onDungeonFinish} submitDungeon={submitDungeon} busy={busy} saving={dungeonSaving} editorContent={dungeonEditorContent} onEditorChange={onDungeonEditorChange} onSave={onSaveDungeon} />
   if (activeView === 'practice') return <PracticeScreen progress={progress} revision={revision} practiceProjection={practiceProjection} onPracticePrompt={onPracticePrompt} busy={busy} />
   if (activeView === 'settings') return <SettingsScreen preferences={preferences} setters={setters} resetLayout={resetLayout} equipped={progress.homestead?.equipped || {}} account={account} accountBusy={accountBusy} accountNotice={accountNotice} onSignIn={onSignIn} onSignUp={onSignUp} onSignOut={onSignOut} onDeviceLabelSave={onDeviceLabelSave} onResolveConflict={onResolveConflict} revision={revision} />

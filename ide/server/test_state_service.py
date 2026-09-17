@@ -524,6 +524,42 @@ class StateServiceBehaviorTests(unittest.TestCase):
         self.assertEqual(state["homestead"]["equipped"]["cursor"], "cursor-golden-spark")
         self.assertEqual([event["action"] for event in state["state_events"]], ["homestead_purchase", "homestead_equip"])
 
+    def test_campaign_loadout_only_equips_state_owned_gear(self):
+        service, path = self.make_service()
+        state = self.read(path)
+        state["equipment"] = {
+            "armor": "Apprentice Coat",
+            "trinket": "None",
+            "title": "Apprentice Coder",
+            "owned_armor": ["armor-apprentice-coat"],
+            "owned_trinkets": ["trinket-none"],
+        }
+        path.write_text(json.dumps(state), encoding="utf-8")
+
+        unlocked = service.apply_internal(
+            "record_equipment_unlock",
+            {
+                "item_id": "armor-leather-guard",
+                "evidence_id": "gear-proof-1",
+                "reason": "The validated reward history unlocked Leather Guard",
+            },
+        )
+        self.assertEqual(unlocked["result"]["item"]["name"], "Leather Guard")
+        projection = service.equipment_projection(service.snapshot())
+        armor_slot = next(slot for slot in projection["slots"] if slot["id"] == "armor")
+        self.assertEqual([item["name"] for item in armor_slot["items"]], ["Apprentice Coat", "Leather Guard"])
+        self.assertTrue(armor_slot["items"][0]["equipped"])
+
+        equipped = service.apply("equip_equipment", {"item_id": "armor-leather-guard"}, "player")
+        self.assertTrue(equipped["changed"])
+        self.assertEqual(equipped["result"]["item"]["name"], "Leather Guard")
+        self.assertEqual(self.read(path)["equipment"]["armor"], "Leather Guard")
+        self.assertEqual(self.read(path)["state_events"][-1]["action"], "equip_equipment")
+
+        with self.assertRaises(StateCommandError) as locked:
+            service.apply("equip_equipment", {"item_id": "armor-runic-mail"}, "player")
+        self.assertEqual(locked.exception.status_code, 409)
+
     def test_codex_projection_exposes_generic_pages_and_note_action_is_bounded(self):
         service, path = self.make_service()
         state = self.read(path)
@@ -1119,6 +1155,30 @@ class StateGatewayHttpTests(unittest.TestCase):
         self.assertEqual(equip.json()["revision"], 6)
         state = json.loads(path.read_text(encoding="utf-8"))
         self.assertEqual(state["homestead"]["equipped"]["cursor"], "cursor-golden-spark")
+
+    def test_campaign_loadout_route_returns_revisioned_projection(self):
+        path = self.with_temp_progress()
+        state = json.loads(path.read_text(encoding="utf-8"))
+        state["equipment"] = {
+            "armor": "Apprentice Coat",
+            "trinket": "None",
+            "title": "Apprentice Coder",
+            "owned_armor": ["armor-apprentice-coat", "armor-leather-guard"],
+            "owned_trinkets": ["trinket-none"],
+        }
+        path.write_text(json.dumps(state), encoding="utf-8")
+        client = self.client()
+        response = client.post(
+            "/api/equipment/equip",
+            headers={"host": "127.0.0.1"},
+            json={"item_id": "armor-leather-guard"},
+        )
+        self.assertEqual(response.status_code, 200)
+        body = response.json()
+        self.assertEqual(body["revision"], 5)
+        armor_slot = next(slot for slot in body["equipment_projection"]["slots"] if slot["id"] == "armor")
+        self.assertEqual(armor_slot["equipped"], "Leather Guard")
+        self.assertEqual(json.loads(path.read_text(encoding="utf-8"))["equipment"]["armor"], "Leather Guard")
 
     def test_codex_routes_use_canonical_revision_and_player_note_boundary(self):
         path = self.with_temp_progress()

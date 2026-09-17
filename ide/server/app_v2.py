@@ -204,6 +204,12 @@ class HomesteadEquip(BaseModel):
     item_id: str
 
 
+class EquipmentEquip(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    item_id: str = Field(min_length=1, max_length=MAX_IDENTIFIER_LENGTH)
+
+
 class CodexNoteRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -863,6 +869,7 @@ def campaign():
         "progress": progress,
         "revision": metadata["revision"],
         "sync_storage_namespace": checkout_storage_namespace(),
+        "equipment_projection": STATE_SERVICE.equipment_projection(progress),
         "encounter": STATE_SERVICE.encounter_projection(progress),
         "codex_projection": STATE_SERVICE.codex_projection(progress),
         "practice_projection": STATE_SERVICE.practice_projection(progress),
@@ -2301,6 +2308,18 @@ def purchase_homestead_item(payload: HomesteadPurchase):
 def equip_homestead_item(payload: HomesteadEquip):
     envelope = _apply_state_or_http("homestead_equip", payload.model_dump(), "player")
     return _flatten_state_result(envelope)
+
+
+@app.post("/api/equipment/equip")
+def equip_campaign_equipment(payload: EquipmentEquip):
+    envelope = _apply_state_or_http("equip_equipment", payload.model_dump(), "player")
+    try:
+        progress, metadata = STATE_SERVICE.snapshot_with_metadata()
+    except StateCommandError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
+    result = _flatten_state_result(envelope)
+    result.update({"equipment_projection": STATE_SERVICE.equipment_projection(progress), "revision": metadata["revision"]})
+    return result
 
 
 @app.post("/api/codex/note")

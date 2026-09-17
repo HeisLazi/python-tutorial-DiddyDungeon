@@ -510,6 +510,22 @@ function AppV2() {
         body: event.item_name,
         detail: 'Equipment projection updated',
       })
+    } else if (action === 'equip_equipment' && event.item_name) {
+      notifications.push({
+        id: `${event.id}:campaign-equip`,
+        kind: 'item',
+        title: 'CAMPAIGN LOADOUT UPDATED',
+        body: event.item_name,
+        detail: `${String(event.slot || 'equipment').toUpperCase()} slot equipped through the state gateway`,
+      })
+    } else if (action === 'record_equipment_unlock' && event.item_name) {
+      notifications.push({
+        id: `${event.id}:equipment-unlock`,
+        kind: 'unlock',
+        title: 'NEW CAMPAIGN GEAR',
+        body: event.item_name,
+        detail: 'Validated equipment unlock recorded',
+      })
     } else if (action === 'record_codex_note') {
       notifications.push({
         id: `${event.id}:codex-note`,
@@ -1638,6 +1654,22 @@ function AppV2() {
     }
   }
 
+  const equipCampaignItem = async (itemId) => {
+    try {
+      setBusy(true)
+      const result = await api('/api/equipment/equip', {
+        method: 'POST',
+        body: JSON.stringify({ item_id: itemId }),
+      })
+      await refreshCampaign()
+      setNotice(`Equipped ${result.item?.name || itemId}.`)
+    } catch (error) {
+      setNotice(`Campaign loadout failed: ${error.message}`)
+    } finally {
+      setBusy(false)
+    }
+  }
+
   const saveCodexNote = async (entryId, note, conceptId = entryId) => {
     try {
       setBusy(true)
@@ -1942,6 +1974,7 @@ function AppV2() {
               revision={campaign?.revision ?? 0}
               codexProjection={campaign?.codex_projection}
               practiceProjection={campaign?.practice_projection}
+              equipmentProjection={campaign?.equipment_projection}
               encounter={campaign?.encounter}
               dungeon={dungeon}
               dungeonEditorContent={dungeonCode}
@@ -1967,6 +2000,7 @@ function AppV2() {
               submitDungeon={submitDungeon}
               purchaseCosmetic={purchaseCosmetic}
               equipCosmetic={equipCosmetic}
+              equipCampaignItem={equipCampaignItem}
               saveCodexNote={saveCodexNote}
               busy={busy}
               preferences={preferences}

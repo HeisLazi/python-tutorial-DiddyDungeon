@@ -2505,3 +2505,22 @@ the hosted project in this pass.
 Verification for this slice: WSL backend discovery **103/103**, clean ext4
 frontend tests **48/48**, and Vite production build (**1,346 modules**). The
 protected save digest remained unchanged and the user PTYs were not restarted.
+
+### Campaign equipment loadout projection — 2026-09-17
+
+Homestead now has a real campaign loadout selector for Armor and Trinket. The
+state service owns a small bounded catalogue and returns only the currently
+equipped legacy value or IDs already recorded in `equipment.owned_armor` /
+`equipment.owned_trinkets`; the browser never receives a future-loot list. A
+player may equip an owned item through `POST /api/equipment/equip`, which writes
+the canonical save and emits a revisioned `equip_equipment` event. Only trusted
+game code can add ownership through `record_equipment_unlock`, with evidence and
+reason fields retained in the event. The cloud projection allowlist carries the
+bounded owned IDs for a future approved hosted migration; this pass did not
+apply the hosted migration or infer any new rewards.
+
+Verification: WSL backend discovery **105/105**, clean Windows-staging frontend
+tests **49/49**, and Vite production build (**1,346 modules**). The protected
+save, root `tutor.py`, root `dungeon.py`, shell PTY and AI PTY were untouched.
+Fresh browser K&M remains unavailable because the Codex in-app browser could
+not attach a tab.

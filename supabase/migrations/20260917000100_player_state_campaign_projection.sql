@@ -239,6 +239,8 @@ set search_path = public, auth
 as $$
 declare
   base_state jsonb;
+  field_name text;
+  item jsonb;
 begin
   if next_state is null or jsonb_typeof(next_state) <> 'object' then
     raise exception 'next_state must be a JSON object' using errcode = '22023';
@@ -251,6 +253,30 @@ begin
     base_state := next_state - 'campaign';
   else
     base_state := next_state;
+  end if;
+
+  -- Campaign gear inventories are bounded identifiers owned by the state
+  -- service. The older primitive validator only knew the three equipped text
+  -- fields, so validate the new lists here and strip them before delegation.
+  if base_state ? 'equipment' and jsonb_typeof(base_state -> 'equipment') = 'object' then
+    for field_name in select jsonb_object_keys(base_state -> 'equipment') loop
+      if field_name in ('owned_armor', 'owned_trinkets') then
+        if jsonb_typeof((base_state -> 'equipment') -> field_name) <> 'array'
+           or jsonb_array_length((base_state -> 'equipment') -> field_name) > 24 then
+          raise exception 'equipment inventory must be a bounded array' using errcode = '22023';
+        end if;
+        for item in select jsonb_array_elements((base_state -> 'equipment') -> field_name) loop
+          if jsonb_typeof(item) <> 'string' or (item #>> '{}') !~ '^[A-Za-z0-9][A-Za-z0-9._-]{0,119}$' then
+            raise exception 'equipment inventory entries must be safe identifiers' using errcode = '22023';
+          end if;
+        end loop;
+      end if;
+    end loop;
+    base_state := jsonb_set(
+      base_state,
+      '{equipment}',
+      (base_state -> 'equipment') - array['owned_armor', 'owned_trinkets']
+    );
   end if;
   perform public.validate_player_state_projection_base(base_state);
 end;

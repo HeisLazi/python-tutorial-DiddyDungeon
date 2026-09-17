@@ -1857,3 +1857,15 @@ applied in this pass.
 Verification: WSL backend discovery **103/103**, clean ext4 frontend **48/48**,
 and Vite production build (**1,346 modules**). Browser K&M remains unavailable
 in this environment because the Codex browser tab could not attach.
+
+## Campaign loadout projection — 2026-09-17
+
+| ID | Severity | Area | Finding | Status |
+|---|---|---|---|---|
+| F-103 | P2 | Campaign equipment | Homestead could display the current armor/trinket but had no state-owned inventory or safe way to equip validated campaign gear. A UI-only selector would also risk exposing future loot or inventing rewards. | Fixed with a bounded `equipment_projection`, a player-only `equip_equipment` mutation, and a trusted `record_equipment_unlock` event. Homestead now shows only canonical owned/current items, records equips in the revision/event stream, and explicitly keeps future loot hidden. Cloud projection carries bounded owned IDs for the next approved hosted rollout; no unsupported item is unlocked automatically. |
+
+Verification for this slice: WSL backend discovery **105/105**, clean Windows
+staging frontend tests **49/49**, and Vite production build (**1,346 modules**).
+The protected `progress.json`, `tutor.py` and `dungeon.py` files remain outside
+the commit, and no PTY was restarted. Browser K&M and hosted migration remain
+external gates.
