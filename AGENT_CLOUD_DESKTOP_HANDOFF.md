@@ -261,3 +261,41 @@ Update this file or add a concise implementation report containing:
 - what remains intentionally unimplemented.
 
 Do not claim completion if PC/laptop-equivalent sync and PTY preservation have not actually been demonstrated.
+
+## Current checkpoint — 2026-09-17 — local distribution and Codex hardening
+
+The current published tip is `54d3a6d` on both `feature/cloud-sync-desktop`
+and `main` (the tip also contains the public activity-sync merge). The local
+Forge/Codex work is source-complete for the requested presentation slice:
+
+- the Codex is a finite, viewport-bounded folio with paged shelves,
+  encounters/notes/mastery controls and a separate Battle Shell tab;
+- the shared `.codex-library` primitive no longer carries a legacy feed-sized
+  minimum, preventing compatibility-shell cascade regressions;
+- the friend packager archives committed `HEAD`, strips player-owned paths,
+  and accepts only an exact reviewed `-IgnoreUntrackedPath` for protected local
+  directories; it was verified with a 134-entry ZIP and no protected-path leak;
+- Campaign Tutor and Practice remain one managed `tutor.py` workspace, while
+  Practice progression remains independent and reward-free;
+- native Linux/CachyOS launcher and read-only preflight contracts are present;
+  actual CachyOS device acceptance is not claimed.
+
+Current verification:
+
+- WSL backend suite: **115/115**;
+- Windows frontend suite: **69/69**;
+- launcher contract suite: **16/16**;
+- Vite production build: **1,346 modules**;
+- native Linux launcher/preflight `--help` and shell syntax checks: green;
+- browser K&M attach: still blocked by F-080, so no new visual-device claim.
+
+Remaining release gates are intentionally unchanged:
+
+1. Apply only the two guarded hosted migrations after explicit approval, then
+   run authenticated two-device campaign/avatar/source acceptance.
+2. Demonstrate PC/laptop-equivalent live projection and shell/AI PTY survival.
+3. Run the clean native CachyOS acceptance and record kernel/package evidence.
+4. Resolve the browser attach environment before claiming fresh visual K&M.
+
+No hosted migration, seed, player-state write, protected-save migration or PTY
+restart was performed in this checkpoint.
