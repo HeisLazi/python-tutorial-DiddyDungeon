@@ -2616,3 +2616,26 @@ callback remains the only route state writer.
 
 Verification: current-source Forge runtime suite **32/32**. No new live browser
 click-through is claimed because the Codex browser tab could not attach.
+
+### Quest Journal/Codex consolidation — F-111
+
+Quest Journal is no longer a competing top-level route. The app normalizes any
+legacy `quests` selection to `codex`, and the Codex Field Library now contains an
+Active Quest sidebar with the current chapter, progress, cleared encounters and
+silhouetted locked encounters. The sidebar is deliberately read-only: React
+does not invent quest unlocks, rewards or hidden future answers.
+
+Codex also owns a second journal-style tab, Battle Shell. Switching between
+Books and Battle Shell remounts only the tab page for the visual page-turn
+effect; it does not touch the shell or PTY keys. Battle Shell uses the existing
+encounter projection and submit callbacks to show the current mob/boss story,
+concept, status, objective count, question lens and validated Resolve/boss gate.
+When a boss is available it renders the boss gate requirements instead of
+showing the last defeated mob, while locked future content remains undisclosed.
+
+Verification: current-source Forge runtime tests **32/32**; clean ext4 frontend
+tests **51/51**; Vite production build transformed **1,346 modules**. Browser K&M
+could not be performed because this Codex environment had no attachable tab, so
+no new live click-through claim is made. The protected local `progress.json`,
+`tutor.py` and `dungeon.py` files were not staged or edited, and the shell/AI PTY
+keys remain outside the Codex tab state.
