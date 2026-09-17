@@ -101,6 +101,13 @@ class PyrContextBridgeTests(unittest.TestCase):
                 self.assertEqual(run["loadout"]["armor"], "Apprentice Coat")
                 self.assertEqual(run["loadout"]["heals"], 1)
                 self.assertEqual(run["editor_content"], "")
+                chosen = client.post(
+                    "/api/dungeon/choose",
+                    headers={"host": "127.0.0.1"},
+                    json={"run_id": run["run_id"], "choice_id": run["room_choices"][0]["id"]},
+                )
+                self.assertEqual(chosen.status_code, 200, chosen.text)
+                run = chosen.json()["dungeon"]
 
                 saved = client.put(
                     "/api/dungeon/editor",
@@ -217,6 +224,9 @@ class PyrContextBridgeTests(unittest.TestCase):
                 started = client.post("/api/dungeon/start", headers={"host": "127.0.0.1"}, json={"concept_id": "lists", "seed": "bridge"})
                 self.assertEqual(started.status_code, 200)
                 run = started.json()["dungeon"]
+                chosen = client.post("/api/dungeon/choose", headers={"host": "127.0.0.1"}, json={"run_id": run["run_id"], "choice_id": run["room_choices"][0]["id"]})
+                self.assertEqual(chosen.status_code, 200, chosen.text)
+                run = chosen.json()["dungeon"]
                 context = client.post("/api/pyr/context", headers={"host": "127.0.0.1"}, json={"active_path": "dungeon.py"})
                 self.assertEqual(context.status_code, 200, context.text)
                 challenge = context.json()["context"]["dungeon_verdict"]
@@ -488,6 +498,13 @@ class PyrContextBridgeTests(unittest.TestCase):
                 )
                 self.assertEqual(started.status_code, 200, started.text)
                 run = started.json()["dungeon"]
+                chosen = client.post(
+                    "/api/dungeon/choose",
+                    headers={"host": "127.0.0.1"},
+                    json={"run_id": run["run_id"], "choice_id": run["room_choices"][0]["id"]},
+                )
+                self.assertEqual(chosen.status_code, 200, chosen.text)
+                run = chosen.json()["dungeon"]
                 dungeon_a = client.post(
                     "/api/pyr/context",
                     headers={"host": "127.0.0.1"},

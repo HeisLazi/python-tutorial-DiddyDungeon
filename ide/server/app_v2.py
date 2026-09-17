@@ -281,6 +281,13 @@ class DungeonStartRequest(BaseModel):
     seed: str | None = Field(default=None, max_length=MAX_IDENTIFIER_LENGTH)
 
 
+class DungeonChooseRoomRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    run_id: str = Field(min_length=1, max_length=MAX_IDENTIFIER_LENGTH)
+    choice_id: str = Field(min_length=1, max_length=MAX_IDENTIFIER_LENGTH)
+
+
 class DungeonEditorRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -884,6 +891,11 @@ def start_dungeon(payload: DungeonStartRequest):
     result.update({"dungeon": projection, "file": {"path": "dungeon.py", "content": projection.get("editor_content", "")}})
     result["revision"] = metadata["revision"]
     return result
+
+
+@app.post("/api/dungeon/choose")
+def choose_dungeon_room(payload: DungeonChooseRoomRequest):
+    return _dungeon_player_action("dungeon_choose_room", payload.model_dump())
 
 
 @app.put("/api/dungeon/editor")

@@ -19,6 +19,7 @@ The state service owns the active run. A run checkpoint includes:
 
 - run ID and deterministic seed;
 - floor/room position and room type;
+- the current answer-free route choices issued by the state service;
 - the current question ID, type, concept and difficulty;
 - the run loadout, HP, heals, run currency and score;
 - the current `dungeon.py` editor buffer.
@@ -62,22 +63,30 @@ local-only scores remain provisional until provider authentication exists.
 
 ## Room loop
 
-An initial local vertical slice should support:
+The map is a selector, not a client-side prediction. The state service issues
+bounded, answer-free route choices and React renders them without calculating
+room types or rewards:
 
-`start run -> encounter question -> answer/verdict -> rest -> market -> next room -> finish/death`
+`start run -> choose route -> room interaction -> answer/verdict (if encounter) -> choose route -> ... -> finish/death`
 
-Rest rooms heal through state-service choices. Market purchases spend run-only
-currency. Permanent Campaign equipment is not copied into the run, and run
-items do not silently alter the Campaign loadout.
+Encounter, rest and market choices are committed through
+`dungeon_choose_room`. A verified encounter, a completed rest or leaving a
+market returns the run to the selector. Choosing an encounter then issues one
+current question and resets `dungeon.py`; the next question is never projected
+until that route is selected. Rest rooms heal through state-service choices.
+Market purchases spend run-only currency. Permanent Campaign equipment is not
+copied into the run, and run items do not silently alter the Campaign loadout.
 
 ## Practice mode
 
 Practice starts independently from Campaign and Dungeon. The player chooses one
 or more concepts, difficulty and question types, then receives the same bounded
-context/AI assistance pattern used by Campaign. It can be used indefinitely,
-does not expose or create `tutor.py`, and does not appear on the Dungeon
-leaderboard. A dedicated in-memory editor or controlled `practice.py` buffer
-may be added later if useful; it must not become a repository save.
+context/AI assistance pattern used by Campaign. Tutor Notebook and Practice are
+two entry points to the same collaborative `tutor.py` editor and concept-linked
+Markdown notes; this file is a controlled workspace surface, not a Campaign
+source file. Practice can be used indefinitely and does not appear on the
+Dungeon leaderboard. It may record bounded learning evidence, but it never
+becomes a Dungeon run.
 
 ## State/event outline
 
@@ -102,12 +111,13 @@ rewards or independently advance a room.
 ## Delivery order
 
 1. Add the local run checkpoint/restore/blank-on-rotation contract.
-2. Add a small Dungeon screen and controlled `dungeon.py` projection.
+2. Add a small Dungeon screen, controlled `dungeon.py` projection and the
+   state-service room selector.
 3. Add three deterministic question renderers (true/false, multiple choice and
    code checkpoint), then the provider-routed local verdict bridge.
 4. Add adaptive concept selection, custom mobs and multi-phase bosses.
 5. Add rest, market, score and local provisional leaderboard.
-6. Add independent Practice mode.
+6. Add the unified Tutor/Practice selectors and concept-linked notes.
 7. Revisit authenticated hosted scores and cross-device Dungeon sync after the
    existing provider-auth and two-device gates are closed.
 

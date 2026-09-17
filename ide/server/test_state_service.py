@@ -211,12 +211,23 @@ class StateServiceBehaviorTests(unittest.TestCase):
         self.assertTrue(run["active"])
         self.assertEqual(run["floor"], 1)
         self.assertEqual(run["room"], 1)
+        self.assertEqual(run["room_type"], "selector")
+        self.assertEqual(len(run["room_choices"]), 3)
         self.assertEqual(run["loadout"]["armor"], "Apprentice Coat")
         self.assertIsNone(run["loadout"]["trinket"])
         self.assertEqual(run["loadout"]["heals"], 1)
         self.assertEqual(run["loadout"]["coins"], 0)
         self.assertEqual(run["editor_content"], "")
         self.assertEqual(self.read(path)["player"], before["player"])
+
+        chosen = service.apply(
+            "dungeon_choose_room",
+            {"run_id": run["run_id"], "choice_id": run["room_choices"][0]["id"]},
+            "player",
+        )
+        run = chosen["result"]["run"]
+        self.assertEqual(run["room_type"], "encounter")
+        self.assertIsNotNone(run["question"])
 
         saved = service.apply(
             "dungeon_save_editor",
@@ -234,8 +245,10 @@ class StateServiceBehaviorTests(unittest.TestCase):
     def test_dungeon_question_rotation_blanks_editor_and_death_requires_new_run(self):
         service, path = self.make_service()
         started = service.apply("dungeon_start_run", {"concept_id": "loops"}, "player")
-        run_id = started["result"]["run"]["run_id"]
-        question_id = started["result"]["run"]["question"]["id"]
+        started_run = started["result"]["run"]
+        run_id = started_run["run_id"]
+        selected = service.apply("dungeon_choose_room", {"run_id": run_id, "choice_id": started_run["room_choices"][0]["id"]}, "player")
+        question_id = selected["result"]["run"]["question"]["id"]
         service.apply("dungeon_save_editor", {"run_id": run_id, "question_id": question_id, "content": "tips = 'old'\n"}, "player")
 
         rotated = service.apply_internal(
@@ -316,6 +329,7 @@ class StateServiceBehaviorTests(unittest.TestCase):
         service, path = self.make_service()
         started = service.apply("dungeon_start_run", {"concept_id": "lists", "seed": "loop-seed"}, "player")
         run = started["result"]["run"]
+        run = service.apply("dungeon_choose_room", {"run_id": run["run_id"], "choice_id": run["room_choices"][0]["id"]}, "player")["result"]["run"]
         initial_player = self.read(path)["player"].copy()
 
         for index in range(4):
@@ -331,9 +345,14 @@ class StateServiceBehaviorTests(unittest.TestCase):
                 },
             )
             self.assertEqual(result["result"]["outcome"], "correct")
+            if index < 3:
+                selector = service.dungeon_projection(service.snapshot())
+                run = service.apply("dungeon_choose_room", {"run_id": run["run_id"], "choice_id": selector["room_choices"][0]["id"]}, "player")["result"]["run"]
 
         rest = service.dungeon_projection(service.snapshot())
         self.assertEqual(rest["room"], 5)
+        self.assertEqual(rest["room_type"], "selector")
+        rest = service.apply("dungeon_choose_room", {"run_id": run["run_id"], "choice_id": next(choice["id"] for choice in rest["room_choices"] if choice["kind"] == "rest")}, "player")["result"]["run"]
         self.assertEqual(rest["room_type"], "rest")
         self.assertIsNone(rest["question"])
         state = self.read(path)
@@ -341,29 +360,30 @@ class StateServiceBehaviorTests(unittest.TestCase):
         path.write_text(json.dumps(state), encoding="utf-8")
         rested = service.apply("dungeon_use_rest", {"run_id": run["run_id"]}, "player")
         self.assertEqual(rested["result"]["healed"], 30)
-        self.assertEqual(rested["result"]["run"]["room_type"], "encounter")
+        self.assertEqual(rested["result"]["run"]["room_type"], "selector")
         self.assertEqual(rested["result"]["run"]["loadout"]["hp"], 70)
 
-        for index in range(1):
-            current = service.dungeon_projection(service.snapshot())
-            service.apply_internal(
-                "dungeon_record_verdict",
-                {
-                    "run_id": run["run_id"],
-                    "question_id": current["question"]["id"],
-                    "verdict": "correct",
-                    "evidence_id": f"dungeon-proof-market-{index}",
-                    "reason": "Provider validated the current room",
-                },
-            )
-        market = service.dungeon_projection(service.snapshot())
+        selector = service.dungeon_projection(service.snapshot())
+        current = service.apply("dungeon_choose_room", {"run_id": run["run_id"], "choice_id": next(choice["id"] for choice in selector["room_choices"] if choice["kind"] == "encounter")}, "player")["result"]["run"]
+        service.apply_internal(
+            "dungeon_record_verdict",
+            {
+                "run_id": run["run_id"],
+                "question_id": current["question"]["id"],
+                "verdict": "correct",
+                "evidence_id": "dungeon-proof-market-0",
+                "reason": "Provider validated the current room",
+            },
+        )
+        selector = service.dungeon_projection(service.snapshot())
+        market = service.apply("dungeon_choose_room", {"run_id": run["run_id"], "choice_id": next(choice["id"] for choice in selector["room_choices"] if choice["kind"] == "market")}, "player")["result"]["run"]
         self.assertEqual(market["room_type"], "market")
         self.assertTrue(market["market_catalog"])
         purchased = service.apply("dungeon_market_purchase", {"run_id": run["run_id"], "item_id": "dungeon-ward"}, "player")
         self.assertEqual(purchased["result"]["item"]["id"], "dungeon-ward")
         self.assertEqual(purchased["result"]["run"]["loadout"]["armor"], "Ember Ward")
         left = service.apply("dungeon_leave_room", {"run_id": run["run_id"]}, "player")
-        self.assertEqual(left["result"]["run"]["room_type"], "encounter")
+        self.assertEqual(left["result"]["run"]["room_type"], "selector")
 
         finished = service.apply("dungeon_finish_run", {"run_id": run["run_id"]}, "player")
         self.assertEqual(finished["result"]["run"]["status"], "complete")
@@ -397,6 +417,7 @@ class StateServiceBehaviorTests(unittest.TestCase):
         service, path = self.make_service()
         started = service.apply("dungeon_start_run", {"concept_id": "loops"}, "player")
         run = started["result"]["run"]
+        run = service.apply("dungeon_choose_room", {"run_id": run["run_id"], "choice_id": run["room_choices"][0]["id"]}, "player")["result"]["run"]
         state = self.read(path)
         state["dungeon_run"]["loadout"]["hp"] = 1
         path.write_text(json.dumps(state), encoding="utf-8")

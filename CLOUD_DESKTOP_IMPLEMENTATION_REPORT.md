@@ -2187,3 +2187,27 @@ cloud player-state transport. The existing runtime preflight may still report
 `RUNTIME STALE` when a test intentionally uses the same checkout/workspace
 path; that is a launcher/environment contract warning, not a second active
 player-state authority.
+
+## Dungeon route-selector slice — 2026-09-17
+
+The Infinite Dungeon now uses the canonical state gateway for room selection.
+`dungeon_start_run` and every resolved room return an active run to a selector
+with three answer-free choices: Challenge room, Quiet rest and Wayfarer market.
+`dungeon_choose_room` validates the run and choice ID, then issues only the
+selected current room. React does not infer room types, future questions,
+answers, score, damage or rewards. A verified encounter, completed rest or
+left market creates the next selector and clears the `dungeon.py` projection;
+the next question is not visible until a route is chosen.
+
+The service, FastAPI route, selector UI, restart-safe projection and focused
+tests are covered by the full WSL suite (**97/97**) and Vite build (**1,346
+modules**). In-app-browser keyboard/mouse acceptance used a disposable cache:
+the browser selected Challenge room, typed and checkpointed `answer = True`,
+received a provider-validated verdict through the local bridge, and without a
+refresh visibly returned to Room 2 with score/coins and the three route buttons.
+It then selected Quiet rest, left the room, and visibly returned to the Room 3
+selector. The backend was restarted while the browser stayed open; the same
+Room 3 selector, score, run coins and blank-buffer checkpoint rehydrated, and
+the shell terminal remained `CONNECTED`. The disposable cache was isolated;
+the canonical root `progress.json`, active user Dungeon run, tutor notebook and
+PTYs were not touched.

@@ -1645,3 +1645,9 @@ The browser evidence above intentionally used a disposable canonical cache. It
 must not be read as permission to copy or merge the protected repository save;
 the root `progress.json` remains the only local canonical save and legacy
 workspace files remain evidence/migration inputs only.
+
+## Infinite Dungeon route selector — 2026-09-17
+
+| ID | Severity | Area | Finding | Status |
+|---|---|---|---|---|
+| F-070 | P1 | Dungeon navigation / checkpoint coherence | The map was decorative and the client inferred the next room from a modulo rule, so the requested choose-room → question → choose-room loop was not state-service-owned. | Fixed locally: `dungeon_choose_room` validates answer-free route choices, the selector reappears after each resolved room, future questions stay hidden until selection, `dungeon.py` blanks on transition, and restart-safe disposable K&M coverage passed. Hosted Dungeon sync and authenticated leaderboard remain later gates. |

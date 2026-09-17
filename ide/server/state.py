@@ -74,6 +74,29 @@ DUNGEON_MARKET_CATALOG: tuple[dict[str, Any], ...] = (
     {"id": "dungeon-ward", "name": "Ember Ward", "price": 24, "kind": "armor", "armor": "Ember Ward", "description": "Reduce the next counterattack."},
     {"id": "dungeon-lens", "name": "Scholar Lens", "price": 30, "kind": "trinket", "trinket": "Scholar Lens", "description": "A cosmetic run trophy for careful reasoning."},
 )
+# Route choices are intentionally answer-free.  The state service owns the
+# route ids and room types; the browser may render these labels but cannot
+# choose a question, reward, or answer key.
+DUNGEON_ROUTE_CHOICES: tuple[dict[str, str], ...] = (
+    {
+        "id": "encounter",
+        "kind": "encounter",
+        "label": "Challenge room",
+        "description": "Face one adaptive question and earn run score.",
+    },
+    {
+        "id": "rest",
+        "kind": "rest",
+        "label": "Quiet rest",
+        "description": "Recover at the ember when your run needs it.",
+    },
+    {
+        "id": "market",
+        "kind": "market",
+        "label": "Wayfarer market",
+        "description": "Spend run coins on a temporary aid.",
+    },
+)
 
 PUBLIC_ACTORS = frozenset({"player", "pyr"})
 SYSTEM_ACTOR = "system"
@@ -146,6 +169,7 @@ ACTION_DEFINITIONS: dict[str, ActionDefinition] = {
     "practice_session_started": ActionDefinition(frozenset({"player"})),
     "practice_record_attempt": ActionDefinition(frozenset({SYSTEM_ACTOR}), internal=True),
     "dungeon_start_run": ActionDefinition(frozenset({"player"})),
+    "dungeon_choose_room": ActionDefinition(frozenset({"player"})),
     "dungeon_save_editor": ActionDefinition(frozenset({"player"})),
     "dungeon_issue_question": ActionDefinition(frozenset({SYSTEM_ACTOR}), internal=True),
     "dungeon_record_verdict": ActionDefinition(frozenset({SYSTEM_ACTOR}), internal=True),
@@ -1304,21 +1328,103 @@ class LocalStateService:
         )
 
     @classmethod
-    def _dungeon_set_next_room(cls, run: dict[str, Any], progress: Mapping[str, Any] | None = None) -> dict[str, Any]:
-        next_room = cls._integer(run.get("room", 1), "room", minimum=1, maximum=MAX_DUNGEON_ROOM) + 1
+    def _dungeon_route_choices(cls, run: Mapping[str, Any]) -> list[dict[str, str]]:
+        """Build the answer-free route selector for the current map node."""
+
+        room = cls._integer(run.get("room", 1), "room", minimum=1, maximum=MAX_DUNGEON_ROOM)
+        # Keep the visible route variety deterministic for a checkpoint while
+        # allowing the UI to render a real selector instead of predicting the
+        # next room from a client-side modulo rule.
+        choices: list[dict[str, str]] = []
+        for choice in DUNGEON_ROUTE_CHOICES:
+            choices.append(
+                {
+                    "id": f"r{room}-{choice['id']}",
+                    "kind": choice["kind"],
+                    "label": choice["label"],
+                    "description": choice["description"],
+                }
+            )
+        return choices
+
+    @classmethod
+    def _dungeon_prepare_room_choices(
+        cls,
+        run: dict[str, Any],
+        progress: Mapping[str, Any] | None = None,
+        *,
+        advance: bool = True,
+    ) -> dict[str, Any]:
+        """Return an active run to the map selector after a room resolves."""
+
+        current_room = cls._integer(run.get("room", 1), "room", minimum=1, maximum=MAX_DUNGEON_ROOM)
+        next_room = min(MAX_DUNGEON_ROOM, current_room + 1) if advance else current_room
         floor = max(1, cls._integer(run.get("floor", 1), "floor", minimum=1, maximum=MAX_DUNGEON_FLOOR))
         floor = max(floor, 1 + (next_room - 1) // 10)
-        room_type = "rest" if next_room % 5 == 0 else "market" if next_room % 7 == 0 else "encounter"
-        if room_type == "encounter":
-            run["concept_id"] = cls._dungeon_adaptive_concept(progress, str(run.get("concept_id") or "python-basics"))
         run["room"] = next_room
         run["floor"] = floor
-        run["room_type"] = room_type
-        run["question_number"] = cls._counter(run, "question_number") + 1
-        run["question"] = cls._dungeon_question_for_room(run, room=next_room, floor=floor) if room_type == "encounter" else None
+        run["room_type"] = "selector"
+        run["room_choices"] = cls._dungeon_route_choices(run)
+        run["question"] = None
         run["editor_content"] = ""
         run["updated_at"] = _utc_now()
         return run
+
+    @classmethod
+    def _dungeon_set_next_room(cls, run: dict[str, Any], progress: Mapping[str, Any] | None = None) -> dict[str, Any]:
+        return cls._dungeon_prepare_room_choices(run, progress)
+
+    def _dungeon_choose_room(self, payload: Mapping[str, Any], progress: dict[str, Any]) -> Mutation:
+        """Select one state-service-issued route before a question is shown."""
+
+        data = self._payload(payload, {"run_id", "choice_id"}, {"run_id", "choice_id"})
+        run = self._active_dungeon_run(progress)
+        run_id = self._text(data["run_id"], "run_id", max_length=MAX_IDENTIFIER_LENGTH, identifier=True)
+        choice_id = self._text(data["choice_id"], "choice_id", max_length=MAX_IDENTIFIER_LENGTH, identifier=True)
+        if run.get("run_id") != run_id:
+            raise StateCommandError("Dungeon run changed; reload the current run", status_code=409)
+        if run.get("room_type") != "selector":
+            raise StateCommandError("Choose a route from the current Dungeon map first", status_code=409)
+        raw_choices = run.get("room_choices")
+        if not isinstance(raw_choices, list):
+            raise StateCommandError("The current Dungeon map has no route choices", status_code=409)
+        choice = next((item for item in raw_choices if isinstance(item, Mapping) and item.get("id") == choice_id), None)
+        if choice is None:
+            raise StateCommandError("That Dungeon route is no longer available", status_code=409)
+        kind = self._text(choice.get("kind"), "choice.kind", max_length=MAX_IDENTIFIER_LENGTH, identifier=True)
+        if kind not in {"encounter", "rest", "market"}:
+            raise StateCommandError("Unsupported Dungeon route", status_code=500)
+        run["room_choices"] = []
+        run["room_type"] = kind
+        run["editor_content"] = ""
+        run["updated_at"] = _utc_now()
+        question_id = None
+        if kind == "encounter":
+            run["concept_id"] = self._dungeon_adaptive_concept(progress, str(run.get("concept_id") or "python-basics"))
+            run["question_number"] = self._counter(run, "question_number") + 1
+            question = self._dungeon_question_for_room(
+                run,
+                room=self._integer(run.get("room", 1), "room", minimum=1, maximum=MAX_DUNGEON_ROOM),
+                floor=self._integer(run.get("floor", 1), "floor", minimum=1, maximum=MAX_DUNGEON_FLOOR),
+            )
+            run["question"] = question
+            question_id = question["id"]
+        else:
+            run["question"] = None
+        return Mutation(
+            True,
+            {"run": self.dungeon_projection(progress), "choice": dict(choice)},
+            {
+                "run_id": run_id,
+                "floor": run.get("floor", 1),
+                "room": run.get("room", 1),
+                "choice_id": choice_id,
+                "room_type": kind,
+                "question_id": question_id,
+                "editor_reset": True,
+                "reason": "dungeon_route_selected",
+            },
+        )
 
     @classmethod
     def _dungeon_append_history(cls, run: dict[str, Any], item: Mapping[str, Any]) -> None:
@@ -1376,6 +1482,7 @@ class LocalStateService:
             "ended_at": run.get("ended_at"),
             "loadout": {},
             "question": None,
+            "room_choices": [],
             "editor_content": "",
             "last_result": None,
             "history": [],
@@ -1402,8 +1509,22 @@ class LocalStateService:
                 for field in ("id", "question_type", "concept_id", "difficulty", "prompt", "options")
                 if field in question
             }
-        elif status == "active" and run.get("room_type") not in {"rest", "market"}:
+        elif status == "active" and run.get("room_type") not in {"rest", "market", "selector"}:
             raise StateCommandError("Active Dungeon run has no current question", status_code=500)
+        raw_choices = run.get("room_choices", [])
+        if raw_choices is None:
+            raw_choices = []
+        if not isinstance(raw_choices, list) or len(raw_choices) > len(DUNGEON_ROUTE_CHOICES):
+            raise StateCommandError("Existing Dungeon route choices are invalid", status_code=500)
+        projection["room_choices"] = [
+            {
+                field: item[field]
+                for field in ("id", "kind", "label", "description")
+                if field in item
+            }
+            for item in raw_choices
+            if isinstance(item, Mapping)
+        ]
         editor_content = run.get("editor_content", "")
         if not isinstance(editor_content, str):
             raise StateCommandError("Existing Dungeon editor content is invalid", status_code=500)
@@ -1474,17 +1595,6 @@ class LocalStateService:
         seed = data.get("seed") or uuid.uuid4().hex
         seed = self._text(seed, "seed", max_length=MAX_IDENTIFIER_LENGTH, identifier=True)
         run_id = f"dungeon-{uuid.uuid4().hex}"
-        question_id = f"{run_id}-q1"
-        question = self._dungeon_question_spec(
-            {
-                "id": question_id,
-                "question_type": "code_checkpoint",
-                "concept_id": concept_id,
-                "difficulty": 1,
-                "prompt": f"Write a small Python example that demonstrates {concept_id}.",
-                "options": [],
-            }
-        )
         player = self._dict(progress, "player")
         maximum = self._counter(player, "max_hp") or 100
         now = _utc_now()
@@ -1495,7 +1605,7 @@ class LocalStateService:
             "concept_id": concept_id,
             "floor": 1,
             "room": 1,
-            "room_type": "encounter",
+            "room_type": "selector",
             "score": 0,
             "run_coins": 0,
             "started_at": now,
@@ -1509,13 +1619,15 @@ class LocalStateService:
                 "heals": 1,
                 "coins": 0,
             },
-            "question": question,
-            "question_number": 1,
+            "question": None,
+            "question_number": 0,
+            "room_choices": [],
             "editor_content": "",
             "last_result": None,
             "history": [],
         }
         progress["dungeon_run"] = run
+        self._dungeon_prepare_room_choices(run, progress, advance=False)
         projection = self.dungeon_projection(progress)
         return Mutation(
             True,
@@ -1524,9 +1636,10 @@ class LocalStateService:
                 "run_id": run_id,
                 "floor": 1,
                 "room": 1,
-                "room_type": "encounter",
-                "question_id": question_id,
-                "question_type": question["question_type"],
+                "room_type": "selector",
+                "question_id": None,
+                "question_type": None,
+                "room_choices": [choice["id"] for choice in run.get("room_choices", [])],
                 "concept_id": concept_id,
                 "editor_reset": True,
                 "reason": "dungeon_run_started",
@@ -1583,6 +1696,7 @@ class LocalStateService:
                 "room_type": room_type,
                 "concept_id": question["concept_id"],
                 "question": question,
+                "room_choices": [],
                 "editor_content": "",
                 "updated_at": _utc_now(),
             }
@@ -2103,6 +2217,7 @@ class LocalStateService:
             "practice_session_started": self._practice_session_started,
             "practice_record_attempt": self._practice_record_attempt,
             "dungeon_start_run": self._dungeon_start_run,
+            "dungeon_choose_room": self._dungeon_choose_room,
             "dungeon_save_editor": self._dungeon_save_editor,
             "dungeon_issue_question": self._dungeon_issue_question,
             "dungeon_record_verdict": self._dungeon_record_verdict,

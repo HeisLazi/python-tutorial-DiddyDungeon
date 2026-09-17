@@ -916,7 +916,7 @@ function Homestead({ progress, revision, purchaseCosmetic, equipCosmetic, busy }
   )
 }
 
-function DungeonMap({ run }) {
+function DungeonMap({ run, onChoose, busy }) {
   if (!run?.active) return null
   const currentRoom = Number(run.room || 1)
   const currentFloor = Number(run.floor || 1)
@@ -929,7 +929,7 @@ function DungeonMap({ run }) {
     const normalizedRoom = ((room - 1) % 7 + 7) % 7 + 1
     const isCurrent = floor === currentFloor && normalizedRoom === currentRoom
     const key = `${floor}:${normalizedRoom}`
-    const type = isCurrent ? run.room_type || 'encounter' : visited.has(key) ? 'cleared' : index % 5 === 2 ? 'rest' : index % 7 === 4 ? 'market' : 'encounter'
+    const type = isCurrent ? run.room_type || 'selector' : visited.has(key) ? 'cleared' : 'encounter'
     return { key: `${key}:${index}`, room: normalizedRoom, floor, type, isCurrent, seen: visited.has(key) }
   })
   return (
@@ -938,12 +938,20 @@ function DungeonMap({ run }) {
       <div className="dungeon-map-grid" aria-label={`Dungeon map floor ${currentFloor}`}>
         {nodes.map((node) => <div key={node.key} className={`dungeon-map-node ${node.isCurrent ? 'current' : ''} ${node.seen ? 'seen' : ''} ${node.type}`}><span aria-hidden="true">{node.isCurrent ? '◆' : node.type === 'rest' ? '✚' : node.type === 'market' ? '◇' : node.type === 'cleared' ? '✓' : '○'}</span><small>{node.isCurrent ? 'YOU ARE HERE' : node.type.toUpperCase()}</small><strong>R{node.room}</strong></div>)}
       </div>
-      <p className="context-note">Choose your next room after each verified answer. The map shows room types only; future questions stay hidden until the state service issues them.</p>
+      {Array.isArray(run.room_choices) && run.room_choices.length > 0 && <div className="dungeon-route-choices" aria-label="Choose your next room">
+        <div className="dungeon-route-heading"><span>CHOOSE YOUR NEXT ROOM</span><small>The state service reveals the question only after you choose.</small></div>
+        {run.room_choices.map((choice) => <button key={choice.id} type="button" className={`dungeon-route-choice ${choice.kind || ''}`} onClick={() => onChoose?.(run.run_id, choice.id)} disabled={busy || !onChoose}>
+          <span className="dungeon-route-glyph" aria-hidden="true">{choice.kind === 'rest' ? '✚' : choice.kind === 'market' ? '◇' : '◆'}</span>
+          <span><strong>{choice.label}</strong><small>{choice.description}</small></span>
+          <b aria-hidden="true">→</b>
+        </button>)}
+      </div>}
+      <p className="context-note">Choose a route after each verified answer. The map shows room types only; future questions stay hidden until the state service issues them.</p>
     </section>
   )
 }
 
-function DungeonScreen({ dungeon, revision, onStart, onRest, onMarketPurchase, onLeave, onFinish, submitDungeon, busy, saving, editorContent, onEditorChange, onSave }) {
+function DungeonScreen({ dungeon, revision, onStart, onChoose, onRest, onMarketPurchase, onLeave, onFinish, submitDungeon, busy, saving, editorContent, onEditorChange, onSave }) {
   const [concept, setConcept] = useState('')
   const [submitStatus, setSubmitStatus] = useState('')
   const run = dungeon || { active: false, status: 'idle' }
@@ -991,11 +999,13 @@ function DungeonScreen({ dungeon, revision, onStart, onRest, onMarketPurchase, o
         </section>
       ) : (
         <>
-          <DungeonMap run={run} />
+          <DungeonMap run={run} onChoose={onChoose} busy={busy} />
           <div className="screen-grid two">
-            <section className="game-card">
+            <section className={`game-card dungeon-room-card ${run.room_type || 'selector'}`}>
               <div className="card-heading"><span>CURRENT ROOM</span><b>{String(run.room_type || 'encounter').toUpperCase()}</b></div>
-              {run.room_type === 'rest' ? (
+              {run.room_type === 'selector' ? (
+                <div className="dungeon-room-action"><h3>Route selector</h3><p>Choose a room on the map above. The next challenge is issued only after the route is committed.</p></div>
+              ) : run.room_type === 'rest' ? (
                 <div className="dungeon-room-action"><h3>Quiet Ember Rest</h3><p>Use one run heal to restore up to 30 HP, then continue deeper. Campaign HP is untouched.</p><button className="primary" type="button" onClick={() => onRest?.(run.run_id)} disabled={busy || !onRest || (loadout.heals ?? 0) <= 0 || (loadout.hp ?? 0) >= (loadout.max_hp ?? 0)}>Use rest ({loadout.heals ?? 0} left)</button><button type="button" onClick={() => onLeave?.(run.run_id)} disabled={busy || !onLeave}>Leave room</button></div>
               ) : run.room_type === 'market' ? (
                 <div className="dungeon-room-action"><h3>Wayfarer Market</h3><p>Spend run-only coins on a temporary aid. Nothing enters Campaign inventory.</p><div className="dungeon-market-list">{(run.market_catalog || []).map((item) => <div key={item.id}><div><strong>{item.name}</strong><small>{item.description}</small></div><button type="button" onClick={() => onMarketPurchase?.(run.run_id, item.id)} disabled={busy || !onMarketPurchase || (run.run_coins ?? 0) < (item.price ?? 0)}>{item.price}c</button></div>)}</div><button type="button" onClick={() => onLeave?.(run.run_id)} disabled={busy || !onLeave}>Leave market</button></div>
@@ -1209,7 +1219,7 @@ function SettingsScreen({ preferences, setters, resetLayout, equipped, account, 
   )
 }
 
-export function GameScreen({ activeView, progress, revision, encounter, codexProjection, practiceProjection, dungeon, dungeonEditorContent, onDungeonEditorChange, onSaveDungeon, onDungeonRest, onDungeonMarketPurchase, onDungeonLeave, onDungeonFinish, purchaseCosmetic, equipCosmetic, saveCodexNote, busy, dungeonSaving, submitBattle, submitBoss, submitDungeon, onStartDungeon, onPracticePrompt, preferences, setters, resetLayout, account, accountBusy, accountNotice, onSignIn, onSignUp, onSignOut, onDeviceLabelSave, onResolveConflict, onNavigate, campaignReady = true }) {
+export function GameScreen({ activeView, progress, revision, encounter, codexProjection, practiceProjection, dungeon, dungeonEditorContent, onDungeonEditorChange, onSaveDungeon, onDungeonChoose, onDungeonRest, onDungeonMarketPurchase, onDungeonLeave, onDungeonFinish, purchaseCosmetic, equipCosmetic, saveCodexNote, busy, dungeonSaving, submitBattle, submitBoss, submitDungeon, onStartDungeon, onPracticePrompt, preferences, setters, resetLayout, account, accountBusy, accountNotice, onSignIn, onSignUp, onSignOut, onDeviceLabelSave, onResolveConflict, onNavigate, campaignReady = true }) {
   if (!campaignReady && activeView !== 'settings') {
     return (
       <div className="game-screen-scroll campaign-loading" data-testid="campaign-loading" aria-live="polite">
@@ -1224,7 +1234,7 @@ export function GameScreen({ activeView, progress, revision, encounter, codexPro
   if (activeView === 'codex') return <Codex progress={progress} revision={revision} codexProjection={codexProjection} saveCodexNote={saveCodexNote} busy={busy} />
   if (activeView === 'character') return <CharacterSheet progress={progress} revision={revision} />
   if (activeView === 'homestead') return <Homestead progress={progress} revision={revision} purchaseCosmetic={purchaseCosmetic} equipCosmetic={equipCosmetic} busy={busy} />
-  if (activeView === 'dungeon') return <DungeonScreen dungeon={dungeon} revision={revision} onStart={onStartDungeon} onRest={onDungeonRest} onMarketPurchase={onDungeonMarketPurchase} onLeave={onDungeonLeave} onFinish={onDungeonFinish} submitDungeon={submitDungeon} busy={busy} saving={dungeonSaving} editorContent={dungeonEditorContent} onEditorChange={onDungeonEditorChange} onSave={onSaveDungeon} />
+  if (activeView === 'dungeon') return <DungeonScreen dungeon={dungeon} revision={revision} onStart={onStartDungeon} onChoose={onDungeonChoose} onRest={onDungeonRest} onMarketPurchase={onDungeonMarketPurchase} onLeave={onDungeonLeave} onFinish={onDungeonFinish} submitDungeon={submitDungeon} busy={busy} saving={dungeonSaving} editorContent={dungeonEditorContent} onEditorChange={onDungeonEditorChange} onSave={onSaveDungeon} />
   if (activeView === 'practice') return <PracticeScreen progress={progress} revision={revision} practiceProjection={practiceProjection} onPracticePrompt={onPracticePrompt} busy={busy} />
   if (activeView === 'settings') return <SettingsScreen preferences={preferences} setters={setters} resetLayout={resetLayout} equipped={progress.homestead?.equipped || {}} account={account} accountBusy={accountBusy} accountNotice={accountNotice} onSignIn={onSignIn} onSignUp={onSignUp} onSignOut={onSignOut} onDeviceLabelSave={onDeviceLabelSave} onResolveConflict={onResolveConflict} revision={revision} />
   return null

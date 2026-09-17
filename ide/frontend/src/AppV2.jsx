@@ -1346,7 +1346,11 @@ function AppV2() {
 
   const useDungeonRest = (runId) => dungeonAction('/api/dungeon/rest', { run_id: runId }, (result) => `Rest used. +${result.healed ?? 0} HP; the next room is ready.`)
   const buyDungeonItem = (runId, itemId) => dungeonAction('/api/dungeon/market', { run_id: runId, item_id: itemId }, (result) => `Bought ${result.item?.name || itemId} for run currency.`)
-  const leaveDungeonRoom = (runId) => dungeonAction('/api/dungeon/leave', { run_id: runId }, () => 'Market cleared. The next encounter is ready.')
+  const chooseDungeonRoom = (runId, choiceId) => dungeonAction('/api/dungeon/choose', { run_id: runId, choice_id: choiceId }, (result) => {
+    const kind = result.choice?.kind || result.dungeon?.room_type || 'room'
+    return `${String(kind).replaceAll('_', ' ')} selected. The state service issued this room.`
+  })
+  const leaveDungeonRoom = (runId) => dungeonAction('/api/dungeon/leave', { run_id: runId }, () => 'Room cleared. Choose the next route on the map.')
   const finishDungeonRun = (runId) => dungeonAction('/api/dungeon/finish', { run_id: runId }, (result) => `Run banked at ${result.score ?? result.dungeon?.score ?? 0} score.`)
 
   const startDungeon = async (conceptId) => {
@@ -1843,6 +1847,7 @@ function AppV2() {
               onSaveDungeon={saveDungeon}
               onDungeonRest={useDungeonRest}
               onDungeonMarketPurchase={buyDungeonItem}
+              onDungeonChoose={chooseDungeonRoom}
               onDungeonLeave={leaveDungeonRoom}
               onDungeonFinish={finishDungeonRun}
               onStartDungeon={startDungeon}
