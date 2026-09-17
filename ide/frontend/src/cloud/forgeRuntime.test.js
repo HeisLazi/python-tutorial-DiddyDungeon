@@ -310,6 +310,16 @@ test('Codex finite reading room keeps header and book frame bounded', () => {
   assert.match(foundation, /\.codex-screen > \.codex-tab-page \{[\s\S]*?width: 100%;[\s\S]*?min-height: 0;/)
 })
 
+test('friend packages strip tracked player state before archive output', () => {
+  const packager = source('../../../../tools/questlab-package.ps1')
+
+  assert.match(packager, /archive --format=tar/)
+  assert.match(packager, /protectedPackagePaths = @\('progress\.json', 'tutor\.py', 'dungeon\.py', 'notes'\)/)
+  assert.match(packager, /Remove-Item -LiteralPath \$protectedPath -Recurse -Force/)
+  assert.match(packager, /Player state, tutor\.py, dungeon\.py and notes are local/)
+  assert.match(packager, /Refusing to package player-owned paths/)
+})
+
 test('Dungeon renders state-owned adaptive mob identity and reward feedback', () => {
   const views = source('../RpgViews.jsx')
   const app = source('../AppV2.jsx')

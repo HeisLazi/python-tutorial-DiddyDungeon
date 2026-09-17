@@ -784,3 +784,16 @@ sync, reward, learner-file or PTY contract changed.
 Current-source Forge tests are **40/40**. Clean archive build and browser K&M
 remain the publication visual gates; the hosted and real-device milestones are
 unchanged.
+
+## Current checkpoint — 2026-09-17 — friend bundle custody repair
+
+The distribution audit found and fixed F-131: because `progress.json` is tracked,
+`git archive HEAD` could put a player save in the friend folder/ZIP despite the
+dirty-tree guard. The packager now strips and verifies the save, Tutor/Dungeon
+notebooks and `notes/` in temporary staging before output, and onboarding no
+longer describes a committed baseline save as part of the bundle. This keeps
+player state behind the canonical gateway and does not alter the live checkout,
+PTYs or hosted scope.
+
+The post-fix package audit and current-source tests are the next publication
+checks; real friend-machine installation remains a separate acceptance gate.
