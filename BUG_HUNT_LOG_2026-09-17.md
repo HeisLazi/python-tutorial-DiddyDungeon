@@ -231,3 +231,9 @@ No new visual/browser defect was scored in this slice. The live mounted
 OneDrive JS dependency failure remains the known F-033 environment gate, and
 hosted authenticated PC↔laptop acceptance remains unverified; no Supabase
 write, save edit, or PTY restart occurred.
+
+The read-only local sync simulator was extended to assert campaign continuity,
+not just purse values. Against the protected save it retained 8 projects, 3
+cleared mobs, 3 Codex encounters and the active Dungeon run/editor checkpoint
+across both disposable caches, rejected stale mailbox/local revisions with
+409, and left the source digest unchanged.

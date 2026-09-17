@@ -2288,3 +2288,10 @@ frontend tests/build remain the authoritative JS gate. No Supabase migration
 was applied, no account was seeded, and no hosted or real PC↔laptop acceptance
 claim is made. The protected save, root `tutor.py`, root `dungeon.py` and
 existing shell/AI PTYs were untouched.
+
+The read-only local two-device simulator now reports campaign continuity as
+well as the player purse: the current protected snapshot retained **8
+projects, 3 cleared mobs, 3 Codex encounters and the active Dungeon run/editor
+checkpoint** on both disposable devices, while the source digest remained
+unchanged. This is revision/CAS simulation evidence only, not authenticated
+cloud proof.

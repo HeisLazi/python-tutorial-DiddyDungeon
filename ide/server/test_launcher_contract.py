@@ -99,6 +99,10 @@ class LauncherContractTests(unittest.TestCase):
         self.assertEqual(result["conflict"]["status_code"], 409)
         self.assertEqual(result["resolution"], "keep-device")
         self.assertEqual(result["sync_event_action"], "sync_apply_cloud")
+        self.assertGreaterEqual(result["final_campaign"]["project_count"], 1)
+        self.assertEqual(result["final_campaign"]["cleared_mob_count"], result["initial_campaign"]["cleared_mob_count"])
+        self.assertEqual(result["final_campaign"]["codex_encounter_count"], result["initial_campaign"]["codex_encounter_count"])
+        self.assertEqual(result["final_campaign"]["dungeon_run_id"], result["initial_campaign"]["dungeon_run_id"])
         initial_player = result["initial_player"]
         final_player = result["final_player"]
         # The explicit keep-device choice retains B's first push (+2) and
