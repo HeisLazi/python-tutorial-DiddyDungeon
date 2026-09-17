@@ -120,13 +120,16 @@ Hosted Auth is configured to require email confirmation (`mailer_autoconfirm=fal
   the projection is rejected so it cannot become a second save authority.
 - Added separate Dungeon and Practice surfaces. Dungeon is run-scoped and
   restart-safe; Practice lets the player choose a concept, question type and
-  difficulty for unlimited provider-assisted drills without Campaign/Dungeon
-  rewards or a `tutor.py` file. Adaptive generation, rooms, markets, scoring
-  and hosted leaderboards remain later slices.
-- Restored Tutor Notebook as a first-class Campaign surface. Its dedicated
-  `/api/tutor` endpoint and editor support collaborative teaching examples;
-  generic project-file routes still reject `tutor.py`, and Practice remains
-  independent and never writes it.
+  difficulty for unlimited provider-assisted drills above the same managed
+  `tutor.py` editor/notebook and bounded notes channel. Practice cannot mutate
+  Campaign/Dungeon rewards, HP, Resolve, equipment, combat or run state.
+  Adaptive generation, rooms, markets, scoring and hosted leaderboards remain
+  later slices.
+- Restored Tutor Notebook as a first-class shared Tutor/Practice surface. Its
+  dedicated `/api/tutor` endpoint and editor support collaborative teaching
+  examples; generic project-file routes still reject `tutor.py`, while the
+  dedicated Tutor/notes routes remain the only bounded learning-workspace
+  writes.
 
 ## Supabase project and schema
 
@@ -2211,3 +2214,22 @@ Room 3 selector, score, run coins and blank-buffer checkpoint rehydrated, and
 the shell terminal remained `CONNECTED`. The disposable cache was isolated;
 the canonical root `progress.json`, active user Dungeon run, tutor notebook and
 PTYs were not touched.
+
+## Original redesign contract and 2026-09-17 regression repairs
+
+The original product brief remains the reference for the local UI direction:
+Hub-first launch with splash/last-route continuity, chapter silhouettes,
+Codex field-library pages and concept notes, paper Journal pagination, current
+loadout/shop presentation, state-owned Dungeon route selection and one shared
+Tutor/Practice `tutor.py` IDE with concept/type/tier selectors. Practice keeps
+independent no-reward history; it is not a second notebook and it cannot mutate
+Campaign or Dungeon progression.
+
+The isolated browser K&M hunt found and repaired three regressions against that
+contract. Provider launch now records the tab-scoped provider handoff needed by
+bounded Tutor/Practice requests. Legacy workspace `progress.json` is hidden
+from the Forge file tree as well as rejected by generic file routes, so it
+cannot look like a second live save. The bounded context bridge now permits a
+read of the managed `tutor.py` for Tutor/Practice prompts while retaining the
+generic-route write boundary. Focused tests and the full local gates are green;
+details and scores are in `BUG_HUNT_LOG_2026-09-17.md` and issue IDs F-071–F-074.

@@ -3,7 +3,7 @@
 Status: local roadmap slices 0–6 implemented and verified; friend-ready
 launcher/health foundation added; CachyOS native-Linux support is an explicit
 open distribution gate; hosted distribution/social slices remain explicitly
-gated — 2026-09-16
+gated — 2026-09-17
 
 Claude Sonnet review was previously attempted from WSL while the configured
 CLI returned `Not logged in · Please run /login`. The current checkpoint has
@@ -14,9 +14,11 @@ plan remains the primary implementation/review record.
 
 The current local checkpoint includes the playable Dungeon question/verdict
 loop, adaptive evidence-grounded focus, rest/market rooms, local leaderboard,
-independent Practice sessions/validated history, Codex library projection and
-runtime checkout diagnostics. The Campaign Tutor Notebook remains part of the
-Campaign surface; it was not removed or merged into Practice.
+the unified `tutor.py` Tutor/Practice learning IDE with selectors and notes,
+validated Practice history, Codex library projection and runtime checkout
+diagnostics. Practice remains a separate no-reward state-service mode, but it
+uses the same controlled `tutor.py` notebook/editor rather than a second
+training form or a second notebook.
 
 The latest authenticated Claude Sonnet dependency plan is persisted in
 `ROADMAP_CLAUDE_IMPLEMENTATION_PLAN_2026-09-16_0705.md`. It adds the CI/public
@@ -31,9 +33,12 @@ desktop, public and social stages remain approval-gated.
 2. Every meaningful mutation increments the canonical revision and appends a
    bounded `state_events` record. React polls the cheap revision endpoint and
    reloads the full projection only when it changes.
-3. Campaign keeps its collaborative Tutor Notebook (`tutor.py`). Practice is a
-   separate provider-assisted mode and cannot write Campaign, Dungeon, or
-   `tutor.py` state.
+3. Campaign Tutor and Practice share one controlled `tutor.py` editor/notebook,
+   server-owned concept/type/difficulty selectors and the workspace notes
+   channel. Practice is still a separate provider-assisted state-service mode:
+   it may save teaching code/notes through the dedicated Tutor/notes routes,
+   but it cannot mutate Campaign/Dungeon rewards, HP, Resolve, equipment,
+   combat or run state.
 4. Rewards, Impact, Resolve, HP, unlocks, mastery and combat outcomes come from
    validated state-service results. React only renders them.
 5. PTY sessions are long-lived. Browser checks use keyboard/mouse/scroll/type
@@ -112,9 +117,11 @@ desktop, public and social stages remain approval-gated.
 ### Slice 6 — Practice mode history
 
 - Add independent practice sessions, concept selection, mixed question types,
-  optional AI help, attempts and validated history.
-- Explicitly reject Campaign/Dungeon reward, HP, Resolve, `tutor.py` and cloud
-  player-state mutations from Practice.
+  optional AI help, attempts and validated history above the shared `tutor.py`
+  editor/notebook. Keep concept notes as bounded `notes/<concept>.md` files.
+- Explicitly reject Campaign/Dungeon reward, HP, Resolve, equipment, combat and
+  run-state mutations from Practice. Tutor/notes writes remain controlled,
+  bounded learning-workspace writes rather than player progression writes.
 - Gate: mode-boundary tests and K&M repeat-use flow.
 
 ### Slice 7 — friend-ready local distribution
@@ -208,9 +215,11 @@ until it is run on the real machine. The target acceptance is:
   weakness focus, progressive room types, rest/market, death reset and local
   leaderboard. It intentionally does not grant Campaign rewards or use hosted
   leaderboard transport.
-- Slice 6 is implemented as an independent Practice mode with mixed question
-  types, bounded sessions and provider-validated history. It never writes
-  Campaign, Dungeon, rewards, HP, Resolve or `tutor.py`.
+- Slice 6 is implemented as a separate no-reward Practice mode with mixed
+  question types, bounded sessions and provider-validated history above the
+  shared `tutor.py` editor/notebook. It can save bounded teaching code and
+  concept notes through dedicated routes, but never writes Campaign, Dungeon,
+  rewards, HP, Resolve, equipment, combat or run state.
 - Slice 7 has local launcher/runtime identity, a guarded Windows/WSL launcher,
   friend onboarding instructions and offline sync boundaries. A reproducible
   committed-source bundle is available through `tools/questlab-package.ps1`,
@@ -547,5 +556,32 @@ The implementation and focused tests live in `ide/workspace_transfer.py`,
 `WORKSPACE_TRANSFER.md`. The full backend suite and Python compilation pass.
 This is not a hosted source-file channel and does not claim a PC↔laptop
 round-trip until the player runs the explicit push on the edited device and
-pull/verification on the other one. Campaign `tutor.py` remains part of the
-Campaign surface; Practice still cannot write it.
+pull/verification on the other one. Campaign and Practice share the managed
+`tutor.py` editor/notebook; Practice remains a separate no-reward state-service
+mode and cannot mutate Campaign/Dungeon progression.
+
+## Current checkpoint — 2026-09-17 — original product contract re-aligned
+
+The original Forge redesign brief is now the normative product contract for
+the local slices: splash/last-route continuity, Hub-first navigation, chapter
+silhouettes, Codex field-library pages with bounded notes, paper Journal
+pagination, a shared SVG shop/loadout, the grid Dungeon route selector and the
+unified Tutor/Practice `tutor.py` IDE. Historical entries above preserve the
+earlier review wording, but the current Tutor/Practice rule is the one in the
+invariants and Slice 6: one managed notebook/editor, separate no-reward
+Practice state, and no Campaign/Dungeon progression writes from Practice.
+
+The 2026-09-17 isolated browser K&M hunt found and repaired three local
+regressions before this checkpoint was accepted: provider launch did not set the
+tab-scoped provider handoff; a legacy workspace `progress.json` was visible in
+the Forge file tree; and the bounded PYR context bridge rejected the shared
+`tutor.py` file after a Practice session opened. Focused regression coverage,
+the full backend suite (**97/97**), frontend suite (**37/37**) and Python
+compilation are green. The persistent details are in
+`BUG_HUNT_LOG_2026-09-17.md` and `FORGE_ROADMAP_ISSUES_LOG.md` (F-071–F-074).
+
+The protected repository save, root `tutor.py`, root `dungeon.py`, active user
+processes and PTYs were not staged, overwritten or reset. Hosted player-state,
+real PC↔laptop sync, account/avatar acceptance, the actual CachyOS run,
+friend-machine packaging and Tauri remain external gates; this checkpoint does
+not seed Supabase or claim those gates complete.

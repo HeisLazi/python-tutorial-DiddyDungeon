@@ -1651,3 +1651,35 @@ workspace files remain evidence/migration inputs only.
 | ID | Severity | Area | Finding | Status |
 |---|---|---|---|---|
 | F-070 | P1 | Dungeon navigation / checkpoint coherence | The map was decorative and the client inferred the next room from a modulo rule, so the requested choose-room → question → choose-room loop was not state-service-owned. | Fixed locally: `dungeon_choose_room` validates answer-free route choices, the selector reappears after each resolved room, future questions stay hidden until selection, `dungeon.py` blanks on transition, and restart-safe disposable K&M coverage passed. Hosted Dungeon sync and authenticated leaderboard remain later gates. |
+
+## Regression hunt — 2026-09-17 — original Tutor/Practice contract
+
+The original redesign brief was re-read before this hunt. The current local
+contract is one managed `tutor.py` Tutor/Practice IDE with selectors and notes;
+Practice has independent no-reward history but cannot mutate Campaign/Dungeon
+progression. The disposable runtime used separate state/workspace paths and
+pure browser K&M (no Playwright). The protected save and user source files
+were not staged or written.
+
+| ID | Severity | Area | Finding | Status |
+|---|---|---|---|---|
+| F-071 | P1 | Tutor/Practice provider handoff | Clicking Codex, Claude or AGY launched the AI PTY but did not persist the tab-scoped provider marker consumed by the bounded Tutor/Practice request path. A subsequent Ask PYR action therefore stopped with the generic “launch first” guard. | Fixed locally in `AppV2.jsx` and legacy `App.jsx`; a frontend source regression test covers the marker, provider read and bounded notice. Minimal K&M reproduction: click AGY, then Ask PYR; after repair a Practice session and bounded prompt were created. |
+| F-072 | P2 | Workspace state authority | A legacy/worktree `progress.json` was omitted from direct file access but still appeared in the Forge file tree, making a non-authoritative save look like an editable live project file. | Fixed locally in `build_tree()`; the tree contract now hides `progress.json` and the context bridge test proves it remains non-authoritative. Minimal reproduction: create a synthetic workspace `progress.json` and reload the tree; it no longer appears and canonical projection is unchanged. |
+| F-073 | P1 | Tutor/Practice context bridge | After opening the shared Practice/Tutor editor, `POST /api/pyr/context` rejected active `tutor.py` with 403, so the provider prompt could not receive the bounded notebook context even though the dedicated Tutor route was valid. | Fixed locally: the bounded read bridge permits the managed workspace `tutor.py`; generic `/api/file`/format writes still reject it. Focused context tests and the full backend suite pass. Final disposable K&M reproduced the repair: AGY → Ask PYR visibly showed `Practice drill requested from agy`, and the backend logged `/api/pyr/context` **200 OK** while both PTYs stayed connected. |
+| F-074 | P3 | Release contract documentation | The roadmap/report/onboarding text still said Practice could not write `tutor.py`, contradicting the settled product decision that Tutor and Practice share one managed notebook/editor. | Fixed locally by aligning the current normative sections with the shared-editor/no-reward contract; historical review entries remain preserved as history. |
+
+Primary hunt score: **17** (F-071 6 + F-072 4 + F-073 6 + F-074 1). These
+were four unique confirmed defects, including one release-documentation defect;
+no false positives were scored.
+
+Claude Sonnet was invoked as a read-only reviewer for this checkpoint but did
+not return before the bounded CLI wait expired; no Claude finding or score is
+claimed. Copilot was not installed on this workstation, so no Copilot finding
+or score is claimed. This does not block the local deterministic gates, but it
+does mean the reviewer scoreboard is intentionally incomplete for this run.
+
+Evidence for the repair: backend **97/97**, frontend **37/37**, Python
+`compileall`, and the disposable browser K&M path all passed. The latest
+frontend dependency/build attempt is documented as an environment-only
+mounted-tree/Node memory limitation; no source failure is claimed from that
+attempt.

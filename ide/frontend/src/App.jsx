@@ -421,6 +421,11 @@ function App() {
   }
 
   const summon = (command) => {
+    try {
+      sessionStorage.setItem('questlab.aiProvider', command)
+    } catch {
+      // A storage-blocked browser can still use the raw AI terminal.
+    }
     aiTerminalRef.current?.send(`${command}\n`)
     aiTerminalRef.current?.focus()
   }

@@ -711,7 +711,17 @@ def build_tree() -> list[dict]:
             return
 
         for child in children:
-            if child.name in IGNORED_DIRS or child.name in {DUNGEON_PATH.name, f"{DUNGEON_PATH.name}.tmp", TUTOR_PATH.name, NOTES_DIR_NAME} or child.name.startswith(".DS_Store"):
+            # A workspace progress.json is legacy evidence, never a file the
+            # learner should open or mistake for the canonical state save.
+            # Keep it out of the tree as well as rejecting direct file access.
+            # This prevents a stray edit from looking like a second live save.
+            if child.name in IGNORED_DIRS or child.name in {
+                "progress.json",
+                DUNGEON_PATH.name,
+                f"{DUNGEON_PATH.name}.tmp",
+                TUTOR_PATH.name,
+                NOTES_DIR_NAME,
+            } or child.name.startswith(".DS_Store"):
                 continue
             try:
                 relative = child.relative_to(WORKSPACE).as_posix()
@@ -1291,6 +1301,15 @@ def _capture_pyr_context(payload: PyrContextRequest, *, rotate_challenge: bool =
                 sync_dungeon_projection(STATE_SERVICE.snapshot())
             except StateCommandError as exc:
                 raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
+        elif target.resolve() == (WORKSPACE / TUTOR_PATH.name).resolve():
+            # Tutor/Practice deliberately shares tutor.py.  The context
+            # bridge may read this managed notebook for a bounded prompt;
+            # generic file routes still reject it and all writes use /api/tutor.
+            # Do not call ensure_tutor_file here: tests and disposable
+            # workspaces may replace WORKSPACE while the module-level path is
+            # still bound to the original checkout. The bounded read below
+            # will fail closed if this managed file is absent.
+            pass
         else:
             reject_state_file_access(target)
         if not target.exists() or not target.is_file():

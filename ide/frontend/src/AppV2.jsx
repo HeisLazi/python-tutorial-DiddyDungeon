@@ -1512,8 +1512,17 @@ function AppV2() {
   }
 
   const summon = (command) => {
+    // Practice/Battle/Dungeon requests need to know which local provider the
+    // learner explicitly launched. Keep this tab-scoped and opaque; the
+    // provider still receives only the bounded context prompt below.
+    try {
+      sessionStorage.setItem('questlab.aiProvider', command)
+    } catch {
+      // A storage-blocked browser can still use the raw AI terminal.
+    }
     aiTerminalRef.current?.send(`${command}\n`)
     aiTerminalRef.current?.focus()
+    setNotice(`${command.toUpperCase()} launched. You can now ask for a bounded learning drill.`)
   }
 
   const purchaseCosmetic = async (itemId) => {

@@ -69,6 +69,7 @@ class PyrContextBridgeTests(unittest.TestCase):
             workspace = root / "quest"
             workspace.mkdir()
             (workspace / "main.py").write_text("print('hello')\n", encoding="utf-8")
+            (workspace / "progress.json").write_text('{"player":{"level":99}}', encoding="utf-8")
             (workspace / "tutor.py").write_text("print('legacy')\n", encoding="utf-8")
             (workspace / "dungeon.py.tmp").write_text("stale\n", encoding="utf-8")
             canonical = root / "platform" / "progress.json"
@@ -82,7 +83,15 @@ class PyrContextBridgeTests(unittest.TestCase):
                 tree = client.get("/api/tree", headers={"host": "127.0.0.1"})
                 self.assertEqual(tree.status_code, 200)
                 self.assertNotIn("tutor.py", {item["path"] for item in tree.json()["items"]})
+                self.assertNotIn("progress.json", {item["path"] for item in tree.json()["items"]})
                 self.assertNotIn("dungeon.py.tmp", {item["path"] for item in tree.json()["items"]})
+                tutor_context = client.post(
+                    "/api/pyr/context",
+                    headers={"host": "127.0.0.1"},
+                    json={"active_path": "tutor.py"},
+                )
+                self.assertEqual(tutor_context.status_code, 200, tutor_context.text)
+                self.assertEqual(tutor_context.json()["context"]["active_file"]["content"], "print('legacy')\n")
                 idle = client.get("/api/dungeon", headers={"host": "127.0.0.1"})
                 self.assertEqual(idle.status_code, 200)
                 self.assertEqual(idle.json()["dungeon"]["status"], "idle")

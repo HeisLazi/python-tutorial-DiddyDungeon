@@ -95,6 +95,14 @@ test('PYR context submissions use the bounded local bridge and current editor se
   assert.match(enhancements, /git\?\.diff/)
 })
 
+test('provider launch unlocks bounded Tutor/Practice requests for this tab', () => {
+  const app = source('../AppV2.jsx')
+
+  assert.match(app, /sessionStorage\.setItem\('questlab\.aiProvider', command\)/)
+  assert.match(app, /const provider = sessionStorage\.getItem\('questlab\.aiProvider'\)/)
+  assert.match(app, /Practice drill requested from \$\{provider\}/)
+})
+
 test('Battle Journal binds player answers before provider adjudication', () => {
   const app = source('../AppV2.jsx')
   const views = source('../RpgViews.jsx')

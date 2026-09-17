@@ -144,10 +144,11 @@ changes and never copies an uncommitted `progress.json` or an untracked root
 It does not install dependencies, so each friend still runs the WSL setup
 above inside the extracted checkout.
 
-This is a custody boundary, not a mode removal: Campaign still has its
-dedicated Tutor Notebook. Forge creates or reads `tutor.py` through the
-workspace-scoped `/api/tutor` surface on first use, while Practice remains a
-separate mode that cannot write the Campaign notebook.
+This is a custody boundary, not a mode removal: Campaign Tutor and Practice
+share the same managed `tutor.py` editor/notebook and the workspace-scoped
+`/api/tutor` surface. Practice has its own no-reward session/history state and
+can save bounded teaching code or concept notes, but it cannot write Campaign
+or Dungeon rewards, HP, Resolve, equipment, combat or run state.
 
 From PowerShell in the cloned checkout:
 
