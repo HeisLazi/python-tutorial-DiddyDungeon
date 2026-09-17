@@ -2781,3 +2781,16 @@ branch/runtime identity warnings.
 Current-source Forge tests pass **33/33** and launcher contract tests **14/14**.
 Clean archive frontend tests/build and browser K&M remain publication checks;
 no state, learner file, PTY or hosted transport changed.
+
+### Codex paper-surface polish repair — F-122
+
+The Codex finite-book mechanics remain bounded, but the visual surface now has
+a deliberate field-library hierarchy: the index and page use a restrained
+paper treatment, the concept heading follows the selected app font, and code
+examples use theme-aware surfaces instead of a hard-coded near-black block.
+The change is scoped to Codex presentation; it does not alter state authority,
+revision polling, rewards, notes, or PTY lifecycle.
+
+Current-source Forge tests pass **34/34**. Clean archive frontend tests/build
+and browser K&M remain the visual publication checks; no state, learner file,
+PTY or hosted transport changed.
