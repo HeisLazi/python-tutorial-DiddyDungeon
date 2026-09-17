@@ -2653,3 +2653,20 @@ The focused regression suite asserts the prop binding. Current-source tests
 pass **32/32**, clean ext4 frontend tests pass **51/51**, and Vite transforms
 **1,346 modules** successfully. Browser K&M is still an external gate because
 the Codex environment has no attachable browser tab.
+
+### Codex bounded reading workspace — F-113
+
+The Codex presentation now behaves like a field-library workstation instead of
+an infinite feed. The outer page keeps the compact hero and Books/Battle Shell
+tabs visible. In Books, the Field Library/Active Quest index has its own
+scrollable column and the selected concept page has its own reading column;
+definition, examples, encounter evidence and notes stay together. Mastery
+Signals are now part of that selected book pane instead of a second page-length
+card below the library. At narrow widths the layout intentionally collapses to
+one controlled column.
+
+This is presentation-only: the canonical projection, revision/event source,
+note gateway, reward authority and PTY keys are unchanged. Current-source tests
+pass **32/32**, clean ext4 frontend tests pass **51/51**, and Vite transforms
+**1,346 modules**. A local K&M attempt could not attach the Codex browser
+webview, so visual click-through remains unclaimed.

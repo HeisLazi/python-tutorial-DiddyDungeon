@@ -217,6 +217,8 @@ test('Journal and Codex keep the active encounter projection visible', () => {
   assert.match(views, /data-testid="codex-mode-tabs"/)
   assert.match(views, /data-testid="battle-story-background"/)
   assert.match(views, /data-testid="battle-encounter-details"/)
+  assert.match(views, /className="game-screen-scroll codex-screen"/)
+  assert.match(views, /data-testid="codex-mastery"/)
   assert.match(views, /function QuestBattleScreen\(\{ activeProject, currentMob, encounter, resolve/)
   assert.match(views, /currentMob=\{battleMob\}\s+encounter=\{encounter\}/)
   assert.match(views, /function Codex\(\{ progress, revision, codexProjection, encounter, submitBattle, submitBoss/)
@@ -226,6 +228,8 @@ test('Journal and Codex keep the active encounter projection visible', () => {
   assert.match(views, /onEquip=\{onDungeonEquip\}/)
   assert.match(app, /\/api\/dungeon\/equip/)
   assert.match(foundation, /quest-journal-screen \.journal-page \{ grid-template-columns: minmax\(0, 1fr\); \}/)
+  assert.match(foundation, /\.codex-screen > \.codex-tab-page \{ display: flex; flex: 1 1 auto;/)
+  assert.match(foundation, /\.codex-screen \.codex-book-page \{ min-height: 0; overflow-y: auto;/)
 })
 
 test('Dungeon renders state-owned adaptive mob identity and reward feedback', () => {

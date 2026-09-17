@@ -539,3 +539,14 @@ Protected learner save/files and both PTY lifecycles were not touched.
 
 Verification after the repair: current-source tests **32/32**, clean ext4
 frontend tests **51/51**, and Vite production build **1,346 modules transformed**.
+
+## Codex bounded reading workspace hunt — 2026-09-17 (F-113)
+
+| ID | Severity | Finding | Status |
+|---|---|---|---|
+| F-113 | P1 | Codex stacked the library, selected entry, notes and Mastery cards in the global Forge page scroller. The result felt like an unbounded feed instead of a readable field-library/book surface. | Fixed with a bounded Codex shell: the page header/tabs stay fixed, the Active Quest/books index and book detail each own their scroll, and Mastery Signals live inside the selected book pane. The narrow layout falls back to a single controlled column. |
+
+Verification: current-source Forge tests **32/32**, clean ext4 frontend tests
+**51/51**, and Vite production build **1,346 modules transformed**. The local
+K&M browser attempt was blocked because the Codex Browser webview had no
+attachable tab; no visual click-through claim is made.
