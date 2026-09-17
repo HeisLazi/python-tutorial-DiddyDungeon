@@ -509,3 +509,13 @@ Verification: clean ext4 frontend tests **51/51**, Vite production build
 **1,346 modules**, focused backend/migration tests **51/51**, and the full WSL
 backend suite remains **105/105**. The hosted migration is still unapplied by
 the Milestone C boundary.
+
+## Wide-route navigation visibility hardening — 2026-09-17 (F-110)
+
+| ID | Severity | Finding | Status |
+|---|---|---|---|
+| F-110 | P2 | The wide Hub/Character/Homestead route bar was present, but its affordance could disappear from context in a long surface or be difficult to identify in a mixed/stale bundle, making the full-width pages feel like dead ends. | Fixed by giving the route frame an explicit active-route marker, keeping the navigation strip sticky and above the surface content, preserving touch-sized targets, and retaining the direct React callback. |
+
+Verification: the current-source Forge runtime suite passes **32/32**. A fresh
+browser K&M click-through remains unavailable because no Codex browser tab could
+attach in this environment.

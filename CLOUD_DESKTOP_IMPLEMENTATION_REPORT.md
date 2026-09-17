@@ -2604,3 +2604,15 @@ Verification: clean ext4 frontend tests **51/51**, Vite production build
 **1,346 modules**, focused backend/migration tests **51/51**, and the full WSL
 backend suite remains **105/105**. The hosted migration remains source-only
 until the approved Milestone C application gate; no hosted sync claim is made.
+
+### Wide-route navigation visibility hardening — F-110
+
+The wide Hub, Character and Homestead surfaces retain a dedicated route bar,
+but the strip now carries an explicit active-route marker and stays sticky above
+the scrollable page with touch-sized targets. This keeps the player able to
+reach Forge, Tutor, Journal, Codex, Character, Homestead, Dungeon and Settings
+without restoring the side rail or remounting either PTY. The existing React
+callback remains the only route state writer.
+
+Verification: current-source Forge runtime suite **32/32**. No new live browser
+click-through is claimed because the Codex browser tab could not attach.

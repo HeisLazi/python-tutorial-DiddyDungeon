@@ -1930,3 +1930,12 @@ made here.
 | F-109 | P1 | Cross-device Dungeon state | The local Dungeon checkpoint persisted run-earned inventory, but the browser campaign projection and hosted campaign migration omitted `dungeon_run.inventory`; a second device could resume the room while losing its temporary loadout. | Fixed with a bounded inventory whitelist in the SyncEngine projection, matching source-only SQL validation, and a two-device cloud round-trip regression. The hosted migration is still unapplied by the Milestone C boundary. |
 
 Verification: clean ext4 frontend tests **51/51**, Vite production build **1,346 modules**, focused backend/migration tests **51/51**, and the full WSL backend suite remains **105/105**. No protected learner file was changed.
+
+## Wide-route navigation visibility hardening — 2026-09-17
+
+| ID | Severity | Area | Finding | Status |
+|---|---|---|---|---|
+| F-110 | P2 | Navigation affordance | The route bar for full-width Hub/Character/Homestead surfaces was implemented, but it could lose context during a long surface or appear ambiguous when an older bundle was still running, so the player could feel stranded. | Fixed with an explicit `data-wide-route` marker, a sticky route strip above the scroll surface, touch-sized targets and a regression assertion. The React `setActiveView` callback remains the sole route writer. |
+
+Verification: current-source Forge runtime suite **32/32**. Fresh browser K&M
+remains an external gate because the Codex browser could not attach a tab.
