@@ -2995,6 +2995,24 @@ Current-source Forge tests pass **47/47**. A clean Linux archive passed
 Browser K&M remains unavailable because the in-app webview could not attach
 (F-080), so no visual-device acceptance claim is made.
 
+### Partial OneDrive frontend dependency cache — F-138
+
+The live Windows dependency cache had been left in a partial-install state:
+`@supabase/supabase-js` and its Functions dependency lacked package metadata,
+the Vite command shims were absent, and the Rollup Windows optional package
+was missing its manifest. This caused Windows test imports and `npm run build`
+to fail even though clean Linux archive installs were healthy. The local cache
+was repaired from the locked package graph without stopping existing Forge or
+PTY processes. `ide.quest` now checks Vite/Supabase/Functions manifests and a
+native Rollup package before launch, producing an actionable environment error
+instead of an opaque module-resolution failure. The shared OneDrive tree is
+still not a supported place for WSL dependency installs; use a clean native
+Linux filesystem for that path.
+
+Verification: Windows frontend tests **66/66**, Windows Vite build **1,346
+modules**, focused launcher tests **15/15**, and WSL backend tests **109/109**.
+No protected save, learner file or PTY was changed.
+
 ### Local sync simulator recheck — F-126
 
 The current branch was rechecked with

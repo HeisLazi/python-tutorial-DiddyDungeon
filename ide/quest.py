@@ -106,7 +106,7 @@ def linux_rollup_optional_dependency_ready(frontend: Path) -> bool:
         return True
     rollup_root = frontend / "node_modules" / "@rollup"
     return any(
-        (rollup_root / package).is_dir()
+        (rollup_root / package / "package.json").is_file()
         for package in (
             "rollup-linux-arm-gnueabihf",
             "rollup-linux-arm-musleabihf",
@@ -122,6 +122,26 @@ def linux_rollup_optional_dependency_ready(frontend: Path) -> bool:
             "rollup-linux-riscv64-musl",
             "rollup-linux-s390x-gnu",
         )
+    )
+
+
+def frontend_dependencies_ready(frontend: Path) -> bool:
+    """Return whether the managed frontend dependency tree is importable.
+
+    A mounted OneDrive tree can survive an interrupted install with directories
+    present but package metadata missing. Checking the package manifests here
+    keeps the launcher from starting Vite only to fail later with an opaque
+    ESM/Rollup error. The check is intentionally read-only.
+    """
+
+    node_modules = frontend / "node_modules"
+    required_manifests = (
+        node_modules / "vite" / "package.json",
+        node_modules / "@supabase" / "supabase-js" / "package.json",
+        node_modules / "@supabase" / "functions-js" / "package.json",
+    )
+    return all(path.is_file() for path in required_manifests) and linux_rollup_optional_dependency_ready(
+        frontend
     )
 
 
@@ -225,10 +245,16 @@ def main():
         raise SystemExit(f"Workspace does not exist: {workspace}")
     if not (FRONTEND / "node_modules").exists():
         raise SystemExit("Frontend dependencies are missing. Run: cd ide/frontend && npm install")
-    if not linux_rollup_optional_dependency_ready(FRONTEND):
+    if not frontend_dependencies_ready(FRONTEND):
+        if running_under_wsl():
+            raise SystemExit(
+                "WSL frontend dependencies are incomplete or were installed for Windows (missing Vite/Supabase "
+                "metadata or a native Linux Rollup package). Run npm ci inside this WSL checkout or use a clean "
+                "Linux filesystem before launching Forge."
+            )
         raise SystemExit(
-            "WSL frontend dependencies are a Windows node_modules tree without a Linux Rollup optional package. "
-            "Run npm ci inside this WSL checkout (or use a clean Linux filesystem) before launching Forge."
+            "Frontend dependencies are incomplete (missing Vite/Supabase package metadata). "
+            "Run npm ci from a stopped native Windows Forge process before launching."
         )
     if not shutil.which("npm"):
         raise SystemExit("npm is not on PATH")

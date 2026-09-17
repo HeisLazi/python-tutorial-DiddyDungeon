@@ -262,7 +262,27 @@ class LauncherContractTests(unittest.TestCase):
             frontend = Path(directory)
             package = frontend / "node_modules" / "@rollup" / "rollup-linux-x64-gnu"
             package.mkdir(parents=True)
+            (package / "package.json").write_text("{}", encoding="utf-8")
             self.assertTrue(quest.linux_rollup_optional_dependency_ready(frontend))
+
+    @patch("ide.quest.running_under_wsl", return_value=True)
+    def test_launcher_rejects_partial_one_drive_dependency_tree(self, _running):
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as directory:
+            frontend = Path(directory)
+            node_modules = frontend / "node_modules"
+            for package in (
+                node_modules / "vite",
+                node_modules / "@supabase" / "supabase-js",
+                node_modules / "@supabase" / "functions-js",
+                node_modules / "@rollup" / "rollup-linux-x64-gnu",
+            ):
+                package.mkdir(parents=True)
+                (package / "package.json").write_text("{}", encoding="utf-8")
+            self.assertTrue(quest.frontend_dependencies_ready(frontend))
+            (node_modules / "@supabase" / "functions-js" / "package.json").unlink()
+            self.assertFalse(quest.frontend_dependencies_ready(frontend))
 
     def test_launcher_custody_opt_in_requires_confirmation_without_copying_by_default(self):
         original_quest_root = quest.REPO_ROOT

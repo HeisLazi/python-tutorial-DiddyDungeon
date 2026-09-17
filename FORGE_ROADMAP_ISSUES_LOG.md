@@ -2200,3 +2200,14 @@ Verification: current-source Forge runtime tests pass **47/47**. The clean
 Linux archive passed **66/66** frontend tests and the Vite build transformed
 **1,346 modules**. Browser K&M remains unavailable in this environment (F-080),
 so visual-device acceptance is still open.
+
+## Partial OneDrive frontend dependency cache — F-138
+
+| ID | Severity | Area | Finding | Status |
+|---|---|---|---|---|
+| F-138 | P2 | Windows/WSL distribution | The live OneDrive `node_modules` tree had been left partially installed: Supabase package metadata and Vite shims were missing, and the Rollup optional package lacked its manifest. Windows frontend tests failed to import and `npm run build` could not start, even though clean Linux archives remained healthy. | Fixed in the local dependency cache without touching source, saves or running PTY processes. The launcher now performs a read-only manifest preflight for Vite, Supabase, Functions and native Rollup metadata, failing with an actionable environment-specific message instead of an opaque ESM/Rollup error. The supported WSL path still requires native dependencies in a clean Linux filesystem; do not run WSL installs against the live OneDrive tree. |
+
+Verification: Windows frontend tests **66/66**, Windows Vite build **1,346
+modules**, focused launcher tests **15/15**, and WSL backend suite **109/109**.
+Browser K&M remains blocked by F-080; no protected save, learner file or PTY
+was changed.

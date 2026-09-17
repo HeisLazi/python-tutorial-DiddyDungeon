@@ -792,3 +792,13 @@ remains blocked by F-080; no save, learner file, PTY or hosted transport changed
 Verification: current-source Forge tests **47/47**; clean archive frontend
 tests **66/66** and Vite build **1,346 modules**. Browser K&M remains blocked by
 F-080; no state, learner file, PTY or hosted transport changed.
+
+## Partial OneDrive frontend dependency cache — 2026-09-17 (F-138)
+
+| ID | Severity | Finding | Status |
+|---|---|---|---|
+| F-138 | P2 | A live Windows/OneDrive dependency tree was only partially installed after an interrupted cross-environment install. Missing Supabase metadata caused two frontend test files to fail import; missing Vite shims/native Rollup metadata blocked the build. | Repaired the local cache from the locked package graph without stopping the existing Forge/PTY runtimes. Added a launcher preflight that checks the required package manifests and native Rollup metadata and reports the correct repair path. |
+
+Verification: Windows frontend tests **66/66**, Windows Vite build **1,346
+modules**, focused launcher tests **15/15**, and WSL backend tests **109/109**.
+No protected save, learner file or PTY was changed.

@@ -881,3 +881,18 @@ Current-source Forge tests are **47/47**. Clean Linux archive frontend tests
 pass **66/66** and the Vite build transforms **1,346 modules**. Browser K&M
 remains the visual publication gate (F-080); hosted sync and real-device
 acceptance remain separate roadmap gates.
+
+## Current checkpoint — 2026-09-17 — frontend dependency preflight
+
+F-138 caught a partial Windows/OneDrive `node_modules` tree that made Supabase
+imports and the Vite build fail after a cross-environment install. The local
+cache was repaired from the lockfile without stopping the existing Forge or
+PTY processes. The launcher now checks the Vite, Supabase, Functions and native
+Rollup package manifests before starting and gives a platform-specific repair
+message. WSL installs against the live OneDrive tree remain unsupported; clean
+Linux dependency installs are the distribution path.
+
+Windows frontend tests are **66/66**, the Windows Vite build transforms
+**1,346 modules**, focused launcher tests are **15/15**, and WSL backend tests
+are **109/109**. Browser K&M remains the visual gate (F-080); hosted sync and
+real-device acceptance remain separate roadmap gates.
