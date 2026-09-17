@@ -520,6 +520,18 @@ test('Codex final cascade keeps desktop folios finite after the legacy viewport 
   assert.match(foundation, /@media \(max-width: 760px\) \{[\s\S]*?\.game-screen > \.codex-screen > \.codex-tab-page\[data-codex-tab="books"\] \.codex-book-section \{[\s\S]*?overflow-y: auto;/)
 })
 
+test('Codex uses the shared wide-surface frame instead of nesting a page in the Forge grid', () => {
+  const views = source('../RpgViews.jsx')
+  const foundation = source('../foundation.css')
+
+  assert.match(views, /withWideNavigation\(<Codex[\s\S]*?showNavigation=\{false\}/)
+  assert.match(views, /showNavigation && <SurfaceNavigation activeView="codex" onNavigate=\{onNavigate\} \/>/)
+  assert.match(foundation, /F-161: wide RPG surfaces share one bounded frame/)
+  assert.match(foundation, /\.wide-screen-frame > \.codex-screen \{[\s\S]*?display: grid;[\s\S]*?overflow: hidden;/)
+  assert.match(foundation, /\.wide-screen-frame > \.codex-screen > \.codex-tab-page\[data-codex-tab="books"\] > \.codex-library \{[\s\S]*?height: 100%;[\s\S]*?overflow: hidden;/)
+  assert.match(foundation, /\.wide-screen-frame > \.codex-screen > \.codex-tab-page\[data-codex-tab="books"\] \.codex-book-section \{[\s\S]*?overflow-y: hidden;/)
+})
+
 test('friend packages strip tracked player state before archive output', () => {
   const packager = source('../../../../tools/questlab-package.ps1')
 

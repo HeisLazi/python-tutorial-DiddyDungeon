@@ -1675,3 +1675,110 @@
     overscroll-behavior: contain;
   }
 }
+
+/* F-161: wide RPG surfaces share one bounded frame. Codex used to be the
+   exception: it rendered its own route navigation directly inside the Forge
+   grid and needed an absolute-positioned overflow cascade to fit. Mounting it
+   beside Hub/Character/Homestead gives the browser a real flex budget, so the
+   navigation consumes one row and the folio owns the remaining viewport. */
+.wide-screen-frame > .codex-screen {
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr);
+  gap: 8px;
+  flex: 1 1 auto;
+  width: 100%;
+  height: auto;
+  min-width: 0;
+  min-height: 0;
+  max-height: 100%;
+  padding: clamp(10px, 1.5vw, 18px);
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+.wide-screen-frame > .codex-screen > .screen-hero.codex-hero {
+  grid-row: 1;
+  min-height: 0;
+  max-height: 112px;
+  margin: 0;
+  overflow: hidden;
+}
+.wide-screen-frame > .codex-screen > .codex-mode-tabs {
+  grid-row: 2;
+  align-self: start;
+  justify-self: start;
+  min-height: 0;
+  margin: 0;
+}
+.wide-screen-frame > .codex-screen > .codex-tab-page[data-codex-tab="books"] {
+  grid-row: 3;
+  display: flex;
+  flex: 1 1 auto;
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
+  height: auto;
+  overflow: hidden;
+}
+.wide-screen-frame > .codex-screen > .codex-tab-page[data-codex-tab="books"] > .codex-library {
+  display: grid;
+  grid-template-columns: minmax(218px, 252px) minmax(0, 1fr);
+  flex: 1 1 auto;
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+}
+.wide-screen-frame > .codex-screen > .codex-tab-page[data-codex-tab="books"] .codex-index,
+.wide-screen-frame > .codex-screen > .codex-tab-page[data-codex-tab="books"] .codex-book-page {
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
+}
+.wide-screen-frame > .codex-screen > .codex-tab-page[data-codex-tab="books"] .codex-page-list {
+  flex: 0 0 auto;
+  min-height: 0;
+  max-height: none;
+  overflow: visible;
+}
+.wide-screen-frame > .codex-screen > .codex-tab-page[data-codex-tab="books"] .codex-book-section {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  max-height: 100%;
+  overflow: hidden;
+  overflow-y: hidden;
+  scrollbar-width: none;
+  overscroll-behavior: none;
+}
+.wide-screen-frame > .codex-screen > .codex-tab-page[data-codex-tab="books"] .codex-book-section::-webkit-scrollbar { display: none; }
+.wide-screen-frame > .codex-screen > .codex-tab-page[data-codex-tab="battle"] {
+  grid-row: 3;
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: thin;
+  overscroll-behavior: contain;
+}
+@media (max-width: 760px) {
+  .wide-screen-frame > .codex-screen { padding: 10px; }
+  .wide-screen-frame > .codex-screen > .codex-tab-page[data-codex-tab="books"] > .codex-library { grid-template-columns: 1fr; }
+  .wide-screen-frame > .codex-screen > .codex-tab-page[data-codex-tab="books"] .codex-index {
+    height: auto;
+    max-height: min(36vh, 250px);
+    overflow-y: auto;
+    scrollbar-width: thin;
+  }
+  .wide-screen-frame > .codex-screen > .codex-tab-page[data-codex-tab="books"] .codex-book-section {
+    height: auto;
+    overflow-y: auto;
+    scrollbar-width: thin;
+  }
+}

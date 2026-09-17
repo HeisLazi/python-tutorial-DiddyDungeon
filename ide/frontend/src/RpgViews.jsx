@@ -749,7 +749,7 @@ function QuestJournal({ progress, revision, encounter, submitBattle, submitBoss,
   )
 }
 
-function Codex({ progress, revision, codexProjection, encounter, submitBattle, submitBoss, saveCodexNote, busy, onNavigate }) {
+function Codex({ progress, revision, codexProjection, encounter, submitBattle, submitBoss, saveCodexNote, busy, onNavigate, showNavigation = true }) {
   const activeProject = (progress.projects || []).find((project) => project.status === 'active') || {}
   const mobs = activeProject.mobs || []
   const projectedIndex = encounter?.mob_name ? mobs.findIndex((mob) => mob.name === encounter.mob_name) : -1
@@ -950,7 +950,7 @@ function Codex({ progress, revision, codexProjection, encounter, submitBattle, s
 
   return (
     <div className="codex-screen" data-testid="codex" data-campaign-revision={revision}>
-      <SurfaceNavigation activeView="codex" onNavigate={onNavigate} />
+      {showNavigation && <SurfaceNavigation activeView="codex" onNavigate={onNavigate} />}
       <div className="screen-hero codex-hero">
         <div>
           <span className="screen-kicker">CODEX / FIELD LIBRARY</span>
@@ -1695,7 +1695,7 @@ export function GameScreen({ activeView, progress, revision, avatarDataUrl = '',
     )
   }
   if (activeView === 'hub') return withWideNavigation(<HubScreen progress={progress} revision={revision} onOpen={onNavigate} />)
-  if (activeView === 'quests' || activeView === 'codex') return <Codex progress={progress} revision={revision} codexProjection={codexProjection} encounter={encounter} submitBattle={submitBattle} submitBoss={submitBoss} saveCodexNote={saveCodexNote} busy={busy} onNavigate={onNavigate} />
+  if (activeView === 'quests' || activeView === 'codex') return withWideNavigation(<Codex progress={progress} revision={revision} codexProjection={codexProjection} encounter={encounter} submitBattle={submitBattle} submitBoss={submitBoss} saveCodexNote={saveCodexNote} busy={busy} onNavigate={onNavigate} showNavigation={false} />)
   if (activeView === 'character') return withWideNavigation(<CharacterSheet progress={progress} revision={revision} avatarDataUrl={avatarDataUrl} />)
   if (activeView === 'homestead') return withWideNavigation(<Homestead progress={progress} revision={revision} equipmentProjection={equipmentProjection} purchaseCosmetic={purchaseCosmetic} equipCosmetic={equipCosmetic} equipCampaignItem={equipCampaignItem} busy={busy} />)
   if (activeView === 'dungeon') return <DungeonScreen dungeon={dungeon} revision={revision} onStart={onStartDungeon} onChoose={onDungeonChoose} onRest={onDungeonRest} onMarketPurchase={onDungeonMarketPurchase} onEquip={onDungeonEquip} onLeave={onDungeonLeave} onFinish={onDungeonFinish} submitDungeon={submitDungeon} busy={busy} saving={dungeonSaving} editorContent={dungeonEditorContent} onEditorChange={onDungeonEditorChange} onSave={onSaveDungeon} />
