@@ -2078,3 +2078,13 @@ tests/build and browser K&M remain visual publication gates.
 
 Verification: current-source Forge tests **37/37**. Clean archive frontend
 tests/build and browser K&M remain visual publication gates.
+
+## Local sync simulator recheck — F-126
+
+| ID | Severity | Area | Finding | Status |
+|---|---|---|---|---|
+| F-126 | P2 | Offline/local sync | The local two-device contract needed a current-tip recheck after the Account and workspace-transfer slices so their diagnostics could not be mistaken for hosted mailbox proof. | Verified with tools/questlab-local-sync-sim.py --source progress.json: isolated device caches exchanged the bounded campaign projection, detected mailbox and local revision conflicts, completed an explicit keep-device resolution, preserved campaign/Codex/Dungeon fields, and left the source save digest unchanged. Hosted Supabase sync remains unproven. | Local simulator green; real account/device acceptance open. |
+
+Verification: source digest before/after matched; no canonical or legacy save
+write occurred. This is local compare-and-swap evidence only, not a hosted
+Milestone C acceptance claim.
