@@ -650,3 +650,9 @@ The friend-distribution review also closed the documentation gap F-084: native
 macOS setup now has the same branch, sibling-workspace, executable-bit and
 stable-launch instructions as the Linux path. The actual Mac machine still
 needs its own install/K&M/PTY acceptance before being called certified.
+
+The avatar recheck also closed F-085 locally: signed-in portrait caches are now
+account-scoped and cannot fall back to an unrelated unscoped image after a
+remote removal or account transition. Anonymous/offline portraits remain
+available locally. This hardens the Milestone D privacy boundary but does not
+change the hosted migration gate.
