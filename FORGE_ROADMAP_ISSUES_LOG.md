@@ -1879,3 +1879,13 @@ external gates.
 Verification for this repair: staged frontend tests **49/49** and Vite
 production build **1,346 modules**. Browser K&M remains unavailable in the
 current Codex environment, so no fresh click-through claim is made here.
+
+## Navigation icon consistency — 2026-09-17
+
+| ID | Severity | Area | Finding | Status |
+|---|---|---|---|---|
+| F-105 | P3 | Navigation polish | The recovered wide-route bar used SVG icons, but the persistent ActivityRail still rendered legacy glyph/emoji values. That made navigation look inconsistent and could reintroduce the empty-glyph regression. | Fixed: both the ActivityRail and wide-route bar now share the inline monochrome `RouteIcon` set; nested controls keep direct SVG sizing and color rules. |
+
+Verification for this polish pass: staged frontend tests **49/49** and Vite
+production build **1,346 modules**. No state, PTY or cloud transport behavior
+changed.
