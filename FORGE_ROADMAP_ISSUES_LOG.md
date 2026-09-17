@@ -2266,8 +2266,11 @@ passed. Browser K&M remains environment-blocked by F-080.
 |---|---|---|---|---|
 | F-145 | P2 | CachyOS distribution | The native launcher and live K&M preflight existed, but a physical CachyOS run still needed separate manual commands to capture kernel, toolchain, checkout and native Rollup identity before launch. | Fixed locally with read-only `tools/questlab-native-report.py --strict`. It checks the expected branch/upstream, Python/Node/npm availability, executable launcher/state CLI, required frontend manifests and a native Linux Rollup package. It never installs, fetches, writes a report, calls Supabase or touches player state. Physical CachyOS K&M/PTY acceptance remains F-058. |
 
-Verification: source contract coverage and a strict clean-ext4 report run are
-required; the live OneDrive tree is intentionally not a native Linux target.
+Verification: source contract coverage passed **17/17**; a strict clean-ext4
+report returned **GREEN** with Linux kernel `6.18.33.1-microsoft-standard-WSL2`,
+Python `3.14.4`, Node `v26.7.0`, npm `11.19.0` and
+`rollup-linux-x64-gnu`. The temp clone was removed and verified absent. The
+live OneDrive tree is intentionally not a native Linux target.
 
 ## Friend packager blocked by a protected nested checkout — F-144
 

@@ -876,4 +876,6 @@ from this clean-filesystem run.
 | F-145 | P2 | CachyOS acceptance required manually collecting kernel, toolchain, checkout and native dependency identity before the live run. | Added read-only `tools/questlab-native-report.py --strict`; it fails closed on branch/upstream or native dependency mismatch and never writes state. |
 
 The report is a pre-launch evidence aid, not a substitute for the physical
-CachyOS live-projection/PTY test.
+CachyOS live-projection/PTY test. Contract coverage passed **17/17** and a
+strict clean-ext4 report returned **GREEN** with native Rollup present; the
+temporary clone was removed afterward.

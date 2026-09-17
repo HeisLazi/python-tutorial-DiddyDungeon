@@ -291,6 +291,8 @@ Current verification:
   modules**) and backend **115/115** passed; the temp checkout was removed;
 - native Linux pre-launch report: `tools/questlab-native-report.py --strict`
   now captures kernel/toolchain/checkout/native-Rollup evidence read-only;
+- strict clean-ext4 report: **GREEN** with native Rollup, Python `3.14.4`, Node
+  `v26.7.0`, npm `11.19.0` and WSL2 kernel `6.18.33.1-microsoft-standard-WSL2`;
 - browser K&M attach: still blocked by F-080, so no new visual-device claim.
 
 Remaining release gates are intentionally unchanged:

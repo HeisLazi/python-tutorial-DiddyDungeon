@@ -3120,3 +3120,8 @@ It never fetches Git, installs packages, writes a report, calls Supabase or
 touches player state. The strict command is intended for the clean native
 Linux checkout; the OneDrive-mounted Windows tree is not a supported native
 dependency target.
+
+Verification: launcher-contract coverage **17/17** and strict clean-ext4
+report **GREEN** (`rollup-linux-x64-gnu`, Python `3.14.4`, Node `v26.7.0`, npm
+`11.19.0`, WSL2 kernel `6.18.33.1-microsoft-standard-WSL2`). The temporary
+clone was removed and verified absent.

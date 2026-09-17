@@ -986,3 +986,6 @@ toolchain versions, expected branch/upstream, executable launcher/state CLI,
 frontend manifests and native Rollup presence before Forge launch. It does not
 install, fetch, write a report, call Supabase or touch player state. Actual
 CachyOS live projection, K&M and PTY acceptance remain F-058 gates.
+
+The strict report proof is green on a clean ext4 clone (native Rollup present;
+launcher-contract coverage **17/17**) and the temporary clone was removed.
