@@ -591,3 +591,13 @@ state, learner file or PTY was touched.
 Verification: focused WSL API tests **10/10** and current-source Forge runtime
 tests **32/32**. This remains source-file transfer only; it does not claim
 hosted player-state sync.
+
+## Compact Codex outer-scroll regression — 2026-09-17 (F-118)
+
+| ID | Severity | Finding | Status |
+|---|---|---|---|
+| F-118 | P1 | The narrow-window Codex fallback restored `height: auto` and visible outer overflow, so compact Forge windows still behaved like an infinite page even after the desktop pane was bounded. | Fixed by keeping the Codex shell at the Forge viewport height at every width. The narrow layout stacks the index above the book, but only those controlled panes own scroll; the Battle Shell keeps its own bounded scroll. |
+
+Verification: current-source Forge runtime tests **32/32** and CSS regression
+assertions reject the old outer-scroll fallback. Browser K&M remains the
+environment-gated visual check.

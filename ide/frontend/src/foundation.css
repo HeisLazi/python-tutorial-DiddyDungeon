@@ -406,11 +406,14 @@
 @media (max-width: 720px) { .surface-nav { align-items: stretch; padding-inline: 9px; } .surface-nav-brand { padding-inline: 8px; } .surface-nav-link { padding-inline: 7px; } .surface-nav-link > span:last-child { display: none; } }
 
 @media (max-width: 760px) {
-  .codex-screen { grid-template-rows: auto auto auto; height: auto; overflow: auto; }
-  .codex-screen > .screen-hero { max-height: none; }
-  .codex-screen > .codex-tab-page { overflow: visible; }
-  .codex-screen > .codex-tab-page[data-codex-tab="battle"] { overflow: visible; }
-  .codex-screen .codex-library { grid-template-columns: 1fr; height: auto; flex: 0 0 auto; overflow: visible; }
-  .codex-screen .codex-index { max-height: 260px; border-right: 0; border-bottom: 1px solid color-mix(in srgb, var(--gold) 22%, var(--line)); }
-  .codex-screen .codex-book-page { overflow: visible; padding: 16px 14px 22px; }
+  /* Keep compact Forge windows bounded too. The old fallback made the whole
+     Codex page grow again, which recreated the reported infinite-scroll feed.
+     The index and book remain the only scroll owners at every width. */
+  .codex-screen { grid-template-rows: auto auto minmax(0, 1fr); height: 100%; min-height: 0; overflow: hidden; }
+  .codex-screen > .screen-hero { max-height: 142px; overflow: hidden; }
+  .codex-screen > .codex-tab-page { display: flex; min-height: 0; overflow: hidden; }
+  .codex-screen > .codex-tab-page[data-codex-tab="battle"] { display: block; overflow: auto; }
+  .codex-screen .codex-library { grid-template-columns: 1fr; height: 100%; min-height: 0; flex: 1 1 auto; overflow: hidden; }
+  .codex-screen .codex-index { min-height: 0; max-height: min(31vh, 220px); overflow-y: auto; border-right: 0; border-bottom: 1px solid color-mix(in srgb, var(--gold) 22%, var(--line)); }
+  .codex-screen .codex-book-page { min-height: 0; overflow-y: auto; padding: 14px 14px 20px; }
 }

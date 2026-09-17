@@ -2726,3 +2726,17 @@ an apply while warning that open editor buffers should be reopened.
 Focused WSL API tests pass **10/10** and current-source Forge tests pass
 **32/32**. This is source transfer only; hosted player-state synchronization
 and its approval/migration gates are unchanged.
+
+### Compact Codex outer-scroll repair — F-118
+
+The compact-width Codex fallback was still allowed to switch the whole screen
+back to `height: auto` with visible outer overflow. That made a smaller Forge
+window feel like the old infinite feed even though the desktop layout was
+bounded. The fallback now keeps the Codex at the Forge viewport height,
+stacks the index above the selected book, and limits scrolling to the index,
+book and Battle Shell panes. No campaign projection, reward logic or PTY
+lifecycle changed.
+
+Current-source Forge tests pass **32/32**, including a regression that rejects
+the old outer-scroll rule. Browser K&M remains an environment-gated visual
+check because no Codex browser tab could attach.
