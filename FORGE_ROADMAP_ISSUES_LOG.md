@@ -1789,3 +1789,12 @@ transformed **1,346 modules** after this repair.
 |---|---|---|---|---|
 | F-086 | P3 | State-command documentation | The implementation already rejected internal `system` actions over HTTP and CLI, but the handoff did not state the exact public actor boundary, leaving room for a future integrator to treat `system` as a caller-supplied actor. | Fixed in `AGENT_CLOUD_DESKTOP_HANDOFF.md`: HTTP/CLI accept only `player` and `pyr`; `system` is reserved for trusted in-process `apply_internal` calls. |
 | F-087 | P3 | Tutor/Practice documentation | The implementation already shared the managed `tutor.py` and notes routes while keeping Practice progression-independent, but the handoff could be read as describing a second Practice notebook or endpoint. | Fixed in the handoff: Tutor and Practice share one managed editor/notebook and dedicated routes; only their sessions/progression boundaries differ. |
+
+## Editor shortcut follow-up — 2026-09-17
+
+| ID | Severity | Area | Finding | Status |
+|---|---|---|---|---|
+| F-088 | P1 | Editor submit shortcut | `Ctrl/Cmd+Shift+Enter` was handled only by the legacy bubble listener, allowing Monaco to consume the event while a Python file had focus. | Fixed in `AppV2.jsx`: the capture-phase shortcut boundary now prevents Monaco insertion and triggers the existing bounded PYR submit bridge. Frontend source coverage passed **26/26**; clean ext4 frontend coverage passed **44/44** and the production build passed. |
+
+This is a local editor-flow repair only. Provider-authenticated adjudication and
+the hosted campaign migration remain separate Milestone C gates.

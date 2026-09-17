@@ -1183,6 +1183,16 @@ function AppV2() {
         else if (activeView === 'forge') void runCurrent()
         return
       }
+      if (modifier && event.shiftKey && event.key === 'Enter') {
+        // Submit has the same Monaco interception problem as Run. The
+        // enhancement owns the bounded PYR context bridge, so trigger its
+        // button from this capture-phase guard while the editor still has
+        // focus; the fallback clipboard path remains in that handler.
+        event.preventDefault()
+        event.stopPropagation()
+        document.querySelector('[data-qol-submit]')?.click()
+        return
+      }
       if (modifier && event.key.toLowerCase() === 's') {
         event.preventDefault()
         event.stopPropagation()
