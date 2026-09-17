@@ -881,7 +881,7 @@ function Codex({ progress, revision, codexProjection, encounter, submitBattle, s
   }
 
   return (
-    <div className="game-screen-scroll" data-testid="codex" data-campaign-revision={revision}>
+    <div className="game-screen-scroll codex-screen" data-testid="codex" data-campaign-revision={revision}>
       <div className="screen-hero">
         <div>
           <span className="screen-kicker">CODEX / FIELD LIBRARY</span>
@@ -988,21 +988,21 @@ function Codex({ progress, revision, codexProjection, encounter, submitBattle, s
               )}
             </>
           ) : <div className="empty-state">The Codex library is unavailable until the state service returns a projection.</div>}
+          <section className="codex-mastery-panel" data-testid="codex-mastery">
+            <div className="card-heading"><span>MASTERY SIGNALS</span><b>{skills.length} concepts</b></div>
+            <div className="skill-grid">
+              {skills.map((skill) => (
+                <article key={skill.name} className={`skill-card ${skill.status}`}>
+                  <div className="skill-icon" data-skill-shield={skill.shield?.tier || 'none'}>{skill.shield?.tier !== 'none' ? '🛡' : '◇'}</div>
+                  <div><small>{skill.name}</small><h3>{skill.concept}</h3></div>
+                  <div className="skill-meta"><span>Evidence {skill.evidence ?? 0}</span><span>Interviews {skill.interview_passes ?? 0}</span></div>
+                  <div className="shield-line"><span>{skill.shield?.tier || 'none'} shield</span><b>{skill.shield?.charges ?? 0}/{skill.shield?.max_charges ?? 0}</b></div>
+                </article>
+              ))}
+              {!skills.length && <p className="codex-insight-empty">Mastery signals appear after validated encounters.</p>}
+            </div>
+          </section>
         </article>
-      </section>
-
-      <section className="game-card">
-        <div className="card-heading"><span>CONCEPT MASTERY</span></div>
-        <div className="skill-grid">
-          {skills.map((skill) => (
-            <article key={skill.name} className={`skill-card ${skill.status}`}>
-              <div className="skill-icon" data-skill-shield={skill.shield?.tier || 'none'}>{skill.shield?.tier !== 'none' ? '🛡' : '◇'}</div>
-              <div><small>{skill.name}</small><h3>{skill.concept}</h3></div>
-              <div className="skill-meta"><span>Evidence {skill.evidence ?? 0}</span><span>Interviews {skill.interview_passes ?? 0}</span></div>
-              <div className="shield-line"><span>{skill.shield?.tier || 'none'} shield</span><b>{skill.shield?.charges ?? 0}/{skill.shield?.max_charges ?? 0}</b></div>
-            </article>
-          ))}
-        </div>
       </section>
         </>
       )}
