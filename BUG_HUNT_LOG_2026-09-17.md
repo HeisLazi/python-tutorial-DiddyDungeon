@@ -566,7 +566,8 @@ cloud transport was changed.
 |---|---|---|---|
 | F-115 | P1 | The first bounded Codex pass still left Mastery Signals as a permanent page-length tail, and the shell used a flexible column that could grow with book evidence in smaller Forge viewports. | Fixed with explicit Codex grid rows, a compact fixed hero, contained pane overscroll, and an expandable Mastery Signals section. The book index and selected book remain the only scrolling regions on desktop; mobile intentionally falls back to one controlled page. |
 
-Verification: current-source Forge runtime tests **32/32**. A full dependency
-install/build is being rerun from a clean checkout because the existing Windows
-`node_modules` tree has a locked esbuild binary; protected learner files and
-PTYs were not touched.
+Verification: current-source Forge runtime tests **32/32**, clean ext4-style
+archive frontend tests **51/51**, and Vite production build **1,346 modules**.
+The existing Windows `node_modules` tree still has a locked esbuild binary, so
+the clean archive was used for dependency/build proof; protected learner files
+and PTYs were not touched.
