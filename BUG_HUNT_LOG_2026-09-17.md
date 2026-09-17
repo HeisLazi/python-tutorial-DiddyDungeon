@@ -483,3 +483,12 @@ The launcher contract regression passes. The post-commit package smoke created
 `QuestLab-ed8db52` from `git archive HEAD`; `tutor.py`, `dungeon.py` and
 `notes/` were absent, and the bundled baseline `progress.json` matched the
 `HEAD` blob instead of the dirty local cache.
+
+## Wide-route callback compatibility hunt — 2026-09-17 (F-108)
+
+| ID | Severity | Finding | Status |
+|---|---|---|---|
+| F-108 | P1 | The alternate/legacy `App.jsx` shell rendered the new wide-route bar but did not pass its `setActiveView` callback into `GameScreen`, so Hub/Homestead buttons could look present while leaving the player on the same page. | Fixed by wiring `onNavigate={setActiveView}` through the legacy shell and adding a regression assertion. |
+
+The patch is presentation/navigation-only: no campaign state, cloud transport,
+protected learner files or PTY lifecycle changed.
