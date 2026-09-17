@@ -2485,3 +2485,23 @@ one-second revision poll. The observer now removes stale legacy nodes only;
 the React Battle screen and state-service projection remain the sole live
 rendering path. This does not change canonical progression, cloud transport or
 PTY lifecycle.
+
+### Boss phase and trinket trigger slice — 2026-09-17
+
+Boss requirements now persist as a bounded state-service mutation before the
+final boss clear. The safe encounter projection exposes only verified phase
+IDs, remaining phase IDs and a current phase label; provider prompts and answer
+keys remain absent. The Battle screen renders that phase track and live event
+notifications announce each validated phase. Three combat-only trinket effects
+are state-owned: Ember Scythe adds one Impact to the first verified objective
+of an encounter, Guardian Sigil negates one counterattack, and Phoenix Ember
+revives at 1 HP once per encounter. Results/events include the trigger and
+bounded effect values so React never recalculates them.
+
+The allowlist and source-only Supabase migration carry the small boss-validation
+record for the next approved hosted rollout; the migration was not applied to
+the hosted project in this pass.
+
+Verification for this slice: WSL backend discovery **103/103**, clean ext4
+frontend tests **48/48**, and Vite production build (**1,346 modules**). The
+protected save digest remained unchanged and the user PTYs were not restarted.

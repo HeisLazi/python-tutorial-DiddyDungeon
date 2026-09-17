@@ -25,7 +25,7 @@ const SYNC_PLAYER_FIELDS = ['name', 'title', 'rank', 'level', 'xp', 'xp_next', '
 const SYNC_EQUIPMENT_FIELDS = ['armor', 'trinket', 'title']
 const SYNC_COMPANION_FIELDS = ['name', 'form', 'level', 'bond', 'next_form', 'next_form_requirement']
 const SYNC_HOMESTEAD_EQUIPPED_FIELDS = ['theme', 'cursor', 'hud', 'terminal']
-const SYNC_PROJECT_FIELDS = ['order', 'branch', 'name', 'status', 'progress', 'boss', 'boss_status', 'clean_clear_eligible', 'completed', 'completed_at', 'clean_clear', 'mob_sequence_complete', 'creative_discoveries']
+const SYNC_PROJECT_FIELDS = ['order', 'branch', 'name', 'status', 'progress', 'boss', 'boss_status', 'clean_clear_eligible', 'completed', 'completed_at', 'clean_clear', 'mob_sequence_complete', 'creative_discoveries', 'boss_validation']
 const SYNC_MOB_FIELDS = ['name', 'status', 'assist', 'concept', 'encounter', 'max_resolve', 'resolve', 'impact_applied', 'objective_attempts']
 const SYNC_CODEX_FIELDS = ['id', 'project_id', 'mob_name', 'concept', 'status', 'question_types', 'weaknesses', 'notes', 'player_notes', 'attempts', 'results', 'interview_history', 'mastery']
 const SYNC_DUNGEON_FIELDS = ['status', 'run_id', 'seed', 'concept_id', 'floor', 'room', 'room_type', 'score', 'run_coins', 'started_at', 'updated_at', 'ended_at', 'loadout', 'question', 'question_number', 'room_choices', 'editor_content', 'last_result', 'history', 'attempts']
@@ -64,7 +64,14 @@ const projectCampaignState = (progress = {}) => {
   }
   if (Array.isArray(source.projects)) {
     campaign.projects = source.projects.filter(isRecord).slice(0, 20).map((project) => ({
-      ...copyFields(project, SYNC_PROJECT_FIELDS),
+      ...copyFields(project, SYNC_PROJECT_FIELDS.filter((field) => field !== 'boss_validation')),
+      ...(isRecord(project.boss_validation) ? {
+        boss_validation: {
+          ...(Array.isArray(project.boss_validation.verified) ? { verified: boundedTextList(project.boss_validation.verified, 3) } : {}),
+          ...(Array.isArray(project.boss_validation.history) ? { history: boundedRecords(project.boss_validation.history, ['requirement_id', 'evidence_id', 'reason', 'recorded_at'], 20) } : {}),
+          ...(typeof project.boss_validation.completed_at === 'string' ? { completed_at: project.boss_validation.completed_at } : {}),
+        },
+      } : {}),
       ...(Array.isArray(project.mobs)
         ? { mobs: project.mobs.filter(isRecord).slice(0, 20).map((mob) => copyFields(mob, SYNC_MOB_FIELDS)) }
         : {}),

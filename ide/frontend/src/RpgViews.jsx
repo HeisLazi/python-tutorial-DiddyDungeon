@@ -476,7 +476,7 @@ function BossSubmission({ requirements, verifiedRequirements = [], onSubmit, bus
   )
 }
 
-function QuestBattleScreen({ activeProject, currentMob, resolve, maxResolve, availableObjectives, bossUnlocked, projectComplete, bossRequirements, verifiedBossRequirements, submitBattle, submitBoss, busy, onBack }) {
+function QuestBattleScreen({ activeProject, currentMob, resolve, maxResolve, availableObjectives, bossUnlocked, projectComplete, bossRequirements, verifiedBossRequirements, bossPhase, bossPhaseLabel, remainingBossRequirements, submitBattle, submitBoss, busy, onBack }) {
   const mobName = currentMob?.name || activeProject.boss || 'Current encounter'
   const concept = currentMob?.concept || 'Integrated campaign challenge'
   const battleStatus = projectComplete ? 'CHAPTER COMPLETE' : bossUnlocked ? 'BOSS GATE' : 'LIVE ENCOUNTER'
@@ -498,6 +498,17 @@ function QuestBattleScreen({ activeProject, currentMob, resolve, maxResolve, ava
       <section className="game-card battle-workspace-card">
         <div className="card-heading"><span>ANSWER WORKSPACE</span><b>STATE-SERVICE VALIDATED</b></div>
         <p className="context-note">This is the campaign writing surface: use it like a focused code/editor panel, then submit the answer for provider adjudication. Rewards, Resolve and unlocks remain state-service decisions.</p>
+        {bossUnlocked && !projectComplete && <div className="boss-phase-track" data-testid="boss-phase-track">
+          <div className="card-heading secondary"><span>BOSS PHASES</span><b>{bossPhaseLabel || 'Validation'}</b></div>
+          <div className="boss-phase-list">
+            {bossRequirements.map((requirement) => {
+              const verified = verifiedBossRequirements.includes(requirement)
+              const current = !verified && requirement === bossPhase
+              return <span key={requirement} className={`${verified ? 'verified' : ''} ${current ? 'current' : ''}`}><b>{verified ? '✓' : current ? '◆' : '○'}</b>{String(requirement).replaceAll('_', ' ')}</span>
+            })}
+          </div>
+          <small className="context-note">{remainingBossRequirements?.length ? `${remainingBossRequirements.length} phase${remainingBossRequirements.length === 1 ? '' : 's'} remain. PYR supplies each bounded challenge.` : 'All phases are verified; the integrated clear can be recorded.'}</small>
+        </div>}
         {projectComplete ? (
           <div className="campaign-victory battle-complete-note"><span className="screen-kicker">NO ACTIVE SUBMISSION</span><h3>Evidence archived</h3><p>Your completed chapter remains available in the Journal and Codex. Future questions are never exposed here.</p></div>
         ) : bossUnlocked ? (
@@ -527,6 +538,8 @@ function QuestJournal({ progress, revision, encounter, submitBattle, submitBoss,
   const bossUnlocked = encounter?.status === 'boss_available' || bossStatus === 'available'
   const projectComplete = encounter?.status === 'complete' || encounter?.project_complete === true || activeProject.completed === true || bossStatus === 'defeated'
   const bossRequirements = encounter?.boss_requirements || ['required_behavior', 'explanation', 'interview']
+  const verifiedBossRequirements = encounter?.verified_boss_requirements || []
+  const remainingBossRequirements = encounter?.remaining_boss_requirements || bossRequirements.filter((requirement) => !verifiedBossRequirements.includes(requirement))
   const codexEntries = progress.codex?.encounters || []
   const [page, setPage] = useState(0)
   const [journalView, setJournalView] = useState('journal')
@@ -561,7 +574,10 @@ function QuestJournal({ progress, revision, encounter, submitBattle, submitBoss,
           bossUnlocked={bossUnlocked}
           projectComplete={projectComplete}
           bossRequirements={bossRequirements}
-          verifiedBossRequirements={encounter?.verified_boss_requirements || []}
+          verifiedBossRequirements={verifiedBossRequirements}
+          bossPhase={encounter?.boss_phase}
+          bossPhaseLabel={encounter?.boss_phase_label}
+          remainingBossRequirements={remainingBossRequirements}
           submitBattle={submitBattle}
           submitBoss={submitBoss}
           busy={busy}

@@ -237,6 +237,22 @@ test('boss gate provider bridge binds behaviour, explanation and interview evide
   assert.match(server, /all\(requirement in verified for requirement in BOSS_REQUIREMENTS\)/)
 })
 
+test('boss phases and bounded trinket triggers stay state-service sourced', () => {
+  const app = source('../AppV2.jsx')
+  const views = source('../RpgViews.jsx')
+  const server = source('../../../server/state.py')
+
+  assert.match(server, /record_boss_requirement/)
+  assert.match(server, /verified_boss_requirements/)
+  assert.match(server, /Ember Scythe/)
+  assert.match(server, /Guardian Sigil/)
+  assert.match(server, /Phoenix Ember/)
+  assert.match(app, /BOSS PHASE VERIFIED/)
+  assert.match(app, /TRINKET TRIGGERED/)
+  assert.match(views, /data-testid="boss-phase-track"/)
+  assert.match(views, /bossPhaseLabel/)
+})
+
 test('PTY state commands inherit the canonical gateway instead of workspace progress.json', () => {
   const app = source('../../../server/app_v2.py')
   const cli = source('../../../state_cli.py')

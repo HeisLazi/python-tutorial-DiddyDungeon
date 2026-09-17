@@ -162,7 +162,10 @@ Canonical combat details live in `COMBAT_SYSTEM.md`.
    sync/leaderboards remain deferred.
 10. Independent Practice history and provider-validated learning evidence are
     implemented locally with zero Campaign/Dungeon rewards.
-11. Boss phase presentation and trinket triggers.
+11. **Implemented locally:** Boss phase presentation and trinket triggers. The
+    canonical state service records bounded boss requirement phases and owns
+    Ember Scythe, Guardian Sigil and Phoenix Ember effects; hosted rollout and
+    provider-authenticated adjudication remain gated.
 12. Later: shared weekly raid transport/state and party objectives.
 
 ## PC test procedure

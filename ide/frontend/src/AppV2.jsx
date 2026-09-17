@@ -538,6 +538,29 @@ function AppV2() {
           detail: event.reason || 'Verified Battle miss',
         })
       }
+      if (event.trinket_trigger) {
+        notifications.push({
+          id: `${event.id}:trinket`,
+          kind: 'reward',
+          title: 'TRINKET TRIGGERED',
+          body: event.trinket_trigger,
+          detail: event.revived
+            ? 'Revived at 1 HP'
+            : event.prevented_damage
+              ? `Prevented ${event.prevented_damage} HP damage`
+              : 'Combat-only effect applied',
+        })
+      }
+    } else if (action === 'record_boss_requirement') {
+      notifications.push({
+        id: `${event.id}:boss-phase`,
+        kind: 'objective',
+        title: 'BOSS PHASE VERIFIED',
+        body: event.boss_phase_label || event.requirement_id || 'Boss requirement',
+        detail: Array.isArray(event.remaining_boss_requirements) && event.remaining_boss_requirements.length
+          ? `${event.remaining_boss_requirements.length} phase${event.remaining_boss_requirements.length === 1 ? '' : 's'} remaining`
+          : 'Final gate ready for the integrated clear',
+      })
     } else if (action === 'dungeon_start_run') {
       notifications.push({
         id: `${event.id}:dungeon-start`,
@@ -659,6 +682,22 @@ function AppV2() {
           detail: 'Knowledge reconstructed from approved session evidence',
         })
       }
+    }
+
+    if (event.trinket_trigger && action !== 'record_battle_miss') {
+      notifications.push({
+        id: `${event.id}:trinket`,
+        kind: 'reward',
+        title: 'TRINKET TRIGGERED',
+        body: event.trinket_trigger,
+        detail: event.bonus_impact
+          ? `+${event.bonus_impact} bonus Impact`
+          : event.revived
+            ? 'Revived at 1 HP'
+            : event.prevented_damage
+              ? `Prevented ${event.prevented_damage} HP damage`
+              : 'Combat-only effect applied',
+      })
     }
 
     if (Number.isFinite(levelBefore) && Number.isFinite(levelAfter) && levelAfter > levelBefore) {
