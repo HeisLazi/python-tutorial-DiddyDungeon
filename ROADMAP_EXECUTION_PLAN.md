@@ -695,3 +695,14 @@ explicit book/section controls.
 Current-source Forge tests are **35/35**. Clean archive frontend tests/build
 and browser K&M remain visual publication checks; no state, learner file, PTY
 or hosted transport changed.
+
+## Current checkpoint — 2026-09-17 — account revision diagnostics
+
+F-124 makes signed-in sync state inspectable in Settings without adding a
+second authority. Account shows the local campaign revision rendered by Forge,
+the cloud cursor retained by SyncEngine and queued projection count. This is a
+diagnostic and UX slice only; hosted schema application, reconciliation and
+real PC/laptop acceptance remain gated.
+
+Current-source Forge tests are **36/36**. Clean archive frontend tests/build
+and browser K&M remain visual publication checks.

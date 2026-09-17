@@ -2060,3 +2060,12 @@ tests/build and browser K&M remain visual publication gates.
 
 Verification: current-source Forge tests **35/35**. Clean archive frontend
 tests/build and browser K&M remain visual publication gates.
+
+## Revision diagnostics in Account settings — F-124
+
+| ID | Severity | Area | Finding | Status |
+|---|---|---|---|---|
+| F-124 | P1 | Cross-device sync UX | A signed-in player could see a generic Synced/Syncing label without a visible local campaign revision, cloud cursor or queue count. When a laptop stayed on an older level, the UI offered too little evidence to distinguish a stale frontend, a pending queue, a conflict or an unapplied hosted schema. | Fixed with a read-only Account diagnostics row showing the canonical local campaign revision, cloud cursor and queued mutation count. It reuses the existing state service and SyncEngine values; it does not reconcile, overwrite or invent player state. | Open hosted two-device acceptance remains required. |
+
+Verification: current-source Forge tests **36/36**. Clean archive frontend
+tests/build and browser K&M remain visual publication gates.

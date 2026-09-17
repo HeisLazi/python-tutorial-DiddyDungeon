@@ -546,6 +546,19 @@ test('submit shortcut is intercepted before Monaco can insert a newline', () => 
   assert.match(app, /event\.preventDefault\(\)[\s\S]*event\.stopPropagation\(\)[\s\S]*data-qol-submit/)
 })
 
+test('account settings exposes revision diagnostics without changing sync authority', () => {
+  const views = source('../RpgViews.jsx')
+  const styles = source('../styles.css')
+
+  assert.match(views, /data-testid="account-sync-diagnostics"/)
+  assert.match(views, /Local campaign revision/)
+  assert.match(views, /Cloud cursor/)
+  assert.match(views, /Queued changes/)
+  assert.match(views, /revision=\{revision\}/)
+  assert.match(styles, /\.account-sync-diagnostics\{display:grid/)
+  assert.match(styles, /grid-template-columns:repeat\(3,minmax\(0,1fr\)/)
+})
+
 test('avatar controls use the account-scoped storage boundary with a local fallback', () => {
   const enhancements = source('../forgeEnhancements.js')
   const views = source('../RpgViews.jsx')
