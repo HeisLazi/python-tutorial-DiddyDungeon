@@ -151,7 +151,14 @@ def run_preflight(args: argparse.Namespace) -> dict[str, Any]:
 
     if not args.skip_frontend_source:
         source = _read_text(f"{frontend_base}/src/AppV2.jsx")
-        _require("campaignReady" in source and "data-react-stat" in source and "top-stats" in source, "served AppV2 source is stale or missing current loading/SVG HUD markers")
+        _require(
+            "campaignReady" in source
+            and "data-react-stat" in source
+            and "top-stats" in source
+            and "FRONTEND_BUILD_SHA" in source
+            and "data-frontend-build-sha" in source,
+            "served AppV2 source is stale or missing current loading/SVG HUD/runtime identity markers",
+        )
         _require("♥ ${player.hp" not in source, "served AppV2 source still contains the old emoji stat renderer")
 
     result = {

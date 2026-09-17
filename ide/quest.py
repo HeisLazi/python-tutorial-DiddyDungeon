@@ -55,6 +55,22 @@ def port_available(port: int) -> bool:
     return True
 
 
+def checkout_head_sha(root: Path) -> str:
+    """Return the exact checkout revision used to launch both child processes."""
+
+    try:
+        result = subprocess.run(
+            ["git", "-C", str(root), "rev-parse", "--verify", "HEAD"],
+            check=True,
+            capture_output=True,
+            text=True,
+            timeout=2,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return ""
+    return result.stdout.strip()
+
+
 def choose_port(preferred: int, *, avoid: set[int] | None = None) -> int:
     avoid = avoid or set()
     for port in range(preferred, preferred + 100):
@@ -229,6 +245,11 @@ def main():
     env["QUESTLAB_BACKEND_PORT"] = str(backend_port)
     env["QUESTLAB_FRONTEND_PORT"] = str(frontend_port)
     env["QUESTLAB_EXPECTED_BRANCH"] = "feature/cloud-sync-desktop"
+    # Vite embeds this marker into the frontend bundle so a stale frontend
+    # paired with a newer backend can identify itself instead of silently
+    # presenting an older UI. Manual `npm run dev` remains supported but has
+    # no authoritative marker and falls back to the branch/runtime checks.
+    env["QUESTLAB_BUILD_SHA"] = checkout_head_sha(REPO_ROOT)
     if args.use_local_state:
         local_state_path = prepare_local_state(
             workspace,

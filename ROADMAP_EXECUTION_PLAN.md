@@ -662,3 +662,13 @@ public state command accepts only `player`/`pyr`, while `system` is internal
 only, and that Tutor/Practice share one managed `tutor.py`/notes surface with
 separate no-reward Practice state. This is documentation alignment; no runtime
 authority was widened.
+
+## Current checkpoint — 2026-09-17 — frontend bundle identity
+
+F-121 closes the remaining local ambiguity behind the recurring “old UI”
+symptom. `ide.quest` now passes the checkout HEAD SHA to Vite; the React shell
+compares the embedded marker with the backend runtime HEAD and visibly warns
+when the frontend is stale. This is a diagnostic/launch hardening slice only:
+it does not restart PTYs, change state custody or alter hosted gates.
+
+Current-source Forge tests are **33/33** and launcher contract tests **14/14**.

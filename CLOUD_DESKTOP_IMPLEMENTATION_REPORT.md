@@ -2767,3 +2767,17 @@ calculate or reveal progression facts.
 Current-source Forge tests pass **32/32**. Clean archive frontend tests/build
 and browser K&M remain publication checks; no state, learner file, PTY or
 hosted transport changed.
+
+### Stale frontend bundle pairing repair — F-121
+
+The guarded launcher now stamps the Vite bundle with the exact checkout HEAD
+used for the backend. React compares that marker with `/api/runtime` and marks
+the footer `FRONTEND STALE · restart current launcher` when an old UI is paired
+with a newer backend. The root element also exposes the bundle/runtime match as
+diagnostic data attributes for read-only preflight tooling. Manually started
+Vite processes without a launcher marker remain supported and use the existing
+branch/runtime identity warnings.
+
+Current-source Forge tests pass **33/33** and launcher contract tests **14/14**.
+Clean archive frontend tests/build and browser K&M remain publication checks;
+no state, learner file, PTY or hosted transport changed.

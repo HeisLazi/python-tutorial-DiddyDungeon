@@ -6,6 +6,8 @@ import { ActivityRail, ContextPanel, GameScreen, RewardQueue, TutorPracticeBar }
 import { syncEngine } from './cloud/syncEngine.js'
 import { pyrClientId } from './cloud/pyrClient.js'
 
+const FRONTEND_BUILD_SHA = typeof __QUESTLAB_BUILD_SHA__ === 'string' ? __QUESTLAB_BUILD_SHA__ : ''
+
 const api = async (url, options = {}) => {
   const response = await fetch(url, {
     headers: { 'Content-Type': 'application/json', ...(options.headers || {}) },
@@ -388,6 +390,11 @@ function AppV2() {
   const runtimeBranch = runtime?.repo_git?.branch || 'checking branch…'
   const runtimeMismatch = Boolean(runtime?.expected_branch && runtimeBranch !== runtime.expected_branch)
   const runtimeStale = Boolean(runtime?.repo_git?.behind_upstream > 0)
+  const runtimeBuildMismatch = Boolean(
+    FRONTEND_BUILD_SHA
+      && runtime?.repo_git?.head_sha
+      && FRONTEND_BUILD_SHA !== runtime.repo_git.head_sha,
+  )
   const runtimeContractMissing = Boolean(
     runtime && (
       !runtime.expected_branch
@@ -1863,6 +1870,8 @@ function AppV2() {
       data-terminal={terminalSkin}
       data-view={activeView}
       data-campaign-revision={campaign?.revision ?? ''}
+      data-frontend-build-sha={FRONTEND_BUILD_SHA || 'unmarked'}
+      data-runtime-build-mismatch={runtimeBuildMismatch ? 'true' : 'false'}
     >
       {showSplash && (
         <div className={`launch-splash ${splashClosing ? 'is-closing' : ''}`} role="dialog" aria-modal="true" aria-label="Welcome to Python Quest Lab">
@@ -2126,9 +2135,11 @@ function AppV2() {
 
       <footer className="statusbar">
         <span>{notice || `Runtime: ${runtime?.shell || 'checking shell…'}`}</span>
-        <span className={`runtime-identity ${runtimeContractMissing || runtimeMismatch || runtimeStale ? 'warning' : ''}`} title={runtime?.repo_root || ''}>
+        <span className={`runtime-identity ${runtimeContractMissing || runtimeMismatch || runtimeStale || runtimeBuildMismatch ? 'warning' : ''}`} title={runtime?.repo_root || ''}>
           {runtimeContractMissing
             ? 'RUNTIME STALE · use current launcher'
+            : runtimeBuildMismatch
+              ? 'FRONTEND STALE · restart current launcher'
             : runtimeMismatch
             ? `CHECKOUT MISMATCH · ${runtimeBranch}`
             : runtimeStale

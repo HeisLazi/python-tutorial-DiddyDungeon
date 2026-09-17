@@ -7,11 +7,15 @@ const projectDir = path.dirname(fileURLToPath(import.meta.url))
 
 const backendPort = Number(process.env.QUESTLAB_BACKEND_PORT || 7331)
 const frontendPort = Number(process.env.QUESTLAB_FRONTEND_PORT || 5173)
+const buildSha = process.env.QUESTLAB_BUILD_SHA || ''
 const backendHttp = `http://127.0.0.1:${backendPort}`
 const backendWs = `ws://127.0.0.1:${backendPort}`
 
 export default defineConfig({
   plugins: [react()],
+  define: {
+    __QUESTLAB_BUILD_SHA__: JSON.stringify(buildSha),
+  },
   resolve: {
     // monaco-editor's package exports cover its root ESM entry but not the
     // nested worker modules. Alias that documented Vite path to the bundled

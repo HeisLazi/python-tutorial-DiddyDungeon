@@ -71,7 +71,11 @@ class LauncherContractTests(unittest.TestCase):
             )
             with patch.object(module, "_git", side_effect=["feature/cloud-sync-desktop", "abc123", ""]), patch.object(
                 module, "_read_json", side_effect=[runtime, runtime, {"revision": 5}]
-            ), patch.object(module, "_read_text", return_value="campaignReady data-react-stat top-stats"):
+            ), patch.object(
+                module,
+                "_read_text",
+                return_value="campaignReady data-react-stat top-stats FRONTEND_BUILD_SHA data-frontend-build-sha",
+            ):
                 result = module.run_preflight(args)
             self.assertEqual(result["revision"], 5)
             self.assertTrue(result["isolated_state_required"])
@@ -136,6 +140,8 @@ class LauncherContractTests(unittest.TestCase):
         self.assertIn("raise SystemExit(main())", python_launcher)
         self.assertIn("--confirm-local-state", python_launcher)
         self.assertIn("prepare_local_state", python_launcher)
+        self.assertIn("checkout_head_sha", python_launcher)
+        self.assertIn('env["QUESTLAB_BUILD_SHA"]', python_launcher)
 
     def test_native_linux_launcher_requires_intended_checkout_and_stable_pty_mode(self):
         launcher = (ROOT / "tools" / "questlab-launch.sh").read_text(encoding="utf-8")
@@ -162,6 +168,8 @@ class LauncherContractTests(unittest.TestCase):
         self.assertIn("/src/AppV2.jsx", preflight)
         self.assertIn("campaignReady", preflight)
         self.assertIn("data-react-stat", preflight)
+        self.assertIn("FRONTEND_BUILD_SHA", preflight)
+        self.assertIn("data-frontend-build-sha", preflight)
         self.assertIn("canonical_authoritative", preflight)
         self.assertIn("legacy_authoritative", preflight)
         self.assertIn("SkipFrontendSource", preflight)
