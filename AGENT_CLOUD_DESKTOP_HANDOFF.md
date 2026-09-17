@@ -264,12 +264,15 @@ Do not claim completion if PC/laptop-equivalent sync and PTY preservation have n
 
 ## Current checkpoint — 2026-09-17 — local distribution and Codex hardening
 
-The current published tip is `54d3a6d` on both `feature/cloud-sync-desktop`
-and `main` (the tip also contains the public activity-sync merge). The local
+The current published tip is `259b680` on `feature/cloud-sync-desktop` (the
+public `main` mirror is updated at the end of this checkpoint). The tip also
+contains the public activity-sync merge. The local
 Forge/Codex work is source-complete for the requested presentation slice:
 
 - the Codex is a finite, viewport-bounded folio with paged shelves,
   encounters/notes/mastery controls and a separate Battle Shell tab;
+- the final reader contract uses a compact header, Books/Battle Shell tabs and
+  a bounded two-pane folio so the Codex cannot become an outer infinite feed;
 - the shared `.codex-library` primitive no longer carries a legacy feed-sized
   minimum, preventing compatibility-shell cascade regressions;
 - the friend packager archives committed `HEAD`, strips player-owned paths,
@@ -283,8 +286,8 @@ Forge/Codex work is source-complete for the requested presentation slice:
 Current verification:
 
 - WSL backend suite: **115/115**;
-- Windows frontend suite: **69/69**;
-- launcher contract suite: **16/16**;
+- Windows frontend suite: **70/70**;
+- launcher contract suite: **17/17**;
 - Vite production build: **1,346 modules**;
 - native Linux launcher/preflight `--help` and shell syntax checks: green;
 - fresh disposable ext4 clone: `npm ci`, frontend **69/69**, Vite (**1,346
