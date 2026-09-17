@@ -202,3 +202,10 @@ It refuses an unexpected branch or stale upstream by default, keeps backend
 reload disabled for PTY continuity, and forwards workspace/port/local-custody
 choices to the module-safe Python launcher. This is tooling evidence only;
 the actual CachyOS install and browser K&M run remain the F-058 external gate.
+
+The live Windows OneDrive dependency tree was also rechecked after this slice:
+`npm test` cannot resolve `@supabase/supabase-js` because that copied package
+has no `package.json`. This is the existing F-033 mounted-dependency issue,
+not a source regression; the disposable clean frontend tree remains the
+authoritative **39/39** test and 1,346-module build evidence. No `npm install`,
+save edit or runtime restart was performed in the live checkout.
