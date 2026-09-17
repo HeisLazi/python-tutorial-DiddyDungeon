@@ -532,6 +532,14 @@ test('Codex uses the shared wide-surface frame instead of nesting a page in the 
   assert.match(foundation, /\.wide-screen-frame > \.codex-screen > \.codex-tab-page\[data-codex-tab="books"\] \.codex-book-section \{[\s\S]*?overflow-y: hidden;/)
 })
 
+test('Codex and legacy Journal Battle Shells render state-owned completed objectives', () => {
+  const views = source('../RpgViews.jsx')
+
+  assert.match(views, /function QuestBattleScreen\(\{[\s\S]*?completedObjectives = \[\]/)
+  assert.equal((views.match(/availableObjectives=\{availableObjectives\}\s+completedObjectives=\{completedObjectives\}\s+bossUnlocked=\{bossUnlocked\}/g) || []).length, 2)
+  assert.match(views, /const completedObjectiveCount = Array\.isArray\(completedObjectives\) \? completedObjectives\.length : 0/)
+})
+
 test('friend packages strip tracked player state before archive output', () => {
   const packager = source('../../../../tools/questlab-package.ps1')
 

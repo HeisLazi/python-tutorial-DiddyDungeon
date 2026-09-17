@@ -654,6 +654,7 @@ function QuestJournal({ progress, revision, encounter, submitBattle, submitBoss,
           resolve={resolve}
           maxResolve={maxResolve}
           availableObjectives={availableObjectives}
+          completedObjectives={completedObjectives}
           bossUnlocked={bossUnlocked}
           projectComplete={projectComplete}
           bossRequirements={bossRequirements}
