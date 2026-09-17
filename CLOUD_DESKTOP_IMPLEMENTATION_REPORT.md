@@ -2583,3 +2583,9 @@ already connected. The regression is covered by the frontend source test.
 
 This repair only changes route navigation. It does not write campaign state,
 touch the cloud transport, or recreate either PTY.
+
+Post-publication verification: the current-source navigation suite passed
+**32/32**, the clean ext4 frontend suite passed **51/51**, and the WSL backend
+suite passed **105/105**. A fresh Codex browser tab could not attach, so this
+does not claim a new live click-through; the last confirmed production build
+remains the **1,346-module** clean build recorded above.
