@@ -167,6 +167,17 @@ pre-existing runtimes.
 | Runtime continuity | passed | shell and AI both showed `CONNECTED`; no PTY reset |
 | Browser diagnostics | passed | no warning/error entries before disposable runtime teardown |
 
+## Production build gate — 2026-09-17
+
+The disposable Windows frontend tree built successfully with
+`NODE_OPTIONS=--max-old-space-size=8192`: Vite transformed **1,346 modules** and
+completed in 46.48 seconds. The default heap and a 4 GB heap both exhausted the
+machine during Rollup; this is an environment memory limit, not a source
+failure. The generated preview served HTTP 200 before teardown. The in-app
+browser attach service did not provide a fresh tab for the preview, so no
+production-preview K&M claim is made; the earlier dev-runtime K&M remains the
+behavioral evidence.
+
 ## Follow-up slice — adaptive Dungeon mob identity — 2026-09-17
 
 The next disposable runtime rehydrated the current Dungeon checkpoint with the
