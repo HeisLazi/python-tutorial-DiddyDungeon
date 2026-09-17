@@ -2240,3 +2240,13 @@ tip. Local state, learner files, PTYs and account data were not changed.
 Verification: Windows frontend tests **68/68** and Vite build **1,346 modules**
 passed. Browser K&M remains blocked by F-080, so this is not presented as a
 visual-device acceptance claim.
+
+## Hosted migration write guard — F-142
+
+| ID | Severity | Area | Finding | Status |
+|---|---|---|---|---|
+| F-142 | P1 | Hosted sync / Milestone C | The exact hosted campaign migration plan was known, but the next operator step was still a raw Supabase command. That left room for an accidental write, an unexpected pending migration or a dry-run mismatch. | Fixed with `tools/questlab_supabase_migrate.py`: it verifies the linked ledger contains exactly the two committed campaign migrations, verifies a dry-run proposes both, and refuses any real push without `--apply --confirm APPLY_QUESTLAB_CAMPAIGN_MIGRATIONS`. The default command is read-only and never touches the player save. |
+
+Verification: the guarded default run returned **MIGRATION GUARD: GREEN** against
+linked project `ajnxexxcqfbozszwpjpk`; focused guard tests pass **5/5**. No hosted
+migration or seed was applied. Authenticated two-device acceptance remains open.

@@ -932,3 +932,16 @@ record and mastery pagers rather than a page-length scroll feed.
 Windows frontend tests are **68/68** and the Vite build transforms **1,346
 modules**. This is a presentation-only repair; browser K&M (F-080), hosted
 migrations and real-device acceptance remain open.
+
+## Current checkpoint — 2026-09-17 — guarded hosted migration preflight
+
+F-142 adds a fail-closed operator boundary for the pending Milestone C schema.
+`tools/questlab_supabase_migrate.py` verifies that the linked ledger has exactly
+the two committed campaign migrations, verifies the dry-run, and requires the
+explicit `--apply --confirm APPLY_QUESTLAB_CAMPAIGN_MIGRATIONS` token before a
+real push. The default invocation is read-only and does not seed or write
+player state.
+
+The guard returned **MIGRATION GUARD: GREEN** and its focused tests pass **5/5**.
+Applying the migration, authenticated two-device projection and PTY acceptance
+remain approval-gated.

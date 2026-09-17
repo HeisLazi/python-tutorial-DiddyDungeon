@@ -831,3 +831,12 @@ before applying the two migrations and running authenticated two-device tests.
 Verification: Windows frontend tests **68/68** and Vite build **1,346 modules**.
 No protected save, learner file, PTY or state-service behavior changed. Browser
 K&M remains environment-blocked by F-080.
+
+## Raw hosted migration command lacked a fail-closed guard — 2026-09-17 (F-142)
+
+| ID | Severity | Finding | Status |
+|---|---|---|---|
+| F-142 | P1 | The hosted campaign migration was approval-gated, but the documented next step could still be run as a raw `supabase db push`, without proving the remote ledger and dry-run matched the two committed files. | Added `tools/questlab_supabase_migrate.py`. The default run performs only the linked ledger check and dry-run. Unexpected pending migrations or a missing dry-run entry abort. A real push requires the exact `APPLY_QUESTLAB_CAMPAIGN_MIGRATIONS` confirmation token. |
+
+Verification: guarded read-only run **GREEN**, focused tests **5/5**. No
+Supabase write, seed, save or PTY change occurred.

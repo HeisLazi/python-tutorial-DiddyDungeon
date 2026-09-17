@@ -3036,6 +3036,20 @@ campaign authority, revisions, reward events, sync, learner files or PTYs.
 Verification: Windows frontend tests **67/67** and Vite build **1,346 modules**.
 Browser K&M remains blocked by F-080.
 
+### Guarded hosted migration preflight — F-142 (2026-09-17)
+
+Added `tools/questlab_supabase_migrate.py` as the single reviewed operator
+boundary for the two pending campaign-sync migrations. It reads the linked
+ledger, requires exactly `20260916000100_player_state_device_ownership.sql` and
+`20260917000100_player_state_campaign_projection.sql`, runs
+`supabase db push --linked --dry-run --skip-vault`, and refuses unexpected or
+missing plans. A real write is impossible without both `--apply` and the exact
+`APPLY_QUESTLAB_CAMPAIGN_MIGRATIONS` token. The default command is read-only;
+no migration, seed or player-state write was performed.
+
+Verification: guarded run **MIGRATION GUARD: GREEN** and focused tests **5/5**.
+Hosted two-device acceptance still requires explicit approval and real devices.
+
 ### Hosted campaign migration preflight — F-140 (2026-09-17)
 
 The linked Supabase project (`ajnxexxcqfbozszwpjpk`) was checked read-only. Its
