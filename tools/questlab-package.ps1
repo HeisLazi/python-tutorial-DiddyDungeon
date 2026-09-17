@@ -24,7 +24,9 @@ if ($branch -ne $expectedBranch) {
     throw "Wrong Quest Lab checkout branch '$branch'. Switch to '$expectedBranch' before packaging."
 }
 
-$dirty = @(& git -C $repoRoot status --porcelain=v1)
+# Keep non-ASCII user-owned path names readable so an exact ignore path can be
+# compared without decoding Git's quoted octal representation.
+$dirty = @(& git -c core.quotePath=false -C $repoRoot status --porcelain=v1)
 $ignoredUntracked = @{}
 foreach ($candidate in $IgnoreUntrackedPath) {
     if ([string]::IsNullOrWhiteSpace($candidate)) {
