@@ -2909,6 +2909,17 @@ nor ZIP contained `progress.json`, `tutor.py`, `dungeon.py` or `notes/`, and the
 manifest plus launcher/onboarding files were present. The clean archive passed
 **60/60** frontend tests and a **1,346-module** Vite build.
 
+### Secondary RPG emoji fallback — F-132
+
+The Codex mastery and companion/Homestead presentation now uses the same
+monochrome SVG language as the HUD and navigation. Shield, flame and book icons
+are rendered through `RouteIcon` with explicit sizing/strokes, removing
+OS-dependent emoji metrics without changing any canonical state or reward
+behavior.
+
+Current-source Forge tests pass **42/42**. Browser K&M remains the visual
+publication gate.
+
 ### Local sync simulator recheck — F-126
 
 The current branch was rechecked with

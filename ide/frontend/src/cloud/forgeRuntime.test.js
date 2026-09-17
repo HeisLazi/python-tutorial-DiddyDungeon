@@ -310,6 +310,16 @@ test('Codex finite reading room keeps header and book frame bounded', () => {
   assert.match(foundation, /\.codex-screen > \.codex-tab-page \{[\s\S]*?width: 100%;[\s\S]*?min-height: 0;/)
 })
 
+test('Codex mastery and companion surfaces keep the SVG icon language', () => {
+  const views = source('../RpgViews.jsx')
+  const foundation = source('../foundation.css')
+
+  assert.doesNotMatch(views, /[🔥🛡]/)
+  assert.match(views, /skill\.shield\?\.tier !== 'none' \? 'shield' : 'codex'/)
+  assert.match(views, /<RouteIcon id="flame" \/>/)
+  assert.match(foundation, /\.skill-icon svg,[\s\S]*?\.pyr-orb svg,[\s\S]*?\.homestead-hearth > svg/)
+})
+
 test('friend packages strip tracked player state before archive output', () => {
   const packager = source('../../../../tools/questlab-package.ps1')
 
