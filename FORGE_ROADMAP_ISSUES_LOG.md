@@ -2006,3 +2006,12 @@ browser K&M remain publication gates.
 
 Verification: focused WSL API tests **10/10** and current-source Forge tests
 **32/32**. Hosted player-state transport remains a separate approval gate.
+
+## Compact Codex outer-scroll regression — F-118
+
+| ID | Severity | Area | Finding | Status |
+|---|---|---|---|---|
+| F-118 | P1 | Codex presentation | The narrow-window fallback restored an auto-sized Codex page and visible outer overflow, recreating the reported infinite-scroll behavior in compact Forge windows. | Fixed: the Codex shell remains viewport-bounded at every width. The narrow layout stacks the Field Library above the book while keeping each pane as its own scroll owner; Battle Shell remains separately bounded. |
+
+Verification: current-source Forge tests **32/32**, with a regression rejecting
+the old `height: auto` outer-scroll rule. Browser K&M remains environment-gated.

@@ -233,6 +233,8 @@ test('Journal and Codex keep the active encounter projection visible', () => {
   assert.match(foundation, /\.codex-screen \{ display: grid; grid-template-rows: auto auto minmax\(0, 1fr\);/)
   assert.match(foundation, /\.codex-screen > \.codex-tab-page \{ display: flex; min-height: 0; overflow: hidden;/)
   assert.match(foundation, /\.codex-screen \.codex-book-page \{ min-height: 0; overflow-y: auto;/)
+  assert.match(foundation, /\.codex-screen \{ grid-template-rows: auto auto minmax\(0, 1fr\); height: 100%; min-height: 0; overflow: hidden;/)
+  assert.doesNotMatch(foundation, /\.codex-screen \{ grid-template-rows: auto auto auto; height: auto; overflow: auto;/)
   assert.match(views, /data-testid="codex-book-tabs"/)
   assert.match(views, /<section className="codex-book-section codex-mastery-panel" data-testid="codex-mastery">/)
   assert.match(views, /data-testid="workspace-transfer"/)
