@@ -910,3 +910,13 @@ rewards, sync, learner files or PTYs.
 Windows frontend tests are **67/67** and the Vite build transforms **1,346
 modules**. Browser K&M remains the visual publication gate (F-080), while
 hosted/device milestones remain unchanged.
+
+## Current checkpoint — 2026-09-17 — hosted migration preflight
+
+F-140 rechecked the linked Supabase project read-only. The remote ledger is
+missing the committed device-ownership and campaign-projection migrations
+(`20260916000100` and `20260917000100`); the Supabase dry-run proposes exactly
+those two files. No hosted write or seed was performed. The next Milestone C
+step is explicit approval to apply those migrations, followed by authenticated
+two-device live-projection and PTY-preservation acceptance. Local Forge remains
+green, but this hosted gate is not complete.

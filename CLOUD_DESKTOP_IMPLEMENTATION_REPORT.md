@@ -3035,3 +3035,13 @@ campaign authority, revisions, reward events, sync, learner files or PTYs.
 
 Verification: Windows frontend tests **67/67** and Vite build **1,346 modules**.
 Browser K&M remains blocked by F-080.
+
+### Hosted campaign migration preflight — F-140 (2026-09-17)
+
+The linked Supabase project (`ajnxexxcqfbozszwpjpk`) was checked read-only. Its
+remote migration ledger contains the earlier schema but not the two committed
+campaign-sync migrations: `20260916000100_player_state_device_ownership.sql`
+and `20260917000100_player_state_campaign_projection.sql`. A dry-run push
+proposed exactly those files and no others. No hosted migration, seed or player
+state write was performed. Applying them remains approval-gated before the
+authenticated two-device/live-projection acceptance run.

@@ -2221,3 +2221,12 @@ was changed.
 Verification: Windows frontend tests **67/67** and Vite build **1,346 modules**
 passed. Browser K&M remains blocked by F-080, so this is not presented as a
 visual-device acceptance claim.
+
+## Hosted campaign migration preflight — F-140
+
+| ID | Severity | Area | Finding | Status |
+|---|---|---|---|---|
+| F-140 | P1 | Hosted sync / Milestone C | The linked Supabase project is reachable, but its remote migration ledger is missing the committed device-ownership and campaign-projection migrations. A campaign save would therefore still be rejected by the older hosted validator. | Verified read-only: `supabase migration list --linked` shows local-only `20260916000100` and `20260917000100`; `supabase db push --linked --dry-run --skip-vault` proposes exactly those two files. No hosted write or seed was performed. Applying them remains an explicit approval gate before authenticated two-device acceptance. |
+
+Evidence was captured against linked project `ajnxexxcqfbozszwpjpk` on the current
+tip. Local state, learner files, PTYs and account data were not changed.

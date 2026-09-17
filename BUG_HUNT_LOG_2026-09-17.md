@@ -812,3 +812,12 @@ No protected save, learner file or PTY was changed.
 Verification: Windows frontend tests **67/67** and Vite build **1,346 modules**.
 No protected save, learner file, PTY or state-service behavior changed. Browser
 K&M remains environment-blocked by F-080.
+
+## Hosted campaign migration preflight — 2026-09-17 (F-140)
+
+| ID | Severity | Finding | Status |
+|---|---|---|---|
+| F-140 | P1 | The linked Supabase project still has the older schema. The remote ledger lacks the committed device-ownership and campaign-projection migrations, so hosted campaign writes cannot yet prove Milestone C. | Read-only migration listing and `db push --dry-run --skip-vault` confirmed exactly two pending files: `20260916000100_player_state_device_ownership.sql` and `20260917000100_player_state_campaign_projection.sql`. No migration, seed or player-state write was performed. |
+
+This is a real hosted-state gate, not a local test failure. Approval is required
+before applying the two migrations and running authenticated two-device tests.
