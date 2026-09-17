@@ -539,6 +539,25 @@ test('only protocol conflict code or status enters conflict handling', () => {
   assert.equal(engine._isConflictError({ message: 'conflict-looking validation failure' }), false)
 })
 
+test('an older hosted validator explains the queued campaign migration requirement', async () => {
+  const config = resolveCloudConfig({ VITE_SUPABASE_URL: 'https://example.supabase.co', VITE_SUPABASE_ANON_KEY: 'public-anon-key' })
+  const user = { id: '00000000-0000-4000-8000-000000000071', email: 'schema@example.test' }
+  const local = fakeLocalApi(campaign(3), 1)
+  const client = fakeCloudClient(user)
+  client.rpc = async () => ({ data: null, error: { message: 'next_state contains unsupported domains' } })
+  const engine = new SyncEngine({ config, clientFactory: () => client, storage: new MemoryStorage(), fetchImpl: local.fetch })
+
+  engine.initialize()
+  await engine.restoreSession()
+  await engine.sync()
+
+  assert.equal(engine.getState().syncStatus, 'error')
+  assert.equal(engine.getState().label, 'Cloud schema needs migration')
+  assert.match(engine.getState().detail, /20260917000100_player_state_campaign_projection\.sql/)
+  assert.equal(engine.getState().pendingChanges, 1)
+  engine.dispose()
+})
+
 test('a validated local cache bootstraps an untouched starter cloud copy', async () => {
   const config = resolveCloudConfig({ VITE_SUPABASE_URL: 'https://example.supabase.co', VITE_SUPABASE_ANON_KEY: 'public-anon-key' })
   const user = { id: '00000000-0000-4000-8000-000000000041', email: 'starter-cloud@example.test' }
