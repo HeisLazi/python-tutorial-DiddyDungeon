@@ -1,103 +1,92 @@
-"""Quest Lab Tutor Notebook.
+"""Quest Lab Tutor Notebook — PYR Teaching Drills
 
-PYR and the player may edit this file together for examples, drills, and tiny
-experiments. Required project source stays player-authored. Examples here
-should teach the concept without becoming a paste-ready solution for the
-current project.
+Concept: while loops + input() + list modification
+Domain: Adventurer's Backpack (Unrelated to Blackjack)
 """
+"""
+# =====================================================================
+# EXAMPLE 0: What strip() and lower() do
+# =====================================================================
 
-# PYR can place unrelated teaching examples below this line.
-# You can freely change, run, break, and rebuild them.
+def demo_strip_and_lower():
+    messy_input = "   PACK  \n"
+    print(f"Original messy string: '{messy_input}' (Length: {len(messy_input)})")
+    
+    # 1. strip() removes leading and trailing spaces/newlines
+    stripped = messy_input.strip()
+    print(f"After .strip():        '{stripped}' (Length: {len(stripped)})")
+    
+    # 2. lower() turns capital letters into lowercase
+    lowered = stripped.lower()
+    print(f"After .lower():        '{lowered}'")
+    
+    # Chained together: messy_input.strip().lower() -> "pack"
 
-import random
+# =====================================================================
+# EXAMPLE 1: The Infinite Backpack Loop
+# =====================================================================
 
-# --- Section 1: Dealing / Drawing Items ---
-def draw_loot():
-    """Picks a single random gem from the pool and returns it."""
-    gem_pool = ["Ruby", "Emerald", "Sapphire", "Diamond", "Amethyst"]
-    picked_gem = random.choice(gem_pool)
-    return picked_gem
+def run_backpack_drill():
+    print("🎒 Welcome to the Equipment Tent!")
+    backpack = ["Torches", "Rations"]
+    
+    is_packing = True
+    while is_packing:
+        print(f"\nYour current backpack: {backpack}")
+        choice = input("Do you want to (pack / done)? ").strip().lower()
+        
+        if choice == "pack":
+            item = input("What item do you want to add? ").strip()
+            backpack.append(item)
+            print(f"--> Added '{item}' to your backpack.")
+        elif choice == "done":
+            print("Finished packing!")
+            is_packing = False
+        else:
+            print("⚠️ Invalid command! Please type 'pack' or 'done'.")
+            
+    print(f"\nFinal Backpack Contents: {backpack}")
+"""
+# =====================================================================
+# YOUR PRACTICE EXERCISE (Try running tutor.py and completing this):
+# =====================================================================
+# Modify run_potion_seller() below so that:
+# 1. It keeps asking the buyer if they want to 'buy' or 'leave'.
+# 2. If they type 'buy', subtract 10 gold and add a 'Potion' to inventory.
+# 3. If gold falls below 10, print "Not enough gold!" and stop the loop.
+# 4. If they type 'leave', set shopping = False to end the loop.
 
-hero_stash = []
-goblin_stash = []
+def run_potion_seller():
+    gold = 30
+    inventory = []
+    is_selling = True
+    
+    print("\n🧪 Potion Shop Open!")
+    
+    # --- WRITE YOUR WHILE LOOP BELOW THIS LINE ---
+    while is_selling:
+        choice = input("Do you want to (buy / leave)?").strip().lower()
 
-hero_stash.append(draw_loot())
-hero_stash.append(draw_loot())
+        if choice == "buy" and gold >= 10:
+            inventory.append("Potion")
+            gold = gold - 10
+            print(f"\n you now have {gold} gold left")
+            print("thank you for your purchase")
+            if gold < 10:
+                print("\n BROKE BOY, BROKE BOOYYYYYY GET TF OUT MY STORE")
+                is_selling = False
 
-goblin_stash.append(draw_loot())
-goblin_stash.append(draw_loot())
+        elif choice == "leave":
+            print("\n lmao u dont got it like that anyways")
+            is_selling = False
 
-print("Hero stash:", hero_stash)
-print("Goblin stash:", goblin_stash)
 
-# --- Section 2: Calculating Totals with Numbers ---
-# Lists with numbers:
-knight_bag = [15, 20, 5]     # 3 items weighing 15kg, 20kg, 5kg
-wizard_pouch = [2, 1, 4]     # 3 small items weighing 2kg, 1kg, 4kg
-archer_quiver = [3, 4, 5]    # 3 arrows weighing 3g, 4g, 5g
+if __name__ == "__main__":
+    # See what strip() and lower() do:
+    #demo_strip_and_lower()
+    #print("-" * 40)
+    # Run the demo first!
+    run_potion_seller()
 
-# Method 1: The 'for' loop accumulator (manual counting)
-# 'items' is the parameter (placeholder)
-def calculate_weight_loop(items):
-    total = 0
-    for weight in items:
-        total = total + weight
-    return total
 
-# Calling the function with () and passing the list:
-knight_total = calculate_weight_loop(knight_bag)
-wizard_total = calculate_weight_loop(wizard_pouch)
-
-print("\n--- Method 1: For Loop Accumulator ---")
-print("Knight bag total:", knight_total)
-print("Wizard pouch total:", wizard_total)
-
-# Method 2: Python's built-in sum() helper
-# Note: sum() only works on numbers (ints/floats), not strings!
-def calculate_weight_fast(items):
-    return sum(items)
-
-archer_total = calculate_weight_fast(archer_quiver)
-
-print("\n--- Method 2: Built-in sum() ---")
-print("Archer quiver total:", archer_total)
-
-# --- Section 3: The Mining Drill (Reference) ---
-# (Commented out so Section 4 runs directly when you execute the script)
-# mine_cart = ["Coal"]
-# while True:
-#     choice = input("Type 'dig' or 'leave': ")
-#     if choice == "dig": ...
-#     elif choice == "leave": break
-
-# --- Section 4: The Potion Cauldron Drill (While Loop + Live Sum) ---
-# Scenario: Adding ingredients to a potion until you choose to brew
-
-print("\n--- Section 4: While Loop + Live Sum Drill ---")
-
-def grab_ingredient():
-    ingredient_powers = [2, 3, 5, 8, 10]
-    return random.choice(ingredient_powers)
-
-cauldron = [4, 6]  # Starting ingredients
-
-while True:
-    # 1. Show the current state and current total
-    current_power = sum(cauldron)
-    print(f"Cauldron: {cauldron} | Current Power: {current_power}")
-
-    # 2. Ask the user for their decision
-    choice = input("Type 'add' for more ingredients, or 'brew' to stop: ").lower().strip()
-
-    # 3. Handle their choice
-    if choice == "add":
-        new_item = grab_ingredient()
-        cauldron.append(new_item)
-        print(f"-> Bubbling! Added ingredient with {new_item} power.\n")
-    elif choice == "brew":
-        print(f"-> Stopped! Potion brewed with {current_power} total power.\n")
-        break  # Exits the loop!
-    else:
-        print("-> Huh? Please type 'add' or 'brew'.\n")
-
-print(f"Final Potion Ingredients: {cauldron} (Total Power: {sum(cauldron)})")
+# ill make a function to try run a loop to print out 10 numbers at random
