@@ -2877,6 +2877,21 @@ lifecycle behavior.
 The clean archive recheck passed **58/58** frontend tests and the Vite build
 transformed **1,346 modules** after this selector change.
 
+### Codex finite reading-room follow-up — F-130
+
+The Codex presentation now has a stricter finite-book contract. The shared game
+surface and Codex root are explicitly height-bounded; the concept header and
+Books/Battle Shell tabs remain fixed; the Field Library is a flex column whose
+only index overflow is the concept-book list; and the selected book section is
+the only reading-content scroll owner. This removes the remaining layout path
+that made the chapter context, index and book content feel like one endless
+vertical feed. Previous/Next book controls and section tabs remain the primary
+navigation. No campaign state, revision polling, reward authority, learner file
+or PTY lifecycle changed.
+
+Current-source Forge tests pass **40/40**. Clean archive build and browser K&M
+remain the visual publication gates.
+
 ### Local sync simulator recheck — F-126
 
 The current branch was rechecked with

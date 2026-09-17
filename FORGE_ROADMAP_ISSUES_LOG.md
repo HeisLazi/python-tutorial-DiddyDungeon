@@ -2111,3 +2111,13 @@ browser K&M remain publication gates; no state, learner file or PTY changed.
 Recheck: clean archive frontend tests **58/58** and Vite production build
 **1,346 modules** passed after the selector scope change. Browser K&M remains
 the only missing visual proof for this slice.
+
+## Codex finite reading-room follow-up — F-130
+
+| ID | Severity | Area | Finding | Status |
+|---|---|---|---|---|
+| F-130 | P1 | Codex presentation | The outer feed boundary was fixed, but the Field Library index still owned the whole column's overflow. With the paper header, chapter/mob context and book list all sharing that scroll owner, the Codex could still feel like an ugly endless feed instead of a finite reading surface. | Fixed in source by making the game surface and Codex shell explicit height-bounded grids, keeping the header and tab strip fixed, making the index a flex column, and limiting index scroll to the concept book list. The reading section remains the single content scroller; page buttons and section tabs stay visible. |
+
+Verification: current-source Forge tests **40/40**. This is a presentation-only
+repair; state authority, revision polling, rewards, learner files and PTYs were
+not touched. Clean archive build and fresh browser K&M remain publication gates.

@@ -708,3 +708,13 @@ only; clean archive build and fresh browser K&M remain gates.
 Recheck: clean archive frontend tests **58/58** and Vite production build
 **1,346 modules** passed after the shared-shell selector change. No state,
 learner file or PTY was touched.
+
+## Codex finite reading-room follow-up — 2026-09-17 (F-130)
+
+| ID | Severity | Finding | Status |
+|---|---|---|---|
+| F-130 | P1 | The previous outer-feed repair still left the entire Field Library column as a scroll owner. As chapter context and concept books accumulated, that layout could still read as an ugly infinite scroll rather than a finite book with fixed controls. | Fixed in source with an explicit height-bounded Codex grid: header and mode tabs stay fixed, the index is a flex column, only its concept list scrolls, and the selected book section is the sole reading-content scroller. |
+
+Verification: current-source Forge runtime tests **40/40**. Browser K&M remains
+the visual publication gate; no state, learner file, PTY or hosted transport was
+changed.

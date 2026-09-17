@@ -284,10 +284,11 @@ test('Codex book surface keeps readable paper hierarchy across themes', () => {
 test('Codex stays a bounded book surface instead of growing an outer feed', () => {
   const foundation = source('../foundation.css')
 
-  assert.match(foundation, /\.game-screen \{ position: relative; min-width: 0; min-height: 0; \}/)
+  assert.match(foundation, /\.game-screen \{ position: relative; width: 100%; height: 100%; min-width: 0; min-height: 0; overflow: hidden; \}/)
   assert.match(foundation, /\.game-screen > \.codex-screen \{[\s\S]*?position: absolute;[\s\S]*?inset: 0;[\s\S]*?overflow: hidden;[\s\S]*?contain: layout paint;/)
   assert.match(foundation, /\.codex-screen \.codex-book-section \{[\s\S]*?overflow-y: auto;[\s\S]*?scrollbar-gutter: stable;/)
-  assert.match(foundation, /\.codex-screen \.codex-index \{ min-height: 0; overflow-y: auto;/)
+  assert.match(foundation, /\.codex-screen \.codex-index \{ display: flex; flex-direction: column; min-width: 0; min-height: 0; overflow: hidden;/)
+  assert.match(foundation, /\.codex-screen \.codex-page-list \{ flex: 1 1 auto; min-height: 0; max-height: none; overflow-y: auto;/)
 })
 
 test('Codex owns its viewport shell instead of inheriting the generic feed wrapper', () => {
@@ -298,6 +299,15 @@ test('Codex owns its viewport shell instead of inheriting the generic feed wrapp
   assert.doesNotMatch(views, /className="game-screen-scroll codex-screen"/)
   assert.match(foundation, /\.game-screen > \.codex-screen \{[\s\S]*?padding: 18px;[\s\S]*?overscroll-behavior: none;/)
   assert.match(foundation, /\.codex-screen \.codex-book-section \{[\s\S]*?overflow-x: hidden;/)
+})
+
+test('Codex finite reading room keeps header and book frame bounded', () => {
+  const foundation = source('../foundation.css')
+
+  assert.match(foundation, /F-130: the Codex is a finite reading room/)
+  assert.match(foundation, /\.game-screen > \.codex-screen \{[\s\S]*?grid-template-rows: auto auto minmax\(0, 1fr\);[\s\S]*?gap: 10px;/)
+  assert.match(foundation, /\.codex-screen > \.screen-hero \{[\s\S]*?grid-template-columns: minmax\(0, 1fr\) minmax\(300px, auto\);[\s\S]*?max-height: none;/)
+  assert.match(foundation, /\.codex-screen > \.codex-tab-page \{[\s\S]*?width: 100%;[\s\S]*?min-height: 0;/)
 })
 
 test('Dungeon renders state-owned adaptive mob identity and reward feedback', () => {
