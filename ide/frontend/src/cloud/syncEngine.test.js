@@ -216,6 +216,7 @@ test('signed-in status names the campaign surfaces that share the sync gateway',
   await engine.restoreSession()
 
   assert.equal(details.some((detail) => /Campaign, Journal and Codex fields will sync through the state gateway/.test(detail)), true)
+  assert.equal(details.some((detail) => /Account identity restored\. Campaign fields will sync through the state gateway\./.test(detail)), false)
   engine.dispose()
 })
 

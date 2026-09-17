@@ -499,7 +499,7 @@ export class SyncEngine {
     // Restore the last account-scoped image before the profile request. This
     // keeps a previously synced portrait visible during a brief offline start.
     this._restoreCachedAvatar(user.id)
-    this.setState({ user: userSummary(user), authStatus: 'signed-in', syncStatus: 'local', label: 'Signed in · local cache', detail: 'Account identity restored. Campaign fields will sync through the state gateway.', error: null })
+    this.setState({ user: userSummary(user), authStatus: 'signed-in', syncStatus: 'local', label: 'Signed in · local cache', detail: 'Account identity restored. Campaign, Journal and Codex fields will sync through the state gateway.', error: null })
     try {
       if (!this.accountPromise || this.accountUserId !== user.id) {
         this.accountUserId = user.id

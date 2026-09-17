@@ -2354,3 +2354,13 @@ names `20260917000100_player_state_campaign_projection.sql`, and keeps the
 local outbox queued. A clean ext4 frontend run passed **42/42** with a
 **1,346-module** build after the repair. This improves diagnostics only; it
 does not bypass or apply the hosted migration.
+
+### F-083 — signed-in first-frame status continuity
+
+The account restore path briefly used a narrower “Campaign fields” status
+before profile/device registration settled on the full Campaign, Journal and
+Codex wording. That copy-only transition could look like sync instability even
+though the PTY lifecycle and revision state were unchanged. Both states now use
+the same description, with a regression guarding against the stale phrase.
+Frontend verification remains **42/42** and the clean build transforms
+**1,346 modules**.

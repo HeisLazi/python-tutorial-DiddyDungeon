@@ -639,3 +639,9 @@ The hosted-validator failure path now distinguishes an outdated campaign
 schema from a generic sync error: Forge names the required migration and keeps
 the local outbox queued. The repair is covered by frontend **42/42** and the
 same **1,346-module** clean build; it does not apply or bypass Supabase SQL.
+
+The follow-up status-copy review also closed F-083 locally: the initial
+signed-in frame and the settled account state now name the same Campaign,
+Journal and Codex gateway surfaces, so the status text does not change merely
+because account registration completed. This is a presentation repair only;
+hosted migration and real two-device acceptance remain approval-gated.
