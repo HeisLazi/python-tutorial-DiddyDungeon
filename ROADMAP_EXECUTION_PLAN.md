@@ -1002,3 +1002,15 @@ mobile/index, code-example and intentionally long note bodies can scroll.
 Windows frontend tests are **70/70** and Vite transforms **1,346 modules**.
 This is a local presentation repair. Browser K&M (F-080), hosted migration,
 physical CachyOS and two-device acceptance remain open.
+
+## Current checkpoint — 2026-09-17 — Codex reader visual hierarchy
+
+F-147 adds a field-guide treatment on top of the bounded Codex reader: a
+compact metric strip, quiet paper/ink reading surface, clearer bookshelf
+spine and more legible highlighted example blocks. This remains
+presentation-only; the canonical projection, reward events, notes gateway,
+revision polling and PTY lifecycle are untouched.
+
+Windows frontend tests are **71/71**, Vite transforms **1,346 modules**, and
+the supported WSL backend suite is **116/116**. Browser K&M (F-080), hosted
+migration, physical CachyOS and two-device acceptance remain open.

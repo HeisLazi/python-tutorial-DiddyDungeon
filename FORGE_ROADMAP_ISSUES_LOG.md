@@ -2292,3 +2292,13 @@ absent from the archive.
 Verification: Windows frontend tests **70/70** and Vite build **1,346 modules**
 passed. No player state, learner file, PTY or hosted migration changed. Browser
 K&M remains blocked by F-080.
+
+## Codex reader chrome still looked assembled from dashboard cards — F-147
+
+| ID | Severity | Area | Finding | Status |
+|---|---|---|---|---|
+| F-147 | P2 | Codex presentation | The bounded folio removed the unbounded feed, but the visual hierarchy still mixed metric cards, generic panel surfaces and dashboard-like controls. The Codex did not yet feel like a readable field guide. | Fixed with a CSS-only reader pass: compact metric strip, quiet paper/ink surface, clearer shelf spine, calmer active-page treatment and highlighted example blocks. Paging and state-service boundaries are unchanged. |
+
+Verification: Windows frontend tests **71/71**, Vite build **1,346 modules**,
+and supported WSL backend tests **116/116**. Browser K&M remains blocked by
+F-080; no player state, learner file, PTY or hosted migration changed.

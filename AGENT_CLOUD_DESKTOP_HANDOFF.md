@@ -285,8 +285,8 @@ presentation slice:
 
 Current verification:
 
-- WSL backend suite: **115/115**;
-- Windows frontend suite: **70/70**;
+- WSL backend suite: **116/116**;
+- Windows frontend suite: **71/71**;
 - launcher contract suite: **17/17**;
 - Vite production build: **1,346 modules**;
 - native Linux launcher/preflight `--help` and shell syntax checks: green;
@@ -297,6 +297,12 @@ Current verification:
 - strict clean-ext4 report: **GREEN** with native Rollup, Python `3.14.4`, Node
   `v26.7.0`, npm `11.19.0` and WSL2 kernel `6.18.33.1-microsoft-standard-WSL2`;
 - browser K&M attach: still blocked by F-080, so no new visual-device claim.
+
+The latest local presentation checkpoint is F-147: the Codex reader now uses a
+single field-guide visual language on top of the bounded folio (quiet paper
+surface, compact metric strip, clear shelf spine and readable example blocks).
+This is a CSS-only refinement; it does not add a scroll owner, change the
+campaign projection, or remount either PTY.
 
 Remaining release gates are intentionally unchanged:
 

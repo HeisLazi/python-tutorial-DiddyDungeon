@@ -3125,3 +3125,14 @@ Verification: launcher-contract coverage **17/17** and strict clean-ext4
 report **GREEN** (`rollup-linux-x64-gnu`, Python `3.14.4`, Node `v26.7.0`, npm
 `11.19.0`, WSL2 kernel `6.18.33.1-microsoft-standard-WSL2`). The temporary
 clone was removed and verified absent.
+
+### Codex reader visual hierarchy — F-147 (2026-09-17)
+
+The Codex now has one field-guide visual language over the bounded reader:
+quiet paper/ink treatment, a compact metric strip, a clearer bookshelf spine
+and readable highlighted example blocks. This refinement does not add an outer
+scroll owner or change state, sync, notes, rewards or PTY behavior.
+
+Verification: Windows frontend tests **71/71**, Vite (**1,346 modules**) and
+supported WSL backend tests **116/116**. Browser K&M remains blocked by F-080;
+no hosted migration or player-state write was performed.

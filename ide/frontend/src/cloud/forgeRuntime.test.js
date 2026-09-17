@@ -430,6 +430,17 @@ test('Codex reader contract keeps the outer page finite and the shelf paged', ()
   assert.match(foundation, /\.codex-screen \.codex-page-list \{[\s\S]*?overflow: visible;/)
 })
 
+test('Codex reader chrome uses a single field-guide visual language', () => {
+  const foundation = source('../foundation.css')
+
+  assert.match(foundation, /F-147: visual reader pass/)
+  assert.match(foundation, /--codex-paper:/)
+  assert.match(foundation, /\.codex-screen > \.screen-hero\.codex-hero \{[\s\S]*?box-shadow: inset 0 -1px 0/)
+  assert.match(foundation, /\.codex-screen > \.codex-tab-page\[data-codex-tab="books"\] > \.codex-library \{[\s\S]*?box-shadow: 0 18px 40px/)
+  assert.match(foundation, /\.codex-screen > \.codex-tab-page\[data-codex-tab="books"\] \.codex-book-page \{[\s\S]*?var\(--codex-paper\)/)
+  assert.match(foundation, /\.codex-screen \.codex-examples pre \{[\s\S]*?border-left: 3px solid/)
+})
+
 test('friend packages strip tracked player state before archive output', () => {
   const packager = source('../../../../tools/questlab-package.ps1')
 

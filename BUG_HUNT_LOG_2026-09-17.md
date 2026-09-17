@@ -890,3 +890,13 @@ Verification: Windows frontend tests **70/70** and Vite build **1,346 modules**
 passed. No player state, learner file, PTY or hosted migration was touched.
 Fresh browser K&M remains blocked by F-080, so this is not presented as a
 device-level visual claim until an attachable Forge tab is available.
+
+## Codex reader chrome still looked assembled from dashboard cards — 2026-09-17 (F-147)
+
+| ID | Severity | Finding | Status |
+|---|---|---|---|
+| F-147 | P2 | The finite Codex structure was correct, but the visual hierarchy still mixed dense metric cards, generic panel backgrounds and dashboard-like book controls. That made the reading room feel less like a usable field guide even after the outer feed was bounded. | Fixed with one final CSS-only reader pass: a quiet paper/ink palette, compact metric strip, clearer shelf spine, readable example blocks and a consistent book surface. The existing finite paging and scroll boundaries remain unchanged. |
+
+Verification: Windows frontend tests **71/71**, Vite build **1,346 modules**,
+and supported WSL backend tests **116/116**. Browser K&M remains blocked by
+F-080, so this is not presented as a fresh device-level visual claim.
