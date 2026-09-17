@@ -161,6 +161,15 @@ The in-app browser again timed out before attaching a tab to the isolated
 runtime, so no new browser K&M score is claimed for this account pass. No
 Playwright, user-save edit, or existing PTY restart was used.
 
+## Sync-status copy recheck — 2026-09-17
+
+The signed-in cache detail still described Projects and Codex as local even
+after the campaign projection had been added to the shared revision/CAS
+transport. This was a P3 release-copy defect (F-081), fixed by naming the
+Campaign, Journal and Codex surfaces in `syncEngine.js`; the frontend
+regression test now captures the emitted detail. The clean ext4 frontend suite
+passed **41/41** and the production build transformed **1,346 modules**.
+
 ## Remaining gates
 
 The local contract is not a hosted release claim. Provider-authenticated
