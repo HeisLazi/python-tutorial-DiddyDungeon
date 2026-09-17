@@ -1918,6 +1918,7 @@ smoke produced `QuestLab-ed8db52` from `git archive HEAD`; `tutor.py`,
 | F-108 | P1 | Navigation | The alternate legacy `App.jsx` shell rendered the wide Hub/Character/Homestead route bar without passing its view callback into `GameScreen`, leaving the controls visible but inert in that shell. | Fixed by wiring `onNavigate={setActiveView}` through the legacy shell and covering the callback contract with a frontend regression test. |
 
 Verification after publication: current-source navigation tests **32/32**,
-clean ext4 frontend tests **51/51**, and WSL backend tests **105/105**. The
-Codex browser could not attach a fresh tab, so no new live click-through claim
-is made here.
+clean ext4 frontend tests **51/51**, WSL backend tests **105/105**, and a
+fresh Vite production build with **1,346 modules transformed**. The Codex
+browser could not attach a fresh tab, so no new live click-through claim is
+made here.
