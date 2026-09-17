@@ -717,3 +717,11 @@ The Git transfer ref and canonical state authority are unchanged.
 Current-source Forge tests are **37/37**. Clean archive frontend tests/build
 and browser K&M remain visual publication checks; device round-trip evidence
 is still required.
+
+## Current checkpoint — 2026-09-17 — local sync simulator recheck
+
+F-126 re-ran the disposable two-device local sync contract at the current
+branch tip. Push, pull, stale-mailbox detection, local-revision conflict and
+explicit keep-device resolution all passed while the source save digest stayed
+unchanged. This strengthens the local/offline gate without claiming hosted
+Supabase acceptance.

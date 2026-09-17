@@ -2833,3 +2833,13 @@ outside the channel; no automatic overwrite was added.
 Current-source Forge tests pass **37/37**. Clean archive frontend tests/build
 and browser K&M remain the visual publication checks. A real PC/laptop source
 round-trip is still external evidence.
+
+### Local sync simulator recheck — F-126
+
+The current branch was rechecked with
+tools/questlab-local-sync-sim.py --source progress.json. Disposable device A
+and B caches carried the bounded campaign projection (including Codex and the
+answer-free Dungeon checkpoint), detected stale mailbox/local revisions, and
+completed the explicit keep-device conflict choice. The source save digest was
+identical before and after the run. This validates local compare-and-swap
+behavior only; it does not replace an authenticated Supabase two-device run.
