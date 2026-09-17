@@ -31,6 +31,40 @@ repairing dependencies. When the launcher runs under WSL it checks that this
 install contains a native Linux Rollup optional package and exits before
 starting Forge if that check fails.
 
+## macOS native setup (target; not yet certified)
+
+Quest Lab can run natively on macOS through the same Python/FastAPI and Vite
+launcher used by native Linux. This is a local-first path; no WSL layer or
+desktop wrapper is required. Install Git, Python 3.11+ and Node.js 20+ (Homebrew
+is optional), then use a normal local filesystem rather than a cloud-synced
+folder:
+
+```bash
+mkdir -p ~/Projects
+cd ~/Projects
+git clone https://github.com/HeisLazi/python-tutorial-DiddyDungeon.git
+cd python-tutorial-DiddyDungeon
+git switch feature/cloud-sync-desktop
+python3 -m venv .venv
+.venv/bin/python -m pip install -r ide/server/requirements.txt
+cd ide/frontend
+npm ci
+cd ../..
+git worktree add ../questlab-blackjack feature/quest-lab-ide
+chmod +x tools/questlab-launch.sh questlab-state questlab-files
+./tools/questlab-launch.sh \
+  --workspace ../questlab-blackjack \
+  --backend-port 7331 --frontend-port 5173
+```
+
+Use `--no-browser` when opening the printed URL manually. The launcher keeps
+the backend in stable mode so shell and AI PTYs are not remounted, validates the
+branch/upstream identity, and keeps the repository `progress.json` as the one
+gateway-owned local cache. Never copy a workspace `progress.json`; use the
+state gateway and the explicit `questlab-files` source-transfer flow instead.
+The native macOS install and K&M projection run remain an acceptance gate for
+the actual Mac machine; this documentation does not claim that gate is passed.
+
 ## CachyOS native Linux setup (target; not yet certified)
 
 CachyOS is now an explicit native-Linux target for this branch. The checklist

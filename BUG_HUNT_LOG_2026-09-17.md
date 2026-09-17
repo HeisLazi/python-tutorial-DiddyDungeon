@@ -304,3 +304,11 @@ copy transition, not a PTY or campaign remount, but it contributed to the
 reported feeling that the sync UI was jumping. Both signed-in states now share
 the same text, and the frontend regression rejects the stale phrase. Clean
 frontend verification remains **42/42** with a **1,346-module** build.
+
+## Distribution follow-up — native macOS onboarding (F-084)
+
+The friend-facing guide lacked a native Mac path even though the existing
+launcher only needs Python, npm and a local checkout. I added a guarded macOS
+setup with a sibling quest workspace, executable-bit repair and stable-PTY
+launch. No Mac machine was available for K&M, so this is a documentation fix,
+not a native acceptance claim.
