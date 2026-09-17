@@ -751,15 +751,17 @@
   display: flex;
   flex-direction: column;
   min-height: 0;
-  overflow: hidden;
-  scrollbar-width: none;
+  max-height: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: thin;
+  scrollbar-gutter: stable;
+  overscroll-behavior: contain;
 }
-.codex-screen .codex-book-section::-webkit-scrollbar { display: none; }
 .codex-screen .codex-page-grid,
 .codex-screen .codex-entry-detail,
 .codex-screen .codex-mastery-panel .skill-grid {
   min-height: 0;
-  overflow: hidden;
 }
 .codex-screen .codex-entry-picker-expanded,
 .codex-screen .codex-entry-picker-inline {

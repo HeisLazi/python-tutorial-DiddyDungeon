@@ -356,7 +356,7 @@ test('Codex evidence stays in a finite page frame with explicit record paging', 
   assert.match(views, /visibleEntries\.map\(\(entry\)/)
   assert.match(views, /data-testid="codex-notes-entry-pager"/)
   assert.match(foundation, /F-135: keep the Codex a finite reader/)
-  assert.match(foundation, /\.codex-screen \.codex-book-section \{[\s\S]*?overflow: hidden;/)
+  assert.match(foundation, /\.codex-screen \.codex-book-section \{[\s\S]*?overflow-y: auto;/)
   assert.match(foundation, /\.codex-entry-pager \{[\s\S]*?letter-spacing: \.08em;/)
 })
 
