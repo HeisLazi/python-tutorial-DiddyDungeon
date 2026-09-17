@@ -1733,6 +1733,9 @@ and `updated_at` reference polling. The Git-backed workspace transfer also
 passed with `blackjack.py`, `tutor.py`, `dungeon.py`, and `notes/lists.md`
 matching on the target while `progress.json`, session notes, and an unlisted
 private note remained untouched.
+Anonymous reads of the QA portrait returned HTTP 400 and the profile endpoint
+returned HTTP 401, so the private Storage/RLS boundary also held in this
+check.
 
 | ID | Severity | Area | Finding | Status |
 |---|---|---|---|---|

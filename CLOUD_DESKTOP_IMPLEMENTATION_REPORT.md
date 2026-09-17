@@ -2319,7 +2319,8 @@ against isolated Forge runtimes. Profile/device registration and avatar
 transport were verified: client B downloaded the avatar uploaded by client A,
 and then picked up a replacement after the profile `updated_at` reference
 changed. This validates the account-private portrait path without using the
-user's account.
+user's account. Anonymous access to the portrait returned HTTP 400 and an
+anonymous profile read returned HTTP 401, confirming the private RLS boundary.
 
 The separate Git workspace-transfer check moved `blackjack.py`, `tutor.py`,
 `dungeon.py`, and `notes/lists.md` between two temporary repositories. The

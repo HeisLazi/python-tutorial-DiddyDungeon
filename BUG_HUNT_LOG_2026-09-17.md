@@ -148,6 +148,8 @@ separate temporary Git remote proved the allowlisted file channel transfers
 `blackjack.py`, `tutor.py`, `dungeon.py`, and `notes/lists.md`; the target's
 `progress.json` and session notes stayed byte-for-byte intact and
 `notes/private.txt` was excluded.
+Anonymous access to the QA avatar returned HTTP 400 and the profile read
+returned HTTP 401, confirming the account-private boundary.
 
 The same authenticated account also reproduced the remaining hosted gate:
 the live player-state RPC rejected the source-reviewed campaign projection
