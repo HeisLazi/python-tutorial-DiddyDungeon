@@ -95,8 +95,19 @@ test('launcher marks the frontend bundle so stale UI cannot appear healthy', () 
   assert.match(app, /data-frontend-build-sha=\{FRONTEND_BUILD_SHA \|\| 'unmarked'\}/)
   assert.match(vite, /QUESTLAB_BUILD_SHA/)
   assert.match(vite, /__QUESTLAB_BUILD_SHA__/)
+  assert.match(vite, /execFileSync\('git'/)
+  assert.match(vite, /rev-parse.*HEAD/)
   assert.match(quest, /def checkout_head_sha\(root: Path\)/)
   assert.match(quest, /env\["QUESTLAB_BUILD_SHA"\] = checkout_head_sha\(REPO_ROOT\)/)
+})
+
+test('manual Vite launches still stamp the current checkout when no env marker is supplied', () => {
+  const vite = source('../../vite.config.js')
+
+  assert.match(vite, /const repoRoot = path\.resolve\(projectDir, '\.\.', '\.\.'/)
+  assert.match(vite, /process\.env\.QUESTLAB_BUILD_SHA \|\| \(\(\) => \{/)
+  assert.match(vite, /execFileSync\('git', \['-C', repoRoot, 'rev-parse', '--verify', 'HEAD'\]/)
+  assert.match(vite, /timeout: 1_000/)
 })
 
 test('PYR context submissions use the bounded local bridge and current editor selection', () => {

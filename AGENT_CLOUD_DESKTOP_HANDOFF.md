@@ -373,6 +373,14 @@ healthy at canonical revision `18` (level 3, 120 XP, 75 coins, Blackjack
 38%, The Hitman 8/8). Browser K&M remains blocked by F-080; no player state,
 learner file, protected save, hosted migration or PTY lifecycle changed.
 
+F-159 closes the direct-dev stale-UI path. When `QUESTLAB_BUILD_SHA` is absent,
+Vite now derives the current repository HEAD with a one-second-bounded Git
+lookup, while the explicit managed-launcher marker still wins. This means a
+manual `npm run dev` can identify a stale checkout instead of silently looking
+healthy. Windows frontend tests **80/80** and the Vite production build
+(**1,346 modules**) pass. The change is diagnostic-only: no state, PTY or
+hosted transport changed. Browser K&M remains blocked by F-080.
+
 Remaining release gates are intentionally unchanged:
 
 1. Apply only the two guarded hosted migrations after explicit approval, then

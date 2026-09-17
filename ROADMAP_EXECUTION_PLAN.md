@@ -1110,3 +1110,16 @@ cascade. The configured local backend is healthy on `7341` for the active
 session and returns campaign revision `18` with the canonical level 3 state.
 Browser K&M (F-080), hosted migrations, physical CachyOS and authenticated
 cross-device acceptance remain open.
+
+## Current checkpoint — 2026-09-17 — manual Vite checkout identity
+
+F-159 closes the direct-dev stale-UI path: when `QUESTLAB_BUILD_SHA` is not
+provided, Vite now derives the current repository HEAD with a bounded Git
+lookup, while the managed launcher's explicit marker remains authoritative.
+The React shell can therefore warn about a stale checkout even when the
+frontend was started with `npm run dev` instead of `ide.quest`.
+
+Windows frontend tests are **80/80** and the Vite production build transforms
+**1,346 modules**. This is diagnostic-only; Browser K&M (F-080), hosted
+migrations, physical CachyOS and authenticated cross-device acceptance remain
+open.

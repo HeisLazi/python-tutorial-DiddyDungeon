@@ -3275,3 +3275,17 @@ tested. Browser K&M remains blocked by F-080.
 Verification: Windows frontend tests **79/79** and Vite production build
 **1,346 modules**. No player state, learner file, protected save, hosted
 migration or PTY lifecycle was changed.
+
+### Manual Vite checkout identity fallback — F-159 (2026-09-17)
+
+The managed launcher already passed `QUESTLAB_BUILD_SHA`, but direct
+`npm run dev` launches were unmarked. That made a manually opened browser
+unable to distinguish the current checkout from an older UI process. Vite now
+derives the repository HEAD with a one-second-bounded `git rev-parse` when the
+explicit environment marker is absent; the explicit launcher value still takes
+precedence and a missing Git executable falls back safely to an unmarked
+diagnostic. This does not change state authority, PTY lifecycle or hosted
+transport.
+
+Verification: Windows frontend tests **80/80** and Vite production build
+**1,346 modules** pass. Browser K&M remains blocked by F-080.

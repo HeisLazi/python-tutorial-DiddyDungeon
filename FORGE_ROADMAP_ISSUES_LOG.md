@@ -2425,3 +2425,14 @@ port for the active Vite session; `/api/runtime` and `/api/campaign` now return
 200 with canonical revision `18` (level 3, 120 XP, 75 coins, Blackjack 38%,
 The Hitman 8/8). Browser K&M remains blocked by F-080, so no fresh visual
 device claim is made. No player state, learner file or PTY was changed.
+
+## Manual Vite launches hid stale checkout identity — F-159
+
+| ID | Severity | Area | Finding | Status |
+|---|---|---|---|---|
+| F-159 | P1 | Launcher / stale UI diagnostics | The managed launcher embedded the checkout SHA, but a developer who started Vite directly with `npm run dev` received an unmarked frontend. That path could not warn when the browser was serving a different checkout, recreating the reported “old UI” symptom. | Fixed by making Vite derive the current repository HEAD when `QUESTLAB_BUILD_SHA` is absent, with a bounded `git` call and an empty fallback when Git is unavailable. The explicit launcher marker still wins. |
+
+Verification: Windows frontend tests **80/80** and the Vite production build
+**1,346 modules** pass. The fallback is diagnostic-only; it does not restart
+PTYs, change state custody or infer a second save. Browser K&M remains blocked
+by F-080.
