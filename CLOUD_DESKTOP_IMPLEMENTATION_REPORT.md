@@ -2693,7 +2693,8 @@ Library index and selected book own their scroll independently with
 expandable section inside the selected book rather than growing the page by
 default. Mobile intentionally switches to one controlled column.
 
-The current-source Forge runtime suite passes **32/32**. Clean dependency and
-production-build verification is being rerun from an isolated checkout because
-the Windows working tree has a locked esbuild binary. No state, learner file,
-PTY or hosted transport changed.
+The current-source Forge runtime suite passes **32/32**; a clean archive
+frontend install passes **51/51** and Vite transforms **1,346 modules**. The
+Windows working tree still has a locked esbuild binary, so the isolated archive
+was used for dependency/build proof. No state, learner file, PTY or hosted
+transport changed.

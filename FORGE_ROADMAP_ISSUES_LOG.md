@@ -1984,6 +1984,7 @@ canonical state, PTYs and cloud transport were untouched.
 |---|---|---|---|---|
 | F-115 | P1 | Codex presentation | The bounded Codex still felt like an infinite page because the mastery grid was always appended to the reading surface and the outer flex column could grow as evidence accumulated. | Fixed with explicit three-row Codex layout, compact hero/header, contained index/book scrolling, overscroll boundaries and an expandable Mastery Signals section. Mobile keeps a deliberate single-column scroll fallback. |
 
-Verification: current-source Forge suite **32/32**. Clean dependency/build
-verification is pending after a locked Windows esbuild process is released;
-canonical state, learner files, PTYs and hosted transport were not changed.
+Verification: current-source Forge suite **32/32**, clean archive frontend
+suite **51/51**, and Vite production build **1,346 modules**. The Windows
+working tree still has a locked esbuild process, but canonical state, learner
+files, PTYs and hosted transport were not changed.
