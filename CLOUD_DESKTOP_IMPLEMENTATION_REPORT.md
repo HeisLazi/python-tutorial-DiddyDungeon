@@ -3099,3 +3099,13 @@ and the `HEAD`-only archive boundary are unchanged.
 Launcher-contract coverage is **16/16**. The post-commit run created a
 134-entry ZIP from `83f302c`; the protected nested path and all player-owned
 save/notebook paths were absent, while the live directory remained untouched.
+
+### Fresh ext4 distribution verification — F-033/F-058 (2026-09-17)
+
+A disposable WSL Linux-filesystem clone of the published branch was created
+outside OneDrive, installed with a fresh Python virtual environment and
+`npm ci`, then removed automatically. The clean clone passed frontend tests
+**69/69**, Vite production build (**1,346 modules**) and backend tests
+**115/115**. The temp checkout was confirmed absent after the run. This closes
+the clean ext4 dependency/build confidence gap, but does not certify the actual
+CachyOS laptop, live projection K&M, or physical shell/AI PTY preservation.

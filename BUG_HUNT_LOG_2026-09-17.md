@@ -860,3 +860,11 @@ K&M remains environment-blocked by F-080.
 Initial reproduction was a safe failed package attempt; no bundle or protected
 file was written. After the fix, the exact-path package run produced a
 134-entry ZIP from `83f302c` with all protected paths absent.
+
+## Fresh ext4 distribution verification — 2026-09-17 (F-033/F-058)
+
+No new defect was found. A disposable WSL ext4 clone installed fresh Python
+and frontend dependencies, passed frontend **69/69**, Vite (**1,346 modules**)
+and backend **115/115**, then was removed and verified absent. The physical
+CachyOS and live K&M/PTY gates remain unverified rather than being inferred
+from this clean-filesystem run.

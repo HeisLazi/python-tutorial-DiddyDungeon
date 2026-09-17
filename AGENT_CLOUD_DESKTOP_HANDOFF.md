@@ -287,6 +287,8 @@ Current verification:
 - launcher contract suite: **16/16**;
 - Vite production build: **1,346 modules**;
 - native Linux launcher/preflight `--help` and shell syntax checks: green;
+- fresh disposable ext4 clone: `npm ci`, frontend **69/69**, Vite (**1,346
+  modules**) and backend **115/115** passed; the temp checkout was removed;
 - browser K&M attach: still blocked by F-080, so no new visual-device claim.
 
 Remaining release gates are intentionally unchanged:
@@ -294,7 +296,8 @@ Remaining release gates are intentionally unchanged:
 1. Apply only the two guarded hosted migrations after explicit approval, then
    run authenticated two-device campaign/avatar/source acceptance.
 2. Demonstrate PC/laptop-equivalent live projection and shell/AI PTY survival.
-3. Run the clean native CachyOS acceptance and record kernel/package evidence.
+3. Run the clean native CachyOS acceptance and record kernel/package evidence;
+   the disposable ext4 build is not a substitute for that physical device.
 4. Resolve the browser attach environment before claiming fresh visual K&M.
 
 No hosted migration, seed, player-state write, protected-save migration or PTY

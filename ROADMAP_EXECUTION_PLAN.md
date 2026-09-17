@@ -968,3 +968,12 @@ inside the checkout and untracked. The package still comes exclusively from
 blanket dirty-source bypass. Launcher-contract coverage is **16/16**; a
 post-commit run created a 134-entry ZIP from `83f302c` with every protected
 path absent and the nested directory untouched.
+
+## Current checkpoint — 2026-09-17 — fresh ext4 distribution verification
+
+The published branch was cloned into a disposable WSL ext4 directory outside
+OneDrive. Fresh Python and frontend dependencies were installed with the
+native Linux toolchain; frontend tests **69/69**, Vite (**1,346 modules**) and
+backend tests **115/115** passed. The temporary checkout was removed and its
+absence verified. This strengthens F-033/F-058 distribution evidence without
+claiming the real CachyOS laptop, live projection K&M or physical PTY gate.
