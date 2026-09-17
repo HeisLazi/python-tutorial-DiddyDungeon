@@ -445,3 +445,11 @@ Journal/Battle screen split.
 The clean staged frontend suite passed **49/49** and the Vite build transformed
 **1,346 modules**. WSL backend discovery passed **105/105**. No protected save,
 workspace file, cloud migration or PTY was changed by the verification run.
+
+## Wide-route navigation hunt — 2026-09-17 (F-104)
+
+| ID | Severity | Finding | Status |
+|---|---|---|---|
+| F-104 | P1 | The full-width Hub/Character/Homestead presentation removed the activity rail but did not provide an alternate route bar, leaving Homestead and Hub as navigation dead ends. | Fixed with a compact, horizontally scrollable navigation bar rendered inside the wide surface. It includes Hub, Forge, Tutor, Journal, Codex, Character, Homestead, Dungeon and Settings, with active-route and keyboard-accessible states. |
+
+No canonical state, PTY, cloud transport or personal workspace file was changed.

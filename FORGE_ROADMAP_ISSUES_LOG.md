@@ -1869,3 +1869,13 @@ staging frontend tests **49/49**, and Vite production build (**1,346 modules**).
 The protected `progress.json`, `tutor.py` and `dungeon.py` files remain outside
 the commit, and no PTY was restarted. Browser K&M and hosted migration remain
 external gates.
+
+## Wide-route navigation recovery — 2026-09-17
+
+| ID | Severity | Area | Finding | Status |
+|---|---|---|---|---|
+| F-104 | P1 | Navigation | Hub, Character and Homestead correctly became full-width, but removing the activity rail without a replacement left those routes as dead ends: a player could enter Homestead and have no visible way to reach Forge, Journal, Codex or Dungeon. | Fixed with a compact `Wide route navigation` bar inside every full-width route. It keeps the AI/IDE layout out of the presentation surface, marks the active destination, supports keyboard focus, and routes every destination through the existing `setActiveView` state without remounting PTYs. |
+
+Verification for this repair: staged frontend tests **49/49** and Vite
+production build **1,346 modules**. Browser K&M remains unavailable in the
+current Codex environment, so no fresh click-through claim is made here.

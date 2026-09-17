@@ -282,6 +282,39 @@ function ProgressBar({ value, max, label, className = '' }) {
   )
 }
 
+export function SurfaceNavigation({ activeView, onNavigate }) {
+  return (
+    <nav className="surface-nav" data-testid="wide-route-nav" aria-label="Wide route navigation">
+      <button className="surface-nav-brand" type="button" onClick={() => onNavigate?.('hub')} aria-label="Open Quest Hub">
+        <span aria-hidden="true">⌂</span><strong>QUEST LAB</strong>
+      </button>
+      <div className="surface-nav-links">
+        {viewItems.map((item) => (
+          <button
+            key={item.id}
+            type="button"
+            className={`surface-nav-link ${activeView === item.id ? 'active' : ''}`}
+            onClick={() => onNavigate?.(item.id)}
+            aria-current={activeView === item.id ? 'page' : undefined}
+          >
+            <span aria-hidden="true">{item.icon}</span>
+            <span>{item.label}</span>
+          </button>
+        ))}
+      </div>
+    </nav>
+  )
+}
+
+function WideSurfaceFrame({ activeView, onNavigate, children }) {
+  return (
+    <div className="wide-screen-frame">
+      <SurfaceNavigation activeView={activeView} onNavigate={onNavigate} />
+      {children}
+    </div>
+  )
+}
+
 export function TutorPracticeBar({ progress, practiceProjection, onPracticePrompt, busy }) {
   const activeProject = (progress?.projects || []).find((project) => project.status === 'active') || {}
   const fallbackConcepts = Array.from(new Set([
@@ -1349,8 +1382,13 @@ function SettingsScreen({ preferences, setters, resetLayout, equipped, account, 
 }
 
 export function GameScreen({ activeView, progress, revision, encounter, codexProjection, practiceProjection, equipmentProjection, dungeon, dungeonEditorContent, onDungeonEditorChange, onSaveDungeon, onDungeonChoose, onDungeonRest, onDungeonMarketPurchase, onDungeonEquip, onDungeonLeave, onDungeonFinish, purchaseCosmetic, equipCosmetic, equipCampaignItem, saveCodexNote, busy, dungeonSaving, submitBattle, submitBoss, submitDungeon, onStartDungeon, onPracticePrompt, preferences, setters, resetLayout, account, accountBusy, accountNotice, onSignIn, onSignUp, onSignOut, onDeviceLabelSave, onResolveConflict, onNavigate, campaignReady = true }) {
+  const wideRoute = ['hub', 'character', 'homestead'].includes(activeView)
+  const withWideNavigation = (screen) => wideRoute
+    ? <WideSurfaceFrame activeView={activeView} onNavigate={onNavigate}>{screen}</WideSurfaceFrame>
+    : screen
+
   if (!campaignReady && activeView !== 'settings') {
-    return (
+    return withWideNavigation(
       <div className="game-screen-scroll campaign-loading" data-testid="campaign-loading" aria-live="polite">
         <section className="screen-hero">
           <div><span className="screen-kicker">CAMPAIGN SYNC</span><h2>Waiting for the canonical state</h2><p>Forge will show your level, encounters, Codex and inventory as soon as the state service returns the latest revision. No starter values are being substituted.</p></div>
@@ -1358,11 +1396,11 @@ export function GameScreen({ activeView, progress, revision, encounter, codexPro
       </div>
     )
   }
-  if (activeView === 'hub') return <HubScreen progress={progress} revision={revision} onOpen={onNavigate} />
+  if (activeView === 'hub') return withWideNavigation(<HubScreen progress={progress} revision={revision} onOpen={onNavigate} />)
   if (activeView === 'quests') return <QuestJournal progress={progress} revision={revision} encounter={encounter} submitBattle={submitBattle} submitBoss={submitBoss} busy={busy} />
   if (activeView === 'codex') return <Codex progress={progress} revision={revision} codexProjection={codexProjection} saveCodexNote={saveCodexNote} busy={busy} />
-  if (activeView === 'character') return <CharacterSheet progress={progress} revision={revision} />
-  if (activeView === 'homestead') return <Homestead progress={progress} revision={revision} equipmentProjection={equipmentProjection} purchaseCosmetic={purchaseCosmetic} equipCosmetic={equipCosmetic} equipCampaignItem={equipCampaignItem} busy={busy} />
+  if (activeView === 'character') return withWideNavigation(<CharacterSheet progress={progress} revision={revision} />)
+  if (activeView === 'homestead') return withWideNavigation(<Homestead progress={progress} revision={revision} equipmentProjection={equipmentProjection} purchaseCosmetic={purchaseCosmetic} equipCosmetic={equipCosmetic} equipCampaignItem={equipCampaignItem} busy={busy} />)
   if (activeView === 'dungeon') return <DungeonScreen dungeon={dungeon} revision={revision} onStart={onStartDungeon} onChoose={onDungeonChoose} onRest={onDungeonRest} onMarketPurchase={onDungeonMarketPurchase} onEquip={onDungeonEquip} onLeave={onDungeonLeave} onFinish={onDungeonFinish} submitDungeon={submitDungeon} busy={busy} saving={dungeonSaving} editorContent={dungeonEditorContent} onEditorChange={onDungeonEditorChange} onSave={onSaveDungeon} />
   if (activeView === 'practice') return <PracticeScreen progress={progress} revision={revision} practiceProjection={practiceProjection} onPracticePrompt={onPracticePrompt} busy={busy} />
   if (activeView === 'settings') return <SettingsScreen preferences={preferences} setters={setters} resetLayout={resetLayout} equipped={progress.homestead?.equipped || {}} account={account} accountBusy={accountBusy} accountNotice={accountNotice} onSignIn={onSignIn} onSignUp={onSignUp} onSignOut={onSignOut} onDeviceLabelSave={onDeviceLabelSave} onResolveConflict={onResolveConflict} revision={revision} />
