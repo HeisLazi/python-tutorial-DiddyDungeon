@@ -2639,3 +2639,17 @@ could not be performed because this Codex environment had no attachable tab, so
 no new live click-through claim is made. The protected local `progress.json`,
 `tutor.py` and `dungeon.py` files were not staged or edited, and the shell/AI PTY
 keys remain outside the Codex tab state.
+
+### Battle Shell encounter projection repair — F-112
+
+During the final source review, the Battle Shell’s Question Lens expression was
+found to reference `encounter` without receiving the canonical projection. The
+component now accepts `encounter` explicitly, and both the compatibility Journal
+call site and the visible Codex tab pass it through. This keeps the tab derived
+from the same state-service data as Resolve, objective counts and boss phases;
+it does not synthesize a question or reward in the browser.
+
+The focused regression suite asserts the prop binding. Current-source tests
+pass **32/32**, clean ext4 frontend tests pass **51/51**, and Vite transforms
+**1,346 modules** successfully. Browser K&M is still an external gate because
+the Codex environment has no attachable browser tab.

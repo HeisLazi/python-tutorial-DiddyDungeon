@@ -1949,3 +1949,12 @@ remains an external gate because the Codex browser could not attach a tab.
 Verification: current-source tests **32/32**, clean ext4 frontend tests **51/51**,
 and Vite production build **1,346 modules**. Browser K&M remains an external
 gate because no Codex browser tab was attachable.
+
+## Battle Shell encounter prop binding — 2026-09-17
+
+| ID | Severity | Area | Finding | Status |
+|---|---|---|---|---|
+| F-112 | P1 | Battle Shell runtime | The tab rendered a Question Lens from `encounter`, but the new `QuestBattleScreen` signature omitted that prop. This was invisible to static tests until a render, where the tab would fail with an undefined reference. | Fixed by passing the canonical encounter projection through both Battle Shell call sites and asserting the binding in the Forge runtime suite. |
+
+Verification: current-source **32/32**, clean ext4 frontend **51/51**, Vite
+build **1,346 modules**. No state, save, PTY or hosted transport was changed.
