@@ -390,3 +390,20 @@ to “Email delivery is temporarily rate-limited. Try again later; no account wa
 created.” while retaining the safe error code for diagnostics. The new
 regression and clean ext4 frontend suite (**45/45**) pass; no account retry or
 provider bypass is performed.
+
+## UI coherence and Dungeon loadout hunt — 2026-09-17 (F-092–F-097)
+
+| ID | Severity | Finding | Status |
+|---|---|---|---|
+| F-092 | P2 | The navigation exposed Practice and Tutor as two destinations even though both use the managed `tutor.py` notebook. | Fixed by removing the Practice rail item and normalizing legacy `practice` route/storage values to `tutor`; the Practice screen remains an internal compatibility path only. |
+| F-093 | P1 | Hiding AI with visibility alone left an empty right-hand grid column and made the layout jump between routes. | Fixed with a parked off-canvas AI surface that stays mounted for PTY continuity, plus an explicit non-blocking pop-out toggle on Hub, Codex, Journal, Homestead and Settings. |
+| F-094 | P1 | Quest Journal's two-column shell left the Main Quest page compressed against a blank panel. | Fixed with a full-width journal page override while preserving the page-turn controls and the second contracts page. |
+| F-095 | P1 | The active Forge campaign file did not show the current enemy Resolve panel when the encounter had no objective list. | Fixed by rendering the state-service encounter and Resolve meter whenever a mob projection exists. |
+| F-096 | P2 | Dungeon Run Loadout was display-only; items purchased during a run could not be reviewed or re-equipped. | Fixed with a bounded canonical inventory projection, state-gateway `dungeon_equip_item` mutation and inventory menu. |
+| F-097 | P2 | Boot had no fade-out and did not distinguish a long-away return from an initial welcome. | Fixed with an animated splash in/out path and `Welcome back, <username>` after the 20-minute return threshold. |
+
+Verification: clean ext4 frontend **47/47**, Vite production build (**1,346
+modules**), mounted Forge source tests **28/28**, and backend syntax/full suite
+**101/101**. Browser K&M could not be freshly attached in this environment, so
+these findings are source/API/build verified rather than a new live-browser
+claim. Existing shell and AI PTYs were not restarted.

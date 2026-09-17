@@ -77,16 +77,21 @@ function usePersistentState(key, initialValue) {
 
 const LAUNCH_IDLE_MS = 20 * 60 * 1000
 
-function launchWasAwayTooLong() {
+function launchContext() {
   try {
     const lastSeen = Number(window.localStorage.getItem('questlab.lastSeenAt') || 0)
     const hasLaunched = window.localStorage.getItem('questlab.hasLaunched') === '1'
-    return !hasLaunched || (lastSeen > 0 && Date.now() - lastSeen > LAUNCH_IDLE_MS)
+    const returning = hasLaunched && lastSeen > 0 && Date.now() - lastSeen > LAUNCH_IDLE_MS
+    return { show: !hasLaunched || returning, returning }
   } catch {
     // A storage-blocked browser should still be usable; show the lightweight
     // splash once for this mount rather than failing the IDE boot.
-    return true
+    return { show: true, returning: false }
   }
+}
+
+function launchWasAwayTooLong() {
+  return launchContext().show
 }
 
 const terminalPalette = (skin) => {
@@ -331,7 +336,15 @@ function AppV2() {
 
   // Hub is the first-run/default destination. A previously selected route is
   // retained so a reload returns the learner to the screen they were using.
-  const [activeView, setActiveView] = usePersistentState('questlab.activeView', 'hub')
+  const [storedActiveView, setStoredActiveView] = usePersistentState('questlab.activeView', 'hub')
+  // Practice was an older navigation alias for the Tutor notebook. Keep old
+  // localStorage/deep-link state usable, but persist the single Tutor route
+  // so the rail can never grow a duplicate destination again.
+  const activeView = storedActiveView === 'practice' ? 'tutor' : storedActiveView
+  const setActiveView = (next) => setStoredActiveView((current) => {
+    const candidate = typeof next === 'function' ? next(current) : next
+    return candidate === 'practice' ? 'tutor' : candidate
+  })
   const [leftWidth, setLeftWidth] = usePersistentState('questlab.leftWidth', 220)
   const [rightWidth, setRightWidth] = usePersistentState('questlab.rightWidth', 410)
   const [terminalHeight, setTerminalHeight] = usePersistentState('questlab.terminalHeight', 245)
@@ -342,7 +355,10 @@ function AppV2() {
   const [showAiTerminal, setShowAiTerminal] = usePersistentState('questlab.showAiTerminal', true)
   const [themeChoice, setThemeChoice] = usePersistentState('questlab.themeChoice', '')
   const [fontFamily, setFontFamily] = usePersistentState('questlab.fontFamily', 'inter')
-  const [showSplash, setShowSplash] = useState(() => launchWasAwayTooLong())
+  const [initialLaunch] = useState(() => launchContext())
+  const [showSplash, setShowSplash] = useState(() => initialLaunch.show)
+  const [splashClosing, setSplashClosing] = useState(false)
+  const [aiPopoverOpen, setAiPopoverOpen] = useState(false)
 
   const progress = campaign?.progress || {}
   const player = progress.player || {}
@@ -359,7 +375,11 @@ function AppV2() {
   const terminalSkin = equipped.terminal || 'terminal-charcoal'
   const showEditor = activeView === 'forge' || activeView === 'tutor' || activeView === 'practice'
   const tutorSurface = activeView === 'tutor' || activeView === 'practice'
-  const aiVisible = showAiTerminal && !['codex', 'quests', 'homestead', 'settings'].includes(activeView)
+  const aiRouteHidden = ['hub', 'codex', 'quests', 'homestead', 'settings'].includes(activeView)
+  const hubMode = activeView === 'hub'
+  const aiGridVisible = showAiTerminal && !aiRouteHidden
+  const aiVisible = showAiTerminal && (!aiRouteHidden || aiPopoverOpen)
+  const welcomeName = cloudState.profile?.display_name || player.name || cloudState.user?.email?.split('@')?.[0] || 'Adventurer'
   const runtimeBranch = runtime?.repo_git?.branch || 'checking branch…'
   const runtimeMismatch = Boolean(runtime?.expected_branch && runtimeBranch !== runtime.expected_branch)
   const runtimeStale = Boolean(runtime?.repo_git?.behind_upstream > 0)
@@ -990,6 +1010,14 @@ function AppV2() {
   // splash is an interruption only on first launch or after twenty minutes
   // away; it never unmounts the editor or either PTY.
   useEffect(() => {
+    if (storedActiveView === 'practice') setStoredActiveView('tutor')
+  }, [storedActiveView, setStoredActiveView])
+
+  useEffect(() => {
+    if (!aiRouteHidden) setAiPopoverOpen(false)
+  }, [activeView, aiRouteHidden])
+
+  useEffect(() => {
     const touch = () => {
       try {
         window.localStorage.setItem('questlab.hasLaunched', '1')
@@ -1358,6 +1386,7 @@ function AppV2() {
 
   const useDungeonRest = (runId) => dungeonAction('/api/dungeon/rest', { run_id: runId }, (result) => `Rest used. +${result.healed ?? 0} HP; the next room is ready.`)
   const buyDungeonItem = (runId, itemId) => dungeonAction('/api/dungeon/market', { run_id: runId, item_id: itemId }, (result) => `Bought ${result.item?.name || itemId} for run currency.`)
+  const equipDungeonItem = (runId, itemId) => dungeonAction('/api/dungeon/equip', { run_id: runId, item_id: itemId }, (result) => `${result.equipped || itemId} equipped.`)
   const chooseDungeonRoom = (runId, choiceId) => dungeonAction('/api/dungeon/choose', { run_id: runId, choice_id: choiceId }, (result) => {
     const kind = result.choice?.kind || result.dungeon?.room_type || 'room'
     return `${String(kind).replaceAll('_', ' ')} selected. The state service issued this room.`
@@ -1617,7 +1646,12 @@ function AppV2() {
   }
 
   const dismissSplash = () => {
-    setShowSplash(false)
+    if (splashClosing) return
+    setSplashClosing(true)
+    window.setTimeout(() => {
+      setShowSplash(false)
+      setSplashClosing(false)
+    }, 320)
     try {
       window.localStorage.setItem('questlab.hasLaunched', '1')
       window.localStorage.setItem('questlab.lastSeenAt', String(Date.now()))
@@ -1666,10 +1700,17 @@ function AppV2() {
   const saveDeviceLabel = (label) => accountAction(() => syncEngine.setDeviceLabel(label), 'Device name saved.')
   const resolveCloudConflict = (choice) => accountAction(() => syncEngine.resolveConflict(choice), choice === 'cloud' ? 'Cloud campaign copy applied.' : 'This device campaign copy published.')
 
-  const gridStyle = {
-    gridTemplateColumns: `48px ${leftWidth}px 5px minmax(420px, 1fr) 5px ${rightWidth}px`,
-    gridTemplateRows: `minmax(220px, 1fr) 5px ${terminalHeight}px`,
-  }
+  const gridStyle = hubMode
+    ? {
+        gridTemplateColumns: 'minmax(0, 1fr)',
+        gridTemplateRows: 'minmax(220px, 1fr)',
+      }
+    : {
+        gridTemplateColumns: aiGridVisible
+          ? `48px ${leftWidth}px 5px minmax(420px, 1fr) 5px ${rightWidth}px`
+          : `48px ${leftWidth}px 5px minmax(420px, 1fr)`,
+        gridTemplateRows: `minmax(220px, 1fr) 5px ${terminalHeight}px`,
+      }
   const preferences = { editorFontSize, terminalFontSize, hudDensity, animations, showAiTerminal, themeChoice, fontFamily }
   const setters = { setEditorFontSize, setTerminalFontSize, setHudDensity, setAnimations, setShowAiTerminal, setThemeChoice, setFontFamily }
   const xpPercent = campaignReady ? clamp(((player.xp ?? 0) / Math.max(1, player.xp_next ?? 100)) * 100, 0, 100) : 0
@@ -1677,21 +1718,22 @@ function AppV2() {
 
   return (
     <div
-      className={`app-shell forge-v2 ${hudDensity === 'compact' ? 'hud-compact' : ''} ${animations ? '' : 'no-animations'}`}
+      className={`app-shell forge-v2 ${hubMode ? 'hub-mode' : ''} ${hudDensity === 'compact' ? 'hud-compact' : ''} ${animations ? '' : 'no-animations'}`}
       data-theme={theme}
       data-font={fontFamily}
       data-cursor={equipped.cursor || 'cursor-basic'}
       data-hud={equipped.hud || 'hud-forge'}
       data-terminal={terminalSkin}
+      data-view={activeView}
       data-campaign-revision={campaign?.revision ?? ''}
     >
       {showSplash && (
-        <div className="launch-splash" role="dialog" aria-modal="true" aria-label="Welcome to Python Quest Lab">
+        <div className={`launch-splash ${splashClosing ? 'is-closing' : ''}`} role="dialog" aria-modal="true" aria-label="Welcome to Python Quest Lab">
           <div className="launch-splash-mark" aria-hidden="true"><StatIcon name="flame" /></div>
           <span className="screen-kicker">PYTHON QUEST LAB</span>
-          <h2>Return to the Forge</h2>
-          <p>Your campaign, notes and checkpoint are waiting. The shell and AI sessions stay connected while this welcome screen is open.</p>
-          <button className="primary" type="button" onClick={dismissSplash}>Enter Forge</button>
+          <h2>{initialLaunch.returning ? `Welcome back, ${welcomeName}` : 'Welcome to the Forge'}</h2>
+          <p>{initialLaunch.returning ? 'Your campaign, notes and checkpoint are waiting. Resume exactly where you left off.' : 'Your campaign, notes and checkpoint are ready. The shell and AI sessions stay connected while this welcome screen is open.'}</p>
+          <button className="primary" type="button" onClick={dismissSplash} disabled={splashClosing}>{splashClosing ? 'Opening…' : 'Enter Forge'}</button>
         </div>
       )}
       <RewardQueue items={rewardQueue} />
@@ -1719,6 +1761,11 @@ function AppV2() {
             {cloudState.label}
           </span>
           <span className="rank-stat">RANK {campaignReady ? (player.rank || 'F') : '—'}</span>
+          {showAiTerminal && aiRouteHidden && (
+            <button className="ai-popout-toggle" type="button" onClick={() => setAiPopoverOpen((open) => !open)} aria-expanded={aiPopoverOpen} aria-controls="questlab-ai-panel">
+              {aiPopoverOpen ? 'Hide AI' : 'Open AI'}
+            </button>
+          )}
         </div>
       </header>
 
@@ -1729,9 +1776,9 @@ function AppV2() {
       </div>
 
       <main className="workspace-grid" style={gridStyle}>
-        <ActivityRail activeView={activeView} setActiveView={setActiveView} player={player} campaignReady={campaignReady} />
+        {!hubMode && <ActivityRail activeView={activeView} setActiveView={setActiveView} player={player} campaignReady={campaignReady} />}
 
-        <aside className="left-panel panel">
+        {!hubMode && <aside className="left-panel panel">
           <ContextPanel
             activeView={activeView}
             campaign={campaign}
@@ -1743,9 +1790,9 @@ function AppV2() {
             submitBattle={submitBattle}
             busy={busy}
           />
-        </aside>
+        </aside>}
 
-        <div className="resize-handle vertical left-resizer" onPointerDown={(event) => startResize('left', event)} />
+        {!hubMode && <div className="resize-handle vertical left-resizer" onPointerDown={(event) => startResize('left', event)} />}
 
         <section className={`editor-panel panel ${showEditor ? '' : 'surface-hidden'} ${tutorSurface ? 'tutor-editor-panel' : ''}`}>
           <div className="editor-toolbar">
@@ -1868,6 +1915,7 @@ function AppV2() {
               onSaveDungeon={saveDungeon}
               onDungeonRest={useDungeonRest}
               onDungeonMarketPurchase={buyDungeonItem}
+              onDungeonEquip={equipDungeonItem}
               onDungeonChoose={chooseDungeonRoom}
               onDungeonLeave={leaveDungeonRoom}
               onDungeonFinish={finishDungeonRun}
@@ -1898,9 +1946,9 @@ function AppV2() {
           </section>
         )}
 
-        <div className="resize-handle vertical right-resizer" onPointerDown={(event) => startResize('right', event)} />
+        {aiGridVisible && <div className="resize-handle vertical right-resizer" onPointerDown={(event) => startResize('right', event)} />}
 
-        <aside className={`ai-panel panel ${aiVisible ? '' : 'surface-hidden'}`} aria-hidden={!aiVisible}>
+        <aside id="questlab-ai-panel" className={`ai-panel panel ${aiGridVisible ? '' : aiPopoverOpen && showAiTerminal ? 'ai-popout' : 'ai-panel-parked'} ${aiVisible ? '' : 'surface-hidden'}`} aria-hidden={!aiVisible}>
           <div className="ai-toolbar">
             <div>
               <span className="panel-title-inline">PYR / AI</span>

@@ -92,13 +92,17 @@
   text-align: center;
   background: color-mix(in srgb, var(--bg) 94%, #000);
   backdrop-filter: blur(12px);
+  animation: questlab-splash-in .28s ease-out both;
 }
+.launch-splash.is-closing { animation: questlab-splash-out .32s ease-in both; }
 .launch-splash > * { max-width: 520px; }
 .launch-splash-mark { width: 70px; height: 70px; display: grid; place-items: center; margin-bottom: 8px; border: 1px solid color-mix(in srgb, var(--gold) 48%, var(--line)); border-radius: 22px; background: color-mix(in srgb, var(--gold) 10%, var(--panel2)); color: var(--gold); }
 .launch-splash-mark .quest-icon { width: 38px; height: 38px; }
 .launch-splash h2 { margin: 0; font: 800 30px/1.1 ui-monospace, monospace; color: var(--text); }
 .launch-splash p { margin: 0 0 8px; color: var(--muted); font-size: 13px; line-height: 1.6; }
 .launch-splash button { min-width: 150px; padding: 10px 16px; }
+@keyframes questlab-splash-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes questlab-splash-out { from { opacity: 1; } to { opacity: 0; } }
 
 .tutor-practice-bar { display: grid; grid-template-columns: minmax(160px, 1.25fr) repeat(3, minmax(100px, .7fr)) auto; gap: 8px; align-items: end; padding: 9px 11px; border-bottom: 1px solid var(--line); background: color-mix(in srgb, var(--gold) 5%, var(--panel)); }
 .tutor-practice-heading { display: grid; gap: 3px; align-self: center; }
@@ -118,6 +122,22 @@
 .codex-subsection-label { margin-top: 16px; }
 .codex-mistakes { display: grid; gap: 6px; }
 .codex-mistakes p { margin: 0; padding: 8px 10px; border-left: 2px solid color-mix(in srgb, var(--danger) 55%, var(--line)); color: var(--muted); font-size: 10px; line-height: 1.45; background: color-mix(in srgb, var(--danger) 5%, transparent); }
+.codex-active-chapter { border-color: color-mix(in srgb, var(--gold) 28%, var(--line)); }
+.codex-active-chapter-grid { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(220px, .7fr); gap: 16px; align-items: center; }
+.codex-active-chapter-grid h3 { margin: 4px 0; font: 800 18px ui-monospace, monospace; }
+.codex-active-chapter-grid p { margin: 0; color: var(--muted); font-size: 11px; line-height: 1.5; }
+.codex-chapter-status { display: grid; gap: 4px; padding: 11px; border: 1px solid var(--line); border-radius: 9px; background: color-mix(in srgb, var(--gold) 5%, var(--panel3)); }
+.codex-chapter-status span,.codex-chapter-status small { color: var(--muted); font: 9px/1.4 ui-monospace, monospace; }
+.codex-chapter-status strong { color: var(--text); font: 800 12px ui-monospace, monospace; }
+.dungeon-inventory-list { display: grid; gap: 7px; margin: 8px 0 12px; }
+.dungeon-inventory-item { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: center; padding: 9px; border: 1px solid var(--line); border-radius: 9px; background: var(--panel3); }
+.dungeon-inventory-item.equipped { border-color: color-mix(in srgb, var(--gold) 55%, var(--line)); background: color-mix(in srgb, var(--gold) 7%, var(--panel3)); }
+.dungeon-inventory-item > div { display: grid; gap: 3px; min-width: 0; }
+.dungeon-inventory-item small { font: 800 8px ui-monospace, monospace; letter-spacing: .1em; color: var(--gold); }
+.dungeon-inventory-item strong { font: 11px ui-monospace, monospace; color: var(--text); }
+.dungeon-inventory-item span { font-size: 9px; line-height: 1.35; color: var(--muted); }
+.dungeon-inventory-item button { padding: 5px 8px; font-size: 9px; }
+.dungeon-inventory-item button:disabled { opacity: .7; }
 
 .hub-grid { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(280px, .9fr); gap: 14px; }
 .hub-hero { min-height: 150px; }
@@ -140,6 +160,7 @@
 .campaign-battle-sidebar .battle-submit-card .card-heading { display: none; }
 .campaign-battle-sidebar .battle-submit-card p { font-size: 9px; margin: 0 0 8px; }
 .campaign-battle-sidebar .battle-submit-card textarea { min-height: 64px; }
+.campaign-battle-resolve { padding: 0 10px 4px; }
 .chapter-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; }
 .chapter-card { display: grid; grid-template-columns: auto 1fr; gap: 10px; align-items: start; padding: 11px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel3); min-height: 126px; }
 .chapter-card.active { border-color: color-mix(in srgb, var(--gold) 55%, var(--line)); background: color-mix(in srgb, var(--gold) 7%, var(--panel3)); }
@@ -164,6 +185,7 @@
 .journal-controls span { color: var(--muted); font: 9px ui-monospace, monospace; letter-spacing: .14em; }
 .journal-controls button { padding: 6px 10px; font-size: 10px; }
 .journal-page { padding: 2px; border: 1px solid color-mix(in srgb, var(--gold) 28%, var(--line)); border-radius: 14px; }
+.quest-journal-screen .journal-page { grid-template-columns: minmax(0, 1fr); }
 .journal-page .game-card { margin: 0; border: 0; border-radius: 12px; box-shadow: none; background: color-mix(in srgb, var(--panel2) 70%, transparent); }
 .journal-page[data-journal-page="0"] .journal-contract-page { display: none; }
 .journal-page[data-journal-page="1"] .journal-main-page { display: none; }
@@ -204,6 +226,7 @@
   .tutor-practice-heading { grid-column: 1 / -1; }
   .tutor-practice-bar button { justify-self: start; }
   .hub-grid { grid-template-columns: 1fr; }
+  .codex-active-chapter-grid { grid-template-columns: 1fr; }
 }
 @media (max-width: 620px) {
   .tutor-practice-bar { grid-template-columns: 1fr 1fr; }

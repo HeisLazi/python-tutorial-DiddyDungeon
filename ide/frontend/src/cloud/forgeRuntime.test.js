@@ -156,6 +156,37 @@ test('Dungeon exposes a state-preserving map and editable code-editor tab', () =
   assert.match(views, /Open code editor/)
 })
 
+test('navigation keeps Tutor as the single practice workspace and parks hidden AI without a blank grid column', () => {
+  const app = source('../AppV2.jsx')
+  const views = source('../RpgViews.jsx')
+  const v2 = source('../v2.css')
+  const foundation = source('../foundation.css')
+
+  assert.match(app, /storedActiveView === 'practice' \? 'tutor' : storedActiveView/)
+  assert.match(app, /candidate === 'practice' \? 'tutor' : candidate/)
+  assert.doesNotMatch(views, /id: 'practice', icon:/)
+  assert.match(app, /gridStyle = hubMode\s*\? \{/)
+  assert.match(app, /aiGridVisible\s*\?\s*`48px/)
+  assert.match(app, /aiGridVisible\s*\?\s*''\s*:\s*aiPopoverOpen/)
+  assert.match(v2, /ai-panel-parked/)
+  assert.match(v2, /hub-mode \.game-screen\{grid-column:1/)
+  assert.match(app, /initialLaunch\.returning \? `Welcome back, \$\{welcomeName\}`/)
+  assert.match(foundation, /questlab-splash-in/)
+})
+
+test('Journal and Codex keep the active encounter projection visible', () => {
+  const app = source('../AppV2.jsx')
+  const views = source('../RpgViews.jsx')
+  const foundation = source('../foundation.css')
+
+  assert.match(views, /data-testid="forge-encounter-resolve"/)
+  assert.match(views, /data-testid="codex-active-chapter"/)
+  assert.match(views, /data-testid="dungeon-inventory"/)
+  assert.match(views, /onEquip=\{onDungeonEquip\}/)
+  assert.match(app, /\/api\/dungeon\/equip/)
+  assert.match(foundation, /quest-journal-screen \.journal-page \{ grid-template-columns: minmax\(0, 1fr\); \}/)
+})
+
 test('Dungeon renders state-owned adaptive mob identity and reward feedback', () => {
   const views = source('../RpgViews.jsx')
   const app = source('../AppV2.jsx')
