@@ -1013,6 +1013,10 @@ export class SyncEngine {
     return code === '40001' || Number(error?.status) === 409
   }
 
+  _isCampaignSchemaError(error) {
+    return /(?:next_state|campaign projection) contains unsupported domains/i.test(String(error?.message || error || ''))
+  }
+
   async _syncNow({ silent = false } = {}) {
     if (!this.session?.user || !this.client) return this.state
     const sessionNonce = this.sessionNonce
@@ -1140,7 +1144,16 @@ export class SyncEngine {
           }
           return this._setConflict('Cloud rejected this save because another revision won.', this.latestLocalSnapshot, cloud)
         }
-        this.setState({ syncStatus: 'error', label: 'Cloud sync error', detail: safeError.message, error: safeError.message, pendingChanges: this.outbox.length })
+        const schemaMigrationRequired = this._isCampaignSchemaError(error)
+        this.setState({
+          syncStatus: 'error',
+          label: schemaMigrationRequired ? 'Cloud schema needs migration' : 'Cloud sync error',
+          detail: schemaMigrationRequired
+            ? 'Campaign sync is queued locally until Supabase applies 20260917000100_player_state_campaign_projection.sql.'
+            : safeError.message,
+          error: safeError.message,
+          pendingChanges: this.outbox.length,
+        })
         return this.state
       })
       .finally(() => {
