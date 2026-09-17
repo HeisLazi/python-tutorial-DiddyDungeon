@@ -939,3 +939,13 @@ hosted migration changed.
 Verification: Windows frontend tests **73/73**, Vite transforms **1,346
 modules**, and the supported WSL backend suite is **116/116**; no state,
 learner file, PTY or hosted migration changed.
+
+## Splash idle timer refreshed while the app was unattended — 2026-09-17 (F-152)
+
+| ID | Severity | Finding | Status |
+|---|---|---|---|
+| F-152 | P2 | The launch-context effect updated `lastSeenAt` on a 60-second heartbeat, so leaving Forge open and unattended for more than 20 minutes never qualified for the requested returning splash on the next launch. | Fixed by recording last-seen time from real pointer/keyboard activity and mount/dismissal only; the background heartbeat was removed. |
+
+Verification: Windows frontend tests **74/74**, Vite transforms **1,346
+modules**, and the supported WSL backend suite is **116/116**; no state,
+learner file, PTY or hosted migration changed.

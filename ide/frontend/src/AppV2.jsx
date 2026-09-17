@@ -1178,11 +1178,9 @@ function AppV2() {
     const onActivity = () => touch()
     window.addEventListener('pointerdown', onActivity, { passive: true })
     window.addEventListener('keydown', onActivity, { passive: true })
-    const timer = window.setInterval(touch, 60_000)
     return () => {
       window.removeEventListener('pointerdown', onActivity)
       window.removeEventListener('keydown', onActivity)
-      window.clearInterval(timer)
     }
   }, [])
 

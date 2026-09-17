@@ -2344,3 +2344,14 @@ Verification: Windows frontend source tests are **73/73**, Vite transforms
 **1,346 modules**, and the WSL backend suite is **116/116**; no state,
 learner file, PTY or hosted migration changed. Browser K&M remains blocked by
 F-080.
+
+## Splash idle timer refreshed while the app was unattended — F-152
+
+| ID | Severity | Area | Finding | Status |
+|---|---|---|---|---|
+| F-152 | P2 | Launch continuity | A 60-second launch-context heartbeat kept refreshing `lastSeenAt`, so an unattended Forge session could never trigger the requested returning splash after 20 minutes away. | Fixed by recording activity only from real pointer/keyboard use plus mount/dismissal; the heartbeat is gone. |
+
+Verification: Windows frontend source tests are **74/74**, Vite transforms
+**1,346 modules**, and the WSL backend suite is **116/116**; no state,
+learner file, PTY or hosted migration changed. Browser K&M remains blocked by
+F-080.

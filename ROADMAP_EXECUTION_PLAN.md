@@ -1031,3 +1031,6 @@ narrow Codex windows now use the same explicit React paging contract.
 F-151 also hides locked future chapter/encounter identities in Hub and legacy
 Journal contexts, preserving the no-future-question/answer disclosure rule
 while leaving active and defeated records state-owned and visible.
+
+F-152 fixes launch continuity by removing the `lastSeenAt` background heartbeat;
+only actual user activity and explicit splash dismissal refresh the idle marker.

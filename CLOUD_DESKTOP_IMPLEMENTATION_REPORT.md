@@ -3169,3 +3169,9 @@ Hub and compatibility Journal contexts now hide locked chapter/mob names and
 concepts until the state service unlocks them. The visible cards keep a dashed
 silhouette/unknown treatment; active and defeated encounters still show their
 validated names. No question, answer, reward or progression data is invented.
+
+### Splash idle-activity correction — F-152 (2026-09-17)
+
+Removed the background `lastSeenAt` heartbeat so the returning splash can
+correctly appear after a genuinely unattended 20-minute gap. Pointer/keyboard
+activity and explicit mount/dismissal still keep launch continuity responsive.

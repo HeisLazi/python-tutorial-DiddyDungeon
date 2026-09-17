@@ -313,6 +313,8 @@ compatibility stylesheet order cannot reintroduce a narrow-window scrollbar.
 F-151 closes a separate information-leak path: Hub and compatibility Journal
 surfaces now render locked chapters/encounters as unknown silhouettes rather
 than exposing future names or concepts.
+F-152 removes the launch-context heartbeat that masked an unattended 20-minute
+gap; `lastSeenAt` now reflects actual interaction rather than elapsed runtime.
 
 Remaining release gates are intentionally unchanged:
 

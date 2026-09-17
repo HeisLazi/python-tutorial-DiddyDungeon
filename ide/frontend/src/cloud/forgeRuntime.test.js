@@ -217,6 +217,15 @@ test('navigation keeps Tutor as the single practice workspace and parks hidden A
   assert.match(foundation, /questlab-splash-in/)
 })
 
+test('splash idle timing follows real activity instead of a background heartbeat', () => {
+  const app = source('../AppV2.jsx')
+
+  assert.match(app, /const LAUNCH_IDLE_MS = 20 \* 60 \* 1000/)
+  assert.match(app, /window\.addEventListener\('pointerdown', onActivity/)
+  assert.match(app, /window\.addEventListener\('keydown', onActivity/)
+  assert.doesNotMatch(app, /window\.setInterval\(touch, 60_000\)/)
+})
+
 test('legacy shell wires wide-route navigation back to the active view', () => {
   const legacy = source('../App.jsx')
   assert.match(legacy, /<GameScreen[\s\S]*onNavigate=\{setActiveView\}[\s\S]*campaignReady=\{campaignReady\}/)
