@@ -301,8 +301,9 @@ Current verification:
 The latest local presentation checkpoint is F-147: the Codex reader now uses a
 single field-guide visual language on top of the bounded folio (quiet paper
 surface, compact metric strip, clear shelf spine and readable example blocks).
-This is a CSS-only refinement; it does not add a scroll owner, change the
-campaign projection, or remount either PTY.
+F-148 also removes the old `min-height: 520px` fallback from the base Codex
+primitive. These are CSS-only refinements; they do not add a scroll owner,
+change the campaign projection, or remount either PTY.
 
 Remaining release gates are intentionally unchanged:
 
