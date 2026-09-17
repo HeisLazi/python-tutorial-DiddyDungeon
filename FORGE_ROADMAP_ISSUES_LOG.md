@@ -1628,7 +1628,7 @@ launcher and its printed URL, then sign in on that origin.
 
 | ID | Severity | Area | Finding | Status |
 |---|---|---|---|---|
-| F-063 | P2 | Avatar identity visibility | An anonymous Forge session has no account identity from which to download the private portrait, making the rail/Character avatar look unsynced. | Confirmed operational blocker. Sign in on both devices with the same Quest Lab account, then verify the account name and portrait; hosted Storage/RLS acceptance remains unverified here. |
+| F-063 | P2 | Avatar identity visibility | An anonymous Forge session has no account identity from which to download the private portrait, making the rail/Character avatar look unsynced. | Fixed for the hosted QA path: the disposable account registered a profile/device and two isolated clients uploaded, downloaded and replaced the private avatar; anonymous profile/object reads were denied. The remaining gate is the user's own PC/laptop sign-in and portrait round-trip on the corrected runtime. |
 
 ## Roadmap UI / learning-surface slice — 2026-09-17
 
