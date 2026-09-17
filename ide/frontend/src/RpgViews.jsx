@@ -1307,7 +1307,6 @@ function DungeonScreen({ dungeon, revision, onStart, onChoose, onRest, onMarketP
         </>
       )}
       </div>
-    </div>
   )
 }
 
