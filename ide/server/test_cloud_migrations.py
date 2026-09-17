@@ -114,6 +114,8 @@ class CloudMigrationContractTests(unittest.TestCase):
             "player_notes",
             "codex player notes must be bounded",
             "dungeon question contains unsupported or hidden fields",
+            "dungeon inventory must be a bounded array",
+            "dungeon inventory contains unsupported fields",
             "perform public.validate_player_state_projection_base(base_state)",
             "revoke all on function public.validate_player_state_projection(jsonb) from public;",
         ):
