@@ -2472,3 +2472,9 @@ changed. Browser K&M remains blocked by F-080.
 | ID | Severity | Area | Finding | Status |
 |---|---|---|---|---|
 | F-163 | P2 | Native Linux distribution | The ext4 distribution evidence needed to be refreshed after the published merge at `1782e97`, rather than relying on an older source tip. | Rechecked in a disposable ext4 clone of `feature/cloud-sync-desktop` at `1782e97`: native Rollup `rollup-linux-x64-gnu`, backend **116/116**, frontend **82/82**, and Vite **1,346 modules** all pass. The report's one dirty path is only the disposable `.venv` symlink used to reuse the test runtime; tracked source is clean. This is WSL/ext4 evidence, not physical CachyOS or browser K&M certification. |
+
+## Hosted campaign migration is ready for approval — F-164
+
+| ID | Severity | Area | Finding | Status |
+|---|---|---|---|---|
+| F-164 | P1 | Hosted campaign sync | The hosted validator still needs the committed device-ownership and campaign-projection migrations before a signed-in campaign projection can be accepted. | Read-only guard rechecked successfully: the linked ledger has exactly the two expected pending migrations and the dry-run proposes both. No hosted write, seed, player-state mutation or auth bypass was performed. Applying remains an explicit approval gate before authenticated two-device acceptance. |

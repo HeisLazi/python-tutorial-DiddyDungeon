@@ -1163,3 +1163,11 @@ frontend **82/82**, and a **1,346-module** Vite build. Its only dirty path is
 the disposable `.venv` symlink; tracked source is clean. This remains WSL/ext4
 evidence, so physical CachyOS K&M, browser K&M, hosted migrations and
 authenticated two-device acceptance stay open.
+
+## Current checkpoint — 2026-09-17 — hosted migration preflight
+
+F-164 reran the guarded Supabase preflight. The linked ledger contains exactly
+the two committed pending migrations and the dry-run proposes both. This is
+ready-for-approval evidence only: no migration, seed, player-state write or
+auth bypass was performed. Authenticated two-device campaign/avatar/source
+acceptance remains behind that explicit gate.

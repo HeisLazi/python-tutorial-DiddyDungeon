@@ -3338,3 +3338,12 @@ frontend suite passed **82/82**, and the Vite production build transformed
 clone uses an untracked `.venv` symlink to the already-installed WSL test
 runtime; tracked source is clean. This strengthens distribution evidence but
 does not certify physical CachyOS, browser K&M, hosted sync, or a second device.
+
+### Hosted campaign migration preflight — F-164 (2026-09-17)
+
+The read-only migration guard was rerun against the linked Supabase project.
+The remote ledger has exactly the two expected pending migrations:
+device ownership and campaign projection. The linked dry-run proposes both,
+so the plan is ready for an explicit approval. No migration, seed, player-state
+write, or authentication bypass was performed; authenticated two-device
+acceptance remains unproven until the approval gate is opened.

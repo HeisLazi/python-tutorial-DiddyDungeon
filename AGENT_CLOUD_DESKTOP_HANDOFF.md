@@ -422,3 +422,9 @@ modules**. The one reported dirty path is only the untracked disposable
 `.venv` symlink; tracked source is clean. Treat this as current WSL/ext4
 evidence, not physical CachyOS, fresh browser K&M, hosted sync, or second-device
 acceptance.
+
+F-164 rechecked the guarded linked Supabase migration plan. Exactly the two
+committed device-ownership/campaign-projection migrations are pending and the
+dry-run proposes both. No hosted write, seed, player-state mutation or auth
+bypass was performed. Applying them still requires explicit approval before
+authenticated two-device campaign/avatar/source acceptance.
