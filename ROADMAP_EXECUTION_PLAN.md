@@ -585,3 +585,22 @@ processes and PTYs were not staged, overwritten or reset. Hosted player-state,
 real PC↔laptop sync, account/avatar acceptance, the actual CachyOS run,
 friend-machine packaging and Tauri remain external gates; this checkpoint does
 not seed Supabase or claim those gates complete.
+
+## Cloud campaign projection checkpoint — 2026-09-17
+
+The original cloud slice moved only HUD-level player fields. That left a
+second device with the right Level/XP/coins but a starter Journal, Codex and
+Dungeon. The next source slice keeps the same state-service authority and
+revision/CAS protocol while adding one bounded `campaign` projection containing
+validated project/mob progress, Codex encounter evidence, skills, goals,
+achievements, Practice history and the restart-safe answer-free Dungeon
+checkpoint. Local event logs, profile data, catalogs and arbitrary workspace
+JSON remain excluded.
+
+The Python gateway validates and merges this domain through
+`sync_apply_cloud`, so a successful pull increments the canonical revision and
+records an auditable state event. The browser SyncEngine now sends the same
+projection in outbox/pull/conflict paths. The hosted SQL migration is committed
+but deliberately unapplied; authenticated two-device and Supabase/RLS tests
+remain Milestone C gates. Current local contracts: state service **40/40**,
+migration contracts **7/7**, and the protected projection is **9,897 bytes**.

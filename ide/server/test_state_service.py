@@ -806,8 +806,12 @@ class StateServiceBehaviorTests(unittest.TestCase):
         self.assertEqual(projection["companion"]["bond"], 3)
         self.assertNotIn("purchase_history", projection["homestead"])
         self.assertNotIn("catalog", projection["homestead"])
-        self.assertNotIn("codex", projection)
-        self.assertNotIn("skills", projection)
+        self.assertEqual(projection["campaign"]["codex"]["encounters"][0]["mob_name"], "The Empty Table")
+        self.assertEqual(projection["campaign"]["skills"][0]["concept"], "Variables")
+        self.assertEqual(projection["campaign"]["projects"][0]["progress"], 0)
+        self.assertNotIn("state_events", projection["campaign"])
+        self.assertNotIn("activity", projection["campaign"])
+        self.assertNotIn("shop", projection["campaign"])
 
     def test_valid_cloud_projection_bumps_revision_and_keeps_non_sync_domains(self):
         service, path = self.make_service()
@@ -835,6 +839,61 @@ class StateServiceBehaviorTests(unittest.TestCase):
         self.assertEqual(after["codex"]["encounters"][0]["mob_name"], "local note")
         self.assertEqual(after["projects"][0]["progress"], 42)
         self.assertEqual(after["state_events"][-1]["action"], "sync_apply_cloud")
+
+    def test_campaign_projection_applies_validated_codex_projects_and_dungeon_checkpoint(self):
+        service, path = self.make_service()
+        result = service.apply_cloud_projection(
+            {
+                "player": {"level": 2, "xp": 50, "xp_next": 100, "lifetime_xp": 150, "coins": 55, "hp": 100, "max_hp": 100},
+                "campaign": {
+                    "projects": [{
+                        "branch": "01-blackjack",
+                        "name": "Blackjack",
+                        "status": "active",
+                        "progress": 38,
+                        "mobs": [
+                            {"name": "The Empty Table", "status": "defeated", "concept": "Variables"},
+                            {"name": "The Hitman", "status": "available", "resolve": 8, "max_resolve": 8},
+                        ],
+                    }],
+                    "current_quest": "Blackjack - Mob 3: The Hitman",
+                    "codex": {"encounters": [{"id": "legacy-empty-table", "project_id": "01-blackjack", "mob_name": "The Empty Table", "concept": "Variables", "status": "defeated", "results": [{"outcome": "defeated", "evidence_id": "legacy-1"}]}]},
+                    "dungeon_run": {
+                        "status": "active",
+                        "run_id": "dungeon-1",
+                        "floor": 1,
+                        "room": 2,
+                        "room_type": "encounter",
+                        "editor_content": "answer = 1",
+                        "question": {"id": "q-1", "question_type": "code_checkpoint", "concept_id": "variables", "difficulty": 1, "prompt": "Use a variable.", "options": []},
+                    },
+                },
+            },
+            expected_revision=4,
+            cloud_revision=11,
+        )
+        after = self.read(path)
+        self.assertTrue(result["changed"])
+        self.assertEqual(result["revision"], 5)
+        self.assertEqual(after["player"]["coins"], 55)
+        self.assertEqual(after["projects"][0]["progress"], 38)
+        self.assertEqual(after["projects"][0]["mobs"][1]["resolve"], 8)
+        self.assertEqual(after["codex"]["encounters"][0]["mob_name"], "The Empty Table")
+        self.assertEqual(after["dungeon_run"]["run_id"], "dungeon-1")
+        self.assertEqual(after["state_events"][-1]["action"], "sync_apply_cloud")
+
+    def test_campaign_projection_rejects_unknown_or_answer_bearing_fields(self):
+        service, path = self.make_service()
+        before = self.read(path)
+        invalid = [
+            {"campaign": {"projects": [{"name": "Blackjack", "future_reward": 99}]}},
+            {"campaign": {"dungeon_run": {"status": "active", "question": {"id": "q-1", "answer_key": "secret"}}}},
+            {"campaign": {"codex": {"encounters": [{"id": "x", "prompt": "do not copy"}]}}},
+        ]
+        for projection in invalid:
+            with self.assertRaises(StateCommandError):
+                service.apply_cloud_projection(projection, expected_revision=4, cloud_revision=2)
+        self.assertEqual(self.read(path), before)
 
     def test_cloud_projection_rejects_stale_revision_unknown_fields_and_invalid_equipment(self):
         service, path = self.make_service()
@@ -1128,6 +1187,8 @@ class StateGatewayHttpTests(unittest.TestCase):
         body = snapshot.json()
         self.assertEqual(body["revision"], 4)
         self.assertNotIn("projects", body["projection"])
+        self.assertEqual(body["projection"]["campaign"]["projects"][0]["name"], "Blackjack")
+        self.assertNotIn("state_events", body["projection"]["campaign"])
         self.assertNotIn("catalog", body["projection"]["homestead"])
 
         applied = client.post(

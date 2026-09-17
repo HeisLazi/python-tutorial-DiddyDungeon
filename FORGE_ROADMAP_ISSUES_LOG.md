@@ -1695,3 +1695,24 @@ attempt.
 The wrapper passed `bash -n`, `--help`, the launcher contract suite (**14/14**)
 and the full WSL backend suite (**98/98**). No save, workspace source file,
 legacy evidence or existing runtime was changed.
+
+## Cloud campaign projection slice — 2026-09-17
+
+The original cross-device symptom was narrower than the player HUD: the
+existing cloud projection carried player/equipment/companion/Homestead, but
+left projects, cleared mobs, Codex evidence, skills, goals, Practice history
+and Dungeon checkpoints on the device that created them. A laptop could
+therefore receive Level/XP/coins while its Journal, Codex and Dungeon still
+looked like a starter cache.
+
+| ID | Severity | Area | Finding | Status |
+|---|---|---|---|---|
+| F-078 | P1 | Cross-device campaign coherence | The revision/CAS sync row omitted validated campaign evidence and restart-safe Dungeon state, so a cloud pull could not hydrate Journal/Codex/current encounter or resume a Dungeon checkpoint. | Fixed in source: the local projection, browser SyncEngine and unapplied hosted migration now carry a bounded `campaign` domain. Projects/mobs, Codex results/notes/mastery evidence, skills/goals/streak/achievements, Practice history and the answer-free current Dungeon checkpoint use the same revision/CAS flow. Unknown fields, future rewards and Dungeon answer keys are rejected. Hosted migration, authenticated two-device pull/push and real laptop/PC K&M remain open gates. |
+
+Local proof: state-service focused tests **40/40**, migration contracts **7/7**;
+the projection measured **9,897 UTF-8 bytes** for the current protected save,
+and the campaign merge increments the canonical revision with a
+`sync_apply_cloud` event. The protected save, `tutor.py`, `dungeon.py`, and
+existing PTYs were not written or restarted. The mounted Windows frontend
+dependency tree still has the known F-033 missing Supabase package metadata;
+clean disposable frontend testing remains the required JS/build gate.

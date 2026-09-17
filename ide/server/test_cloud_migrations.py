@@ -17,6 +17,7 @@ AVATAR_RLS_TEST = ROOT / "supabase" / "tests" / "avatar_storage_rls.sql"
 IDENTITY_MIGRATION = ROOT / "supabase" / "migrations" / "20260914000100_profiles_devices.sql"
 IDENTITY_RLS_TEST = ROOT / "supabase" / "tests" / "profiles_devices_rls.sql"
 BOUNDS_MIGRATION = ROOT / "supabase" / "migrations" / "20260915000300_player_state_value_bounds.sql"
+CAMPAIGN_MIGRATION = ROOT / "supabase" / "migrations" / "20260917000100_player_state_campaign_projection.sql"
 
 
 class CloudMigrationContractTests(unittest.TestCase):
@@ -95,6 +96,23 @@ class CloudMigrationContractTests(unittest.TestCase):
             "player counters are outside their bounds",
             "owned_cosmetics entries must be safe identifiers",
             "equipped values must be safe identifiers",
+            "revoke all on function public.validate_player_state_projection(jsonb) from public;",
+        ):
+            self.assertIn(phrase, sql)
+
+    def test_campaign_projection_migration_keeps_revision_row_allowlisted_and_answer_free(self):
+        sql = CAMPAIGN_MIGRATION.read_text(encoding="utf-8")
+        for phrase in (
+            "'campaign'",
+            "validate_campaign_projection",
+            "validate_player_state_projection_base",
+            "player_state_state_domains",
+            "campaign projection is too large",
+            "campaign projection contains unsupported domains",
+            "project mobs must be a bounded array",
+            "codex encounter contains unsupported fields",
+            "dungeon question contains unsupported or hidden fields",
+            "perform public.validate_player_state_projection_base(base_state)",
             "revoke all on function public.validate_player_state_projection(jsonb) from public;",
         ):
             self.assertIn(phrase, sql)
