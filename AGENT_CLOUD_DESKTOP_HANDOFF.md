@@ -428,3 +428,8 @@ committed device-ownership/campaign-projection migrations are pending and the
 dry-run proposes both. No hosted write, seed, player-state mutation or auth
 bypass was performed. Applying them still requires explicit approval before
 authenticated two-device campaign/avatar/source acceptance.
+
+F-165 tightens source hygiene for native distribution: `.gitignore` now ignores
+exact `.venv` and `venv` names, covering both virtualenv directories and
+symlinks. `git check-ignore` and frontend **82/82** pass. This does not change
+save custody, PTYs, hosted transport or the physical CachyOS gate.

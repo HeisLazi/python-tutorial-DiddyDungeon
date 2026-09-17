@@ -2478,3 +2478,9 @@ changed. Browser K&M remains blocked by F-080.
 | ID | Severity | Area | Finding | Status |
 |---|---|---|---|---|
 | F-164 | P1 | Hosted campaign sync | The hosted validator still needs the committed device-ownership and campaign-projection migrations before a signed-in campaign projection can be accepted. | Read-only guard rechecked successfully: the linked ledger has exactly the two expected pending migrations and the dry-run proposes both. No hosted write, seed, player-state mutation or auth bypass was performed. Applying remains an explicit approval gate before authenticated two-device acceptance. |
+
+## Native virtualenv symlink looked like dirty source — F-165
+
+| ID | Severity | Area | Finding | Status |
+|---|---|---|---|---|
+| F-165 | P3 | Native distribution / packaging | The repository ignored `.venv/` directories but not a `.venv` symlink. A disposable native report that reused an existing venv therefore reported one dirty path even though no source file changed. | Fixed by using exact-name `.venv` and `venv` ignore patterns, which cover directories and symlinks. `git check-ignore` and frontend **82/82** pass; protected saves and package boundaries are unchanged. |

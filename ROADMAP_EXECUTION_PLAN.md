@@ -1171,3 +1171,10 @@ the two committed pending migrations and the dry-run proposes both. This is
 ready-for-approval evidence only: no migration, seed, player-state write or
 auth bypass was performed. Authenticated two-device campaign/avatar/source
 acceptance remains behind that explicit gate.
+
+## Current checkpoint — 2026-09-17 — native venv ignore hygiene
+
+F-165 closes a small distribution false-positive: `.gitignore` now ignores the
+exact `.venv`/`venv` names, so both real virtualenv directories and disposable
+symlinks remain outside source-dirty checks. `git check-ignore` and frontend
+tests **82/82** pass; no state, PTY or hosted boundary changed.

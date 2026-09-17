@@ -3347,3 +3347,12 @@ device ownership and campaign projection. The linked dry-run proposes both,
 so the plan is ready for an explicit approval. No migration, seed, player-state
 write, or authentication bypass was performed; authenticated two-device
 acceptance remains unproven until the approval gate is opened.
+
+### Native virtualenv symlink hygiene — F-165 (2026-09-17)
+
+The native report's disposable `.venv` symlink was the only dirty path in the
+current ext4 recheck. The repository previously ignored only the directory
+form `.venv/`, so symlinks could look like source changes to strict packaging
+checks. The ignore entries now use exact names (`.venv` and `venv`), covering
+both directory and symlink forms. `git check-ignore` confirms the boundary and
+frontend tests remain **82/82**.
