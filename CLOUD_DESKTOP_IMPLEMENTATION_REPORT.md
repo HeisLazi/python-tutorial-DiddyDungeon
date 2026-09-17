@@ -2670,3 +2670,14 @@ note gateway, reward authority and PTY keys are unchanged. Current-source tests
 pass **32/32**, clean ext4 frontend tests pass **51/51**, and Vite transforms
 **1,346 modules**. A local K&M attempt could not attach the Codex browser
 webview, so visual click-through remains unclaimed.
+
+### Stale Quest Journal command repair — F-114
+
+The command palette no longer advertises a separate Quest Journal route. Codex
+is the single navigation target for both the Field Library and Battle Shell;
+the old icon name remains only in the legacy enhancement map for older markup
+that may still be present during a compatibility transition.
+
+Current-source Forge tests pass **32/32**. This was a navigation-only repair;
+state authority, revision polling, PTY lifecycles and cloud transport were not
+changed.

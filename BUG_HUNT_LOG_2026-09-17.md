@@ -550,3 +550,12 @@ Verification: current-source Forge tests **32/32**, clean ext4 frontend tests
 **51/51**, and Vite production build **1,346 modules transformed**. The local
 K&M browser attempt was blocked because the Codex Browser webview had no
 attachable tab; no visual click-through claim is made.
+
+## Stale Quest Journal command hunt — 2026-09-17 (F-114)
+
+| ID | Severity | Finding | Status |
+|---|---|---|---|
+| F-114 | P2 | The visible command palette still offered “Open Quest Journal” even though the rail and router had moved that surface into Codex. The command could not find a matching rail button and made the merge feel incomplete. | Fixed by removing the stale command and keeping Codex as the single navigation target. The legacy icon alias remains only as a compatibility fallback for old markup. |
+
+Verification: current-source Forge tests **32/32**. No campaign state, PTY or
+cloud transport was changed.

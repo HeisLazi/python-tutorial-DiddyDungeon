@@ -1968,3 +1968,12 @@ build **1,346 modules**. No state, save, PTY or hosted transport was changed.
 Verification: current-source **32/32**, clean ext4 frontend **51/51**, Vite
 build **1,346 modules**. Browser K&M remains an external gate because the local
 Codex webview could not attach.
+
+## Stale Quest Journal command — 2026-09-17
+
+| ID | Severity | Area | Finding | Status |
+|---|---|---|---|---|
+| F-114 | P2 | Navigation / command palette | The command palette retained an `Open Quest Journal` action after Quest Journal stopped being a rail route. It had no matching button and undermined the single-Codex navigation contract. | Fixed by removing the stale action; Codex is now the only command/rail destination for the field-library and Battle Shell surfaces. |
+
+Verification: current-source Forge suite **32/32**. Protected learner files,
+canonical state, PTYs and cloud transport were untouched.

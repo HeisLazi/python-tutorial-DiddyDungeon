@@ -163,10 +163,12 @@ test('navigation keeps Tutor as the single practice workspace and parks hidden A
   const views = source('../RpgViews.jsx')
   const v2 = source('../v2.css')
   const foundation = source('../foundation.css')
+  const palette = source('../commandPalette.js')
 
   assert.match(app, /const normalizeView = \(value\) => value === 'practice' \? 'tutor' : value === 'quests' \? 'codex' : value/)
   assert.match(app, /return normalizeView\(candidate\)/)
   assert.doesNotMatch(views, /id: 'practice', icon:/)
+  assert.doesNotMatch(palette, /Open Quest Journal/)
   assert.match(app, /gridStyle = wideSurface\s*\? \{/)
   assert.match(app, /const wideSurface = \['hub', 'character', 'homestead'\]/)
   assert.match(app, /!wideSurface && <ActivityRail/)
