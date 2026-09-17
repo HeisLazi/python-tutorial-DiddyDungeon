@@ -3314,3 +3314,16 @@ navigation authority; no state projection or PTY lifecycle changed.
 Verification: frontend tests **81/81** and Vite production build **1,346
 modules** pass. Fresh browser K&M could not be claimed because F-080's browser
 attachment remains unavailable.
+
+### Journal Battle Shell objective projection — F-162 (2026-09-17)
+
+The legacy Quest Journal route computed the state-owned `completedObjectives`
+list but omitted it when mounting the shared `QuestBattleScreen`. That made the
+Resolve/objective panel disagree with the canonical campaign projection even
+though the Codex route was correct. Commit `19b6da5` supplies the same validated
+projection to both entry points and adds a regression assertion for the two
+bindings plus the state-owned completed count.
+
+Verification: frontend tests **82/82**, Vite production build **1,346
+modules**, and `git diff --check` pass. No player state, legacy save, or PTY was
+changed; fresh browser K&M remains unavailable under F-080.

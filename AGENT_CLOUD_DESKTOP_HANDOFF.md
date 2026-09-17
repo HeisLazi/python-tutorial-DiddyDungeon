@@ -407,3 +407,10 @@ when Forge owns the frame; the Books and Battle regions are height-budgeted so
 the Codex cannot become a page-long document. Frontend tests **81/81** and the
 Vite build (**1,346 modules**) pass. This does not substitute for fresh browser
 K&M (F-080) or physical CachyOS acceptance (F-058).
+
+F-162 (`19b6da5`) closes the matching Quest Journal projection gap: the legacy
+Journal Battle Shell now passes canonical `completedObjectives` into the shared
+`QuestBattleScreen`, just like Codex. Frontend tests **82/82**, Vite build
+(**1,346 modules**) and `git diff --check` pass. No player state, legacy save or
+PTY was changed. F-080 browser K&M, F-058 physical CachyOS, and the hosted
+two-device/authentication gates remain open.

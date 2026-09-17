@@ -1145,3 +1145,12 @@ content budget. Commit: `4c8a279`.
 Frontend tests are **81/81** and the Vite build transforms **1,346 modules**.
 Browser K&M (F-080), physical CachyOS, hosted migrations and authenticated
 cross-device acceptance remain open.
+
+## Current checkpoint — 2026-09-17 — Journal Battle Shell projection
+
+F-162 fixes a state-to-view gap left after the Codex wide-surface work: the
+legacy Quest Journal Battle Shell now passes the canonical completed-objective
+projection into the shared battle view, matching Codex. Commit `19b6da5` adds
+the binding and a regression tripwire. Frontend tests are **82/82** and the
+Vite build transforms **1,346 modules**. Browser K&M (F-080), physical CachyOS,
+hosted migrations and authenticated cross-device acceptance remain open.

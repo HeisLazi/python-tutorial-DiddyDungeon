@@ -2456,3 +2456,13 @@ install was attempted there.
 Verification: frontend tests **81/81** and Vite production build **1,346
 modules** pass. Browser K&M remains blocked by F-080, so no fresh visual device
 claim is made from this environment.
+
+## Legacy Journal Battle Shell dropped state-owned objective progress — F-162
+
+| ID | Severity | Area | Finding | Status |
+|---|---|---|---|---|
+| F-162 | P1 | Quest Journal / Battle Shell | The Codex Battle Shell received the canonical `completedObjectives` projection, but the legacy Quest Journal Battle Shell did not. Its Resolve/objective panel could therefore show an empty or stale objective count while the state service and Codex were current. | Fixed in `19b6da5`: both Battle Shell entry points pass the validated completed-objective projection into the shared `QuestBattleScreen`; a source regression test asserts the two bindings and state-owned count calculation. |
+
+Verification: frontend tests **82/82**, Vite production build **1,346
+modules**, and `git diff --check` pass. No player state, legacy save, or PTY was
+changed. Browser K&M remains blocked by F-080.
