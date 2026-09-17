@@ -721,3 +721,25 @@
   .codex-screen .codex-book-page { padding: 16px 16px 20px; }
   .codex-screen .codex-book-page::before { left: 8px; }
 }
+
+/* F-134: extend the shared 24px monochrome icon grid to Character and
+   Homestead props so font-dependent legacy symbols do not reappear outside
+   the Codex. Icons are decorative and remain paired with visible text. */
+.equipment-list > div > span svg,
+.achievement-grid article > span svg,
+.homestead-window > svg,
+.homestead-desk > svg,
+.homestead-shelf > svg {
+  display: block;
+  width: 24px;
+  height: 24px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.45;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.achievement-grid article > span svg { width: 18px; height: 18px; }
+.homestead-window > svg { width: 28px; height: 28px; }
+.homestead-desk > svg { width: 29px; height: 29px; }
+.homestead-shelf > svg { width: 22px; height: 22px; }

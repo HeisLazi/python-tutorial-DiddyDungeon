@@ -321,6 +321,8 @@ function RouteIcon({ id }) {
     settings: <><circle cx="12" cy="12" r="3" /><path d="M19 12a7 7 0 0 0-.1-1l2-1.5-2-3.5-2.4 1a8 8 0 0 0-1.7-1L14.5 3h-5l-.4 3a8 8 0 0 0-1.7 1L5 6 3 9.5 5.1 11a7 7 0 0 0 0 2L3 14.5 5 18l2.4-1a8 8 0 0 0 1.7 1l.4 3h5l.4-3a8 8 0 0 0 1.7-1l2.4 1 2-3.5-2.1-1.5a7 7 0 0 0 .1-1z" /></>,
     shield: <><path d="M12 3 19 6v5c0 4.5-2.8 8-7 10-4.2-2-7-5.5-7-10V6z" /><path d="m9 12 2 2 4-4" /></>,
     flame: <path d="M13 2s1 4-2 7c-2 2-3 4-2 7 1 2 3 3 5 2 3-1 5-4 4-8 3 3 4 8 1 11-4 4-12 2-13-4-1-5 3-8 7-15z" />,
+    spark: <path d="m12 2 1.8 7.2L21 11l-7.2 1.8L12 20l-1.8-7.2L3 11l7.2-1.8z" />,
+    window: <><rect x="4" y="5" width="16" height="14" rx="1" /><path d="M12 5v14M4 12h16" /></>,
   }
   return <svg viewBox="0 0 24 24" focusable="false">{paths[id] || paths.hub}</svg>
 }
@@ -1117,9 +1119,9 @@ function CharacterSheet({ progress, revision, avatarDataUrl = '' }) {
         <section className="game-card">
           <div className="card-heading"><span>EQUIPMENT</span></div>
           <div className="equipment-list">
-            <div><span>◈</span><small>Armor</small><strong>{equipment.armor || 'None'}</strong></div>
-            <div><span>✦</span><small>Trinket</small><strong>{equipment.trinket || 'None'}</strong></div>
-            <div><span>♛</span><small>Title</small><strong>{equipment.title || player.title || 'None'}</strong></div>
+            <div><span aria-hidden="true"><RouteIcon id="shield" /></span><small>Armor</small><strong>{equipment.armor || 'None'}</strong></div>
+            <div><span aria-hidden="true"><RouteIcon id="spark" /></span><small>Trinket</small><strong>{equipment.trinket || 'None'}</strong></div>
+            <div><span aria-hidden="true"><RouteIcon id="character" /></span><small>Title</small><strong>{equipment.title || player.title || 'None'}</strong></div>
           </div>
         </section>
 
@@ -1134,7 +1136,7 @@ function CharacterSheet({ progress, revision, avatarDataUrl = '' }) {
         <div className="achievement-grid">
           {achievements.map((achievement) => (
             <article key={achievement.name} className={achievement.unlocked ? 'unlocked' : 'locked'}>
-              <span>{achievement.unlocked ? '◆' : '◇'}</span>
+              <span aria-hidden="true"><RouteIcon id={achievement.unlocked ? 'shield' : 'codex'} /></span>
               <div><strong>{achievement.name}</strong><p>{achievement.description}</p></div>
             </article>
           ))}
@@ -1187,10 +1189,10 @@ function Homestead({ progress, revision, equipmentProjection, purchaseCosmetic, 
   return (
     <div className="game-screen-scroll" data-testid="homestead" data-campaign-revision={revision}>
       <div className="homestead-scene">
-        <div className="homestead-window">✦</div>
-        <div className="homestead-desk"><span>⌨</span><small>FORGE DESK</small></div>
+        <div className="homestead-window" aria-hidden="true"><RouteIcon id="window" /></div>
+        <div className="homestead-desk"><RouteIcon id="forge" /><small>FORGE DESK</small></div>
         <div className="homestead-hearth"><RouteIcon id="flame" /><small>PYR'S HEARTH</small></div>
-        <div className="homestead-shelf"><span>◇ ◇ ◇</span><small>TROPHY SHELF</small></div>
+        <div className="homestead-shelf"><RouteIcon id="codex" /><small>TROPHY SHELF</small></div>
         <div className="homestead-title"><span className="screen-kicker">HOMESTEAD</span><h2>{homestead.name || 'Your Forge'}</h2><p>Your environment grows with the things you earn while learning.</p></div>
         <div className="coin-purse"><small>PURSE</small><strong>{player.coins ?? 0}c</strong></div>
         <div className="homestead-scene-badge"><span aria-hidden="true">●</span> LIVE CAMPAIGN · REV {revision ?? 0}</div>

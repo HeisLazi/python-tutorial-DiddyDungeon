@@ -825,3 +825,16 @@ remain unchanged.
 Current-source Forge tests are **43/43**. Clean Linux archive frontend tests
 pass **62/62** and the Vite build transforms **1,346 modules**. Browser K&M is
 still the open visual gate because the in-app webview cannot attach (F-080).
+
+## Current checkpoint — 2026-09-17 — Character/Homestead SVG icon parity
+
+F-134 completes the local RPG icon-language cleanup left after the Codex/HUD
+work. Character armor/trinket/title badges, achievement markers and Homestead
+window/desk/shelf props now render through the shared monochrome `RouteIcon`
+paths with explicit 24px-grid sizing. The slice does not touch state authority,
+reward events, revision polling, learner files or PTY sessions.
+
+Current-source Forge tests are **44/44**. Clean Linux archive frontend tests
+pass **63/63** and the Vite build transforms **1,346 modules**. Browser K&M
+remains the visual publication gate (F-080); hosted sync and real-device
+acceptance remain separate roadmap gates.

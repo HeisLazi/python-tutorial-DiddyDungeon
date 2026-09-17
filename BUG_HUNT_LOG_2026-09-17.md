@@ -752,3 +752,13 @@ Verification: current-source Forge runtime tests **43/43**; clean Linux archive
 frontend tests **62/62** and Vite build **1,346 modules**. Browser K&M is still
 blocked by the Codex in-app webview attach failure (F-080), so no visual pass
 is claimed from automation.
+
+## Character/Homestead icon parity — 2026-09-17 (F-134)
+
+| ID | Severity | Finding | Status |
+|---|---|---|---|
+| F-134 | P2 | Character equipment, achievement badges and Homestead props still mixed in font-dependent symbols with the HUD/Codex SVG icon system, so the same RPG item could shift shape and baseline across hosts. | Fixed by using `RouteIcon` for armor, trinket, character, achievement and Homestead props, adding spark/window paths, and applying explicit monochrome SVG sizing/strokes. |
+
+Verification: current-source Forge runtime tests **44/44**, clean archive
+frontend tests **63/63**, and Vite build **1,346 modules** passed. Browser K&M
+remains blocked by F-080; no save, learner file, PTY or hosted transport changed.

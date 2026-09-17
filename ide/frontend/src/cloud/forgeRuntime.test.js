@@ -335,6 +335,18 @@ test('Codex mastery and companion surfaces keep the SVG icon language', () => {
   assert.match(foundation, /\.skill-icon svg,[\s\S]*?\.pyr-orb svg,[\s\S]*?\.homestead-hearth > svg/)
 })
 
+test('Character and Homestead props keep the shared SVG icon language', () => {
+  const views = source('../RpgViews.jsx')
+  const foundation = source('../foundation.css')
+
+  assert.doesNotMatch(views, /[◈✦♛⌨]/)
+  assert.match(views, /RouteIcon id="spark"/)
+  assert.match(views, /RouteIcon id="window"/)
+  assert.match(views, /RouteIcon id="forge" \/>/)
+  assert.match(foundation, /F-134: extend the shared 24px monochrome icon grid/)
+  assert.match(foundation, /\.equipment-list > div > span svg,[\s\S]*?\.homestead-shelf > svg/)
+})
+
 test('friend packages strip tracked player state before archive output', () => {
   const packager = source('../../../../tools/questlab-package.ps1')
 

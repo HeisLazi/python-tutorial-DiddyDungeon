@@ -2938,6 +2938,20 @@ Current-source Forge tests pass **43/43**. A clean Linux archive passed
 Browser K&M could not attach in this environment (F-080), so the visual-device
 acceptance gate remains open.
 
+### Character/Homestead SVG icon parity — F-134
+
+The remaining font-dependent symbols in Character equipment, achievement badges
+and Homestead scene props now use the shared `RouteIcon` SVG vocabulary. Added
+spark/window paths complete the 24px grid and explicit stroke sizing keeps the
+monochrome treatment stable across Windows and Linux fonts. This is a
+presentation-only change: canonical state, revision polling, rewards, notes,
+learner files and PTYs are untouched.
+
+Current-source Forge tests pass **44/44**. A clean Linux archive passed
+**63/63** frontend tests and a Vite build transforming **1,346 modules**.
+Browser K&M remains unavailable because the in-app webview could not attach
+(F-080); no visual-device acceptance claim is made.
+
 ### Local sync simulator recheck — F-126
 
 The current branch was rechecked with

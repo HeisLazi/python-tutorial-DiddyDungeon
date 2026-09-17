@@ -2156,3 +2156,14 @@ Verification: current-source Forge runtime tests pass **43/43**; clean Linux
 archive frontend tests pass **62/62** and Vite transforms **1,346 modules**.
 Browser K&M remains unavailable in this environment (F-080), so this slice is
 not presented as a visual-device acceptance claim.
+
+## Character/Homestead SVG icon parity — F-134
+
+| ID | Severity | Area | Finding | Status |
+|---|---|---|---|---|
+| F-134 | P2 | RPG presentation | Character equipment, achievement badges and Homestead scene props still used font-dependent symbols while the HUD and Codex had moved to the shared monochrome SVG language. | Fixed by routing armor, trinket, character, achievement and Homestead props through `RouteIcon`, adding the missing spark/window paths, and applying explicit 24px-grid sizing/strokes. No state, reward, revision, learner-file or PTY behavior changed. |
+
+Verification: current-source Forge runtime tests pass **44/44**; clean Linux
+archive frontend tests pass **63/63** and Vite transforms **1,346 modules**.
+Browser K&M remains unavailable in this environment (F-080), so visual-device
+acceptance is still open.
