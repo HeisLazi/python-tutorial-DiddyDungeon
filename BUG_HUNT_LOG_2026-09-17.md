@@ -519,3 +519,14 @@ the Milestone C boundary.
 Verification: the current-source Forge runtime suite passes **32/32**. A fresh
 browser K&M click-through remains unavailable because no Codex browser tab could
 attach in this environment.
+
+## Codex quest/battle merge hunt — 2026-09-17 (F-111)
+
+| ID | Severity | Finding | Status |
+|---|---|---|---|
+| F-111 | P1 | Quest Journal split the active chapter, encounter progress and Battle Shell across a separate route, so the learner had to leave the Codex to understand the current quest or submit the live encounter. | Fixed by normalizing the legacy `quests` route to Codex, moving Active Quest/chapter/encounter context into the Field Library sidebar, and adding Books/Battle Shell tabs with a page-turn surface. Battle Shell story, stats, Resolve and submission props remain state-service sourced; locked chapters and future encounters stay silhouettes. |
+
+Verification: current-source Forge runtime tests **32/32**, clean ext4 frontend
+tests **51/51**, and Vite production build **1,346 modules transformed**.
+Browser K&M could not be run because the Codex environment had no attachable tab.
+Protected learner save/files and both PTY lifecycles were not touched.

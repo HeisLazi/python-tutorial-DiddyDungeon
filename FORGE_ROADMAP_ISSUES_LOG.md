@@ -1939,3 +1939,13 @@ Verification: clean ext4 frontend tests **51/51**, Vite production build **1,346
 
 Verification: current-source Forge runtime suite **32/32**. Fresh browser K&M
 remains an external gate because the Codex browser could not attach a tab.
+
+## Quest Journal folded into Codex — 2026-09-17
+
+| ID | Severity | Area | Finding | Status |
+|---|---|---|---|---|
+| F-111 | P1 | Codex / campaign navigation | Active quest context and the Battle Shell lived on a separate Quest Journal route, while Codex held the learning library. This split made the current chapter, encounter story, stats and submission flow harder to follow and left stale `quests` route state possible. | Fixed: the legacy `quests` value normalizes to `codex`; Codex now owns the Active Quest/chapter/encounter sidebar, and a tabbed Books/Battle Shell surface provides journal-like page turns. Battle Shell renders validated story, boss/mob details, Resolve/objective state and existing submit callbacks without calculating rewards or revealing locked encounters. |
+
+Verification: current-source tests **32/32**, clean ext4 frontend tests **51/51**,
+and Vite production build **1,346 modules**. Browser K&M remains an external
+gate because no Codex browser tab was attachable.

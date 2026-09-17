@@ -164,8 +164,8 @@ test('navigation keeps Tutor as the single practice workspace and parks hidden A
   const v2 = source('../v2.css')
   const foundation = source('../foundation.css')
 
-  assert.match(app, /storedActiveView === 'practice' \? 'tutor' : storedActiveView/)
-  assert.match(app, /candidate === 'practice' \? 'tutor' : candidate/)
+  assert.match(app, /const normalizeView = \(value\) => value === 'practice' \? 'tutor' : value === 'quests' \? 'codex' : value/)
+  assert.match(app, /return normalizeView\(candidate\)/)
   assert.doesNotMatch(views, /id: 'practice', icon:/)
   assert.match(app, /gridStyle = wideSurface\s*\? \{/)
   assert.match(app, /const wideSurface = \['hub', 'character', 'homestead'\]/)
@@ -193,6 +193,7 @@ test('navigation keeps Tutor as the single practice workspace and parks hidden A
 test('legacy shell wires wide-route navigation back to the active view', () => {
   const legacy = source('../App.jsx')
   assert.match(legacy, /<GameScreen[\s\S]*onNavigate=\{setActiveView\}[\s\S]*campaignReady=\{campaignReady\}/)
+  assert.match(legacy, /value === 'quests' \? 'codex'/)
 })
 
 test('legacy rail icon enhancement yields to the React-owned SVG rail', () => {
@@ -212,7 +213,13 @@ test('Journal and Codex keep the active encounter projection visible', () => {
   assert.match(views, /data-testid="quest-battle-screen"/)
   assert.match(views, /journal-mode-tabs/)
   assert.match(views, /battle-answer-editor/)
-  assert.match(views, /data-testid="codex-active-chapter"/)
+  assert.match(views, /data-testid="codex-active-quest"/)
+  assert.match(views, /data-testid="codex-mode-tabs"/)
+  assert.match(views, /data-testid="battle-story-background"/)
+  assert.match(views, /data-testid="battle-encounter-details"/)
+  assert.match(views, /function Codex\(\{ progress, revision, codexProjection, encounter, submitBattle, submitBoss/)
+  assert.doesNotMatch(views, /id: 'quests', label:/)
+  assert.match(app, /value === 'quests' \? 'codex'/)
   assert.match(views, /data-testid="dungeon-inventory"/)
   assert.match(views, /onEquip=\{onDungeonEquip\}/)
   assert.match(app, /\/api\/dungeon\/equip/)
