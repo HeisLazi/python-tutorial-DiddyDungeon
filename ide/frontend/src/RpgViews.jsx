@@ -286,7 +286,7 @@ export function SurfaceNavigation({ activeView, onNavigate }) {
   return (
     <nav className="surface-nav" data-testid="wide-route-nav" aria-label="Wide route navigation">
       <button className="surface-nav-brand" type="button" onClick={() => onNavigate?.('hub')} aria-label="Open Quest Hub">
-        <span aria-hidden="true">⌂</span><strong>QUEST LAB</strong>
+        <RouteIcon id="hub" /><strong>QUEST LAB</strong>
       </button>
       <div className="surface-nav-links">
         {viewItems.map((item) => (
@@ -299,13 +299,28 @@ export function SurfaceNavigation({ activeView, onNavigate }) {
             aria-label={item.label}
             aria-current={activeView === item.id ? 'page' : undefined}
           >
-            <span aria-hidden="true">{item.icon}</span>
+            <span aria-hidden="true"><RouteIcon id={item.id} /></span>
             <span>{item.label}</span>
           </button>
         ))}
       </div>
     </nav>
   )
+}
+
+function RouteIcon({ id }) {
+  const paths = {
+    hub: <><path d="m4 11 8-7 8 7" /><path d="M6 10v9h12v-9M9 19v-5h6v5" /></>,
+    forge: <><path d="M5 5h14v14H5z" /><path d="m8 9 3 3-3 3M13 15h3" /></>,
+    tutor: <><path d="M9 3h6M10 3v5l-4 9a3 3 0 0 0 3 4h6a3 3 0 0 0 3-4l-4-9V3" /><path d="M8 15h8" /></>,
+    quests: <><path d="m14 4 6-1-1 6-9 9-4-4zM6 14l-3 3 4 4 3-3" /></>,
+    codex: <><path d="M5 4h11a3 3 0 0 1 3 3v13H8a3 3 0 0 1-3-3z" /><path d="M8 20V7a3 3 0 0 1 3-3M10 9h6M10 13h6" /></>,
+    character: <><circle cx="12" cy="8" r="3" /><path d="M5 20a7 7 0 0 1 14 0" /></>,
+    homestead: <><path d="m4 11 8-7 8 7" /><path d="M6 10v10h12V10M10 20v-6h4v6" /></>,
+    dungeon: <><path d="M5 20V8l3-4h8l3 4v12z" /><path d="M9 20v-5h6v5M8 9h2M14 9h2M10 12h4" /></>,
+    settings: <><circle cx="12" cy="12" r="3" /><path d="M19 12a7 7 0 0 0-.1-1l2-1.5-2-3.5-2.4 1a8 8 0 0 0-1.7-1L14.5 3h-5l-.4 3a8 8 0 0 0-1.7 1L5 6 3 9.5 5.1 11a7 7 0 0 0 0 2L3 14.5 5 18l2.4-1a8 8 0 0 0 1.7 1l.4 3h5l.4-3a8 8 0 0 0 1.7-1l2.4 1 2-3.5-2.1-1.5a7 7 0 0 0 .1-1z" /></>,
+  }
+  return <svg viewBox="0 0 24 24" focusable="false">{paths[id] || paths.hub}</svg>
 }
 
 function WideSurfaceFrame({ activeView, onNavigate, children }) {
