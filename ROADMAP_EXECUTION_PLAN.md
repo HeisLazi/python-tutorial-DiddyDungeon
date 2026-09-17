@@ -770,3 +770,17 @@ K&M are the remaining publication checks for this small CSS scope.
 The clean archive recheck passed **58/58** frontend tests and a Vite build
 transforming **1,346 modules**. Browser K&M remains the sole missing visual
 evidence for this presentation-only repair.
+
+## Current checkpoint — 2026-09-17 — Codex finite reading room
+
+F-130 tightens the presentation after the outer-feed and legacy-shell repairs.
+The game surface and Codex root now have an explicit height-bounded grid; the
+header and mode tabs remain fixed; the Field Library index is a flex column
+whose only overflow is its concept-book list; and the selected book section is
+the only reading-content scroller. The Codex therefore remains a finite book
+surface even as chapter context, encounter evidence and notes grow. No state,
+sync, reward, learner-file or PTY contract changed.
+
+Current-source Forge tests are **40/40**. Clean archive build and browser K&M
+remain the publication visual gates; the hosted and real-device milestones are
+unchanged.

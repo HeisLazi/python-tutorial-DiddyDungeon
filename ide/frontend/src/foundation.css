@@ -170,7 +170,7 @@
    the Forge viewport and give the library/reading panes their own scroll. The
    explicit grid rows are important: without them the browser grows the whole
    screen as the book gains encounter notes, which feels like an infinite page. */
-.codex-screen { display: grid; grid-template-rows: auto auto minmax(0, 1fr); min-height: 0; height: 100%; overflow: hidden; }
+.codex-screen { display: grid; grid-template-rows: auto auto minmax(0, 1fr); min-width: 0; min-height: 0; height: 100%; overflow: hidden; }
 .codex-screen > .screen-hero { min-height: 0; max-height: clamp(92px, 15vh, 136px); margin-bottom: 9px; padding: 12px 15px; overflow: hidden; }
 .codex-screen > .screen-hero > div:first-child { min-width: 0; }
 .codex-screen > .screen-hero h2 { margin: 4px 0 6px; font-size: clamp(20px, 2vw, 27px); }
@@ -180,9 +180,9 @@
 .codex-screen > .codex-tab-page[data-codex-tab="battle"] { display: block; overflow: auto; padding: 1px 2px 16px; overscroll-behavior: contain; }
 .codex-screen > .codex-tab-page.page-turn { animation: codex-page-turn .22s ease-out; transform-origin: 48% 7%; }
 .codex-screen .codex-library { display: grid; grid-template-columns: minmax(238px, .3fr) minmax(0, 1fr); min-height: 0; height: 100%; margin-bottom: 0; padding: 0; overflow: hidden; border-color: color-mix(in srgb, var(--gold) 28%, var(--line)); background: linear-gradient(125deg, color-mix(in srgb, var(--gold) 5%, var(--panel2)), var(--panel)); box-shadow: 0 14px 28px rgba(0,0,0,.12); }
-.codex-screen .codex-index { min-height: 0; overflow-y: auto; padding: 12px 11px 14px 13px; border-right: 1px solid color-mix(in srgb, var(--gold) 22%, var(--line)); scrollbar-width: thin; overscroll-behavior: contain; }
+.codex-screen .codex-index { display: flex; flex-direction: column; min-width: 0; min-height: 0; overflow: hidden; padding: 12px 11px 14px 13px; border-right: 1px solid color-mix(in srgb, var(--gold) 22%, var(--line)); overscroll-behavior: contain; }
 .codex-screen .codex-book-page { display: flex; flex-direction: column; min-height: 0; overflow: hidden; padding: 16px 21px 22px; background: color-mix(in srgb, var(--panel) 82%, transparent); overscroll-behavior: contain; }
-.codex-screen .codex-page-list { max-height: none; overflow: visible; }
+.codex-screen .codex-page-list { flex: 1 1 auto; min-height: 0; max-height: none; overflow-y: auto; overflow-x: hidden; scrollbar-width: thin; scrollbar-gutter: stable; }
 .codex-screen .codex-entry-picker { max-height: 190px; }
 .codex-screen .codex-page-heading { padding-bottom: 16px; }
 .codex-screen .codex-page-heading h3 { font-size: clamp(24px, 2.2vw, 32px); letter-spacing: -.03em; }
@@ -475,13 +475,13 @@
   .codex-screen > .codex-tab-page { display: flex; min-height: 0; overflow: hidden; }
   .codex-screen > .codex-tab-page[data-codex-tab="battle"] { display: block; overflow: auto; }
   .codex-screen .codex-library { grid-template-columns: 1fr; height: 100%; min-height: 0; flex: 1 1 auto; overflow: hidden; }
-  .codex-screen .codex-index { min-height: 0; max-height: min(31vh, 220px); overflow-y: auto; border-right: 0; border-bottom: 1px solid color-mix(in srgb, var(--gold) 22%, var(--line)); }
+  .codex-screen .codex-index { display: flex; min-height: 0; max-height: min(31vh, 220px); overflow: hidden; border-right: 0; border-bottom: 1px solid color-mix(in srgb, var(--gold) 22%, var(--line)); }
   .codex-screen .codex-book-page { min-height: 0; overflow: hidden; padding: 14px 14px 20px; }
 }
 
 /* Keep the Codex inside the Forge viewport. Its book pages are finite UI
    panels; the surrounding game surface must never grow into a feed. */
-.game-screen { position: relative; min-width: 0; min-height: 0; }
+.game-screen { position: relative; width: 100%; height: 100%; min-width: 0; min-height: 0; overflow: hidden; }
 .game-screen > .codex-screen {
   position: absolute;
   inset: 0;
@@ -490,6 +490,7 @@
   padding: 18px;
   overflow: hidden;
   overscroll-behavior: none;
+  box-sizing: border-box;
   contain: layout paint;
 }
 .codex-screen .codex-tab-page,
@@ -504,4 +505,66 @@
 
 @media (max-width: 1050px) {
   .game-screen > .codex-screen { padding: 12px; }
+}
+
+/* F-130: the Codex is a finite reading room. Keep the header and controls
+   visible, reserve the remaining viewport for one book frame, and let only
+   the book list/reading section scroll when their content genuinely needs it. */
+.game-screen > .codex-screen {
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr);
+  gap: 10px;
+}
+.codex-screen > .screen-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(300px, auto);
+  align-items: center;
+  min-height: 0;
+  max-height: none;
+  margin: 0;
+  padding: 14px 18px;
+}
+.codex-screen > .screen-hero h2 {
+  font-family: inherit;
+  letter-spacing: -.035em;
+}
+.codex-screen > .screen-hero p {
+  max-width: 58ch;
+  font-family: inherit;
+}
+.codex-screen .codex-summary-grid {
+  min-width: 0;
+  width: min(470px, 100%);
+}
+.codex-screen > .codex-mode-tabs {
+  margin: 0;
+}
+.codex-screen > .codex-tab-page {
+  flex: 1 1 auto;
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
+}
+.codex-screen .codex-library {
+  min-width: 0;
+  max-width: 100%;
+}
+.codex-screen .codex-index,
+.codex-screen .codex-book-page,
+.codex-screen .codex-book-section {
+  scrollbar-width: thin;
+  scrollbar-gutter: stable;
+  overscroll-behavior: contain;
+}
+.codex-screen .codex-page-list {
+  overscroll-behavior: contain;
+}
+@media (max-width: 900px) {
+  .codex-screen > .screen-hero {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+  .codex-screen .codex-summary-grid {
+    width: 100%;
+  }
 }
