@@ -2407,3 +2407,14 @@ lifecycle.
 Verification: mounted source coverage **26/26**, clean ext4 frontend coverage
 **44/44**, and a clean Vite production build. The protected save, root
 `tutor.py`, root `dungeon.py`, and existing PTYs were not changed.
+
+### Fresh Codex-owned QA identity recheck — 2026-09-17
+
+A new mailbox-backed address was used for the requested disposable account
+creation, but the configured Supabase Auth project returned HTTP **429**
+`over_email_send_rate_limit` before creating a user/session. No service/admin
+credential or bypass was used, and no password/token was retained. The prior
+disposable account remains the valid hosted avatar evidence; local avatar,
+workspace-transfer and revision/CAS sync checks remain green. A fresh hosted
+account and authenticated UI round-trip must be retried after the provider
+quota recovers.
