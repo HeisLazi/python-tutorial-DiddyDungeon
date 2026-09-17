@@ -78,6 +78,7 @@ The controlled future PYR agent may write examples/exercises there. Required pro
 - Codex;
 - Character sheet;
 - Homestead scene + cosmetic catalog;
+- full-width Hub / Character / Homestead surfaces with a compact SVG route bar;
 - Infinite Dungeon checkpoint screen;
 - independent Practice screen;
 - cosmetic buy/equip backend;
@@ -171,7 +172,11 @@ Canonical combat details live in `COMBAT_SYSTEM.md`.
     through `POST /api/equipment/equip`, and keeps future loot hidden. Trusted
     game code must record an evidence-backed unlock before a new item can be
     selected; hosted projection rollout remains approval-gated.
-13. Later: shared weekly raid transport/state and party objectives.
+13. **Implemented locally:** Wide-route navigation. Hub, Character and
+    Homestead keep their full-width presentation but expose a compact route bar
+    for Forge, Tutor, Journal, Codex, Dungeon and Settings; the bar is React
+    view state only and does not remount either PTY.
+14. Later: shared weekly raid transport/state and party objectives.
 
 ## PC test procedure
 

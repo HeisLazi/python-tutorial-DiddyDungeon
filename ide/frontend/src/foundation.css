@@ -291,10 +291,11 @@
 .wide-screen-frame > .game-screen-scroll { flex: 1 1 auto; min-height: 0; }
 .surface-nav { display: flex; align-items: center; gap: 10px; flex: 0 0 auto; min-height: 50px; padding: 7px clamp(12px, 2.4vw, 30px); border-bottom: 1px solid var(--line); background: color-mix(in srgb, var(--panel2) 92%, var(--bg)); overflow-x: auto; scrollbar-width: thin; }
 .surface-nav-brand { display: inline-flex; align-items: center; gap: 7px; flex: 0 0 auto; padding: 7px 10px; border: 1px solid color-mix(in srgb, var(--gold) 30%, var(--line)); color: var(--gold); background: color-mix(in srgb, var(--gold) 7%, transparent); font: 800 10px ui-monospace, monospace; letter-spacing: .1em; white-space: nowrap; }
-.surface-nav-brand span { font-size: 16px; line-height: 1; }
+.surface-nav-brand svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.45; stroke-linecap: round; stroke-linejoin: round; }
 .surface-nav-links { display: flex; align-items: center; gap: 4px; min-width: max-content; }
 .surface-nav-link { display: inline-flex; align-items: center; gap: 6px; padding: 7px 9px; border: 1px solid transparent; color: var(--muted); background: transparent; font: 700 10px ui-monospace, monospace; white-space: nowrap; }
-.surface-nav-link > span:first-child { color: var(--dim); font-size: 13px; line-height: 1; }
+.surface-nav-link > span:first-child { display: inline-grid; place-items: center; color: var(--dim); }
+.surface-nav-link > span:first-child svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 1.45; stroke-linecap: round; stroke-linejoin: round; }
 .surface-nav-link:hover, .surface-nav-link:focus-visible { border-color: var(--line2); color: var(--text); background: color-mix(in srgb, var(--panel3) 70%, transparent); }
 .surface-nav-link.active { border-color: color-mix(in srgb, var(--gold) 48%, var(--line)); color: var(--gold); background: color-mix(in srgb, var(--gold) 10%, var(--panel3)); }
 .surface-nav-link.active > span:first-child { color: var(--gold); }
