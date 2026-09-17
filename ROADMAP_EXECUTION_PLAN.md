@@ -1045,3 +1045,19 @@ budget so the navigation row cannot create an extra page-height overflow.
 Windows frontend tests **74/74**, Vite transforms **1,346 modules**, and
 `git diff --check` pass. Browser K&M (F-080), hosted migrations, physical
 CachyOS and two-device acceptance remain open.
+
+## Current checkpoint — 2026-09-17 — Codex final reader cascade
+
+F-154 closes the remaining local Codex presentation defect exposed by live
+use. The final CSS cascade pins the Codex to the Forge viewport, keeps the
+React-paged shelf/index from becoming another desktop scrollbar, gives the
+selected book exactly one bounded reading surface, and keeps Battle Shell
+scroll local to its own panel. Codex also now carries the compact shared SVG
+route-navigation row so the wide surface cannot become a dead end.
+
+Windows frontend tests are **75/75**, the Vite production build transforms
+**1,346 modules**, and the supported WSL backend suite is **116/116**. Both
+live Vite instances (`5181`, `5190`) serve the F-154 CSS via HMR. This remains
+presentation-only: no player state, learner file, PTY or hosted migration was
+changed. Browser K&M (F-080), hosted migrations, physical CachyOS and
+two-device acceptance remain open.

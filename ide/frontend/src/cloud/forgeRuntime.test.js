@@ -200,6 +200,7 @@ test('navigation keeps Tutor as the single practice workspace and parks hidden A
   assert.match(views, /data-testid="wide-route-nav"/)
   assert.match(views, /aria-label="Wide route navigation"/)
   assert.match(views, /data-wide-route=\{activeView\}/)
+  assert.match(views, /<SurfaceNavigation activeView="codex" onNavigate=\{onNavigate\} \/>/)
   assert.match(views, /const wideRoute = \['hub', 'character', 'homestead', 'codex'\]/)
   assert.match(foundation, /\.surface-nav \{ position: sticky;/)
   assert.match(views, /withWideNavigation/)
@@ -302,6 +303,16 @@ test('Codex book surface keeps readable paper hierarchy across themes', () => {
   assert.match(foundation, /\.codex-screen \.codex-page-heading h3,[\s\S]*?font-family: inherit;/)
   assert.match(foundation, /\.codex-screen \.codex-examples pre \{[\s\S]*?color: var\(--text\);[\s\S]*?border-left: 3px solid/)
   assert.doesNotMatch(foundation, /\.codex-screen \.codex-examples pre \{[\s\S]*?background: #090b09/)
+})
+
+test('Codex final cascade has one bounded reading owner instead of an outer feed', () => {
+  const foundation = source('../foundation.css')
+
+  assert.match(foundation, /F-154: final Codex reader contract/)
+  assert.match(foundation, /\.game-screen > \.codex-screen \{[\s\S]*?position: absolute;[\s\S]*?overflow: hidden;/)
+  assert.match(foundation, /\.game-screen > \.codex-screen > \.codex-tab-page\[data-codex-tab="books"\] \.codex-book-section \{[\s\S]*?overflow-y: auto;/)
+  assert.match(foundation, /\.game-screen > \.codex-screen > \.codex-tab-page\[data-codex-tab="books"\] \.codex-page-list \{[\s\S]*?overflow: visible;/)
+  assert.match(foundation, /\.game-screen > \.codex-screen > \.codex-tab-page\[data-codex-tab="books"\] \.codex-index \{[\s\S]*?overflow: hidden;/)
 })
 
 test('Codex stays a bounded book surface instead of growing an outer feed', () => {

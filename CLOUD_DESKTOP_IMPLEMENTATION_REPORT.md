@@ -3189,3 +3189,21 @@ rewards, learner files and both PTYs are unchanged.
 Verification: Windows frontend tests **74/74**, Vite (**1,346 modules**) and
 `git diff --check` pass. Browser K&M remains blocked by F-080, so no fresh
 device-level visual claim is made.
+
+### Codex final reader cascade and route escape — F-154 (2026-09-17)
+
+Live use still exposed a presentation mismatch after the earlier bounded
+folio work: the accumulated Codex rules had multiple possible scroll owners,
+and Codex was the only wide surface without the shared route-navigation row.
+The final cascade in `ide/frontend/src/foundation.css` now pins the Codex to
+the Forge viewport, leaves the desktop shelf/index non-scrolling because
+React already pages them, gives the selected book one intentional bounded
+reading scroll, and keeps Battle Shell scrolling inside its own panel. The
+Codex root also renders the compact shared SVG route-navigation row so it is
+never a dead-end surface.
+
+Verification: Windows frontend tests **75/75**, Vite production build
+**1,346 modules**, supported WSL backend tests **116/116**, and live HMR
+source checks on ports `5181` and `5190` all passed. Browser K&M remains
+blocked by F-080, so this does not claim fresh device-level visual proof.
+No player state, learner file, PTY or hosted migration changed.

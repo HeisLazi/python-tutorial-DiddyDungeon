@@ -959,3 +959,15 @@ learner file, PTY or hosted migration changed.
 Verification: Windows frontend tests **74/74**, Vite transforms **1,346
 modules**, and `git diff --check` pass. No state, learner file, PTY or hosted
 migration was changed. Fresh browser K&M remains blocked by F-080.
+
+## Codex still had a competing scroll cascade and no route escape — 2026-09-17 (F-154)
+
+| ID | Severity | Finding | Status |
+|---|---|---|---|
+| F-154 | P1 | The previous Codex fixes bounded the intended layout, but the stylesheet still contained multiple later height/overflow passes. Depending on cascade order, the selected book could feel like a page-long feed, and Codex was the one wide surface without the shared route-navigation row. | Fixed with a final cascade contract: Codex is pinned to the Forge viewport, the shelf/index stay non-scrolling on desktop, the selected book owns one bounded reading scrollbar, the Battle Shell owns its own bounded scroll when needed, and a compact SVG route-navigation row now sits inside Codex. |
+
+Verification: Windows frontend tests **75/75**, Vite production build **1,346
+modules**, supported WSL backend tests **116/116**, and both live Vite sources
+(`5181`, `5190`) expose the F-154 CSS through HMR. No player state, learner
+file, PTY or hosted migration changed. Fresh browser K&M remains blocked by
+F-080.

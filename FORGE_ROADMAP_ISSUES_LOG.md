@@ -2365,3 +2365,15 @@ F-080.
 Verification: Windows frontend source tests **74/74**, Vite transforms **1,346
 modules**, and `git diff --check` pass. Browser K&M remains blocked by F-080;
 no state, learner file, PTY or hosted migration changed.
+
+## Codex still had a competing scroll cascade and no route escape — F-154
+
+| ID | Severity | Area | Finding | Status |
+|---|---|---|---|---|
+| F-154 | P1 | Codex presentation/navigation | The previous Codex fixes were mathematically bounded, but the stylesheet still contained several competing height and overflow passes. A cascade/viewport combination could make the selected book feel like an infinite feed, and Codex was the one wide surface that did not render the shared route-navigation row. | Fixed with a final viewport contract: the Codex root is pinned and clipped, the desktop shelf/index are paged and non-scrolling, the selected book owns one bounded reading surface, Battle Shell scrolls only inside its own panel, and Codex now renders the compact shared SVG route navigation. |
+
+Verification: Windows frontend tests **75/75**, Vite production build **1,346
+modules**, supported WSL backend tests **116/116**, and live source checks on
+ports `5181` and `5190` confirm the F-154 CSS is served by HMR. No player
+state, learner file, PTY or hosted migration changed. Browser K&M remains
+blocked by F-080.
