@@ -479,5 +479,7 @@ Vite production build **1,346 modules**. No canonical save or PTY was touched.
 |---|---|---|---|
 | F-107 | P2 | `questlab-package.ps1` refused the ordinary learner checkout because untracked `dungeon.py` is protected workspace data, even though the bundle archives `HEAD` and should omit it. | Fixed the dirty-tree allowlist for `dungeon.py` and untracked `notes/`; committed source edits remain fail-closed and the archive still comes only from `git archive HEAD`. |
 
-The launcher contract regression passes. A post-commit package smoke is the
-release evidence for omission of protected files.
+The launcher contract regression passes. The post-commit package smoke created
+`QuestLab-ed8db52` from `git archive HEAD`; `tutor.py`, `dungeon.py` and
+`notes/` were absent, and the bundled baseline `progress.json` matched the
+`HEAD` blob instead of the dirty local cache.
