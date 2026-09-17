@@ -2051,3 +2051,12 @@ Verification: current-source Forge tests **33/33** and launcher contract tests
 
 Verification: current-source Forge tests **34/34**. Clean archive frontend
 tests/build and browser K&M remain visual publication gates.
+
+## Codex outer-feed regression — F-123
+
+| ID | Severity | Area | Finding | Status |
+|---|---|---|---|---|
+| F-123 | P1 | Codex presentation | The finite Codex still allowed the parent game surface and active book sections to behave like vertical feeds in compact/stale layouts, undermining the requested page-turn experience. | Fixed with a bounded `.game-screen` positioning context, an absolute viewport-pinned Codex shell, and `overflow: hidden` on book sections. The Field Library index is the deliberate scroll owner; book navigation uses Previous/Next and section tabs. |
+
+Verification: current-source Forge tests **35/35**. Clean archive frontend
+tests/build and browser K&M remain visual publication gates.

@@ -474,3 +474,9 @@
   .codex-screen .codex-index { min-height: 0; max-height: min(31vh, 220px); overflow-y: auto; border-right: 0; border-bottom: 1px solid color-mix(in srgb, var(--gold) 22%, var(--line)); }
   .codex-screen .codex-book-page { min-height: 0; overflow: hidden; padding: 14px 14px 20px; }
 }
+
+/* Keep the Codex inside the Forge viewport. Its book pages are finite UI
+   panels; the surrounding game surface must never grow into a feed. */
+.forge-v2 .game-screen { position: relative; min-width: 0; min-height: 0; }
+.forge-v2 .game-screen > .codex-screen { position: absolute; inset: 0; width: 100%; max-height: 100%; }
+.codex-book-section { overflow: hidden; }

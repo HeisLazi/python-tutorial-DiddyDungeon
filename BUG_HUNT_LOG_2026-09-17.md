@@ -640,3 +640,13 @@ remain the publication checks; no state, learner file or PTY was touched.
 Verification: current-source Forge tests **34/34**. Clean archive frontend
 tests/build and browser K&M remain the visual publication checks; no state,
 learner file or PTY was touched.
+
+## Codex outer-feed regression hunt — 2026-09-17 (F-123)
+
+| ID | Severity | Finding | Status |
+|---|---|---|---|
+| F-123 | P1 | The Codex could still participate in the parent game surface's size calculation, and each book section retained its own vertical overflow. In a compact or stale layout this read as an endless dashboard instead of a finite book with deliberate page controls. | Fixed by making the Forge game surface a bounded positioning context, pinning the Codex shell to that viewport, and removing vertical overflow from book sections. The Field Library index remains the only scrollable book navigation pane; page/section changes stay finite and explicit. |
+
+Verification: current-source Forge runtime tests **35/35**. Clean archive frontend
+tests/build and browser K&M remain the visual publication checks; no state,
+learner file or PTY was touched.
