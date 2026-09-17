@@ -900,3 +900,12 @@ device-level visual claim until an attachable Forge tab is available.
 Verification: Windows frontend tests **71/71**, Vite build **1,346 modules**,
 and supported WSL backend tests **116/116**. Browser K&M remains blocked by
 F-080, so this is not presented as a fresh device-level visual claim.
+
+## Legacy Codex primitive retained a feed-sized minimum — 2026-09-17 (F-148)
+
+| ID | Severity | Finding | Status |
+|---|---|---|---|
+| F-148 | P1 | The base `styles.css` fallback still declared `min-height: 520px` for `.codex-library`. The later reader rules normally overrode it, but a compatibility shell or stylesheet-order change could resurrect the old feed-sized Codex. | Fixed by changing the shared base primitive to `min-height: 0` and adding a regression assertion against the legacy 520px rule. |
+
+Verification: Windows frontend tests **71/71** and `git diff --check` pass;
+no state, learner file, PTY or hosted migration changed.

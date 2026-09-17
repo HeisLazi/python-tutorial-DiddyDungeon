@@ -3136,3 +3136,13 @@ scroll owner or change state, sync, notes, rewards or PTY behavior.
 Verification: Windows frontend tests **71/71**, Vite (**1,346 modules**) and
 supported WSL backend tests **116/116**. Browser K&M remains blocked by F-080;
 no hosted migration or player-state write was performed.
+
+### Legacy Codex primitive cleanup — F-148 (2026-09-17)
+
+Removed the remaining `min-height: 520px` fallback from the base Codex
+primitive in `styles.css`. The bounded reader no longer depends on the later
+refinement layer to suppress the legacy feed-sized minimum, and the frontend
+source suite guards the exact stale declaration.
+
+Verification: Windows frontend tests **71/71** and `git diff --check` pass.
+No state, learner file, PTY or hosted migration changed.

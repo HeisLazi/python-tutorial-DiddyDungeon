@@ -411,10 +411,13 @@ test('Codex folio fits the Forge viewport without inheriting the legacy 520px fe
 
 test('Codex shared library primitive cannot reintroduce a feed-sized minimum', () => {
   const foundation = source('../foundation.css')
+  const styles = source('../styles.css')
 
   assert.match(foundation, /\/\* The Codex owns its height from the viewport-pinned shell below\./)
   assert.match(foundation, /\.codex-library \{ grid-template-columns: minmax\(210px, \.28fr\) minmax\(0, 1fr\); min-height: 0; \}/)
   assert.doesNotMatch(foundation, /\.codex-library \{[^}]*min-height: (?:5|6)\d\dpx/)
+  assert.match(styles, /\.codex-library\{[^}]*min-height:0\}/)
+  assert.doesNotMatch(styles, /\.codex-library\{[^}]*min-height:520px\}/)
 })
 
 test('Codex reader contract keeps the outer page finite and the shelf paged', () => {

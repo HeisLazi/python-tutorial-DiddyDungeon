@@ -2302,3 +2302,13 @@ K&M remains blocked by F-080.
 Verification: Windows frontend tests **71/71**, Vite build **1,346 modules**,
 and supported WSL backend tests **116/116**. Browser K&M remains blocked by
 F-080; no player state, learner file, PTY or hosted migration changed.
+
+## Legacy Codex primitive retained a feed-sized minimum — F-148
+
+| ID | Severity | Area | Finding | Status |
+|---|---|---|---|---|
+| F-148 | P1 | Codex presentation | The base `styles.css` fallback still declared `min-height: 520px` for `.codex-library`. A compatibility shell or stylesheet-order change could therefore resurrect the old infinite-feed feel even though the reader layer was bounded. | Fixed by changing the shared base primitive to `min-height: 0` and guarding the exact legacy declaration in the frontend source suite. |
+
+Verification: Windows frontend tests **71/71** and `git diff --check` pass. No
+state, learner file, PTY or hosted migration changed; browser K&M remains
+blocked by F-080.
