@@ -2280,11 +2280,12 @@ Dungeon answer-bearing fields are rejected. The current protected save
 projects to **9,897 UTF-8 bytes**, below the 18,000-byte campaign allowance
 and 24,000-byte total row bound.
 
-Source-level verification is green: state gateway **40/40**, migration
-contracts **7/7**, Python compilation, and a JS fixture covering campaign,
-Codex and Dungeon travel. The live OneDrive dependency tree still has the
-known F-033 missing `@supabase/supabase-js/package.json`; clean disposable
-frontend tests/build remain the authoritative JS gate. No Supabase migration
+Source-level verification is green: the full WSL backend suite **101/101**
+(including state gateway **40/40**), migration contracts **7/7**, clean
+disposable frontend **40/40**, Python compilation and the **1,346-module**
+production build. The live OneDrive dependency tree still has the known F-033
+missing `@supabase/supabase-js/package.json`; clean disposable frontend
+tests/build remain the authoritative JS gate. No Supabase migration
 was applied, no account was seeded, and no hosted or real PC↔laptop acceptance
 claim is made. The protected save, root `tutor.py`, root `dungeon.py` and
 existing shell/AI PTYs were untouched.
