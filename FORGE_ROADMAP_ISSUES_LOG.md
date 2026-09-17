@@ -1833,3 +1833,13 @@ in-app browser could not attach a tab in this pass. No protected save,
 Fresh ext4 frontend tests/build and the WSL backend suite remain the required
 verification gates for this slice; no cloud transport or PTY lifecycle was
 widened.
+
+## React combat-surface ownership follow-up — 2026-09-17
+
+| ID | Severity | Area | Finding | Status |
+|---|---|---|---|---|
+| F-101 | P1 | Journal / Character rendering | The legacy `combatShell.js` mutation pass still appended a second Battle Shell after the React Journal and could replace the React equipment list. Revision polling therefore made the page jump or show duplicate combat UI even though the canonical state was unchanged. | Fixed: React remains the sole owner of Character, Homestead and Journal/Battle surfaces. The compatibility module now only removes stale legacy nodes and never injects or rewrites current React markup. |
+
+The source regression covers the no-injection contract; the mounted Forge suite,
+clean ext4 frontend suite and production build remain required gates. No PTY,
+canonical save or cloud transport was changed.
