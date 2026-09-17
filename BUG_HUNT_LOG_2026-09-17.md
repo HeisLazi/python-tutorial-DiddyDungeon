@@ -530,3 +530,12 @@ Verification: current-source Forge runtime tests **32/32**, clean ext4 frontend
 tests **51/51**, and Vite production build **1,346 modules transformed**.
 Browser K&M could not be run because the Codex environment had no attachable tab.
 Protected learner save/files and both PTY lifecycles were not touched.
+
+## Battle Shell encounter binding hunt — 2026-09-17 (F-112)
+
+| ID | Severity | Finding | Status |
+|---|---|---|---|
+| F-112 | P1 | The new Battle Shell derived its Question Lens from `encounter`, but the component did not receive that projection as a prop. A real tab render would have thrown before showing the page. | Fixed by binding the same canonical encounter projection into the legacy-compatible and Codex Battle Shell call sites, plus a source regression assertion. No fallback reward or question data was invented. |
+
+Verification after the repair: current-source tests **32/32**, clean ext4
+frontend tests **51/51**, and Vite production build **1,346 modules transformed**.

@@ -526,7 +526,7 @@ function BossSubmission({ requirements, verifiedRequirements = [], onSubmit, bus
   )
 }
 
-function QuestBattleScreen({ activeProject, currentMob, resolve, maxResolve, availableObjectives, completedObjectives = [], bossUnlocked, projectComplete, bossRequirements, verifiedBossRequirements, bossPhase, bossPhaseLabel, remainingBossRequirements, submitBattle, submitBoss, busy, onBack }) {
+function QuestBattleScreen({ activeProject, currentMob, encounter, resolve, maxResolve, availableObjectives, completedObjectives = [], bossUnlocked, projectComplete, bossRequirements, verifiedBossRequirements, bossPhase, bossPhaseLabel, remainingBossRequirements, submitBattle, submitBoss, busy, onBack }) {
   const mobName = currentMob?.name || activeProject.boss || 'Current encounter'
   const concept = currentMob?.concept || 'Integrated campaign challenge'
   const battleStatus = projectComplete ? 'CHAPTER COMPLETE' : bossUnlocked ? 'BOSS GATE' : 'LIVE ENCOUNTER'
@@ -642,6 +642,7 @@ function QuestJournal({ progress, revision, encounter, submitBattle, submitBoss,
         <QuestBattleScreen
           activeProject={activeProject}
           currentMob={currentMob}
+          encounter={encounter}
           resolve={resolve}
           maxResolve={maxResolve}
           availableObjectives={availableObjectives}
@@ -906,6 +907,7 @@ function Codex({ progress, revision, codexProjection, encounter, submitBattle, s
         <QuestBattleScreen
           activeProject={activeProject}
           currentMob={battleMob}
+          encounter={encounter}
           resolve={resolve}
           maxResolve={maxResolve}
           availableObjectives={availableObjectives}
