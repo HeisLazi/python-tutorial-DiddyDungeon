@@ -656,3 +656,9 @@ account-scoped and cannot fall back to an unrelated unscoped image after a
 remote removal or account transition. Anonymous/offline portraits remain
 available locally. This hardens the Milestone D privacy boundary but does not
 change the hosted migration gate.
+
+The handoff precision review also closed F-086/F-087: it now states that the
+public state command accepts only `player`/`pyr`, while `system` is internal
+only, and that Tutor/Practice share one managed `tutor.py`/notes surface with
+separate no-reward Practice state. This is documentation alignment; no runtime
+authority was widened.

@@ -48,6 +48,21 @@ The current working runtime is valuable. Preserve it.
   `activity.json`/`README.md` block to `main`; it must never receive player
   state, PTY, local-code or AI-credential data.
 
+### State-command and Tutor/Practice precision
+
+The public `POST /api/state/apply` envelope accepts only the `player` and
+`pyr` trust actors. The `system` actor is reserved for trusted in-process
+game code through `apply_internal`; it is rejected by the HTTP route and the
+`questlab-state` CLI. Progression rewards, HP and achievement mutations must
+therefore remain behind the validated service boundary rather than a caller-
+supplied system actor.
+
+Campaign Tutor and Practice intentionally share one managed workspace
+`tutor.py` editor/notebook and the dedicated `/api/tutor`/notes routes. They
+are separate learning modes because Practice has independent sessions/history
+and no Campaign/Dungeon progression writes; Practice is not a second
+`tutor.py`, a second notebook, or a normal project-file route.
+
 ## Working style
 
 Make bounded, reviewable milestones. After each milestone:
