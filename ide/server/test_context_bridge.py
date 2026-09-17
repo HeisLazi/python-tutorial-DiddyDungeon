@@ -844,7 +844,7 @@ class PyrContextBridgeTests(unittest.TestCase):
                     else:
                         self.assertTrue(verdict.json()["complete"])
                         self.assertEqual(verdict.json()["mutation"]["event"]["action"], "record_boss_clear")
-                        self.assertEqual(verdict.json()["mutation"]["revision"], 8)
+                        self.assertEqual(verdict.json()["mutation"]["revision"], 11)
 
                 final = json.loads(canonical.read_text(encoding="utf-8"))
                 self.assertTrue(final["projects"][0]["completed"])

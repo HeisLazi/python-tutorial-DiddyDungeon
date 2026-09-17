@@ -129,8 +129,33 @@ begin
       raise exception 'projects must be a bounded array' using errcode = '22023';
     end if;
     for item in select jsonb_array_elements(campaign -> 'projects') loop
-      if jsonb_typeof(item) <> 'object' or (item - array['order','branch','name','status','progress','boss','boss_status','clean_clear_eligible','completed','completed_at','clean_clear','mob_sequence_complete','creative_discoveries','mobs']) <> '{}'::jsonb then
+      if jsonb_typeof(item) <> 'object' or (item - array['order','branch','name','status','progress','boss','boss_status','clean_clear_eligible','completed','completed_at','clean_clear','mob_sequence_complete','creative_discoveries','boss_validation','mobs']) <> '{}'::jsonb then
         raise exception 'project projection contains unsupported fields' using errcode = '22023';
+      end if;
+      if item ? 'boss_validation' then
+        if jsonb_typeof(item -> 'boss_validation') <> 'object' or ((item -> 'boss_validation') - array['verified','history','completed_at']) <> '{}'::jsonb then
+          raise exception 'boss validation projection contains unsupported fields' using errcode = '22023';
+        end if;
+        if item -> 'boss_validation' ? 'verified' then
+          if jsonb_typeof((item -> 'boss_validation') -> 'verified') <> 'array' or jsonb_array_length((item -> 'boss_validation') -> 'verified') > 3 then
+            raise exception 'boss validation phases must be a bounded array' using errcode = '22023';
+          end if;
+          for field_name in select jsonb_array_elements_text((item -> 'boss_validation') -> 'verified') loop
+            if field_name not in ('required_behavior', 'explanation', 'interview') then
+              raise exception 'boss validation contains an unsupported phase' using errcode = '22023';
+            end if;
+          end loop;
+        end if;
+        if item -> 'boss_validation' ? 'history' then
+          if jsonb_typeof((item -> 'boss_validation') -> 'history') <> 'array' or jsonb_array_length((item -> 'boss_validation') -> 'history') > 20 then
+            raise exception 'boss validation history must be bounded' using errcode = '22023';
+          end if;
+          for mob_item in select jsonb_array_elements((item -> 'boss_validation') -> 'history') loop
+            if jsonb_typeof(mob_item) <> 'object' or (mob_item - array['requirement_id','evidence_id','reason','recorded_at']) <> '{}'::jsonb then
+              raise exception 'boss validation history contains unsupported fields' using errcode = '22023';
+            end if;
+          end loop;
+        end if;
       end if;
       if item ? 'mobs' then
         if jsonb_typeof(item -> 'mobs') <> 'array' or jsonb_array_length(item -> 'mobs') > 20 then

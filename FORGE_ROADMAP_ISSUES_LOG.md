@@ -1843,3 +1843,17 @@ widened.
 The source regression covers the no-injection contract; the mounted Forge suite,
 clean ext4 frontend suite and production build remain required gates. No PTY,
 canonical save or cloud transport was changed.
+
+## Boss phase and trinket trigger slice — 2026-09-17
+
+| ID | Severity | Area | Finding | Status |
+|---|---|---|---|---|
+| F-102 | P2 | Combat progression | Boss validation had only an in-memory provider checklist, so a verified phase did not appear in the canonical revision/event stream; the documented trinket effects were presentation-only. | Fixed locally: `record_boss_requirement` persists only the bounded phase/evidence metadata, the projection exposes the current safe phase without prompts, and Ember Scythe, Guardian Sigil and Phoenix Ember effects are applied by the state service with auditable event fields. The React Battle screen renders the phase track and reward queue presents triggers. Hosted migration/application and provider-authenticated adjudication remain gates. |
+
+The cloud projection/migration allowlist carries the bounded boss-validation
+record for the next approved hosted-schema rollout; no hosted migration was
+applied in this pass.
+
+Verification: WSL backend discovery **103/103**, clean ext4 frontend **48/48**,
+and Vite production build (**1,346 modules**). Browser K&M remains unavailable
+in this environment because the Codex browser tab could not attach.

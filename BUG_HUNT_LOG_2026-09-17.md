@@ -429,3 +429,9 @@ not changed.
 This was a visual/state-polling coherence bug. It did not mutate canonical
 progress, but it made live updates appear to jump and contradicted the new
 Journal/Battle screen split.
+
+## Boss phase and trinket trigger hunt — 2026-09-17 (F-102)
+
+| ID | Severity | Finding | Status |
+|---|---|---|---|
+| F-102 | P2 | Boss requirement verification lived only in the short-lived provider challenge, and the documented trinkets had no state-service effect. A refresh could hide a phase already accepted by PYR, while a trinket could be shown without an auditable trigger. | Fixed locally with a canonical `record_boss_requirement` event/projection and bounded Ember Scythe, Guardian Sigil and Phoenix Ember triggers. Hosted auth/schema application remains unverified. |

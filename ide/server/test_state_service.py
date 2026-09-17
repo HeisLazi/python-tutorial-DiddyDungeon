@@ -596,6 +596,83 @@ class StateServiceBehaviorTests(unittest.TestCase):
         self.assertEqual(state["codex"]["encounters"][0]["attempts"], 2)
         self.assertTrue(next(item for item in state["achievements"] if item["name"] == "First Blood")["unlocked"])
 
+    def test_bounded_trinket_triggers_are_state_service_owned(self):
+        service, path = self.make_service()
+        state = self.read(path)
+        state["equipment"] = {"armor": "Apprentice Coat", "trinket": "Ember Scythe", "title": "Apprentice Coder"}
+        path.write_text(json.dumps(state), encoding="utf-8")
+
+        result = service.apply_internal(
+            "record_battle_objective",
+            {"objective_id": "table_setup", "evidence_id": "trinket-1", "reason": "Verified the table state"},
+        )
+        self.assertEqual(result["result"]["impact"], 3)
+        self.assertEqual(result["result"]["base_impact"], 2)
+        self.assertEqual(result["result"]["bonus_impact"], 1)
+        self.assertEqual(result["result"]["trinket_trigger"], "Ember Scythe")
+        self.assertEqual(self.read(path)["state_events"][-1]["trinket_trigger"], "Ember Scythe")
+
+        state = self.read(path)
+        state["equipment"]["trinket"] = "Guardian Sigil"
+        state["player"]["hp"] = 20
+        path.write_text(json.dumps(state), encoding="utf-8")
+        miss = service.apply_internal(
+            "record_battle_miss",
+            {
+                "objective_id": "state_explanation",
+                "encounter_id": "trinket-encounter",
+                "evidence_id": "trinket-miss",
+                "reason": "The submitted explanation was incomplete",
+            },
+        )
+        self.assertEqual(miss["result"]["damage"], 0)
+        self.assertEqual(miss["result"]["prevented_damage"], 6)
+        self.assertEqual(miss["result"]["trinket_trigger"], "Guardian Sigil")
+        self.assertEqual(self.read(path)["player"]["hp"], 20)
+
+        state = self.read(path)
+        state["equipment"]["trinket"] = "Phoenix Ember"
+        state["player"]["hp"] = 1
+        path.write_text(json.dumps(state), encoding="utf-8")
+        revive = service.apply_internal(
+            "record_battle_miss",
+            {
+                "objective_id": "state_explanation",
+                "encounter_id": "trinket-revive",
+                "evidence_id": "trinket-revive",
+                "reason": "The second submission was incomplete",
+            },
+        )
+        self.assertTrue(revive["result"]["revived"])
+        self.assertEqual(revive["result"]["trinket_trigger"], "Phoenix Ember")
+        self.assertEqual(self.read(path)["player"]["hp"], 1)
+
+    def test_boss_phase_verification_is_persisted_without_revealing_prompts(self):
+        service, path = self.make_service()
+        state = self.read(path)
+        project = state["projects"][0]
+        project.update({"boss": "The House", "boss_status": "available", "progress": 100})
+        project["mobs"] = [{"name": "The Count Keeper", "status": "defeated", "concept": "Loops"}]
+        path.write_text(json.dumps(state), encoding="utf-8")
+
+        phase = service.apply_internal(
+            "record_boss_requirement",
+            {"requirement_id": "required_behavior", "evidence_id": "boss-phase-1", "reason": "The required behaviour was verified"},
+        )
+        self.assertTrue(phase["changed"])
+        self.assertEqual(phase["result"]["boss_phase"], "explanation")
+        self.assertEqual(phase["result"]["verified_boss_requirements"], ["required_behavior"])
+        self.assertEqual(phase["result"]["remaining_boss_requirements"], ["explanation", "interview"])
+        projection = service.encounter_projection(self.read(path))
+        self.assertEqual(projection["status"], "boss_available")
+        self.assertEqual(projection["verified_boss_requirements"], ["required_behavior"])
+        self.assertNotIn("prompt", projection)
+        duplicate = service.apply_internal(
+            "record_boss_requirement",
+            {"requirement_id": "required_behavior", "evidence_id": "boss-phase-1", "reason": "Duplicate provider retry"},
+        )
+        self.assertFalse(duplicate["changed"])
+
     def test_final_mob_opens_boss_gate_and_verified_boss_clear_awards_canonical_progression(self):
         service, path = self.make_service()
         state = self.read(path)

@@ -198,6 +198,14 @@
 .battle-screen-submit .card-heading { padding-bottom: 9px; }
 .battle-screen-submit form { max-width: 980px; }
 .battle-screen-submit .battle-answer-editor { min-height: 300px; resize: vertical; font: 12px/1.6 ui-monospace, monospace; tab-size: 4; }
+.boss-phase-track { margin: 16px 0 6px; padding: 10px 0 0; border-top: 1px solid var(--line); }
+.boss-phase-list { display: flex; flex-wrap: wrap; gap: 7px; margin: 8px 0 4px; }
+.boss-phase-list span { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--line2); border-radius: 999px; padding: 5px 8px; color: var(--muted); font: 9px ui-monospace, monospace; text-transform: uppercase; }
+.boss-phase-list span b { color: var(--dim); }
+.boss-phase-list span.verified { border-color: color-mix(in srgb, var(--green) 55%, var(--line)); color: var(--green); }
+.boss-phase-list span.verified b { color: var(--green); }
+.boss-phase-list span.current { border-color: color-mix(in srgb, var(--gold) 65%, var(--line)); color: var(--gold); background: color-mix(in srgb, var(--gold) 7%, var(--panel3)); }
+.boss-phase-list span.current b { color: var(--gold); }
 .battle-back-button { margin-top: 12px; justify-self: start; }
 .journal-battle-link { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 14px; padding: 11px; border: 1px dashed color-mix(in srgb, var(--gold) 42%, var(--line)); border-radius: 10px; background: color-mix(in srgb, var(--gold) 6%, var(--panel3)); }
 .journal-battle-link > div { display: grid; gap: 3px; }

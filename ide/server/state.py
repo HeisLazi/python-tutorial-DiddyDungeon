@@ -187,6 +187,7 @@ ACTION_DEFINITIONS: dict[str, ActionDefinition] = {
     "record_achievement": ActionDefinition(frozenset({SYSTEM_ACTOR}), internal=True),
     "record_battle_objective": ActionDefinition(frozenset({SYSTEM_ACTOR}), internal=True),
     "complete_mob": ActionDefinition(frozenset({SYSTEM_ACTOR}), internal=True),
+    "record_boss_requirement": ActionDefinition(frozenset({SYSTEM_ACTOR}), internal=True),
     "record_boss_clear": ActionDefinition(frozenset({SYSTEM_ACTOR}), internal=True),
     "record_battle_miss": ActionDefinition(frozenset({SYSTEM_ACTOR}), internal=True),
     "reconcile_legacy_progress": ActionDefinition(frozenset({SYSTEM_ACTOR}), internal=True),
@@ -298,6 +299,15 @@ BOSS_REQUIREMENTS: tuple[str, ...] = (
     "explanation",
     "interview",
 )
+
+# Boss validation is deliberately presentation-safe: the projection exposes
+# only which bounded gate phases have been verified, never the provider's
+# hidden interview prompt or answer key.
+BOSS_PHASE_LABELS: dict[str, str] = {
+    "required_behavior": "Required behaviour",
+    "explanation": "Explanation",
+    "interview": "Interview",
+}
 
 # The library is deliberately generic.  These pages teach transferable Python
 # ideas without carrying a project answer key or a future encounter prompt.
@@ -1149,7 +1159,7 @@ class LocalStateService:
                 raise StateCommandError("campaign.projects must be a bounded list")
             project_fields = {
                 "order", "branch", "name", "status", "progress", "boss", "boss_status", "clean_clear_eligible",
-                "completed", "completed_at", "clean_clear", "mob_sequence_complete", "creative_discoveries", "mobs",
+                "completed", "completed_at", "clean_clear", "mob_sequence_complete", "creative_discoveries", "mobs", "boss_validation",
             }
             mob_fields = {"name", "status", "assist", "concept", "encounter", "max_resolve", "resolve", "impact_applied", "objective_attempts"}
             clean_projects: list[dict[str, Any]] = []
@@ -1170,6 +1180,52 @@ class LocalStateService:
                     item["completed_at"] = cls._campaign_text(raw["completed_at"], f"campaign.projects[{index}].completed_at", max_length=80)
                 if "creative_discoveries" in raw:
                     item["creative_discoveries"] = cls._campaign_text_list(raw["creative_discoveries"], f"campaign.projects[{index}].creative_discoveries", maximum=MAX_SYNC_LIST_ITEMS, max_length=240)
+                if "boss_validation" in raw and raw["boss_validation"] is not None:
+                    raw_validation = cls._campaign_mapping(raw["boss_validation"], f"campaign.projects[{index}].boss_validation", {"verified", "history", "completed_at"})
+                    clean_validation: dict[str, Any] = {}
+                    if "verified" in raw_validation:
+                        clean_validation["verified"] = cls._campaign_text_list(
+                            raw_validation["verified"],
+                            f"campaign.projects[{index}].boss_validation.verified",
+                            maximum=len(BOSS_REQUIREMENTS),
+                            identifiers=True,
+                        )
+                        if any(item not in BOSS_REQUIREMENTS for item in clean_validation["verified"]):
+                            raise StateCommandError(f"campaign.projects[{index}].boss_validation.verified contains an unknown phase")
+                    if "completed_at" in raw_validation and raw_validation["completed_at"] is not None:
+                        clean_validation["completed_at"] = cls._campaign_text(
+                            raw_validation["completed_at"],
+                            f"campaign.projects[{index}].boss_validation.completed_at",
+                            max_length=80,
+                        )
+                    if "history" in raw_validation:
+                        raw_history = raw_validation["history"]
+                        if not isinstance(raw_history, list) or len(raw_history) > 20:
+                            raise StateCommandError(f"campaign.projects[{index}].boss_validation.history must be bounded")
+                        clean_history: list[dict[str, Any]] = []
+                        for history_index, history_item in enumerate(raw_history):
+                            raw_entry = cls._campaign_mapping(
+                                history_item,
+                                f"campaign.projects[{index}].boss_validation.history[{history_index}]",
+                                {"requirement_id", "evidence_id", "reason", "recorded_at"},
+                            )
+                            clean_entry: dict[str, Any] = {}
+                            for field in ("requirement_id", "evidence_id"):
+                                if field in raw_entry:
+                                    clean_entry[field] = cls._campaign_identifier(
+                                        raw_entry[field],
+                                        f"campaign.projects[{index}].boss_validation.history[{history_index}].{field}",
+                                    )
+                            for field in ("reason", "recorded_at"):
+                                if field in raw_entry:
+                                    clean_entry[field] = cls._campaign_text(
+                                        raw_entry[field],
+                                        f"campaign.projects[{index}].boss_validation.history[{history_index}].{field}",
+                                        max_length=500,
+                                    )
+                            clean_history.append(clean_entry)
+                        clean_validation["history"] = clean_history
+                    item["boss_validation"] = clean_validation
                 if "mobs" in raw:
                     values = raw["mobs"]
                     if not isinstance(values, list) or len(values) > MAX_SYNC_MOBS_PER_PROJECT:
@@ -1465,7 +1521,7 @@ class LocalStateService:
         if isinstance(progress.get("projects"), list):
             project_fields = {
                 "order", "branch", "name", "status", "progress", "boss", "boss_status", "clean_clear_eligible",
-                "completed", "completed_at", "clean_clear", "mob_sequence_complete", "creative_discoveries",
+                "completed", "completed_at", "clean_clear", "mob_sequence_complete", "creative_discoveries", "boss_validation",
             }
             mob_fields = {"name", "status", "assist", "concept", "encounter", "max_resolve", "resolve", "impact_applied", "objective_attempts"}
             campaign["projects"] = []
@@ -1473,6 +1529,15 @@ class LocalStateService:
                 if not isinstance(project, Mapping):
                     continue
                 item = pick(project, project_fields)
+                if isinstance(project.get("boss_validation"), Mapping):
+                    validation = project["boss_validation"]
+                    item["boss_validation"] = pick(validation, {"verified", "completed_at"})
+                    if isinstance(validation.get("history"), list):
+                        item["boss_validation"]["history"] = [
+                            pick(entry, {"requirement_id", "evidence_id", "reason", "recorded_at"})
+                            for entry in validation["history"]
+                            if isinstance(entry, Mapping)
+                        ][-20:]
                 if isinstance(project.get("mobs"), list):
                     item["mobs"] = [pick(mob, mob_fields) for mob in project["mobs"] if isinstance(mob, Mapping)]
                 campaign["projects"].append(item)
@@ -1730,6 +1795,33 @@ class LocalStateService:
                 changed_domains.append("campaign")
         return changed_domains
 
+    @staticmethod
+    def _boss_validation_projection(project: Mapping[str, Any]) -> dict[str, Any]:
+        """Return safe boss phases without projecting provider prompts."""
+
+        raw = project.get("boss_validation")
+        verified = raw.get("verified") if isinstance(raw, Mapping) else []
+        if not isinstance(verified, list):
+            verified = []
+        verified_ids = [item for item in verified if item in BOSS_REQUIREMENTS]
+        # Preserve the canonical requirement order even if an older local
+        # checkpoint recorded them in a different order.
+        verified_ids = [item for item in BOSS_REQUIREMENTS if item in verified_ids]
+        remaining = [item for item in BOSS_REQUIREMENTS if item not in verified_ids]
+        status = str(project.get("boss_status") or "locked")
+        if status == "defeated" or project.get("completed") is True:
+            phase = "complete"
+        elif remaining:
+            phase = remaining[0]
+        else:
+            phase = "ready_to_clear"
+        return {
+            "verified_boss_requirements": verified_ids,
+            "remaining_boss_requirements": remaining,
+            "boss_phase": phase,
+            "boss_phase_label": BOSS_PHASE_LABELS.get(phase, "Boss validation complete" if phase == "ready_to_clear" else "Boss clear"),
+        }
+
     def encounter_projection(self, progress: Mapping[str, Any]) -> dict[str, Any] | None:
         """Return the validated, non-secret projection for the active encounter.
 
@@ -1754,6 +1846,7 @@ class LocalStateService:
         if index is None:
             project_completed = project.get("completed") is True or project.get("boss_status") == "defeated"
             boss_status = str(project.get("boss_status") or ("available" if not project_completed else "defeated"))
+            boss_validation = self._boss_validation_projection(project)
             return {
                 "project_id": self._project_id(project),
                 "project_name": str(project.get("name") or project.get("branch") or ""),
@@ -1764,6 +1857,7 @@ class LocalStateService:
                 "boss": str(project.get("boss") or ""),
                 "boss_status": boss_status,
                 "boss_requirements": list(BOSS_REQUIREMENTS),
+                **boss_validation,
                 "mob_name": None,
                 "mob_index": None,
                 "status": "complete" if project_completed else "boss_available",
@@ -3003,6 +3097,7 @@ class LocalStateService:
             "record_achievement": self._record_achievement,
             "record_battle_objective": self._record_battle_objective,
             "complete_mob": self._complete_mob,
+            "record_boss_requirement": self._record_boss_requirement,
             "record_boss_clear": self._record_boss_clear,
             "record_battle_miss": self._record_battle_miss,
             "reconcile_legacy_progress": self._reconcile_legacy_progress,
@@ -3240,6 +3335,7 @@ class LocalStateService:
                 "completed_objectives": [],
                 "attempts": 0,
                 "question_types": [],
+                "trinket_triggers": [],
             }
             progress["encounter_state"] = existing
         else:
@@ -3253,6 +3349,7 @@ class LocalStateService:
             existing.setdefault("completed_objectives", [])
             existing.setdefault("attempts", 0)
             existing.setdefault("question_types", [])
+            existing.setdefault("trinket_triggers", [])
         mob.setdefault("max_resolve", int(existing["max_resolve"]))
         mob.setdefault("resolve", int(existing["resolve"]))
         mob.setdefault("impact_applied", 0)
@@ -3544,7 +3641,20 @@ class LocalStateService:
         if objective_id in completed:
             raise StateCommandError("This encounter objective has already been verified", status_code=409)
         before = max(0, min(int(encounter.get("max_resolve", profile["max_resolve"])), int(encounter.get("resolve", profile["max_resolve"]))))
-        impact = self._integer(objective["impact"], "impact", minimum=1, maximum=MAX_IMPACT)
+        base_impact = self._integer(objective["impact"], "impact", minimum=1, maximum=MAX_IMPACT)
+        impact = base_impact
+        bonus_impact = 0
+        trinket_trigger = None
+        trinket_name = str((progress.get("equipment") or {}).get("trinket") or "")
+        trinket_triggers = encounter.setdefault("trinket_triggers", [])
+        if not isinstance(trinket_triggers, list):
+            raise StateCommandError("Existing encounter trinket history is invalid", status_code=500)
+        if trinket_name == "Ember Scythe" and "ember-scythe:first-objective" not in trinket_triggers:
+            bonus_impact = min(1, max(0, before - base_impact))
+            if bonus_impact:
+                impact = min(MAX_IMPACT, base_impact + bonus_impact)
+                trinket_triggers.append("ember-scythe:first-objective")
+                trinket_trigger = "Ember Scythe"
         after = max(0, before - impact)
         completed.append(objective_id)
         encounter["completed_objectives"] = completed[-20:]
@@ -3581,6 +3691,9 @@ class LocalStateService:
                 "mob_name": str(mob.get("name") or ""),
                 "objective_id": objective_id,
                 "impact": impact,
+                "base_impact": base_impact,
+                "bonus_impact": bonus_impact,
+                "trinket_trigger": trinket_trigger,
                 "resolve_before": before,
                 "resolve_after": after,
                 "mob_defeated": bool(finish),
@@ -3592,6 +3705,9 @@ class LocalStateService:
                 "mob_name": str(mob.get("name") or ""),
                 "objective_id": objective_id,
                 "question_type": str(objective["question_type"]),
+                "base_impact": base_impact,
+                "bonus_impact": bonus_impact,
+                "trinket_trigger": trinket_trigger,
                 "evidence_id": evidence_id,
                 "reason": reason,
                 "impact": impact,
@@ -3854,6 +3970,80 @@ class LocalStateService:
             },
         )
 
+    def _record_boss_requirement(self, payload: Mapping[str, Any], progress: dict[str, Any]) -> Mutation:
+        """Persist one provider-validated boss phase before the final clear."""
+
+        data = self._payload(payload, {"requirement_id", "evidence_id", "reason"}, {"requirement_id", "evidence_id", "reason"})
+        requirement_id = self._text(data["requirement_id"], "requirement_id", max_length=MAX_IDENTIFIER_LENGTH, identifier=True)
+        if requirement_id not in BOSS_REQUIREMENTS:
+            raise StateCommandError("Unsupported boss requirement")
+        evidence_id = self._text(data["evidence_id"], "evidence_id", max_length=MAX_IDENTIFIER_LENGTH, identifier=True)
+        reason = self._text(data["reason"], "reason")
+
+        projects = progress.get("projects")
+        if not isinstance(projects, list):
+            raise StateCommandError("Existing state field projects is invalid", status_code=500)
+        project = next((item for item in projects if isinstance(item, dict) and item.get("status") == "active"), None)
+        if project is None:
+            raise StateCommandError("No active project is available", status_code=409)
+        mobs = project.get("mobs")
+        if not isinstance(mobs, list) or not all(isinstance(item, dict) for item in mobs):
+            raise StateCommandError("Existing active project mobs are invalid", status_code=500)
+        if any(item.get("status") not in {"defeated", "cleared"} for item in mobs):
+            raise StateCommandError("The active project still has unresolved mobs", status_code=409)
+        if project.get("boss_status") not in {"available", "defeated"}:
+            raise StateCommandError("The project boss is not unlocked yet", status_code=409)
+
+        validation = project.get("boss_validation")
+        if not isinstance(validation, dict):
+            validation = {"verified": [], "history": []}
+            project["boss_validation"] = validation
+        verified = validation.get("verified")
+        history = validation.get("history")
+        if not isinstance(verified, list) or not isinstance(history, list):
+            raise StateCommandError("Existing boss validation state is invalid", status_code=500)
+        verified = [item for item in verified if item in BOSS_REQUIREMENTS]
+        validation["verified"] = verified
+        if requirement_id in verified:
+            projection = self._boss_validation_projection(project)
+            return Mutation(
+                False,
+                {
+                    "already_verified": True,
+                    "requirement_id": requirement_id,
+                    **projection,
+                },
+            )
+
+        verified.append(requirement_id)
+        validation["verified"] = [item for item in BOSS_REQUIREMENTS if item in verified]
+        history.append(
+            {
+                "requirement_id": requirement_id,
+                "evidence_id": evidence_id,
+                "reason": reason,
+                "recorded_at": _utc_now(),
+            }
+        )
+        validation["history"] = history[-20:]
+        projection = self._boss_validation_projection(project)
+        result = {
+            "boss_requirement_verified": True,
+            "requirement_id": requirement_id,
+            "evidence_id": evidence_id,
+            "reason": reason,
+            **projection,
+        }
+        return Mutation(
+            True,
+            result,
+            {
+                "project_id": self._project_id(project),
+                "boss_name": str(project.get("boss") or ""),
+                **result,
+            },
+        )
+
     def _record_boss_clear(self, payload: Mapping[str, Any], progress: dict[str, Any]) -> Mutation:
         """Record a boss victory after trusted, evidence-backed validation.
 
@@ -3925,6 +4115,12 @@ class LocalStateService:
             "interview_evidence_id": interview_evidence_id,
             "recorded_at": completed_at,
         }
+        validation = project.get("boss_validation")
+        if not isinstance(validation, dict):
+            validation = {"verified": [], "history": []}
+            project["boss_validation"] = validation
+        validation["verified"] = list(BOSS_REQUIREMENTS)
+        validation["completed_at"] = completed_at
 
         clean_clear = bool(project.get("clean_clear_eligible"))
         assist = progress.get("assist")
@@ -3999,6 +4195,9 @@ class LocalStateService:
                 "explanation_evidence_id": explanation_evidence_id,
                 "interview_evidence_id": interview_evidence_id,
                 "reason": reason,
+                "boss_phase": "complete",
+                "boss_phase_label": "Boss clear",
+                "verified_boss_requirements": list(BOSS_REQUIREMENTS),
             },
             {
                 "project_id": self._project_id(project),
@@ -4023,6 +4222,9 @@ class LocalStateService:
                 "explanation_evidence_id": explanation_evidence_id,
                 "interview_evidence_id": interview_evidence_id,
                 "reason": reason,
+                "boss_phase": "complete",
+                "boss_phase_label": "Boss clear",
+                "verified_boss_requirements": list(BOSS_REQUIREMENTS),
             },
         )
 
@@ -4039,6 +4241,7 @@ class LocalStateService:
         question_type = None
         mob_name = None
         raw_damage = None
+        encounter = None
         if data.get("objective_id") is not None:
             objective_id = self._text(data["objective_id"], "objective_id", max_length=MAX_IDENTIFIER_LENGTH, identifier=True)
             project, mobs, index, mob = self._active_project_and_mob(progress)
@@ -4083,9 +4286,26 @@ class LocalStateService:
         armor_name = str((progress.get("equipment") or {}).get("armor") or "")
         armor_reduction = {"Apprentice Coat": 10, "Leather Guard": 20, "Runic Mail": 30, "Emberplate": 40, "Guardian Aegis": 50, "Mythril Archive Plate": 60}.get(armor_name, 0)
         damage = max(1, (raw_damage * (100 - armor_reduction) + 99) // 100)
+        prevented_damage = 0
+        trinket_trigger = None
+        revived = False
+        trinket_name = str((progress.get("equipment") or {}).get("trinket") or "")
+        trinket_triggers = encounter.setdefault("trinket_triggers", []) if isinstance(encounter, dict) else []
+        if not isinstance(trinket_triggers, list):
+            raise StateCommandError("Existing encounter trinket history is invalid", status_code=500)
+        if trinket_name == "Guardian Sigil" and "guardian-sigil:counterattack" not in trinket_triggers:
+            prevented_damage = damage
+            damage = 0
+            trinket_triggers.append("guardian-sigil:counterattack")
+            trinket_trigger = "Guardian Sigil"
         maximum = self._counter(player, "max_hp")
         current = self._counter(player, "hp")
         updated = max(0, current - damage)
+        if updated == 0 and trinket_name == "Phoenix Ember" and "phoenix-ember:revive" not in trinket_triggers:
+            updated = 1
+            trinket_triggers.append("phoenix-ember:revive")
+            revived = True
+            trinket_trigger = "Phoenix Ember"
         player["hp"] = updated
         return Mutation(
             True,
@@ -4093,6 +4313,9 @@ class LocalStateService:
                 "hp": updated,
                 "max_hp": maximum,
                 "damage": damage,
+                "prevented_damage": prevented_damage,
+                "trinket_trigger": trinket_trigger,
+                "revived": revived,
                 "mob_name": mob_name,
                 "objective_id": objective_id,
                 "question_type": question_type,
@@ -4100,6 +4323,9 @@ class LocalStateService:
             {
                 "raw_damage": raw_damage,
                 "damage": damage,
+                "prevented_damage": prevented_damage,
+                "trinket_trigger": trinket_trigger,
+                "revived": revived,
                 "hp_before": current,
                 "hp_after": updated,
                 "encounter_id": encounter_id,

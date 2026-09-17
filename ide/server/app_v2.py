@@ -1194,7 +1194,14 @@ def _attach_pyr_verdict_challenge(
                 "expires_at": now + PYR_VERDICT_TTL_SECONDS,
             }
             if boss_mode:
+                verified_requirements = encounter.get("verified_boss_requirements", [])
                 existing.update({"boss_name": boss_name, "boss_submissions": {}, "boss_verified": {}})
+                if isinstance(verified_requirements, list):
+                    existing["boss_verified"] = {
+                        requirement: {"state": "recorded"}
+                        for requirement in verified_requirements
+                        if requirement in BOSS_REQUIREMENTS
+                    }
             else:
                 existing["mob_name"] = mob_name
             PYR_CONTEXT_CHALLENGES[client_key] = existing
@@ -1875,6 +1882,7 @@ def apply_pyr_boss_verdict(payload: PyrBossVerdictRequest):
         }
         del submissions[requirement_id]
         mutation = None
+        requirement_mutation = None
         with PROGRESS_LOCK:
             try:
                 progress, metadata = STATE_SERVICE.snapshot_with_metadata()
@@ -1884,6 +1892,18 @@ def apply_pyr_boss_verdict(payload: PyrBossVerdictRequest):
                     if client_id == "default":
                         PYR_CONTEXT_CHALLENGE = None
                     raise HTTPException(status_code=409, detail="Campaign changed; capture fresh boss context")
+                requirement_mutation = STATE_SERVICE.apply_internal(
+                    "record_boss_requirement",
+                    {
+                        "requirement_id": requirement_id,
+                        "evidence_id": pending["evidence_id"],
+                        "reason": payload.reason,
+                    },
+                )
+                if requirement_mutation.get("changed"):
+                    # Keep this bounded boss challenge usable for the next
+                    # phase while binding it to the newly committed revision.
+                    challenge["revision"] = requirement_mutation["revision"]
                 if all(requirement in verified for requirement in BOSS_REQUIREMENTS):
                     reason = "Boss requirements verified; " + "; ".join(
                         str(verified[requirement].get("reason") or "validated") for requirement in BOSS_REQUIREMENTS
@@ -1903,6 +1923,7 @@ def apply_pyr_boss_verdict(payload: PyrBossVerdictRequest):
             except StateCommandError as exc:
                 raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
 
+        response_mutation = mutation or requirement_mutation
         return {
             "ok": True,
             "verdict": "correct",
@@ -1910,8 +1931,9 @@ def apply_pyr_boss_verdict(payload: PyrBossVerdictRequest):
             "complete": mutation is not None,
             "verified_requirements": sorted(verified),
             "mutation": mutation,
-            "revision": mutation.get("revision") if mutation else challenge.get("revision"),
-            "event": mutation.get("event") if mutation else None,
+            "phase_mutation": requirement_mutation,
+            "revision": response_mutation.get("revision") if response_mutation else challenge.get("revision"),
+            "event": response_mutation.get("event") if response_mutation else None,
         }
 
 
