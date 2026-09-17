@@ -1003,6 +1003,7 @@ function Codex({ progress, revision, codexProjection, encounter, submitBattle, s
         </div>
       </section>
         </>
+      </div>
     </div>
   )
 }
