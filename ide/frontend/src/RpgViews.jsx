@@ -379,7 +379,7 @@ function HubScreen({ progress, revision, onOpen }) {
   )
 }
 
-function BattleSubmission({ availableObjectives, onSubmit, busy }) {
+function BattleSubmission({ availableObjectives, onSubmit, busy, large = false }) {
   const [objectiveId, setObjectiveId] = useState(availableObjectives[0]?.id || '')
   const [answer, setAnswer] = useState('')
   const [status, setStatus] = useState('')
@@ -410,9 +410,9 @@ function BattleSubmission({ availableObjectives, onSubmit, busy }) {
   }
 
   return (
-    <section className="battle-submit-card" data-testid="battle-submission">
+    <section className={`battle-submit-card ${large ? 'battle-screen-submit' : ''}`} data-testid="battle-submission">
       <div className="card-heading"><span>BATTLE SUBMISSION</span><b>OPTIONAL</b></div>
-      <p className="context-note">Choose one currently available objective and explain your answer. PYR receives the answer for adjudication; this form cannot award Impact or damage on its own.</p>
+      <p className="context-note">Choose one currently available objective and write the code, explanation or evidence you want PYR to adjudicate. This form cannot award Impact or damage on its own.</p>
       <form onSubmit={submit}>
         <label className="battle-field">
           <span>Objective</span>
@@ -424,7 +424,7 @@ function BattleSubmission({ availableObjectives, onSubmit, busy }) {
         </label>
         <label className="battle-field">
           <span>Your answer</span>
-          <textarea value={answer} onChange={(event) => setAnswer(event.target.value)} maxLength={20_000} rows={7} placeholder="Explain the idea or show the checkpoint you completed…" disabled={busy || submitting} />
+          <textarea className={large ? 'battle-answer-editor' : ''} value={answer} onChange={(event) => setAnswer(event.target.value)} maxLength={20_000} rows={large ? 16 : 7} spellCheck={false} placeholder={large ? 'Write the code or explanation for this objective…' : 'Explain the idea or show the checkpoint you completed…'} disabled={busy || submitting} />
         </label>
         <button className="primary" type="submit" disabled={busy || submitting || !answer.trim() || !onSubmit}>{submitting ? 'Sending…' : 'Send to PYR'}</button>
       </form>
@@ -433,7 +433,7 @@ function BattleSubmission({ availableObjectives, onSubmit, busy }) {
   )
 }
 
-function BossSubmission({ requirements, verifiedRequirements = [], onSubmit, busy }) {
+function BossSubmission({ requirements, verifiedRequirements = [], onSubmit, busy, large = false }) {
   const available = requirements.filter((requirement) => !verifiedRequirements.includes(requirement))
   const [requirementId, setRequirementId] = useState(available[0] || '')
   const [answer, setAnswer] = useState('')
@@ -463,16 +463,51 @@ function BossSubmission({ requirements, verifiedRequirements = [], onSubmit, bus
   }
 
   return (
-    <section className="battle-submit-card boss-submit-card" data-testid="boss-submission">
+    <section className={`battle-submit-card boss-submit-card ${large ? 'battle-screen-submit' : ''}`} data-testid="boss-submission">
       <div className="card-heading"><span>BOSS VALIDATION</span><b>{verifiedRequirements.length}/{requirements.length}</b></div>
       <p className="context-note">Submit one requirement at a time. PYR receives only this answer and the current bounded projection; no future prompts or answer keys are exposed.</p>
       <form onSubmit={submit}>
         <label className="battle-field"><span>Requirement</span><select value={requirementId} onChange={(event) => setRequirementId(event.target.value)} disabled={busy || submitting}>{available.map((requirement) => <option key={requirement} value={requirement}>{requirement.replaceAll('_', ' ')}</option>)}</select></label>
-        <label className="battle-field"><span>Your evidence / explanation</span><textarea value={answer} onChange={(event) => setAnswer(event.target.value)} maxLength={20_000} rows={6} placeholder="Describe the verified behaviour or answer the interview…" disabled={busy || submitting} /></label>
+        <label className="battle-field"><span>Your evidence / explanation</span><textarea className={large ? 'battle-answer-editor' : ''} value={answer} onChange={(event) => setAnswer(event.target.value)} maxLength={20_000} rows={large ? 16 : 6} spellCheck={false} placeholder={large ? 'Write the implementation evidence or interview answer…' : 'Describe the verified behaviour or answer the interview…'} disabled={busy || submitting} /></label>
         <button className="primary" type="submit" disabled={busy || submitting || !answer.trim() || !onSubmit}>{submitting ? 'Sending…' : 'Send to PYR'}</button>
       </form>
       {status && <small className="battle-submit-status" role="status">{status}</small>}
     </section>
+  )
+}
+
+function QuestBattleScreen({ activeProject, currentMob, resolve, maxResolve, availableObjectives, bossUnlocked, projectComplete, bossRequirements, verifiedBossRequirements, submitBattle, submitBoss, busy, onBack }) {
+  const mobName = currentMob?.name || activeProject.boss || 'Current encounter'
+  const concept = currentMob?.concept || 'Integrated campaign challenge'
+  const battleStatus = projectComplete ? 'CHAPTER COMPLETE' : bossUnlocked ? 'BOSS GATE' : 'LIVE ENCOUNTER'
+  return (
+    <div className="quest-battle-screen" data-testid="quest-battle-screen">
+      <section className="game-card battle-screen-hero">
+        <div>
+          <span className="screen-kicker">BATTLE SHELL · {battleStatus}</span>
+          <h3>{mobName}</h3>
+          <p>{projectComplete ? 'The validated campaign record is complete. Review the evidence without reopening the answer gate.' : bossUnlocked ? 'The chapter is clear. Complete the bounded boss validation here when you are ready.' : `Work on ${concept} in the answer workspace, then send only your evidence to PYR.`}</p>
+        </div>
+        <div className="battle-resolve-hero" data-testid="encounter-resolve">
+          <small>{bossUnlocked ? 'BOSS GATE' : 'ENEMY RESOLVE'}</small>
+          <strong>{projectComplete ? 'CLEAR' : `${resolve}/${maxResolve}`}</strong>
+          {!projectComplete && <ProgressBar value={resolve} max={maxResolve} label="Resolve" className="resolve" />}
+        </div>
+      </section>
+
+      <section className="game-card battle-workspace-card">
+        <div className="card-heading"><span>ANSWER WORKSPACE</span><b>STATE-SERVICE VALIDATED</b></div>
+        <p className="context-note">This is the campaign writing surface: use it like a focused code/editor panel, then submit the answer for provider adjudication. Rewards, Resolve and unlocks remain state-service decisions.</p>
+        {projectComplete ? (
+          <div className="campaign-victory battle-complete-note"><span className="screen-kicker">NO ACTIVE SUBMISSION</span><h3>Evidence archived</h3><p>Your completed chapter remains available in the Journal and Codex. Future questions are never exposed here.</p></div>
+        ) : bossUnlocked ? (
+          <BossSubmission requirements={bossRequirements} verifiedRequirements={verifiedBossRequirements} onSubmit={submitBoss} busy={busy} large />
+        ) : (
+          <BattleSubmission availableObjectives={availableObjectives} onSubmit={submitBattle} busy={busy} large />
+        )}
+        <button type="button" className="battle-back-button" onClick={onBack}>← Back to Journal pages</button>
+      </section>
+    </div>
   )
 }
 
@@ -494,6 +529,7 @@ function QuestJournal({ progress, revision, encounter, submitBattle, submitBoss,
   const bossRequirements = encounter?.boss_requirements || ['required_behavior', 'explanation', 'interview']
   const codexEntries = progress.codex?.encounters || []
   const [page, setPage] = useState(0)
+  const [journalView, setJournalView] = useState('journal')
 
   return (
     <div className="game-screen-scroll quest-journal-screen" data-testid="quest-journal" data-campaign-revision={revision}>
@@ -510,13 +546,36 @@ function QuestJournal({ progress, revision, encounter, submitBattle, submitBoss,
         </div>
       </div>
 
-      <div className="journal-controls" role="navigation" aria-label="Quest Journal pages">
-        <button type="button" onClick={() => setPage((current) => Math.max(0, current - 1))} disabled={page === 0}>← Previous page</button>
-        <span>PAGE {page + 1} / 2</span>
-        <button type="button" onClick={() => setPage((current) => Math.min(1, current + 1))} disabled={page === 1}>Next page →</button>
+      <div className="journal-mode-tabs" role="tablist" aria-label="Quest Journal screens">
+        <button type="button" role="tab" aria-selected={journalView === 'journal'} className={journalView === 'journal' ? 'active' : ''} onClick={() => setJournalView('journal')}>Journal pages</button>
+        <button type="button" role="tab" aria-selected={journalView === 'battle'} className={journalView === 'battle' ? 'active' : ''} onClick={() => setJournalView('battle')}>Battle shell <span>{projectComplete ? 'CLEAR' : bossUnlocked ? 'BOSS' : 'LIVE'}</span></button>
       </div>
 
-      <div key={page} className="screen-grid two journal-page page-turn" data-journal-page={page}>
+      {journalView === 'battle' ? (
+        <QuestBattleScreen
+          activeProject={activeProject}
+          currentMob={currentMob}
+          resolve={resolve}
+          maxResolve={maxResolve}
+          availableObjectives={availableObjectives}
+          bossUnlocked={bossUnlocked}
+          projectComplete={projectComplete}
+          bossRequirements={bossRequirements}
+          verifiedBossRequirements={encounter?.verified_boss_requirements || []}
+          submitBattle={submitBattle}
+          submitBoss={submitBoss}
+          busy={busy}
+          onBack={() => setJournalView('journal')}
+        />
+      ) : (
+        <>
+          <div className="journal-controls" role="navigation" aria-label="Quest Journal pages">
+            <button type="button" onClick={() => setPage((current) => Math.max(0, current - 1))} disabled={page === 0}>← Previous page</button>
+            <span>PAGE {page + 1} / 2</span>
+            <button type="button" onClick={() => setPage((current) => Math.min(1, current + 1))} disabled={page === 1}>Next page →</button>
+          </div>
+
+          <div key={page} className="screen-grid two journal-page page-turn" data-journal-page={page}>
         <section className="game-card journal-main-page">
           <div className="card-heading"><span>{projectComplete ? 'CAMPAIGN COMPLETE' : bossUnlocked ? 'MOBS CLEARED' : 'MAIN QUEST'}</span><b>{activeProject.progress ?? encounter?.project_progress ?? 0}%</b></div>
           {projectComplete ? (
@@ -542,24 +601,16 @@ function QuestJournal({ progress, revision, encounter, submitBattle, submitBoss,
                 ))}
               </div>
               <small>No future questions or answers are revealed here; the provider supplies the next bounded interview challenge.</small>
-              <BossSubmission requirements={bossRequirements} verifiedRequirements={encounter?.verified_boss_requirements || []} onSubmit={submitBoss} busy={busy} />
+              <div className="journal-battle-link"><span>Battle validation is on the dedicated Battle screen.</span><button type="button" onClick={() => setJournalView('battle')}>Open Battle shell →</button></div>
             </div>
           ) : (
             <>
               <h3>{currentMob ? currentMob.name : `Face ${activeProject.boss || 'the boss'}`}</h3>
               <p>{currentMob?.concept || 'Complete the remaining chapter objectives.'}</p>
-              <div className="encounter-resolve-panel" data-testid="encounter-resolve">
-                <div className="card-heading"><span>ENEMY RESOLVE</span><b>{resolve}/{maxResolve}</b></div>
-                <ProgressBar value={resolve} max={maxResolve} label="Resolve" className="resolve" />
-                {availableObjectives.length > 0 && (
-                  <div className="impact-objectives" aria-label="Available verified objectives">
-                    {availableObjectives.map((objective) => (
-                      <span key={objective.id}>{objective.question_type} · {objective.impact} Impact</span>
-                    ))}
-                  </div>
-                )}
+              <div className="journal-battle-link" data-testid="journal-battle-link">
+                <div><span className="screen-kicker">BATTLE SHELL</span><strong>Enemy Resolve {resolve}/{maxResolve}</strong><small>{availableObjectives.length ? `${availableObjectives.length} verified objective${availableObjectives.length === 1 ? '' : 's'} ready` : 'Waiting for the next state-service objective'}</small></div>
+                <button type="button" onClick={() => setJournalView('battle')}>Open Battle shell →</button>
               </div>
-              <BattleSubmission availableObjectives={availableObjectives} onSubmit={submitBattle} busy={busy} />
             </>
           )}
           <div className="mob-path">
@@ -593,6 +644,8 @@ function QuestJournal({ progress, revision, encounter, submitBattle, submitBoss,
           </div>
         </section>
       </div>
+        </>
+      )}
     </div>
   )
 }

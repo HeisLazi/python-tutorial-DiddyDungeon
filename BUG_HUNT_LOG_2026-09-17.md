@@ -407,3 +407,15 @@ modules**), mounted Forge source tests **28/28**, and backend syntax/full suite
 **101/101**. Browser K&M could not be freshly attached in this environment, so
 these findings are source/API/build verified rather than a new live-browser
 claim. Existing shell and AI PTYs were not restarted.
+
+## Character, Homestead and Battle workspace follow-up — 2026-09-17 (F-098–F-100)
+
+| ID | Severity | Finding | Status |
+|---|---|---|---|
+| F-098 | P2 | Character/Homestead still inherited the IDE rail/context/AI grid even though they are presentation surfaces that need the same full-width treatment as Hub. | Fixed with a shared wide-surface layout for Hub, Character and Homestead; AI remains mounted but hidden/off-canvas unless explicitly opened. |
+| F-099 | P1 | Quest Journal embedded the Battle submission shell inside the Main Quest page, competing with the journal's page layout. | Fixed with a second Journal screen, Battle shell, alongside Journal pages; the state-service encounter and boss gates remain the same. |
+| F-100 | P1 | The Journal answer field was a compact sidebar-style textarea, not a comfortable campaign-sized writing surface. | Fixed with a dedicated Battle workspace and large code-friendly answer editor for objective/boss evidence. |
+
+The new Battle screen preserves the bounded provider submission path and never
+reveals future questions or answer keys. PTYs and canonical state ownership were
+not changed.

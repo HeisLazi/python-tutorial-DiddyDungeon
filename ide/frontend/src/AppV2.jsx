@@ -375,8 +375,9 @@ function AppV2() {
   const terminalSkin = equipped.terminal || 'terminal-charcoal'
   const showEditor = activeView === 'forge' || activeView === 'tutor' || activeView === 'practice'
   const tutorSurface = activeView === 'tutor' || activeView === 'practice'
-  const aiRouteHidden = ['hub', 'codex', 'quests', 'homestead', 'settings'].includes(activeView)
+  const aiRouteHidden = ['hub', 'character', 'codex', 'quests', 'homestead', 'settings'].includes(activeView)
   const hubMode = activeView === 'hub'
+  const wideSurface = ['hub', 'character', 'homestead'].includes(activeView)
   const aiGridVisible = showAiTerminal && !aiRouteHidden
   const aiVisible = showAiTerminal && (!aiRouteHidden || aiPopoverOpen)
   const welcomeName = cloudState.profile?.display_name || player.name || cloudState.user?.email?.split('@')?.[0] || 'Adventurer'
@@ -1700,7 +1701,7 @@ function AppV2() {
   const saveDeviceLabel = (label) => accountAction(() => syncEngine.setDeviceLabel(label), 'Device name saved.')
   const resolveCloudConflict = (choice) => accountAction(() => syncEngine.resolveConflict(choice), choice === 'cloud' ? 'Cloud campaign copy applied.' : 'This device campaign copy published.')
 
-  const gridStyle = hubMode
+  const gridStyle = wideSurface
     ? {
         gridTemplateColumns: 'minmax(0, 1fr)',
         gridTemplateRows: 'minmax(220px, 1fr)',
@@ -1718,7 +1719,7 @@ function AppV2() {
 
   return (
     <div
-      className={`app-shell forge-v2 ${hubMode ? 'hub-mode' : ''} ${hudDensity === 'compact' ? 'hud-compact' : ''} ${animations ? '' : 'no-animations'}`}
+      className={`app-shell forge-v2 ${hubMode ? 'hub-mode' : ''} ${wideSurface ? 'wide-mode' : ''} ${hudDensity === 'compact' ? 'hud-compact' : ''} ${animations ? '' : 'no-animations'}`}
       data-theme={theme}
       data-font={fontFamily}
       data-cursor={equipped.cursor || 'cursor-basic'}
@@ -1776,9 +1777,9 @@ function AppV2() {
       </div>
 
       <main className="workspace-grid" style={gridStyle}>
-        {!hubMode && <ActivityRail activeView={activeView} setActiveView={setActiveView} player={player} campaignReady={campaignReady} />}
+        {!wideSurface && <ActivityRail activeView={activeView} setActiveView={setActiveView} player={player} campaignReady={campaignReady} />}
 
-        {!hubMode && <aside className="left-panel panel">
+        {!wideSurface && <aside className="left-panel panel">
           <ContextPanel
             activeView={activeView}
             campaign={campaign}
@@ -1792,7 +1793,7 @@ function AppV2() {
           />
         </aside>}
 
-        {!hubMode && <div className="resize-handle vertical left-resizer" onPointerDown={(event) => startResize('left', event)} />}
+        {!wideSurface && <div className="resize-handle vertical left-resizer" onPointerDown={(event) => startResize('left', event)} />}
 
         <section className={`editor-panel panel ${showEditor ? '' : 'surface-hidden'} ${tutorSurface ? 'tutor-editor-panel' : ''}`}>
           <div className="editor-toolbar">

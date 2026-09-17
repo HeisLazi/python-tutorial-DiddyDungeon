@@ -2459,3 +2459,18 @@ build **1,346 modules**. The protected `progress.json` digest, `tutor.py`,
 `dungeon.py`, shell PTY and AI PTY were left untouched. A fresh browser K&M
 acceptance was not possible because the Codex in-app browser could not attach a
 tab; this report makes no new live-browser claim.
+
+### Character/Homestead and Battle workspace follow-up — 2026-09-17
+
+Character and Homestead now use the same full-width presentation surface as the
+Hub. The rail, context column, hidden IDE/terminal grid and normal AI column are
+removed for those views; the AI component remains mounted off-canvas so a
+manual pop-out does not recreate its PTY.
+
+Quest Journal now has two in-journal screens: the paper Journal pages and a
+dedicated Battle shell. Main Quest remains a readable chapter record with a
+compact link into Battle; Resolve, objectives, boss validation and submission
+live on the Battle screen. The Battle workspace uses a larger code-friendly
+answer editor so learners can write implementation evidence or explanations in
+the same focused manner as Forge/Tutor, while all rewards, Resolve and unlocks
+still come only from validated state-service/provider results.

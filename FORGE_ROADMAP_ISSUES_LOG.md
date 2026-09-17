@@ -1821,3 +1821,15 @@ build; mounted Forge source coverage is **28/28** and the WSL backend suite is
 **101/101**. Fresh browser K&M remains an environment gate because the Codex
 in-app browser could not attach a tab in this pass. No protected save,
 `tutor.py`, `dungeon.py` or existing PTY was touched.
+
+## Character/Homestead and Battle workspace follow-up — 2026-09-17
+
+| ID | Severity | Area | Finding | Status |
+|---|---|---|---|---|
+| F-098 | P2 | Wide presentation surfaces | Character and Homestead still inherited the split IDE/sidebar layout instead of using the Hub's full-width presentation surface. | Fixed with a shared `wide-mode` for Hub, Character and Homestead; their route-specific game screens now fill the workspace and the AI stays parked unless opened. |
+| F-099 | P1 | Quest Journal navigation | The Battle shell was embedded in the Main Quest page, making the journal page feel like a form rather than a journal. | Fixed with Journal pages and Battle shell as two in-journal screens, analogous to the Dungeon map/code tabs. |
+| F-100 | P1 | Campaign answer workspace | Battle answers used a small sidebar textarea that did not feel like the normal campaign/Tutor writing surface. | Fixed with a dedicated Battle workspace card and larger code-friendly editor textarea while retaining the existing validated submission boundary. |
+
+Fresh ext4 frontend tests/build and the WSL backend suite remain the required
+verification gates for this slice; no cloud transport or PTY lifecycle was
+widened.
