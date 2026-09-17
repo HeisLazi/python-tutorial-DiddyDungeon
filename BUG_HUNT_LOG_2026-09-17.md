@@ -650,3 +650,13 @@ learner file or PTY was touched.
 Verification: current-source Forge runtime tests **35/35**. Clean archive frontend
 tests/build and browser K&M remain the visual publication checks; no state,
 learner file or PTY was touched.
+
+## Account sync diagnostics hunt — 2026-09-17 (F-124)
+
+| ID | Severity | Finding | Status |
+|---|---|---|---|
+| F-124 | P1 | The account panel only surfaced a broad sync label and queued text. It did not show the local campaign revision or cloud cursor, so a stale Level/XP display could not be distinguished from an unresolved queue, conflict or hosted-schema gate. | Fixed with three read-only diagnostic cells sourced from the existing App revision and SyncEngine state. No write path was added and no player state was inferred. |
+
+Verification: current-source Forge tests **36/36**. Clean archive frontend
+tests/build and browser K&M remain publication gates; hosted two-device sync
+is still external evidence.

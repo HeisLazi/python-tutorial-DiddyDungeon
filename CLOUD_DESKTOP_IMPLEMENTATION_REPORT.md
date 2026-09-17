@@ -2807,3 +2807,16 @@ the existing Previous/Next controls and section tabs.
 Current-source Forge tests pass **35/35**. Clean archive frontend tests/build
 and browser K&M remain the visual publication checks; no state, learner file,
 PTY or hosted transport changed.
+
+### Account revision diagnostics repair — F-124
+
+The signed-in Account and Device surface now exposes the read-only campaign
+revision currently rendered by Forge, the SyncEngine's cloud cursor and the
+number of queued local projections. This makes the recurring “my laptop still
+shows Level 1” report diagnosable without turning the UI into a second state
+authority: all three values come from the existing revision-aware gateway and
+SyncEngine state, and no reconciliation or overwrite occurs from this panel.
+
+Current-source Forge tests pass **36/36**. Clean archive frontend tests/build
+and browser K&M remain the visual publication checks. Hosted migration and
+real two-device acceptance remain approval-gated.

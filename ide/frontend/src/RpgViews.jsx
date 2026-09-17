@@ -1423,7 +1423,7 @@ function PracticeScreen({ progress, revision, practiceProjection, onPracticeProm
   )
 }
 
-function AccountPanel({ account, busy, notice, onSignIn, onSignUp, onSignOut, onDeviceLabelSave, onResolveConflict }) {
+function AccountPanel({ account, busy, notice, onSignIn, onSignUp, onSignOut, onDeviceLabelSave, onResolveConflict, revision }) {
   const [formMode, setFormMode] = useState('signin')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -1483,6 +1483,11 @@ function AccountPanel({ account, busy, notice, onSignIn, onSignUp, onSignOut, on
         <div className="account-signed-in">
           <div className="account-identity"><strong>{account.profile?.display_name || account.user.email}</strong><span>{account.user.email}</span></div>
           <p className="settings-note">Campaign sync: <strong>{account.label}</strong>{account.pendingChanges ? ` · ${account.pendingChanges} queued change${account.pendingChanges === 1 ? '' : 's'}` : ''}</p>
+          <div className="account-sync-diagnostics" data-testid="account-sync-diagnostics" aria-label="Campaign sync diagnostics">
+            <div><span>Local campaign revision</span><strong>{revision ?? '—'}</strong></div>
+            <div><span>Cloud cursor</span><strong>{account.cloudRevision ?? '—'}</strong></div>
+            <div><span>Queued changes</span><strong>{account.pendingChanges ?? 0}</strong></div>
+          </div>
           {account.conflict && (
             <div className="cloud-conflict-banner" role="alert">
               <strong>Campaign sync needs a choice.</strong>
@@ -1550,7 +1555,7 @@ function SettingsScreen({ preferences, setters, resetLayout, equipped, account, 
       </div>
 
       <div className="screen-grid two">
-        <AccountPanel account={account} busy={accountBusy} notice={accountNotice} onSignIn={onSignIn} onSignUp={onSignUp} onSignOut={onSignOut} onDeviceLabelSave={onDeviceLabelSave} onResolveConflict={onResolveConflict} />
+        <AccountPanel account={account} busy={accountBusy} notice={accountNotice} onSignIn={onSignIn} onSignUp={onSignUp} onSignOut={onSignOut} onDeviceLabelSave={onDeviceLabelSave} onResolveConflict={onResolveConflict} revision={revision} />
         <WorkspaceTransferPanel transfer={workspaceTransfer} busy={workspaceTransferBusy} notice={workspaceTransferNotice} onRefresh={onWorkspaceTransferRefresh} onPush={onWorkspaceTransferPush} onPreviewPull={onWorkspaceTransferPreviewPull} onApplyPull={onWorkspaceTransferApplyPull} />
         <section className="game-card settings-card">
           <div className="card-heading"><span>EDITOR</span></div>
