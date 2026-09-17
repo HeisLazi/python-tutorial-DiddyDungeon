@@ -39,11 +39,13 @@ Hosted Auth is configured to require email confirmation (`mailer_autoconfirm=fal
   their own row and can write only through the
   `save_player_state(expected_revision, next_state, source_device_id)`
   compare-and-swap RPC. Direct table writes are revoked.
-- `SyncEngine` now owns all player-state Supabase reads/writes. It syncs only
-  player progression/HP, armor/trinket/title, companion state and Homestead
-  ownership/equipped cosmetics. Projects, Codex/encounter history,
-  skills/mastery evidence, activity and cosmetic catalog/purchase history
-  remain local in this first transport slice and are preserved by cloud pulls.
+- `SyncEngine` now owns all player-state Supabase reads/writes. The bounded
+  projection syncs player progression/HP, armor/trinket/title, companion
+  state, Homestead ownership/equipped cosmetics, and the validated campaign
+  evidence needed to keep project/mob progress, Codex, goals/skills and a
+  Dungeon checkpoint coherent. Event logs, activity, profile data and
+  cosmetic catalog/purchase history remain local and are preserved by cloud
+  pulls.
 - A per-account cursor and bounded eight-entry local outbox survive offline
   operation. Reconnect pushes only a revision captured from the local gateway;
   if the cloud revision moved, the engine fails closed with `conflict`.
@@ -2185,8 +2187,9 @@ this is local revision-polling evidence, not a claim of second-device,
 authenticated Supabase, native CachyOS or friend-machine certification.
 
 Remaining gates are the real PC/laptop source-transfer round trip, hosted
-account/avatar acceptance, native Linux packaging and the later Milestone C
-cloud player-state transport. The existing runtime preflight may still report
+account/avatar acceptance, native Linux packaging and the hosted Milestone C
+campaign-projection migration/authenticated acceptance. The existing runtime
+preflight may still report
 `RUNTIME STALE` when a test intentionally uses the same checkout/workspace
 path; that is a launcher/environment contract warning, not a second active
 player-state authority.
@@ -2250,3 +2253,38 @@ The wrapper passed Bash syntax/help checks, launcher contract tests (**14/14**)
 and the full WSL backend suite (**98/98**). This removes the missing local
 launcher/tooling gap (F-077) but does not certify a real CachyOS machine; the
 F-058 kernel/package/install/K&M evidence gate remains open.
+
+## Campaign evidence transport — 2026-09-17
+
+The first cloud projection intentionally carried only player/equipment,
+companion and Homestead fields. That was enough to move a level and purse but
+not enough to move cleared mobs, project progress, Codex encounters, skills,
+goals, achievements, Practice history or an active Dungeon editor checkpoint.
+That omission explains the observed “HUD changed, Journal/Codex stayed
+starter” behavior across devices.
+
+The source-level repair extends the same allowlisted revision/CAS transport
+with a bounded `campaign` domain. The local gateway strips local-only logs,
+catalogues, profile data and arbitrary keys before validation. It carries
+project/mob status and Resolve, Codex concepts/notes/validated results/mastery
+evidence, streak/skills/achievements/goals, bounded Practice history, and the
+answer-free current Dungeon run/loadout/room selector/editor checkpoint and
+history. The browser SyncEngine projects the same shape for outbox, pull and
+conflict paths.
+
+The unapplied migration
+`supabase/migrations/20260917000100_player_state_campaign_projection.sql`
+updates the row-domain constraint and wraps the existing validator with a
+campaign validator. Unknown nested fields, future reward/catalog data and
+Dungeon answer-bearing fields are rejected. The current protected save
+projects to **9,897 UTF-8 bytes**, below the 18,000-byte campaign allowance
+and 24,000-byte total row bound.
+
+Source-level verification is green: state gateway **40/40**, migration
+contracts **7/7**, Python compilation, and a JS fixture covering campaign,
+Codex and Dungeon travel. The live OneDrive dependency tree still has the
+known F-033 missing `@supabase/supabase-js/package.json`; clean disposable
+frontend tests/build remain the authoritative JS gate. No Supabase migration
+was applied, no account was seeded, and no hosted or real PC↔laptop acceptance
+claim is made. The protected save, root `tutor.py`, root `dungeon.py` and
+existing shell/AI PTYs were untouched.

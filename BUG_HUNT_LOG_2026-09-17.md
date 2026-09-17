@@ -209,3 +209,25 @@ has no `package.json`. This is the existing F-033 mounted-dependency issue,
 not a source regression; the disposable clean frontend tree remains the
 authoritative **39/39** test and 1,346-module build evidence. No `npm install`,
 save edit or runtime restart was performed in the live checkout.
+
+## Campaign projection recheck — 2026-09-17
+
+The cross-device projection was re-reviewed against the original report of a
+Level/XP HUD arriving without the corresponding Journal/Codex state. The old
+allowlist only sent player/equipment/companion/Homestead. This was a confirmed
+P1 coherence defect, recorded as F-078: a cloud pull could not restore cleared
+mobs, current Resolve, Codex encounter evidence, skills/goals or an active
+Dungeon checkpoint.
+
+Repair coverage is source-level and state-service-owned. Python now strips and
+validates a bounded `campaign` projection; SyncEngine carries the same shape;
+the unapplied SQL migration extends the row constraint and rejects unknown
+domains/nested answer-bearing fields. A focused mutation test proved
+`sync_apply_cloud` increments the revision/event while restoring project,
+Codex and Dungeon data. The current protected save is **9,897 bytes** in the
+campaign projection, below the 18,000-byte campaign cap.
+
+No new visual/browser defect was scored in this slice. The live mounted
+OneDrive JS dependency failure remains the known F-033 environment gate, and
+hosted authenticated PC↔laptop acceptance remains unverified; no Supabase
+write, save edit, or PTY restart occurred.

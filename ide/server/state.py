@@ -58,6 +58,14 @@ MAX_SYNC_LIST_ITEMS = 100
 MAX_SYNC_TEXT_LENGTH = 120
 MAX_SYNC_LEVEL = 1000
 MAX_SYNC_COUNTER = 1_000_000_000
+MAX_SYNC_CAMPAIGN_BYTES = 18_000
+MAX_SYNC_PROJECTS = 20
+MAX_SYNC_MOBS_PER_PROJECT = 20
+MAX_SYNC_GOALS_PER_BUCKET = 20
+MAX_SYNC_SKILLS = 50
+MAX_SYNC_ACHIEVEMENTS = 100
+MAX_SYNC_CODEX_RESULTS = 20
+MAX_SYNC_DUNGEON_HISTORY = 50
 BATTLE_RAW_DAMAGE_BY_MOB = (6, 10, 15, 18, 22, 24, 26, 28)
 MAX_DUNGEON_EDITOR_BYTES = 120_000
 MAX_DUNGEON_OPTIONS = 8
@@ -386,6 +394,22 @@ SYNC_EQUIPMENT_FIELDS = frozenset({"armor", "trinket", "title"})
 SYNC_COMPANION_FIELDS = frozenset({"name", "form", "level", "bond", "next_form", "next_form_requirement"})
 SYNC_HOMESTEAD_FIELDS = frozenset({"name", "owned_cosmetics", "equipped"})
 SYNC_HOMESTEAD_EQUIPPED_FIELDS = frozenset({"theme", "cursor", "hud", "terminal"})
+SYNC_CAMPAIGN_FIELDS = frozenset(
+    {
+        "learning_state",
+        "streak",
+        "skills",
+        "stats",
+        "achievements",
+        "goals",
+        "projects",
+        "current_quest",
+        "codex",
+        "dungeon_run",
+        "dungeon_leaderboard",
+        "practice_sessions",
+    }
+)
 
 
 def _is_safe_device_id(value: object) -> bool:
@@ -935,11 +959,555 @@ class LocalStateService:
                 result.append(normalized)
         return result
 
+    @staticmethod
+    def _campaign_text(value: object, field: str, *, max_length: int = MAX_SYNC_TEXT_LENGTH) -> str:
+        """Validate campaign evidence text without treating prose as a path.
+
+        The player-state domains use ``_sync_text`` because those values are
+        also used as identifiers in a few UI/storage paths.  Campaign notes,
+        prompts, explanations and timestamps are evidence, not paths, so they
+        only need bounded UTF-8-safe text validation here.
+        """
+
+        if not isinstance(value, str):
+            raise StateCommandError(f"{field} must be text")
+        normalized = value.strip()
+        if not normalized or len(normalized) > max_length or any(ord(character) < 32 for character in normalized):
+            raise StateCommandError(f"{field} must be bounded text without control characters")
+        return normalized
+
+    @classmethod
+    def _campaign_identifier(cls, value: object, field: str) -> str:
+        return cls._text(value, field, max_length=MAX_IDENTIFIER_LENGTH, identifier=True)
+
+    @classmethod
+    def _campaign_int(cls, value: object, field: str, *, maximum: int = MAX_SYNC_COUNTER) -> int:
+        return cls._integer(value, field, minimum=0, maximum=maximum)
+
+    @classmethod
+    def _campaign_bool(cls, value: object, field: str) -> bool:
+        if not isinstance(value, bool):
+            raise StateCommandError(f"{field} must be a boolean")
+        return value
+
+    @classmethod
+    def _campaign_mapping(cls, value: object, field: str, allowed: set[str]) -> dict[str, Any]:
+        if not isinstance(value, Mapping):
+            raise StateCommandError(f"{field} must be an object")
+        extra = set(value) - allowed
+        if extra:
+            raise StateCommandError(f"Unsupported cloud campaign field(s) in {field}: {', '.join(sorted(extra))}")
+        return dict(value)
+
+    @classmethod
+    def _campaign_text_list(
+        cls,
+        value: object,
+        field: str,
+        *,
+        maximum: int,
+        identifiers: bool = False,
+        max_length: int = MAX_SYNC_TEXT_LENGTH,
+    ) -> list[str]:
+        if not isinstance(value, list) or len(value) > maximum:
+            raise StateCommandError(f"{field} must be a bounded list")
+        result: list[str] = []
+        for index, item in enumerate(value):
+            item_field = f"{field}[{index}]"
+            normalized = cls._campaign_identifier(item, item_field) if identifiers else cls._campaign_text(item, item_field, max_length=max_length)
+            if normalized not in result:
+                result.append(normalized)
+        return result
+
+    @classmethod
+    def _validate_campaign_projection(cls, campaign: object) -> dict[str, Any]:
+        """Validate the bounded campaign evidence carried by cloud sync.
+
+        This is deliberately separate from the player/equipment projection.
+        It carries enough validated history for another device to render the
+        same campaign, Codex and Dungeon checkpoint, while excluding local
+        event logs, catalogs, profiles, answer keys and arbitrary JSON paths.
+        """
+
+        if not isinstance(campaign, Mapping):
+            raise StateCommandError("Cloud campaign projection must be an object")
+        extra = set(campaign) - SYNC_CAMPAIGN_FIELDS
+        if extra:
+            raise StateCommandError(f"Unsupported cloud campaign domain(s): {', '.join(sorted(extra))}")
+        clean: dict[str, Any] = {}
+
+        learning = campaign.get("learning_state")
+        if learning is not None:
+            raw = cls._campaign_mapping(learning, "campaign.learning_state", {"project", "concept", "phase", "reference_mode", "clean_clear_eligible"})
+            item: dict[str, Any] = {}
+            for field in ("project", "concept", "phase"):
+                if field in raw:
+                    item[field] = cls._campaign_text(raw[field], f"campaign.learning_state.{field}")
+            for field in ("reference_mode", "clean_clear_eligible"):
+                if field in raw:
+                    item[field] = cls._campaign_bool(raw[field], f"campaign.learning_state.{field}")
+            clean["learning_state"] = item
+
+        streak = campaign.get("streak")
+        if streak is not None:
+            raw = cls._campaign_mapping(streak, "campaign.streak", {"current", "longest", "last_active", "freeze_tokens", "days_logged"})
+            item = {}
+            for field in ("current", "longest", "freeze_tokens"):
+                if field in raw:
+                    item[field] = cls._campaign_int(raw[field], f"campaign.streak.{field}")
+            if "last_active" in raw and raw["last_active"] is not None:
+                item["last_active"] = cls._campaign_text(raw["last_active"], "campaign.streak.last_active", max_length=40)
+            if "days_logged" in raw:
+                item["days_logged"] = cls._campaign_text_list(raw["days_logged"], "campaign.streak.days_logged", maximum=MAX_SYNC_LIST_ITEMS, max_length=40)
+            clean["streak"] = item
+
+        skills = campaign.get("skills")
+        if skills is not None:
+            if not isinstance(skills, list) or len(skills) > MAX_SYNC_SKILLS:
+                raise StateCommandError("campaign.skills must be a bounded list")
+            clean_skills: list[dict[str, Any]] = []
+            for index, skill in enumerate(skills):
+                raw = cls._campaign_mapping(skill, f"campaign.skills[{index}]", {"name", "concept", "status", "evidence", "interview_passes", "shield"})
+                item = {}
+                for field in ("name", "concept", "status"):
+                    if field in raw:
+                        item[field] = cls._campaign_text(raw[field], f"campaign.skills[{index}].{field}")
+                for field in ("evidence", "interview_passes"):
+                    if field in raw:
+                        item[field] = cls._campaign_int(raw[field], f"campaign.skills[{index}].{field}")
+                if "shield" in raw and raw["shield"] is not None:
+                    shield = cls._campaign_mapping(raw["shield"], f"campaign.skills[{index}].shield", {"tier", "charges", "max_charges"})
+                    clean_shield: dict[str, Any] = {}
+                    if "tier" in shield:
+                        clean_shield["tier"] = cls._campaign_text(shield["tier"], f"campaign.skills[{index}].shield.tier", max_length=40)
+                    for field in ("charges", "max_charges"):
+                        if field in shield:
+                            clean_shield[field] = cls._campaign_int(shield[field], f"campaign.skills[{index}].shield.{field}")
+                    item["shield"] = clean_shield
+                clean_skills.append(item)
+            clean["skills"] = clean_skills
+
+        stats = campaign.get("stats")
+        if stats is not None:
+            allowed_stats = {
+                "sessions", "projects_cleared", "bosses_defeated", "mobs_defeated", "interviews_passed",
+                "interviews_failed", "mastery_shields_earned", "bugs_fixed", "explanations", "clean_clears",
+                "commits_logged", "reference_mode_uses", "guided_milestones", "recovery_trials_passed",
+                "creative_bonuses", "discoveries_unlocked",
+            }
+            raw = cls._campaign_mapping(stats, "campaign.stats", allowed_stats)
+            clean["stats"] = {field: cls._campaign_int(raw[field], f"campaign.stats.{field}") for field in allowed_stats if field in raw}
+
+        achievements = campaign.get("achievements")
+        if achievements is not None:
+            if not isinstance(achievements, list) or len(achievements) > MAX_SYNC_ACHIEVEMENTS:
+                raise StateCommandError("campaign.achievements must be a bounded list")
+            clean_achievements: list[dict[str, Any]] = []
+            for index, achievement in enumerate(achievements):
+                raw = cls._campaign_mapping(achievement, f"campaign.achievements[{index}]", {"name", "description", "unlocked"})
+                item = {}
+                for field in ("name", "description"):
+                    if field in raw:
+                        item[field] = cls._campaign_text(raw[field], f"campaign.achievements[{index}].{field}")
+                if "unlocked" in raw:
+                    item["unlocked"] = cls._campaign_bool(raw["unlocked"], f"campaign.achievements[{index}].unlocked")
+                clean_achievements.append(item)
+            clean["achievements"] = clean_achievements
+
+        goals = campaign.get("goals")
+        if goals is not None:
+            raw_goals = cls._campaign_mapping(goals, "campaign.goals", {"daily", "weekly", "long_term"})
+            clean_goals: dict[str, list[dict[str, Any]]] = {}
+            for bucket in ("daily", "weekly", "long_term"):
+                values = raw_goals.get(bucket)
+                if values is None:
+                    continue
+                if not isinstance(values, list) or len(values) > MAX_SYNC_GOALS_PER_BUCKET:
+                    raise StateCommandError(f"campaign.goals.{bucket} must be a bounded list")
+                clean_bucket: list[dict[str, Any]] = []
+                for index, goal in enumerate(values):
+                    raw_goal = cls._campaign_mapping(goal, f"campaign.goals.{bucket}[{index}]", {"id", "text", "target", "progress", "reward_xp", "reward_coins", "done"})
+                    item = {}
+                    if "id" in raw_goal:
+                        item["id"] = cls._campaign_identifier(raw_goal["id"], f"campaign.goals.{bucket}[{index}].id")
+                    if "text" in raw_goal:
+                        item["text"] = cls._campaign_text(raw_goal["text"], f"campaign.goals.{bucket}[{index}].text", max_length=400)
+                    for field in ("target", "progress", "reward_xp", "reward_coins"):
+                        if field in raw_goal:
+                            item[field] = cls._campaign_int(raw_goal[field], f"campaign.goals.{bucket}[{index}].{field}")
+                    if "done" in raw_goal:
+                        item["done"] = cls._campaign_bool(raw_goal["done"], f"campaign.goals.{bucket}[{index}].done")
+                    clean_bucket.append(item)
+                clean_goals[bucket] = clean_bucket
+            clean["goals"] = clean_goals
+
+        projects = campaign.get("projects")
+        if projects is not None:
+            if not isinstance(projects, list) or len(projects) > MAX_SYNC_PROJECTS:
+                raise StateCommandError("campaign.projects must be a bounded list")
+            project_fields = {
+                "order", "branch", "name", "status", "progress", "boss", "boss_status", "clean_clear_eligible",
+                "completed", "completed_at", "clean_clear", "mob_sequence_complete", "creative_discoveries", "mobs",
+            }
+            mob_fields = {"name", "status", "assist", "concept", "encounter", "max_resolve", "resolve", "impact_applied", "objective_attempts"}
+            clean_projects: list[dict[str, Any]] = []
+            for index, project in enumerate(projects):
+                raw = cls._campaign_mapping(project, f"campaign.projects[{index}]", project_fields)
+                item = {}
+                for field in ("branch", "name", "status", "boss", "boss_status"):
+                    if field in raw:
+                        item[field] = cls._campaign_text(raw[field], f"campaign.projects[{index}].{field}")
+                if "order" in raw:
+                    item["order"] = cls._campaign_int(raw["order"], f"campaign.projects[{index}].order")
+                if "progress" in raw:
+                    item["progress"] = cls._campaign_int(raw["progress"], f"campaign.projects[{index}].progress", maximum=100)
+                for field in ("clean_clear_eligible", "completed", "clean_clear", "mob_sequence_complete"):
+                    if field in raw:
+                        item[field] = cls._campaign_bool(raw[field], f"campaign.projects[{index}].{field}")
+                if "completed_at" in raw and raw["completed_at"] is not None:
+                    item["completed_at"] = cls._campaign_text(raw["completed_at"], f"campaign.projects[{index}].completed_at", max_length=80)
+                if "creative_discoveries" in raw:
+                    item["creative_discoveries"] = cls._campaign_text_list(raw["creative_discoveries"], f"campaign.projects[{index}].creative_discoveries", maximum=MAX_SYNC_LIST_ITEMS, max_length=240)
+                if "mobs" in raw:
+                    values = raw["mobs"]
+                    if not isinstance(values, list) or len(values) > MAX_SYNC_MOBS_PER_PROJECT:
+                        raise StateCommandError(f"campaign.projects[{index}].mobs must be a bounded list")
+                    clean_mobs: list[dict[str, Any]] = []
+                    for mob_index, mob in enumerate(values):
+                        raw_mob = cls._campaign_mapping(mob, f"campaign.projects[{index}].mobs[{mob_index}]", mob_fields)
+                        clean_mob: dict[str, Any] = {}
+                        for field in ("name", "status", "assist", "concept", "encounter"):
+                            if field in raw_mob:
+                                clean_mob[field] = cls._campaign_text(raw_mob[field], f"campaign.projects[{index}].mobs[{mob_index}].{field}", max_length=500)
+                        for field in ("max_resolve", "resolve", "impact_applied", "objective_attempts"):
+                            if field in raw_mob:
+                                clean_mob[field] = cls._campaign_int(raw_mob[field], f"campaign.projects[{index}].mobs[{mob_index}].{field}")
+                        clean_mobs.append(clean_mob)
+                    item["mobs"] = clean_mobs
+                clean_projects.append(item)
+            clean["projects"] = clean_projects
+
+        if "current_quest" in campaign and campaign["current_quest"] is not None:
+            clean["current_quest"] = cls._campaign_text(campaign["current_quest"], "campaign.current_quest", max_length=400)
+
+        codex = campaign.get("codex")
+        if codex is not None:
+            raw_codex = cls._campaign_mapping(codex, "campaign.codex", {"encounters"})
+            encounters = raw_codex.get("encounters", [])
+            if not isinstance(encounters, list) or len(encounters) > MAX_CODEX_RECORDS:
+                raise StateCommandError("campaign.codex.encounters must be a bounded list")
+            entry_fields = {"id", "project_id", "mob_name", "concept", "status", "question_types", "weaknesses", "notes", "attempts", "results", "interview_history", "mastery"}
+            clean_entries: list[dict[str, Any]] = []
+            for index, entry in enumerate(encounters):
+                raw = cls._campaign_mapping(entry, f"campaign.codex.encounters[{index}]", entry_fields)
+                item = {}
+                for field in ("id", "project_id"):
+                    if field in raw:
+                        item[field] = cls._campaign_identifier(raw[field], f"campaign.codex.encounters[{index}].{field}")
+                for field in ("mob_name", "concept", "status"):
+                    if field in raw:
+                        item[field] = cls._campaign_text(raw[field], f"campaign.codex.encounters[{index}].{field}", max_length=300)
+                for field in ("question_types", "weaknesses"):
+                    if field in raw:
+                        item[field] = cls._campaign_text_list(raw[field], f"campaign.codex.encounters[{index}].{field}", maximum=MAX_SYNC_CODEX_RESULTS, max_length=240)
+                if "notes" in raw:
+                    item["notes"] = cls._campaign_text_list(raw["notes"], f"campaign.codex.encounters[{index}].notes", maximum=MAX_CODEX_NOTES_PER_ENTRY, max_length=MAX_CODEX_NOTE_BYTES)
+                if "attempts" in raw:
+                    item["attempts"] = cls._campaign_int(raw["attempts"], f"campaign.codex.encounters[{index}].attempts")
+                for history_field in ("results", "interview_history"):
+                    if history_field not in raw:
+                        continue
+                    values = raw[history_field]
+                    if not isinstance(values, list) or len(values) > MAX_SYNC_CODEX_RESULTS:
+                        raise StateCommandError(f"campaign.codex.encounters[{index}].{history_field} must be a bounded list")
+                    clean_history: list[dict[str, Any]] = []
+                    for result_index, result in enumerate(values):
+                        raw_result = cls._campaign_mapping(result, f"campaign.codex.encounters[{index}].{history_field}[{result_index}]", {"outcome", "evidence_id", "reason", "recorded_at"})
+                        clean_result: dict[str, Any] = {}
+                        if "outcome" in raw_result:
+                            clean_result["outcome"] = cls._campaign_identifier(raw_result["outcome"], f"campaign.codex.encounters[{index}].{history_field}[{result_index}].outcome")
+                        if "evidence_id" in raw_result:
+                            clean_result["evidence_id"] = cls._campaign_identifier(raw_result["evidence_id"], f"campaign.codex.encounters[{index}].{history_field}[{result_index}].evidence_id")
+                        for field in ("reason", "recorded_at"):
+                            if field in raw_result:
+                                clean_result[field] = cls._campaign_text(raw_result[field], f"campaign.codex.encounters[{index}].{history_field}[{result_index}].{field}", max_length=500)
+                        clean_history.append(clean_result)
+                    item[history_field] = clean_history
+                if "mastery" in raw and raw["mastery"] is not None:
+                    mastery = cls._campaign_mapping(raw["mastery"], f"campaign.codex.encounters[{index}].mastery", {"evidence", "interview_passes", "shield", "tier", "charges", "max_charges"})
+                    clean_mastery: dict[str, Any] = {}
+                    for field in ("evidence", "interview_passes", "charges", "max_charges"):
+                        if field in mastery:
+                            clean_mastery[field] = cls._campaign_int(mastery[field], f"campaign.codex.encounters[{index}].mastery.{field}")
+                    for field in ("shield", "tier"):
+                        if field in mastery:
+                            clean_mastery[field] = cls._campaign_text(mastery[field], f"campaign.codex.encounters[{index}].mastery.{field}", max_length=80)
+                    item["mastery"] = clean_mastery
+                clean_entries.append(item)
+            clean["codex"] = {"encounters": clean_entries}
+
+        dungeon = campaign.get("dungeon_run")
+        if dungeon is not None:
+            raw = cls._campaign_mapping(dungeon, "campaign.dungeon_run", {"status", "run_id", "seed", "concept_id", "floor", "room", "room_type", "score", "run_coins", "started_at", "updated_at", "ended_at", "loadout", "question", "question_number", "room_choices", "editor_content", "last_result", "history", "attempts"})
+            item: dict[str, Any] = {}
+            for field in ("status", "run_id", "seed", "concept_id", "room_type"):
+                if field in raw:
+                    item[field] = cls._campaign_text(raw[field], f"campaign.dungeon_run.{field}", max_length=MAX_IDENTIFIER_LENGTH)
+            for field in ("started_at", "updated_at", "ended_at"):
+                if field in raw and raw[field] is not None:
+                    item[field] = cls._campaign_text(raw[field], f"campaign.dungeon_run.{field}", max_length=80)
+            for field in ("floor", "room", "score", "run_coins", "question_number", "attempts"):
+                if field in raw:
+                    item[field] = cls._campaign_int(raw[field], f"campaign.dungeon_run.{field}", maximum=MAX_DUNGEON_FLOOR if field in {"floor", "room"} else MAX_SYNC_COUNTER)
+            if "loadout" in raw and raw["loadout"] is not None:
+                loadout = cls._campaign_mapping(raw["loadout"], "campaign.dungeon_run.loadout", {"armor", "trinket", "hp", "max_hp", "heals", "coins"})
+                clean_loadout: dict[str, Any] = {}
+                for field in ("armor", "trinket"):
+                    if field in loadout and loadout[field] is not None:
+                        clean_loadout[field] = cls._campaign_text(loadout[field], f"campaign.dungeon_run.loadout.{field}", max_length=MAX_IDENTIFIER_LENGTH)
+                    elif field in loadout:
+                        clean_loadout[field] = None
+                for field in ("hp", "max_hp", "heals", "coins"):
+                    if field in loadout:
+                        clean_loadout[field] = cls._campaign_int(loadout[field], f"campaign.dungeon_run.loadout.{field}")
+                item["loadout"] = clean_loadout
+            if "question" in raw and raw["question"] is not None:
+                question = cls._campaign_mapping(raw["question"], "campaign.dungeon_run.question", {"id", "question_type", "concept_id", "difficulty", "prompt", "options"})
+                clean_question: dict[str, Any] = {}
+                for field in ("id", "question_type", "concept_id"):
+                    if field in question:
+                        clean_question[field] = cls._campaign_text(question[field], f"campaign.dungeon_run.question.{field}", max_length=MAX_IDENTIFIER_LENGTH)
+                if "difficulty" in question:
+                    clean_question["difficulty"] = cls._campaign_int(question["difficulty"], "campaign.dungeon_run.question.difficulty", maximum=MAX_DUNGEON_DIFFICULTY)
+                if "prompt" in question:
+                    clean_question["prompt"] = cls._campaign_text(question["prompt"], "campaign.dungeon_run.question.prompt", max_length=2_000)
+                if "options" in question:
+                    clean_question["options"] = cls._campaign_text_list(question["options"], "campaign.dungeon_run.question.options", maximum=MAX_DUNGEON_OPTIONS, max_length=500)
+                item["question"] = clean_question
+            if "room_choices" in raw:
+                choices = raw["room_choices"]
+                if not isinstance(choices, list) or len(choices) > len(DUNGEON_ROUTE_CHOICES):
+                    raise StateCommandError("campaign.dungeon_run.room_choices must be bounded")
+                clean_choices: list[dict[str, Any]] = []
+                for index, choice in enumerate(choices):
+                    raw_choice = cls._campaign_mapping(choice, f"campaign.dungeon_run.room_choices[{index}]", {"id", "kind", "label", "description"})
+                    clean_choice: dict[str, Any] = {}
+                    for field in ("id", "kind"):
+                        if field in raw_choice:
+                            clean_choice[field] = cls._campaign_identifier(raw_choice[field], f"campaign.dungeon_run.room_choices[{index}].{field}")
+                    for field in ("label", "description"):
+                        if field in raw_choice:
+                            clean_choice[field] = cls._campaign_text(raw_choice[field], f"campaign.dungeon_run.room_choices[{index}].{field}", max_length=300)
+                    clean_choices.append(clean_choice)
+                item["room_choices"] = clean_choices
+            if "editor_content" in raw:
+                item["editor_content"] = cls._campaign_text(raw["editor_content"], "campaign.dungeon_run.editor_content", max_length=8_000) if raw["editor_content"] else ""
+            for field in ("last_result",):
+                if field in raw and raw[field] is not None:
+                    result = cls._campaign_mapping(raw[field], "campaign.dungeon_run.last_result", {"outcome", "question_id", "mob_name", "score_delta", "coins_delta", "damage", "evidence_id", "reason"})
+                    clean_result: dict[str, Any] = {}
+                    for text_field in ("outcome", "question_id", "mob_name", "evidence_id", "reason"):
+                        if text_field in result:
+                            clean_result[text_field] = cls._campaign_text(result[text_field], f"campaign.dungeon_run.last_result.{text_field}", max_length=500)
+                    for number_field in ("score_delta", "coins_delta", "damage"):
+                        if number_field in result:
+                            clean_result[number_field] = cls._campaign_int(result[number_field], f"campaign.dungeon_run.last_result.{number_field}")
+                    item[field] = clean_result
+            if "history" in raw:
+                history = raw["history"]
+                if not isinstance(history, list) or len(history) > MAX_SYNC_DUNGEON_HISTORY:
+                    raise StateCommandError("campaign.dungeon_run.history must be bounded")
+                clean_history: list[dict[str, Any]] = []
+                for index, entry in enumerate(history):
+                    raw_entry = cls._campaign_mapping(entry, f"campaign.dungeon_run.history[{index}]", {"room", "floor", "question_id", "mob_name", "outcome", "evidence_id", "score_delta", "coins_delta", "damage"})
+                    clean_entry: dict[str, Any] = {}
+                    for number_field in ("room", "floor", "score_delta", "coins_delta", "damage"):
+                        if number_field in raw_entry:
+                            clean_entry[number_field] = cls._campaign_int(raw_entry[number_field], f"campaign.dungeon_run.history[{index}].{number_field}")
+                    for text_field in ("question_id", "mob_name", "outcome", "evidence_id"):
+                        if text_field in raw_entry:
+                            clean_entry[text_field] = cls._campaign_text(raw_entry[text_field], f"campaign.dungeon_run.history[{index}].{text_field}", max_length=500)
+                    clean_history.append(clean_entry)
+                item["history"] = clean_history
+            clean["dungeon_run"] = item
+        elif "dungeon_run" in campaign:
+            clean["dungeon_run"] = None
+
+        leaderboard = campaign.get("dungeon_leaderboard")
+        if leaderboard is not None:
+            if not isinstance(leaderboard, list) or len(leaderboard) > MAX_DUNGEON_LEADERBOARD:
+                raise StateCommandError("campaign.dungeon_leaderboard must be a bounded list")
+            clean_board: list[dict[str, Any]] = []
+            for index, entry in enumerate(leaderboard):
+                raw = cls._campaign_mapping(entry, f"campaign.dungeon_leaderboard[{index}]", {"run_id", "score", "floor", "room", "status", "concept_id", "ended_at"})
+                item = {}
+                for field in ("run_id", "status", "concept_id", "ended_at"):
+                    if field in raw:
+                        item[field] = cls._campaign_text(raw[field], f"campaign.dungeon_leaderboard[{index}].{field}", max_length=MAX_IDENTIFIER_LENGTH)
+                for field in ("score", "floor", "room"):
+                    if field in raw:
+                        item[field] = cls._campaign_int(raw[field], f"campaign.dungeon_leaderboard[{index}].{field}")
+                clean_board.append(item)
+            clean["dungeon_leaderboard"] = clean_board
+
+        practice = campaign.get("practice_sessions")
+        if practice is not None:
+            if not isinstance(practice, list) or len(practice) > MAX_PRACTICE_SESSIONS:
+                raise StateCommandError("campaign.practice_sessions must be a bounded list")
+            clean_practice: list[dict[str, Any]] = []
+            for index, session in enumerate(practice):
+                raw = cls._campaign_mapping(session, f"campaign.practice_sessions[{index}]", {"session_id", "concept", "question_type", "difficulty", "status", "attempts", "correct", "started_at", "updated_at", "history"})
+                item = {}
+                for field in ("session_id", "question_type"):
+                    if field in raw:
+                        item[field] = cls._campaign_identifier(raw[field], f"campaign.practice_sessions[{index}].{field}")
+                for field in ("concept", "status"):
+                    if field in raw:
+                        item[field] = cls._campaign_text(raw[field], f"campaign.practice_sessions[{index}].{field}")
+                if "difficulty" in raw:
+                    item["difficulty"] = cls._integer(raw["difficulty"], f"campaign.practice_sessions[{index}].difficulty", minimum=PRACTICE_DIFFICULTY_MIN, maximum=PRACTICE_DIFFICULTY_MAX)
+                for field in ("attempts", "correct"):
+                    if field in raw:
+                        item[field] = cls._campaign_int(raw[field], f"campaign.practice_sessions[{index}].{field}")
+                for field in ("started_at", "updated_at"):
+                    if field in raw and raw[field] is not None:
+                        item[field] = cls._campaign_text(raw[field], f"campaign.practice_sessions[{index}].{field}", max_length=80)
+                if "history" in raw:
+                    history = raw["history"]
+                    if not isinstance(history, list) or len(history) > MAX_PRACTICE_ATTEMPTS_PER_SESSION:
+                        raise StateCommandError(f"campaign.practice_sessions[{index}].history must be bounded")
+                    clean_history: list[dict[str, Any]] = []
+                    for attempt_index, attempt in enumerate(history):
+                        raw_attempt = cls._campaign_mapping(attempt, f"campaign.practice_sessions[{index}].history[{attempt_index}]", {"outcome", "evidence_id", "reason", "recorded_at"})
+                        clean_attempt: dict[str, Any] = {}
+                        for field in ("outcome", "evidence_id"):
+                            if field in raw_attempt:
+                                clean_attempt[field] = cls._campaign_identifier(raw_attempt[field], f"campaign.practice_sessions[{index}].history[{attempt_index}].{field}")
+                        for field in ("reason", "recorded_at"):
+                            if field in raw_attempt:
+                                clean_attempt[field] = cls._campaign_text(raw_attempt[field], f"campaign.practice_sessions[{index}].history[{attempt_index}].{field}", max_length=500)
+                        clean_history.append(clean_attempt)
+                    item["history"] = clean_history
+                clean_practice.append(item)
+            clean["practice_sessions"] = clean_practice
+
+        try:
+            size = len(json.dumps(clean, ensure_ascii=False, separators=(",", ":")).encode("utf-8"))
+        except (TypeError, ValueError) as exc:
+            raise StateCommandError("Cloud campaign projection is not JSON serializable") from exc
+        if size > MAX_SYNC_CAMPAIGN_BYTES:
+            raise StateCommandError("Cloud campaign projection is too large")
+        return clean
+
+    @classmethod
+    def _campaign_source_projection(cls, progress: Mapping[str, Any]) -> dict[str, Any]:
+        """Strip local-only keys before validating an existing save for sync."""
+
+        def pick(value: object, fields: set[str]) -> dict[str, Any]:
+            return {field: value[field] for field in fields if isinstance(value, Mapping) and field in value}
+
+        campaign: dict[str, Any] = {}
+        if isinstance(progress.get("learning_state"), Mapping):
+            campaign["learning_state"] = pick(progress["learning_state"], {"project", "concept", "phase", "reference_mode", "clean_clear_eligible"})
+        if isinstance(progress.get("streak"), Mapping):
+            campaign["streak"] = pick(progress["streak"], {"current", "longest", "last_active", "freeze_tokens", "days_logged"})
+        if isinstance(progress.get("skills"), list):
+            campaign["skills"] = []
+            for skill in progress["skills"]:
+                if not isinstance(skill, Mapping):
+                    continue
+                item = pick(skill, {"name", "concept", "status", "evidence", "interview_passes"})
+                if isinstance(skill.get("shield"), Mapping):
+                    item["shield"] = pick(skill["shield"], {"tier", "charges", "max_charges"})
+                campaign["skills"].append(item)
+        if isinstance(progress.get("stats"), Mapping):
+            campaign["stats"] = pick(
+                progress["stats"],
+                {
+                    "sessions", "projects_cleared", "bosses_defeated", "mobs_defeated", "interviews_passed",
+                    "interviews_failed", "mastery_shields_earned", "bugs_fixed", "explanations", "clean_clears",
+                    "commits_logged", "reference_mode_uses", "guided_milestones", "recovery_trials_passed",
+                    "creative_bonuses", "discoveries_unlocked",
+                },
+            )
+        if isinstance(progress.get("achievements"), list):
+            campaign["achievements"] = [pick(item, {"name", "description", "unlocked"}) for item in progress["achievements"] if isinstance(item, Mapping)]
+        if isinstance(progress.get("goals"), Mapping):
+            campaign["goals"] = {
+                bucket: [
+                    pick(item, {"id", "text", "target", "progress", "reward_xp", "reward_coins", "done"})
+                    for item in progress["goals"].get(bucket, [])
+                    if isinstance(item, Mapping)
+                ]
+                for bucket in ("daily", "weekly", "long_term")
+                if isinstance(progress["goals"].get(bucket), list)
+            }
+        if isinstance(progress.get("projects"), list):
+            project_fields = {
+                "order", "branch", "name", "status", "progress", "boss", "boss_status", "clean_clear_eligible",
+                "completed", "completed_at", "clean_clear", "mob_sequence_complete", "creative_discoveries",
+            }
+            mob_fields = {"name", "status", "assist", "concept", "encounter", "max_resolve", "resolve", "impact_applied", "objective_attempts"}
+            campaign["projects"] = []
+            for project in progress["projects"]:
+                if not isinstance(project, Mapping):
+                    continue
+                item = pick(project, project_fields)
+                if isinstance(project.get("mobs"), list):
+                    item["mobs"] = [pick(mob, mob_fields) for mob in project["mobs"] if isinstance(mob, Mapping)]
+                campaign["projects"].append(item)
+        if "current_quest" in progress:
+            campaign["current_quest"] = progress.get("current_quest")
+        if isinstance(progress.get("codex"), Mapping):
+            codex = {"encounters": []}
+            for entry in progress["codex"].get("encounters", []):
+                if not isinstance(entry, Mapping):
+                    continue
+                item = pick(entry, {"id", "project_id", "mob_name", "concept", "status", "question_types", "weaknesses", "notes", "attempts"})
+                for history_field in ("results", "interview_history"):
+                    if isinstance(entry.get(history_field), list):
+                        item[history_field] = [pick(result, {"outcome", "evidence_id", "reason", "recorded_at"}) for result in entry[history_field] if isinstance(result, Mapping)]
+                if isinstance(entry.get("mastery"), Mapping):
+                    item["mastery"] = pick(entry["mastery"], {"evidence", "interview_passes", "shield", "tier", "charges", "max_charges"})
+                codex["encounters"].append(item)
+            campaign["codex"] = codex
+        if "dungeon_run" in progress:
+            raw_run = progress.get("dungeon_run")
+            if raw_run is None:
+                campaign["dungeon_run"] = None
+            elif isinstance(raw_run, Mapping):
+                run_fields = {"status", "run_id", "seed", "concept_id", "floor", "room", "room_type", "score", "run_coins", "started_at", "updated_at", "ended_at", "question_number", "editor_content", "attempts"}
+                item = pick(raw_run, run_fields)
+                if isinstance(raw_run.get("loadout"), Mapping):
+                    item["loadout"] = pick(raw_run["loadout"], {"armor", "trinket", "hp", "max_hp", "heals", "coins"})
+                if isinstance(raw_run.get("question"), Mapping):
+                    item["question"] = pick(raw_run["question"], {"id", "question_type", "concept_id", "difficulty", "prompt", "options"})
+                elif "question" in raw_run:
+                    item["question"] = None
+                if isinstance(raw_run.get("room_choices"), list):
+                    item["room_choices"] = [pick(choice, {"id", "kind", "label", "description"}) for choice in raw_run["room_choices"] if isinstance(choice, Mapping)]
+                if "editor_content" not in item:
+                    item["editor_content"] = ""
+                if isinstance(raw_run.get("last_result"), Mapping):
+                    item["last_result"] = pick(raw_run["last_result"], {"outcome", "question_id", "mob_name", "score_delta", "coins_delta", "damage", "evidence_id", "reason"})
+                if isinstance(raw_run.get("history"), list):
+                    item["history"] = [pick(entry, {"room", "floor", "question_id", "mob_name", "outcome", "evidence_id", "score_delta", "coins_delta", "damage"}) for entry in raw_run["history"] if isinstance(entry, Mapping)]
+                campaign["dungeon_run"] = item
+        if isinstance(progress.get("dungeon_leaderboard"), list):
+            campaign["dungeon_leaderboard"] = [
+                pick(item, {"run_id", "score", "floor", "room", "status", "concept_id", "ended_at"})
+                for item in progress["dungeon_leaderboard"]
+                if isinstance(item, Mapping)
+            ]
+        if "practice_sessions" in progress:
+            campaign["practice_sessions"] = cls.practice_projection(progress).get("sessions", [])
+        return campaign
+
     @classmethod
     def _validate_sync_projection(cls, projection: Mapping[str, Any]) -> dict[str, Any]:
         if not isinstance(projection, Mapping):
             raise StateCommandError("Cloud state projection must be an object")
-        unknown = set(projection) - {"player", "equipment", "companion", "homestead"}
+        unknown = set(projection) - {"player", "equipment", "companion", "homestead", "campaign"}
         if unknown:
             raise StateCommandError(f"Unsupported cloud state domain(s): {', '.join(sorted(unknown))}")
 
@@ -1036,6 +1604,9 @@ class LocalStateService:
                     raise StateCommandError("Every equipped cosmetic must be owned")
             validated["homestead"] = clean_homestead
 
+        if "campaign" in projection:
+            validated["campaign"] = cls._validate_campaign_projection(projection.get("campaign"))
+
         return validated
 
     @classmethod
@@ -1066,7 +1637,9 @@ class LocalStateService:
             }
         else:
             homestead.pop("equipped", None)
-        return {"player": player, "equipment": equipment, "companion": companion, "homestead": homestead}
+        campaign_source = cls._campaign_source_projection(progress)
+        campaign = cls._validate_campaign_projection(campaign_source)
+        return {"player": player, "equipment": equipment, "companion": companion, "homestead": homestead, "campaign": campaign}
 
     @classmethod
     def _merge_sync_projection(cls, progress: dict[str, Any], projection: Mapping[str, Any]) -> list[str]:
@@ -1113,6 +1686,16 @@ class LocalStateService:
                     changed = True
             if changed:
                 changed_domains.append("homestead")
+
+        incoming_campaign = validated.get("campaign")
+        if isinstance(incoming_campaign, Mapping):
+            changed = False
+            for field in SYNC_CAMPAIGN_FIELDS:
+                if field in incoming_campaign and progress.get(field) != incoming_campaign[field]:
+                    progress[field] = incoming_campaign[field]
+                    changed = True
+            if changed:
+                changed_domains.append("campaign")
         return changed_domains
 
     def encounter_projection(self, progress: Mapping[str, Any]) -> dict[str, Any] | None:

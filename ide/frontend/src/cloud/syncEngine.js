@@ -25,6 +25,10 @@ const SYNC_PLAYER_FIELDS = ['name', 'title', 'rank', 'level', 'xp', 'xp_next', '
 const SYNC_EQUIPMENT_FIELDS = ['armor', 'trinket', 'title']
 const SYNC_COMPANION_FIELDS = ['name', 'form', 'level', 'bond', 'next_form', 'next_form_requirement']
 const SYNC_HOMESTEAD_EQUIPPED_FIELDS = ['theme', 'cursor', 'hud', 'terminal']
+const SYNC_PROJECT_FIELDS = ['order', 'branch', 'name', 'status', 'progress', 'boss', 'boss_status', 'clean_clear_eligible', 'completed', 'completed_at', 'clean_clear', 'mob_sequence_complete', 'creative_discoveries']
+const SYNC_MOB_FIELDS = ['name', 'status', 'assist', 'concept', 'encounter', 'max_resolve', 'resolve', 'impact_applied', 'objective_attempts']
+const SYNC_CODEX_FIELDS = ['id', 'project_id', 'mob_name', 'concept', 'status', 'question_types', 'weaknesses', 'notes', 'attempts', 'results', 'interview_history', 'mastery']
+const SYNC_DUNGEON_FIELDS = ['status', 'run_id', 'seed', 'concept_id', 'floor', 'room', 'room_type', 'score', 'run_coins', 'started_at', 'updated_at', 'ended_at', 'loadout', 'question', 'question_number', 'room_choices', 'editor_content', 'last_result', 'history', 'attempts']
 
 const isRecord = (value) => value !== null && typeof value === 'object' && !Array.isArray(value)
 
@@ -33,10 +37,85 @@ const copyFields = (source, fields) => {
   return Object.fromEntries(fields.filter((field) => Object.prototype.hasOwnProperty.call(source, field)).map((field) => [field, source[field]]))
 }
 
+const boundedTextList = (value, limit = 100) => (Array.isArray(value) ? [...new Set(value.filter((item) => typeof item === 'string' && item.trim()))].slice(0, limit) : [])
+const boundedRecords = (value, fields, limit = 100) => (Array.isArray(value) ? value.filter(isRecord).slice(-limit).map((item) => copyFields(item, fields)) : [])
+
+const projectCampaignState = (progress = {}) => {
+  const source = isRecord(progress?.campaign) ? progress.campaign : progress
+  const campaign = {}
+  if (isRecord(source.learning_state)) campaign.learning_state = copyFields(source.learning_state, ['project', 'concept', 'phase', 'reference_mode', 'clean_clear_eligible'])
+  if (isRecord(source.streak)) {
+    campaign.streak = copyFields(source.streak, ['current', 'longest', 'last_active', 'freeze_tokens'])
+    if (Array.isArray(source.streak.days_logged)) campaign.streak.days_logged = boundedTextList(source.streak.days_logged)
+  }
+  if (Array.isArray(source.skills)) {
+    campaign.skills = source.skills.filter(isRecord).slice(0, 50).map((skill) => ({
+      ...copyFields(skill, ['name', 'concept', 'status', 'evidence', 'interview_passes']),
+      ...(isRecord(skill.shield) ? { shield: copyFields(skill.shield, ['tier', 'charges', 'max_charges']) } : {}),
+    }))
+  }
+  if (isRecord(source.stats)) campaign.stats = copyFields(source.stats, ['sessions', 'projects_cleared', 'bosses_defeated', 'mobs_defeated', 'interviews_passed', 'interviews_failed', 'mastery_shields_earned', 'bugs_fixed', 'explanations', 'clean_clears', 'commits_logged', 'reference_mode_uses', 'guided_milestones', 'recovery_trials_passed', 'creative_bonuses', 'discoveries_unlocked'])
+  if (Array.isArray(source.achievements)) campaign.achievements = boundedRecords(source.achievements, ['name', 'description', 'unlocked'], 100)
+  if (isRecord(source.goals)) {
+    campaign.goals = {}
+    for (const bucket of ['daily', 'weekly', 'long_term']) {
+      if (Array.isArray(source.goals[bucket])) campaign.goals[bucket] = boundedRecords(source.goals[bucket], ['id', 'text', 'target', 'progress', 'reward_xp', 'reward_coins', 'done'], 20)
+    }
+  }
+  if (Array.isArray(source.projects)) {
+    campaign.projects = source.projects.filter(isRecord).slice(0, 20).map((project) => ({
+      ...copyFields(project, SYNC_PROJECT_FIELDS),
+      ...(Array.isArray(project.mobs)
+        ? { mobs: project.mobs.filter(isRecord).slice(0, 20).map((mob) => copyFields(mob, SYNC_MOB_FIELDS)) }
+        : {}),
+    }))
+  }
+  if (Object.prototype.hasOwnProperty.call(source, 'current_quest') && typeof source.current_quest === 'string') campaign.current_quest = source.current_quest
+  if (isRecord(source.codex)) {
+    campaign.codex = {
+      encounters: Array.isArray(source.codex.encounters)
+        ? source.codex.encounters.filter(isRecord).slice(0, 100).map((entry) => ({
+            ...copyFields(entry, SYNC_CODEX_FIELDS.filter((field) => !['results', 'interview_history', 'mastery'].includes(field))),
+            ...(Array.isArray(entry.question_types) ? { question_types: boundedTextList(entry.question_types, 20) } : {}),
+            ...(Array.isArray(entry.weaknesses) ? { weaknesses: boundedTextList(entry.weaknesses, 20) } : {}),
+            ...(Array.isArray(entry.notes) ? { notes: entry.notes.filter((note) => typeof note === 'string').slice(-20) } : {}),
+            ...(Array.isArray(entry.results) ? { results: boundedRecords(entry.results, ['outcome', 'evidence_id', 'reason', 'recorded_at'], 20) } : {}),
+            ...(Array.isArray(entry.interview_history) ? { interview_history: boundedRecords(entry.interview_history, ['outcome', 'evidence_id', 'reason', 'recorded_at'], 20) } : {}),
+            ...(isRecord(entry.mastery) ? { mastery: copyFields(entry.mastery, ['evidence', 'interview_passes', 'shield', 'tier', 'charges', 'max_charges']) } : {}),
+          }))
+        : [],
+    }
+  }
+  if (Object.prototype.hasOwnProperty.call(source, 'dungeon_run')) {
+    const run = source.dungeon_run
+    if (run === null) campaign.dungeon_run = null
+    else if (isRecord(run)) {
+      campaign.dungeon_run = {
+        ...copyFields(run, SYNC_DUNGEON_FIELDS.filter((field) => !['loadout', 'question', 'room_choices', 'last_result', 'history'].includes(field))),
+        ...(isRecord(run.loadout) ? { loadout: copyFields(run.loadout, ['armor', 'trinket', 'hp', 'max_hp', 'heals', 'coins']) } : {}),
+        ...(run.question === null ? { question: null } : isRecord(run.question) ? { question: copyFields(run.question, ['id', 'question_type', 'concept_id', 'difficulty', 'prompt', 'options']) } : {}),
+        ...(Array.isArray(run.room_choices) ? { room_choices: boundedRecords(run.room_choices, ['id', 'kind', 'label', 'description'], 3) } : {}),
+        ...(typeof run.editor_content === 'string' ? { editor_content: run.editor_content.slice(0, 8000) } : {}),
+        ...(isRecord(run.last_result) ? { last_result: copyFields(run.last_result, ['outcome', 'question_id', 'mob_name', 'score_delta', 'coins_delta', 'damage', 'evidence_id', 'reason']) } : {}),
+        ...(Array.isArray(run.history) ? { history: boundedRecords(run.history, ['room', 'floor', 'question_id', 'mob_name', 'outcome', 'evidence_id', 'score_delta', 'coins_delta', 'damage'], 50) } : {}),
+      }
+    }
+  }
+  if (Array.isArray(source.dungeon_leaderboard)) campaign.dungeon_leaderboard = boundedRecords(source.dungeon_leaderboard, ['run_id', 'score', 'floor', 'room', 'status', 'concept_id', 'ended_at'], 50)
+  if (Array.isArray(source.practice_sessions)) {
+    campaign.practice_sessions = source.practice_sessions.filter(isRecord).slice(-50).map((session) => ({
+      ...copyFields(session, ['session_id', 'concept', 'question_type', 'difficulty', 'status', 'attempts', 'correct', 'started_at', 'updated_at']),
+      ...(Array.isArray(session.history) ? { history: boundedRecords(session.history, ['outcome', 'evidence_id', 'reason', 'recorded_at'], 20) } : {}),
+    }))
+  }
+  return campaign
+}
+
 /**
  * Return the bounded, cloud-syncable subset of a campaign snapshot.
- * Projects, Codex, skills, activity and catalogs intentionally stay local in
- * this first transport slice.
+ * Campaign evidence (projects, Codex, skills and restart-safe Dungeon state)
+ * travels with the same revision/CAS row. Local event logs, activity and
+ * catalogs intentionally stay local.
  */
 export function projectPlayerState(progress = {}) {
   const homestead = isRecord(progress.homestead) ? progress.homestead : {}
@@ -55,6 +134,7 @@ export function projectPlayerState(progress = {}) {
       owned_cosmetics: owned,
       equipped,
     },
+    campaign: projectCampaignState(progress),
   }
 }
 

@@ -188,6 +188,11 @@ function fakeLocalApi(initialProgress, initialRevision = 0) {
         if (incoming[domain] && Object.keys(incoming[domain]).length) progress[domain] = { ...(progress[domain] || {}), ...incoming[domain] }
       }
       if (incoming.homestead) progress.homestead = { ...(progress.homestead || {}), ...incoming.homestead }
+      if (incoming.campaign) {
+        for (const [domain, value] of Object.entries(incoming.campaign)) {
+          progress[domain] = clone(value)
+        }
+      }
       revision += 1
       progress.meta = { ...(progress.meta || {}), revision }
       return { ok: true, status: 200, json: async () => ({ ok: true, changed: true, revision, projection: projectPlayerState(progress) }) }
@@ -332,7 +337,7 @@ test('sign-out returns to local Forge without deleting the local device identity
   assert.equal(deviceIdForUser(user.id, storage), deviceId)
 })
 
-test('player-state projection excludes local projects, Codex and cosmetic catalog data', () => {
+test('player-state projection carries bounded campaign evidence but excludes local logs and catalogs', () => {
   const projection = projectPlayerState({
     player: { level: 3, coins: 20, secret: 'local' },
     projects: [{ name: 'Blackjack' }],
@@ -347,9 +352,50 @@ test('player-state projection excludes local projects, Codex and cosmetic catalo
   })
   assert.deepEqual(projection.player, { level: 3, coins: 20 })
   assert.deepEqual(projection.homestead, { owned_cosmetics: ['cursor-basic'], equipped: { cursor: 'cursor-basic' } })
-  assert.equal(Object.prototype.hasOwnProperty.call(projection, 'projects'), false)
-  assert.equal(Object.prototype.hasOwnProperty.call(projection, 'codex'), false)
+  assert.deepEqual(projection.campaign.projects, [{ name: 'Blackjack' }])
+  assert.deepEqual(projection.campaign.codex, { encounters: [{ mob_name: 'hidden' }] })
+  assert.deepEqual(projection.campaign.skills, [{ concept: 'Variables' }])
+  assert.equal(Object.prototype.hasOwnProperty.call(projection, 'state_events'), false)
+  assert.equal(Object.prototype.hasOwnProperty.call(projection.campaign, 'profile'), false)
   assert.equal(Object.prototype.hasOwnProperty.call(projection.homestead, 'catalog'), false)
+})
+
+test('campaign evidence and a Dungeon checkpoint travel through the same cloud revision', async () => {
+  const config = resolveCloudConfig({ VITE_SUPABASE_URL: 'https://example.supabase.co', VITE_SUPABASE_ANON_KEY: 'public-anon-key' })
+  const cloudStore = { playerRows: new Map(), deviceRows: new Map() }
+  const user = { id: '00000000-0000-4000-8000-000000000022', email: 'campaign@example.test' }
+  const source = campaign(55, 2)
+  source.projects = [{ branch: '01-blackjack', name: 'Blackjack', status: 'active', progress: 38, mobs: [{ name: 'The Empty Table', status: 'defeated' }, { name: 'The Hitman', status: 'available', resolve: 8, max_resolve: 8 }] }]
+  source.codex = { encounters: [{ id: 'blackjack-empty-table', project_id: '01-blackjack', mob_name: 'The Empty Table', concept: 'Variables', status: 'defeated', results: [{ outcome: 'defeated', evidence_id: 'legacy-1' }] }] }
+  source.dungeon_run = {
+    status: 'active', run_id: 'dungeon-1', floor: 2, room: 4, room_type: 'encounter', editor_content: 'answer = 1',
+    question: { id: 'question-1', question_type: 'code_checkpoint', concept_id: 'variables', difficulty: 2, prompt: 'Use a variable.', options: [], answer_key: 'must-not-travel' },
+  }
+  const localA = fakeLocalApi(source, 4)
+  const localB = fakeLocalApi(campaign(0), 0)
+  const clientA = fakeCloudClient(user, { cloudStore })
+  const clientB = fakeCloudClient(user, { cloudStore })
+  const engineA = new SyncEngine({ config, clientFactory: () => clientA, storage: new MemoryStorage(), fetchImpl: localA.fetch })
+  const engineB = new SyncEngine({ config, clientFactory: () => clientB, storage: new MemoryStorage(), fetchImpl: localB.fetch })
+
+  engineA.initialize()
+  await engineA.restoreSession()
+  engineA.observeCampaign({ revision: 4, progress: source })
+  await engineA.sync()
+  const cloudCampaign = cloudStore.playerRows.get(user.id).state.campaign
+  assert.equal(cloudCampaign.projects[0].mobs[0].status, 'defeated')
+  assert.equal(cloudCampaign.codex.encounters[0].mob_name, 'The Empty Table')
+  assert.equal(cloudCampaign.dungeon_run.run_id, 'dungeon-1')
+  assert.equal(Object.prototype.hasOwnProperty.call(cloudCampaign.dungeon_run.question, 'answer_key'), false)
+
+  engineB.initialize()
+  await engineB.restoreSession()
+  await engineB.sync()
+  assert.equal(localB.getProgress().projects[0].mobs[1].name, 'The Hitman')
+  assert.equal(localB.getProgress().codex.encounters[0].mob_name, 'The Empty Table')
+  assert.equal(localB.getProgress().dungeon_run.run_id, 'dungeon-1')
+  engineA.dispose()
+  engineB.dispose()
 })
 
 test('two isolated engine instances sync through revision-aware push, pull, offline outbox and explicit conflict resolution', async () => {
