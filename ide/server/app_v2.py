@@ -306,6 +306,10 @@ class DungeonMarketRequest(DungeonRunRequest):
     item_id: str = Field(min_length=1, max_length=MAX_IDENTIFIER_LENGTH)
 
 
+class DungeonEquipRequest(DungeonRunRequest):
+    item_id: str = Field(min_length=1, max_length=MAX_IDENTIFIER_LENGTH)
+
+
 class PyrDungeonSubmissionRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -942,6 +946,11 @@ def use_dungeon_rest(payload: DungeonRunRequest):
 @app.post("/api/dungeon/market")
 def purchase_dungeon_market(payload: DungeonMarketRequest):
     return _dungeon_player_action("dungeon_market_purchase", payload.model_dump())
+
+
+@app.post("/api/dungeon/equip")
+def equip_dungeon_item(payload: DungeonEquipRequest):
+    return _dungeon_player_action("dungeon_equip_item", payload.model_dump())
 
 
 @app.post("/api/dungeon/leave")

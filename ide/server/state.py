@@ -54,6 +54,7 @@ PRACTICE_DIFFICULTY_MIN = 1
 PRACTICE_DIFFICULTY_MAX = 5
 CODEX_NOTES_DIRECTORY = "notes"
 MAX_DUNGEON_LEADERBOARD = 50
+MAX_DUNGEON_INVENTORY = 24
 MAX_SYNC_LIST_ITEMS = 100
 MAX_SYNC_TEXT_LENGTH = 120
 MAX_SYNC_LEVEL = 1000
@@ -200,6 +201,7 @@ ACTION_DEFINITIONS: dict[str, ActionDefinition] = {
     "dungeon_record_death": ActionDefinition(frozenset({SYSTEM_ACTOR}), internal=True),
     "dungeon_use_rest": ActionDefinition(frozenset({"player"})),
     "dungeon_market_purchase": ActionDefinition(frozenset({"player"})),
+    "dungeon_equip_item": ActionDefinition(frozenset({"player"})),
     "dungeon_leave_room": ActionDefinition(frozenset({"player"})),
     "dungeon_finish_run": ActionDefinition(frozenset({"player"})),
 }
@@ -1250,7 +1252,7 @@ class LocalStateService:
 
         dungeon = campaign.get("dungeon_run")
         if dungeon is not None:
-            raw = cls._campaign_mapping(dungeon, "campaign.dungeon_run", {"status", "run_id", "seed", "concept_id", "floor", "room", "room_type", "score", "run_coins", "started_at", "updated_at", "ended_at", "loadout", "question", "question_number", "room_choices", "editor_content", "last_result", "history", "attempts"})
+            raw = cls._campaign_mapping(dungeon, "campaign.dungeon_run", {"status", "run_id", "seed", "concept_id", "floor", "room", "room_type", "score", "run_coins", "started_at", "updated_at", "ended_at", "loadout", "inventory", "question", "question_number", "room_choices", "editor_content", "last_result", "history", "attempts"})
             item: dict[str, Any] = {}
             for field in ("status", "run_id", "seed", "concept_id", "room_type"):
                 if field in raw:
@@ -1273,6 +1275,22 @@ class LocalStateService:
                     if field in loadout:
                         clean_loadout[field] = cls._campaign_int(loadout[field], f"campaign.dungeon_run.loadout.{field}")
                 item["loadout"] = clean_loadout
+            if "inventory" in raw and raw["inventory"] is not None:
+                raw_inventory = raw["inventory"]
+                if not isinstance(raw_inventory, list) or len(raw_inventory) > MAX_DUNGEON_INVENTORY:
+                    raise StateCommandError("campaign.dungeon_run.inventory must be a bounded list")
+                clean_inventory: list[dict[str, Any]] = []
+                for index, entry in enumerate(raw_inventory):
+                    raw_entry = cls._campaign_mapping(entry, f"campaign.dungeon_run.inventory[{index}]", {"id", "name", "kind", "armor", "trinket", "description"})
+                    clean_entry: dict[str, Any] = {}
+                    for field in ("id", "kind"):
+                        if field in raw_entry:
+                            clean_entry[field] = cls._campaign_identifier(raw_entry[field], f"campaign.dungeon_run.inventory[{index}].{field}")
+                    for field in ("name", "armor", "trinket", "description"):
+                        if field in raw_entry and raw_entry[field] is not None:
+                            clean_entry[field] = cls._campaign_text(raw_entry[field], f"campaign.dungeon_run.inventory[{index}].{field}", max_length=300)
+                    clean_inventory.append(clean_entry)
+                item["inventory"] = clean_inventory
             if "question" in raw and raw["question"] is not None:
                 question = cls._campaign_mapping(raw["question"], "campaign.dungeon_run.question", {"id", "question_type", "concept_id", "difficulty", "prompt", "options"})
                 clean_question: dict[str, Any] = {}
@@ -1482,6 +1500,8 @@ class LocalStateService:
                 item = pick(raw_run, run_fields)
                 if isinstance(raw_run.get("loadout"), Mapping):
                     item["loadout"] = pick(raw_run["loadout"], {"armor", "trinket", "hp", "max_hp", "heals", "coins"})
+                if isinstance(raw_run.get("inventory"), list):
+                    item["inventory"] = [pick(entry, {"id", "name", "kind", "armor", "trinket", "description"}) for entry in raw_run["inventory"] if isinstance(entry, Mapping)]
                 if isinstance(raw_run.get("question"), Mapping):
                     item["question"] = pick(raw_run["question"], {"id", "question_type", "concept_id", "difficulty", "prompt", "options"})
                 elif "question" in raw_run:
@@ -1874,6 +1894,56 @@ class LocalStateService:
         return [dict(item) for item in DUNGEON_MARKET_CATALOG]
 
     @classmethod
+    def _dungeon_inventory_entries(cls, run: dict[str, Any], *, mutate: bool = False) -> list[dict[str, Any]]:
+        """Return the bounded item inventory for a run.
+
+        Older checkpoints only stored the currently equipped loadout. They
+        receive a deterministic starter entry on projection; the first
+        state-changing Dungeon action persists that migration through the
+        normal revision/event path.
+        """
+
+        raw = run.get("inventory")
+        if raw is None:
+            loadout = run.get("loadout") if isinstance(run.get("loadout"), Mapping) else {}
+            starter = {
+                "id": "dungeon-starter-armor",
+                "name": str(loadout.get("armor") or "Apprentice Coat"),
+                "kind": "armor",
+                "armor": str(loadout.get("armor") or "Apprentice Coat"),
+                "description": "Starter armor for this Dungeon run.",
+            }
+            items = [starter]
+            if mutate:
+                run["inventory"] = items
+            return items
+        if not isinstance(raw, list) or len(raw) > MAX_DUNGEON_INVENTORY:
+            raise StateCommandError("Existing Dungeon inventory is invalid", status_code=500)
+        items: list[dict[str, Any]] = []
+        for index, item in enumerate(raw):
+            if not isinstance(item, Mapping):
+                raise StateCommandError(f"Existing Dungeon inventory item {index} is invalid", status_code=500)
+            item_id = item.get("id")
+            name = item.get("name")
+            kind = item.get("kind")
+            if not isinstance(item_id, str) or not item_id.strip() or not isinstance(name, str) or not name.strip() or kind not in {"armor", "trinket"}:
+                raise StateCommandError(f"Existing Dungeon inventory item {index} is invalid", status_code=500)
+            clean = {
+                "id": item_id[:MAX_IDENTIFIER_LENGTH],
+                "name": name[:MAX_IDENTIFIER_LENGTH],
+                "kind": kind,
+                "description": str(item.get("description") or "")[:300],
+            }
+            if kind == "armor":
+                clean["armor"] = str(item.get("armor") or name)[:MAX_IDENTIFIER_LENGTH]
+            else:
+                clean["trinket"] = str(item.get("trinket") or name)[:MAX_IDENTIFIER_LENGTH]
+            items.append(clean)
+        if mutate:
+            run["inventory"] = items
+        return items
+
+    @classmethod
     def _dungeon_adaptive_concept(cls, progress: Mapping[str, Any] | None, fallback: str) -> str:
         """Choose a recorded weak concept for the next room when available.
 
@@ -2137,6 +2207,7 @@ class LocalStateService:
             "editor_content": "",
             "last_result": None,
             "history": [],
+            "inventory": [],
             "market_catalog": self._dungeon_market_catalog() if status == "active" and run.get("room_type") == "market" else [],
             "leaderboard": [],
         }
@@ -2153,6 +2224,20 @@ class LocalStateService:
             for field in ("armor", "trinket", "hp", "max_hp", "heals", "coins")
             if field in loadout
         }
+        inventory = self._dungeon_inventory_entries(run)
+        equipped_armor = projection["loadout"].get("armor")
+        equipped_trinket = projection["loadout"].get("trinket")
+        projection["inventory"] = [
+            {
+                **item,
+                "equipped": (
+                    item.get("kind") == "armor" and item.get("armor") == equipped_armor
+                ) or (
+                    item.get("kind") == "trinket" and item.get("trinket") == equipped_trinket
+                ),
+            }
+            for item in inventory
+        ]
         question = run.get("question")
         if isinstance(question, Mapping):
             projection["question"] = {
@@ -2271,6 +2356,15 @@ class LocalStateService:
                 "heals": 1,
                 "coins": 0,
             },
+            "inventory": [
+                {
+                    "id": "dungeon-starter-armor",
+                    "name": "Apprentice Coat",
+                    "kind": "armor",
+                    "armor": "Apprentice Coat",
+                    "description": "Starter armor for this Dungeon run.",
+                },
+            ],
             "question": None,
             "question_number": 0,
             "room_choices": [],
@@ -2512,13 +2606,51 @@ class LocalStateService:
         run["run_coins"] = coins - price
         if item["kind"] == "heal":
             loadout["hp"] = min(self._counter(loadout, "max_hp"), self._counter(loadout, "hp") + 20)
-        elif item["kind"] == "armor":
-            loadout["armor"] = item["armor"]
-        elif item["kind"] == "trinket":
-            loadout["trinket"] = item["trinket"]
+        elif item["kind"] in {"armor", "trinket"}:
+            inventory = self._dungeon_inventory_entries(run, mutate=True)
+            if not any(candidate.get("id") == item["id"] for candidate in inventory):
+                inventory.append(
+                    {
+                        key: item[key]
+                        for key in ("id", "name", "kind", "armor", "trinket", "description")
+                        if key in item
+                    }
+                )
+                run["inventory"] = inventory[-MAX_DUNGEON_INVENTORY:]
+            # Preserve the previous market behavior while making the choice
+            # reversible from the run inventory menu.
+            loadout[item["kind"]] = item["armor"] if item["kind"] == "armor" else item["trinket"]
         run["last_result"] = {"outcome": "market_purchase", "coins_delta": -price, "score_delta": 0, "damage": 0, "reason": item["name"]}
         self._dungeon_append_history(run, {"room": run.get("room", 1), "floor": run.get("floor", 1), "outcome": "market_purchase", "coins_delta": -price, "score_delta": 0, "damage": 0})
         return Mutation(True, {"run": self.dungeon_projection(progress), "item": item, "run_coins": run["run_coins"]}, {"run_id": run_id, "item_id": item_id, "item_name": item["name"], "coins_delta": -price, "reason": "dungeon_market_purchase"})
+
+    def _dungeon_equip_item(self, payload: Mapping[str, Any], progress: dict[str, Any]) -> Mutation:
+        data = self._payload(payload, {"run_id", "item_id"}, {"run_id", "item_id"})
+        run = self._active_dungeon_run(progress)
+        run_id = self._text(data["run_id"], "run_id", max_length=MAX_IDENTIFIER_LENGTH, identifier=True)
+        item_id = self._text(data["item_id"], "item_id", max_length=MAX_IDENTIFIER_LENGTH, identifier=True)
+        if run.get("run_id") != run_id:
+            raise StateCommandError("Dungeon run changed; reload the current run", status_code=409)
+        inventory = self._dungeon_inventory_entries(run, mutate=True)
+        item = next((candidate for candidate in inventory if candidate.get("id") == item_id), None)
+        if item is None:
+            raise StateCommandError("That item is not in this Dungeon run inventory", status_code=404)
+        loadout = run.get("loadout")
+        if not isinstance(loadout, dict):
+            raise StateCommandError("Existing Dungeon loadout is invalid", status_code=500)
+        field = "armor" if item.get("kind") == "armor" else "trinket"
+        value = item.get(field)
+        if not isinstance(value, str) or not value.strip():
+            raise StateCommandError("That Dungeon item cannot be equipped", status_code=422)
+        if loadout.get(field) == value:
+            return Mutation(False, {"run": self.dungeon_projection(progress), "equipped": value, "slot": field})
+        loadout[field] = value
+        run["updated_at"] = _utc_now()
+        return Mutation(
+            True,
+            {"run": self.dungeon_projection(progress), "equipped": value, "slot": field},
+            {"run_id": run_id, "item_id": item_id, "item_name": item.get("name"), "slot": field, "reason": "dungeon_item_equipped"},
+        )
 
     def _dungeon_leave_room(self, payload: Mapping[str, Any], progress: dict[str, Any]) -> Mutation:
         data = self._payload(payload, {"run_id"}, {"run_id"})
@@ -2885,6 +3017,7 @@ class LocalStateService:
             "dungeon_record_death": self._dungeon_record_death,
             "dungeon_use_rest": self._dungeon_use_rest,
             "dungeon_market_purchase": self._dungeon_market_purchase,
+            "dungeon_equip_item": self._dungeon_equip_item,
             "dungeon_leave_room": self._dungeon_leave_room,
             "dungeon_finish_run": self._dungeon_finish_run,
         }

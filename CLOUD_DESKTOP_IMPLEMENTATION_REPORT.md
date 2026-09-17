@@ -2434,3 +2434,28 @@ The account-panel error path now converts Supabase's raw
 explicitly confirms no account was created. The provider code is retained for
 diagnostics without exposing its raw wording. Clean ext4 frontend coverage
 passed **45/45** and the production build transformed **1,346 modules**.
+
+### UI coherence and Dungeon inventory slice — 2026-09-17
+
+This slice closes the next local Forge presentation gaps without widening the
+state authority: Tutor is the single visible notebook destination, while the
+separate Practice progression remains available through Tutor's selectors and
+managed `tutor.py`. Hub is now a full-width destination with no rail or AI
+column. Hidden AI stays mounted so the shell/AI PTYs are not recreated, but is
+parked off-canvas and can be opened as a small pop-out from routes that hide
+it. The Quest Journal's Main Quest page fills the available width, and Codex
+now carries an Active Chapter panel beneath the Field Library.
+
+Forge's active campaign-file sidebar now shows the state-service enemy Resolve
+meter even before objectives are listed. Infinite Dungeon Run Loadout is a
+bounded inventory menu backed by the canonical `dungeon_equip_item` mutation;
+market gear is retained in the run checkpoint and can be re-equipped. The boot
+splash now fades in/out and says `Welcome back, <username>` only after the
+20-minute away threshold.
+
+Verification after the changes: clean ext4 frontend **47/47**, mounted Forge
+source coverage **28/28**, WSL backend suite **101/101**, and Vite production
+build **1,346 modules**. The protected `progress.json` digest, `tutor.py`,
+`dungeon.py`, shell PTY and AI PTY were left untouched. A fresh browser K&M
+acceptance was not possible because the Codex in-app browser could not attach a
+tab; this report makes no new live-browser claim.

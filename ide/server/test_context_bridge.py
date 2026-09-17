@@ -109,6 +109,8 @@ class PyrContextBridgeTests(unittest.TestCase):
                 self.assertEqual(run["floor"], 1)
                 self.assertEqual(run["loadout"]["armor"], "Apprentice Coat")
                 self.assertEqual(run["loadout"]["heals"], 1)
+                self.assertEqual(run["inventory"][0]["id"], "dungeon-starter-armor")
+                self.assertTrue(run["inventory"][0]["equipped"])
                 self.assertEqual(run["editor_content"], "")
                 chosen = client.post(
                     "/api/dungeon/choose",

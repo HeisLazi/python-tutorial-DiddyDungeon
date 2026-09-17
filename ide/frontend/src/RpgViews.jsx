@@ -9,7 +9,6 @@ export const viewItems = [
   { id: 'character', icon: '♙', label: 'Character' },
   { id: 'homestead', icon: '⌂', label: 'Homestead' },
   { id: 'dungeon', icon: '♜', label: 'Infinite Dungeon' },
-  { id: 'practice', icon: '✦', label: 'Practice' },
   { id: 'settings', icon: '⚙', label: 'Settings' },
 ]
 
@@ -115,10 +114,13 @@ export function ContextPanel({ activeView, campaign, files, activePath, openFile
             </button>
           ))}
         </div>
-        {campaign?.encounter?.available_objectives?.length > 0 && (
+        {campaign?.encounter?.mob_name && (
           <div className="campaign-battle-sidebar">
             <div className="panel-title"><span>ACTIVE BATTLE</span><b>{campaign.encounter.resolve ?? 0}/{campaign.encounter.max_resolve ?? 0}</b></div>
             <div className="campaign-battle-copy"><strong>{campaign.encounter.mob_name || 'Current mob'}</strong><span>Submit verified work for this campaign file.</span></div>
+            <div className="campaign-battle-resolve" data-testid="forge-encounter-resolve">
+              <ProgressBar value={campaign.encounter.resolve ?? 0} max={campaign.encounter.max_resolve ?? 1} label="Enemy Resolve" className="resolve" />
+            </div>
             <BattleSubmission availableObjectives={campaign.encounter.available_objectives} onSubmit={submitBattle} busy={busy} />
           </div>
         )}
@@ -130,13 +132,13 @@ export function ContextPanel({ activeView, campaign, files, activePath, openFile
     return (
       <>
         <div className="panel-title">
-          <span>{activeView === 'practice' ? 'PRACTICE / TUTOR' : 'TUTOR NOTEBOOK'}</span>
+          <span>TUTOR NOTEBOOK</span>
           <button onClick={() => setActiveView('forge')} title="Return to Forge">⌘</button>
         </div>
         <div className="context-scroll">
           <div className="context-kicker">COLLABORATIVE SCRATCH SPACE</div>
           <h3>tutor.py</h3>
-          <p>Choose a concept and question lens above tutor.py. PYR may write examples here; your real project file stays player-authored.</p>
+          <p>Choose a concept and question lens above tutor.py. This is the practice workspace too: PYR may write examples here; your real project file stays player-authored.</p>
           <div className="boundary-card safe">
             <strong>PYR CAN WRITE</strong>
             <span>tutor.py</span>
@@ -482,8 +484,9 @@ function QuestJournal({ progress, revision, encounter, submitBattle, submitBoss,
   const currentIndex = projectedIndex >= 0 ? projectedIndex : firstAvailable >= 0 ? firstAvailable : Math.max(0, mobs.length - 1)
   const currentMob = mobs[currentIndex]
   const goals = progress.goals || {}
-  const resolve = encounter?.resolve ?? currentMob?.resolve ?? currentMob?.max_resolve ?? 0
-  const maxResolve = encounter?.max_resolve ?? currentMob?.max_resolve ?? resolve
+  const rawMaxResolve = encounter?.max_resolve ?? currentMob?.max_resolve ?? encounter?.resolve ?? currentMob?.resolve ?? 0
+  const maxResolve = Math.max(1, Number(rawMaxResolve) || 1)
+  const resolve = Math.max(0, Math.min(maxResolve, Number(encounter?.resolve ?? currentMob?.resolve ?? maxResolve) || 0))
   const availableObjectives = encounter?.available_objectives || []
   const bossStatus = encounter?.boss_status || activeProject.boss_status || 'locked'
   const bossUnlocked = encounter?.status === 'boss_available' || bossStatus === 'available'
@@ -596,6 +599,9 @@ function QuestJournal({ progress, revision, encounter, submitBattle, submitBoss,
 
 function Codex({ progress, revision, codexProjection, saveCodexNote, busy }) {
   const activeProject = (progress.projects || []).find((project) => project.status === 'active') || {}
+  const activeMob = (activeProject.mobs || []).find((mob) => mob.status === 'available')
+    || (activeProject.mobs || []).find((mob) => !isMobDefeated(mob.status) && mob.status !== 'locked')
+  const clearedMobCount = (activeProject.mobs || []).filter((mob) => isMobDefeated(mob.status)).length
   const skills = progress.skills || []
   const pages = codexProjection?.pages || []
   const entries = codexProjection?.entries || progress.codex?.encounters || []
@@ -761,6 +767,14 @@ function Codex({ progress, revision, codexProjection, saveCodexNote, busy }) {
             </>
           ) : <div className="empty-state">The Codex library is unavailable until the state service returns a projection.</div>}
         </article>
+      </section>
+
+      <section className="game-card codex-active-chapter" data-testid="codex-active-chapter">
+        <div className="card-heading"><span>ACTIVE CHAPTER</span><b>{activeProject.progress ?? 0}%</b></div>
+        <div className="codex-active-chapter-grid">
+          <div><small className="codex-label">FIELD LIBRARY CONTEXT</small><h3>{activeProject.name || 'No active chapter'}</h3><p>{progress.current_quest || activeProject.summary || 'Choose a chapter from the Quest Hub to begin.'}</p></div>
+          <div className="codex-chapter-status"><span>{clearedMobCount}/{(activeProject.mobs || []).length} encounters cleared</span><strong>{activeMob?.name || (activeProject.completed ? 'Chapter complete' : 'Next encounter is not yet revealed')}</strong><small>{activeMob?.concept || 'The state service will reveal the next concept when it is unlocked.'}</small></div>
+        </div>
       </section>
 
       <section className="game-card">
@@ -951,7 +965,7 @@ function DungeonMap({ run, onChoose, busy }) {
   )
 }
 
-function DungeonScreen({ dungeon, revision, onStart, onChoose, onRest, onMarketPurchase, onLeave, onFinish, submitDungeon, busy, saving, editorContent, onEditorChange, onSave }) {
+function DungeonScreen({ dungeon, revision, onStart, onChoose, onRest, onMarketPurchase, onEquip, onLeave, onFinish, submitDungeon, busy, saving, editorContent, onEditorChange, onSave }) {
   const [concept, setConcept] = useState('')
   const [submitStatus, setSubmitStatus] = useState('')
   const [roomTab, setRoomTab] = useState('map')
@@ -1029,9 +1043,19 @@ function DungeonScreen({ dungeon, revision, onStart, onChoose, onRest, onMarketP
                 <div className="dungeon-room-action"><h3>Encounter ready</h3><p>The route is committed. Open the code editor to work on this room without losing your checkpoint.</p><button className="primary" type="button" onClick={() => setRoomTab('code')}>Open code editor</button></div>
               )}
             </section>
-            <section className="game-card">
-              <div className="card-heading"><span>RUN LOADOUT</span><b>{loadout.hp ?? 0}/{loadout.max_hp ?? 0} HP</b></div>
-              <div className="dungeon-loadout-list"><div><small>ARMOR</small><strong>{loadout.armor || 'Apprentice Coat'}</strong></div><div><small>TRINKET</small><strong>{loadout.trinket || 'None'}</strong></div><div><small>HEALS</small><strong>{loadout.heals ?? 0}</strong></div><div><small>RUN COINS</small><strong>{run.run_coins ?? 0}</strong></div></div>
+            <section className="game-card dungeon-inventory-card" data-testid="dungeon-inventory">
+              <div className="card-heading"><span>RUN LOADOUT · INVENTORY</span><b>{loadout.hp ?? 0}/{loadout.max_hp ?? 0} HP</b></div>
+              <p className="context-note">Equip items you have earned in this run. Campaign gear never leaks into the Dungeon.</p>
+              <div className="dungeon-inventory-list">
+                {(Array.isArray(run.inventory) ? run.inventory : []).map((item) => (
+                  <div key={item.id} className={`dungeon-inventory-item ${item.equipped ? 'equipped' : ''}`}>
+                    <div><small>{String(item.kind || 'item').toUpperCase()}</small><strong>{item.name || item.armor || item.trinket}</strong><span>{item.description || 'Run item'}</span></div>
+                    <button type="button" onClick={() => onEquip?.(run.run_id, item.id)} disabled={busy || !onEquip || item.equipped}>{item.equipped ? 'Equipped' : 'Equip'}</button>
+                  </div>
+                ))}
+                {!run.inventory?.length && <div className="empty-state">Your run inventory is empty. Visit a market to earn temporary gear.</div>}
+              </div>
+              <div className="dungeon-loadout-list"><div><small>HEALS</small><strong>{loadout.heals ?? 0}</strong></div><div><small>RUN COINS</small><strong>{run.run_coins ?? 0}</strong></div></div>
               {run.last_result && <div className={`dungeon-last-result ${run.last_result.outcome || ''}`}><small>LAST RESULT</small><strong>{String(run.last_result.outcome || 'recorded').replaceAll('_', ' ')}</strong><span>{run.last_result.score_delta ? `+${run.last_result.score_delta} score` : ''}{run.last_result.coins_delta ? ` · ${run.last_result.coins_delta > 0 ? '+' : ''}${run.last_result.coins_delta} coins` : ''}{run.last_result.damage ? ` · −${run.last_result.damage} HP` : ''}</span></div>}
               <p className="context-note">The editor buffer autosaves through the state gateway. A new question clears it before the next prompt.</p>
               <button type="button" onClick={() => onFinish?.(run.run_id)} disabled={busy || !onFinish}>Bank score and end run</button>
@@ -1235,7 +1259,7 @@ function SettingsScreen({ preferences, setters, resetLayout, equipped, account, 
   )
 }
 
-export function GameScreen({ activeView, progress, revision, encounter, codexProjection, practiceProjection, dungeon, dungeonEditorContent, onDungeonEditorChange, onSaveDungeon, onDungeonChoose, onDungeonRest, onDungeonMarketPurchase, onDungeonLeave, onDungeonFinish, purchaseCosmetic, equipCosmetic, saveCodexNote, busy, dungeonSaving, submitBattle, submitBoss, submitDungeon, onStartDungeon, onPracticePrompt, preferences, setters, resetLayout, account, accountBusy, accountNotice, onSignIn, onSignUp, onSignOut, onDeviceLabelSave, onResolveConflict, onNavigate, campaignReady = true }) {
+export function GameScreen({ activeView, progress, revision, encounter, codexProjection, practiceProjection, dungeon, dungeonEditorContent, onDungeonEditorChange, onSaveDungeon, onDungeonChoose, onDungeonRest, onDungeonMarketPurchase, onDungeonEquip, onDungeonLeave, onDungeonFinish, purchaseCosmetic, equipCosmetic, saveCodexNote, busy, dungeonSaving, submitBattle, submitBoss, submitDungeon, onStartDungeon, onPracticePrompt, preferences, setters, resetLayout, account, accountBusy, accountNotice, onSignIn, onSignUp, onSignOut, onDeviceLabelSave, onResolveConflict, onNavigate, campaignReady = true }) {
   if (!campaignReady && activeView !== 'settings') {
     return (
       <div className="game-screen-scroll campaign-loading" data-testid="campaign-loading" aria-live="polite">
@@ -1250,7 +1274,7 @@ export function GameScreen({ activeView, progress, revision, encounter, codexPro
   if (activeView === 'codex') return <Codex progress={progress} revision={revision} codexProjection={codexProjection} saveCodexNote={saveCodexNote} busy={busy} />
   if (activeView === 'character') return <CharacterSheet progress={progress} revision={revision} />
   if (activeView === 'homestead') return <Homestead progress={progress} revision={revision} purchaseCosmetic={purchaseCosmetic} equipCosmetic={equipCosmetic} busy={busy} />
-  if (activeView === 'dungeon') return <DungeonScreen dungeon={dungeon} revision={revision} onStart={onStartDungeon} onChoose={onDungeonChoose} onRest={onDungeonRest} onMarketPurchase={onDungeonMarketPurchase} onLeave={onDungeonLeave} onFinish={onDungeonFinish} submitDungeon={submitDungeon} busy={busy} saving={dungeonSaving} editorContent={dungeonEditorContent} onEditorChange={onDungeonEditorChange} onSave={onSaveDungeon} />
+  if (activeView === 'dungeon') return <DungeonScreen dungeon={dungeon} revision={revision} onStart={onStartDungeon} onChoose={onDungeonChoose} onRest={onDungeonRest} onMarketPurchase={onDungeonMarketPurchase} onEquip={onDungeonEquip} onLeave={onDungeonLeave} onFinish={onDungeonFinish} submitDungeon={submitDungeon} busy={busy} saving={dungeonSaving} editorContent={dungeonEditorContent} onEditorChange={onDungeonEditorChange} onSave={onSaveDungeon} />
   if (activeView === 'practice') return <PracticeScreen progress={progress} revision={revision} practiceProjection={practiceProjection} onPracticePrompt={onPracticePrompt} busy={busy} />
   if (activeView === 'settings') return <SettingsScreen preferences={preferences} setters={setters} resetLayout={resetLayout} equipped={progress.homestead?.equipped || {}} account={account} accountBusy={accountBusy} accountNotice={accountNotice} onSignIn={onSignIn} onSignUp={onSignUp} onSignOut={onSignOut} onDeviceLabelSave={onDeviceLabelSave} onResolveConflict={onResolveConflict} revision={revision} />
   return null

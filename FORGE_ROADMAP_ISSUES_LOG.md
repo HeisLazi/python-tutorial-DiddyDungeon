@@ -1804,3 +1804,20 @@ transformed **1,346 modules** after this repair.
 
 This is a local editor-flow repair only. Provider-authenticated adjudication and
 the hosted campaign migration remain separate Milestone C gates.
+
+## UI coherence and Dungeon inventory slice — 2026-09-17
+
+| ID | Severity | Area | Finding | Status |
+|---|---|---|---|---|
+| F-092 | P2 | Navigation | Practice and Tutor appeared as duplicate tabs for the same managed notebook. | Fixed: Tutor is the only rail destination; legacy `practice` state is normalized to Tutor while Practice progression remains separate behind the shared Tutor surface. |
+| F-093 | P1 | AI layout | Hidden AI still occupied a blank grid column and visually covered route content. | Fixed: AI remains mounted but is parked off-canvas, with a route-scoped pop-out toggle and no AI/sidebar on the Hub. |
+| F-094 | P1 | Quest Journal layout | Main Quest was constrained to one side of a two-column page with an empty right panel. | Fixed: journal pages now occupy the full available width and keep the visual page-turn/contract page behavior. |
+| F-095 | P1 | Campaign combat HUD | Forge's campaign file view did not expose the active enemy Resolve bar for an encounter without objectives. | Fixed: the state-service encounter projection now renders the Resolve meter and mob identity in the Forge battle sidebar. |
+| F-096 | P2 | Infinite Dungeon loadout | Run Loadout had no inventory selection path, so purchased gear could not be re-equipped. | Fixed through the canonical state gateway with bounded run inventory, `/api/dungeon/equip`, and an inventory menu. |
+| F-097 | P2 | Launch UX | The boot screen lacked a fade-out and a named return greeting after a long absence. | Fixed with first-launch/20-minute return detection, fade-in/fade-out animation and username-based welcome copy. |
+
+Clean ext4 frontend verification is **47/47** with a **1,346-module** Vite
+build; mounted Forge source coverage is **28/28** and the WSL backend suite is
+**101/101**. Fresh browser K&M remains an environment gate because the Codex
+in-app browser could not attach a tab in this pass. No protected save,
+`tutor.py`, `dungeon.py` or existing PTY was touched.
