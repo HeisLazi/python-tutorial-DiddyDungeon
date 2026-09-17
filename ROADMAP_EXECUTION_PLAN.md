@@ -749,3 +749,9 @@ canonical state gateway or the revision/event projection.
 
 Current-source Forge tests are **39/39**. Clean archive build and browser-HMR
 K&M remain the verification gates; F-080 blocks the latter in this environment.
+
+The clean archive recheck passed **58/58** frontend tests and a Vite production
+build transforming **1,346 modules**. WSL backend discovery passed **108/108**;
+the protected local sync simulator returned `ok: true` with an unchanged source
+digest and preserved Campaign/Codex/Dungeon fields. This is local evidence only;
+browser-HMR K&M and hosted two-device acceptance remain external gates.

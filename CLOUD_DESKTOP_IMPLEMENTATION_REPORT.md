@@ -2860,6 +2860,12 @@ authority, revision polling or the user save.
 Current-source Forge tests pass **39/39**. Clean archive build verification is
 required; browser-HMR K&M remains unavailable under F-080.
 
+Recheck evidence: the clean archive passed **58/58** frontend tests and a Vite
+build transforming **1,346 modules**; the WSL backend suite passed **108/108**.
+`tools/questlab-local-sync-sim.py --source progress.json` returned `ok: true`
+with identical source digests before/after and preserved the campaign/Codex/
+Dungeon projection. No protected save, learner file or PTY was touched.
+
 ### Local sync simulator recheck — F-126
 
 The current branch was rechecked with

@@ -690,3 +690,8 @@ the Codex in-app browser tab could not attach in this environment.
 Verification: current-source Forge tests **39/39**. A clean archive build is
 required before publication; fresh browser-HMR K&M is still environment-gated
 by F-080 and is not claimed here.
+
+Recheck after implementation: clean archive frontend tests **58/58**, Vite
+production build **1,346 modules**, and WSL backend discovery **108/108**. The
+local sync simulator returned `ok: true`; the protected source save digest was
+identical before and after. These checks do not replace browser-HMR K&M.
