@@ -113,8 +113,8 @@ if (-not $SkipFrontendSource) {
     } catch {
         Fail "could not read the served AppV2 source on port $FrontendPort ($($_.Exception.Message))"
     }
-    if ($source -notmatch 'campaignReady' -or $source -notmatch 'data-react-stat' -or $source -notmatch 'top-stats') {
-        Fail 'served AppV2 source is stale or missing the current loading/SVG HUD markers'
+    if ($source -notmatch 'campaignReady' -or $source -notmatch 'data-react-stat' -or $source -notmatch 'top-stats' -or $source -notmatch 'FRONTEND_BUILD_SHA' -or $source -notmatch 'data-frontend-build-sha') {
+        Fail 'served AppV2 source is stale or missing the current loading/SVG HUD/runtime identity markers'
     }
     if ($source -match '♥\s*\$\{player\.hp') {
         Fail 'served AppV2 source still contains the old emoji stat renderer'

@@ -2033,3 +2033,12 @@ portrait round-trip remains the hosted acceptance gate.
 
 Verification: current-source Forge tests **32/32**. Clean archive frontend
 tests/build and browser K&M remain publication gates.
+
+## Stale frontend bundle pairing — F-121
+
+| ID | Severity | Area | Finding | Status |
+|---|---|---|---|---|
+| F-121 | P1 | Runtime identity | Branch/HEAD health was reported by the backend, but the launcher did not stamp the Vite bundle with the same checkout revision. An older frontend could therefore render the old Codex UI while the backend looked healthy. | Fixed: `ide.quest` exports `QUESTLAB_BUILD_SHA`, Vite embeds it, React compares it with `/api/runtime.repo_git.head_sha`, and the footer/data attributes expose an explicit frontend-stale warning. Manual unmarked Vite runs keep the existing runtime/branch checks. |
+
+Verification: current-source Forge tests **33/33** and launcher contract tests
+**14/14**. Clean archive frontend tests/build and browser K&M remain gates.

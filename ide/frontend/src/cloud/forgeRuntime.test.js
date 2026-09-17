@@ -74,6 +74,21 @@ test('campaign loading never presents starter values as a reset', () => {
   assert.doesNotMatch(legacy, /♥ \{player\.hp \?\? 100\}/)
 })
 
+test('launcher marks the frontend bundle so stale UI cannot appear healthy', () => {
+  const app = source('../AppV2.jsx')
+  const vite = source('../../vite.config.js')
+  const quest = source('../../../quest.py')
+
+  assert.match(app, /FRONTEND_BUILD_SHA = typeof __QUESTLAB_BUILD_SHA__ === 'string'/)
+  assert.match(app, /runtimeBuildMismatch/)
+  assert.match(app, /FRONTEND STALE · restart current launcher/)
+  assert.match(app, /data-frontend-build-sha=\{FRONTEND_BUILD_SHA \|\| 'unmarked'\}/)
+  assert.match(vite, /QUESTLAB_BUILD_SHA/)
+  assert.match(vite, /__QUESTLAB_BUILD_SHA__/)
+  assert.match(quest, /def checkout_head_sha\(root: Path\)/)
+  assert.match(quest, /env\["QUESTLAB_BUILD_SHA"\] = checkout_head_sha\(REPO_ROOT\)/)
+})
+
 test('PYR context submissions use the bounded local bridge and current editor selection', () => {
   const app = source('../AppV2.jsx')
   const enhancements = source('../forgeEnhancements.js')

@@ -620,3 +620,13 @@ account portrait round-trip remains the user-owned hosted acceptance gate.
 Verification: current-source Forge runtime tests **32/32**. Clean archive
 frontend tests/build and browser K&M remain the publication checks; no state,
 learner file or PTY was touched.
+
+## Stale frontend bundle pairing hunt — 2026-09-17 (F-121)
+
+| ID | Severity | Finding | Status |
+|---|---|---|---|
+| F-121 | P1 | The launcher already exposed backend branch/HEAD health, but a stale Vite frontend could be paired with a newer backend without an explicit frontend/backend identity check. That made an older Codex layout look like a live current build. | Fixed by having the guarded launcher pass the checkout HEAD SHA to Vite, embedding it in the bundle, comparing it with `/api/runtime` in React, exposing diagnostic data attributes, and showing `FRONTEND STALE · restart current launcher` in the footer. Unmarked manual Vite runs retain the existing branch/runtime warning path. |
+
+Verification: current-source Forge runtime tests **33/33** and launcher
+contract tests **14/14**. Clean archive frontend tests/build and browser K&M
+remain the publication checks; no state, learner file or PTY was touched.
