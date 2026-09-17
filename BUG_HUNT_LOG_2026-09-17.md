@@ -718,3 +718,13 @@ learner file or PTY was touched.
 Verification: current-source Forge runtime tests **40/40**. Browser K&M remains
 the visual publication gate; no state, learner file, PTY or hosted transport was
 changed.
+
+## Friend bundle tracked-save leak — 2026-09-17 (F-131)
+
+| ID | Severity | Finding | Status |
+|---|---|---|---|
+| F-131 | P1 | A clean package audit showed `progress.json` in the friend folder and ZIP because it is tracked at `HEAD`; the previous dirty-tree guard only protected uncommitted saves. That could distribute one player's starter/current cache and undermine the single-state authority boundary. | Fixed in source: the packager strips tracked `progress.json`, `tutor.py`, `dungeon.py` and `notes/` from a temporary staging tree, verifies none remain, and updates the onboarding/manifest wording. |
+
+Verification: the pre-fix disposable audit reproduced the leak. The post-fix
+folder/ZIP audit and clean archive tests are required before publication; the
+live save and PTYs were not touched.

@@ -2121,3 +2121,14 @@ the only missing visual proof for this slice.
 Verification: current-source Forge tests **40/40**. This is a presentation-only
 repair; state authority, revision polling, rewards, learner files and PTYs were
 not touched. Clean archive build and fresh browser K&M remain publication gates.
+
+## Friend bundle tracked-save leak — F-131
+
+| ID | Severity | Area | Finding | Status |
+|---|---|---|---|---|
+| F-131 | P1 | Distribution custody | The friend packager correctly archived `HEAD` and excluded uncommitted files, but `progress.json` is tracked in the repository. A package audit therefore found the committed baseline save inside both the folder and ZIP, contradicting the onboarding promise that player state never travels with the source bundle. | Fixed by removing `progress.json`, `tutor.py`, `dungeon.py` and `notes/` from the temporary archive staging tree and failing closed if any protected path remains. The live checkout/save is never touched; the manifest and onboarding text now state the exclusion. |
+
+Verification: disposable package audit before the fix reproduced the tracked
+`progress.json` leak; source tests now assert the protected-path removal and the
+post-fix package must be re-audited before the next publication. No user save,
+PTY or hosted state was changed.

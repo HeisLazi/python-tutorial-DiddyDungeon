@@ -198,11 +198,12 @@ the clean branch checkout:
 .\tools\questlab-package.ps1 -OutputDirectory .\questlab-bundles
 ```
 
-The packager archives committed `HEAD` only. It refuses unrelated dirty source
-changes and never copies an uncommitted `progress.json` or an untracked root
-`tutor.py`; the bundle includes the committed baseline save and this guide.
-It does not install dependencies, so each friend still runs the WSL setup
-above inside the extracted checkout.
+The packager archives committed `HEAD` only, then removes player-owned
+`progress.json`, `tutor.py`, `dungeon.py` and `notes/` paths from the staging
+tree. It refuses unrelated dirty source changes, so the bundle contains
+reviewed source and this guide but never a player save or learning notebook.
+It does not install dependencies, so each friend still runs the WSL setup above
+inside the extracted checkout.
 
 This is a custody boundary, not a mode removal: Campaign Tutor and Practice
 share the same managed `tutor.py` editor/notebook and the workspace-scoped `/api/tutor`

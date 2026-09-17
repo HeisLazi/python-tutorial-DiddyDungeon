@@ -58,13 +58,30 @@ try {
     & tar -xf $archive -C $staging
     if ($LASTEXITCODE -ne 0) { throw 'tar extraction failed.' }
 
+    # A tracked starter progress.json is still player-state data. Remove all
+    # player-owned save/notebook paths from the staging tree before the friend
+    # bundle is copied or zipped; git archive alone cannot distinguish a
+    # committed baseline save from source. The live checkout and its save are
+    # never touched here.
+    $protectedPackagePaths = @('progress.json', 'tutor.py', 'dungeon.py', 'notes')
+    foreach ($relativePath in $protectedPackagePaths) {
+        $protectedPath = Join-Path $staging $relativePath
+        if (Test-Path -LiteralPath $protectedPath) {
+            Remove-Item -LiteralPath $protectedPath -Recurse -Force
+        }
+    }
+    $leakedProtectedPath = @($protectedPackagePaths | Where-Object { Test-Path -LiteralPath (Join-Path $staging $_) })
+    if ($leakedProtectedPath.Count -gt 0) {
+        throw "Refusing to package player-owned paths: $($leakedProtectedPath -join ', ')"
+    }
+
     $manifest = @(
         'Quest Lab local-first bundle',
         "Branch: $expectedBranch",
         "Source HEAD: $head",
         '',
         'This bundle contains committed source only.',
-        'The player save is local to the checkout and is never copied between devices.',
+        'Player state, tutor.py, dungeon.py and notes are local to the checkout and are never copied between devices.',
         'Follow FRIEND_ONBOARDING.md for WSL setup and the guarded launcher.',
         'Do not reuse node_modules from another operating system; run npm ci inside WSL.'
     ) -join [Environment]::NewLine

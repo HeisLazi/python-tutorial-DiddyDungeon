@@ -2892,6 +2892,18 @@ or PTY lifecycle changed.
 Current-source Forge tests pass **40/40**. Clean archive build and browser K&M
 remain the visual publication gates.
 
+### Friend bundle tracked-save leak — F-131
+
+The friend packager audit found a real custody defect: `git archive HEAD` also
+archived the tracked repository `progress.json`, so the folder and ZIP could
+carry player-state bytes even though uncommitted saves and notebooks were
+excluded. The packager now removes and verifies the player-owned paths
+`progress.json`, `tutor.py`, `dungeon.py` and `notes/` inside its temporary
+staging tree before copying or compressing anything. It never edits the live
+checkout. The bundle manifest and `FRIEND_ONBOARDING.md` now make the exclusion
+explicit. This is a local distribution repair; it does not seed cloud state or
+change the state gateway.
+
 ### Local sync simulator recheck — F-126
 
 The current branch was rechecked with
