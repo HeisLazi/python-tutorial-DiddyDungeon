@@ -376,6 +376,14 @@ test('top HUD SVG icons are nested content, not nested stat pills', () => {
   assert.match(styles, /\.top-stats\s+\.cloud-pill\{[^}]*min-width:15ch/)
 })
 
+test('submit shortcut is intercepted before Monaco can insert a newline', () => {
+  const app = source('../AppV2.jsx')
+
+  assert.match(app, /modifier && event\.shiftKey && event\.key === 'Enter'/)
+  assert.match(app, /document\.querySelector\('\[data-qol-submit\]'\)\?\.click\(\)/)
+  assert.match(app, /event\.preventDefault\(\)[\s\S]*event\.stopPropagation\(\)[\s\S]*data-qol-submit/)
+})
+
 test('avatar controls use the account-scoped storage boundary with a local fallback', () => {
   const enhancements = source('../forgeEnhancements.js')
   const engine = source('./syncEngine.js')

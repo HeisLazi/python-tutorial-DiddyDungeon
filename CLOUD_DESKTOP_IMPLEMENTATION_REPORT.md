@@ -2392,3 +2392,17 @@ reserved for trusted in-process actions; and Campaign Tutor/Practice share one
 managed `tutor.py`/notes surface while retaining separate Practice history and
 no-reward progression boundaries. No runtime authority or file-write surface
 was widened.
+
+### F-088 — editor submit shortcut capture
+
+The `Ctrl/Cmd+Shift+Enter` submit shortcut previously relied on a legacy
+bubble-phase listener. Monaco could consume the event first when the editor had
+focus, which made the shortcut appear to work only after clicking outside the
+Python file. The React shell now intercepts the shortcut during capture, blocks
+the editor insertion, and invokes the existing bounded `data-qol-submit` PYR
+bridge. It does not grant the provider any new authority or change the PTY
+lifecycle.
+
+Verification: mounted source coverage **26/26**, clean ext4 frontend coverage
+**44/44**, and a clean Vite production build. The protected save, root
+`tutor.py`, root `dungeon.py`, and existing PTYs were not changed.

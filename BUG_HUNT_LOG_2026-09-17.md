@@ -330,3 +330,18 @@ than the code. It now explicitly rejects caller-supplied `system` actors over
 HTTP/CLI and describes Tutor/Practice as one managed `tutor.py`/notes surface
 with separate Practice state rather than two notebooks. This was a
 documentation-only repair; no save, runtime or PTY was touched.
+
+## Shortcut follow-up — submit while the editor owns focus (F-088)
+
+The original shortcut contract included `Ctrl/Cmd+Shift+Enter` for submitting
+the current run to PYR. The legacy enhancement listened during the normal
+bubble phase, so Monaco could consume the key event first and insert its own
+newline/command while the cursor was inside a Python editor. The capture-phase
+shortcut boundary in `AppV2.jsx` now prevents that insertion and clicks the
+existing bounded `data-qol-submit` bridge. The fallback clipboard behavior and
+provider guard remain unchanged.
+
+Regression evidence: the mounted Forge source test passed **26/26**; a clean
+ext4 checkout passed the full frontend suite **44/44** and the production Vite
+build. No browser/runtime was restarted, no user PTY was touched, and the
+protected save hash remained unchanged.
