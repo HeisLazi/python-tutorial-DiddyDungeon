@@ -766,3 +766,7 @@ repair.
 
 Current-source Forge tests remain **39/39**; clean archive build and browser
 K&M are the remaining publication checks for this small CSS scope.
+
+The clean archive recheck passed **58/58** frontend tests and a Vite build
+transforming **1,346 modules**. Browser K&M remains the sole missing visual
+evidence for this presentation-only repair.

@@ -704,3 +704,7 @@ identical before and after. These checks do not replace browser-HMR K&M.
 
 Verification: current-source Forge tests **39/39**. The change is presentation
 only; clean archive build and fresh browser K&M remain gates.
+
+Recheck: clean archive frontend tests **58/58** and Vite production build
+**1,346 modules** passed after the shared-shell selector change. No state,
+learner file or PTY was touched.
