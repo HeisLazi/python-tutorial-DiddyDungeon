@@ -271,12 +271,13 @@ function renderTrinketVault() {
 }
 
 function render() {
-  renderCharacterGear()
-  renderQuestBattleShell()
-  // Future loot belongs in Codex, not the Homestead shop. Remove the legacy
-  // injected card as well so a hot-reloaded session cannot leave a stale
-  // second presentation behind.
-  document.querySelectorAll('[data-trinket-vault]').forEach((node) => node.remove())
+  // React owns the Character, Homestead and Quest Journal surfaces now. The
+  // original combat polish layer used DOM mutation to append a second Battle
+  // Shell and replace the React equipment list, which made the Journal appear
+  // to jump between layouts and left duplicate shells after a revision poll.
+  // Keep this module as a compatibility listener for older markup, but clean
+  // stale legacy nodes instead of injecting new UI into the React tree.
+  document.querySelectorAll('[data-battle-shell], [data-trinket-vault], [data-combat-doctrine]').forEach((node) => node.remove())
 }
 
 let renderFrame = 0

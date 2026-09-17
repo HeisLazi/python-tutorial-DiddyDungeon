@@ -48,6 +48,8 @@ test('campaign projections use revision polling and state-service events', () =>
   assert.match(combat, /questlab:campaign-updated/)
   assert.doesNotMatch(combat, /setInterval\(refreshCampaignIfChanged/)
   assert.doesNotMatch(combat, /fetch\('\/api\/state\/revision'/)
+  assert.match(combat, /React owns the Character, Homestead and Quest Journal surfaces now/)
+  assert.doesNotMatch(combat, /function render\(\) \{\s*renderCharacterGear\(\)\s*renderQuestBattleShell\(\)/)
   assert.doesNotMatch(views, /mob\.encounter \|\| 'This encounter has not revealed/)
 })
 

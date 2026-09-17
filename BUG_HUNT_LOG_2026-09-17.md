@@ -419,3 +419,13 @@ claim. Existing shell and AI PTYs were not restarted.
 The new Battle screen preserves the bounded provider submission path and never
 reveals future questions or answer keys. PTYs and canonical state ownership were
 not changed.
+
+## React combat-surface ownership follow-up — 2026-09-17 (F-101)
+
+| ID | Severity | Finding | Status |
+|---|---|---|---|
+| F-101 | P1 | The legacy combat DOM observer still injected a second Battle Shell after the React Journal rendered and could rewrite Character equipment markup on every revision. | Fixed by making React the sole owner of these surfaces; the compatibility observer now only removes stale legacy nodes. |
+
+This was a visual/state-polling coherence bug. It did not mutate canonical
+progress, but it made live updates appear to jump and contradicted the new
+Journal/Battle screen split.

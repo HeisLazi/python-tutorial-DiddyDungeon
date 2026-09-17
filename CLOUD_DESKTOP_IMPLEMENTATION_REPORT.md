@@ -2474,3 +2474,14 @@ live on the Battle screen. The Battle workspace uses a larger code-friendly
 answer editor so learners can write implementation evidence or explanations in
 the same focused manner as Forge/Tutor, while all rewards, Resolve and unlocks
 still come only from validated state-service/provider results.
+
+### React combat-surface ownership repair — 2026-09-17
+
+The current Forge uses React for the Character, Homestead and Quest Journal
+surfaces. The older `combatShell.js` compatibility observer was still appending
+a legacy Battle Shell after every Journal render and rewriting the React
+equipment list. That created duplicate Battle UI and visible jumps during the
+one-second revision poll. The observer now removes stale legacy nodes only;
+the React Battle screen and state-service projection remain the sole live
+rendering path. This does not change canonical progression, cloud transport or
+PTY lifecycle.
