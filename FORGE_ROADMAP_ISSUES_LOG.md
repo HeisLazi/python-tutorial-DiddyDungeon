@@ -2122,6 +2122,15 @@ Verification: current-source Forge tests **40/40**. This is a presentation-only
 repair; state authority, revision polling, rewards, learner files and PTYs were
 not touched. Clean archive build and fresh browser K&M remain publication gates.
 
+## Secondary RPG emoji fallback — F-132
+
+| ID | Severity | Area | Finding | Status |
+|---|---|---|---|---|
+| F-132 | P2 | Codex/Homestead presentation | The bounded Codex still had emoji glyphs in mastery and companion surfaces while the HUD/navigation used monochrome SVGs. Glyph metrics and color varied by OS/font, making the book surface look like a mixed legacy dashboard. | Fixed in source with SVG shield/flame/book icons and shared stroke sizing for mastery, companion and Homestead hearth surfaces. No state or reward semantics changed. |
+
+Verification: current-source Forge tests **42/42**. Browser K&M remains the
+visual publication gate; no save, learner file, PTY or hosted transport changed.
+
 ## Friend bundle tracked-save leak — F-131
 
 | ID | Severity | Area | Finding | Status |

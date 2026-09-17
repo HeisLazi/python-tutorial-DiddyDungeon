@@ -319,6 +319,7 @@ function RouteIcon({ id }) {
     homestead: <><path d="m4 11 8-7 8 7" /><path d="M6 10v10h12V10M10 20v-6h4v6" /></>,
     dungeon: <><path d="M5 20V8l3-4h8l3 4v12z" /><path d="M9 20v-5h6v5M8 9h2M14 9h2M10 12h4" /></>,
     settings: <><circle cx="12" cy="12" r="3" /><path d="M19 12a7 7 0 0 0-.1-1l2-1.5-2-3.5-2.4 1a8 8 0 0 0-1.7-1L14.5 3h-5l-.4 3a8 8 0 0 0-1.7 1L5 6 3 9.5 5.1 11a7 7 0 0 0 0 2L3 14.5 5 18l2.4-1a8 8 0 0 0 1.7 1l.4 3h5l.4-3a8 8 0 0 0 1.7-1l2.4 1 2-3.5-2.1-1.5a7 7 0 0 0 .1-1z" /></>,
+    shield: <><path d="M12 3 19 6v5c0 4.5-2.8 8-7 10-4.2-2-7-5.5-7-10V6z" /><path d="m9 12 2 2 4-4" /></>,
     flame: <path d="M13 2s1 4-2 7c-2 2-3 4-2 7 1 2 3 3 5 2 3-1 5-4 4-8 3 3 4 8 1 11-4 4-12 2-13-4-1-5 3-8 7-15z" />,
   }
   return <svg viewBox="0 0 24 24" focusable="false">{paths[id] || paths.hub}</svg>
@@ -1041,7 +1042,7 @@ function Codex({ progress, revision, codexProjection, encounter, submitBattle, s
                   <div className="skill-grid">
                     {skills.map((skill) => (
                       <article key={skill.name} className={`skill-card ${skill.status}`}>
-                        <div className="skill-icon" data-skill-shield={skill.shield?.tier || 'none'}>{skill.shield?.tier !== 'none' ? '🛡' : '◇'}</div>
+                        <div className="skill-icon" data-skill-shield={skill.shield?.tier || 'none'}><RouteIcon id={skill.shield?.tier !== 'none' ? 'shield' : 'codex'} /></div>
                         <div><small>{skill.name}</small><h3>{skill.concept}</h3></div>
                         <div className="skill-meta"><span>Evidence {skill.evidence ?? 0}</span><span>Interviews {skill.interview_passes ?? 0}</span></div>
                         <div className="shield-line"><span>{skill.shield?.tier || 'none'} shield</span><b>{skill.shield?.charges ?? 0}/{skill.shield?.max_charges ?? 0}</b></div>
@@ -1097,7 +1098,7 @@ function CharacterSheet({ progress, revision, avatarDataUrl = '' }) {
         </section>
 
         <section className="game-card companion-card">
-          <div className="pyr-orb">🔥</div>
+          <div className="pyr-orb" aria-hidden="true"><RouteIcon id="flame" /></div>
           <div><span className="screen-kicker">COMPANION</span><h3>{companion.name || 'PYR'} · {companion.form || 'Tiny Code-Flame'}</h3><p>Bond {companion.bond ?? 0} · Level {companion.level ?? 1}</p><small>Next form: {companion.next_form || '???'} — {companion.next_form_requirement || 'keep learning'}</small></div>
         </section>
       </div>
@@ -1162,7 +1163,7 @@ function Homestead({ progress, revision, equipmentProjection, purchaseCosmetic, 
       <div className="homestead-scene">
         <div className="homestead-window">✦</div>
         <div className="homestead-desk"><span>⌨</span><small>FORGE DESK</small></div>
-        <div className="homestead-hearth"><span>🔥</span><small>PYR'S HEARTH</small></div>
+        <div className="homestead-hearth"><RouteIcon id="flame" /><small>PYR'S HEARTH</small></div>
         <div className="homestead-shelf"><span>◇ ◇ ◇</span><small>TROPHY SHELF</small></div>
         <div className="homestead-title"><span className="screen-kicker">HOMESTEAD</span><h2>{homestead.name || 'Your Forge'}</h2><p>Your environment grows with the things you earn while learning.</p></div>
         <div className="coin-purse"><small>PURSE</small><strong>{player.coins ?? 0}c</strong></div>

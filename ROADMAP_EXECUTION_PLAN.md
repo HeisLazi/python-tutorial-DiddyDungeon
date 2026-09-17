@@ -799,3 +799,13 @@ Post-fix package `QuestLab-2f5a4fe` folder/ZIP scans returned no protected save
 or notebook paths, while the manifest and key onboarding/launcher files were
 present. Clean archive frontend tests/build passed **60/60** and **1,346
 modules**. Real friend-machine installation remains a separate acceptance gate.
+
+## Current checkpoint — 2026-09-17 — secondary RPG icon cleanup
+
+F-132 removes the remaining emoji fallback from Codex mastery and companion/
+Homestead presentation. These surfaces now use explicit monochrome SVG shield,
+flame and book icons, keeping metrics stable across Windows/Linux fonts while
+leaving state authority, rewards and PTY behavior unchanged.
+
+Current-source Forge tests are **42/42**. Browser K&M remains the visual gate;
+hosted/device milestones are unchanged.

@@ -719,6 +719,16 @@ Verification: current-source Forge runtime tests **40/40**. Browser K&M remains
 the visual publication gate; no state, learner file, PTY or hosted transport was
 changed.
 
+## Secondary RPG emoji fallback — 2026-09-17 (F-132)
+
+| ID | Severity | Finding | Status |
+|---|---|---|---|
+| F-132 | P2 | Codex mastery and companion/Homestead surfaces still used emoji glyphs, so their shape, baseline and color changed with the host font even after the HUD SVG repair. | Fixed by rendering shield/flame/book icons through `RouteIcon` and applying explicit monochrome SVG sizing/strokes. |
+
+Verification: current-source Forge runtime tests **42/42**. Visual browser K&M
+remains unavailable in this environment; no state, learner file, PTY or hosted
+transport changed.
+
 ## Friend bundle tracked-save leak — 2026-09-17 (F-131)
 
 | ID | Severity | Finding | Status |

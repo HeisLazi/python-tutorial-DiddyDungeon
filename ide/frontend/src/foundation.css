@@ -568,3 +568,21 @@
     width: 100%;
   }
 }
+
+/* Keep secondary RPG surfaces on the same monochrome SVG icon language as the
+   HUD and navigation; no emoji fallback should change metrics between themes. */
+.skill-icon svg,
+.pyr-orb svg,
+.homestead-hearth > svg {
+  display: block;
+  width: 1em;
+  height: 1em;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.45;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.skill-icon svg { width: 24px; height: 24px; }
+.pyr-orb svg { width: 32px; height: 32px; }
+.homestead-hearth > svg { width: 26px; height: 26px; }
