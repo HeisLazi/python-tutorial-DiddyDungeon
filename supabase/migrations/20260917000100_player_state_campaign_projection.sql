@@ -150,8 +150,11 @@ begin
       raise exception 'codex projection is invalid or unbounded' using errcode = '22023';
     end if;
     for item in select jsonb_array_elements((campaign -> 'codex') -> 'encounters') loop
-      if jsonb_typeof(item) <> 'object' or (item - array['id','project_id','mob_name','concept','status','question_types','weaknesses','notes','attempts','results','interview_history','mastery']) <> '{}'::jsonb then
+      if jsonb_typeof(item) <> 'object' or (item - array['id','project_id','mob_name','concept','status','question_types','weaknesses','notes','player_notes','attempts','results','interview_history','mastery']) <> '{}'::jsonb then
         raise exception 'codex encounter contains unsupported fields' using errcode = '22023';
+      end if;
+      if item ? 'player_notes' and (jsonb_typeof(item -> 'player_notes') <> 'array' or jsonb_array_length(item -> 'player_notes') > 20) then
+        raise exception 'codex player notes must be bounded' using errcode = '22023';
       end if;
       if item ? 'results' and (jsonb_typeof(item -> 'results') <> 'array' or jsonb_array_length(item -> 'results') > 20) then
         raise exception 'codex results must be bounded' using errcode = '22023';

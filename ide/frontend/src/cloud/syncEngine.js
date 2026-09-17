@@ -27,7 +27,7 @@ const SYNC_COMPANION_FIELDS = ['name', 'form', 'level', 'bond', 'next_form', 'ne
 const SYNC_HOMESTEAD_EQUIPPED_FIELDS = ['theme', 'cursor', 'hud', 'terminal']
 const SYNC_PROJECT_FIELDS = ['order', 'branch', 'name', 'status', 'progress', 'boss', 'boss_status', 'clean_clear_eligible', 'completed', 'completed_at', 'clean_clear', 'mob_sequence_complete', 'creative_discoveries']
 const SYNC_MOB_FIELDS = ['name', 'status', 'assist', 'concept', 'encounter', 'max_resolve', 'resolve', 'impact_applied', 'objective_attempts']
-const SYNC_CODEX_FIELDS = ['id', 'project_id', 'mob_name', 'concept', 'status', 'question_types', 'weaknesses', 'notes', 'attempts', 'results', 'interview_history', 'mastery']
+const SYNC_CODEX_FIELDS = ['id', 'project_id', 'mob_name', 'concept', 'status', 'question_types', 'weaknesses', 'notes', 'player_notes', 'attempts', 'results', 'interview_history', 'mastery']
 const SYNC_DUNGEON_FIELDS = ['status', 'run_id', 'seed', 'concept_id', 'floor', 'room', 'room_type', 'score', 'run_coins', 'started_at', 'updated_at', 'ended_at', 'loadout', 'question', 'question_number', 'room_choices', 'editor_content', 'last_result', 'history', 'attempts']
 
 const isRecord = (value) => value !== null && typeof value === 'object' && !Array.isArray(value)
@@ -79,6 +79,7 @@ const projectCampaignState = (progress = {}) => {
             ...(Array.isArray(entry.question_types) ? { question_types: boundedTextList(entry.question_types, 20) } : {}),
             ...(Array.isArray(entry.weaknesses) ? { weaknesses: boundedTextList(entry.weaknesses, 20) } : {}),
             ...(Array.isArray(entry.notes) ? { notes: entry.notes.filter((note) => typeof note === 'string').slice(-20) } : {}),
+            ...(Array.isArray(entry.player_notes) ? { player_notes: entry.player_notes.filter((note) => typeof note === 'string').slice(-20) } : {}),
             ...(Array.isArray(entry.results) ? { results: boundedRecords(entry.results, ['outcome', 'evidence_id', 'reason', 'recorded_at'], 20) } : {}),
             ...(Array.isArray(entry.interview_history) ? { interview_history: boundedRecords(entry.interview_history, ['outcome', 'evidence_id', 'reason', 'recorded_at'], 20) } : {}),
             ...(isRecord(entry.mastery) ? { mastery: copyFields(entry.mastery, ['evidence', 'interview_passes', 'shield', 'tier', 'charges', 'max_charges']) } : {}),

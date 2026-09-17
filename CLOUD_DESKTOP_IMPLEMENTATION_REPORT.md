@@ -2296,3 +2296,18 @@ projects, 3 cleared mobs, 3 Codex encounters and the active Dungeon run/editor
 checkpoint** on both disposable devices, while the source digest remained
 unchanged. This is revision/CAS simulation evidence only, not authenticated
 cloud proof.
+
+### Codex note continuity recheck — 2026-09-17
+
+The campaign allowlist now carries both canonical Codex `notes` and the
+player-authored `player_notes` field through the Python gateway, browser
+SyncEngine and hosted migration contract. A cloud apply preserves the note,
+increments the local revision and records `sync_apply_cloud`; the merge also
+retains local-only `learning_state.last_teachback` fields that are not part of
+the cloud projection. Unknown fields and answer-bearing data remain rejected.
+
+Verification after this repair: WSL backend **101/101**, migration contracts
+**7/7**, clean disposable frontend **40/40**, Vite **1,346 modules**, and the
+protected-save two-device simulator passed with an unchanged source digest.
+No Supabase migration was applied, no hosted account was seeded, and no live
+save or PTY was touched.

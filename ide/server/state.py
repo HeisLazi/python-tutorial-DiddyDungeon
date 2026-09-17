@@ -1196,7 +1196,7 @@ class LocalStateService:
             encounters = raw_codex.get("encounters", [])
             if not isinstance(encounters, list) or len(encounters) > MAX_CODEX_RECORDS:
                 raise StateCommandError("campaign.codex.encounters must be a bounded list")
-            entry_fields = {"id", "project_id", "mob_name", "concept", "status", "question_types", "weaknesses", "notes", "attempts", "results", "interview_history", "mastery"}
+            entry_fields = {"id", "project_id", "mob_name", "concept", "status", "question_types", "weaknesses", "notes", "player_notes", "attempts", "results", "interview_history", "mastery"}
             clean_entries: list[dict[str, Any]] = []
             for index, entry in enumerate(encounters):
                 raw = cls._campaign_mapping(entry, f"campaign.codex.encounters[{index}]", entry_fields)
@@ -1212,6 +1212,8 @@ class LocalStateService:
                         item[field] = cls._campaign_text_list(raw[field], f"campaign.codex.encounters[{index}].{field}", maximum=MAX_SYNC_CODEX_RESULTS, max_length=240)
                 if "notes" in raw:
                     item["notes"] = cls._campaign_text_list(raw["notes"], f"campaign.codex.encounters[{index}].notes", maximum=MAX_CODEX_NOTES_PER_ENTRY, max_length=MAX_CODEX_NOTE_BYTES)
+                if "player_notes" in raw:
+                    item["player_notes"] = cls._campaign_text_list(raw["player_notes"], f"campaign.codex.encounters[{index}].player_notes", maximum=MAX_CODEX_NOTES_PER_ENTRY, max_length=MAX_CODEX_NOTE_BYTES)
                 if "attempts" in raw:
                     item["attempts"] = cls._campaign_int(raw["attempts"], f"campaign.codex.encounters[{index}].attempts")
                 for history_field in ("results", "interview_history"):
@@ -1463,7 +1465,7 @@ class LocalStateService:
             for entry in progress["codex"].get("encounters", []):
                 if not isinstance(entry, Mapping):
                     continue
-                item = pick(entry, {"id", "project_id", "mob_name", "concept", "status", "question_types", "weaknesses", "notes", "attempts"})
+                item = pick(entry, {"id", "project_id", "mob_name", "concept", "status", "question_types", "weaknesses", "notes", "player_notes", "attempts"})
                 for history_field in ("results", "interview_history"):
                     if isinstance(entry.get(history_field), list):
                         item[history_field] = [pick(result, {"outcome", "evidence_id", "reason", "recorded_at"}) for result in entry[history_field] if isinstance(result, Mapping)]
@@ -1691,8 +1693,18 @@ class LocalStateService:
         if isinstance(incoming_campaign, Mapping):
             changed = False
             for field in SYNC_CAMPAIGN_FIELDS:
-                if field in incoming_campaign and progress.get(field) != incoming_campaign[field]:
-                    progress[field] = incoming_campaign[field]
+                if field not in incoming_campaign:
+                    continue
+                incoming_value = incoming_campaign[field]
+                if field in {"learning_state", "streak", "stats"} and isinstance(incoming_value, Mapping):
+                    existing_value = progress.get(field)
+                    merged_value = dict(existing_value) if isinstance(existing_value, Mapping) else {}
+                    merged_value.update(incoming_value)
+                    if merged_value != existing_value:
+                        progress[field] = merged_value
+                        changed = True
+                elif progress.get(field) != incoming_value:
+                    progress[field] = incoming_value
                     changed = True
             if changed:
                 changed_domains.append("campaign")

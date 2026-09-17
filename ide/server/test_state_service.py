@@ -794,7 +794,7 @@ class StateServiceBehaviorTests(unittest.TestCase):
         state["equipment"] = {"armor": "leather-guard", "trinket": "spark", "secret": "local"}
         state["companion"] = {"name": "PYR", "form": "Tiny Code-Flame", "level": 2, "bond": 3}
         state["homestead"]["purchase_history"] = [{"item_id": "cursor-basic"}]
-        state["codex"] = {"encounters": [{"mob_name": "The Empty Table"}]}
+        state["codex"] = {"encounters": [{"mob_name": "The Empty Table", "player_notes": ["Review indexing before the next encounter."]}]}
         state["skills"] = [{"concept": "Variables", "shield": {"tier": "bronze"}}]
         service.persist(state)
 
@@ -807,6 +807,7 @@ class StateServiceBehaviorTests(unittest.TestCase):
         self.assertNotIn("purchase_history", projection["homestead"])
         self.assertNotIn("catalog", projection["homestead"])
         self.assertEqual(projection["campaign"]["codex"]["encounters"][0]["mob_name"], "The Empty Table")
+        self.assertEqual(projection["campaign"]["codex"]["encounters"][0]["player_notes"], ["Review indexing before the next encounter."])
         self.assertEqual(projection["campaign"]["skills"][0]["concept"], "Variables")
         self.assertEqual(projection["campaign"]["projects"][0]["progress"], 0)
         self.assertNotIn("state_events", projection["campaign"])
@@ -817,6 +818,7 @@ class StateServiceBehaviorTests(unittest.TestCase):
         service, path = self.make_service()
         state = self.read(path)
         state["codex"] = {"encounters": [{"mob_name": "local note"}]}
+        state["learning_state"]["last_teachback"] = {"prompt": "local-only evidence"}
         state["projects"][0]["progress"] = 42
         path.write_text(json.dumps(state), encoding="utf-8")
         result = service.apply_cloud_projection(
@@ -837,6 +839,7 @@ class StateServiceBehaviorTests(unittest.TestCase):
         self.assertEqual(after["equipment"]["armor"], "leather-guard")
         self.assertEqual(after["homestead"]["owned_cosmetics"], ["cursor-basic", "hud-forge"])
         self.assertEqual(after["codex"]["encounters"][0]["mob_name"], "local note")
+        self.assertEqual(after["learning_state"]["last_teachback"], {"prompt": "local-only evidence"})
         self.assertEqual(after["projects"][0]["progress"], 42)
         self.assertEqual(after["state_events"][-1]["action"], "sync_apply_cloud")
 
@@ -857,7 +860,7 @@ class StateServiceBehaviorTests(unittest.TestCase):
                         ],
                     }],
                     "current_quest": "Blackjack - Mob 3: The Hitman",
-                    "codex": {"encounters": [{"id": "legacy-empty-table", "project_id": "01-blackjack", "mob_name": "The Empty Table", "concept": "Variables", "status": "defeated", "results": [{"outcome": "defeated", "evidence_id": "legacy-1"}]}]},
+                    "codex": {"encounters": [{"id": "legacy-empty-table", "project_id": "01-blackjack", "mob_name": "The Empty Table", "concept": "Variables", "status": "defeated", "player_notes": ["Review indexing before the next encounter."], "results": [{"outcome": "defeated", "evidence_id": "legacy-1"}]}]},
                     "dungeon_run": {
                         "status": "active",
                         "run_id": "dungeon-1",
@@ -879,6 +882,7 @@ class StateServiceBehaviorTests(unittest.TestCase):
         self.assertEqual(after["projects"][0]["progress"], 38)
         self.assertEqual(after["projects"][0]["mobs"][1]["resolve"], 8)
         self.assertEqual(after["codex"]["encounters"][0]["mob_name"], "The Empty Table")
+        self.assertEqual(after["codex"]["encounters"][0]["player_notes"], ["Review indexing before the next encounter."])
         self.assertEqual(after["dungeon_run"]["run_id"], "dungeon-1")
         self.assertEqual(after["state_events"][-1]["action"], "sync_apply_cloud")
 
