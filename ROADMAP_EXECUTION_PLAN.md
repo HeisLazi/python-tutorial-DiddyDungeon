@@ -737,3 +737,15 @@ state authority or cloud scope.
 
 Current-source Forge tests are **38/38**. Browser K&M remains a publication
 visual gate because the local Codex browser tab could not attach.
+
+## Current checkpoint — 2026-09-17 — dev HMR PTY retention
+
+The F-035 dev-only lifecycle risk is fixed in source. Shell and AI terminal
+WebSockets now live in a browser-global role registry rather than in a React
+effect; Fast Refresh detaches and rebinds the xterm consumer within a bounded
+grace period. A real abandoned component still cleans up, while normal source
+edits no longer intentionally close the PTY link. This does not change the
+canonical state gateway or the revision/event projection.
+
+Current-source Forge tests are **39/39**. Clean archive build and browser-HMR
+K&M remain the verification gates; F-080 blocks the latter in this environment.

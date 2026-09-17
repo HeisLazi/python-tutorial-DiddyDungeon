@@ -113,6 +113,115 @@ const terminalPalette = (skin) => {
   }
 }
 
+// Vite Fast Refresh can tear down a component effect while a source edit is
+// being applied. Keep the actual browser WebSocket/PTY session outside the
+// React module instance so a hot UI refresh rebinds to the same shell instead
+// of closing it and creating a second process. A short detach grace period
+// still closes truly abandoned sessions (for example, when the page exits).
+const terminalSessions = (() => {
+  if (typeof globalThis === 'undefined') return new Map()
+  const key = '__QUESTLAB_TERMINAL_SESSIONS__'
+  if (globalThis[key] instanceof Map) return globalThis[key]
+  const sessions = new Map()
+  globalThis[key] = sessions
+  return sessions
+})()
+
+const terminalSessionFor = (role) => {
+  let session = terminalSessions.get(role)
+  if (!session) {
+    session = {
+      role,
+      socket: null,
+      pending: [],
+      consumer: null,
+      reconnectTimer: null,
+      detachTimer: null,
+      state: 'connecting',
+      banner: '',
+    }
+    terminalSessions.set(role, session)
+  }
+  return session
+}
+
+const clearTerminalTimer = (session, key) => {
+  if (session?.[key]) {
+    clearTimeout(session[key])
+    session[key] = null
+  }
+}
+
+const closeTerminalSession = (session) => {
+  if (!session) return
+  clearTerminalTimer(session, 'reconnectTimer')
+  clearTerminalTimer(session, 'detachTimer')
+  const socket = session.socket
+  session.socket = null
+  if (socket && socket.readyState < WebSocket.CLOSING) socket.close()
+  session.consumer = null
+  session.pending.length = 0
+  terminalSessions.delete(session.role)
+}
+
+const scheduleTerminalDetach = (session) => {
+  if (!session) return
+  clearTerminalTimer(session, 'detachTimer')
+  session.detachTimer = setTimeout(() => {
+    if (!session.consumer) closeTerminalSession(session)
+  }, 2_000)
+}
+
+const connectTerminalSession = (session, banner = session?.banner || '') => {
+  if (!session || typeof window === 'undefined') return
+  session.banner = banner
+  clearTerminalTimer(session, 'detachTimer')
+  const current = session.socket
+  if (current && (current.readyState === WebSocket.OPEN || current.readyState === WebSocket.CONNECTING)) {
+    session.consumer?.reportState(session.state)
+    return
+  }
+
+  session.consumer?.reportState('connecting')
+  session.state = 'connecting'
+  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+  const socket = new WebSocket(`${protocol}//${window.location.host}/ws/terminal/${session.role}`)
+  session.socket = socket
+
+  socket.onopen = () => {
+    if (session.socket !== socket) return
+    session.state = 'connected'
+    session.consumer?.reportState('connected')
+    session.consumer?.term?.writeln(`\r\n\x1b[38;5;214m${session.banner}\x1b[0m`)
+    session.consumer?.fitAndSync()
+    while (session.pending.length && socket.readyState === WebSocket.OPEN) {
+      socket.send(JSON.stringify({ type: 'input', data: session.pending.shift() }))
+    }
+  }
+
+  socket.onmessage = (event) => {
+    session.consumer?.term?.write(event.data)
+  }
+
+  socket.onerror = () => {
+    if (session.socket === socket) {
+      session.state = 'error'
+      session.consumer?.reportState('error')
+    }
+  }
+
+  socket.onclose = () => {
+    if (session.socket !== socket) return
+    session.socket = null
+    session.state = 'reconnecting'
+    session.consumer?.reportState('reconnecting')
+    session.consumer?.term?.writeln('\r\n\x1b[38;5;203m[Quest Lab] Terminal link dropped. Reconnecting…\x1b[0m')
+    if (!session.consumer) return
+    clearTerminalTimer(session, 'reconnectTimer')
+    session.reconnectTimer = setTimeout(() => connectTerminalSession(session), 1_200)
+  }
+}
+
 const TerminalPane = forwardRef(function TerminalPane(
   {
     role,
@@ -124,12 +233,9 @@ const TerminalPane = forwardRef(function TerminalPane(
   ref,
 ) {
   const hostRef = useRef(null)
-  const socketRef = useRef(null)
   const termRef = useRef(null)
   const fitRef = useRef(null)
-  const reconnectTimerRef = useRef(null)
-  const pendingRef = useRef([])
-  const disposedRef = useRef(false)
+  const sessionRef = useRef(null)
   const [state, setState] = useState('connecting')
 
   const reportState = (next) => {
@@ -140,7 +246,7 @@ const TerminalPane = forwardRef(function TerminalPane(
   const fitAndSync = () => {
     const term = termRef.current
     const fit = fitRef.current
-    const socket = socketRef.current
+    const socket = sessionRef.current?.socket
     if (!term || !fit || !hostRef.current) return
     try {
       fit.fit()
@@ -152,50 +258,17 @@ const TerminalPane = forwardRef(function TerminalPane(
     }
   }
 
-  const connect = () => {
-    if (disposedRef.current) return
-    const current = socketRef.current
-    if (current && (current.readyState === WebSocket.OPEN || current.readyState === WebSocket.CONNECTING)) return
-
-    reportState('connecting')
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-    const socket = new WebSocket(`${protocol}//${window.location.host}/ws/terminal/${role}`)
-    socketRef.current = socket
-
-    socket.onopen = () => {
-      if (disposedRef.current) return
-      reportState('connected')
-      termRef.current?.writeln(`\r\n\x1b[38;5;214m${banner}\x1b[0m`)
-      fitAndSync()
-      while (pendingRef.current.length && socket.readyState === WebSocket.OPEN) {
-        socket.send(JSON.stringify({ type: 'input', data: pendingRef.current.shift() }))
-      }
-    }
-
-    socket.onmessage = (event) => termRef.current?.write(event.data)
-
-    socket.onerror = () => {
-      if (!disposedRef.current) reportState('error')
-    }
-
-    socket.onclose = () => {
-      if (disposedRef.current) return
-      reportState('reconnecting')
-      termRef.current?.writeln('\r\n\x1b[38;5;203m[Quest Lab] Terminal link dropped. Reconnecting…\x1b[0m')
-      clearTimeout(reconnectTimerRef.current)
-      reconnectTimerRef.current = setTimeout(connect, 1200)
-    }
-  }
-
   useImperativeHandle(ref, () => ({
     send(text) {
-      const socket = socketRef.current
+      const session = sessionRef.current || terminalSessionFor(role)
+      sessionRef.current = session
+      const socket = session.socket
       if (socket?.readyState === WebSocket.OPEN) {
         socket.send(JSON.stringify({ type: 'input', data: text }))
         return true
       }
-      pendingRef.current.push(text)
-      connect()
+      session.pending.push(text)
+      connectTerminalSession(session, banner)
       return false
     },
     focus() {
@@ -216,10 +289,12 @@ const TerminalPane = forwardRef(function TerminalPane(
       return lines.join('\n').replace(/\s+$/g, '').trim()
     },
     reconnect() {
-      const socket = socketRef.current
+      const session = sessionRef.current || terminalSessionFor(role)
+      sessionRef.current = session
+      const socket = session.socket
       if (socket && socket.readyState < WebSocket.CLOSING) socket.close()
-      clearTimeout(reconnectTimerRef.current)
-      reconnectTimerRef.current = setTimeout(connect, 80)
+      clearTerminalTimer(session, 'reconnectTimer')
+      session.reconnectTimer = setTimeout(() => connectTerminalSession(session, banner), 80)
     },
     fit() {
       fitAndSync()
@@ -227,7 +302,9 @@ const TerminalPane = forwardRef(function TerminalPane(
   }))
 
   useEffect(() => {
-    disposedRef.current = false
+    const session = terminalSessionFor(role)
+    sessionRef.current = session
+    clearTerminalTimer(session, 'detachTimer')
     const term = new Terminal({
       cursorBlink: true,
       convertEol: false,
@@ -242,8 +319,15 @@ const TerminalPane = forwardRef(function TerminalPane(
     termRef.current = term
     fitRef.current = fit
 
+    session.consumer = {
+      term,
+      fitAndSync,
+      reportState,
+    }
+    reportState(session.state)
+
     const input = term.onData((data) => {
-      const socket = socketRef.current
+      const socket = sessionRef.current?.socket
       if (socket?.readyState === WebSocket.OPEN) {
         socket.send(JSON.stringify({ type: 'input', data }))
       }
@@ -251,19 +335,16 @@ const TerminalPane = forwardRef(function TerminalPane(
 
     const observer = new ResizeObserver(() => fitAndSync())
     observer.observe(hostRef.current)
-    connect()
+    connectTerminalSession(session, banner)
 
     return () => {
-      disposedRef.current = true
-      clearTimeout(reconnectTimerRef.current)
       observer.disconnect()
       input.dispose()
-      const socket = socketRef.current
-      if (socket && socket.readyState < WebSocket.CLOSING) socket.close()
-      socketRef.current = null
+      if (session.consumer?.term === term) session.consumer = null
       term.dispose()
       termRef.current = null
       fitRef.current = null
+      scheduleTerminalDetach(session)
     }
   }, [role, banner])
 
@@ -277,7 +358,7 @@ const TerminalPane = forwardRef(function TerminalPane(
     term.options.theme = terminalPalette(skin)
     try {
       fitRef.current?.fit()
-      const socket = socketRef.current
+      const socket = sessionRef.current?.socket
       if (socket?.readyState === WebSocket.OPEN && term.cols > 0 && term.rows > 0) {
         socket.send(JSON.stringify({ type: 'resize', cols: term.cols, rows: term.rows }))
       }

@@ -680,3 +680,13 @@ is still external evidence.
 Verification: current-source Forge tests **38/38**. No state, learner file,
 PTY or hosted transport changed. Fresh browser K&M remains unavailable because
 the Codex in-app browser tab could not attach in this environment.
+
+## Dev HMR terminal retention — 2026-09-17 (F-035)
+
+| ID | Severity | Finding | Status |
+|---|---|---|---|
+| F-035 | P3 | A Vite Fast Refresh could tear down the React terminal effect and close a live WebSocket, making a source edit look like a PTY reset even though the backend process was healthy. | Fixed in source: shell and AI sessions are stored in a browser-global role registry. Component effects only attach/detach xterm consumers; a 2-second grace period closes a session only when no replacement consumer arrives. The state/reconnect path remains role-bound and revision polling is unchanged. |
+
+Verification: current-source Forge tests **39/39**. A clean archive build is
+required before publication; fresh browser-HMR K&M is still environment-gated
+by F-080 and is not claimed here.
