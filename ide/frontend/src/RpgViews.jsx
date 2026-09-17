@@ -1519,6 +1519,17 @@ function WorkspaceTransferPanel({ transfer, busy, notice, onRefresh, onPush, onP
   const conflicts = transfer?.conflicts || []
   const available = Boolean(transfer?.ok)
   const statusLabel = transfer?.remote_commit ? 'BUNDLE READY' : available ? 'NO BUNDLE' : 'UNAVAILABLE'
+  const differentCount = files.filter((file) => file.status === 'different').length
+  const dirtyCount = Array.isArray(transfer?.allowed_dirty) ? transfer.allowed_dirty.length : 0
+  const excludedCount = Array.isArray(transfer?.blocked_dirty) ? transfer.blocked_dirty.length : 0
+  const digestLabel = (file) => {
+    const local = file.local_sha256 || file.sha256
+    const remote = file.remote_sha256
+    if (file.status === 'different' && local && remote) return `local ${local.slice(0, 8)}… · remote ${remote.slice(0, 8)}…`
+    if (remote) return `remote ${remote.slice(0, 8)}…`
+    if (local) return `sha ${local.slice(0, 8)}…`
+    return 'hash unavailable'
+  }
   return (
     <section className="game-card settings-card workspace-transfer-card" data-testid="workspace-transfer">
       <div className="card-heading"><span>PROJECT FILE TRANSFER</span><b>{statusLabel}</b></div>
@@ -1527,8 +1538,14 @@ function WorkspaceTransferPanel({ transfer, busy, notice, onRefresh, onPush, onP
       {transfer && (
         <>
           <div className="workspace-transfer-meta"><span>{transfer.transfer_branch || 'questlab-files/01-blackjack'}</span><span>{transfer.remote_commit ? `${String(transfer.remote_commit).slice(0, 8)}…` : 'empty'}</span></div>
+          <div className="workspace-transfer-summary" data-testid="workspace-transfer-summary" aria-label="Workspace transfer comparison">
+            <span>{files.length} allowlisted file{files.length === 1 ? '' : 's'}</span>
+            <span>{dirtyCount} local edit{dirtyCount === 1 ? '' : 's'}</span>
+            <span>{excludedCount} excluded change{excludedCount === 1 ? '' : 's'}</span>
+          </div>
+          {differentCount > 0 && <p className="workspace-transfer-conflict" role="status">Hash mismatch: review the local and remote digests below before applying or overwriting.</p>}
           <div className="workspace-transfer-files">
-            {files.length ? files.map((file) => <div key={file.path}><span>{file.path}</span><b className={`transfer-file-status ${file.status || ''}`}>{file.status || 'tracked'}</b></div>) : <p className="context-note">No allowlisted files are available in the transfer preview yet.</p>}
+            {files.length ? files.map((file) => <div key={file.path}><span>{file.path}</span><span className="workspace-transfer-file-meta"><b className={`transfer-file-status ${file.status || ''}`}>{file.status || 'tracked'}</b><small>{digestLabel(file)}</small></span></div>) : <p className="context-note">No allowlisted files are available in the transfer preview yet.</p>}
           </div>
           {conflicts.length > 0 && <p className="workspace-transfer-conflict" role="alert">Local edits conflict with: {conflicts.join(', ')}. Preview first, then choose overwrite only after reviewing a backup.</p>}
           <div className="account-actions workspace-transfer-actions">

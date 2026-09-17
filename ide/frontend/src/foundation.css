@@ -284,6 +284,10 @@
 .transfer-file-status.dirty { color: var(--ember); }
 .workspace-transfer-conflict { margin: 9px 0 0; padding: 8px 10px; border: 1px solid color-mix(in srgb, var(--danger) 48%, var(--line)); border-radius: 7px; color: var(--danger); background: color-mix(in srgb, var(--danger) 7%, var(--panel)); font-size: 10px; line-height: 1.45; }
 .workspace-transfer-actions { margin-top: 10px; }
+.workspace-transfer-summary { display: flex; gap: 7px; flex-wrap: wrap; margin: 9px 0; color: var(--muted); font: 8px ui-monospace, monospace; text-transform: uppercase; letter-spacing: .05em; }
+.workspace-transfer-summary span { padding: 4px 6px; border: 1px solid var(--line); border-radius: 999px; background: var(--panel3); }
+.workspace-transfer-file-meta { display: flex; align-items: flex-end; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+.workspace-transfer-file-meta small { color: var(--dim); font: 8px ui-monospace, monospace; }
 .dungeon-inventory-list { display: grid; gap: 7px; margin: 8px 0 12px; }
 .dungeon-inventory-item { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: center; padding: 9px; border: 1px solid var(--line); border-radius: 9px; background: var(--panel3); }
 .dungeon-inventory-item.equipped { border-color: color-mix(in srgb, var(--gold) 55%, var(--line)); background: color-mix(in srgb, var(--gold) 7%, var(--panel3)); }

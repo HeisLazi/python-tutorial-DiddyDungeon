@@ -559,6 +559,19 @@ test('account settings exposes revision diagnostics without changing sync author
   assert.match(styles, /grid-template-columns:repeat\(3,minmax\(0,1fr\)/)
 })
 
+test('workspace transfer exposes hash comparisons before any file apply', () => {
+  const views = source('../RpgViews.jsx')
+  const foundation = source('../foundation.css')
+
+  assert.match(views, /data-testid="workspace-transfer-summary"/)
+  assert.match(views, /local_sha256/)
+  assert.match(views, /remote_sha256/)
+  assert.match(views, /Hash mismatch: review the local and remote digests/)
+  assert.match(views, /excludedCount/)
+  assert.match(foundation, /\.workspace-transfer-summary \{ display: flex;/)
+  assert.match(foundation, /\.workspace-transfer-file-meta small/)
+})
+
 test('avatar controls use the account-scoped storage boundary with a local fallback', () => {
   const enhancements = source('../forgeEnhancements.js')
   const views = source('../RpgViews.jsx')

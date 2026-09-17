@@ -2069,3 +2069,12 @@ tests/build and browser K&M remain visual publication gates.
 
 Verification: current-source Forge tests **36/36**. Clean archive frontend
 tests/build and browser K&M remain visual publication gates.
+
+## Source-transfer hash visibility — F-125
+
+| ID | Severity | Area | Finding | Status |
+|---|---|---|---|---|
+| F-125 | P1 | Cross-device source files | The transfer gateway already compared local and remote SHA-256 values, but Forge only rendered a generic tracked/different label. A player could not verify which file was stale or whether protected changes were excluded before applying a pull. | Fixed with read-only allowlisted-file digests, local/remote mismatch text, reviewed-edit count and excluded-change count. Push/pull confirmation and overwrite gates are unchanged. | Actual laptop/PC round-trip remains external acceptance. |
+
+Verification: current-source Forge tests **37/37**. Clean archive frontend
+tests/build and browser K&M remain visual publication gates.

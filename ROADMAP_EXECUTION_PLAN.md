@@ -706,3 +706,14 @@ real PC/laptop acceptance remain gated.
 
 Current-source Forge tests are **36/36**. Clean archive frontend tests/build
 and browser K&M remain visual publication checks.
+
+## Current checkpoint — 2026-09-17 — source transfer verification
+
+F-125 closes the visibility gap in the reviewed workspace-file channel.
+Settings now displays allowlisted-file digest prefixes, local/remote mismatch
+state and excluded-change counts before a player chooses a pull or overwrite.
+The Git transfer ref and canonical state authority are unchanged.
+
+Current-source Forge tests are **37/37**. Clean archive frontend tests/build
+and browser K&M remain visual publication checks; device round-trip evidence
+is still required.

@@ -2820,3 +2820,16 @@ SyncEngine state, and no reconciliation or overwrite occurs from this panel.
 Current-source Forge tests pass **36/36**. Clean archive frontend tests/build
 and browser K&M remain the visual publication checks. Hosted migration and
 real two-device acceptance remain approval-gated.
+
+### Workspace transfer comparison repair — F-125
+
+The Settings transfer panel now renders the gateway's allowlisted-file hash
+comparison instead of only saying “tracked” or “different.” It shows the
+remote/local digest prefixes, reviewed local edit count and excluded-change
+count, and calls out a mismatch before the existing preview/confirmation
+buttons can apply anything. progress.json, PTYs and private logs remain
+outside the channel; no automatic overwrite was added.
+
+Current-source Forge tests pass **37/37**. Clean archive frontend tests/build
+and browser K&M remain the visual publication checks. A real PC/laptop source
+round-trip is still external evidence.
