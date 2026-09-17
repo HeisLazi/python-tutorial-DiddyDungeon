@@ -2589,3 +2589,18 @@ Post-publication verification: the current-source navigation suite passed
 suite passed **105/105**, and a fresh Vite production build transformed
 **1,346 modules**. A fresh Codex browser tab could not attach, so this still
 does not claim a new live click-through.
+
+### Dungeon inventory cross-device repair — F-109
+
+The local Dungeon checkpoint already persisted run-earned inventory, but the
+browser campaign projection and the source-only hosted migration did not carry
+that field. A second device could therefore restore the current room while
+silently losing temporary run loot. The SyncEngine now projects a bounded
+inventory list (`id`, `name`, `kind`, `armor`, `trinket`, `description`, max 24)
+in both directions, and the migration validator accepts only that shape. A
+two-device cloud round-trip regression proves the inventory survives a pull.
+
+Verification: clean ext4 frontend tests **51/51**, Vite production build
+**1,346 modules**, focused backend/migration tests **51/51**, and the full WSL
+backend suite remains **105/105**. The hosted migration remains source-only
+until the approved Milestone C application gate; no hosted sync claim is made.

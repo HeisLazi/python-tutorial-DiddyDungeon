@@ -498,3 +498,14 @@ clean ext4 frontend suite **51/51**, WSL backend suite **105/105**, and a
 fresh Vite production build with **1,346 modules transformed**. The Codex
 browser still could not attach a fresh tab, so no new live click-through claim
 is made here.
+
+## Dungeon inventory cloud projection hunt — 2026-09-17 (F-109)
+
+| ID | Severity | Finding | Status |
+|---|---|---|---|
+| F-109 | P1 | The local Dungeon checkpoint persisted run-earned inventory, but the browser campaign projection and hosted campaign migration omitted `dungeon_run.inventory`; a second device could resume the room while losing its temporary loadout. | Fixed by adding a bounded inventory whitelist to the SyncEngine projection and the source-only SQL validator, with a two-device cloud round-trip regression. |
+
+Verification: clean ext4 frontend tests **51/51**, Vite production build
+**1,346 modules**, focused backend/migration tests **51/51**, and the full WSL
+backend suite remains **105/105**. The hosted migration is still unapplied by
+the Milestone C boundary.
