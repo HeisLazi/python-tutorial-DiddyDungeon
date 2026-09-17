@@ -145,3 +145,24 @@ adjudication, hosted/player-state two-device sync, explicit real-save custody,
 the real CachyOS K&M run, friend-machine launch, Tauri packaging and hosted
 social/weekly raids remain open gates. The hunt did not seed Supabase or alter
 the protected save and did not reset a pre-existing shell or AI PTY.
+
+## Follow-up slice — Dungeon map/code editor continuity — 2026-09-17
+
+The original Dungeon brief requires a route selector that fades into a
+question/editor workspace and returns to the map without losing the checkpoint.
+The disposable Forge was exercised with browser K&M only: a challenge route was
+chosen, the Code editor tab opened, a disposable `dungeon.py` buffer was typed
+and saved through `PUT /api/dungeon/editor`, and Map & route was restored. The
+accessibility tree showed the saved checkpoint, the route map and the hidden-
+until-issued question boundary; the screenshot showed both tabs and the map.
+Both shell and AI PTYs stayed connected and browser warning/error logs were
+empty before teardown. This slice did not touch the protected root save or
+pre-existing runtimes.
+
+| Slice | Result | Evidence |
+|---|---|---|
+| Map → challenge → Code editor | passed | K&M showed `dungeon.py · current room buffer`, editable textarea and `Save checkpoint` |
+| Checkpoint mutation | passed | Backend logged `PUT /api/dungeon/editor` 200 OK; status changed to `dungeon.py · checkpoint saved` |
+| Code editor → Map & route | passed | Map retained Floor 1 / Room 4 and route cells after switching tabs |
+| Runtime continuity | passed | shell and AI both showed `CONNECTED`; no PTY reset |
+| Browser diagnostics | passed | no warning/error entries before disposable runtime teardown |

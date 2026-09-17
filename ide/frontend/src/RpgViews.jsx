@@ -954,9 +954,18 @@ function DungeonMap({ run, onChoose, busy }) {
 function DungeonScreen({ dungeon, revision, onStart, onChoose, onRest, onMarketPurchase, onLeave, onFinish, submitDungeon, busy, saving, editorContent, onEditorChange, onSave }) {
   const [concept, setConcept] = useState('')
   const [submitStatus, setSubmitStatus] = useState('')
+  const [roomTab, setRoomTab] = useState('map')
   const run = dungeon || { active: false, status: 'idle' }
   const question = run.question || {}
   const loadout = run.loadout || {}
+
+  useEffect(() => {
+    if (!run.active || run.room_type === 'selector') {
+      setRoomTab('map')
+    } else if (run.room_type === 'encounter') {
+      setRoomTab('code')
+    }
+  }, [run.active, run.room_type, run.question?.id])
 
   const start = async (event) => {
     event.preventDefault()
@@ -999,7 +1008,11 @@ function DungeonScreen({ dungeon, revision, onStart, onChoose, onRest, onMarketP
         </section>
       ) : (
         <>
-          <DungeonMap run={run} onChoose={onChoose} busy={busy} />
+          <div className="dungeon-tabs" role="tablist" aria-label="Dungeon workspace">
+            <button type="button" role="tab" aria-selected={roomTab === 'map'} className={roomTab === 'map' ? 'active' : ''} onClick={() => setRoomTab('map')}>Map & route</button>
+            <button type="button" role="tab" aria-selected={roomTab === 'code'} className={roomTab === 'code' ? 'active' : ''} onClick={() => setRoomTab('code')} disabled={run.room_type !== 'encounter'}>Code editor</button>
+          </div>
+          {roomTab === 'map' && <DungeonMap run={run} onChoose={onChoose} busy={busy} />}
           <div className="screen-grid two">
             <section className={`game-card dungeon-room-card ${run.room_type || 'selector'}`}>
               <div className="card-heading"><span>CURRENT ROOM</span><b>{String(run.room_type || 'encounter').toUpperCase()}</b></div>
@@ -1009,8 +1022,10 @@ function DungeonScreen({ dungeon, revision, onStart, onChoose, onRest, onMarketP
                 <div className="dungeon-room-action"><h3>Quiet Ember Rest</h3><p>Use one run heal to restore up to 30 HP, then continue deeper. Campaign HP is untouched.</p><button className="primary" type="button" onClick={() => onRest?.(run.run_id)} disabled={busy || !onRest || (loadout.heals ?? 0) <= 0 || (loadout.hp ?? 0) >= (loadout.max_hp ?? 0)}>Use rest ({loadout.heals ?? 0} left)</button><button type="button" onClick={() => onLeave?.(run.run_id)} disabled={busy || !onLeave}>Leave room</button></div>
               ) : run.room_type === 'market' ? (
                 <div className="dungeon-room-action"><h3>Wayfarer Market</h3><p>Spend run-only coins on a temporary aid. Nothing enters Campaign inventory.</p><div className="dungeon-market-list">{(run.market_catalog || []).map((item) => <div key={item.id}><div><strong>{item.name}</strong><small>{item.description}</small></div><button type="button" onClick={() => onMarketPurchase?.(run.run_id, item.id)} disabled={busy || !onMarketPurchase || (run.run_coins ?? 0) < (item.price ?? 0)}>{item.price}c</button></div>)}</div><button type="button" onClick={() => onLeave?.(run.run_id)} disabled={busy || !onLeave}>Leave market</button></div>
+              ) : roomTab === 'code' ? (
+                <div className="dungeon-tab-panel"><h3>{question.concept_id || 'Adaptive encounter'}</h3><p>{question.prompt || 'The next question will be issued by the state service.'}</p>{Array.isArray(question.options) && question.options.length > 0 && <div className="impact-objectives" aria-label="Question options">{question.options.map((option) => <span key={option}>{option}</span>)}</div>}<div className="dungeon-question-meta"><span>{question.question_type || 'question'}</span><span>Difficulty {question.difficulty ?? 1}</span><span>Write in dungeon.py</span></div><label className="dungeon-editor-field"><span>dungeon.py · current room buffer</span><textarea value={editorContent || ''} onChange={(event) => onEditorChange?.(event.target.value)} maxLength={120_000} rows={10} placeholder="Write your answer here. This buffer is checkpointed through the state gateway." disabled={busy} /></label><div className="dungeon-answer-actions"><button type="button" onClick={onSave} disabled={busy || saving || !onSave}>{saving ? 'Saving…' : 'Save checkpoint'}</button><button className="primary" type="button" onClick={submit} disabled={busy || !submitDungeon || !editorContent?.trim()}>Send answer to PYR</button></div>{submitStatus && <small className="battle-submit-status" role="status">{submitStatus}</small>}</div>
               ) : (
-                <><h3>{question.concept_id || 'Adaptive encounter'}</h3><p>{question.prompt || 'The next question will be issued by the state service.'}</p>{Array.isArray(question.options) && question.options.length > 0 && <div className="impact-objectives" aria-label="Question options">{question.options.map((option) => <span key={option}>{option}</span>)}</div>}<div className="dungeon-question-meta"><span>{question.question_type || 'question'}</span><span>Difficulty {question.difficulty ?? 1}</span><span>Write in dungeon.py</span></div><label className="dungeon-editor-field"><span>dungeon.py · current room buffer</span><textarea value={editorContent || ''} onChange={(event) => onEditorChange?.(event.target.value)} maxLength={120_000} rows={10} placeholder="Write your answer here. This buffer is checkpointed through the state gateway." disabled={busy} /></label><div className="dungeon-answer-actions"><button type="button" onClick={onSave} disabled={busy || saving || !onSave}>{saving ? 'Saving…' : 'Save checkpoint'}</button><button className="primary" type="button" onClick={submit} disabled={busy || !submitDungeon || !editorContent?.trim()}>Send answer to PYR</button></div>{submitStatus && <small className="battle-submit-status" role="status">{submitStatus}</small>}</>
+                <div className="dungeon-room-action"><h3>Encounter ready</h3><p>The route is committed. Open the code editor to work on this room without losing your checkpoint.</p><button className="primary" type="button" onClick={() => setRoomTab('code')}>Open code editor</button></div>
               )}
             </section>
             <section className="game-card">

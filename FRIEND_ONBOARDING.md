@@ -145,8 +145,8 @@ It does not install dependencies, so each friend still runs the WSL setup
 above inside the extracted checkout.
 
 This is a custody boundary, not a mode removal: Campaign Tutor and Practice
-share the same managed `tutor.py` editor/notebook and the workspace-scoped
-`/api/tutor` surface. Practice has its own no-reward session/history state and
+share the same managed `tutor.py` editor/notebook and the workspace-scoped `/api/tutor`
+surface. Practice has its own no-reward session/history state and
 can save bounded teaching code or concept notes, but it cannot write Campaign
 or Dungeon rewards, HP, Resolve, equipment, combat or run state.
 

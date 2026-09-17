@@ -145,6 +145,17 @@ test('Dungeon checkpoints and Practice remain separate learning modes', () => {
   assert.match(app, /\/api\/tutor\/format/)
 })
 
+test('Dungeon exposes a state-preserving map and editable code-editor tab', () => {
+  const views = source('../RpgViews.jsx')
+
+  assert.match(views, /role="tablist" aria-label="Dungeon workspace"/)
+  assert.match(views, /Map & route/)
+  assert.match(views, /Code editor/)
+  assert.match(views, /dungeon-tab-panel/)
+  assert.match(views, /dungeon\.py · current room buffer/)
+  assert.match(views, /Open code editor/)
+})
+
 test('Campaign completion keeps the boss gate and state-service boundary explicit', () => {
   const app = source('../AppV2.jsx')
   const views = source('../RpgViews.jsx')
