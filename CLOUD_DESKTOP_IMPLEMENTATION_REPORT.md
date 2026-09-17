@@ -2921,6 +2921,23 @@ Current-source Forge tests pass **42/42**. The clean archive passed **61/61**
 frontend tests and a **1,346-module** Vite build; the WSL backend suite passed
 **108/108**. Browser K&M remains the visual publication gate.
 
+### Codex bookshelf and reading-room hierarchy — F-133
+
+The Codex now presents its concept index as a finite bookshelf rather than an
+unbounded list. Five books are visible per shelf with explicit previous/next
+controls; the selected book keeps a clear spine/active treatment, and the
+reading pane retains the fixed header, section tabs and page controls. Chapter
+and encounter markers use the existing monochrome SVG icon language. Search
+results are now strict: an unmatched query produces an empty shelf rather than
+silently falling back to the full library. This is presentation-only; the
+canonical Codex projection, notes gateway, rewards, battle state, revisions and
+PTYs are unchanged.
+
+Current-source Forge tests pass **43/43**. A clean Linux archive passed
+**62/62** frontend tests and a Vite build transforming **1,346 modules**.
+Browser K&M could not attach in this environment (F-080), so the visual-device
+acceptance gate remains open.
+
 ### Local sync simulator recheck — F-126
 
 The current branch was rechecked with

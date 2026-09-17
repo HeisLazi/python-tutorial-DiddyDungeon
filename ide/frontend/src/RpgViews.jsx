@@ -769,6 +769,7 @@ function Codex({ progress, revision, codexProjection, encounter, submitBattle, s
   const entries = codexProjection?.entries || progress.codex?.encounters || []
   const [query, setQuery] = useState('')
   const [selectedPageId, setSelectedPageId] = useState(pages[0]?.id || '')
+  const [bookShelfPage, setBookShelfPage] = useState(0)
   const [selectedEntryId, setSelectedEntryId] = useState('')
   const [note, setNote] = useState('')
   const [noteStatus, setNoteStatus] = useState('')
@@ -817,8 +818,12 @@ function Codex({ progress, revision, codexProjection, encounter, submitBattle, s
     const pageEntries = entries.filter((entry) => entryBelongsToPage(entry, page))
     return pageText.includes(normalizedQuery) || pageEntries.some((entry) => entrySearchText(entry).includes(normalizedQuery))
   })
-  const selectedPage = pages.find((page) => page.id === selectedPageId) || filteredPages[0] || pages[0]
-  const bookPages = filteredPages.length ? filteredPages : pages
+  const bookPages = normalizedQuery ? filteredPages : pages
+  const selectedPage = bookPages.find((page) => page.id === selectedPageId) || bookPages[0]
+  const bookShelfPageSize = 5
+  const bookShelfCount = Math.max(1, Math.ceil(bookPages.length / bookShelfPageSize))
+  const safeBookShelfPage = Math.min(bookShelfPage, bookShelfCount - 1)
+  const shelfPages = bookPages.slice(safeBookShelfPage * bookShelfPageSize, (safeBookShelfPage + 1) * bookShelfPageSize)
   const selectedPageIndex = Math.max(0, bookPages.findIndex((page) => page.id === selectedPage?.id))
   const selectedEntries = entries.filter((entry) => selectedPage && entryBelongsToPage(entry, selectedPage))
   const selectedEntry = selectedEntries.find((entry) => entry.id === selectedEntryId) || selectedEntries[0]
@@ -831,6 +836,18 @@ function Codex({ progress, revision, codexProjection, encounter, submitBattle, s
   }
   const pageQuestionTypes = Array.from(new Set(selectedEntries.flatMap((entry) => entry.question_types || []))).slice(0, 8)
   const pageWeaknesses = Array.from(new Set(selectedEntries.flatMap((entry) => entry.weaknesses || []))).slice(0, 8)
+
+  useEffect(() => {
+    setBookShelfPage(0)
+  }, [normalizedQuery])
+
+  useEffect(() => {
+    if (bookPages.length && !bookPages.some((page) => page.id === selectedPageId)) setSelectedPageId(bookPages[0].id)
+  }, [bookPages, selectedPageId])
+
+  useEffect(() => {
+    if (bookShelfPage >= bookShelfCount) setBookShelfPage(Math.max(0, bookShelfCount - 1))
+  }, [bookShelfCount, bookShelfPage])
 
   useEffect(() => {
     if (!selectedEntries.some((entry) => entry.id === selectedEntryId)) setSelectedEntryId(selectedEntries[0]?.id || '')
@@ -874,6 +891,8 @@ function Codex({ progress, revision, codexProjection, encounter, submitBattle, s
   const selectPage = (pageId) => {
     setSelectedPageId(pageId)
     setSelectedEntryId('')
+    const pageIndex = bookPages.findIndex((page) => page.id === pageId)
+    if (pageIndex >= 0) setBookShelfPage(Math.floor(pageIndex / bookShelfPageSize))
   }
 
   const turnPage = (delta) => {
@@ -954,26 +973,33 @@ function Codex({ progress, revision, codexProjection, encounter, submitBattle, s
               {(progress.projects || []).map((project, index) => {
                 const locked = project.status === 'locked' || (project.status !== 'active' && !project.completed)
                 const projectId = String(project.id || project.branch || project.name || index)
-                return <button key={projectId} type="button" className={`${projectId === String(selectedChapterId) ? 'active ' : ''}${locked ? 'locked' : ''}`} onClick={() => !locked && setSelectedChapterId(projectId)} disabled={locked} data-testid={`codex-chapter-${projectId}`}><span>{locked ? '◌' : project.completed ? '✓' : project.status === 'active' ? '◆' : '◇'}</span><strong>{locked ? 'Unknown chapter' : project.name || `Chapter ${index + 1}`}</strong><small>{locked ? 'Locked' : project.status === 'active' ? 'Current chapter' : project.completed ? 'Complete' : 'Available'}</small></button>
+                return <button key={projectId} type="button" className={`${projectId === String(selectedChapterId) ? 'active ' : ''}${locked ? 'locked' : ''}`} onClick={() => !locked && setSelectedChapterId(projectId)} disabled={locked} data-testid={`codex-chapter-${projectId}`}><span aria-hidden="true"><RouteIcon id={locked ? 'codex' : project.completed ? 'shield' : project.status === 'active' ? 'flame' : 'codex'} /></span><strong>{locked ? 'Unknown chapter' : project.name || `Chapter ${index + 1}`}</strong><small>{locked ? 'Locked' : project.status === 'active' ? 'Current chapter' : project.completed ? 'Complete' : 'Available'}</small></button>
               })}
             </div>
             <div className="codex-sidebar-mobs" aria-label="Current chapter encounters">
               {(chapterSelection.mobs || []).map((mob, index) => {
                 const isCurrent = chapterSelection.id === activeProject.id || chapterSelection.branch === activeProject.branch ? index === currentIndex : mob.status === 'available'
                 const hidden = mob.status === 'locked'
-                return <div key={mob.name || index} className={`${isCurrent ? 'current ' : ''}${hidden ? 'locked' : ''}`}><span>{hidden ? '◐' : isMobDefeated(mob.status) ? '✓' : index + 1}</span><strong>{hidden ? 'Unknown encounter' : mob.name}</strong>{isCurrent && <small>CURRENT</small>}</div>
+                return <div key={mob.name || index} className={`${isCurrent ? 'current ' : ''}${hidden ? 'locked' : ''}`}><span aria-hidden="true"><RouteIcon id={hidden ? 'codex' : isMobDefeated(mob.status) ? 'shield' : 'flame'} /></span><strong>{hidden ? 'Unknown encounter' : mob.name}</strong>{isCurrent && <small>CURRENT</small>}</div>
               })}
             </div>
           </section>
-          <div className="card-heading codex-books-heading"><span>BOOKS</span><b>{pages.length}</b></div>
+          <div className="codex-books-heading">
+            <div className="card-heading"><span>BOOKSHELF</span><b>{pages.length}</b></div>
+            <div className="codex-shelf-controls" data-testid="codex-shelf-controls" aria-label="Codex bookshelf navigation">
+              <button type="button" onClick={() => setBookShelfPage((page) => Math.max(0, page - 1))} disabled={safeBookShelfPage <= 0} aria-label="Previous bookshelf">←</button>
+              <span>SHELF {bookPages.length ? safeBookShelfPage + 1 : 0} / {bookShelfCount}</span>
+              <button type="button" onClick={() => setBookShelfPage((page) => Math.min(bookShelfCount - 1, page + 1))} disabled={safeBookShelfPage >= bookShelfCount - 1} aria-label="Next bookshelf">→</button>
+            </div>
+          </div>
           <label className="codex-search"><span>Search library</span><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="lists, loops…" aria-label="Search Codex" /></label>
           <div className="codex-page-list">
-            {filteredPages.map((page) => (
+            {shelfPages.map((page) => (
               <button key={page.id} type="button" className={selectedPage?.id === page.id ? 'active' : ''} onClick={() => selectPage(page.id)} data-testid={`codex-page-${page.id}`}>
                 <span>{page.title}</span><small>{page.encounter_ids?.length || 0} encounter{page.encounter_ids?.length === 1 ? '' : 's'}</small>
               </button>
             ))}
-            {!filteredPages.length && <div className="empty-state">No concept page matches that search.</div>}
+            {!bookPages.length && <div className="empty-state">No concept page matches that search.</div>}
           </div>
         </aside>
 

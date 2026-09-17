@@ -2145,3 +2145,14 @@ save/notebook paths in either its folder or ZIP, while the manifest and key
 onboarding/launcher files remained present. Clean archive frontend tests/build
 passed **60/60** and **1,346 modules**. No user save, PTY or hosted state was
 changed.
+
+## Codex bookshelf and reading-room hierarchy — F-133
+
+| ID | Severity | Area | Finding | Status |
+|---|---|---|---|---|
+| F-133 | P1 | Codex presentation | The bounded Codex still read as a dense stack of cards: the whole concept list could become a continuous scroll, the active page was hard to locate, and chapter/mob markers used mixed text glyphs. Search with no matches also fell back to the complete book list. | Fixed with a paged five-book shelf, explicit shelf controls, a calmer paper/spine hierarchy, SVG chapter/encounter markers, and strict search results that can genuinely be empty. The state projection, note gateway, reward source, battle tab and PTY lifecycle are unchanged. |
+
+Verification: current-source Forge runtime tests pass **43/43**; clean Linux
+archive frontend tests pass **62/62** and Vite transforms **1,346 modules**.
+Browser K&M remains unavailable in this environment (F-080), so this slice is
+not presented as a visual-device acceptance claim.

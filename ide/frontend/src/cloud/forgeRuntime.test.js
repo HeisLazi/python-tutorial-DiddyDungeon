@@ -310,6 +310,21 @@ test('Codex finite reading room keeps header and book frame bounded', () => {
   assert.match(foundation, /\.codex-screen > \.codex-tab-page \{[\s\S]*?width: 100%;[\s\S]*?min-height: 0;/)
 })
 
+test('Codex bookshelf uses finite pages and a calmer reading-room hierarchy', () => {
+  const views = source('../RpgViews.jsx')
+  const foundation = source('../foundation.css')
+
+  assert.match(views, /data-testid="codex-shelf-controls"/)
+  assert.match(views, /const bookShelfPageSize = 5/)
+  assert.match(views, /shelfPages\.map\(\(page\)/)
+  assert.match(views, /const bookPages = normalizedQuery \? filteredPages : pages/)
+  assert.match(views, /RouteIcon id=\{locked \? 'codex' : project\.completed \? 'shield'/)
+  assert.match(foundation, /F-133: make the Codex a quiet reading room/)
+  assert.match(foundation, /\.codex-screen \.codex-page-list \{[\s\S]*?overflow: visible;/)
+  assert.match(foundation, /\.codex-shelf-controls \{[\s\S]*?grid-template-columns: 23px auto 23px;/)
+  assert.match(foundation, /\.codex-screen \.codex-book-page::before \{[\s\S]*?background: color-mix/)
+})
+
 test('Codex mastery and companion surfaces keep the SVG icon language', () => {
   const views = source('../RpgViews.jsx')
   const foundation = source('../foundation.css')

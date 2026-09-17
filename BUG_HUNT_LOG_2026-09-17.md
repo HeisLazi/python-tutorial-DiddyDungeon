@@ -741,3 +741,14 @@ Verification: the pre-fix disposable audit reproduced the leak. Post-fix
 the manifest and key onboarding/launcher files were present. Clean archive
 frontend tests/build passed **60/60** and **1,346 modules**. The live save and
 PTYs were not touched.
+
+## Codex bookshelf and reading-room hierarchy — 2026-09-17 (F-133)
+
+| ID | Severity | Finding | Status |
+|---|---|---|---|
+| F-133 | P1 | The Codex no longer grew the outer Forge page, but its left concept index still behaved like a dense continuous feed and its page selection was visually noisy. A no-result search also rendered the full library again, which made the “infinite scroll” complaint valid. | Fixed with a finite five-book shelf pager, explicit selected-page treatment, a quieter paper/spine reading frame, and monochrome SVG chapter/encounter markers. Search now keeps a real empty result instead of silently reverting to every book. |
+
+Verification: current-source Forge runtime tests **43/43**; clean Linux archive
+frontend tests **62/62** and Vite build **1,346 modules**. Browser K&M is still
+blocked by the Codex in-app webview attach failure (F-080), so no visual pass
+is claimed from automation.

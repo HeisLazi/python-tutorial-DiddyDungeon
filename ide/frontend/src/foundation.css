@@ -586,3 +586,138 @@
 .skill-icon svg { width: 24px; height: 24px; }
 .pyr-orb svg { width: 32px; height: 32px; }
 .homestead-hearth > svg { width: 26px; height: 26px; }
+
+/* F-133: make the Codex a quiet reading room instead of a stacked dashboard.
+   The shelf is paged (five books at a time), so the index never becomes an
+   endless scroll. The reading pane remains the one bounded content surface. */
+.codex-screen > .screen-hero {
+  border-color: color-mix(in srgb, var(--gold) 24%, var(--line));
+  background:
+    linear-gradient(115deg, color-mix(in srgb, var(--gold) 8%, var(--panel2)), transparent 64%),
+    var(--panel2);
+  box-shadow: inset 0 -1px 0 color-mix(in srgb, var(--gold) 12%, transparent);
+}
+.codex-screen > .screen-hero h2 { max-width: 26ch; }
+.codex-screen .codex-summary-grid { gap: 0; border-left: 1px solid color-mix(in srgb, var(--gold) 25%, var(--line)); }
+.codex-screen .codex-summary-grid > div {
+  min-height: 48px;
+  padding: 5px 11px;
+  border: 0;
+  border-right: 1px solid color-mix(in srgb, var(--gold) 16%, var(--line));
+  border-radius: 0;
+  background: transparent;
+}
+.codex-screen .codex-summary-grid > div:last-child { border-right: 0; }
+.codex-screen .codex-summary-grid strong { font-size: 16px; }
+.codex-screen .codex-library {
+  grid-template-columns: minmax(238px, .28fr) minmax(0, 1fr);
+  gap: 0;
+  border-radius: 18px;
+  background: var(--panel2);
+}
+.codex-screen .codex-index {
+  padding: 16px 14px 18px;
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--gold) 6%, transparent), transparent 32%),
+    color-mix(in srgb, var(--panel3) 45%, var(--panel2));
+}
+.codex-screen .codex-active-quest-sidebar {
+  margin: 11px 0 15px;
+  border-color: color-mix(in srgb, var(--gold) 24%, var(--line));
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--panel) 56%, transparent);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--gold) 10%, transparent);
+}
+.codex-screen .codex-books-heading {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  margin: 12px 0 9px;
+}
+.codex-screen .codex-books-heading .card-heading { margin: 0; padding: 0; border: 0; }
+.codex-shelf-controls {
+  display: grid;
+  grid-template-columns: 23px auto 23px;
+  align-items: center;
+  gap: 4px;
+  color: var(--dim);
+  font: 800 8px ui-monospace, monospace;
+  letter-spacing: .08em;
+  white-space: nowrap;
+}
+.codex-shelf-controls button {
+  display: grid;
+  place-items: center;
+  width: 23px;
+  height: 23px;
+  padding: 0;
+  border-color: color-mix(in srgb, var(--gold) 22%, var(--line));
+  background: color-mix(in srgb, var(--panel) 60%, transparent);
+  color: var(--muted);
+  font-size: 12px;
+}
+.codex-shelf-controls button:hover:not(:disabled),
+.codex-shelf-controls button:focus-visible { border-color: var(--gold); color: var(--gold); }
+.codex-screen .codex-page-list {
+  flex: 0 0 auto;
+  max-height: none;
+  overflow: visible;
+  gap: 6px;
+}
+.codex-screen .codex-page-list button {
+  position: relative;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  min-height: 48px;
+  padding: 8px 9px 8px 13px;
+  border-color: color-mix(in srgb, var(--line) 82%, transparent);
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--panel) 44%, transparent);
+}
+.codex-screen .codex-page-list button::before {
+  content: '';
+  position: absolute;
+  left: 6px;
+  top: 10px;
+  bottom: 10px;
+  width: 2px;
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--gold) 22%, var(--line));
+}
+.codex-screen .codex-page-list button > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text); font-weight: 700; }
+.codex-screen .codex-page-list button small { color: var(--dim); text-align: right; }
+.codex-screen .codex-page-list button.active { border-color: color-mix(in srgb, var(--gold) 50%, var(--line)); background: color-mix(in srgb, var(--gold) 10%, var(--panel)); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--gold) 9%, transparent); }
+.codex-screen .codex-page-list button.active::before { background: var(--gold); }
+.codex-screen .codex-chapter-list button > span,
+.codex-screen .codex-sidebar-mobs > div > span { border: 0; background: transparent; }
+.codex-screen .codex-chapter-list button > span svg,
+.codex-screen .codex-sidebar-mobs > div > span svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+.codex-screen .codex-book-page {
+  padding: 21px 26px 24px;
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--gold) 9%, transparent), transparent 34px),
+    radial-gradient(circle at 96% 4%, color-mix(in srgb, var(--gold) 8%, transparent), transparent 34%),
+    color-mix(in srgb, var(--panel) 88%, var(--gold) 12%);
+  box-shadow: inset 14px 0 20px -24px color-mix(in srgb, var(--text) 85%, transparent);
+}
+.codex-screen .codex-book-page::before {
+  content: '';
+  position: absolute;
+  left: 12px;
+  top: 18px;
+  bottom: 18px;
+  width: 1px;
+  background: color-mix(in srgb, var(--gold) 30%, var(--line));
+}
+.codex-screen .codex-page-heading { padding-left: 8px; }
+.codex-screen .codex-page-heading h3 { font-size: clamp(26px, 2.5vw, 36px); }
+.codex-screen .codex-page-controls { padding-left: 8px; }
+.codex-screen .codex-book-tabs { margin-left: 8px; margin-right: 8px; }
+.codex-screen .codex-book-section { padding-left: 8px; }
+@media (max-width: 900px) {
+  .codex-screen .codex-summary-grid { border-left: 0; }
+  .codex-screen .codex-summary-grid > div { border-top: 1px solid color-mix(in srgb, var(--gold) 16%, var(--line)); }
+  .codex-screen .codex-book-page { padding: 16px 16px 20px; }
+  .codex-screen .codex-book-page::before { left: 8px; }
+}

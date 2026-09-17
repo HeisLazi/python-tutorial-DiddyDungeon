@@ -811,3 +811,17 @@ Current-source Forge tests are **42/42**; clean archive frontend tests/build
 passed **61/61** and **1,346 modules**, and WSL backend discovery passed
 **108/108**. Browser K&M remains the visual gate; hosted/device milestones are
 unchanged.
+
+## Current checkpoint — 2026-09-17 — Codex bookshelf hierarchy
+
+F-133 responds to the remaining Codex presentation complaint. The concept
+index is now a finite five-book shelf with explicit paging, so it cannot turn
+into an endless list. The selected book has a quieter paper/spine hierarchy,
+chapter and encounter markers use SVGs, and unmatched searches remain empty
+instead of falling back to the entire library. The canonical projection,
+state-service note writes, Battle Shell, revision polling and PTY lifecycles
+remain unchanged.
+
+Current-source Forge tests are **43/43**. Clean Linux archive frontend tests
+pass **62/62** and the Vite build transforms **1,346 modules**. Browser K&M is
+still the open visual gate because the in-app webview cannot attach (F-080).
