@@ -2107,3 +2107,7 @@ touched. Browser K&M remains the publication visual gate in this environment.
 
 Verification: current-source Forge tests **39/39**. Clean archive build and
 browser K&M remain publication gates; no state, learner file or PTY changed.
+
+Recheck: clean archive frontend tests **58/58** and Vite production build
+**1,346 modules** passed after the selector scope change. Browser K&M remains
+the only missing visual proof for this slice.

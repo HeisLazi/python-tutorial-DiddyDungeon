@@ -2874,6 +2874,9 @@ That keeps the compatibility `App.jsx` surface finite as well as the current
 AppV2 surface, without changing state authority, revision polling or terminal
 lifecycle behavior.
 
+The clean archive recheck passed **58/58** frontend tests and the Vite build
+transformed **1,346 modules** after this selector change.
+
 ### Local sync simulator recheck — F-126
 
 The current branch was rechecked with
