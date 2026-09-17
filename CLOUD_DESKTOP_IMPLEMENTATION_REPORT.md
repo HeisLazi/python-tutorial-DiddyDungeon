@@ -2904,6 +2904,11 @@ checkout. The bundle manifest and `FRIEND_ONBOARDING.md` now make the exclusion
 explicit. This is a local distribution repair; it does not seed cloud state or
 change the state gateway.
 
+Post-fix package `QuestLab-2f5a4fe` was re-audited: neither the extracted folder
+nor ZIP contained `progress.json`, `tutor.py`, `dungeon.py` or `notes/`, and the
+manifest plus launcher/onboarding files were present. The clean archive passed
+**60/60** frontend tests and a **1,346-module** Vite build.
+
 ### Local sync simulator recheck — F-126
 
 The current branch was rechecked with
