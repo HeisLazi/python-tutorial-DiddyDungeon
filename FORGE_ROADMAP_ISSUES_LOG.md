@@ -1796,5 +1796,7 @@ transformed **1,346 modules** after this repair.
 |---|---|---|---|---|
 | F-088 | P1 | Editor submit shortcut | `Ctrl/Cmd+Shift+Enter` was handled only by the legacy bubble listener, allowing Monaco to consume the event while a Python file had focus. | Fixed in `AppV2.jsx`: the capture-phase shortcut boundary now prevents Monaco insertion and triggers the existing bounded PYR submit bridge. Frontend source coverage passed **26/26**; clean ext4 frontend coverage passed **44/44** and the production build passed. |
 
+| F-089 | P2 | Disposable hosted QA identity | A fresh mailbox-backed Supabase Auth signup for the requested Codex-owned QA account returned HTTP **429 `over_email_send_rate_limit`** before issuing a user/session. | External provider gate. Do not bypass with a service/admin key or rate-limit spoofing; retry after the project email quota recovers. The prior disposable hosted portrait pass plus local account/avatar/file-transfer contracts remain the available evidence. |
+
 This is a local editor-flow repair only. Provider-authenticated adjudication and
 the hosted campaign migration remain separate Milestone C gates.

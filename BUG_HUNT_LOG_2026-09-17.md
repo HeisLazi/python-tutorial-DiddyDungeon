@@ -354,3 +354,19 @@ Regression evidence: the mounted Forge source test passed **26/26**; a clean
 ext4 checkout passed the full frontend suite **44/44** and the production Vite
 build. No browser/runtime was restarted, no user PTY was touched, and the
 protected save hash remained unchanged.
+
+## Disposable hosted-account creation recheck — 2026-09-17 (F-089)
+
+The requested fresh Codex-owned QA identity could not be created in this pass:
+the configured Supabase Auth project returned HTTP **429**
+`over_email_send_rate_limit` before returning a user or session. The request
+used a newly generated mailbox-backed address; no service/admin key, rate-limit
+bypass, or personal account was used. The mailbox was disposable and no
+password or token was written to the repository.
+
+This is an external provider gate, not evidence of an application defect. The
+previous disposable account QA remains the valid hosted portrait evidence, and
+the local equivalents still pass: avatar/account-boundary source coverage,
+campaign sync simulator (unchanged protected-save digest), workspace transfer
+**7/7**, cloud migration contracts **7/7**, and the mounted Forge regression
+suite **26/26**. No user save, source file, or existing PTY was touched.
