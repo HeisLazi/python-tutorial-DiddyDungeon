@@ -195,11 +195,21 @@ begin
 
   if campaign ? 'dungeon_run' and jsonb_typeof(campaign -> 'dungeon_run') <> 'null' then
     item := campaign -> 'dungeon_run';
-    if jsonb_typeof(item) <> 'object' or (item - array['status','run_id','seed','concept_id','floor','room','room_type','score','run_coins','started_at','updated_at','ended_at','loadout','question','question_number','room_choices','editor_content','last_result','history','attempts']) <> '{}'::jsonb then
+    if jsonb_typeof(item) <> 'object' or (item - array['status','run_id','seed','concept_id','floor','room','room_type','score','run_coins','started_at','updated_at','ended_at','loadout','inventory','question','question_number','room_choices','editor_content','last_result','history','attempts']) <> '{}'::jsonb then
       raise exception 'dungeon_run contains unsupported fields' using errcode = '22023';
     end if;
     if item ? 'editor_content' and octet_length(item ->> 'editor_content') > 8000 then
       raise exception 'dungeon editor checkpoint is too large' using errcode = '22023';
+    end if;
+    if item ? 'inventory' then
+      if jsonb_typeof(item -> 'inventory') <> 'array' or jsonb_array_length(item -> 'inventory') > 24 then
+        raise exception 'dungeon inventory must be a bounded array' using errcode = '22023';
+      end if;
+      for mob_item in select jsonb_array_elements(item -> 'inventory') loop
+        if jsonb_typeof(mob_item) <> 'object' or (mob_item - array['id','name','kind','armor','trinket','description']) <> '{}'::jsonb then
+          raise exception 'dungeon inventory contains unsupported fields' using errcode = '22023';
+        end if;
+      end loop;
     end if;
     if item ? 'question' and jsonb_typeof(item -> 'question') <> 'null' and ((item -> 'question') - array['id','question_type','concept_id','difficulty','prompt','options']) <> '{}'::jsonb then
       raise exception 'dungeon question contains unsupported or hidden fields' using errcode = '22023';
