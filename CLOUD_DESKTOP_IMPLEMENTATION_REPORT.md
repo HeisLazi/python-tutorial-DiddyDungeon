@@ -1026,11 +1026,12 @@ provider-authenticated hosted adjudication remains gated by F-001/F-010.
 ### Targeted frontend dependency audit — 2026-09-16
 
 The installed frontend tree was audited read-only with `npm audit --json`.
-There are two advisories (one low and one moderate), both on Monaco's
-DOMPurify path; no high or critical findings were reported. The direct editor
-is `monaco-editor` 0.56.0, whose package carries DOMPurify 3.4.8 and bundles
-the sanitizer into the editor distribution. npm's automatic remediation is a
-semver-major downgrade to `monaco-editor` 0.53.0.
+There are two package-level vulnerabilities (four GHSA advisory records: one
+low and one moderate package-level result), all on Monaco's DOMPurify path; no
+high or critical findings were reported. The direct editor is `monaco-editor`
+0.56.0, whose package carries DOMPurify 3.4.8 and bundles the sanitizer into
+the editor distribution. npm's automatic remediation is a semver-major
+downgrade to `monaco-editor` 0.53.0.
 
 Because that remediation changes the editor major line, no forced audit fix,
 silent downgrade or unreviewed lockfile rewrite was applied. The current
