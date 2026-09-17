@@ -2388,3 +2388,14 @@ Verification: Windows frontend tests **76/76**, Vite production build **1,346
 modules**, and live HMR source checks on ports `5181` and `5190` confirm the
 F-155 CSS is served. No player state, learner file, PTY or hosted migration
 changed. Browser K&M remains blocked by F-080.
+
+## Portrait transport state was invisible in Account settings — F-156
+
+| ID | Severity | Area | Finding | Status |
+|---|---|---|---|---|
+| F-156 | P2 | Avatar / sync UX | The signed-in Account panel showed campaign revision and cloud cursor, but not the validated portrait transport state. When a portrait was cached, unavailable, uploading or removed, the learner had no local explanation for what the Character rail could display. | Fixed by rendering the SyncEngine avatar projection beside the account diagnostics. The panel reports only the state/source returned by the gateway (`PRIVATE CLOUD`, `CACHED CLOUD`, `LOCAL`, or the bounded transport status); it does not claim a remote portrait when none is available. |
+
+Verification: Windows frontend tests **77/77**, Vite production build **1,346
+modules**, and live HMR source checks on ports `5181` and `5190` confirm the
+F-156 Account UI is served. No player state, learner file, PTY or hosted
+migration changed. Browser K&M remains blocked by F-080.

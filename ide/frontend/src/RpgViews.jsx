@@ -1497,6 +1497,12 @@ function AccountPanel({ account, busy, notice, onSignIn, onSignUp, onSignOut, on
   const [deviceLabel, setDeviceLabel] = useState(account.device?.display_name || 'Quest Lab device')
   const configured = account.configured && account.configurationValid
   const signedIn = account.authStatus === 'signed-in' && account.user
+  const avatar = account.avatar || {}
+  const avatarStatus = String(avatar.status || 'idle').toLowerCase()
+  const avatarSource = String(avatar.source || 'local').toLowerCase()
+  const avatarLabel = avatarStatus === 'ready'
+    ? avatarSource === 'cloud' ? 'PRIVATE CLOUD' : avatarSource === 'cached-cloud' ? 'CACHED CLOUD' : 'LOCAL'
+    : avatarStatus.replace(/-/g, ' ').toUpperCase()
 
   useEffect(() => {
     if (account.device?.display_name) setDeviceLabel(account.device.display_name)
@@ -1549,12 +1555,17 @@ function AccountPanel({ account, busy, notice, onSignIn, onSignUp, onSignOut, on
         <div className="account-signed-in">
           <div className="account-identity"><strong>{account.profile?.display_name || account.user.email}</strong><span>{account.user.email}</span></div>
           <p className="settings-note">Campaign sync: <strong>{account.label}</strong>{account.pendingChanges ? ` · ${account.pendingChanges} queued change${account.pendingChanges === 1 ? '' : 's'}` : ''}</p>
-          <div className="account-sync-diagnostics" data-testid="account-sync-diagnostics" aria-label="Campaign sync diagnostics">
-            <div><span>Local campaign revision</span><strong>{revision ?? '—'}</strong></div>
-            <div><span>Cloud cursor</span><strong>{account.cloudRevision ?? '—'}</strong></div>
-            <div><span>Queued changes</span><strong>{account.pendingChanges ?? 0}</strong></div>
-          </div>
-          {account.conflict && (
+           <div className="account-sync-diagnostics" data-testid="account-sync-diagnostics" aria-label="Campaign sync diagnostics">
+             <div><span>Local campaign revision</span><strong>{revision ?? '—'}</strong></div>
+             <div><span>Cloud cursor</span><strong>{account.cloudRevision ?? '—'}</strong></div>
+             <div><span>Queued changes</span><strong>{account.pendingChanges ?? 0}</strong></div>
+           </div>
+           <div className="account-avatar-sync" data-testid="account-avatar-sync" aria-label="Portrait sync status">
+             <span>Portrait sync</span>
+             <strong>{avatarLabel}</strong>
+             <small>{avatar.cached ? 'cached on this device' : avatar.dataUrl ? 'available in this session' : 'no portrait available'}</small>
+           </div>
+           {account.conflict && (
             <div className="cloud-conflict-banner" role="alert">
               <strong>Campaign sync needs a choice.</strong>
               <span>Local revision {account.conflict.localRevision ?? '—'} and cloud revision {account.conflict.cloudRevision ?? '—'} differ.</span>

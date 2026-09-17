@@ -1072,3 +1072,13 @@ reading surface. Windows frontend tests are **76/76**, the Vite production build
 transforms **1,346 modules**, and live Vite instances (`5181`, `5190`) serve the
 F-155 CSS via HMR. Browser K&M (F-080), hosted migrations, physical CachyOS and
 two-device acceptance remain open.
+
+## Current checkpoint — 2026-09-17 — portrait transport diagnostics
+
+F-156 adds the validated portrait source/status to Account settings so a learner
+can distinguish private cloud, cached cloud, local and bounded transport states
+without confusing a local cache for a second-device result. Windows frontend
+tests are **77/77**, the Vite production build transforms **1,346 modules**,
+and live Vite instances (`5181`, `5190`) serve the F-156 UI via HMR. This is
+presentation-only; authenticated PC/laptop portrait round-trip, browser K&M,
+hosted migrations and physical CachyOS acceptance remain open.

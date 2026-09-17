@@ -3221,3 +3221,18 @@ Verification: Windows frontend tests **76/76**, Vite production build
 passed. Browser K&M remains blocked by F-080, so this does not claim fresh
 device-level visual proof. No player state, learner file, PTY or hosted
 migration changed.
+
+### Account portrait transport diagnostics — F-156 (2026-09-17)
+
+The signed-in Account panel now exposes the validated SyncEngine avatar
+projection beside campaign revision diagnostics. It distinguishes a private
+cloud portrait, a cached cloud portrait, a local portrait and bounded transport
+states such as uploading/unavailable, without claiming a remote device result
+that has not been observed. This is presentation-only; storage privacy,
+account scoping and the Character/rail React ownership boundary are unchanged.
+
+Verification: Windows frontend tests **77/77**, Vite production build
+**1,346 modules**, and live HMR source checks on ports `5181` and `5190` all
+passed. Browser K&M remains blocked by F-080, and authenticated PC/laptop
+portrait round-trip remains an external gate. No player state, learner file,
+PTY or hosted migration changed.

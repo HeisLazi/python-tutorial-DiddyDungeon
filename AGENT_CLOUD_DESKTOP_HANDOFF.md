@@ -286,7 +286,7 @@ presentation slice:
 Current verification:
 
 - WSL backend suite: **116/116**;
-- Windows frontend suite: **76/76**;
+- Windows frontend suite: **77/77**;
 - launcher contract suite: **17/17**;
 - Vite production build: **1,346 modules**;
 - native Linux launcher/preflight `--help` and shell syntax checks: green;
@@ -343,6 +343,14 @@ rectangles instead of another pill-heavy dashboard treatment. The existing
 bounded scroll contract is unchanged. Windows frontend tests **76/76**, the
 Vite production build (**1,346 modules**) and live HMR checks on ports `5181`
 and `5190` passed. Browser K&M remains blocked by F-080.
+
+F-156 adds a small Account diagnostics row for portrait transport. It renders
+only the SyncEngine's validated avatar source/status (`PRIVATE CLOUD`,
+`CACHED CLOUD`, `LOCAL`, or a bounded transport status), so a cached or missing
+portrait is explainable without inventing a second-device result. Windows
+frontend tests **77/77**, Vite (**1,346 modules**) and live HMR checks on ports
+`5181` and `5190` passed. Browser K&M and the user's real PC/laptop portrait
+round-trip remain external gates.
 
 Remaining release gates are intentionally unchanged:
 

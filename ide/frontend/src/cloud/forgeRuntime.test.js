@@ -788,6 +788,19 @@ test('account settings exposes revision diagnostics without changing sync author
   assert.match(styles, /grid-template-columns:repeat\(3,minmax\(0,1fr\)/)
 })
 
+test('account settings exposes validated portrait transport status', () => {
+  const views = source('../RpgViews.jsx')
+  const foundation = source('../foundation.css')
+
+  assert.match(views, /data-testid="account-avatar-sync"/)
+  assert.match(views, /const avatar = account\.avatar \|\| \{\}/)
+  assert.match(views, /PRIVATE CLOUD/)
+  assert.match(views, /CACHED CLOUD/)
+  assert.match(views, /no portrait available/)
+  assert.match(foundation, /F-156: expose portrait transport state/)
+  assert.match(foundation, /\.account-avatar-sync\s*\{[\s\S]*display: grid;/)
+})
+
 test('workspace transfer exposes hash comparisons before any file apply', () => {
   const views = source('../RpgViews.jsx')
   const foundation = source('../foundation.css')

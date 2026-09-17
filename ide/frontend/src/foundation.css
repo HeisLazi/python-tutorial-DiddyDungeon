@@ -1488,3 +1488,33 @@
 .codex-screen .codex-book-section {
   scroll-behavior: smooth;
 }
+
+/* F-156: expose portrait transport state beside the account revision
+   diagnostics.  The label is derived from SyncEngine's validated avatar
+   projection; it never guesses whether another device has a portrait. */
+.account-avatar-sync {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 4px 10px;
+  align-items: baseline;
+  padding: 8px 9px;
+  border: 1px solid color-mix(in srgb, var(--line2) 72%, var(--line));
+  border-radius: 7px;
+  background: color-mix(in srgb, var(--panel3) 70%, transparent);
+}
+.account-avatar-sync span {
+  color: var(--muted);
+  font: 8px ui-monospace, monospace;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+}
+.account-avatar-sync strong {
+  color: var(--gold2);
+  font: 9px ui-monospace, monospace;
+  letter-spacing: .06em;
+}
+.account-avatar-sync small {
+  grid-column: 1 / -1;
+  color: var(--dim);
+  font-size: 9px;
+}
