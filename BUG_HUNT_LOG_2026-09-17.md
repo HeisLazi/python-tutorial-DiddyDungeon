@@ -294,3 +294,13 @@ appeared as a generic cloud error. F-082 is fixed: SyncEngine now labels the
 state `Cloud schema needs migration`, names the required migration, and leaves
 the local outbox queued instead of implying data loss. The regression suite
 passed **42/42** and the clean build transformed **1,346 modules**.
+
+## Hunt follow-up — signed-in first-frame status copy (F-083)
+
+The disposable-account recheck exposed one more presentation defect: the first
+signed-in state said only Campaign fields would sync, then the account-record
+callback changed the detail to Campaign, Journal and Codex. This was a status
+copy transition, not a PTY or campaign remount, but it contributed to the
+reported feeling that the sync UI was jumping. Both signed-in states now share
+the same text, and the frontend regression rejects the stale phrase. Clean
+frontend verification remains **42/42** with a **1,346-module** build.

@@ -1764,3 +1764,9 @@ not staged or written.
 
 The clean ext4 frontend suite passed **42/42** and the production build
 transformed **1,346 modules** after this repair.
+
+## Signed-in first-frame status copy — 2026-09-17
+
+| ID | Severity | Area | Finding | Status |
+|---|---|---|---|---|
+| F-083 | P3 | Sync-status continuity | The initial signed-in render briefly described only Campaign syncing, then changed to the settled Campaign/Journal/Codex wording after account registration. That copy mismatch made the top sync indicator appear to jump even though no gameplay state was remounted. | Fixed in `syncEngine.js`: the pre-registration and settled signed-in states now use the same gateway-surface description. The regression rejects the stale first-frame phrase; clean frontend tests remain **42/42** and the **1,346-module** build remains green. |
