@@ -1798,5 +1798,7 @@ transformed **1,346 modules** after this repair.
 
 | F-089 | P2 | Disposable hosted QA identity | A fresh mailbox-backed Supabase Auth signup for the requested Codex-owned QA account returned HTTP **429 `over_email_send_rate_limit`** before issuing a user/session. | External provider gate. Do not bypass with a service/admin key or rate-limit spoofing; retry after the project email quota recovers. The prior disposable hosted portrait pass plus local account/avatar/file-transfer contracts remain the available evidence. |
 
+| F-090 | P3 | Stale v2 handoff contract | `FORGE_V2_HANDOFF.md` still described Practice as unable to use the managed `tutor.py`, Dungeon/Practice as starter-only and combat as display-only, contradicting the current local state-service implementation. | Fixed in the handoff: shared Tutor/Practice notebook boundary, local Dungeon/Practice loop and provider-validated local verdict outputs are described accurately; hosted/authenticated and real-device gates remain explicit. |
+
 This is a local editor-flow repair only. Provider-authenticated adjudication and
 the hosted campaign migration remain separate Milestone C gates.

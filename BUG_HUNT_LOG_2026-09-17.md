@@ -370,3 +370,13 @@ the local equivalents still pass: avatar/account-boundary source coverage,
 campaign sync simulator (unchanged protected-save digest), workspace transfer
 **7/7**, cloud migration contracts **7/7**, and the mounted Forge regression
 suite **26/26**. No user save, source file, or existing PTY was touched.
+
+## Handoff contract recheck — 2026-09-17 (F-090)
+
+`FORGE_V2_HANDOFF.md` had fallen behind the current source: it described
+Practice as unable to use the managed `tutor.py` notebook, called Dungeon and
+Practice starter-only, and described combat as display-only. The implementation
+already has the shared Tutor/Practice notebook boundary, local state-owned
+Dungeon loop, Practice history and provider-validated local verdict mutations.
+The handoff was aligned with those facts and continues to mark provider auth,
+hosted campaign/Dungeon transport and real PC/laptop acceptance as open gates.
