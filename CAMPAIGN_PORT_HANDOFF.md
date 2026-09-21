@@ -157,19 +157,23 @@ roadmap before starting the next slice.
 
 ## Next implementation slice
 
-Market purchases/equipment are now connected to the canonical state service;
-the purchase slice is in the working tree and must be verified/committed only
-with its intended source files. The next bounded visual slice is merchant and
-collapse-control parity, followed by a separate audit of bounty-board state,
-poster threat sizing, and whether live Campaign actually carries the combat
-loop. Do not combine those slices.
+Market purchases/equipment are connected to the canonical state service, and
+the merchant/collapse and bounty-board visual slices are now verified on the
+desktop live route. The board keeps seven posters per page, uses explicit or
+stable legacy fallback threat tiers, and does not mutate the canonical player
+state. The next bounded slice is the live combat/terminal audit: certify the
+actual PTY-backed Forge surfaces, then determine the smallest safe port for
+Guard Break into Campaign and Infinite Dungeon. Do not combine that audit with
+the shared armor/trinket economy or a route redesign.
 
-New follow-ups are tracked as F-257 through F-261 in
+New follow-ups are tracked as F-257 through F-262 in
 `FORGE_ROADMAP_ISSUES_LOG.md`: reconcile the Forge home route, restore the
 Infinite Dungeon question prompt, port/certify Guard Break combat, bridge a
-shared armor/trinket catalog, and deepen the item pool. Keep Campaign Market
+shared armor/trinket catalog, deepen the item pool, and audit every terminal
+route against the real exposed PTY/terminal contract. Keep Campaign Market
 inventory and run-local room state separate until the explicit shared-item
-bridge is implemented and tested.
+bridge is implemented and tested. Never replace a terminal with a styled
+mock panel just to fill the layout.
 
 ## Handoff prompt for the next agent
 

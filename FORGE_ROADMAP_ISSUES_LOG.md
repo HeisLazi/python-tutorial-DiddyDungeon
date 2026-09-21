@@ -3202,3 +3202,11 @@ Verification: desktop CUA comparison against `prototypes/campaign-v1/?home-upgra
 | F-261 | P2 | Infinite Dungeon equipment depth | The current armor/trinket pool is too shallow for the guard-break and mechanic-counterplay loop. | Expand the shared catalog in small authored batches: armor mitigation/passives first, then trinkets for Guard Break, weakness signaling, mechanic suppression, lifesteal, and failure protection. Reuse the same item IDs and descriptions in Campaign Market, drops, and Infinite Dungeon rewards. | Planned |
 
 These are roadmap items only; no player state, route, or combat behavior was changed by this entry.
+
+## Campaign terminal surface contract — F-262 (2026-09-21)
+
+| ID | Priority | Surface | Finding / requested direction | Planned resolution | Status |
+|---|---|---|---|---|---|
+| F-262 | P1 | Campaign and Infinite Dungeon terminals | Terminal output is part of the learning interaction, not decorative chrome. Every terminal shown in the final port must be an exposed real terminal surface backed by the existing PTY/terminal bridge; a styled mock terminal must not be used to cover missing output or connection behavior. | Audit each live route (Forge, Campaign study handoff, Tutor, and Infinite Dungeon) for the actual local and AI terminal mounts, their connection state, scrollback, and keyboard path. Reuse the existing terminal components/PTY bridge and add desktop interaction checks for command output, reconnect, and failure output before calling a port complete. | Planned |
+
+This acceptance rule is intentionally separate from the visual board work; no terminal surface was replaced or simulated by this entry.

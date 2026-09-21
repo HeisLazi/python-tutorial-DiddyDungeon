@@ -1812,7 +1812,7 @@ function CampaignMapRail({ place, onSelect, collapsed, onToggle, progress }) {
         <div className="poi-list">
           {CAMPAIGN_POIS.map((poi) => <button key={poi.id} className={`poi-card ${place === poi.id ? 'active' : ''}`} type="button" onClick={() => onSelect(poi.id)}><span className={`poi-icon poi-${poi.id}`}>{poi.icon}</span><span className="poi-copy"><strong>{poi.label}</strong><small>{poi.kicker}</small><em>{poi.summary}</em></span><span className="poi-arrow"><RouteIcon id="arrow" /></span></button>)}
         </div>
-        <div className="project-progress"><div><span>PROJECT PROGRESS</span><strong>Chapter 01</strong></div><div className="campaign-progress-track"><i style={{ width: `${Math.min(100, completed * 24)}%` }} /></div><p>{total ? `${completed}/${total} bounty${total === 1 ? '' : 'ies'} cleared.` : 'Boss remains locked until the project bounties are cleared.'}</p></div>
+        <div className="project-progress"><div><span>PROJECT PROGRESS</span><strong>Chapter 01</strong></div><div className="campaign-progress-track"><i style={{ width: `${Math.min(100, completed * 24)}%` }} /></div><p>{total ? `${completed}/${total} ${completed === 1 ? 'bounty' : 'bounties'} cleared.` : 'Boss remains locked until the project bounties are cleared.'}</p></div>
       </>}
       {collapsed && <div className="map-rail-collapsed-summary"><span>✦</span><strong>MAP</strong><small>OPEN</small></div>}
     </aside>
@@ -1868,15 +1868,33 @@ function CampaignOffice({ progress, onEnter }) {
     { id: 'house-ledger', name: 'The House Ledger', category: 'Conditions and filtering', status: 'locked', signal: 'LOCKED', reward: 'HIDDEN', icon: '▣', detail: 'Complete the previous bounty to reveal this work.' },
     { id: 'dealer-hand', name: 'The Dealer’s Hand', category: 'Functions', status: 'locked', signal: 'BOSS', reward: 'HIDDEN', icon: '♠', detail: 'A larger bounty waits at the chapter boundary.' },
   ]
-  const entries = (mobs.length ? mobs.map((mob, index) => ({ id: mob.id || mob.name || `mob-${index}`, name: mob.name || `Unknown bounty ${index + 1}`, category: mob.concept || mob.category || 'Learning contract', status: mob.status || 'locked', signal: mob.status === 'available' ? 'REWARD' : mob.status === 'defeated' ? 'CLEARED' : 'LOCKED', reward: mob.status === 'available' ? '+ COINS' : mob.status === 'defeated' ? 'CLEARED' : 'HIDDEN', icon: mob.status === 'defeated' ? '✓' : '✦', detail: mob.brief || mob.encounter || 'A state-owned learning contract.' })) : fallback).slice(0, 7)
-  const [selectedId, setSelectedId] = useState(entries[0]?.id || '')
+  const entries = mobs.length ? mobs.map((mob, index) => {
+    const authoredRank = String(mob.rank || mob.threat || mob.tier || mob.kind || '').toLowerCase()
+    // Older canonical project records predate rank metadata. Keep their board
+    // readable with a stable visual fallback; newly-authored records override
+    // it through `rank` without changing the saved player state.
+    const rank = ['mob', 'elite', 'boss'].includes(authoredRank)
+      ? authoredRank
+      : index === mobs.length - 1 ? 'boss' : index === mobs.length - 2 || index === Math.floor(mobs.length / 2) ? 'elite' : 'mob'
+    return { id: mob.id || mob.name || `mob-${index}`, name: mob.name || `Unknown bounty ${index + 1}`, category: mob.concept || mob.category || 'Learning contract', status: mob.status || 'locked', rank, signal: mob.status === 'available' ? 'REWARD' : mob.status === 'defeated' ? 'CLEARED' : 'LOCKED', reward: mob.status === 'available' ? '+ COINS' : mob.status === 'defeated' ? 'CLEARED' : 'HIDDEN', icon: mob.status === 'defeated' ? '✓' : '✦', detail: mob.brief || mob.encounter || 'A state-owned learning contract.' }
+  }) : fallback.map((entry, index) => ({ ...entry, rank: entry.rank || (index === fallback.length - 1 ? 'boss' : index === 2 ? 'elite' : 'mob') }))
+  const boardSize = 7
+  const boards = Array.from({ length: Math.max(1, Math.ceil(entries.length / boardSize)) }, (_, index) => entries.slice(index * boardSize, (index + 1) * boardSize))
+  const [boardIndex, setBoardIndex] = useState(0)
+  const boardEntries = boards[boardIndex] || boards[0]
+  const [selectedId, setSelectedId] = useState(boardEntries[0]?.id || '')
   const selected = entries.find((entry) => entry.id === selectedId) || entries[0]
   const unlocked = selected?.status !== 'locked'
+  const selectBoard = (nextIndex) => {
+    const next = Math.min(boards.length - 1, Math.max(0, nextIndex))
+    setBoardIndex(next)
+    setSelectedId(boards[next]?.[0]?.id || '')
+  }
   return (
     <>
       <div className="campaign-place-heading"><div><span className="campaign-eyebrow">BOUNTY OFFICE · CONTRACT BOARD</span><h2>Choose the work that moves you.</h2><p>Every bounty is a learning task. Read the weakness, prepare at Home, then enter the Forge when you are ready to write.</p></div><span className="campaign-place-seal office">✦</span></div>
-      <div className="office-toolbar"><div className="office-tabs"><button type="button" className="office-tab active">MAIN BOUNTIES</button><button type="button" className="office-tab" disabled>VILLAGE · NEXT</button></div><div className="board-switcher"><button type="button" className="board-switch active">BOARD 1 / 1</button></div></div>
-      <section className="office-board" aria-label="Bounty board"><div className="office-board-header"><strong>BLACKJACK · COMMUNITY BOUNTIES</strong><span className="campaign-eyebrow">{entries.length} POSTERS</span></div><div className="bounty-posters">{entries.map((entry) => <button type="button" key={entry.id} className={`bounty-poster ${entry.status === 'locked' ? 'locked' : ''} ${selected?.id === entry.id ? 'active' : ''}`} onClick={() => entry.status !== 'locked' && setSelectedId(entry.id)} disabled={entry.status === 'locked'}><span className="poster-pin" /><div className="poster-art">{entry.status === 'locked' ? '?' : entry.icon}</div><span className="poster-signal">{entry.signal}</span><h3>{entry.status === 'locked' ? 'HIDDEN SILHOUETTE' : entry.name}</h3><p>{entry.status === 'locked' ? 'Complete the previous bounty to reveal this poster.' : entry.category}</p><small>{entry.reward}</small></button>)}</div></section>
+      <div className="office-toolbar"><div className="office-tabs"><button type="button" className="office-tab active">MAIN BOUNTIES</button><button type="button" className="office-tab" disabled>VILLAGE · NEXT</button></div><div className="board-switcher"><button type="button" className="board-switch" onClick={() => selectBoard(boardIndex - 1)} disabled={boardIndex === 0}>← PREVIOUS BOARD</button><span className="board-page-label">BOARD {boardIndex + 1} / {boards.length}<small>{boardEntries.length} pinned · max {boardSize}</small></span><button type="button" className="board-switch" onClick={() => selectBoard(boardIndex + 1)} disabled={boardIndex >= boards.length - 1}>NEXT BOARD →</button></div></div>
+      <section className="office-board" aria-label="Bounty board"><div className="office-board-header"><strong>BLACKJACK · COMMUNITY BOUNTIES</strong><span className="campaign-eyebrow">{entries.length} POSTERS · {mobs.filter((mob) => isMobDefeated(mob.status)).length} CLEARED</span></div><div className="bounty-posters">{boardEntries.map((entry) => <button type="button" key={entry.id} className={`bounty-poster poster-size-${entry.rank} ${entry.status === 'locked' ? 'locked' : ''} ${selected?.id === entry.id ? 'active' : ''}`} onClick={() => entry.status !== 'locked' && setSelectedId(entry.id)} disabled={entry.status === 'locked'}><span className="poster-pin" /><div className="poster-art">{entry.status === 'locked' ? '?' : entry.icon}<span className="poster-rank">{entry.rank.toUpperCase()}</span></div><span className="poster-signal">{entry.signal}</span><h3>{entry.status === 'locked' ? 'HIDDEN SILHOUETTE' : entry.name}</h3><p>{entry.status === 'locked' ? 'Complete the previous bounty to reveal this poster.' : entry.category}</p><small>{entry.reward}</small></button>)}</div></section>
       {selected && <section className="office-detail"><div><span className="campaign-eyebrow">{unlocked ? 'SELECTED BOUNTY' : 'LOCKED BOUNTY'}</span><h3>{unlocked ? selected.name : 'Hidden silhouette'}</h3><p>{selected.detail}</p><div className="office-detail-facts"><span>{selected.category}</span><span>{selected.reward}</span></div></div><button type="button" className="campaign-button" onClick={onEnter} disabled={!unlocked}>{unlocked ? 'Study this work →' : 'Complete the previous bounty'}</button></section>}
       <div className="campaign-stat-row"><span><small>CHAPTER</small><strong>{activeProject.name || '01'}</strong></span><span><small>CLEARED</small><strong>{mobs.filter((mob) => isMobDefeated(mob.status)).length}</strong></span><span><small>REWARDS</small><strong>COINS + TOKENS</strong></span></div>
     </>
