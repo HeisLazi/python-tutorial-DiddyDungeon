@@ -18,6 +18,7 @@ opened from a selected bounty; it is no longer a top-level campaign tab.
 - `51bf0c1` — `fix(campaign): keep merchant sprite frames bounded`
 - `3b26ce3` — `fix(campaign): show merchant frame on first paint` (latest;
   pushed)
+- `bb13076` — `fix(campaign): redirect legacy home routes` (latest; pushed)
 
 The merchant fixes preserve the prototype's bounded 24x32 pixel frames and
 make the first frame visible immediately. The previous animation began with
@@ -168,7 +169,7 @@ slice.
 > Read `CAMPAIGN_PORT_HANDOFF.md`, the prototype source-of-truth files, and
 > the current `git status` first. Preserve all intentionally dirty
 > player/challenge files. The merged Campaign visual port is complete through
-> `3b26ce3`: Campaign replaces the separate Forge/Character/Homestead
+> `bb13076`: Campaign replaces the separate Forge/Character/Homestead
 > destinations, while Study-this-work opens the internal Forge editor. Do not
 > redesign the surface while wiring state. Commit and push each coherent slice
 > separately, and perform a desktop screenshot check after each UI change.
