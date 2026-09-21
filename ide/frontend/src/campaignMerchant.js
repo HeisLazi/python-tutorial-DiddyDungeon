@@ -47,7 +47,8 @@ function merchantFrame({ blink = false, coinLift = false } = {}) {
     row([3, 'oBB'], [8, 'tTTTTt'], [14, 'tTTTTt'], [20, 'oBBo']),
     row([4, 'o'], [5, 'tTTTTpTTTTTt'], [18, 'o']), row([4, 'o'], [5, 'tTTTTTTTTTTt'], [18, 'o']),
     row([4, 'o'], [5, 'tTTTTTTTTTTt'], [18, 'o']), row([4, 'o'], [5, 'tTTTTTTTTTTt'], [18, 'o']),
-    row([4, 'o'], [5, 'tTTTTTTTTTTt'], [18, 'o']), row([7, 'o'], [8, 'bbTTbb'], [14, 'o'], [15, 'bbTTbb'], [21, 'o']),
+    row([4, 'o'], [5, 'tTTTTTTTTTTt'], [18, 'o']), row([4, 'o'], [5, 'tTTTTTTTTTTt'], [18, 'o']),
+    row([7, 'o'], [8, 'bbTTbb'], [14, 'o'], [15, 'bbTTbb'], [21, 'o']),
     row([6, 'obbbo'], [14, 'obbbo']),
   ]
 }
