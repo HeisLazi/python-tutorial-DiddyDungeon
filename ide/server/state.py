@@ -109,9 +109,35 @@ EQUIPMENT_CATALOG: tuple[dict[str, Any], ...] = (
     {"id": "trinket-ember-scythe", "name": "Ember Scythe", "kind": "trinket", "effect": "+1 Impact on the first verified objective", "description": "A weapon-shaped trinket; Impact remains evidence-backed."},
     {"id": "trinket-guardian-sigil", "name": "Guardian Sigil", "kind": "trinket", "effect": "Negates one counterattack", "description": "A single bounded ward for a risky submission."},
     {"id": "trinket-phoenix-ember", "name": "Phoenix Ember", "kind": "trinket", "effect": "Revives at 1 HP once per encounter", "description": "A last spark when an incorrect answer would down you."},
+    {"id": "debugger-plate", "name": "Debugger Plate", "kind": "armor", "effect": "Makes the next mechanic hit less punishing", "description": "A plated guard tuned for the next mechanic."},
+    {"id": "ledgerguard-coat", "name": "Ledgerguard Coat", "kind": "armor", "effect": "Steadier guard against repeated failures", "description": "A careful coat for long, difficult lessons."},
+    {"id": "emberweave-mantle", "name": "Emberweave Mantle", "kind": "armor", "effect": "Softens one heavy mechanic hit each encounter", "description": "Warm woven plates catch one punishing mistake."},
+    {"id": "syntax-ward", "name": "Syntax Ward", "kind": "trinket", "effect": "Reduces syntax-error retaliation", "description": "A compact ward against syntax-error damage."},
+    {"id": "loop-lens", "name": "Loop Lens", "kind": "trinket", "effect": "+1 Guard Break impact against loop weaknesses", "description": "A lens that rewards careful loop construction."},
+    {"id": "guard-bell", "name": "Guard Bell", "kind": "trinket", "effect": "Telegraphs the first mechanic before it fires", "description": "A small bell that makes danger easier to read."},
+    {"id": "scimitar-of-momentum", "name": "Scimitar of Momentum", "kind": "trinket", "effect": "Improves Guard Break impact", "description": "A weapon-shaped trinket for pressing an opening."},
+    {"id": "vision-scroll", "name": "Vision Scroll", "kind": "trinket", "effect": "Reveals one hidden risk-room identity", "description": "A costly scroll that exposes one uncertain route."},
 )
 EQUIPMENT_BY_ID: dict[str, dict[str, Any]] = {item["id"]: item for item in EQUIPMENT_CATALOG}
 EQUIPMENT_ID_BY_NAME: dict[str, str] = {item["name"]: item["id"] for item in EQUIPMENT_CATALOG}
+
+# Campaign Market lots are canonical, single-copy offers.  The browser may
+# render the prototype's presentation, but price, ownership and the resulting
+# inventory mutation are decided here.
+CAMPAIGN_MARKET_CATALOG: tuple[dict[str, Any], ...] = (
+    {"id": "field-bandage", "name": "Field bandage", "kind": "supply", "supply": "bandages", "price": 18, "description": "Recover during Home preparation."},
+    {"id": "ember-tonic", "name": "Ember tonic", "kind": "supply", "supply": "tonics", "price": 32, "description": "A one-use buffer for the next encounter."},
+    {"id": "camp-meal", "name": "Camp meal", "kind": "supply", "supply": "meals", "price": 26, "description": "Restore a small amount of HP from the encounter kit."},
+    {"id": "debugger-plate", "name": "Debugger Plate", "kind": "armor", "price": 72, "description": "Makes the next mechanic hit less punishing."},
+    {"id": "ledgerguard-coat", "name": "Ledgerguard Coat", "kind": "armor", "price": 118, "description": "A steadier guard against repeated failed submissions."},
+    {"id": "emberweave-mantle", "name": "Emberweave Mantle", "kind": "armor", "price": 146, "description": "Softens one heavy mechanic hit each encounter."},
+    {"id": "syntax-ward", "name": "Syntax Ward", "kind": "trinket", "price": 48, "description": "Reduces syntax-error retaliation."},
+    {"id": "loop-lens", "name": "Loop Lens", "kind": "trinket", "price": 64, "description": "Adds a little Guard Break impact when the weakness is a loop."},
+    {"id": "guard-bell", "name": "Guard Bell", "kind": "trinket", "price": 78, "description": "Telegraphs the first mechanic before it fires."},
+    {"id": "scimitar-of-momentum", "name": "Scimitar of Momentum", "kind": "trinket", "price": 110, "description": "Improves Guard Break impact."},
+    {"id": "vision-scroll", "name": "Vision Scroll", "kind": "trinket", "price": 125, "description": "Reveal one hidden risk-room identity on the dungeon map."},
+)
+CAMPAIGN_MARKET_BY_ID: dict[str, dict[str, Any]] = {item["id"]: item for item in CAMPAIGN_MARKET_CATALOG}
 
 # Homestead room progression is intentionally a small authored catalogue.  The
 # browser may render this copy, but ownership, costs and the resulting stat
@@ -303,6 +329,7 @@ class ActionDefinition:
 ACTION_DEFINITIONS: dict[str, ActionDefinition] = {
     "homestead_purchase": ActionDefinition(frozenset({"player"})),
     "homestead_equip": ActionDefinition(frozenset({"player"})),
+    "campaign_market_purchase": ActionDefinition(frozenset({"player"})),
     "homestead_room_upgrade": ActionDefinition(frozenset({"player"})),
     "homestead_action": ActionDefinition(frozenset({"player"})),
     "equip_equipment": ActionDefinition(frozenset({"player"})),
@@ -628,7 +655,7 @@ SYNC_PLAYER_FIELDS = frozenset(
 SYNC_EQUIPMENT_FIELDS = frozenset({"armor", "trinket", "title", "owned_armor", "owned_trinkets"})
 SYNC_EQUIPMENT_LIST_FIELDS = frozenset({"owned_armor", "owned_trinkets"})
 SYNC_COMPANION_FIELDS = frozenset({"name", "form", "level", "bond", "next_form", "next_form_requirement", "energy", "max_energy", "fed_count", "training_count"})
-SYNC_HOMESTEAD_FIELDS = frozenset({"name", "owned_cosmetics", "equipped", "room_upgrades", "upgrade_tokens", "upgrade_effects"})
+SYNC_HOMESTEAD_FIELDS = frozenset({"name", "owned_cosmetics", "equipped", "room_upgrades", "upgrade_tokens", "upgrade_effects", "market_purchases"})
 SYNC_HOMESTEAD_EQUIPPED_FIELDS = frozenset({"theme", "cursor", "hud", "terminal"})
 SYNC_CAMPAIGN_FIELDS = frozenset(
     {
@@ -1984,6 +2011,12 @@ class LocalStateService:
                 if invalid_upgrades:
                     raise StateCommandError("homestead.room_upgrades contains an unknown upgrade")
                 clean_homestead["room_upgrades"] = room_upgrades[:len(HOME_ROOM_UPGRADE_CATALOG)]
+            market_purchases = cls._sync_list(homestead["market_purchases"], "homestead.market_purchases") if "market_purchases" in homestead else None
+            if market_purchases is not None:
+                unknown_market_items = [item for item in market_purchases if item not in CAMPAIGN_MARKET_BY_ID]
+                if unknown_market_items:
+                    raise StateCommandError("homestead.market_purchases contains an unknown market lot")
+                clean_homestead["market_purchases"] = market_purchases[:len(CAMPAIGN_MARKET_CATALOG)]
             if "upgrade_tokens" in homestead:
                 clean_homestead["upgrade_tokens"] = cls._campaign_int(homestead["upgrade_tokens"], "homestead.upgrade_tokens")
             if "upgrade_effects" in homestead:
@@ -2038,7 +2071,7 @@ class LocalStateService:
                 equipment.pop(field, None)
         companion = copy_fields(progress.get("companion"), SYNC_COMPANION_FIELDS)
         homestead_source = progress.get("homestead")
-        homestead = copy_fields(homestead_source, frozenset({"name", "owned_cosmetics", "equipped", "room_upgrades", "upgrade_tokens", "upgrade_effects"}))
+        homestead = copy_fields(homestead_source, frozenset({"name", "owned_cosmetics", "equipped", "room_upgrades", "upgrade_tokens", "upgrade_effects", "market_purchases"}))
         if isinstance(homestead.get("owned_cosmetics"), list):
             homestead["owned_cosmetics"] = [
                 item for item in homestead["owned_cosmetics"] if isinstance(item, str)
@@ -2057,6 +2090,10 @@ class LocalStateService:
             homestead["room_upgrades"] = [item for item in homestead["room_upgrades"] if isinstance(item, str) and item in HOME_ROOM_UPGRADE_BY_ID][:len(HOME_ROOM_UPGRADE_CATALOG)]
         else:
             homestead.pop("room_upgrades", None)
+        if isinstance(homestead.get("market_purchases"), list):
+            homestead["market_purchases"] = [item for item in homestead["market_purchases"] if isinstance(item, str) and item in CAMPAIGN_MARKET_BY_ID][:len(CAMPAIGN_MARKET_CATALOG)]
+        else:
+            homestead.pop("market_purchases", None)
         if "upgrade_tokens" in homestead:
             try:
                 homestead["upgrade_tokens"] = max(0, min(MAX_SYNC_COUNTER, int(homestead["upgrade_tokens"])))
@@ -2114,7 +2151,7 @@ class LocalStateService:
             if isinstance(incoming_equipped, Mapping) and any(item_id not in owned for item_id in incoming_equipped.values()):
                 raise StateCommandError("Every equipped cosmetic must be owned")
             changed = False
-            for field in ("name", "owned_cosmetics", "equipped", "room_upgrades", "upgrade_tokens", "upgrade_effects"):
+            for field in ("name", "owned_cosmetics", "equipped", "room_upgrades", "upgrade_tokens", "upgrade_effects", "market_purchases"):
                 if field in incoming_home and target_home.get(field) != incoming_home[field]:
                     target_home[field] = incoming_home[field]
                     changed = True
@@ -4218,6 +4255,7 @@ class LocalStateService:
         handlers = {
             "homestead_purchase": self._homestead_purchase,
             "homestead_equip": self._homestead_equip,
+            "campaign_market_purchase": self._campaign_market_purchase,
             "homestead_room_upgrade": self._homestead_room_upgrade,
             "homestead_action": self._homestead_action,
             "equip_equipment": self._equip_equipment,
@@ -4331,6 +4369,96 @@ class LocalStateService:
                 "slot": item["kind"],
                 "evidence_id": evidence_id,
                 "reason": reason,
+            },
+        )
+
+    def _campaign_market_purchase(self, payload: Mapping[str, Any], progress: dict[str, Any]) -> Mutation:
+        """Buy one displayed Campaign Market lot into the real Home state."""
+
+        data = self._payload(payload, {"item_id"}, {"item_id"})
+        item_id = self._text(data["item_id"], "item_id", max_length=MAX_IDENTIFIER_LENGTH, identifier=True)
+        item = CAMPAIGN_MARKET_BY_ID.get(item_id)
+        if item is None:
+            raise StateCommandError("Unknown Campaign Market lot", status_code=404)
+        homestead = progress.get("homestead")
+        if not isinstance(homestead, dict):
+            raise StateCommandError("Homestead state is not initialized", status_code=409)
+        purchases = homestead.get("market_purchases")
+        if purchases is None:
+            purchases = []
+            homestead["market_purchases"] = purchases
+        if not isinstance(purchases, list) or any(not isinstance(value, str) for value in purchases):
+            raise StateCommandError("Existing homestead market purchases are invalid", status_code=500)
+        if item_id in purchases:
+            return Mutation(
+                False,
+                {"already_owned": True, "item": item, "coins": self._counter(self._dict(progress, "player"), "coins")},
+            )
+
+        player = self._dict(progress, "player")
+        coins = self._counter(player, "coins")
+        price = self._counter(item, "price")
+        if coins < price:
+            raise StateCommandError(
+                f"Not enough coins. {item['name']} costs {price}c and you have {coins}c.",
+                status_code=409,
+            )
+
+        kind = str(item.get("kind") or "")
+        supplies = None
+        equipment = None
+        if kind in {"armor", "trinket"}:
+            equipment = self._dict(progress, "equipment")
+            owned_field = "owned_armor" if kind == "armor" else "owned_trinkets"
+            owned = equipment.get(owned_field)
+            if owned is None:
+                owned = []
+                equipment[owned_field] = owned
+            if not isinstance(owned, list):
+                raise StateCommandError(f"Existing state field equipment.{owned_field} is invalid", status_code=500)
+            if len(owned) >= MAX_EQUIPMENT_ITEMS:
+                raise StateCommandError("Campaign equipment inventory is full", status_code=409)
+            owned.append(item_id)
+        elif kind == "supply":
+            supply = item.get("supply")
+            if not isinstance(supply, str) or supply not in {"bandages", "tonics", "meals", "vision_scrolls"}:
+                raise StateCommandError("Unknown Campaign Market supply", status_code=500)
+            supplies = self._homestead_supplies(progress)
+            supplies[supply] = min(MAX_SYNC_COUNTER, self._counter(supplies, supply) + 1)
+        else:
+            raise StateCommandError("Campaign Market lot has an invalid kind", status_code=500)
+
+        player["coins"] = coins - price
+        purchases.append(item_id)
+        history = homestead.get("purchase_history")
+        if not isinstance(history, list):
+            raise StateCommandError("Existing state field purchase_history is invalid", status_code=500)
+        history.append(
+            {
+                "item_id": item_id,
+                "name": item["name"],
+                "price": price,
+                "source": "campaign_market",
+                "purchased_at": _utc_now(),
+            }
+        )
+        result: dict[str, Any] = {
+            "item": item,
+            "coins": player["coins"],
+            "market_purchases": purchases,
+        }
+        if equipment is not None:
+            result["equipment"] = self.equipment_projection(progress)
+        if supplies is not None:
+            result["supplies"] = supplies
+        return Mutation(
+            True,
+            result,
+            {
+                "item_id": item_id,
+                "item_name": item["name"],
+                "coins_delta": -price,
+                "reason": "campaign_market_purchase",
             },
         )
 
@@ -4490,11 +4618,12 @@ class LocalStateService:
                 "bandages": self._counter(player, "potions"),
                 "tonics": 0,
                 "meals": 0,
+                "vision_scrolls": 0,
             }
             progress["supplies"] = supplies
         if not isinstance(supplies, dict):
             raise StateCommandError("Existing state field supplies is invalid", status_code=500)
-        for field in ("bandages", "tonics", "meals"):
+        for field in ("bandages", "tonics", "meals", "vision_scrolls"):
             if field not in supplies:
                 supplies[field] = 0
             self._counter(supplies, field)

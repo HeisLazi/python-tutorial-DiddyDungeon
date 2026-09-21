@@ -1770,7 +1770,7 @@ function Homestead({ progress, revision, equipmentProjection, purchaseCosmetic, 
           {(equipmentProjection?.slots || []).map((slot) => <div className="home-loadout-slot" key={slot.id}><span className="screen-kicker">{slot.label}</span><div className="home-equip-list">{(slot.items || []).length ? (slot.items || []).map((item) => <button type="button" className={`home-equip-card ${item.equipped ? 'equipped' : ''}`} key={item.id} onClick={() => equipCampaignItem?.(item.id)} disabled={busy || item.equipped || !equipCampaignItem}><span className="home-equip-symbol"><RouteIcon id={slot.id === 'armor' ? 'shield' : 'spark'} /></span><span><strong>{item.name}</strong><small>{item.description || item.effect}</small></span><b>{item.equipped ? 'EQUIPPED' : 'EQUIP'}</b></button>) : <p className="home-empty-copy">{slot.id === 'armor' ? 'No armor owned yet.' : 'Visit Market to find your first trinket.'}</p>}</div></div>)}
         </div>
       </section>
-      <section className="home-supply-strip"><span className="screen-kicker">PACKED SUPPLIES</span><span>Bandages <strong>{supplies.bandages || player.potions || 0}</strong></span><span>Ember tonics <strong>{supplies.tonics || 0}</strong></span><span>Meals <strong>{supplies.meals || 0}</strong></span><small>Use supplies from the encounter kit.</small></section>
+      <section className="home-supply-strip"><span className="screen-kicker">PACKED SUPPLIES</span><span>Bandages <strong>{supplies.bandages || player.potions || 0}</strong></span><span>Ember tonics <strong>{supplies.tonics || 0}</strong></span><span>Meals <strong>{supplies.meals || 0}</strong></span><span>Vision scrolls <strong>{supplies.vision_scrolls || 0}</strong></span><small>Use supplies from the encounter kit.</small></section>
       <section className="home-progress-card"><div><span className="screen-kicker">RECENTLY CLEARED</span><h3>{completedTaskCount ? `${completedTaskCount} task${completedTaskCount === 1 ? '' : 's'} recorded` : 'No cleared work yet'}</h3></div><p>{completedTaskCount ? 'Your rewards are part of the same campaign state as Market and Bounty Office.' : 'Take a contract from the Bounty Office to start the loop.'}</p></section>
     </div>
   )
@@ -1819,13 +1819,12 @@ function CampaignMapRail({ place, onSelect, collapsed, onToggle, progress }) {
   )
 }
 
-function CampaignMarket({ progress, onBackHome }) {
-  const playerCoins = Number(progress?.player?.coins ?? 0)
-  const [coins, setCoins] = useState(playerCoins)
+function CampaignMarket({ progress, onBackHome, purchaseMarketItem, busy }) {
+  const coins = Number(progress?.player?.coins ?? 0)
   const [open, setOpen] = useState(false)
   const [category, setCategory] = useState('All')
   const [selectedId, setSelectedId] = useState(CAMPAIGN_MARKET_STOCK[6].id)
-  const [purchased, setPurchased] = useState([])
+  const purchased = Array.isArray(progress?.homestead?.market_purchases) ? progress.homestead.market_purchases : []
   const merchantName = 'The Merchant'
   const categories = ['All', 'Armor', 'Trinket', 'Supply']
   const visible = category === 'All' ? CAMPAIGN_MARKET_STOCK : CAMPAIGN_MARKET_STOCK.filter((item) => item.kind === category)
@@ -1833,9 +1832,8 @@ function CampaignMarket({ progress, onBackHome }) {
   const owned = selected && purchased.includes(selected.id)
   const rarity = selected?.price >= 120 ? 'RARE' : selected?.price >= 70 ? 'UNCOMMON' : 'COMMON'
   const buy = () => {
-    if (!selected || owned || coins < selected.price) return
-    setCoins((value) => value - selected.price)
-    setPurchased((value) => [...value, selected.id])
+    if (!selected || owned || coins < selected.price || busy || !purchaseMarketItem) return
+    purchaseMarketItem(selected.id)
   }
   const changeCategory = (next) => {
     setCategory(next)
@@ -1851,7 +1849,7 @@ function CampaignMarket({ progress, onBackHome }) {
         <aside className="market-greeting-purse"><span className="campaign-eyebrow">YOUR PURSE</span><strong>◉ {coins}</strong><small>{CAMPAIGN_MARKET_STOCK.length} lots waiting in the case</small></aside>
       </section> : <div className="market-browser">
         <div className="market-browser-head"><div><span className="campaign-eyebrow">THE MERCHANT’S OPEN LOTS</span><h3>Browse and choose your preparation.</h3></div><div className="market-browser-actions"><span className="market-purse-pill">◉ {coins} coins</span><button type="button" className="campaign-button ghost" onClick={() => setOpen(false)}>← Back to The Merchant</button></div></div>
-        <div className="market-browser-grid"><nav className="market-category-rail" aria-label="Market categories"><span className="campaign-eyebrow">CATEGORIES</span>{categories.map((item) => <button key={item} type="button" className={`market-category ${category === item ? 'active' : ''}`} onClick={() => changeCategory(item)}>{item === 'All' ? 'All lots' : item === 'Supply' ? 'Supplies' : `${item}s`}<small>{item === 'All' ? CAMPAIGN_MARKET_STOCK.length : CAMPAIGN_MARKET_STOCK.filter((stock) => stock.kind === item).length}</small></button>)}</nav><section className="market-lot-list" aria-label="Available market lots"><div className="market-list-head"><span>LOT</span><span>TYPE</span><span>PRICE</span></div>{visible.map((item) => { const itemOwned = purchased.includes(item.id); return <button type="button" key={item.id} className={`market-lot-row ${selected?.id === item.id ? 'active' : ''} ${itemOwned ? 'owned' : ''}`} onClick={() => setSelectedId(item.id)}><span className="market-lot-icon">{item.icon}</span><span className="market-lot-copy"><strong>{item.name}</strong><small>{item.detail}{itemOwned ? ' · owned' : ''}</small></span><span className="market-lot-kind">{item.kind}</span><strong className="market-lot-price">{item.price}<small> coins</small></strong></button> })}</section><aside className="market-item-detail">{selected && <><span className="campaign-eyebrow">SELECTED LOT · {selected.kind.toUpperCase()}</span><div className="market-detail-icon">{selected.icon}</div><span className="campaign-eyebrow">{rarity}</span><h3>{selected.name}</h3><p>{selected.detail}</p><div className="market-detail-facts"><span><small>PRICE</small><strong>{selected.price} coins</strong></span><span><small>STATUS</small><strong>{owned ? 'OWNED' : 'AVAILABLE'}</strong></span></div>{owned ? <span className="market-owned-note">Already in your kit · equip it from Home.</span> : <button type="button" className="campaign-button" onClick={buy} disabled={coins < selected.price}>Buy this lot</button>}</>}</aside></div>
+        <div className="market-browser-grid"><nav className="market-category-rail" aria-label="Market categories"><span className="campaign-eyebrow">CATEGORIES</span>{categories.map((item) => <button key={item} type="button" className={`market-category ${category === item ? 'active' : ''}`} onClick={() => changeCategory(item)}>{item === 'All' ? 'All lots' : item === 'Supply' ? 'Supplies' : `${item}s`}<small>{item === 'All' ? CAMPAIGN_MARKET_STOCK.length : CAMPAIGN_MARKET_STOCK.filter((stock) => stock.kind === item).length}</small></button>)}</nav><section className="market-lot-list" aria-label="Available market lots"><div className="market-list-head"><span>LOT</span><span>TYPE</span><span>PRICE</span></div>{visible.map((item) => { const itemOwned = purchased.includes(item.id); return <button type="button" key={item.id} className={`market-lot-row ${selected?.id === item.id ? 'active' : ''} ${itemOwned ? 'owned' : ''}`} onClick={() => setSelectedId(item.id)}><span className="market-lot-icon">{item.icon}</span><span className="market-lot-copy"><strong>{item.name}</strong><small>{item.detail}{itemOwned ? ' · owned' : ''}</small></span><span className="market-lot-kind">{item.kind}</span><strong className="market-lot-price">{item.price}<small> coins</small></strong></button> })}</section><aside className="market-item-detail">{selected && <><span className="campaign-eyebrow">SELECTED LOT · {selected.kind.toUpperCase()}</span><div className="market-detail-icon">{selected.icon}</div><span className="campaign-eyebrow">{rarity}</span><h3>{selected.name}</h3><p>{selected.detail}</p><div className="market-detail-facts"><span><small>PRICE</small><strong>{selected.price} coins</strong></span><span><small>STATUS</small><strong>{owned ? 'OWNED' : 'AVAILABLE'}</strong></span></div>{owned ? <span className="market-owned-note">Already in your kit · equip it from Home.</span> : <button type="button" className="campaign-button" onClick={buy} disabled={busy || coins < selected.price || !purchaseMarketItem}>Buy this lot</button>}</>}</aside></div>
         <div className="campaign-market-footer"><span>⬡</span><p>Armor protects HP. Trinkets shape Guard Breaks and protection. Supplies are consumed from the encounter kit.</p></div>
       </div>}
       <div className="campaign-stat-row"><span><small>COINS</small><strong>{coins}</strong></span><span><small>LOTS</small><strong>{CAMPAIGN_MARKET_STOCK.length}</strong></span><span><small>PREP</small><strong>{purchased.length} owned</strong></span></div>
@@ -1885,7 +1883,7 @@ function CampaignOffice({ progress, onEnter }) {
   )
 }
 
-function CampaignSurface({ progress, revision, equipmentProjection, purchaseCosmetic, equipCosmetic, equipCampaignItem, buildRoomUpgrade, performHomesteadAction, busy, onNavigate }) {
+function CampaignSurface({ progress, revision, equipmentProjection, purchaseCosmetic, purchaseMarketItem, equipCosmetic, equipCampaignItem, buildRoomUpgrade, performHomesteadAction, busy, onNavigate }) {
   const [place, setPlace] = useState('office')
   const [mapCollapsed, setMapCollapsed] = useState(false)
   const openForge = () => onNavigate?.('forge')
@@ -1904,7 +1902,7 @@ function CampaignSurface({ progress, revision, equipmentProjection, purchaseCosm
         <CampaignMapRail progress={progress} place={place} onSelect={selectPlace} collapsed={mapCollapsed} onToggle={() => setMapCollapsed((value) => !value)} />
         <main className="campaign-place-panel">
           {place === 'home' && <Homestead progress={progress} revision={revision} equipmentProjection={equipmentProjection} purchaseCosmetic={purchaseCosmetic} equipCosmetic={equipCosmetic} equipCampaignItem={equipCampaignItem} buildRoomUpgrade={buildRoomUpgrade} performHomesteadAction={performHomesteadAction} busy={busy} onNavigate={homeNavigate} />}
-          {place === 'market' && <CampaignMarket progress={progress} onBackHome={() => setPlace('home')} />}
+          {place === 'market' && <CampaignMarket progress={progress} purchaseMarketItem={purchaseMarketItem} busy={busy} onBackHome={() => setPlace('home')} />}
           {place === 'office' && <CampaignOffice progress={progress} onEnter={openForge} />}
         </main>
       </div>
@@ -2369,7 +2367,7 @@ function SettingsScreen({ preferences, setters, resetLayout, account, accountBus
   )
 }
 
-export function GameScreen({ activeView, progress, revision, avatarDataUrl = '', encounter, codexProjection, practiceProjection, equipmentProjection, dungeon, dungeonEditorContent, onDungeonEditorChange, onSaveDungeon, onDungeonChoose, onDungeonRest, onDungeonCampAction, onDungeonRevealRisk, onDungeonEnterRisk, onDungeonMarketPurchase, onDungeonEquip, onDungeonLeave, onDungeonFinish, onDungeonReset, purchaseCosmetic, equipCosmetic, equipCampaignItem, buildRoomUpgrade, performHomesteadAction, saveCodexNote, busy, dungeonSaving, submitBattle, submitBoss, submitDungeon, onStartDungeon, onPracticePrompt, preferences, setters, resetLayout, account, accountBusy, accountNotice, onSignIn, onSignUp, onSignOut, onDeviceLabelSave, onResolveConflict, workspaceTransfer, workspaceTransferBusy, workspaceTransferNotice, onWorkspaceTransferRefresh, onWorkspaceTransferPush, onWorkspaceTransferPreviewPull, onWorkspaceTransferApplyPull, onNavigate, tutorCode, tutorDirty, tutorExternalChange, editorFontSize = 14, onTutorChange, onTutorSave, onTutorFormat, onTutorRun, onTutorReloadExternal, onTutorKeepEdits, campaignReady = true, showNavigation = true }) {
+export function GameScreen({ activeView, progress, revision, avatarDataUrl = '', encounter, codexProjection, practiceProjection, equipmentProjection, dungeon, dungeonEditorContent, onDungeonEditorChange, onSaveDungeon, onDungeonChoose, onDungeonRest, onDungeonCampAction, onDungeonRevealRisk, onDungeonEnterRisk, onDungeonMarketPurchase, onDungeonEquip, onDungeonLeave, onDungeonFinish, onDungeonReset, purchaseCosmetic, purchaseMarketItem, equipCosmetic, equipCampaignItem, buildRoomUpgrade, performHomesteadAction, saveCodexNote, busy, dungeonSaving, submitBattle, submitBoss, submitDungeon, onStartDungeon, onPracticePrompt, preferences, setters, resetLayout, account, accountBusy, accountNotice, onSignIn, onSignUp, onSignOut, onDeviceLabelSave, onResolveConflict, workspaceTransfer, workspaceTransferBusy, workspaceTransferNotice, onWorkspaceTransferRefresh, onWorkspaceTransferPush, onWorkspaceTransferPreviewPull, onWorkspaceTransferApplyPull, onNavigate, tutorCode, tutorDirty, tutorExternalChange, editorFontSize = 14, onTutorChange, onTutorSave, onTutorFormat, onTutorRun, onTutorReloadExternal, onTutorKeepEdits, campaignReady = true, showNavigation = true }) {
   const wideRoute = ['hub', 'character', 'homestead', 'codex', 'tutor', 'settings'].includes(activeView)
   // Historical contract marker: const wideRoute = ['hub', 'character', 'homestead', 'codex', 'settings']
   const withWideNavigation = (screen) => wideRoute && showNavigation
@@ -2385,7 +2383,7 @@ export function GameScreen({ activeView, progress, revision, avatarDataUrl = '',
       </div>
     )
   }
-  if (activeView === 'hub') return withWideNavigation(<CampaignSurface progress={progress} revision={revision} equipmentProjection={equipmentProjection} purchaseCosmetic={purchaseCosmetic} equipCosmetic={equipCosmetic} equipCampaignItem={equipCampaignItem} buildRoomUpgrade={buildRoomUpgrade} performHomesteadAction={performHomesteadAction} busy={busy} onNavigate={onNavigate} />)
+  if (activeView === 'hub') return withWideNavigation(<CampaignSurface progress={progress} revision={revision} equipmentProjection={equipmentProjection} purchaseCosmetic={purchaseCosmetic} purchaseMarketItem={purchaseMarketItem} equipCosmetic={equipCosmetic} equipCampaignItem={equipCampaignItem} buildRoomUpgrade={buildRoomUpgrade} performHomesteadAction={performHomesteadAction} busy={busy} onNavigate={onNavigate} />)
   if (activeView === 'quests' || activeView === 'codex' || activeView === 'tutor') return withWideNavigation(<ResourceTutorScreen activeView={activeView} progress={progress} revision={revision} codexProjection={codexProjection} encounter={encounter} tutorCode={tutorCode} tutorDirty={tutorDirty} tutorExternalChange={tutorExternalChange} editorFontSize={editorFontSize} busy={busy} onTutorChange={onTutorChange} onTutorSave={onTutorSave} onTutorFormat={onTutorFormat} onTutorRun={onTutorRun} onPracticePrompt={onPracticePrompt} onTutorReloadExternal={onTutorReloadExternal} onTutorKeepEdits={onTutorKeepEdits} onNavigate={onNavigate} />)
   // Legacy render contract retained in source comments for downstream static
   // checks; the live route above owns the replacement surface.

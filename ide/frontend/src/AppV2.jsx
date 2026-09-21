@@ -1878,6 +1878,24 @@ function AppV2() {
     }
   }
 
+  const purchaseMarketItem = async (itemId) => {
+    try {
+      setBusy(true)
+      const result = await api('/api/campaign/market/purchase', {
+        method: 'POST',
+        body: JSON.stringify({ item_id: itemId }),
+      })
+      await refreshCampaign()
+      setNotice(result.already_owned ? 'That lot is already in your kit.' : `${result.item?.name || itemId} added to Home. ${result.coins}c remain.`)
+      return result
+    } catch (error) {
+      setNotice(`Market purchase failed: ${error.message}`)
+      return null
+    } finally {
+      setBusy(false)
+    }
+  }
+
   const buildRoomUpgrade = async (upgradeId) => {
     try {
       setBusy(true)
@@ -2347,6 +2365,7 @@ function AppV2() {
               submitBoss={submitBoss}
               submitDungeon={submitDungeon}
               purchaseCosmetic={purchaseCosmetic}
+              purchaseMarketItem={purchaseMarketItem}
               equipCosmetic={equipCosmetic}
               equipCampaignItem={equipCampaignItem}
               buildRoomUpgrade={buildRoomUpgrade}

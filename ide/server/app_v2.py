@@ -36,6 +36,7 @@ from ide.server.context_bridge import (
 from ide.server.security import allowed_hosts, allowed_origins, is_allowed_origin
 from ide.server.state import (
     BOSS_REQUIREMENTS,
+    CAMPAIGN_MARKET_CATALOG,
     MAX_CODEX_NOTE_BYTES,
     MAX_CODEX_SNIPPET_BYTES,
     MAX_DUNGEON_EDITOR_BYTES,
@@ -205,6 +206,12 @@ class FormatRequest(BaseModel):
 
 class HomesteadPurchase(BaseModel):
     item_id: str
+
+
+class CampaignMarketPurchase(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    item_id: str = Field(min_length=1, max_length=MAX_IDENTIFIER_LENGTH)
 
 
 class HomesteadEquip(BaseModel):
@@ -916,6 +923,7 @@ def campaign():
         "revision": metadata["revision"],
         "sync_storage_namespace": checkout_storage_namespace(),
         "equipment_projection": STATE_SERVICE.equipment_projection(progress),
+        "campaign_market": [dict(item) for item in CAMPAIGN_MARKET_CATALOG],
         "encounter": STATE_SERVICE.encounter_projection(progress),
         "codex_projection": STATE_SERVICE.codex_projection(progress),
         "practice_projection": STATE_SERVICE.practice_projection(progress),
@@ -2547,6 +2555,24 @@ def put_workspace_note(concept_id: str, payload: WorkspaceNoteWrite):
 def purchase_homestead_item(payload: HomesteadPurchase):
     envelope = _apply_state_or_http("homestead_purchase", payload.model_dump(), "player")
     return _flatten_state_result(envelope)
+
+
+@app.post("/api/campaign/market/purchase")
+def purchase_campaign_market_item(payload: CampaignMarketPurchase):
+    envelope = _apply_state_or_http("campaign_market_purchase", payload.model_dump(), "player")
+    try:
+        progress, metadata = STATE_SERVICE.snapshot_with_metadata()
+    except StateCommandError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
+    result = _flatten_state_result(envelope)
+    result.update({
+        "equipment_projection": STATE_SERVICE.equipment_projection(progress),
+        "revision": metadata["revision"],
+        "coins": progress.get("player", {}).get("coins", 0),
+        "supplies": progress.get("supplies", {}),
+        "market_purchases": progress.get("homestead", {}).get("market_purchases", []),
+    })
+    return result
 
 
 @app.post("/api/homestead/equip")

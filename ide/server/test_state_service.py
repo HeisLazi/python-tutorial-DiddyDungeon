@@ -562,6 +562,34 @@ class StateServiceBehaviorTests(unittest.TestCase):
         self.assertEqual(state["homestead"]["equipped"]["cursor"], "cursor-golden-spark")
         self.assertEqual([event["action"] for event in state["state_events"]], ["homestead_purchase", "homestead_equip"])
 
+    def test_campaign_market_purchase_enters_home_inventory(self):
+        service, path = self.make_service()
+        state = self.read(path)
+        state["player"]["coins"] = 200
+        state["homestead"]["market_purchases"] = []
+        state["equipment"] = {
+            "armor": "Apprentice Coat",
+            "trinket": "None",
+            "title": "Apprentice Coder",
+            "owned_armor": ["armor-apprentice-coat"],
+            "owned_trinkets": ["trinket-none"],
+        }
+        path.write_text(json.dumps(state), encoding="utf-8")
+
+        trinket = service.apply("campaign_market_purchase", {"item_id": "syntax-ward"}, "player")
+        supply = service.apply("campaign_market_purchase", {"item_id": "field-bandage"}, "player")
+        after = self.read(path)
+
+        self.assertTrue(trinket["changed"])
+        self.assertTrue(supply["changed"])
+        self.assertEqual(after["player"]["coins"], 134)
+        self.assertIn("syntax-ward", after["equipment"]["owned_trinkets"])
+        self.assertEqual(after["supplies"]["bandages"], 1)
+        self.assertEqual(after["homestead"]["market_purchases"], ["syntax-ward", "field-bandage"])
+        duplicate = service.apply("campaign_market_purchase", {"item_id": "syntax-ward"}, "player")
+        self.assertFalse(duplicate["changed"])
+        self.assertEqual(self.read(path)["meta"]["revision"], 6)
+
     def test_homestead_room_upgrade_uses_authored_catalog_and_migrates_first_token(self):
         service, path = self.make_service()
         built = service.apply("homestead_room_upgrade", {"upgrade_id": "reinforced-hearth"}, "player")

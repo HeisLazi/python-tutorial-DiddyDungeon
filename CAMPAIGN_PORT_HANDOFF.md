@@ -157,12 +157,19 @@ roadmap before starting the next slice.
 
 ## Next implementation slice
 
-The visual port is intentionally ahead of full campaign coherence. The next
-bounded slice is to connect Market purchases/equipment to the canonical state
-service and certify route persistence without changing the prototype layout.
-Keep Campaign Market inventory separate from Infinite Dungeon run loot. Then
-add any deeper Home/Market/Village progression as its own small, reviewable
-slice.
+Market purchases/equipment are now connected to the canonical state service;
+the purchase slice is in the working tree and must be verified/committed only
+with its intended source files. The next bounded visual slice is merchant and
+collapse-control parity, followed by a separate audit of bounty-board state,
+poster threat sizing, and whether live Campaign actually carries the combat
+loop. Do not combine those slices.
+
+New follow-ups are tracked as F-257 through F-261 in
+`FORGE_ROADMAP_ISSUES_LOG.md`: reconcile the Forge home route, restore the
+Infinite Dungeon question prompt, port/certify Guard Break combat, bridge a
+shared armor/trinket catalog, and deepen the item pool. Keep Campaign Market
+inventory and run-local room state separate until the explicit shared-item
+bridge is implemented and tested.
 
 ## Handoff prompt for the next agent
 
