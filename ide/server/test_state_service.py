@@ -247,7 +247,7 @@ class StateServiceBehaviorTests(unittest.TestCase):
 
     def test_dungeon_question_rotation_blanks_editor_and_death_requires_new_run(self):
         service, path = self.make_service()
-        started = service.apply("dungeon_start_run", {"concept_id": "loops"}, "player")
+        started = service.apply("dungeon_start_run", {"concept_id": "loops", "seed": "loop-seed"}, "player")
         started_run = started["result"]["run"]
         run_id = started_run["run_id"]
         selected = service.apply("dungeon_choose_room", {"run_id": run_id, "choice_id": next(choice["id"] for choice in started_run["room_choices"] if choice["kind"] in {"encounter", "elite"})}, "player")
