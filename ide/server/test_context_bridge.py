@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import hashlib
 import tempfile
 import unittest
 from pathlib import Path
@@ -288,6 +289,105 @@ class PyrContextBridgeTests(unittest.TestCase):
                 app_v2.DUNGEON_PATH = original_dungeon
                 app_v2.PYR_DUNGEON_CHALLENGE = original_challenge
 
+    def test_forge_submission_is_bound_to_the_active_campaign_file(self):
+        original_workspace = app_v2.WORKSPACE
+        original_progress = app_v2.PROGRESS_PATH
+        original_challenge = app_v2.PYR_CONTEXT_CHALLENGE
+        original_challenges = dict(app_v2.PYR_CONTEXT_CHALLENGES)
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            workspace = root / "quest"
+            workspace.mkdir()
+            (workspace / "main.py").write_text("print('campaign')\n", encoding="utf-8")
+            canonical = root / "platform" / "progress.json"
+            canonical.parent.mkdir()
+            canonical.write_text(json.dumps(context_progress()), encoding="utf-8")
+            app_v2.WORKSPACE = workspace
+            app_v2.PROGRESS_PATH = canonical
+            app_v2.PYR_CONTEXT_CHALLENGE = None
+            app_v2.PYR_CONTEXT_CHALLENGES.clear()
+            try:
+                client = TestClient(app_v2.app, base_url="http://127.0.0.1")
+                context = client.post(
+                    "/api/pyr/context",
+                    headers={"host": "127.0.0.1"},
+                    json={"active_path": "main.py"},
+                )
+                self.assertEqual(context.status_code, 200, context.text)
+                challenge = context.json()["context"]["verdict"]
+                self.assertEqual(challenge["active_path"], "main.py")
+                expected_digest = hashlib.sha256(b"print('campaign')\n").hexdigest()
+                self.assertEqual(challenge["file_digest"], expected_digest)
+
+                stale_file = client.post(
+                    "/api/pyr/battle-submission",
+                    headers={"host": "127.0.0.1"},
+                    json={
+                        "nonce": challenge["nonce"],
+                        "objective_id": "choice_flow",
+                        "answer": "print('stale')",
+                        "answer_source": "forge_active_file",
+                        "source_path": "other.py",
+                        "file_digest": expected_digest,
+                    },
+                )
+                self.assertEqual(stale_file.status_code, 409)
+
+                stale_digest = client.post(
+                    "/api/pyr/battle-submission",
+                    headers={"host": "127.0.0.1"},
+                    json={
+                        "nonce": challenge["nonce"],
+                        "objective_id": "choice_flow",
+                        "answer": "print('campaign')\n",
+                        "answer_source": "forge_active_file",
+                        "source_path": "main.py",
+                        "file_digest": "0" * 64,
+                    },
+                )
+                self.assertEqual(stale_digest.status_code, 409)
+
+                (workspace / "main.py").write_text("print('changed')\n", encoding="utf-8")
+                stale_disk = client.post(
+                    "/api/pyr/battle-submission",
+                    headers={"host": "127.0.0.1"},
+                    json={
+                        "nonce": challenge["nonce"],
+                        "objective_id": "choice_flow",
+                        "answer": "print('campaign')\n",
+                        "answer_source": "forge_active_file",
+                        "source_path": "main.py",
+                        "file_digest": expected_digest,
+                    },
+                )
+                self.assertEqual(stale_disk.status_code, 409)
+                (workspace / "main.py").write_text("print('campaign')\n", encoding="utf-8")
+
+                accepted = client.post(
+                    "/api/pyr/battle-submission",
+                    headers={"host": "127.0.0.1"},
+                    json={
+                        "nonce": challenge["nonce"],
+                        "objective_id": "choice_flow",
+                        "answer": "print('campaign')\n",
+                        "answer_source": "forge_active_file",
+                        "source_path": "main.py",
+                        "file_digest": expected_digest,
+                    },
+                )
+                self.assertEqual(accepted.status_code, 200, accepted.text)
+                submission = accepted.json()["submission"]
+                self.assertEqual(submission["answer_source"], "forge_active_file")
+                self.assertEqual(submission["source_path"], "main.py")
+                self.assertEqual(submission["file_digest"], expected_digest)
+                self.assertEqual(json.loads(canonical.read_text(encoding="utf-8"))["meta"]["revision"], 7)
+            finally:
+                app_v2.WORKSPACE = original_workspace
+                app_v2.PROGRESS_PATH = original_progress
+                app_v2.PYR_CONTEXT_CHALLENGE = original_challenge
+                app_v2.PYR_CONTEXT_CHALLENGES.clear()
+                app_v2.PYR_CONTEXT_CHALLENGES.update(original_challenges)
+
     def test_context_is_bounded_live_and_does_not_mutate_player_state(self):
         original_workspace = app_v2.WORKSPACE
         original_progress = app_v2.PROGRESS_PATH
@@ -324,6 +424,8 @@ class PyrContextBridgeTests(unittest.TestCase):
                 self.assertEqual(context["terminal"]["tail"], "Traceback\nValueError: bad input\n")
                 self.assertEqual(context["quest"]["mob"]["name"], "The Hitman")
                 self.assertEqual(context["quest"]["mob"]["concept"], "Input loops and control flow")
+                self.assertEqual(context["quest"]["mob"]["current_quest"]["id"], "choice_flow")
+                self.assertEqual([item["id"] for item in context["quest"]["mob"]["mechanics"]], ["execution_gate", "bug_feedback", "verified_goal"])
                 self.assertEqual(context["quest"]["assistance"]["mode"], "clean")
                 self.assertNotIn("The Bust Hound", json.dumps(context["quest"]["mob"]))
 
@@ -643,12 +745,15 @@ class PyrContextBridgeTests(unittest.TestCase):
             app_v2.PYR_CONTEXT_CHALLENGES.clear()
             try:
                 client = TestClient(app_v2.app, base_url="http://127.0.0.1")
-                default = client.post(
+                default_context = client.post(
                     "/api/pyr/context",
                     headers={"host": "127.0.0.1"},
                     json={},
-                ).json()["context"]["verdict"]
+                ).json()["context"]
+                default = default_context["verdict"]
                 self.assertEqual(default["challenge_type"], "boss")
+                self.assertEqual(default_context["quest"]["boss"]["current_requirement"]["id"], "required_behavior")
+                self.assertEqual([item["id"] for item in default_context["quest"]["boss"]["mechanics"]], ["execution_gate", "bug_feedback", "verified_goal"])
                 self.assertIs(app_v2.PYR_CONTEXT_CHALLENGES["default"], app_v2.PYR_CONTEXT_CHALLENGE)
 
                 tab_a = client.post(

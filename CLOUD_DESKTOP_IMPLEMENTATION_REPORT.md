@@ -3395,3 +3395,33 @@ the live Forge without a blank screen: HUD, Mob 3 `The Hitman`, Resolve `8/8`,
 editor, and both shell/AI PTYs were visible and connected. Frontend tests pass
 **84/84**. This was a source/runtime repair only; no save, learner file, legacy
 progress, hosted state or PTY was reset.
+
+### Forge-first RPG surface cleanup — F-168/F-169 (2026-09-18)
+
+Forge is now the single Campaign answer surface. Its state-owned encounter
+projection supplies only the current mob lore/brief, human-readable objective
+metadata, question type, Impact, Resolve, and a bounded current XP/coin reward
+envelope. Locked future prompts, answers, and loot remain absent. The Forge
+objective and boss controls submit the active campaign `.py` buffer to PYR; the
+provider still supplies the verdict and only the state gateway mutates
+progress. Codex now uses finite bookshelf/folio pages with a full-height Notes
+page, Character is a progress cockpit, Settings no longer duplicates
+Homestead Loadout, and Tutor is the single structured tutor.py route with an
+explicit no-answer/no-missing-snippet contract.
+
+The active-file challenge binding now records the normalized path, campaign
+revision, nonce, and SHA-256 digest captured by the local context bridge. A
+submission is rejected before adjudication when its path, digest, or contents
+do not match that issued Forge context. This closes the stale-file split-brain
+edge without introducing a second state authority.
+
+Verification: WSL backend tests **117/117**, Windows frontend tests **86/86**,
+Vite production build **1,346 modules**, and `git diff --check` pass. Browser
+keyboard/mouse acceptance on a disposable state/current-source server
+(`5198`) verified the locked navigation order, Forge projection, live Resolve
+mutation and reward queue, next-mob unlock, Codex encounter record, Character,
+Settings, Tutor, Dungeon map/editor, and visible SVG HUD icons without a
+refresh. Existing launcher/backend/shell+AI PTY PIDs remained unchanged; the
+already-running `5173` process still requires a managed restart to serve this
+new bundle, so the stale runtime caveat is recorded as F-170 rather than
+silently claiming the old process updated.

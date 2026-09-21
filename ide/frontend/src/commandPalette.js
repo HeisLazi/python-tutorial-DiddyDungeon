@@ -30,6 +30,7 @@ const commands = [
   { label: 'Launch Codex CLI', run: () => clickText('Codex') },
   { label: 'Launch Claude CLI', run: () => clickText('Claude') },
   { label: 'Launch AGY CLI', run: () => clickText('AGY') },
+  { label: 'Launch Copilot CLI', run: () => clickText('Copilot') },
   { label: 'Reconnect Forge terminal', run: () => {
       const button = buttons().find((candidate) => isVisible(candidate) && /reconnect/i.test(candidate.textContent) && candidate.closest('.terminal-panel'))
       button?.click()

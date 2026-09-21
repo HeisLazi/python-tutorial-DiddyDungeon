@@ -2,6 +2,27 @@
 
 You are not here to speedrun Python. You are here to make the basics feel automatic.
 
+## Start Quest Lab
+
+From the repository root on Windows, run or double-click:
+
+```powershell
+.\start-questlab.cmd
+```
+
+That starts the guarded WSL backend and frontend and opens Forge in your
+browser. From WSL, use the matching shortcut:
+
+```bash
+bash ./start-questlab.sh
+```
+
+The shortcuts keep the normal branch, canonical-state, dependency and stable
+PTY checks. Add `-NoBrowser` when you want to open the printed URL yourself.
+If you are intentionally working from an offline or locally ahead checkout,
+add `-AllowStaleCheckout`; do not use that switch to hide an unexpected
+checkout mismatch.
+
 ## Your current level
 
 You already know the idea of loops, functions, lists and dictionaries, but recall is shaky. That means the right move is repetition through small projects, not piling advanced concepts on top.

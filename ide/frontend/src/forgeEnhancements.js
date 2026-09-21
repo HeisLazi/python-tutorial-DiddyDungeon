@@ -167,8 +167,24 @@ async function submitRunToAI() {
 
   const provider = sessionStorage.getItem('questlab.aiProvider')
   if (!provider) {
-    showToast('Launch Codex, Claude, or AGY first, then submit the run.', 'warn')
+    showToast('Launch Codex, Claude, AGY, or Copilot first, then submit the run.', 'warn')
     focusTerminal('.ai-panel')
+    return
+  }
+
+  // React owns the canonical campaign submission. When Forge is active, the
+  // single toolbar button binds the current state-owned quest/boss goal and
+  // active .py digest before handing the bounded prompt to the provider. Keep
+  // the older terminal-context fallback for non-campaign surfaces only.
+  const campaignSubmit = window.__questlabSubmitCampaignRun
+  const forgeIsActive = document.querySelector('.forge-v2')?.dataset.view === 'forge'
+  if (forgeIsActive && typeof campaignSubmit === 'function') {
+    try {
+      await campaignSubmit()
+      showToast(`Active Forge file sent to ${provider}; waiting for its validated verdict.`, 'success')
+    } catch (error) {
+      showToast(error?.message || 'Campaign submission failed.', 'warn')
+    }
     return
   }
 
@@ -222,7 +238,7 @@ function trackAIProvider() {
   document.querySelectorAll('.ai-actions button').forEach((button) => {
     if (button.dataset.providerTracked) return
     const label = button.textContent.trim()
-    if (!['Codex', 'Claude', 'AGY'].includes(label)) return
+    if (!['Codex', 'Claude', 'AGY', 'Copilot'].includes(label)) return
     button.dataset.providerTracked = 'true'
     button.addEventListener('click', () => {
       sessionStorage.setItem('questlab.aiProvider', label)

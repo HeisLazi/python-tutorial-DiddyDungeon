@@ -10,6 +10,7 @@ player save.
 from __future__ import annotations
 
 import argparse
+import json
 import re
 import shutil
 import subprocess
@@ -55,6 +56,19 @@ def pending_migration_ids(output: str) -> set[str]:
     """Return local migration IDs whose remote ledger cell is blank."""
 
     pending: set[str] = set()
+    for line in output.splitlines():
+        line = line.strip()
+        if line.startswith("{") and "migrations" in line:
+            try:
+                data = json.loads(line)
+                for entry in data.get("migrations", []):
+                    if not entry.get("remote", "").strip():
+                        pending.add(str(entry.get("local", "")))
+                if pending:
+                    return pending
+            except Exception:
+                pass
+
     for match in MIGRATION_ROW.finditer(output):
         if not match.group("remote").strip():
             pending.add(match.group("local"))

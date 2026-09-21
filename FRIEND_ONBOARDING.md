@@ -237,6 +237,17 @@ surface. Practice has its own no-reward session/history state and
 can save bounded teaching code or concept notes, but it cannot write Campaign
 or Dungeon rewards, HP, Resolve, equipment, combat or run state.
 
+For the normal case, start from the repository root with the one-command
+shortcut (or double-click the `.cmd` file):
+
+```powershell
+.\start-questlab.cmd
+```
+
+The WSL equivalent is `bash ./start-questlab.sh`. Both shortcuts delegate to the
+same guarded launcher below. Use the detailed form when you need to select a
+different workspace or pass an explicit launch option.
+
 From PowerShell in the cloned checkout:
 
 ```powershell

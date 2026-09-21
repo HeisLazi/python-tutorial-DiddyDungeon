@@ -187,7 +187,7 @@ function App() {
   const [notice, setNotice] = useState('')
 
   const [storedActiveView, setStoredActiveView] = usePersistentState('questlab.activeView', 'forge')
-  const normalizeView = (value) => value === 'practice' ? 'tutor' : value === 'quests' ? 'codex' : value
+  const normalizeView = (value) => value === 'practice' ? 'tutor' : value === 'quests' ? 'codex' : value === 'dungeon' ? 'forge' : value
   const activeView = normalizeView(storedActiveView)
   const setActiveView = (next) => setStoredActiveView((current) => normalizeView(typeof next === 'function' ? next(current) : next))
   const [leftWidth, setLeftWidth] = usePersistentState('questlab.leftWidth', 220)
@@ -636,11 +636,12 @@ function App() {
               <button onClick={() => summon('codex')}>Codex</button>
               <button onClick={() => summon('claude')}>Claude</button>
               <button onClick={() => summon('gemini')}>Gemini</button>
+              <button onClick={() => summon('copilot')}>Copilot</button>
               <button onClick={() => aiTerminalRef.current?.clear()}>Clear</button>
             </div>
           </div>
           <div className="ai-note">Raw CLI terminal: powerful, not sandboxed. The future controlled PYR tutor will only be able to write tutor.py.</div>
-          <TerminalPane ref={aiTerminalRef} banner="PYR channel ready. Choose Codex, Claude, or Gemini above." fontSize={terminalFontSize} skin={terminalSkin} />
+          <TerminalPane ref={aiTerminalRef} banner="PYR channel ready. Choose Codex, Claude, Gemini, or Copilot above." fontSize={terminalFontSize} skin={terminalSkin} />
         </aside>
       </main>
 

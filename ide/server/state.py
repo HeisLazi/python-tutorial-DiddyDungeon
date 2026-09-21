@@ -31,6 +31,7 @@ MAX_IMPACT = 8
 MAX_CODEX_RECORDS = 100
 MAX_CODEX_NOTE_BYTES = 2_000
 MAX_CODEX_NOTES_PER_ENTRY = 20
+MAX_CODEX_SNIPPET_BYTES = 1_600
 MAX_PRACTICE_SESSIONS = 50
 MAX_PRACTICE_ATTEMPTS_PER_SESSION = 20
 PRACTICE_QUESTION_TYPES = frozenset({"true_false", "multiple_choice", "short_explanation", "code_trace", "bug_hunt"})
@@ -81,8 +82,16 @@ CUSTODY_CONFIRMATION_TOKEN = "MIGRATE_LOCAL_STATE"
 CUSTODY_MARKER_VERSION = 1
 DUNGEON_MARKET_CATALOG: tuple[dict[str, Any], ...] = (
     {"id": "dungeon-heal", "name": "Field Ration", "price": 12, "kind": "heal", "description": "Restore 20 run HP."},
+    {"id": "dungeon-bandage", "name": "Field Bandage", "price": 18, "kind": "supply", "supply": "bandages", "description": "+22 HP at a campsite."},
+    {"id": "dungeon-ration", "name": "Trail Ration", "price": 14, "kind": "supply", "supply": "rations", "description": "+10 maximum HP at a campsite."},
+    {"id": "dungeon-vision-scroll", "name": "Vision Scroll", "price": 80, "kind": "supply", "supply": "vision_scrolls", "description": "Reveal one unknown risk room."},
+    {"id": "dungeon-tonic", "name": "Ember Tonic", "price": 32, "kind": "supply", "supply": "tonics", "description": "+30 HP at a campsite."},
     {"id": "dungeon-ward", "name": "Ember Ward", "price": 24, "kind": "armor", "armor": "Ember Ward", "description": "Reduce the next counterattack."},
     {"id": "dungeon-lens", "name": "Scholar Lens", "price": 30, "kind": "trinket", "trinket": "Scholar Lens", "description": "A cosmetic run trophy for careful reasoning."},
+    {"id": "dungeon-syntax-sabre", "name": "Syntax Sabre", "price": 70, "kind": "weapon", "weapon": "Syntax Sabre", "description": "+1 run Resolve damage when the objective is explained."},
+    {"id": "dungeon-loopblade", "name": "Loopblade", "price": 78, "kind": "weapon", "weapon": "Loopblade", "description": "+1 run Resolve damage against elite challenges."},
+    {"id": "dungeon-field-jacket", "name": "Field Jacket", "price": 72, "kind": "armor", "armor": "Field Jacket", "description": "Reduce failed-run damage by 6."},
+    {"id": "dungeon-syntax-cuirass", "name": "Syntax Cuirass", "price": 88, "kind": "armor", "armor": "Syntax Cuirass", "description": "The first failed submission each floor costs less HP."},
 )
 
 # Campaign equipment is a separate, validated loadout from Homestead
@@ -103,6 +112,19 @@ EQUIPMENT_CATALOG: tuple[dict[str, Any], ...] = (
 )
 EQUIPMENT_BY_ID: dict[str, dict[str, Any]] = {item["id"]: item for item in EQUIPMENT_CATALOG}
 EQUIPMENT_ID_BY_NAME: dict[str, str] = {item["name"]: item["id"] for item in EQUIPMENT_CATALOG}
+
+# Homestead room progression is intentionally a small authored catalogue.  The
+# browser may render this copy, but ownership, costs and the resulting stat
+# deltas are validated here so the port cannot turn the drawer into a client
+# controlled reward path.
+HOME_ROOM_UPGRADE_CATALOG: tuple[dict[str, Any], ...] = (
+    {"id": "reinforced-hearth", "name": "Reinforced Hearth", "kind": "STAT", "cost": 1, "effect": "MAX HP +10", "detail": "A stronger hearth gives you ten more maximum HP.", "max_hp_delta": 10},
+    {"id": "warding-loom", "name": "Warding Loom", "kind": "TRINKET", "cost": 2, "effect": "RETALIATION −2", "detail": "Threaded syntax wards soften each failed submission by 2 HP.", "failure_damage_reduction": 2},
+    {"id": "breaker-workbench", "name": "Breaker Workbench", "kind": "STAT", "cost": 2, "effect": "BREAK +1", "detail": "Tune your kit to break Guard one Resolve point faster.", "resolve_impact_delta": 1},
+    {"id": "siphon-basin", "name": "Siphon Basin", "kind": "TRINKET", "cost": 3, "effect": "BREAK HEAL +4", "detail": "A clean Guard Break restores 4 HP before the final submit.", "guard_break_heal": 4},
+    {"id": "field-kitchen", "name": "Field Kitchen", "kind": "STAT", "cost": 2, "effect": "MEALS +5", "detail": "Packed meals restore 5 extra HP when eaten at Home.", "meal_heal_delta": 5},
+)
+HOME_ROOM_UPGRADE_BY_ID: dict[str, dict[str, Any]] = {item["id"]: item for item in HOME_ROOM_UPGRADE_CATALOG}
 # Route choices are intentionally answer-free.  The state service owns the
 # route ids and room types; the browser may render these labels but cannot
 # choose a question, reward, or answer key.
@@ -127,6 +149,84 @@ DUNGEON_ROUTE_CHOICES: tuple[dict[str, str], ...] = (
     },
 )
 
+# The Infinite Dungeon map is generated once by the state gateway when a run
+# starts.  React receives room identities and the current lane, but never
+# invents future nodes or route edges.  Questions, answers and reward payloads
+# remain undisclosed until the player commits to a node.
+DUNGEON_MAP_ROWS = 8
+DUNGEON_MAP_NODE_COLUMNS = (1, 3, 5)
+DUNGEON_MAP_ROOM_TYPES = ("encounter", "elite", "mystery", "rest", "market")
+DUNGEON_MAP_FINAL_PREP_TYPES = ("rest", "market")
+DUNGEON_MAP_ROOM_LABELS: dict[str, str] = {
+    "encounter": "Challenge gate",
+    "elite": "Elite gate",
+    "mystery": "Fate / risk",
+    "rest": "Campsite",
+    "market": "Wayfarer market",
+    "boss": "Floor boss",
+}
+DUNGEON_MAP_ROOM_NOTES: dict[str, str] = {
+    "encounter": "fight",
+    "elite": "trinket",
+    "mystery": "risk",
+    "rest": "recover",
+    "market": "trade",
+    "boss": "final destination",
+}
+DUNGEON_RISK_PROFILES: tuple[dict[str, str], ...] = (
+    {"kind": "elite", "room_type": "elite", "title": "Elite ambush", "preview": "A harder fight. A clean clear drops a trinket and run coins."},
+    {"kind": "quiz", "room_type": "encounter", "title": "Risk quiz", "preview": "A failed answer costs HP; a clean answer yields run coins."},
+    {"kind": "reward", "room_type": "cache", "title": "Hidden cache", "preview": "Open the cache for a bounded coin and supply reward."},
+    {"kind": "debuff", "room_type": "shrine", "title": "Hexed route", "preview": "The next failed submission costs extra HP, but the curse cannot end a run by itself."},
+    {"kind": "buff", "room_type": "shrine", "title": "Ember blessing", "preview": "The next clean submission deals bonus Resolve damage."},
+    {"kind": "teleport", "room_type": "corridor", "title": "Folding corridor", "preview": "Distance bends ahead; the route is committed when you enter."},
+    {"kind": "discount", "room_type": "market", "title": "Discount stall", "preview": "Buy one rotating supply at a starting-value discount."},
+    {"kind": "armory", "room_type": "market", "title": "Sealed armory", "preview": "Choose one weapon or armor piece from the bounded shelf."},
+)
+
+# Dungeon classes are part of the run contract rather than Campaign equipment.
+# The browser may present these bounded choices, but the selected passive and
+# starter loadout are recorded by the state service and restored with the run.
+DUNGEON_CLASS_CATALOG: tuple[dict[str, Any], ...] = (
+    {
+        "id": "syntax-warden",
+        "name": "Syntax Warden",
+        "role": "The guarded opener",
+        "passive": "The first syntax-error submission each floor deals no HP damage.",
+        "starter_weapon": "Lint Lantern",
+        "starter_weapon_id": "dungeon-lint-lantern",
+        "starting_coins": 0,
+        "extra_heals": 0,
+        "resolve_bonus": 0,
+        "syntax_guard": True,
+    },
+    {
+        "id": "resolve-duelist",
+        "name": "Resolve Duelist",
+        "role": "The clean finisher",
+        "passive": "Clean submissions deal +1 Resolve damage in this run.",
+        "starter_weapon": "Loopblade",
+        "starter_weapon_id": "dungeon-loopblade",
+        "starting_coins": 0,
+        "extra_heals": 0,
+        "resolve_bonus": 1,
+        "syntax_guard": False,
+    },
+    {
+        "id": "route-merchant",
+        "name": "Route Merchant",
+        "role": "The prepared wayfarer",
+        "passive": "Start with +20 run coins and one extra heal charge.",
+        "starter_weapon": "Branch Compass",
+        "starter_weapon_id": "dungeon-branch-compass",
+        "starting_coins": 20,
+        "extra_heals": 1,
+        "resolve_bonus": 0,
+        "syntax_guard": False,
+    },
+)
+DUNGEON_CLASSES_BY_ID: dict[str, dict[str, Any]] = {item["id"]: item for item in DUNGEON_CLASS_CATALOG}
+
 # A Dungeon room is a custom learning mob, not a second campaign enemy list.
 # These names are server-owned presentation labels for the currently issued
 # question type; the concept focus, phase and all score/reward values remain
@@ -137,7 +237,10 @@ DUNGEON_MOB_ARCHETYPES: dict[str, dict[str, str]] = {
     "short_explanation": {"name": "The Echo Scribe", "category": "explanation"},
     "code_trace": {"name": "The Trace Weaver", "category": "execution trace"},
     "bug_hunt": {"name": "The Boundary Hunter", "category": "bug hunt"},
-    "code_checkpoint": {"name": "The Checkpoint Golem", "category": "code craft"},
+    # Keep the first teaching gate aligned with the prototype's authored
+    # encounter.  The question, concept and difficulty still come from the
+    # current state-owned question; this is presentation metadata only.
+    "code_checkpoint": {"name": "The Count Keeper", "category": "loops"},
     "output_prediction": {"name": "The Output Oracle", "category": "prediction"},
     "refactoring": {"name": "The Shape Shifter", "category": "refactoring"},
 }
@@ -200,6 +303,8 @@ class ActionDefinition:
 ACTION_DEFINITIONS: dict[str, ActionDefinition] = {
     "homestead_purchase": ActionDefinition(frozenset({"player"})),
     "homestead_equip": ActionDefinition(frozenset({"player"})),
+    "homestead_room_upgrade": ActionDefinition(frozenset({"player"})),
+    "homestead_action": ActionDefinition(frozenset({"player"})),
     "equip_equipment": ActionDefinition(frozenset({"player"})),
     "record_learning_event": ActionDefinition(frozenset({"pyr"})),
     "record_reference_mode": ActionDefinition(frozenset({"pyr"})),
@@ -223,10 +328,14 @@ ACTION_DEFINITIONS: dict[str, ActionDefinition] = {
     "dungeon_record_verdict": ActionDefinition(frozenset({SYSTEM_ACTOR}), internal=True),
     "dungeon_record_death": ActionDefinition(frozenset({SYSTEM_ACTOR}), internal=True),
     "dungeon_use_rest": ActionDefinition(frozenset({"player"})),
+    "dungeon_camp_action": ActionDefinition(frozenset({"player"})),
+    "dungeon_reveal_risk": ActionDefinition(frozenset({"player"})),
+    "dungeon_enter_risk": ActionDefinition(frozenset({"player"})),
     "dungeon_market_purchase": ActionDefinition(frozenset({"player"})),
     "dungeon_equip_item": ActionDefinition(frozenset({"player"})),
     "dungeon_leave_room": ActionDefinition(frozenset({"player"})),
     "dungeon_finish_run": ActionDefinition(frozenset({"player"})),
+    "dungeon_reset_run": ActionDefinition(frozenset({"player"})),
 }
 
 PUBLIC_ACTIONS = frozenset(action for action, definition in ACTION_DEFINITIONS.items() if not definition.internal)
@@ -239,58 +348,58 @@ ENCOUNTER_PROFILES: tuple[dict[str, Any], ...] = (
     {
         "max_resolve": 4,
         "objectives": {
-            "table_setup": {"impact": 2, "question_type": "prediction"},
-            "state_explanation": {"impact": 2, "question_type": "explanation"},
+            "table_setup": {"impact": 2, "question_type": "prediction", "label": "Set up the table", "brief": "Identify the state the program must remember before the first turn."},
+            "state_explanation": {"impact": 2, "question_type": "explanation", "label": "Explain the state", "brief": "Explain how the chosen state values change during a turn."},
         },
     },
     {
         "max_resolve": 6,
         "objectives": {
-            "hand_model": {"impact": 3, "question_type": "code_checkpoint"},
-            "deal_reasoning": {"impact": 3, "question_type": "explanation"},
+            "hand_model": {"impact": 3, "question_type": "code_checkpoint", "label": "Model the hand", "brief": "Show how a hand or deck can be represented without copying a project answer."},
+            "deal_reasoning": {"impact": 3, "question_type": "explanation", "label": "Reason about a deal", "brief": "Explain why the next card selection belongs in the current state flow."},
         },
     },
     {
         "max_resolve": 9,
         "objectives": {
-            "trace_total": {"impact": 3, "question_type": "prediction"},
-            "running_total": {"impact": 3, "question_type": "code_checkpoint"},
-            "loop_explanation": {"impact": 3, "question_type": "explanation"},
+            "trace_total": {"impact": 3, "question_type": "prediction", "label": "Trace the total", "brief": "Predict how a running total changes across the next repeated values."},
+            "running_total": {"impact": 3, "question_type": "code_checkpoint", "label": "Update the total", "brief": "Demonstrate the checkpoint that updates a running total safely."},
+            "loop_explanation": {"impact": 3, "question_type": "explanation", "label": "Explain the loop", "brief": "Explain the loop state and when one iteration ends."},
         },
     },
     {
         "max_resolve": 8,
         "objectives": {
-            "choice_flow": {"impact": 4, "question_type": "code_checkpoint"},
-            "stop_condition": {"impact": 4, "question_type": "bug_diagnosis"},
+            "choice_flow": {"impact": 4, "question_type": "code_checkpoint", "label": "Build the choice flow", "brief": "Show the player-choice path while keeping the loop state explicit."},
+            "stop_condition": {"impact": 4, "question_type": "bug_diagnosis", "label": "Find the stop condition", "brief": "Diagnose what should end the repeated choice flow and why."},
         },
     },
     {
         "max_resolve": 7,
         "objectives": {
-            "outcome_classification": {"impact": 3, "question_type": "prediction"},
-            "branch_reasoning": {"impact": 4, "question_type": "explanation"},
+            "outcome_classification": {"impact": 3, "question_type": "prediction", "label": "Classify an outcome", "brief": "Predict which outcome a changed total and condition should produce."},
+            "branch_reasoning": {"impact": 4, "question_type": "explanation", "label": "Explain the branch", "brief": "Explain why the selected branch handles this outcome."},
         },
     },
     {
         "max_resolve": 8,
         "objectives": {
-            "function_boundary": {"impact": 4, "question_type": "code_checkpoint"},
-            "return_reasoning": {"impact": 4, "question_type": "explanation"},
+            "function_boundary": {"impact": 4, "question_type": "code_checkpoint", "label": "Choose a function boundary", "brief": "Show one focused function boundary and the data it should receive."},
+            "return_reasoning": {"impact": 4, "question_type": "explanation", "label": "Explain the return", "brief": "Explain what the function returns and how the caller uses it."},
         },
     },
     {
         "max_resolve": 7,
         "objectives": {
-            "compare_states": {"impact": 3, "question_type": "prediction"},
-            "winner_justification": {"impact": 4, "question_type": "explanation"},
+            "compare_states": {"impact": 3, "question_type": "prediction", "label": "Compare states", "brief": "Predict which final state should win from the available values."},
+            "winner_justification": {"impact": 4, "question_type": "explanation", "label": "Justify the winner", "brief": "Give a concise reason for the winner without relying on copied project logic."},
         },
     },
     {
         "max_resolve": 8,
         "objectives": {
-            "reset_state": {"impact": 4, "question_type": "code_checkpoint"},
-            "loop_explanation": {"impact": 4, "question_type": "explanation"},
+            "reset_state": {"impact": 4, "question_type": "code_checkpoint", "label": "Reset the state", "brief": "Show how a finished round can reset without leaking the previous state."},
+            "loop_explanation": {"impact": 4, "question_type": "explanation", "label": "Explain the reset loop", "brief": "Explain the order of operations when the next round begins."},
         },
     },
 )
@@ -331,6 +440,62 @@ BOSS_PHASE_LABELS: dict[str, str] = {
     "interview": "Interview",
 }
 
+# State-owned encounter rules for the small mechanics panel in Forge.  These
+# are descriptive outcomes, not a second provider answer key: the gateway
+# still decides whether a submission is valid and how much canonical Impact it
+# applies.  Only the current encounter receives this projection.
+ENCOUNTER_MECHANICS: tuple[dict[str, str], ...] = (
+    {
+        "id": "execution_gate",
+        "label": "Clean run",
+        "detail": "A syntax or startup error blocks the objective from dealing Resolve damage.",
+        "outcome": "No damage until the file runs.",
+    },
+    {
+        "id": "bug_feedback",
+        "label": "Bug feedback",
+        "detail": "Runtime or test failures expose the broken path so PYR can coach the next attempt.",
+        "outcome": "The verdict stays state-owned.",
+    },
+    {
+        "id": "verified_goal",
+        "label": "Verified goal",
+        "detail": "A correct current quest applies the canonical Impact shown beside it.",
+        "outcome": "Resolve drops; the next quest appears.",
+    },
+)
+
+# Boss metadata is a presentation-safe projection, not a second answer key.
+# The current goal is always the first unverified requirement; each verified
+# goal applies its canonical damage to the boss Resolve bar.  PYR may explain
+# or adjudicate the goal, but it cannot choose the damage, reward, or a future
+# prompt from the browser.
+BOSS_REQUIREMENT_SPECS: dict[str, dict[str, Any]] = {
+    "required_behavior": {
+        "label": "Required behaviour",
+        "question_type": "code_checkpoint",
+        "impact": 4,
+        "brief": "Show the required campaign behaviour working in your active Forge file.",
+    },
+    "explanation": {
+        "label": "Explain the design",
+        "question_type": "explanation",
+        "impact": 3,
+        "brief": "Explain the important state boundary and why the implementation behaves that way.",
+    },
+    "interview": {
+        "label": "Teach it back",
+        "question_type": "interview",
+        "impact": 5,
+        "brief": "Teach the core idea back using your own words and project evidence.",
+    },
+}
+BOSS_REWARD_ENVELOPE: dict[str, Any] = {
+    "xp": 100,
+    "coins": 0,
+    "authorized_items": [],
+}
+
 # The library is deliberately generic.  These pages teach transferable Python
 # ideas without carrying a project answer key or a future encounter prompt.
 # Encounter-specific observations remain in the canonical Codex records.
@@ -341,7 +506,11 @@ CODEX_CONCEPT_PAGES: tuple[dict[str, Any], ...] = (
         "aliases": ("variable", "variables", "program state", "state"),
         "definition": "A variable gives a meaningful name to a value so a program can read or update its state.",
         "examples": ("score = 0\nscore = score + 1", "name = input('Name: ')\nprint(name)"),
+        "when_to_use": "Use variables when a value needs a clear name so later lines can read it, update it or explain its current state.",
         "question_types": ("prediction", "explanation", "code_checkpoint"),
+        "common_mistakes": ("Changing a different variable than the one the next line reads.", "Using a name before assigning its first value."),
+        "mistake_examples": ("total = 0\ncount = count + 1  # changes a different name", "print(score)  # score has not been assigned yet"),
+        "check_prompt": "Can you explain what value changes after each assignment?",
     },
     {
         "id": "input-output",
@@ -349,7 +518,11 @@ CODEX_CONCEPT_PAGES: tuple[dict[str, Any], ...] = (
         "aliases": ("input", "output", "input/output"),
         "definition": "Input brings data into a program; output communicates a result to a person or another system.",
         "examples": ("city = input('City: ')\nprint(f'You chose {city}')",),
+        "when_to_use": "Use input and output when a program needs to receive a value, transform it, and make the result visible or usable elsewhere.",
         "question_types": ("prediction", "explanation"),
+        "common_mistakes": ("Treating input text as a number without converting it.", "Printing a value before the program has received it."),
+        "mistake_examples": ("age = input('Age: ')\nprint(age + 1)  # input returns text", "print(answer)\nanswer = input('Answer: ')  # read first"),
+        "check_prompt": "What enters the program, and what leaves it?",
     },
     {
         "id": "lists",
@@ -357,7 +530,11 @@ CODEX_CONCEPT_PAGES: tuple[dict[str, Any], ...] = (
         "aliases": ("list", "lists", "collection", "random selection"),
         "definition": "A list keeps an ordered, changeable sequence of values that can be indexed or iterated.",
         "examples": ("colors = ['red', 'blue']\ncolors.append('gold')\nprint(colors[0])",),
+        "when_to_use": "Use a list when order matters and you need to keep, inspect or iterate over a changeable collection of related values.",
         "question_types": ("code_checkpoint", "prediction", "explanation"),
+        "common_mistakes": ("Forgetting that list indexes start at zero.", "Changing a list while assuming its length stayed the same."),
+        "mistake_examples": ("colors = ['red', 'blue']\nprint(colors[1])  # the first item is index 0", "items = ['a', 'b']\nitems.append('c')\nprint(len(items))  # now 3"),
+        "check_prompt": "Which value is at each index before and after the update?",
     },
     {
         "id": "loops",
@@ -365,7 +542,11 @@ CODEX_CONCEPT_PAGES: tuple[dict[str, Any], ...] = (
         "aliases": ("loop", "loops", "iteration", "totals", "running total"),
         "definition": "A loop repeats a block while walking through values or while a condition remains true.",
         "examples": ("total = 0\nfor value in [2, 4, 6]:\n    total += value",),
+        "when_to_use": "Use a loop when the same rule must run for each value or until a clearly changing condition says the work is complete.",
         "question_types": ("prediction", "code_checkpoint", "explanation"),
+        "common_mistakes": ("Putting the update outside the loop by accident.", "Using a condition that never changes in a while loop."),
+        "mistake_examples": ("total = 0\nfor value in [2, 4, 6]:\n    pass\ntotal += value  # update happens once", "running = True\nwhile running:\n    print('again')  # running never changes"),
+        "check_prompt": "What changes on every iteration, and what makes the loop stop?",
     },
     {
         "id": "conditionals",
@@ -373,7 +554,11 @@ CODEX_CONCEPT_PAGES: tuple[dict[str, Any], ...] = (
         "aliases": ("conditional", "conditionals", "branch", "branches"),
         "definition": "A conditional chooses which code path runs by evaluating a Boolean expression.",
         "examples": ("if temperature > 30:\n    label = 'hot'\nelse:\n    label = 'mild'",),
+        "when_to_use": "Use a conditional when different inputs need different paths, especially at boundaries where the normal and fallback cases must both be explicit.",
         "question_types": ("prediction", "bug_diagnosis", "explanation"),
+        "common_mistakes": ("Comparing a value with assignment syntax.", "Leaving an important branch without a defined result."),
+        "mistake_examples": ("if score = 10:\n    print('ten')  # comparison needs ==", "if ready:\n    message = 'go'\nprint(message)  # no result when ready is false"),
+        "check_prompt": "Which branch runs for one normal case and one boundary case?",
     },
     {
         "id": "functions",
@@ -381,7 +566,11 @@ CODEX_CONCEPT_PAGES: tuple[dict[str, Any], ...] = (
         "aliases": ("function", "functions", "return", "function boundary"),
         "definition": "A function packages a named operation with inputs and an explicit result or side effect.",
         "examples": ("def double(value):\n    return value * 2\n\nanswer = double(4)",),
+        "when_to_use": "Use a function when a named piece of logic has a clear input/output boundary that you want to reuse or test separately.",
         "question_types": ("code_checkpoint", "explanation", "bug_diagnosis"),
+        "common_mistakes": ("Defining parameters that the caller never supplies.", "Printing inside a function when the caller needs a returned value."),
+        "mistake_examples": ("def add(a, b):\n    return a + b\nadd(2)  # b is missing", "def double(value):\n    print(value * 2)\nresult = double(4)  # result is None"),
+        "check_prompt": "What goes in, what comes out, and where is the boundary?",
     },
     {
         "id": "dictionaries",
@@ -389,7 +578,11 @@ CODEX_CONCEPT_PAGES: tuple[dict[str, Any], ...] = (
         "aliases": ("dictionary", "dictionaries", "mapping", "lookup"),
         "definition": "A dictionary maps unique keys to values so related data can be looked up by name.",
         "examples": ("prices = {'tea': 3, 'cake': 5}\nprint(prices.get('tea', 0))",),
+        "when_to_use": "Use a dictionary when each value is best found by a meaningful key rather than by a numeric position in a sequence.",
         "question_types": ("code_checkpoint", "prediction", "explanation"),
+        "common_mistakes": ("Looking up a key that is not present without a fallback.", "Confusing a key with the value stored under it."),
+        "mistake_examples": ("prices = {'tea': 3}\nprint(prices['cake'])  # key may be missing", "prices = {'tea': 3}\nprint(prices[3])  # 3 is a value, not the key"),
+        "check_prompt": "Which key is being looked up, and what should happen if it is missing?",
     },
     {
         "id": "control-flow",
@@ -397,7 +590,11 @@ CODEX_CONCEPT_PAGES: tuple[dict[str, Any], ...] = (
         "aliases": ("control flow", "input loops", "reset state", "program loops"),
         "definition": "Control flow combines sequence, branches, loops and state updates; reset logic returns state to a known boundary.",
         "examples": ("running = True\nwhile running:\n    running = False",),
+        "when_to_use": "Use explicit control-flow boundaries when a program must move through steps, choose a branch, repeat work, and then return to a known state.",
         "question_types": ("code_checkpoint", "bug_diagnosis", "explanation"),
+        "common_mistakes": ("Resetting state too early or in the wrong branch.", "Adding a loop without a reachable exit condition."),
+        "mistake_examples": ("score = 0\nif reset:\n    score = 0\nscore += 1  # reset happened before the update", "while True:\n    print('stuck')  # no reachable break"),
+        "check_prompt": "Where does the program start, branch, repeat, and return to a known state?",
     },
     {
         "id": "random-selection",
@@ -405,7 +602,11 @@ CODEX_CONCEPT_PAGES: tuple[dict[str, Any], ...] = (
         "aliases": ("random selection", "random"),
         "definition": "Random selection chooses a value from a collection; keeping the chosen value visible makes the result explainable and testable.",
         "examples": ("import random\nchoice = random.choice(['left', 'right'])",),
+        "when_to_use": "Use random selection when the program should choose from several valid outcomes; keep the choice observable so behavior can still be explained and tested.",
         "question_types": ("prediction", "explanation", "code_checkpoint"),
+        "common_mistakes": ("Expecting a random result to be repeatable without controlling the seed.", "Hiding the chosen value so the result cannot be explained or tested."),
+        "mistake_examples": ("import random\n# tests expect the same result without random.seed(1)", "choice = random.choice(['left', 'right'])\n# no print or return means the choice is hidden"),
+        "check_prompt": "What values are possible, and how could you make one result observable?",
     },
 )
 
@@ -426,8 +627,8 @@ SYNC_PLAYER_FIELDS = frozenset(
 )
 SYNC_EQUIPMENT_FIELDS = frozenset({"armor", "trinket", "title", "owned_armor", "owned_trinkets"})
 SYNC_EQUIPMENT_LIST_FIELDS = frozenset({"owned_armor", "owned_trinkets"})
-SYNC_COMPANION_FIELDS = frozenset({"name", "form", "level", "bond", "next_form", "next_form_requirement"})
-SYNC_HOMESTEAD_FIELDS = frozenset({"name", "owned_cosmetics", "equipped"})
+SYNC_COMPANION_FIELDS = frozenset({"name", "form", "level", "bond", "next_form", "next_form_requirement", "energy", "max_energy", "fed_count", "training_count"})
+SYNC_HOMESTEAD_FIELDS = frozenset({"name", "owned_cosmetics", "equipped", "room_upgrades", "upgrade_tokens", "upgrade_effects"})
 SYNC_HOMESTEAD_EQUIPPED_FIELDS = frozenset({"theme", "cursor", "hud", "terminal"})
 SYNC_CAMPAIGN_FIELDS = frozenset(
     {
@@ -1011,6 +1212,19 @@ class LocalStateService:
             raise StateCommandError(f"{field} must be bounded text without control characters")
         return normalized
 
+    @staticmethod
+    def _campaign_multiline(value: object, field: str, *, max_bytes: int) -> str:
+        """Validate bounded learner-authored code while preserving line breaks."""
+
+        if not isinstance(value, str):
+            raise StateCommandError(f"{field} must be text")
+        normalized = value.replace("\r\n", "\n").replace("\r", "\n").replace("\x00", "")
+        if not normalized.strip() or any(ord(character) < 32 and character not in {"\n", "\t"} for character in normalized):
+            raise StateCommandError(f"{field} must be bounded text without control characters")
+        if len(normalized.encode("utf-8")) > max_bytes:
+            raise StateCommandError(f"{field} exceeds the bounded size")
+        return normalized
+
     @classmethod
     def _campaign_identifier(cls, value: object, field: str) -> str:
         return cls._text(value, field, max_length=MAX_IDENTIFIER_LENGTH, identifier=True)
@@ -1127,7 +1341,7 @@ class LocalStateService:
             allowed_stats = {
                 "sessions", "projects_cleared", "bosses_defeated", "mobs_defeated", "interviews_passed",
                 "interviews_failed", "mastery_shields_earned", "bugs_fixed", "explanations", "clean_clears",
-                "commits_logged", "reference_mode_uses", "guided_milestones", "recovery_trials_passed",
+                "commits_logged", "reference_mode_uses", "guided_milestones", "recovery_trials_passed", "guard_breaks",
                 "creative_bonuses", "discoveries_unlocked",
             }
             raw = cls._campaign_mapping(stats, "campaign.stats", allowed_stats)
@@ -1277,7 +1491,7 @@ class LocalStateService:
             encounters = raw_codex.get("encounters", [])
             if not isinstance(encounters, list) or len(encounters) > MAX_CODEX_RECORDS:
                 raise StateCommandError("campaign.codex.encounters must be a bounded list")
-            entry_fields = {"id", "project_id", "mob_name", "concept", "status", "question_types", "weaknesses", "notes", "player_notes", "attempts", "results", "interview_history", "mastery"}
+            entry_fields = {"id", "project_id", "mob_name", "concept", "status", "question_types", "weaknesses", "notes", "player_notes", "code_snippet", "attempts", "results", "interview_history", "mastery"}
             clean_entries: list[dict[str, Any]] = []
             for index, entry in enumerate(encounters):
                 raw = cls._campaign_mapping(entry, f"campaign.codex.encounters[{index}]", entry_fields)
@@ -1295,6 +1509,8 @@ class LocalStateService:
                     item["notes"] = cls._campaign_text_list(raw["notes"], f"campaign.codex.encounters[{index}].notes", maximum=MAX_CODEX_NOTES_PER_ENTRY, max_length=MAX_CODEX_NOTE_BYTES)
                 if "player_notes" in raw:
                     item["player_notes"] = cls._campaign_text_list(raw["player_notes"], f"campaign.codex.encounters[{index}].player_notes", maximum=MAX_CODEX_NOTES_PER_ENTRY, max_length=MAX_CODEX_NOTE_BYTES)
+                if "code_snippet" in raw and raw["code_snippet"] is not None:
+                    item["code_snippet"] = cls._campaign_multiline(raw["code_snippet"], f"campaign.codex.encounters[{index}].code_snippet", max_bytes=MAX_CODEX_SNIPPET_BYTES)
                 if "attempts" in raw:
                     item["attempts"] = cls._campaign_int(raw["attempts"], f"campaign.codex.encounters[{index}].attempts")
                 for history_field in ("results", "interview_history"):
@@ -1331,9 +1547,9 @@ class LocalStateService:
 
         dungeon = campaign.get("dungeon_run")
         if dungeon is not None:
-            raw = cls._campaign_mapping(dungeon, "campaign.dungeon_run", {"status", "run_id", "seed", "concept_id", "floor", "room", "room_type", "score", "run_coins", "started_at", "updated_at", "ended_at", "loadout", "inventory", "question", "question_number", "room_choices", "editor_content", "last_result", "history", "attempts"})
+            raw = cls._campaign_mapping(dungeon, "campaign.dungeon_run", {"status", "run_id", "seed", "class_id", "concept_id", "floor", "room", "room_type", "score", "run_coins", "started_at", "updated_at", "ended_at", "loadout", "inventory", "question", "question_number", "room_choices", "map", "risk_profile", "risk_status", "editor_content", "last_result", "history", "attempts"})
             item: dict[str, Any] = {}
-            for field in ("status", "run_id", "seed", "concept_id", "room_type"):
+            for field in ("status", "run_id", "seed", "class_id", "concept_id", "room_type"):
                 if field in raw:
                     item[field] = cls._campaign_text(raw[field], f"campaign.dungeon_run.{field}", max_length=MAX_IDENTIFIER_LENGTH)
             for field in ("started_at", "updated_at", "ended_at"):
@@ -1343,14 +1559,14 @@ class LocalStateService:
                 if field in raw:
                     item[field] = cls._campaign_int(raw[field], f"campaign.dungeon_run.{field}", maximum=MAX_DUNGEON_FLOOR if field in {"floor", "room"} else MAX_SYNC_COUNTER)
             if "loadout" in raw and raw["loadout"] is not None:
-                loadout = cls._campaign_mapping(raw["loadout"], "campaign.dungeon_run.loadout", {"armor", "trinket", "hp", "max_hp", "heals", "coins"})
+                loadout = cls._campaign_mapping(raw["loadout"], "campaign.dungeon_run.loadout", {"weapon", "armor", "trinket", "hp", "max_hp", "heals", "coins", "bandages", "rations", "vision_scrolls", "tonics", "edge_charges", "armor_guard"})
                 clean_loadout: dict[str, Any] = {}
-                for field in ("armor", "trinket"):
+                for field in ("weapon", "armor", "trinket"):
                     if field in loadout and loadout[field] is not None:
                         clean_loadout[field] = cls._campaign_text(loadout[field], f"campaign.dungeon_run.loadout.{field}", max_length=MAX_IDENTIFIER_LENGTH)
                     elif field in loadout:
                         clean_loadout[field] = None
-                for field in ("hp", "max_hp", "heals", "coins"):
+                for field in ("hp", "max_hp", "heals", "coins", "bandages", "rations", "vision_scrolls", "tonics", "edge_charges", "armor_guard"):
                     if field in loadout:
                         clean_loadout[field] = cls._campaign_int(loadout[field], f"campaign.dungeon_run.loadout.{field}")
                 item["loadout"] = clean_loadout
@@ -1360,12 +1576,12 @@ class LocalStateService:
                     raise StateCommandError("campaign.dungeon_run.inventory must be a bounded list")
                 clean_inventory: list[dict[str, Any]] = []
                 for index, entry in enumerate(raw_inventory):
-                    raw_entry = cls._campaign_mapping(entry, f"campaign.dungeon_run.inventory[{index}]", {"id", "name", "kind", "armor", "trinket", "description"})
+                    raw_entry = cls._campaign_mapping(entry, f"campaign.dungeon_run.inventory[{index}]", {"id", "name", "kind", "weapon", "armor", "trinket", "description"})
                     clean_entry: dict[str, Any] = {}
                     for field in ("id", "kind"):
                         if field in raw_entry:
                             clean_entry[field] = cls._campaign_identifier(raw_entry[field], f"campaign.dungeon_run.inventory[{index}].{field}")
-                    for field in ("name", "armor", "trinket", "description"):
+                    for field in ("name", "weapon", "armor", "trinket", "description"):
                         if field in raw_entry and raw_entry[field] is not None:
                             clean_entry[field] = cls._campaign_text(raw_entry[field], f"campaign.dungeon_run.inventory[{index}].{field}", max_length=300)
                     clean_inventory.append(clean_entry)
@@ -1399,6 +1615,56 @@ class LocalStateService:
                             clean_choice[field] = cls._campaign_text(raw_choice[field], f"campaign.dungeon_run.room_choices[{index}].{field}", max_length=300)
                     clean_choices.append(clean_choice)
                 item["room_choices"] = clean_choices
+            if "map" in raw and raw["map"] is not None:
+                raw_map = cls._campaign_mapping(raw["map"], "campaign.dungeon_run.map", {"floor", "nodes", "edges", "current_node_id", "visited_node_ids"})
+                clean_map: dict[str, Any] = {}
+                if "floor" in raw_map:
+                    clean_map["floor"] = cls._campaign_int(raw_map["floor"], "campaign.dungeon_run.map.floor", maximum=MAX_DUNGEON_FLOOR)
+                for field in ("current_node_id",):
+                    if field in raw_map and raw_map[field] is not None:
+                        clean_map[field] = cls._campaign_identifier(raw_map[field], f"campaign.dungeon_run.map.{field}")
+                if "visited_node_ids" in raw_map:
+                    visited = raw_map["visited_node_ids"]
+                    if not isinstance(visited, list) or len(visited) > 64:
+                        raise StateCommandError("campaign.dungeon_run.map.visited_node_ids must be bounded")
+                    clean_map["visited_node_ids"] = [cls._campaign_identifier(value, f"campaign.dungeon_run.map.visited_node_ids[{index}]") for index, value in enumerate(visited)]
+                if "nodes" in raw_map:
+                    nodes = raw_map["nodes"]
+                    if not isinstance(nodes, list) or len(nodes) > 64:
+                        raise StateCommandError("campaign.dungeon_run.map.nodes must be bounded")
+                    clean_nodes: list[dict[str, Any]] = []
+                    for index, node in enumerate(nodes):
+                        raw_node = cls._campaign_mapping(node, f"campaign.dungeon_run.map.nodes[{index}]", {"id", "type", "row", "column", "label", "note"})
+                        clean_node: dict[str, Any] = {}
+                        for field in ("id", "type"):
+                            if field in raw_node:
+                                clean_node[field] = cls._campaign_identifier(raw_node[field], f"campaign.dungeon_run.map.nodes[{index}].{field}")
+                        for field in ("row", "column"):
+                            if field in raw_node:
+                                clean_node[field] = cls._campaign_int(raw_node[field], f"campaign.dungeon_run.map.nodes[{index}].{field}", maximum=16)
+                        for field in ("label", "note"):
+                            if field in raw_node:
+                                clean_node[field] = cls._campaign_text(raw_node[field], f"campaign.dungeon_run.map.nodes[{index}].{field}", max_length=120)
+                        clean_nodes.append(clean_node)
+                    clean_map["nodes"] = clean_nodes
+                if "edges" in raw_map:
+                    edges = raw_map["edges"]
+                    if not isinstance(edges, Mapping) or len(edges) > 64:
+                        raise StateCommandError("campaign.dungeon_run.map.edges must be bounded")
+                    clean_map["edges"] = {
+                        cls._campaign_identifier(key, f"campaign.dungeon_run.map.edges[{key}]"): [
+                            cls._campaign_identifier(value, f"campaign.dungeon_run.map.edges[{key}][]")
+                            for value in values
+                        ]
+                        for key, values in edges.items()
+                        if isinstance(values, list) and len(values) <= 8
+                    }
+                item["map"] = clean_map
+            if "risk_profile" in raw and raw["risk_profile"] is not None:
+                profile = cls._campaign_mapping(raw["risk_profile"], "campaign.dungeon_run.risk_profile", {"kind", "room_type", "title", "preview"})
+                item["risk_profile"] = {field: cls._campaign_text(profile[field], f"campaign.dungeon_run.risk_profile.{field}", max_length=300) for field in ("kind", "room_type", "title", "preview") if field in profile}
+            if "risk_status" in raw and raw["risk_status"] is not None:
+                item["risk_status"] = cls._campaign_identifier(raw["risk_status"], "campaign.dungeon_run.risk_status")
             if "editor_content" in raw:
                 item["editor_content"] = cls._campaign_text(raw["editor_content"], "campaign.dungeon_run.editor_content", max_length=8_000) if raw["editor_content"] else ""
             for field in ("last_result",):
@@ -1526,7 +1792,7 @@ class LocalStateService:
                     "sessions", "projects_cleared", "bosses_defeated", "mobs_defeated", "interviews_passed",
                     "interviews_failed", "mastery_shields_earned", "bugs_fixed", "explanations", "clean_clears",
                     "commits_logged", "reference_mode_uses", "guided_milestones", "recovery_trials_passed",
-                    "creative_bonuses", "discoveries_unlocked",
+                    "creative_bonuses", "discoveries_unlocked", "guard_breaks",
                 },
             )
         if isinstance(progress.get("achievements"), list):
@@ -1571,7 +1837,7 @@ class LocalStateService:
             for entry in progress["codex"].get("encounters", []):
                 if not isinstance(entry, Mapping):
                     continue
-                item = pick(entry, {"id", "project_id", "mob_name", "concept", "status", "question_types", "weaknesses", "notes", "player_notes", "attempts"})
+                item = pick(entry, {"id", "project_id", "mob_name", "concept", "status", "question_types", "weaknesses", "notes", "player_notes", "code_snippet", "attempts"})
                 for history_field in ("results", "interview_history"):
                     if isinstance(entry.get(history_field), list):
                         item[history_field] = [pick(result, {"outcome", "evidence_id", "reason", "recorded_at"}) for result in entry[history_field] if isinstance(result, Mapping)]
@@ -1584,10 +1850,10 @@ class LocalStateService:
             if raw_run is None:
                 campaign["dungeon_run"] = None
             elif isinstance(raw_run, Mapping):
-                run_fields = {"status", "run_id", "seed", "concept_id", "floor", "room", "room_type", "score", "run_coins", "started_at", "updated_at", "ended_at", "question_number", "editor_content", "attempts"}
+                run_fields = {"status", "run_id", "seed", "class_id", "concept_id", "floor", "room", "room_type", "score", "run_coins", "started_at", "updated_at", "ended_at", "question_number", "editor_content", "attempts", "risk_profile", "risk_status"}
                 item = pick(raw_run, run_fields)
                 if isinstance(raw_run.get("loadout"), Mapping):
-                    item["loadout"] = pick(raw_run["loadout"], {"armor", "trinket", "hp", "max_hp", "heals", "coins"})
+                    item["loadout"] = pick(raw_run["loadout"], {"weapon", "armor", "trinket", "hp", "max_hp", "heals", "coins", "bandages", "rations", "vision_scrolls", "tonics", "edge_charges", "armor_guard"})
                 if isinstance(raw_run.get("inventory"), list):
                     item["inventory"] = [pick(entry, {"id", "name", "kind", "armor", "trinket", "description"}) for entry in raw_run["inventory"] if isinstance(entry, Mapping)]
                 if isinstance(raw_run.get("question"), Mapping):
@@ -1596,6 +1862,15 @@ class LocalStateService:
                     item["question"] = None
                 if isinstance(raw_run.get("room_choices"), list):
                     item["room_choices"] = [pick(choice, {"id", "kind", "label", "description"}) for choice in raw_run["room_choices"] if isinstance(choice, Mapping)]
+                if isinstance(raw_run.get("map"), Mapping):
+                    raw_map = raw_run["map"]
+                    item["map"] = {
+                        "floor": raw_map.get("floor"),
+                        "current_node_id": raw_map.get("current_node_id"),
+                        "visited_node_ids": list(raw_map.get("visited_node_ids") or []),
+                        "nodes": [pick(node, {"id", "type", "row", "column", "label", "note"}) for node in raw_map.get("nodes", []) if isinstance(node, Mapping)],
+                        "edges": {str(key): [str(value) for value in values] for key, values in (raw_map.get("edges") or {}).items() if isinstance(values, list)},
+                    }
                 if "editor_content" not in item:
                     item["editor_content"] = ""
                 if isinstance(raw_run.get("last_result"), Mapping):
@@ -1683,9 +1958,11 @@ class LocalStateService:
             for field in ("name", "form", "next_form", "next_form_requirement"):
                 if field in companion:
                     clean_companion[field] = cls._sync_text(companion[field], f"companion.{field}")
-            for field in ("level", "bond"):
+            for field in ("level", "bond", "energy", "max_energy", "fed_count", "training_count"):
                 if field in companion:
-                    clean_companion[field] = cls._integer(companion[field], f"companion.{field}", minimum=0, maximum=MAX_SYNC_LEVEL)
+                    clean_companion[field] = cls._integer(companion[field], f"companion.{field}", minimum=0, maximum=MAX_SYNC_COUNTER)
+            if "energy" in clean_companion and "max_energy" in clean_companion and clean_companion["energy"] > clean_companion["max_energy"]:
+                raise StateCommandError("companion.energy must not exceed companion.max_energy")
             validated["companion"] = clean_companion
 
         homestead = projection.get("homestead")
@@ -1701,6 +1978,21 @@ class LocalStateService:
             owned = cls._sync_list(homestead["owned_cosmetics"], "homestead.owned_cosmetics") if "owned_cosmetics" in homestead else None
             if owned is not None:
                 clean_homestead["owned_cosmetics"] = owned
+            room_upgrades = cls._sync_list(homestead["room_upgrades"], "homestead.room_upgrades") if "room_upgrades" in homestead else None
+            if room_upgrades is not None:
+                invalid_upgrades = [item for item in room_upgrades if item not in HOME_ROOM_UPGRADE_BY_ID]
+                if invalid_upgrades:
+                    raise StateCommandError("homestead.room_upgrades contains an unknown upgrade")
+                clean_homestead["room_upgrades"] = room_upgrades[:len(HOME_ROOM_UPGRADE_CATALOG)]
+            if "upgrade_tokens" in homestead:
+                clean_homestead["upgrade_tokens"] = cls._campaign_int(homestead["upgrade_tokens"], "homestead.upgrade_tokens")
+            if "upgrade_effects" in homestead:
+                effects = cls._campaign_mapping(homestead["upgrade_effects"], "homestead.upgrade_effects", {"max_hp_delta", "failure_damage_reduction", "resolve_impact_delta", "guard_break_heal", "meal_heal_delta"})
+                clean_homestead["upgrade_effects"] = {
+                    field: cls._campaign_int(effects[field], f"homestead.upgrade_effects.{field}")
+                    for field in ("max_hp_delta", "failure_damage_reduction", "resolve_impact_delta", "guard_break_heal", "meal_heal_delta")
+                    if field in effects
+                }
             equipped = homestead.get("equipped")
             if equipped is not None:
                 if not isinstance(equipped, Mapping):
@@ -1746,7 +2038,7 @@ class LocalStateService:
                 equipment.pop(field, None)
         companion = copy_fields(progress.get("companion"), SYNC_COMPANION_FIELDS)
         homestead_source = progress.get("homestead")
-        homestead = copy_fields(homestead_source, frozenset({"name", "owned_cosmetics", "equipped"}))
+        homestead = copy_fields(homestead_source, frozenset({"name", "owned_cosmetics", "equipped", "room_upgrades", "upgrade_tokens", "upgrade_effects"}))
         if isinstance(homestead.get("owned_cosmetics"), list):
             homestead["owned_cosmetics"] = [
                 item for item in homestead["owned_cosmetics"] if isinstance(item, str)
@@ -1761,6 +2053,24 @@ class LocalStateService:
             }
         else:
             homestead.pop("equipped", None)
+        if isinstance(homestead.get("room_upgrades"), list):
+            homestead["room_upgrades"] = [item for item in homestead["room_upgrades"] if isinstance(item, str) and item in HOME_ROOM_UPGRADE_BY_ID][:len(HOME_ROOM_UPGRADE_CATALOG)]
+        else:
+            homestead.pop("room_upgrades", None)
+        if "upgrade_tokens" in homestead:
+            try:
+                homestead["upgrade_tokens"] = max(0, min(MAX_SYNC_COUNTER, int(homestead["upgrade_tokens"])))
+            except (TypeError, ValueError):
+                homestead.pop("upgrade_tokens", None)
+        if isinstance(homestead.get("upgrade_effects"), Mapping):
+            homestead["upgrade_effects"] = {
+                field: max(0, min(MAX_SYNC_COUNTER, int(value)))
+                for field, value in homestead["upgrade_effects"].items()
+                if field in {"max_hp_delta", "failure_damage_reduction", "resolve_impact_delta", "guard_break_heal", "meal_heal_delta"}
+                and isinstance(value, int)
+            }
+        else:
+            homestead.pop("upgrade_effects", None)
         campaign_source = cls._campaign_source_projection(progress)
         campaign = cls._validate_campaign_projection(campaign_source)
         return {"player": player, "equipment": equipment, "companion": companion, "homestead": homestead, "campaign": campaign}
@@ -1804,7 +2114,7 @@ class LocalStateService:
             if isinstance(incoming_equipped, Mapping) and any(item_id not in owned for item_id in incoming_equipped.values()):
                 raise StateCommandError("Every equipped cosmetic must be owned")
             changed = False
-            for field in ("name", "owned_cosmetics", "equipped"):
+            for field in ("name", "owned_cosmetics", "equipped", "room_upgrades", "upgrade_tokens", "upgrade_effects"):
                 if field in incoming_home and target_home.get(field) != incoming_home[field]:
                     target_home[field] = incoming_home[field]
                     changed = True
@@ -1852,11 +2162,66 @@ class LocalStateService:
             phase = remaining[0]
         else:
             phase = "ready_to_clear"
+        boss_name = str(project.get("boss") or "Campaign boss")[:MAX_IDENTIFIER_LENGTH]
+        project_name = str(project.get("name") or project.get("branch") or "this chapter")[:MAX_REASON_LENGTH]
+        configured_lore = project.get("boss_lore")
+        configured_brief = project.get("boss_brief")
+        boss_lore = (
+            str(configured_lore).strip()[:MAX_REASON_LENGTH]
+            if isinstance(configured_lore, str) and configured_lore.strip()
+            else f"{boss_name} guards the final boundary of {project_name}."
+        )
+        boss_brief = (
+            str(configured_brief).strip()[:MAX_REASON_LENGTH]
+            if isinstance(configured_brief, str) and configured_brief.strip()
+            else "Break the gate one verified goal at a time. The next goal appears only after the current one is validated."
+        )
+        requirement_projection: list[dict[str, Any]] = []
+        max_resolve = 0
+        resolved_damage = 0
+        for requirement_id in BOSS_REQUIREMENTS:
+            spec = BOSS_REQUIREMENT_SPECS.get(requirement_id, {})
+            try:
+                impact = max(1, min(MAX_IMPACT, int(spec.get("impact", 1))))
+            except (TypeError, ValueError):
+                impact = 1
+            max_resolve += impact
+            is_verified = requirement_id in verified_ids
+            if is_verified:
+                resolved_damage += impact
+            requirement_projection.append(
+                {
+                    "id": requirement_id,
+                    "label": str(spec.get("label") or BOSS_PHASE_LABELS.get(requirement_id) or requirement_id.replace("_", " ").title()),
+                    "question_type": str(spec.get("question_type") or "verified"),
+                    "impact": impact,
+                    "damage": impact,
+                    "brief": str(spec.get("brief") or "Submit evidence for the current boss goal.")[:MAX_REASON_LENGTH],
+                    "quest": str(spec.get("quest") or spec.get("brief") or "Complete the current boss goal.")[:MAX_REASON_LENGTH],
+                    "status": "verified" if is_verified else ("current" if requirement_id == phase else "locked"),
+                }
+            )
+        current_requirement = next(
+            (item for item in requirement_projection if item["id"] == phase),
+            None,
+        )
+        boss_max_resolve = max(1, max_resolve)
+        boss_resolve = 0 if phase in {"ready_to_clear", "complete"} else max(0, boss_max_resolve - resolved_damage)
+        reward_envelope = dict(BOSS_REWARD_ENVELOPE)
         return {
             "verified_boss_requirements": verified_ids,
             "remaining_boss_requirements": remaining,
             "boss_phase": phase,
             "boss_phase_label": BOSS_PHASE_LABELS.get(phase, "Boss validation complete" if phase == "ready_to_clear" else "Boss clear"),
+            "boss_lore": boss_lore,
+            "boss_brief": boss_brief,
+            "boss_max_resolve": boss_max_resolve,
+            "boss_resolve": boss_resolve,
+            "boss_current_requirement": current_requirement if phase in BOSS_REQUIREMENTS else None,
+            "current_quest": current_requirement if phase in BOSS_REQUIREMENTS else None,
+            "boss_requirements_projection": requirement_projection,
+            "mechanics": [dict(item) for item in ENCOUNTER_MECHANICS],
+            "reward_envelope": reward_envelope,
         }
 
     def encounter_projection(self, progress: Mapping[str, Any]) -> dict[str, Any] | None:
@@ -1898,12 +2263,19 @@ class LocalStateService:
                 "mob_name": None,
                 "mob_index": None,
                 "status": "complete" if project_completed else "boss_available",
-                "resolve": 0,
-                "max_resolve": 0,
+                "resolve": boss_validation["boss_resolve"],
+                "max_resolve": boss_validation["boss_max_resolve"],
                 "completed_objectives": [],
                 "available_objectives": [],
                 "attempts": 0,
                 "question_types": [],
+                "mob": None,
+                "mechanics": [dict(item) for item in ENCOUNTER_MECHANICS],
+                "current_quest": boss_validation.get("current_quest"),
+                # The envelope is the only reward preview exposed to the UI;
+                # the clear mutation remains the authority for the actual
+                # reward and any unlocks.
+                "reward_envelope": boss_validation["reward_envelope"],
             }
 
         mob = mobs[index]
@@ -1929,8 +2301,24 @@ class LocalStateService:
             resolve = max_resolve
         completed = matching.get("completed_objectives")
         completed_ids = [item for item in completed if isinstance(item, str)][:20] if isinstance(completed, list) else []
+        concept = str(mob.get("concept") or "Current campaign concept")
+        encounter_brief = str(
+            mob.get("encounter")
+            or f"Reason about {concept.lower()} using your own project evidence."
+        )
+        encounter_lore = str(
+            mob.get("lore")
+            or mob.get("background")
+            or f"A bounded field encounter testing {concept.lower()}."
+        )
         available = [
-            {"id": objective_id, "impact": int(definition["impact"]), "question_type": str(definition["question_type"])}
+            {
+                "id": objective_id,
+                "label": str(definition.get("label") or objective_id.replace("_", " ").title()),
+                "brief": str(definition.get("brief") or "Submit your own evidence for this objective."),
+                "impact": int(definition["impact"]),
+                "question_type": str(definition["question_type"]),
+            }
             for objective_id, definition in profile["objectives"].items()
             if objective_id not in completed_ids
         ]
@@ -1940,6 +2328,7 @@ class LocalStateService:
             attempts = max(0, int(matching.get("attempts", mob.get("objective_attempts", 0)) or 0))
         except (TypeError, ValueError):
             attempts = 0
+        reward_xp, reward_coins = MOB_REWARDS[min(index, len(MOB_REWARDS) - 1)]
         return {
             "project_id": project_id,
             "project_name": str(project.get("name") or project.get("branch") or ""),
@@ -1958,6 +2347,22 @@ class LocalStateService:
             "available_objectives": available,
             "attempts": attempts,
             "question_types": observed_types,
+            "current_quest": available[0] if available else None,
+            "mechanics": [dict(item) for item in ENCOUNTER_MECHANICS],
+            "mob": {
+                "name": mob_name,
+                "index": index,
+                "concept": concept,
+                "lore": encounter_lore,
+                "brief": encounter_brief,
+            },
+            # This is a preview for the currently available mob only.  The
+            # mutation event remains the authority for rewards and unlocks.
+            "reward_envelope": {
+                "xp": reward_xp,
+                "coins": reward_coins,
+                "authorized_items": [],
+            },
         }
 
     @staticmethod
@@ -2045,6 +2450,14 @@ class LocalStateService:
                 "description": "Starter armor for this Dungeon run.",
             }
             items = [starter]
+            if loadout.get("weapon"):
+                items.insert(0, {
+                    "id": "dungeon-starter-weapon",
+                    "name": str(loadout.get("weapon")),
+                    "kind": "weapon",
+                    "weapon": str(loadout.get("weapon")),
+                    "description": "Starter weapon for this Dungeon run.",
+                })
             if mutate:
                 run["inventory"] = items
             return items
@@ -2057,7 +2470,7 @@ class LocalStateService:
             item_id = item.get("id")
             name = item.get("name")
             kind = item.get("kind")
-            if not isinstance(item_id, str) or not item_id.strip() or not isinstance(name, str) or not name.strip() or kind not in {"armor", "trinket"}:
+            if not isinstance(item_id, str) or not item_id.strip() or not isinstance(name, str) or not name.strip() or kind not in {"weapon", "armor", "trinket"}:
                 raise StateCommandError(f"Existing Dungeon inventory item {index} is invalid", status_code=500)
             clean = {
                 "id": item_id[:MAX_IDENTIFIER_LENGTH],
@@ -2065,7 +2478,9 @@ class LocalStateService:
                 "kind": kind,
                 "description": str(item.get("description") or "")[:300],
             }
-            if kind == "armor":
+            if kind == "weapon":
+                clean["weapon"] = str(item.get("weapon") or name)[:MAX_IDENTIFIER_LENGTH]
+            elif kind == "armor":
                 clean["armor"] = str(item.get("armor") or name)[:MAX_IDENTIFIER_LENGTH]
             else:
                 clean["trinket"] = str(item.get("trinket") or name)[:MAX_IDENTIFIER_LENGTH]
@@ -2117,7 +2532,11 @@ class LocalStateService:
         """
 
         concept = str(run.get("concept_id") or "python-basics")
-        difficulty = min(MAX_DUNGEON_DIFFICULTY, max(1, 1 + (floor - 1) // 2))
+        room_type = str(run.get("room_type") or "encounter")
+        difficulty = min(
+            MAX_DUNGEON_DIFFICULTY,
+            max(1, 1 + (floor - 1) // 2 + (2 if room_type == "elite" else 3 if room_type == "boss" else 0)),
+        )
         types = ("true_false", "multiple_choice", "code_checkpoint", "bug_hunt", "short_explanation")
         question_type = types[(room - 1) % len(types)]
         prompt_by_type = {
@@ -2148,7 +2567,7 @@ class LocalStateService:
         enemies, prompts or answer keys before it commits a route.
         """
 
-        if run.get("room_type") != "encounter":
+        if run.get("room_type") not in {"encounter", "elite", "boss"}:
             return None
         question = run.get("question")
         if not isinstance(question, Mapping):
@@ -2163,6 +2582,49 @@ class LocalStateService:
         except (TypeError, ValueError):
             difficulty = 1
         phase_index = min(len(_DUNGEON_MOB_PHASES) - 1, (difficulty - 1) // 3)
+        room_type = str(run.get("room_type") or "encounter")
+        max_resolve = {"encounter": 6, "elite": 8, "boss": 12}.get(room_type, 6)
+        score_index = min(difficulty, len(DUNGEON_SCORE_BY_DIFFICULTY) - 1)
+        class_data = DUNGEON_CLASSES_BY_ID.get(str(run.get("class_id") or ""), {})
+        loadout = run.get("loadout") if isinstance(run.get("loadout"), Mapping) else {}
+        clean_impact = DUNGEON_SCORE_BY_DIFFICULTY[score_index] + max(0, int(class_data.get("resolve_bonus", 0) or 0))
+        if int(loadout.get("edge_charges", 0) or 0) > 0:
+            clean_impact += 1
+        guide_steps = [
+            {"id": "setup", "label": "Name the result or state you need to track", "resolve_damage": 1, "inference_signals": ["assignment", "result"]},
+            {"id": "iterate", "label": "Build the loop or repeated check", "resolve_damage": 2, "inference_signals": ["for", "while", "iteration"]},
+            {"id": "filter", "label": "Apply the condition that selects the right values", "resolve_damage": 2, "inference_signals": ["if", "condition", "comparison"]},
+            {"id": "finish", "label": "Return, print, or otherwise expose the result", "resolve_damage": 1, "inference_signals": ["return", "print", "output"]},
+        ]
+        floor = max(1, int(run.get("floor", 1) or 1))
+        guide_tier = "full" if floor <= 2 else "partial" if floor <= 4 else "question"
+        profile_by_room = {
+            "encounter": {
+                "label": "Submission Gate",
+                "weapon": "Bounded verifier",
+                "passive": "Only a validated submission changes this room.",
+                "telegraph": "Run is a safe local preview; Submit is the combat turn.",
+                "on_run": "No HP or Resolve is spent while you work.",
+                "on_failure": "An incorrect verdict costs bounded run HP and returns a text hint.",
+            },
+            "elite": {
+                "label": "Trinket Warden",
+                "weapon": "Counter-check gauntlet",
+                "passive": "The elite keeps its trinket until the answer is verified.",
+                "telegraph": "A clean file clears the gate; errors trigger the normal failure cost.",
+                "on_run": "Run previews locally and cannot claim the trinket.",
+                "on_failure": "The run takes bounded damage; no loot is invented or granted early.",
+            },
+            "boss": {
+                "label": "Floor Boss",
+                "weapon": "Final objective check",
+                "passive": "The converged route stays locked until the current file is verified.",
+                "telegraph": "The next floor is revealed only after the state service accepts the answer.",
+                "on_run": "Local self-checks never bypass the boss verdict.",
+                "on_failure": "An incorrect verdict costs bounded HP and keeps the floor locked.",
+            },
+        }
+        profile = profile_by_room.get(room_type, profile_by_room["encounter"])
         return {
             "id": f"{question.get('id', 'dungeon-question')}-mob",
             "name": archetype["name"],
@@ -2171,11 +2633,233 @@ class LocalStateService:
             "question_type": question_type,
             "difficulty": difficulty,
             "phase": _DUNGEON_MOB_PHASES[phase_index],
+            "room_type": room_type,
+            "max_resolve": max_resolve,
+            "resolve": max_resolve,
+            "resolve_damage": clean_impact,
+            "guide": {"tier": guide_tier, "steps": guide_steps},
+            "mechanic": profile,
+            "reward_envelope": {
+                "score": DUNGEON_SCORE_BY_DIFFICULTY[score_index],
+                "coins": DUNGEON_COIN_BY_DIFFICULTY[score_index],
+                "authorized_items": ["trinket"] if room_type == "elite" else [],
+            },
+            "lore": (
+                "A harder gate guarding a temporary trinket drop."
+                if run.get("room_type") == "elite"
+                else "The final keeper of this floor waits at the converging paths."
+                if run.get("room_type") == "boss"
+                else "A bounded learning mob shaped around the current concept."
+            ),
         }
+
+    @classmethod
+    def _dungeon_map_node_id(cls, floor: int, row: int, column: int) -> str:
+        return f"f{floor}-r{row}-c{column}"
+
+    @classmethod
+    def _dungeon_map_seed_byte(cls, seed: str, floor: int, row: int, column: int) -> int:
+        digest = hashlib.sha256(f"{seed}:{floor}:{row}:{column}".encode("utf-8")).digest()
+        return digest[0]
+
+    @classmethod
+    def _dungeon_generate_map(cls, seed: str, *, floor: int = 1) -> dict[str, Any]:
+        """Create one deterministic, state-owned branching map.
+
+        The prototype's authored shape is retained: three lanes, a shared
+        boss destination, and a preparation-only row before the boss.  Room
+        types are randomised from the run seed, with only the safety rules the
+        prototype established (a recovery row after an unusually dangerous
+        row and at least one combat room before the boss).
+        """
+
+        try:
+            safe_floor = max(1, min(MAX_DUNGEON_FLOOR, int(floor)))
+        except (TypeError, ValueError):
+            safe_floor = 1
+        nodes: list[dict[str, Any]] = []
+        row_names = ("I", "II", "III", "IV", "V", "VI", "VII", "VIII")
+        start = {
+            "id": cls._dungeon_map_node_id(safe_floor, 1, 3),
+            "type": "rest",
+            "row": 1,
+            "column": 3,
+            "label": "Camp I",
+            "note": "start",
+        }
+        nodes.append(start)
+        combat_seen = False
+        for row in range(2, DUNGEON_MAP_ROWS):
+            row_nodes: list[dict[str, Any]] = []
+            for column in DUNGEON_MAP_NODE_COLUMNS:
+                if row == DUNGEON_MAP_ROWS - 1:
+                    kind = DUNGEON_MAP_FINAL_PREP_TYPES[
+                        cls._dungeon_map_seed_byte(seed, safe_floor, row, column) % len(DUNGEON_MAP_FINAL_PREP_TYPES)
+                    ]
+                else:
+                    kind = DUNGEON_MAP_ROOM_TYPES[
+                        cls._dungeon_map_seed_byte(seed, safe_floor, row, column) % len(DUNGEON_MAP_ROOM_TYPES)
+                    ]
+                if kind in {"encounter", "elite"}:
+                    combat_seen = True
+                label = (
+                    f"Gate {row_names[row - 1]}" if kind == "encounter" else
+                    f"Camp {row_names[row - 1]}" if kind == "rest" else
+                    "Elite" if kind == "elite" else
+                    "Market" if kind == "market" else
+                    "Fate"
+                )
+                row_nodes.append({
+                    "id": cls._dungeon_map_node_id(safe_floor, row, column),
+                    "type": kind,
+                    "row": row,
+                    "column": column,
+                    "label": label,
+                    "note": DUNGEON_MAP_ROOM_NOTES[kind],
+                })
+            elite_count = sum(1 for item in row_nodes if item["type"] == "elite")
+            gate_count = sum(1 for item in row_nodes if item["type"] == "encounter")
+            has_camp = any(item["type"] == "rest" for item in row_nodes)
+            has_market = any(item["type"] == "market" for item in row_nodes)
+            nodes.extend(row_nodes)
+            # Preserve the prototype's recovery safeguards without imposing a
+            # quota on ordinary rows.
+            if row < DUNGEON_MAP_ROWS - 1 and (elite_count >= 2 or gate_count == 3):
+                next_row = [item for item in nodes if item["row"] == row + 1]
+                for item in next_row:
+                    if item["column"] == 1:
+                        item.update(type="rest", label=f"Camp {row_names[row]}", note="recover")
+                    elif item["column"] == 5:
+                        item.update(type="market", label="Market", note="trade")
+            elif not has_camp:
+                end_type = "rest" if has_market else "market"
+                for item in row_nodes:
+                    if item["column"] == 5:
+                        item.update(type=end_type, label=f"Camp {row_names[row - 1]}" if end_type == "rest" else "Market", note=DUNGEON_MAP_ROOM_NOTES[end_type])
+        # Apply row safeguards after all rows exist so the recovery row is
+        # actually present in the generated map.
+        by_row = {row: [item for item in nodes if item["row"] == row] for row in range(2, DUNGEON_MAP_ROWS)}
+        for row in range(2, DUNGEON_MAP_ROWS - 1):
+            row_nodes = by_row[row]
+            elite_count = sum(1 for item in row_nodes if item["type"] == "elite")
+            gate_count = sum(1 for item in row_nodes if item["type"] == "encounter")
+            has_camp = any(item["type"] == "rest" for item in row_nodes)
+            has_market = any(item["type"] == "market" for item in row_nodes)
+            if elite_count >= 2 or gate_count == 3:
+                for item in by_row.get(row + 1, []):
+                    if item["column"] == 1:
+                        item.update(type="rest", label=f"Camp {row_names[row]}", note="recover")
+                    elif item["column"] == 5:
+                        item.update(type="market", label="Market", note="trade")
+            elif not has_camp:
+                end_type = "rest" if has_market else "market"
+                for item in row_nodes:
+                    if item["column"] == 5:
+                        item.update(type=end_type, label=f"Camp {row_names[row - 1]}" if end_type == "rest" else "Market", note=DUNGEON_MAP_ROOM_NOTES[end_type])
+
+        if not combat_seen:
+            candidates = [item for item in nodes if 2 <= item["row"] < DUNGEON_MAP_ROWS]
+            if candidates:
+                forced = candidates[0]
+                forced.update(type="encounter", label=f"Gate {row_names[forced['row'] - 1]}", note="fight")
+        boss = {
+            "id": cls._dungeon_map_node_id(safe_floor, DUNGEON_MAP_ROWS, 3),
+            "type": "boss",
+            "row": DUNGEON_MAP_ROWS,
+            "column": 3,
+            "label": "The Count Keeper",
+            "note": DUNGEON_MAP_ROOM_NOTES["boss"],
+        }
+        nodes.append(boss)
+        edges: dict[str, list[str]] = {}
+        by_row_column = {(item["row"], item["column"]): item for item in nodes}
+        edges[start["id"]] = [by_row_column[(2, column)]["id"] for column in DUNGEON_MAP_NODE_COLUMNS]
+        for row in range(2, DUNGEON_MAP_ROWS - 1):
+            for column in DUNGEON_MAP_NODE_COLUMNS:
+                node = by_row_column[(row, column)]
+                edges[node["id"]] = [by_row_column[(row + 1, column)]["id"]]
+        for column in DUNGEON_MAP_NODE_COLUMNS:
+            edges[by_row_column[(DUNGEON_MAP_ROWS - 1, column)]["id"]] = [boss["id"]]
+        edges[boss["id"]] = []
+        return {
+            "floor": safe_floor,
+            "nodes": nodes,
+            "edges": edges,
+            "current_node_id": start["id"],
+            "visited_node_ids": [start["id"]],
+        }
+
+    @classmethod
+    def _dungeon_map_for_run(cls, run: Mapping[str, Any]) -> dict[str, Any] | None:
+        raw = run.get("map")
+        if not isinstance(raw, Mapping):
+            # Older checkpoints predate the prototype map.  Project a
+            # deterministic compatibility map without silently changing the
+            # saved run; the first route selection will persist it through the
+            # normal state mutation path.
+            seed = run.get("seed")
+            if not isinstance(seed, str) or not seed.strip():
+                return None
+            route = cls._dungeon_generate_map(seed, floor=run.get("floor", 1))
+            room_type = str(run.get("room_type") or "selector")
+            if room_type != "selector":
+                current = next((node for node in route["nodes"] if node.get("type") == room_type and node.get("row", 0) < DUNGEON_MAP_ROWS), None)
+                if current is None:
+                    current = next((node for node in route["nodes"] if node.get("row", 0) == 2), route["nodes"][0])
+                    # Keep a legacy checkpoint's visible room coherent with
+                    # its persisted room_type.  This is an ephemeral
+                    # projection-only adjustment; the save is not rewritten
+                    # until the player takes a normal gateway action.
+                    current["type"] = room_type
+                    current["label"] = DUNGEON_MAP_ROOM_LABELS.get(room_type, "Current room")
+                    current["note"] = DUNGEON_MAP_ROOM_NOTES.get(room_type, "current")
+                route["current_node_id"] = current.get("id")
+                route["visited_node_ids"] = [route["nodes"][0].get("id"), current.get("id")]
+            return route
+        nodes = raw.get("nodes")
+        edges = raw.get("edges")
+        if not isinstance(nodes, list) or not isinstance(edges, Mapping):
+            return None
+        return {
+            "floor": raw.get("floor", run.get("floor", 1)),
+            "nodes": [dict(item) for item in nodes if isinstance(item, Mapping)],
+            "edges": {str(key): list(value) for key, value in edges.items() if isinstance(value, list)},
+            "current_node_id": raw.get("current_node_id"),
+            "visited_node_ids": [str(item) for item in raw.get("visited_node_ids", []) if isinstance(item, str)],
+        }
+
+    @classmethod
+    def _dungeon_current_map_node(cls, run: Mapping[str, Any]) -> dict[str, Any] | None:
+        route = cls._dungeon_map_for_run(run)
+        if not route:
+            return None
+        current_id = route.get("current_node_id")
+        return next((item for item in route["nodes"] if item.get("id") == current_id), None)
 
     @classmethod
     def _dungeon_route_choices(cls, run: Mapping[str, Any]) -> list[dict[str, str]]:
         """Build the answer-free route selector for the current map node."""
+
+        route = cls._dungeon_map_for_run(run)
+        if route:
+            current_id = route.get("current_node_id")
+            next_ids = route.get("edges", {}).get(current_id, []) if isinstance(route.get("edges"), Mapping) else []
+            visited = set(route.get("visited_node_ids", []))
+            choices: list[dict[str, str]] = []
+            for node_id in next_ids:
+                node = next((item for item in route.get("nodes", []) if item.get("id") == node_id), None)
+                if not isinstance(node, Mapping) or node_id in visited:
+                    continue
+                kind = str(node.get("type") or "encounter")
+                choices.append(
+                    {
+                        "id": str(node_id),
+                        "kind": kind,
+                        "label": str(node.get("label") or DUNGEON_MAP_ROOM_LABELS.get(kind, "Next room")),
+                        "description": str(node.get("note") or DUNGEON_MAP_ROOM_NOTES.get(kind, "Choose this route.")),
+                    }
+                )
+            return choices
 
         room = cls._integer(run.get("room", 1), "room", minimum=1, maximum=MAX_DUNGEON_ROOM)
         # Keep the visible route variety deterministic for a checkpoint while
@@ -2207,11 +2891,22 @@ class LocalStateService:
         next_room = min(MAX_DUNGEON_ROOM, current_room + 1) if advance else current_room
         floor = max(1, cls._integer(run.get("floor", 1), "floor", minimum=1, maximum=MAX_DUNGEON_FLOOR))
         floor = max(floor, 1 + (next_room - 1) // 10)
-        run["room"] = next_room
-        run["floor"] = floor
+        route = cls._dungeon_map_for_run(run)
+        if route:
+            # The map node is advanced by dungeon_choose_room.  Resolving a
+            # room returns to the selector without inventing another node.
+            run["room"] = current_room
+            run["floor"] = max(1, cls._integer(route.get("floor", floor), "map.floor", minimum=1, maximum=MAX_DUNGEON_FLOOR))
+        else:
+            run["room"] = next_room
+            run["floor"] = floor
         run["room_type"] = "selector"
         run["room_choices"] = cls._dungeon_route_choices(run)
         run["question"] = None
+        run["camp_action_used"] = False
+        run.setdefault("next_failure_multiplier", 1)
+        run["risk_profile"] = None
+        run["risk_status"] = None
         run["editor_content"] = ""
         run["updated_at"] = _utc_now()
         return run
@@ -2238,15 +2933,28 @@ class LocalStateService:
         if choice is None:
             raise StateCommandError("That Dungeon route is no longer available", status_code=409)
         kind = self._text(choice.get("kind"), "choice.kind", max_length=MAX_IDENTIFIER_LENGTH, identifier=True)
-        if kind not in {"encounter", "rest", "market"}:
+        if kind not in {"encounter", "elite", "mystery", "rest", "market", "boss"}:
             raise StateCommandError("Unsupported Dungeon route", status_code=500)
+        route = self._dungeon_map_for_run(run)
+        if route:
+            node = next((item for item in route["nodes"] if item.get("id") == choice_id), None)
+            if not isinstance(node, Mapping):
+                raise StateCommandError("That Dungeon route is no longer available", status_code=409)
+            route["current_node_id"] = choice_id
+            visited = list(route.get("visited_node_ids", []))
+            if choice_id not in visited:
+                visited.append(choice_id)
+            route["visited_node_ids"] = visited[-MAX_SYNC_DUNGEON_HISTORY:]
+            run["map"] = route
+            run["room"] = max(1, self._integer(node.get("row", run.get("room", 1)), "map.row", minimum=1, maximum=MAX_DUNGEON_ROOM))
+            run["floor"] = max(1, self._integer(route.get("floor", run.get("floor", 1)), "map.floor", minimum=1, maximum=MAX_DUNGEON_FLOOR))
         run["room_choices"] = []
         run["room_type"] = kind
         run["editor_content"] = ""
         run["updated_at"] = _utc_now()
         question_id = None
         mob = None
-        if kind == "encounter":
+        if kind in {"encounter", "elite", "boss"}:
             run["concept_id"] = self._dungeon_adaptive_concept(progress, str(run.get("concept_id") or "python-basics"))
             run["question_number"] = self._counter(run, "question_number") + 1
             question = self._dungeon_question_for_room(
@@ -2257,6 +2965,12 @@ class LocalStateService:
             run["question"] = question
             question_id = question["id"]
             mob = self._dungeon_mob_spec(run)
+        elif kind == "mystery":
+            seed = str(run.get("seed") or run.get("run_id") or "dungeon")
+            node_id = str(choice_id)
+            digest = hashlib.sha256(f"{seed}:{node_id}:risk".encode("utf-8")).digest()
+            run["risk_profile"] = dict(DUNGEON_RISK_PROFILES[digest[0] % len(DUNGEON_RISK_PROFILES)])
+            run["risk_status"] = "unrevealed"
         else:
             run["question"] = None
         return Mutation(
@@ -2322,6 +3036,8 @@ class LocalStateService:
             "status": status,
             "run_id": run.get("run_id"),
             "seed": run.get("seed"),
+            "class_id": run.get("class_id") or "syntax-warden",
+            "class": None,
             "concept_id": run.get("concept_id"),
             "floor": run.get("floor", 0),
             "room": run.get("room", 0),
@@ -2335,11 +3051,18 @@ class LocalStateService:
             "question": None,
             "encounter": None,
             "room_choices": [],
+            "map": None,
+            "current_node": None,
+            "visited_node_ids": [],
+            "risk_profile": None,
+            "risk_status": None,
+            "camp_action_used": bool(run.get("camp_action_used", False)),
+            "next_failure_multiplier": max(1, self._counter(run, "next_failure_multiplier") or 1),
             "editor_content": "",
             "last_result": None,
             "history": [],
             "inventory": [],
-            "market_catalog": self._dungeon_market_catalog() if status == "active" and run.get("room_type") == "market" else [],
+            "market_catalog": [],
             "leaderboard": [],
         }
         for field in ("floor", "room", "score", "run_coins"):
@@ -2347,21 +3070,61 @@ class LocalStateService:
                 projection[field] = max(0, int(projection[field] or 0))
             except (TypeError, ValueError) as exc:
                 raise StateCommandError(f"Existing Dungeon field {field} is invalid", status_code=500) from exc
+        if status == "active" and run.get("room_type") == "market":
+            discount = min(90, self._counter(run, "market_discount"))
+            projection["market_catalog"] = [
+                {**item, "price": max(0, (int(item["price"]) * (100 - discount) + 99) // 100) if discount else item["price"]}
+                for item in self._dungeon_market_catalog()
+            ]
         loadout = run.get("loadout")
         if not isinstance(loadout, Mapping):
             raise StateCommandError("Existing Dungeon loadout is invalid", status_code=500)
-        projection["loadout"] = {
-            field: loadout[field]
-            for field in ("armor", "trinket", "hp", "max_hp", "heals", "coins")
-            if field in loadout
+        starter_defaults = DUNGEON_CLASSES_BY_ID.get(str(projection["class_id"]), DUNGEON_CLASSES_BY_ID["syntax-warden"])
+        loadout_defaults = {
+            "weapon": starter_defaults.get("starter_weapon", "Lint Lantern"),
+            "armor": "Apprentice Coat",
+            "trinket": None,
+            "hp": 100,
+            "max_hp": 100,
+            "heals": 1,
+            "coins": 0,
+            "bandages": 1,
+            "rations": 1,
+            "vision_scrolls": 0,
+            "tonics": 0,
+            "edge_charges": 0,
+            "armor_guard": 0,
         }
+        projection["loadout"] = {
+            field: loadout.get(field, loadout_defaults[field])
+            for field in ("weapon", "armor", "trinket", "hp", "max_hp", "heals", "coins", "bandages", "rations", "vision_scrolls", "tonics", "edge_charges", "armor_guard")
+        }
+        selected_class = DUNGEON_CLASSES_BY_ID.get(str(projection["class_id"]))
+        if selected_class is not None:
+            projection["class"] = {
+                field: selected_class[field]
+                for field in ("id", "name", "role", "passive", "starter_weapon", "resolve_bonus", "syntax_guard")
+                if field in selected_class
+            }
         inventory = self._dungeon_inventory_entries(run)
+        inventory = [dict(item) for item in inventory]
+        if not any(item.get("kind") == "weapon" for item in inventory):
+            inventory.insert(0, {
+                "id": starter_defaults.get("starter_weapon_id", "dungeon-lint-lantern"),
+                "name": starter_defaults.get("starter_weapon", "Lint Lantern"),
+                "kind": "weapon",
+                "weapon": starter_defaults.get("starter_weapon", "Lint Lantern"),
+                "description": "Starter weapon for this Dungeon run.",
+            })
+        equipped_weapon = projection["loadout"].get("weapon")
         equipped_armor = projection["loadout"].get("armor")
         equipped_trinket = projection["loadout"].get("trinket")
         projection["inventory"] = [
             {
                 **item,
                 "equipped": (
+                    item.get("kind") == "weapon" and item.get("weapon") == equipped_weapon
+                ) or (
                     item.get("kind") == "armor" and item.get("armor") == equipped_armor
                 ) or (
                     item.get("kind") == "trinket" and item.get("trinket") == equipped_trinket
@@ -2377,7 +3140,7 @@ class LocalStateService:
                 if field in question
             }
             projection["encounter"] = self._dungeon_mob_spec(run)
-        elif status == "active" and run.get("room_type") not in {"rest", "market", "selector"}:
+        elif status == "active" and run.get("room_type") not in {"rest", "market", "selector", "mystery", "cache", "shrine", "corridor"}:
             raise StateCommandError("Active Dungeon run has no current question", status_code=500)
         raw_choices = run.get("room_choices", [])
         if raw_choices is None:
@@ -2393,6 +3156,46 @@ class LocalStateService:
             for item in raw_choices
             if isinstance(item, Mapping)
         ]
+        route = self._dungeon_map_for_run(run)
+        if route:
+            projection["map"] = {
+                "floor": route.get("floor", projection.get("floor", 1)),
+                "nodes": [
+                    {
+                        key: item[key]
+                        for key in ("id", "type", "row", "column", "label", "note")
+                        if key in item
+                    }
+                    for item in route.get("nodes", [])
+                    if isinstance(item, Mapping)
+                ],
+                "edges": {
+                    str(key): [str(value) for value in values if isinstance(value, str)]
+                    for key, values in route.get("edges", {}).items()
+                    if isinstance(values, list)
+                },
+                "current_node_id": route.get("current_node_id"),
+            }
+            projection["visited_node_ids"] = list(route.get("visited_node_ids", []))
+            current_node = self._dungeon_current_map_node(run)
+            if current_node:
+                projection["current_node"] = {
+                    key: current_node[key]
+                    for key in ("id", "type", "row", "column", "label", "note")
+                    if key in current_node
+                }
+        risk_profile = run.get("risk_profile")
+        # A risk scroll is the only authority allowed to reveal the authored
+        # profile.  Never leak a hidden room's title/preview in the public
+        # projection; React can still render the generic risk shell.
+        risk_visible = str(run.get("risk_status") or "") in {"revealed", "entered"}
+        if isinstance(risk_profile, Mapping) and risk_visible:
+            projection["risk_profile"] = {
+                key: risk_profile[key]
+                for key in ("kind", "room_type", "title", "preview")
+                if key in risk_profile
+            }
+            projection["risk_status"] = str(run.get("risk_status") or "unrevealed")
         editor_content = run.get("editor_content", "")
         if not isinstance(editor_content, str):
             raise StateCommandError("Existing Dungeon editor content is invalid", status_code=500)
@@ -2451,7 +3254,7 @@ class LocalStateService:
         progress["dungeon_leaderboard"] = board[:MAX_DUNGEON_LEADERBOARD]
 
     def _dungeon_start_run(self, payload: Mapping[str, Any], progress: dict[str, Any]) -> Mutation:
-        data = self._payload(payload, {"concept_id", "seed"}, set())
+        data = self._payload(payload, {"concept_id", "seed", "class_id"}, set())
         existing = self._dungeon_run(progress)
         if isinstance(existing, dict) and existing.get("status") == "active":
             raise StateCommandError("An active Dungeon run already exists", status_code=409)
@@ -2462,6 +3265,10 @@ class LocalStateService:
         concept_id = self._text(concept_id, "concept_id", max_length=MAX_IDENTIFIER_LENGTH)
         seed = data.get("seed") or uuid.uuid4().hex
         seed = self._text(seed, "seed", max_length=MAX_IDENTIFIER_LENGTH, identifier=True)
+        class_id = self._text(data.get("class_id") or "syntax-warden", "class_id", max_length=MAX_IDENTIFIER_LENGTH, identifier=True)
+        starter_class = DUNGEON_CLASSES_BY_ID.get(class_id)
+        if starter_class is None:
+            raise StateCommandError("Unknown Dungeon class", status_code=422)
         run_id = f"dungeon-{uuid.uuid4().hex}"
         player = self._dict(progress, "player")
         maximum = self._counter(player, "max_hp") or 100
@@ -2470,24 +3277,39 @@ class LocalStateService:
             "status": "active",
             "run_id": run_id,
             "seed": seed,
+            "class_id": class_id,
             "concept_id": concept_id,
             "floor": 1,
             "room": 1,
             "room_type": "selector",
             "score": 0,
-            "run_coins": 0,
+            "run_coins": int(starter_class.get("starting_coins", 0) or 0),
             "started_at": now,
             "updated_at": now,
             "ended_at": None,
             "loadout": {
+                "weapon": starter_class["starter_weapon"],
                 "armor": "Apprentice Coat",
                 "trinket": None,
                 "hp": maximum,
                 "max_hp": maximum,
-                "heals": 1,
-                "coins": 0,
+                "heals": 1 + int(starter_class.get("extra_heals", 0) or 0),
+                "coins": int(starter_class.get("starting_coins", 0) or 0),
+                "bandages": 1,
+                "rations": 1,
+                "vision_scrolls": 0,
+                "tonics": 0,
+                "edge_charges": 0,
+                "armor_guard": 0,
             },
             "inventory": [
+                {
+                    "id": starter_class["starter_weapon_id"],
+                    "name": starter_class["starter_weapon"],
+                    "kind": "weapon",
+                    "weapon": starter_class["starter_weapon"],
+                    "description": f"Starter weapon for the {starter_class['name']} class.",
+                },
                 {
                     "id": "dungeon-starter-armor",
                     "name": "Apprentice Coat",
@@ -2499,6 +3321,11 @@ class LocalStateService:
             "question": None,
             "question_number": 0,
             "room_choices": [],
+            "map": self._dungeon_generate_map(seed, floor=1),
+            "risk_profile": None,
+            "risk_status": None,
+            "camp_action_used": False,
+            "next_failure_multiplier": 1,
             "editor_content": "",
             "last_result": None,
             "history": [],
@@ -2514,6 +3341,8 @@ class LocalStateService:
                 "floor": 1,
                 "room": 1,
                 "room_type": "selector",
+                "class_id": class_id,
+                "class_name": starter_class["name"],
                 "question_id": None,
                 "question_type": None,
                 "room_choices": [choice["id"] for choice in run.get("room_choices", [])],
@@ -2618,7 +3447,7 @@ class LocalStateService:
         if run.get("run_id") != run_id:
             raise StateCommandError("Dungeon run changed; reload the current run", status_code=409)
         question = run.get("question") if isinstance(run.get("question"), Mapping) else None
-        if question is None or question.get("id") != question_id or run.get("room_type") != "encounter":
+        if question is None or question.get("id") != question_id or run.get("room_type") not in {"encounter", "elite", "boss"}:
             raise StateCommandError("Dungeon question changed; reload the current room", status_code=409)
         mob = self._dungeon_mob_spec(run)
         difficulty = self._integer(question.get("difficulty", 1), "question.difficulty", minimum=1, maximum=MAX_DUNGEON_DIFFICULTY)
@@ -2629,19 +3458,29 @@ class LocalStateService:
         if verdict == "correct":
             score_delta = DUNGEON_SCORE_BY_DIFFICULTY[min(difficulty, len(DUNGEON_SCORE_BY_DIFFICULTY) - 1)]
             coins_delta = DUNGEON_COIN_BY_DIFFICULTY[min(difficulty, len(DUNGEON_COIN_BY_DIFFICULTY) - 1)]
+            loadout = self._dungeon_ensure_loadout_defaults(run)
+            class_data = DUNGEON_CLASSES_BY_ID.get(str(run.get("class_id") or ""), {})
+            score_delta += max(0, int(class_data.get("resolve_bonus", 0) or 0))
+            if self._counter(loadout, "edge_charges") > 0:
+                score_delta += 1
+                loadout["edge_charges"] = self._counter(loadout, "edge_charges") - 1
             run["score"] = self._counter(run, "score") + score_delta
             run["run_coins"] = self._counter(run, "run_coins") + coins_delta
         else:
             raw_damage = min(28, 4 + difficulty * 2)
-            loadout = run.get("loadout")
-            if not isinstance(loadout, dict):
-                raise StateCommandError("Existing Dungeon loadout is invalid", status_code=500)
+            loadout = self._dungeon_ensure_loadout_defaults(run)
+            multiplier = max(1, self._counter(run, "next_failure_multiplier") or 1)
             armor_reduction = 25 if loadout.get("armor") == "Ember Ward" else 0
-            damage = max(1, (raw_damage * (100 - armor_reduction) + 99) // 100)
+            if self._counter(loadout, "armor_guard") > 0:
+                loadout["armor_guard"] = 0
+                damage = 0
+            else:
+                damage = max(1, (raw_damage * multiplier * (100 - armor_reduction) + 99) // 100)
             current_hp = self._counter(loadout, "hp")
             loadout["hp"] = max(0, current_hp - damage)
             if loadout["armor"] == "Ember Ward":
                 loadout["armor"] = "Apprentice Coat"
+            run["next_failure_multiplier"] = 1
 
         result_record = {
             "outcome": verdict,
@@ -2689,31 +3528,190 @@ class LocalStateService:
             event.update({"next_room": run.get("room"), "next_room_type": run.get("room_type"), "question_type": (run.get("question") or {}).get("question_type") if isinstance(run.get("question"), Mapping) else None, "concept_id": (run.get("question") or {}).get("concept_id") if isinstance(run.get("question"), Mapping) else run.get("concept_id")})
         return Mutation(True, {"run": projection, **result_record, "run_died": died}, event)
 
+    def _dungeon_ensure_loadout_defaults(self, run: dict[str, Any]) -> dict[str, Any]:
+        loadout = run.get("loadout")
+        if not isinstance(loadout, dict):
+            raise StateCommandError("Existing Dungeon loadout is invalid", status_code=500)
+        starter = DUNGEON_CLASSES_BY_ID.get(str(run.get("class_id") or ""), DUNGEON_CLASSES_BY_ID["syntax-warden"])
+        defaults = {
+            "weapon": starter.get("starter_weapon", "Lint Lantern"),
+            "armor": "Apprentice Coat",
+            "trinket": None,
+            "hp": 100,
+            "max_hp": 100,
+            "heals": 1,
+            "coins": 0,
+            "bandages": 1,
+            "rations": 1,
+            "vision_scrolls": 0,
+            "tonics": 0,
+            "edge_charges": 0,
+            "armor_guard": 0,
+        }
+        for key, value in defaults.items():
+            loadout.setdefault(key, value)
+        return loadout
+
+    def _dungeon_camp_action(self, payload: Mapping[str, Any], progress: dict[str, Any]) -> Mutation:
+        data = self._payload(payload, {"run_id", "action"}, {"run_id", "action"})
+        run = self._active_dungeon_run(progress)
+        run_id = self._text(data["run_id"], "run_id", max_length=MAX_IDENTIFIER_LENGTH, identifier=True)
+        action = self._text(data["action"], "action", max_length=32, identifier=True)
+        if run.get("run_id") != run_id:
+            raise StateCommandError("Dungeon run changed; reload the current run", status_code=409)
+        if run.get("room_type") != "rest":
+            raise StateCommandError("A campsite is not currently available", status_code=409)
+        if run.get("camp_action_used"):
+            raise StateCommandError("Only one campsite action is allowed per visit", status_code=409)
+        if action not in {"rest", "bandage", "cook", "sharpen", "fortify", "tonic"}:
+            raise StateCommandError("Unsupported campsite action", status_code=422)
+        loadout = self._dungeon_ensure_loadout_defaults(run)
+        current_hp = self._counter(loadout, "hp")
+        maximum = self._counter(loadout, "max_hp")
+        healed = 0
+        if action == "rest":
+            charges = self._counter(loadout, "heals")
+            if charges <= 0:
+                raise StateCommandError("No rest charges remain in this run", status_code=409)
+            if current_hp >= maximum:
+                raise StateCommandError("HP is already full", status_code=409)
+            healed = min(DUNGEON_REST_HEAL, maximum - current_hp)
+            loadout["hp"] = current_hp + healed
+            loadout["heals"] = charges - 1
+        elif action == "bandage":
+            charges = self._counter(loadout, "bandages")
+            if charges <= 0:
+                raise StateCommandError("No field bandages remain", status_code=409)
+            if current_hp >= maximum:
+                raise StateCommandError("HP is already full", status_code=409)
+            healed = min(22, maximum - current_hp)
+            loadout["hp"] = current_hp + healed
+            loadout["bandages"] = charges - 1
+        elif action == "tonic":
+            charges = self._counter(loadout, "tonics")
+            if charges <= 0:
+                raise StateCommandError("No ember tonics remain", status_code=409)
+            if current_hp >= maximum:
+                raise StateCommandError("HP is already full", status_code=409)
+            healed = min(30, maximum - current_hp)
+            loadout["hp"] = current_hp + healed
+            loadout["tonics"] = charges - 1
+        elif action == "cook":
+            charges = self._counter(loadout, "rations")
+            if charges <= 0:
+                raise StateCommandError("No trail rations remain", status_code=409)
+            loadout["rations"] = charges - 1
+            loadout["max_hp"] = min(300, maximum + 10)
+            loadout["hp"] = min(loadout["max_hp"], current_hp + 10)
+        elif action == "sharpen":
+            if self._counter(loadout, "edge_charges") > 0:
+                raise StateCommandError("Your edge is already sharpened", status_code=409)
+            loadout["edge_charges"] = 1
+        elif action == "fortify":
+            if self._counter(loadout, "armor_guard") > 0:
+                raise StateCommandError("Your armor is already fortified", status_code=409)
+            loadout["armor_guard"] = 1
+        run["camp_action_used"] = True
+        run["last_result"] = {"outcome": "camp_action", "score_delta": 0, "coins_delta": 0, "damage": 0, "reason": action, "healed": healed}
+        self._dungeon_append_history(run, {"room": run.get("room", 1), "floor": run.get("floor", 1), "outcome": "camp_action", "score_delta": 0, "coins_delta": 0, "damage": 0})
+        return Mutation(
+            True,
+            {"run": self.dungeon_projection(progress), "action": action, "healed": healed},
+            {"run_id": run_id, "action": action, "healed": healed, "next_room": run.get("room"), "next_room_type": run.get("room_type"), "reason": "dungeon_camp_action"},
+        )
+
     def _dungeon_use_rest(self, payload: Mapping[str, Any], progress: dict[str, Any]) -> Mutation:
+        """Compatibility wrapper for the original rest endpoint."""
+
+        data = self._payload(payload, {"run_id"}, {"run_id"})
+        # The original endpoint historically advanced past the campsite.  Keep
+        # that contract for older clients/tests while the new camp-action
+        # endpoint leaves the player at the campsite so they can see the
+        # one-action result before choosing the next route.
+        mutation = self._dungeon_camp_action({"run_id": data["run_id"], "action": "rest"}, progress)
+        run = self._active_dungeon_run(progress)
+        self._dungeon_set_next_room(run, progress)
+        result = dict(mutation.result or {})
+        result["run"] = self.dungeon_projection(progress)
+        event = dict(mutation.event or {})
+        event.update({
+            "next_room": run.get("room"),
+            "next_room_type": run.get("room_type"),
+            "editor_reset": True,
+            "reason": "dungeon_rest_used",
+        })
+        return Mutation(True, result, event)
+
+    def _dungeon_reveal_risk(self, payload: Mapping[str, Any], progress: dict[str, Any]) -> Mutation:
         data = self._payload(payload, {"run_id"}, {"run_id"})
         run = self._active_dungeon_run(progress)
         run_id = self._text(data["run_id"], "run_id", max_length=MAX_IDENTIFIER_LENGTH, identifier=True)
         if run.get("run_id") != run_id:
             raise StateCommandError("Dungeon run changed; reload the current run", status_code=409)
-        if run.get("room_type") != "rest":
-            raise StateCommandError("A rest room is not currently available", status_code=409)
-        loadout = run.get("loadout")
-        if not isinstance(loadout, dict):
-            raise StateCommandError("Existing Dungeon loadout is invalid", status_code=500)
-        heals = self._counter(loadout, "heals")
-        current_hp = self._counter(loadout, "hp")
-        maximum = self._counter(loadout, "max_hp")
-        if heals <= 0:
-            raise StateCommandError("No rest charges remain in this run", status_code=409)
-        if current_hp >= maximum:
-            raise StateCommandError("HP is already full", status_code=409)
-        healed = min(DUNGEON_REST_HEAL, maximum - current_hp)
-        loadout["hp"] = current_hp + healed
-        loadout["heals"] = heals - 1
-        run["last_result"] = {"outcome": "rest", "score_delta": 0, "coins_delta": 0, "damage": 0, "reason": "dungeon_rest_used"}
-        self._dungeon_append_history(run, {"room": run.get("room", 1), "floor": run.get("floor", 1), "outcome": "rest", "score_delta": 0, "coins_delta": 0, "damage": 0})
-        self._dungeon_set_next_room(run, progress)
-        return Mutation(True, {"run": self.dungeon_projection(progress), "healed": healed}, {"run_id": run_id, "healed": healed, "next_room": run.get("room"), "next_room_type": run.get("room_type"), "editor_reset": True, "reason": "dungeon_rest_used"})
+        if run.get("room_type") != "mystery" or not isinstance(run.get("risk_profile"), Mapping):
+            raise StateCommandError("An unrevealed risk room is not currently available", status_code=409)
+        if run.get("risk_status") in {"revealed", "entered"}:
+            return Mutation(False, {"run": self.dungeon_projection(progress), "revealed": False})
+        loadout = self._dungeon_ensure_loadout_defaults(run)
+        scrolls = self._counter(loadout, "vision_scrolls")
+        if scrolls <= 0:
+            raise StateCommandError("You need a vision scroll to scout this risk", status_code=409)
+        loadout["vision_scrolls"] = scrolls - 1
+        run["risk_status"] = "revealed"
+        run["last_result"] = {"outcome": "risk_revealed", "score_delta": 0, "coins_delta": 0, "damage": 0, "reason": "vision_scroll"}
+        return Mutation(True, {"run": self.dungeon_projection(progress), "revealed": True}, {"run_id": run_id, "reason": "dungeon_risk_revealed"})
+
+    def _dungeon_enter_risk(self, payload: Mapping[str, Any], progress: dict[str, Any]) -> Mutation:
+        data = self._payload(payload, {"run_id"}, {"run_id"})
+        run = self._active_dungeon_run(progress)
+        run_id = self._text(data["run_id"], "run_id", max_length=MAX_IDENTIFIER_LENGTH, identifier=True)
+        if run.get("run_id") != run_id:
+            raise StateCommandError("Dungeon run changed; reload the current run", status_code=409)
+        profile = run.get("risk_profile")
+        if run.get("room_type") != "mystery" or not isinstance(profile, Mapping):
+            raise StateCommandError("A risk room is not currently available", status_code=409)
+        kind = self._text(profile.get("kind"), "risk_profile.kind", max_length=32, identifier=True)
+        run["risk_status"] = "entered"
+        run["last_result"] = {"outcome": "risk_entered", "score_delta": 0, "coins_delta": 0, "damage": 0, "reason": kind}
+        event: dict[str, Any] = {"run_id": run_id, "risk_kind": kind, "reason": "dungeon_risk_entered"}
+        if kind in {"elite", "quiz"}:
+            room_type = "elite" if kind == "elite" else "encounter"
+            run["room_type"] = room_type
+            run["room_choices"] = []
+            run["concept_id"] = self._dungeon_adaptive_concept(progress, str(run.get("concept_id") or "python-basics"))
+            run["question_number"] = self._counter(run, "question_number") + 1
+            question = self._dungeon_question_for_room(run, room=self._integer(run.get("room", 1), "room", minimum=1, maximum=MAX_DUNGEON_ROOM), floor=self._integer(run.get("floor", 1), "floor", minimum=1, maximum=MAX_DUNGEON_FLOOR))
+            run["question"] = question
+            run["editor_content"] = ""
+            event.update({"room_type": room_type, "question_id": question["id"], "editor_reset": True})
+        elif kind in {"discount", "armory"}:
+            run["room_type"] = "market"
+            run["room_choices"] = []
+            run["market_discount"] = 20 if kind == "discount" else 0
+            run["question"] = None
+            event.update({"room_type": "market"})
+        elif kind == "reward":
+            loadout = run.get("loadout")
+            if isinstance(loadout, dict):
+                loadout["bandages"] = min(9, self._counter(loadout, "bandages") + 1)
+            run["run_coins"] = self._counter(run, "run_coins") + 20
+            self._dungeon_set_next_room(run, progress)
+            event.update({"coins_delta": 20, "supply": "bandages", "next_room_type": "selector"})
+        elif kind == "debuff":
+            run["next_failure_multiplier"] = 2
+            self._dungeon_set_next_room(run, progress)
+            event.update({"next_failure_multiplier": 2, "next_room_type": "selector"})
+        elif kind == "buff":
+            loadout = run.get("loadout")
+            if isinstance(loadout, dict):
+                loadout["edge_charges"] = min(3, self._counter(loadout, "edge_charges") + 1)
+            self._dungeon_set_next_room(run, progress)
+            event.update({"edge_charge": True, "next_room_type": "selector"})
+        else:
+            self._dungeon_set_next_room(run, progress)
+            event.update({"next_room_type": "selector"})
+        run["updated_at"] = _utc_now()
+        return Mutation(True, {"run": self.dungeon_projection(progress), "risk_kind": kind}, event)
 
     def _dungeon_market_purchase(self, payload: Mapping[str, Any], progress: dict[str, Any]) -> Mutation:
         data = self._payload(payload, {"run_id", "item_id"}, {"run_id", "item_id"})
@@ -2728,30 +3726,38 @@ class LocalStateService:
         if item is None:
             raise StateCommandError("Unknown Dungeon market item", status_code=404)
         coins = self._counter(run, "run_coins")
-        price = self._integer(item["price"], "market.price", minimum=0, maximum=MAX_SYNC_COUNTER)
+        base_price = self._integer(item["price"], "market.price", minimum=0, maximum=MAX_SYNC_COUNTER)
+        discount = min(90, self._counter(run, "market_discount"))
+        price = max(0, (base_price * (100 - discount) + 99) // 100)
         if coins < price:
             raise StateCommandError(f"Not enough run coins for {item['name']}", status_code=409)
-        loadout = run.get("loadout")
-        if not isinstance(loadout, dict):
-            raise StateCommandError("Existing Dungeon loadout is invalid", status_code=500)
+        loadout = self._dungeon_ensure_loadout_defaults(run)
         run["run_coins"] = coins - price
         if item["kind"] == "heal":
             loadout["hp"] = min(self._counter(loadout, "max_hp"), self._counter(loadout, "hp") + 20)
-        elif item["kind"] in {"armor", "trinket"}:
+        elif item["kind"] == "supply":
+            supply = item.get("supply")
+            if not isinstance(supply, str) or supply not in {"bandages", "rations", "vision_scrolls", "tonics"}:
+                raise StateCommandError("Unknown Dungeon supply", status_code=500)
+            loadout[supply] = min(9, self._counter(loadout, supply) + 1)
+        elif item["kind"] in {"weapon", "armor", "trinket"}:
             inventory = self._dungeon_inventory_entries(run, mutate=True)
             if not any(candidate.get("id") == item["id"] for candidate in inventory):
                 inventory.append(
                     {
                         key: item[key]
-                        for key in ("id", "name", "kind", "armor", "trinket", "description")
+                        for key in ("id", "name", "kind", "weapon", "armor", "trinket", "description")
                         if key in item
                     }
                 )
                 run["inventory"] = inventory[-MAX_DUNGEON_INVENTORY:]
             # Preserve the previous market behavior while making the choice
             # reversible from the run inventory menu.
-            loadout[item["kind"]] = item["armor"] if item["kind"] == "armor" else item["trinket"]
+            slot = "weapon" if item["kind"] == "weapon" else item["kind"]
+            loadout[slot] = item[slot]
         run["last_result"] = {"outcome": "market_purchase", "coins_delta": -price, "score_delta": 0, "damage": 0, "reason": item["name"]}
+        if discount:
+            run["market_discount"] = 0
         self._dungeon_append_history(run, {"room": run.get("room", 1), "floor": run.get("floor", 1), "outcome": "market_purchase", "coins_delta": -price, "score_delta": 0, "damage": 0})
         return Mutation(True, {"run": self.dungeon_projection(progress), "item": item, "run_coins": run["run_coins"]}, {"run_id": run_id, "item_id": item_id, "item_name": item["name"], "coins_delta": -price, "reason": "dungeon_market_purchase"})
 
@@ -2766,10 +3772,8 @@ class LocalStateService:
         item = next((candidate for candidate in inventory if candidate.get("id") == item_id), None)
         if item is None:
             raise StateCommandError("That item is not in this Dungeon run inventory", status_code=404)
-        loadout = run.get("loadout")
-        if not isinstance(loadout, dict):
-            raise StateCommandError("Existing Dungeon loadout is invalid", status_code=500)
-        field = "armor" if item.get("kind") == "armor" else "trinket"
+        loadout = self._dungeon_ensure_loadout_defaults(run)
+        field = "weapon" if item.get("kind") == "weapon" else "armor" if item.get("kind") == "armor" else "trinket"
         value = item.get(field)
         if not isinstance(value, str) or not value.strip():
             raise StateCommandError("That Dungeon item cannot be equipped", status_code=422)
@@ -2806,6 +3810,28 @@ class LocalStateService:
         run["last_result"] = {"outcome": "complete", "score_delta": 0, "coins_delta": 0, "damage": 0, "reason": "dungeon_run_finished"}
         self._dungeon_record_leaderboard(progress, run, "complete")
         return Mutation(True, {"run": self.dungeon_projection(progress), "score": score}, {"run_id": run_id, "score": score, "run_finished": True, "editor_reset": True, "reason": "dungeon_run_finished"})
+
+    def _dungeon_reset_run(self, payload: Mapping[str, Any], progress: dict[str, Any]) -> Mutation:
+        """Discard only the active Dungeon checkpoint.
+
+        This is deliberately separate from ``dungeon_finish_run``: reset is a
+        local run-management operation for restarting the prototype/run setup,
+        while finish banks a score on the local Dungeon leaderboard.  Campaign
+        progress, equipment, Codex evidence and the canonical player save are
+        never changed by this action.
+        """
+
+        data = self._payload(payload, {"run_id"}, {"run_id"})
+        run = self._active_dungeon_run(progress)
+        run_id = self._text(data["run_id"], "run_id", max_length=MAX_IDENTIFIER_LENGTH, identifier=True)
+        if run.get("run_id") != run_id:
+            raise StateCommandError("Dungeon run changed; reload the current run", status_code=409)
+        progress["dungeon_run"] = None
+        return Mutation(
+            True,
+            {"run": self.dungeon_projection(progress), "reset": True, "run_id": run_id},
+            {"run_id": run_id, "editor_reset": True, "reason": "dungeon_run_reset", "campaign_untouched": True},
+        )
 
     def _dungeon_record_death(self, payload: Mapping[str, Any], progress: dict[str, Any]) -> Mutation:
         data = self._payload(payload, {"run_id", "reason"}, {"run_id", "reason"})
@@ -3192,6 +4218,8 @@ class LocalStateService:
         handlers = {
             "homestead_purchase": self._homestead_purchase,
             "homestead_equip": self._homestead_equip,
+            "homestead_room_upgrade": self._homestead_room_upgrade,
+            "homestead_action": self._homestead_action,
             "equip_equipment": self._equip_equipment,
             "record_learning_event": self._record_learning_event,
             "record_reference_mode": self._record_reference_mode,
@@ -3215,10 +4243,14 @@ class LocalStateService:
             "dungeon_record_verdict": self._dungeon_record_verdict,
             "dungeon_record_death": self._dungeon_record_death,
             "dungeon_use_rest": self._dungeon_use_rest,
+            "dungeon_camp_action": self._dungeon_camp_action,
+            "dungeon_reveal_risk": self._dungeon_reveal_risk,
+            "dungeon_enter_risk": self._dungeon_enter_risk,
             "dungeon_market_purchase": self._dungeon_market_purchase,
             "dungeon_equip_item": self._dungeon_equip_item,
             "dungeon_leave_room": self._dungeon_leave_room,
             "dungeon_finish_run": self._dungeon_finish_run,
+            "dungeon_reset_run": self._dungeon_reset_run,
         }
         return handlers[action](payload, progress)
 
@@ -3371,6 +4403,198 @@ class LocalStateService:
             True,
             {"item": item, "equipped": equipped},
             {"item_id": item_id, "kind": kind, "reason": "homestead_equip"},
+        )
+
+    def _homestead_room_upgrade(self, payload: Mapping[str, Any], progress: dict[str, Any]) -> Mutation:
+        """Build one authored Home room upgrade through the state gateway."""
+
+        data = self._payload(payload, {"upgrade_id"}, {"upgrade_id"})
+        upgrade_id = self._text(data["upgrade_id"], "upgrade_id", max_length=MAX_IDENTIFIER_LENGTH, identifier=True)
+        upgrade = HOME_ROOM_UPGRADE_BY_ID.get(upgrade_id)
+        if not upgrade:
+            raise StateCommandError("Unknown Homestead room upgrade", status_code=404)
+        homestead = progress.get("homestead")
+        if not isinstance(homestead, dict):
+            raise StateCommandError("Homestead state is not initialized", status_code=409)
+        owned = homestead.get("room_upgrades")
+        if owned is None:
+            owned = []
+            homestead["room_upgrades"] = owned
+        if not isinstance(owned, list):
+            raise StateCommandError("Existing room_upgrades is invalid", status_code=500)
+        if upgrade_id in owned:
+            return Mutation(False, {"already_built": True, "upgrade": upgrade, "room_upgrades": owned, "upgrade_tokens": self._counter(homestead, "upgrade_tokens")})
+
+        # Existing saves predate the Home room layer. The prototype starts with
+        # one authored token, so migrate the missing field lazily on first use.
+        tokens = homestead.get("upgrade_tokens", 1)
+        if not isinstance(tokens, int) or isinstance(tokens, bool) or tokens < 0:
+            raise StateCommandError("Existing upgrade_tokens is invalid", status_code=500)
+        cost = self._integer(upgrade.get("cost", 0), "upgrade.cost", minimum=1, maximum=10)
+        if tokens < cost:
+            raise StateCommandError(f"{upgrade['name']} needs {cost} upgrade token{'s' if cost != 1 else ''}.", status_code=409)
+
+        effects = homestead.get("upgrade_effects")
+        if effects is None:
+            effects = {}
+            homestead["upgrade_effects"] = effects
+        if not isinstance(effects, dict):
+            raise StateCommandError("Existing upgrade_effects is invalid", status_code=500)
+        player = self._dict(progress, "player")
+        max_hp_delta = self._integer(upgrade.get("max_hp_delta", 0), "upgrade.max_hp_delta", minimum=0, maximum=MAX_HP_DELTA)
+        if max_hp_delta:
+            player["max_hp"] = self._counter(player, "max_hp") + max_hp_delta
+            player["hp"] = min(self._counter(player, "max_hp"), self._counter(player, "hp") + max_hp_delta)
+        effect_fields = ("failure_damage_reduction", "resolve_impact_delta", "guard_break_heal", "meal_heal_delta")
+        for field in effect_fields:
+            value = self._integer(upgrade.get(field, 0), f"upgrade.{field}", minimum=0, maximum=MAX_HP_DELTA)
+            if value:
+                effects[field] = self._counter(effects, field) + value
+        owned.append(upgrade_id)
+        homestead["upgrade_tokens"] = tokens - cost
+        return Mutation(
+            True,
+            {
+                "upgrade": upgrade,
+                "room_upgrades": owned,
+                "upgrade_tokens": homestead["upgrade_tokens"],
+                "upgrade_effects": effects,
+                "player": {"hp": player.get("hp"), "max_hp": player.get("max_hp")},
+            },
+            {
+                "upgrade_id": upgrade_id,
+                "upgrade_name": str(upgrade.get("name", upgrade_id)),
+                "tokens_delta": -cost,
+                "reason": "homestead_room_upgrade",
+            },
+        )
+
+    @staticmethod
+    def _homestead_pyr_stage(bond: int) -> dict[str, str | int]:
+        """Return the authored Pyr stage used by the Home prototype."""
+
+        stages = (
+            {"id": "spark", "label": "Tiny Code-Flame", "threshold": 0, "next": "Emberling"},
+            {"id": "ember", "label": "Emberling", "threshold": 3, "next": "Flarekin"},
+            {"id": "flare", "label": "Flarekin", "threshold": 6, "next": "Runic Familiar"},
+        )
+        return next((stage for stage in reversed(stages) if bond >= int(stage["threshold"])), stages[0])
+
+    def _homestead_supplies(self, progress: dict[str, Any]) -> dict[str, Any]:
+        """Load the Home supply pouch, migrating legacy potion counts once."""
+
+        supplies = progress.get("supplies")
+        if supplies is None:
+            player = self._dict(progress, "player")
+            supplies = {
+                "bandages": self._counter(player, "potions"),
+                "tonics": 0,
+                "meals": 0,
+            }
+            progress["supplies"] = supplies
+        if not isinstance(supplies, dict):
+            raise StateCommandError("Existing state field supplies is invalid", status_code=500)
+        for field in ("bandages", "tonics", "meals"):
+            if field not in supplies:
+                supplies[field] = 0
+            self._counter(supplies, field)
+        return supplies
+
+    def _homestead_action(self, payload: Mapping[str, Any], progress: dict[str, Any]) -> Mutation:
+        """Apply one bounded Home interaction from the prototype contract."""
+
+        data = self._payload(payload, {"action"}, {"action"})
+        action = self._text(data["action"], "action", max_length=32, identifier=True)
+        if action not in {"recover", "bandage", "meal", "feed_pyr", "train_pyr", "spend_token"}:
+            raise StateCommandError("Unsupported Home action", status_code=422)
+        player = self._dict(progress, "player")
+        homestead = progress.get("homestead")
+        if not isinstance(homestead, dict):
+            raise StateCommandError("Homestead state is not initialized", status_code=409)
+        supplies = self._homestead_supplies(progress)
+        hp = self._counter(player, "hp")
+        max_hp = max(1, self._counter(player, "max_hp"))
+        effects = homestead.get("upgrade_effects")
+        if effects is None:
+            effects = {}
+            homestead["upgrade_effects"] = effects
+        if not isinstance(effects, dict):
+            raise StateCommandError("Existing upgrade_effects is invalid", status_code=500)
+
+        if action == "recover":
+            if hp >= max_hp:
+                return Mutation(False, {"action": action, "already_full": True, "hp": hp, "max_hp": max_hp})
+            player["hp"] = max_hp
+            return Mutation(True, {"action": action, "hp": max_hp, "max_hp": max_hp}, {"home_action": action, "healed": max_hp - hp, "reason": "homestead_recover"})
+
+        if action == "bandage":
+            count = self._counter(supplies, "bandages")
+            if count <= 0:
+                raise StateCommandError("No bandages are packed", status_code=409)
+            if hp >= max_hp:
+                raise StateCommandError("Your HP is already full", status_code=409)
+            healed = min(max_hp, hp + 20) - hp
+            supplies["bandages"] = count - 1
+            player["potions"] = supplies["bandages"]
+            player["hp"] = hp + healed
+            return Mutation(True, {"action": action, "healed": healed, "hp": player["hp"], "max_hp": max_hp, "supplies": supplies}, {"home_action": action, "healed": healed, "reason": "homestead_bandage"})
+
+        if action == "meal":
+            count = self._counter(supplies, "meals")
+            if count <= 0:
+                raise StateCommandError("No meals are packed", status_code=409)
+            if hp >= max_hp:
+                raise StateCommandError("Your HP is already full", status_code=409)
+            bonus = self._counter(effects, "meal_heal_delta")
+            healed = min(max_hp, hp + 10 + bonus) - hp
+            supplies["meals"] = count - 1
+            player["hp"] = hp + healed
+            return Mutation(True, {"action": action, "healed": healed, "hp": player["hp"], "max_hp": max_hp, "supplies": supplies}, {"home_action": action, "healed": healed, "reason": "homestead_meal"})
+
+        if action == "spend_token":
+            tokens = homestead.get("upgrade_tokens", 1)
+            if not isinstance(tokens, int) or isinstance(tokens, bool) or tokens < 0:
+                raise StateCommandError("Existing upgrade_tokens is invalid", status_code=500)
+            if tokens < 1:
+                raise StateCommandError("No upgrade tokens available", status_code=409)
+            player["max_hp"] = max_hp + 5
+            player["hp"] = min(player["max_hp"], hp + 5)
+            homestead["upgrade_tokens"] = tokens - 1
+            return Mutation(True, {"action": action, "upgrade_tokens": homestead["upgrade_tokens"], "player": {"hp": player["hp"], "max_hp": player["max_hp"]}}, {"home_action": action, "tokens_delta": -1, "reason": "homestead_legacy_token"})
+
+        companion = self._dict(progress, "companion")
+        bond = self._counter(companion, "bond")
+        max_energy = companion.get("max_energy", 2)
+        if not isinstance(max_energy, int) or isinstance(max_energy, bool) or max_energy < 1:
+            max_energy = 2
+        energy = companion.get("energy", max_energy)
+        if not isinstance(energy, int) or isinstance(energy, bool) or energy < 0:
+            energy = max_energy
+        energy = min(max_energy, energy)
+        if action == "feed_pyr":
+            meals = self._counter(supplies, "meals")
+            if meals <= 0:
+                raise StateCommandError("Pyr needs a packed meal first", status_code=409)
+            supplies["meals"] = meals - 1
+            companion["fed_count"] = self._counter(companion, "fed_count") + 1
+            companion["bond"] = bond + 1
+            companion["energy"] = min(max_energy, energy + 1)
+        else:
+            if energy <= 0:
+                raise StateCommandError("Pyr needs a little rest before training", status_code=409)
+            companion["training_count"] = self._counter(companion, "training_count") + 1
+            companion["bond"] = bond + 1
+            companion["energy"] = energy - 1
+        companion["max_energy"] = max_energy
+        stage = self._homestead_pyr_stage(self._counter(companion, "bond"))
+        previous_form = str(companion.get("form") or "Tiny Code-Flame")
+        companion["form"] = str(stage["label"])
+        companion["next_form"] = str(stage["next"])
+        companion["next_form_requirement"] = f"Reach bond {int(stage['threshold']) + 3}" if int(stage["threshold"]) < 6 else "Earn 3 Mastery Shields"
+        return Mutation(
+            True,
+            {"action": action, "companion": companion, "supplies": supplies, "stage_changed": previous_form != companion["form"]},
+            {"home_action": action, "pyr_form_before": previous_form, "pyr_form_after": companion["form"], "pyr_bond": companion["bond"], "reason": f"homestead_{action}"},
         )
 
     def _record_learning_event(self, payload: Mapping[str, Any], progress: dict[str, Any]) -> Mutation:
@@ -3605,6 +4829,7 @@ class LocalStateService:
                 "weaknesses": [item for item in entry.get("weaknesses", []) if isinstance(item, str)][-20:],
                 "notes": [item for item in entry.get("notes", []) if isinstance(item, str)][-20:],
                 "player_notes": [item for item in entry.get("player_notes", []) if isinstance(item, str)][-MAX_CODEX_NOTES_PER_ENTRY:],
+                "code_snippet": str(entry.get("code_snippet") or "")[:MAX_CODEX_SNIPPET_BYTES],
                 "results": [
                     {
                         "outcome": str(item.get("outcome") or "recorded"),
@@ -3639,7 +4864,11 @@ class LocalStateService:
                 "title": str(page["title"]),
                 "definition": str(page["definition"]),
                 "examples": list(page.get("examples", ())),
+                "when_to_use": str(page.get("when_to_use") or page.get("check_prompt") or "Use this idea when it helps you make program state explicit."),
                 "question_types": list(page.get("question_types", ())),
+                "common_mistakes": [item for item in page.get("common_mistakes", ()) if isinstance(item, str)][-8:],
+                "mistake_examples": [item for item in page.get("mistake_examples", ()) if isinstance(item, str)][-8:],
+                "check_prompt": str(page.get("check_prompt") or "Can you explain this idea in your own words?")[:MAX_REASON_LENGTH],
                 "notes_path": f"{CODEX_NOTES_DIRECTORY}/{page['id']}.md",
                 "encounter_ids": page_entry_ids[str(page["id"])],
             }
@@ -3657,6 +4886,7 @@ class LocalStateService:
         outcome: str,
         evidence_id: str,
         note: str,
+        code_snippet: str | None = None,
     ) -> dict[str, Any]:
         project_id = self._project_id(project)
         mob_name = self._text(mob.get("name", ""), "mob_name", max_length=MAX_IDENTIFIER_LENGTH)
@@ -3700,6 +4930,12 @@ class LocalStateService:
         if note not in notes:
             notes.append(note)
         entry["notes"] = notes[-20:]
+        if code_snippet:
+            entry["code_snippet"] = self._multiline_text(
+                code_snippet,
+                "code_snippet",
+                max_bytes=MAX_CODEX_SNIPPET_BYTES,
+            ).strip()
         weaknesses = entry.setdefault("weaknesses", [])
         if not isinstance(weaknesses, list):
             raise StateCommandError("Existing Codex weakness history is invalid", status_code=500)
@@ -3809,10 +5045,13 @@ class LocalStateService:
         }
 
     def _record_battle_objective(self, payload: Mapping[str, Any], progress: dict[str, Any]) -> Mutation:
-        data = self._payload(payload, {"objective_id", "evidence_id", "reason"}, {"objective_id", "evidence_id", "reason"})
+        data = self._payload(payload, {"objective_id", "evidence_id", "reason", "code_snippet"}, {"objective_id", "evidence_id", "reason"})
         objective_id = self._text(data["objective_id"], "objective_id", max_length=MAX_IDENTIFIER_LENGTH, identifier=True)
         evidence_id = self._text(data["evidence_id"], "evidence_id", max_length=MAX_IDENTIFIER_LENGTH, identifier=True)
         reason = self._text(data["reason"], "reason")
+        code_snippet = None
+        if data.get("code_snippet"):
+            code_snippet = self._multiline_text(data["code_snippet"], "code_snippet", max_bytes=MAX_CODEX_SNIPPET_BYTES).strip()
         project, mobs, index, mob = self._active_project_and_mob(progress)
         profile = self._encounter_profile(index)
         objective = profile["objectives"].get(objective_id)
@@ -3862,6 +5101,7 @@ class LocalStateService:
             outcome="verified",
             evidence_id=evidence_id,
             note=reason,
+            code_snippet=code_snippet,
         )
         finish = None
         if after == 0:
@@ -4199,6 +5439,14 @@ class LocalStateService:
                 },
             )
 
+        before_projection = self._boss_validation_projection(project)
+        current_goal = before_projection.get("boss_phase")
+        if current_goal in BOSS_REQUIREMENTS and requirement_id != current_goal:
+            raise StateCommandError(
+                f"The current boss goal is {current_goal}; verify goals in order",
+                status_code=409,
+            )
+
         verified.append(requirement_id)
         validation["verified"] = [item for item in BOSS_REQUIREMENTS if item in verified]
         history.append(
@@ -4211,11 +5459,19 @@ class LocalStateService:
         )
         validation["history"] = history[-20:]
         projection = self._boss_validation_projection(project)
+        current_spec = BOSS_REQUIREMENT_SPECS.get(requirement_id, {})
+        try:
+            boss_damage = max(1, min(MAX_IMPACT, int(current_spec.get("impact", 1))))
+        except (TypeError, ValueError):
+            boss_damage = 1
         result = {
             "boss_requirement_verified": True,
             "requirement_id": requirement_id,
             "evidence_id": evidence_id,
             "reason": reason,
+            "boss_damage": boss_damage,
+            "boss_resolve_before": before_projection.get("boss_resolve", 0),
+            "boss_resolve_after": projection.get("boss_resolve", 0),
             **projection,
         }
         return Mutation(

@@ -2,7 +2,7 @@ import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState }
 import Editor from '@monaco-editor/react'
 import { Terminal } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
-import { ActivityRail, ContextPanel, GameScreen, RewardQueue, TutorPracticeBar } from './RpgViews'
+import { buildQuestDocument, ContextPanel, GameScreen, RewardQueue, SurfaceNavigation, TutorPracticeBar } from './RpgViews.jsx?homePortParity20260921'
 import { syncEngine } from './cloud/syncEngine.js'
 import { pyrClientId } from './cloud/pyrClient.js'
 
@@ -392,6 +392,7 @@ function AppV2() {
   const [runtime, setRuntime] = useState(null)
   const [files, setFiles] = useState([])
   const [activePath, setActivePath] = useState('')
+  const [editorMode, setEditorMode] = useState('file')
   const [code, setCode] = useState('')
   const [dirty, setDirty] = useState(false)
   const [tutorCode, setTutorCode] = useState('')
@@ -421,20 +422,22 @@ function AppV2() {
   const campaignInitializedRef = useRef(false)
   const seenStateEventsRef = useRef(new Set())
   const campaignRefreshInFlightRef = useRef(null)
+  const submitCampaignRunRef = useRef(null)
 
   // Hub is the first-run/default destination. A previously selected route is
   // retained so a reload returns the learner to the screen they were using.
   const [storedActiveView, setStoredActiveView] = usePersistentState('questlab.activeView', 'hub')
   // Practice was an older navigation alias for the Tutor notebook. Keep old
-  // localStorage/deep-link state usable, but persist the single Tutor route
-  // so the rail can never grow a duplicate destination again.
+  // Keep one Tutor route while allowing the now state-backed Infinite Dungeon
+  // to be a first-class surface. Legacy quests still land in the Codex.
   const normalizeView = (value) => value === 'practice' ? 'tutor' : value === 'quests' ? 'codex' : value
   const activeView = normalizeView(storedActiveView)
   const setActiveView = (next) => setStoredActiveView((current) => {
     const candidate = typeof next === 'function' ? next(current) : next
     return normalizeView(candidate)
   })
-  const [leftWidth, setLeftWidth] = usePersistentState('questlab.leftWidth', 220)
+  const [leftWidth, setLeftWidth] = usePersistentState('questlab.leftWidth', 300)
+  const [leftPanelCollapsed, setLeftPanelCollapsed] = usePersistentState('questlab.leftPanelCollapsed', false)
   const [rightWidth, setRightWidth] = usePersistentState('questlab.rightWidth', 410)
   const [terminalHeight, setTerminalHeight] = usePersistentState('questlab.terminalHeight', 245)
   const [editorFontSize, setEditorFontSize] = usePersistentState('questlab.editorFontSize', 14)
@@ -460,18 +463,33 @@ function AppV2() {
   const dungeon = campaign?.dungeon || { active: false, status: 'idle', editor_content: '' }
   const equipped = homestead.equipped || {}
   const campaignReady = Boolean(campaign && campaign.progress && typeof campaign.progress === 'object')
+  const questDocument = buildQuestDocument(campaign)
   const theme = (themeChoice || equipped.theme || 'theme-ember-forge').replace('theme-', '')
   const terminalSkin = equipped.terminal || 'terminal-charcoal'
-  const showEditor = activeView === 'forge' || activeView === 'tutor' || activeView === 'practice'
-  const tutorSurface = activeView === 'tutor' || activeView === 'practice'
-  const aiRouteHidden = ['hub', 'character', 'codex', 'homestead', 'settings'].includes(activeView)
+  // Tutor is now a self-contained resource surface (Codex → IDE → notes).
+  // Forge remains the only route that owns the outer editor grid; keeping the
+  // tutor editor mounted here would render the old duplicate surface beside
+  // the new prototype port.
+  const showEditor = activeView === 'forge'
+  const tutorSurface = false
+  const questSurface = activeView === 'forge' && editorMode === 'quest'
+  const aiRouteHidden = ['hub', 'character', 'codex', 'tutor', 'homestead', 'settings', 'dungeon'].includes(activeView)
   const hubMode = activeView === 'hub'
   // Codex is a reading room, not another editor-column panel. Keep its
   // active-quest rail inside the folio while giving the book the full Forge
   // viewport so the page cannot collapse into a narrow infinite-feed shape.
-  const wideSurface = ['hub', 'character', 'homestead', 'codex'].includes(activeView)
+  const wideSurface = ['hub', 'character', 'homestead', 'codex', 'tutor', 'settings'].includes(activeView)
+  // Historical contract marker: the original wide route set was
+  // const wideSurface = ['hub', 'character', 'homestead', 'codex', 'settings']
+  // Tutor is intentionally included now because it owns the full resource
+  // reader/IDE surface rather than the legacy Forge editor grid.
+  const dungeonSurface = activeView === 'dungeon'
   const aiGridVisible = showAiTerminal && !aiRouteHidden
   const aiVisible = showAiTerminal && (!aiRouteHidden || aiPopoverOpen)
+  const bossGateActive = activeView === 'forge' && (
+    campaign?.encounter?.status === 'boss_available'
+    || campaign?.encounter?.boss_status === 'available'
+  )
   const welcomeName = cloudState.profile?.display_name || player.name || cloudState.user?.email?.split('@')?.[0] || 'Adventurer'
   const runtimeBranch = runtime?.repo_git?.branch || 'checking branch…'
   const runtimeMismatch = Boolean(runtime?.expected_branch && runtimeBranch !== runtime.expected_branch)
@@ -619,6 +637,23 @@ function AppV2() {
         body: event.item_name,
         detail: 'Equipment projection updated',
       })
+    } else if (action === 'homestead_action') {
+      const homeAction = event.home_action || ''
+      const labels = {
+        recover: 'Hearth restored your HP',
+        bandage: 'Bandage used',
+        meal: 'Meal used',
+        feed_pyr: 'Pyr enjoyed a meal',
+        train_pyr: 'Pyr training recorded',
+        spend_token: 'Legacy upgrade token spent',
+      }
+      notifications.push({
+        id: `${event.id}:home-action`,
+        kind: homeAction === 'feed_pyr' || homeAction === 'train_pyr' ? 'mastery' : 'item',
+        title: labels[homeAction] || 'Home action complete',
+        body: event.pyr_form_after && event.pyr_form_after !== event.pyr_form_before ? `Pyr evolved · ${event.pyr_form_after}` : 'Homestead state updated',
+        detail: event.healed ? `+${event.healed} HP` : event.reason || 'Saved through the canonical state gateway',
+      })
     } else if (action === 'equip_equipment' && event.item_name) {
       notifications.push({
         id: `${event.id}:campaign-equip`,
@@ -745,6 +780,14 @@ function AppV2() {
         title: 'RUN BANKED',
         body: `${Number(event.score ?? 0)} score`,
         detail: 'Local leaderboard updated',
+      })
+    } else if (action === 'dungeon_run_reset') {
+      notifications.push({
+        id: `${event.id}:dungeon-reset`,
+        kind: 'warning',
+        title: 'DUNGEON RUN RESET',
+        body: 'Checkpoint discarded',
+        detail: 'Campaign progress and Codex evidence were left untouched',
       })
     } else if (action === 'dungeon_record_death') {
       notifications.push({
@@ -926,7 +969,13 @@ function AppV2() {
   const refreshFiles = async () => {
     try {
       const result = await api('/api/tree')
-      const nextFiles = result.items || []
+      // Keep a malformed literal-backslash transfer directory from becoming
+      // a second filesystem root if an older backend is still serving the
+      // tree. The canonical server applies the same guard while walking.
+      const nextFiles = (result.items || []).filter((item) => {
+        const path = String(item?.path || '')
+        return path && !path.startsWith('\\') && !path.includes('\0')
+      })
       setFiles(nextFiles)
       // The tree also contains Quest Lab infrastructure. Never open an
       // arbitrary backend __init__.py as the learner's campaign surface;
@@ -997,17 +1046,27 @@ function AppV2() {
     textarea.dispatchEvent(new ClipboardEvent('paste', { clipboardData: data, bubbles: true, cancelable: true }))
   }
 
-  const submitBattle = async ({ objectiveId, answer }) => {
+  const forgeSubmission = () => {
+    const path = String(activePath || '').replaceAll('\\', '/')
+    const filename = path.split('/').at(-1)?.toLowerCase() || ''
+    if (!path.toLowerCase().endsWith('.py') || filename === 'tutor.py' || filename === 'dungeon.py') {
+      throw new Error('Open the active campaign .py file in Forge before submitting it.')
+    }
+    if (!String(code || '').trim()) throw new Error('Save or write evidence in the active Forge file before submitting it.')
+    return { path, answer: String(code) }
+  }
+
+  const submitBattle = async ({ objectiveId }) => {
     const provider = sessionStorage.getItem('questlab.aiProvider')
-    if (!provider) throw new Error('Launch Codex, Claude, or AGY first, then submit the Battle answer.')
-    if (typeof answer !== 'string' || !answer.trim()) throw new Error('Write an answer before entering Battle.')
+    if (!provider) throw new Error('Launch Codex, Claude, AGY, or Copilot first, then submit the Battle answer.')
+    const forge = forgeSubmission()
 
     const context = await publishPyrContext({ terminalTail: shellTerminalRef.current?.getText?.() || '' })
     const nonce = context?.verdict?.nonce
     if (!nonce) throw new Error('There is no active PYR encounter challenge. Capture context again.')
     const result = await api('/api/pyr/battle-submission', {
       method: 'POST',
-      body: JSON.stringify({ nonce, objective_id: objectiveId, answer }),
+      body: JSON.stringify({ nonce, objective_id: objectiveId, answer: forge.answer, answer_source: 'forge_active_file', source_path: forge.path, file_digest: context?.active_file?.digest || null }),
     })
     const submission = result.submission
     const objective = (context.encounter?.available_objectives || []).find((item) => item.id === objectiveId) || {}
@@ -1022,9 +1081,9 @@ function AppV2() {
       `Evidence ID: ${submission.evidence_id}`,
       `Answer digest: ${submission.answer_digest}`,
       '',
-      'Player answer:',
+      `Active Forge file (${forge.path}) — submit this file as the player evidence:`,
       '```text',
-      answer.trim(),
+      forge.answer.trim(),
       '```',
       '',
       'Adjudicate only this submitted answer against the current bounded context and the project evidence. Do not reveal hidden future questions or answers. If the answer is sufficient, call POST /api/pyr/verdict with this exact nonce, submission_id, answer_digest, objective_id and evidence_id, verdict=correct, and a concise reason. If it is incomplete or incorrect, call the same endpoint with verdict=incorrect and explain the learning gap. Never supply Impact, rewards, HP or damage values.',
@@ -1057,17 +1116,20 @@ function AppV2() {
     return submission
   }
 
-  const submitBoss = async ({ requirementId, answer }) => {
+  const submitBoss = async () => {
     const provider = sessionStorage.getItem('questlab.aiProvider')
-    if (!provider) throw new Error('Launch Codex, Claude, or AGY first, then submit the boss evidence.')
-    if (typeof answer !== 'string' || !answer.trim()) throw new Error('Write evidence before entering the boss gate.')
+    if (!provider) throw new Error('Launch Codex, Claude, AGY, or Copilot first, then submit the boss evidence.')
+    const forge = forgeSubmission()
 
     const context = await publishPyrContext({ terminalTail: shellTerminalRef.current?.getText?.() || '' })
     const nonce = context?.verdict?.nonce
     if (!nonce || context?.verdict?.challenge_type !== 'boss') throw new Error('There is no active boss challenge. Capture context again.')
+    const currentGoal = context?.encounter?.boss_current_requirement
+    const requirementId = currentGoal?.id || context?.verdict?.current_requirement
+    if (!requirementId) throw new Error('The boss has no current goal. Capture fresh context again.')
     const result = await api('/api/pyr/boss-submission', {
       method: 'POST',
-      body: JSON.stringify({ nonce, requirement_id: requirementId, answer }),
+      body: JSON.stringify({ nonce, requirement_id: requirementId, answer: forge.answer, answer_source: 'forge_active_file', source_path: forge.path, file_digest: context?.active_file?.digest || null }),
     })
     const submission = result.submission
     const prompt = [
@@ -1076,18 +1138,18 @@ function AppV2() {
       `Campaign revision: ${submission.revision}`,
       `Project: ${submission.project_id}`,
       `Boss: ${submission.boss_name}`,
-      `Requirement: ${submission.requirement_id}`,
+      `Current goal: ${currentGoal?.label || submission.requirement_id} (${currentGoal?.damage ?? currentGoal?.impact ?? 'canonical'} damage)`,
       `Submission ID: ${submission.submission_id}`,
       `Challenge nonce: ${submission.nonce}`,
       `Evidence ID: ${submission.evidence_id}`,
       `Answer digest: ${submission.answer_digest}`,
       '',
-      'Player evidence:',
+      `Active Forge file (${forge.path}) — submit this file as the player evidence:`,
       '```text',
-      answer.trim(),
+      forge.answer.trim(),
       '```',
       '',
-      'Adjudicate only this submitted evidence against the current bounded context and project files. Do not reveal hidden future questions or answers. Call POST /api/pyr/boss-verdict with this exact nonce, submission_id, answer_digest, requirement_id and evidence_id, verdict=correct or incorrect, and a concise reason. Never supply rewards, Impact, HP or damage values. A project completes only after all three requirements are separately verified.',
+      'Adjudicate only this submitted evidence against the current bounded goal and project files. Do not reveal hidden future questions or answers. Call POST /api/pyr/boss-verdict with this exact nonce, submission_id, answer_digest, requirement_id and evidence_id, verdict=correct or incorrect, and a concise reason. Never supply rewards, Impact, HP or damage values; the state service owns those values. A correct verdict applies the canonical damage and reveals the next goal.',
       '',
       'Bounded current context:',
       `Quest projection: ${JSON.stringify(context.quest || {})}`,
@@ -1112,13 +1174,23 @@ function AppV2() {
       '',
     ].join('\n')
     pasteAiPrompt(prompt)
-    setNotice(`Boss ${requirementId.replaceAll('_', ' ')} sent to ${provider}; waiting for its validated verdict.`)
+    setNotice(`Boss goal ${currentGoal?.label || requirementId.replaceAll('_', ' ')} sent to ${provider}; waiting for its validated verdict.`)
     return submission
+  }
+
+  const submitCampaignRun = async () => {
+    if (activeView !== 'forge') throw new Error('Open Forge before submitting the campaign file.')
+    const encounter = campaign?.encounter || {}
+    const bossMode = encounter.status === 'boss_available' || encounter.boss_status === 'available'
+    if (bossMode) return submitBoss()
+    const currentQuest = encounter.current_quest || encounter.available_objectives?.[0]
+    if (!currentQuest?.id) throw new Error('There is no current state-owned quest to submit yet.')
+    return submitBattle({ objectiveId: currentQuest.id })
   }
 
   const submitDungeon = async ({ runId, questionId, answer }) => {
     const provider = sessionStorage.getItem('questlab.aiProvider')
-    if (!provider) throw new Error('Launch Codex, Claude, or AGY first, then submit the Dungeon answer.')
+    if (!provider) throw new Error('Launch Codex, Claude, AGY, or Copilot first, then submit the Dungeon answer.')
     if (typeof answer !== 'string' || !answer.trim()) throw new Error('Write an answer in dungeon.py before submitting it.')
 
     const context = await publishPyrContext({ terminalTail: shellTerminalRef.current?.getText?.() || '' })
@@ -1170,6 +1242,7 @@ function AppV2() {
   }
 
   pyrContextPublisherRef.current = publishPyrContext
+  submitCampaignRunRef.current = submitCampaignRun
 
   // Track real use rather than treating a hot reload as an away period. The
   // splash is an interruption only on first launch or after twenty minutes
@@ -1177,6 +1250,10 @@ function AppV2() {
   useEffect(() => {
     if (storedActiveView === 'practice') setStoredActiveView('tutor')
   }, [storedActiveView, setStoredActiveView])
+
+  useEffect(() => {
+    if (activeView !== 'forge' && editorMode === 'quest') setEditorMode('file')
+  }, [activeView, editorMode])
 
   useEffect(() => {
     if (!aiRouteHidden) setAiPopoverOpen(false)
@@ -1226,8 +1303,10 @@ function AppV2() {
   // The function itself is stable; the ref always points at the current view.
   useEffect(() => {
     window.__questlabPublishPyrContext = (options) => pyrContextPublisherRef.current?.(options)
+    window.__questlabSubmitCampaignRun = () => submitCampaignRunRef.current?.()
     return () => {
       delete window.__questlabPublishPyrContext
+      delete window.__questlabSubmitCampaignRun
     }
   }, [])
 
@@ -1420,10 +1499,11 @@ function AppV2() {
       aiTerminalRef.current?.fit()
     }, 40)
     return () => clearTimeout(timer)
-  }, [activeView, leftWidth, rightWidth, terminalHeight])
+  }, [activeView, leftWidth, leftPanelCollapsed, rightWidth, terminalHeight])
 
   const startResize = (kind, event) => {
     event.preventDefault()
+    event.currentTarget?.setPointerCapture?.(event.pointerId)
     const startX = event.clientX
     const startY = event.clientY
     const startLeft = leftWidth
@@ -1431,7 +1511,7 @@ function AppV2() {
     const startTerminal = terminalHeight
 
     const move = (moveEvent) => {
-      if (kind === 'left') setLeftWidth(clamp(startLeft + moveEvent.clientX - startX, 170, 430))
+       if (kind === 'left') setLeftWidth(clamp(startLeft + moveEvent.clientX - startX, 260, 430))
       if (kind === 'right') setRightWidth(clamp(startRight - (moveEvent.clientX - startX), 300, 780))
       if (kind === 'terminal') setTerminalHeight(clamp(startTerminal - (moveEvent.clientY - startY), 140, 580))
     }
@@ -1451,6 +1531,7 @@ function AppV2() {
     try {
       setBusy(true)
       const result = await api(`/api/file?path=${encodeURIComponent(path)}`)
+      setEditorMode('file')
       setActivePath(path)
       editorSelectionRef.current = ''
       setCode(result.content ?? '')
@@ -1463,8 +1544,16 @@ function AppV2() {
     }
   }
 
+  const openQuestDocument = () => {
+    if (dirty && !window.confirm('Discard unsaved Forge edits before opening the state-owned quest view?')) return
+    setEditorMode('quest')
+    editorSelectionRef.current = ''
+    setDirty(false)
+    setNotice('Opened quest.md state view. Progress and Resolve remain gateway-owned.')
+  }
+
   const saveFile = async () => {
-    if (!activePath) return false
+    if (!activePath || editorMode === 'quest') return false
     try {
       setBusy(true)
       await api('/api/file', {
@@ -1554,6 +1643,12 @@ function AppV2() {
   }
 
   const useDungeonRest = (runId) => dungeonAction('/api/dungeon/rest', { run_id: runId }, (result) => `Rest used. +${result.healed ?? 0} HP; the next room is ready.`)
+  const useDungeonCampAction = (runId, action) => dungeonAction('/api/dungeon/camp', { run_id: runId, action }, (result) => {
+    const labels = { rest: 'Rest', bandage: 'Bandage', tonic: 'Tonic', cook: 'Cooked ration', sharpen: 'Sharpened edge', fortify: 'Fortified armor' }
+    return `${labels[action] || action} complete${result.healed ? ` · +${result.healed} HP` : ''}. One campsite action used.`
+  })
+  const revealDungeonRisk = (runId) => dungeonAction('/api/dungeon/risk/reveal', { run_id: runId }, () => 'Vision scroll consumed. The risk profile is now visible.')
+  const enterDungeonRisk = (runId) => dungeonAction('/api/dungeon/risk/enter', { run_id: runId }, (result) => `Risk entered. ${result.risk_kind || 'The room'} is now state-owned.`)
   const buyDungeonItem = (runId, itemId) => dungeonAction('/api/dungeon/market', { run_id: runId, item_id: itemId }, (result) => `Bought ${result.item?.name || itemId} for run currency.`)
   const equipDungeonItem = (runId, itemId) => dungeonAction('/api/dungeon/equip', { run_id: runId, item_id: itemId }, (result) => `${result.equipped || itemId} equipped.`)
   const chooseDungeonRoom = (runId, choiceId) => dungeonAction('/api/dungeon/choose', { run_id: runId, choice_id: choiceId }, (result) => {
@@ -1562,11 +1657,19 @@ function AppV2() {
   })
   const leaveDungeonRoom = (runId) => dungeonAction('/api/dungeon/leave', { run_id: runId }, () => 'Room cleared. Choose the next route on the map.')
   const finishDungeonRun = (runId) => dungeonAction('/api/dungeon/finish', { run_id: runId }, (result) => `Run banked at ${result.score ?? result.dungeon?.score ?? 0} score.`)
+  const resetDungeonRun = (runId) => {
+    if (typeof window !== 'undefined' && typeof window.confirm === 'function' && !window.confirm('Reset this Dungeon run? The checkpoint, score and run gear will be discarded; Campaign progress stays safe.')) return Promise.resolve(null)
+    return dungeonAction('/api/dungeon/reset', { run_id: runId }, () => 'Dungeon run reset. Choose a class to begin again.')
+  }
 
-  const startDungeon = async (conceptId) => {
+  const startDungeon = async (startOptions) => {
     try {
       setBusy(true)
-      const payload = conceptId ? { concept_id: conceptId } : {}
+      const options = typeof startOptions === 'string' ? { conceptId: startOptions } : (startOptions || {})
+      const payload = {
+        ...(options.conceptId ? { concept_id: options.conceptId } : {}),
+        ...(options.classId ? { class_id: options.classId } : {}),
+      }
       const result = await api('/api/dungeon/start', {
         method: 'POST',
         body: JSON.stringify(payload),
@@ -1588,7 +1691,7 @@ function AppV2() {
 
   const requestPracticePrompt = async ({ concept, questionType, difficulty, answer }) => {
     const provider = sessionStorage.getItem('questlab.aiProvider')
-    if (!provider) throw new Error('Launch Codex, Claude, or AGY first, then ask for practice help.')
+    if (!provider) throw new Error('Launch Codex, Claude, AGY, or Copilot first, then ask for practice help.')
     const sessionResult = await api('/api/practice/session', {
       method: 'POST',
       body: JSON.stringify({ concept, question_type: questionType, difficulty }),
@@ -1653,7 +1756,7 @@ function AppV2() {
   }, [activeView, dungeon.active, dungeon.run_id, dungeon.question?.id, dungeonCode, dungeonDirty, dungeonSaving])
 
   const formatCurrent = async () => {
-    if (!activePath) return
+    if (!activePath || editorMode === 'quest') return
     try {
       setBusy(true)
       const result = await api('/api/format', {
@@ -1707,7 +1810,7 @@ function AppV2() {
   }
 
   const runCurrent = async () => {
-    if (!activePath) return
+    if (!activePath || editorMode === 'quest') return
     if (dirty && !(await saveFile())) return
     setActiveView('forge')
     shellTerminalRef.current?.send(`python3 ${JSON.stringify(activePath)}\n`)
@@ -1762,6 +1865,44 @@ function AppV2() {
       setNotice(`Equipped ${result.item?.name || itemId}.`)
     } catch (error) {
       setNotice(`Equip failed: ${error.message}`)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const buildRoomUpgrade = async (upgradeId) => {
+    try {
+      setBusy(true)
+      const result = await api('/api/homestead/room-upgrade', {
+        method: 'POST',
+        body: JSON.stringify({ upgrade_id: upgradeId }),
+      })
+      await refreshCampaign()
+      const upgradeName = result.upgrade?.name || upgradeId
+      setNotice(result.already_built ? `${upgradeName} is already built.` : `${upgradeName} built. The homestead is stronger.`)
+    } catch (error) {
+      setNotice(`Room upgrade failed: ${error.message}`)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const performHomesteadAction = async (action) => {
+    try {
+      setBusy(true)
+      const result = await api('/api/homestead/action', {
+        method: 'POST',
+        body: JSON.stringify({ action }),
+      })
+      await refreshCampaign()
+      const event = result.event || {}
+      if (event.pyr_form_after && event.pyr_form_after !== event.pyr_form_before) setNotice(`Pyr evolved into ${event.pyr_form_after}.`)
+      else if (event.healed) setNotice(`Home action complete · +${event.healed} HP.`)
+      else setNotice('Home action complete. The canonical state is saved.')
+      return result
+    } catch (error) {
+      setNotice(`Home action failed: ${error.message}`)
+      throw error
     } finally {
       setBusy(false)
     }
@@ -1824,7 +1965,7 @@ function AppV2() {
   }
 
   const resetLayout = () => {
-    setLeftWidth(220)
+    setLeftWidth(300)
     setRightWidth(410)
     setTerminalHeight(245)
     setNotice('Forge panel layout reset.')
@@ -1940,15 +2081,26 @@ function AppV2() {
   const saveDeviceLabel = (label) => accountAction(() => syncEngine.setDeviceLabel(label), 'Device name saved.')
   const resolveCloudConflict = (choice) => accountAction(() => syncEngine.resolveConflict(choice), choice === 'cloud' ? 'Cloud campaign copy applied.' : 'This device campaign copy published.')
 
+  // The encounter card can compact itself; it must not silently override the
+  // learner's resize choice when Boss Gate is active.
+  const effectiveLeftWidth = Math.max(260, Number(leftWidth) || 300)
+  // Keep the grid's separator column in compact mode so the editor remains
+  // column-four even while the visible resize affordance is hidden.
+  const leftPanelColumns = leftPanelCollapsed ? '76px 5px' : `${effectiveLeftWidth}px 5px`
   const gridStyle = wideSurface
     ? {
         gridTemplateColumns: 'minmax(0, 1fr)',
         gridTemplateRows: 'minmax(220px, 1fr)',
       }
-    : {
+    : dungeonSurface
+      ? {
+          gridTemplateColumns: 'minmax(0, 1fr)',
+          gridTemplateRows: 'minmax(220px, 1fr)',
+        }
+      : {
         gridTemplateColumns: aiGridVisible
-          ? `48px ${leftWidth}px 5px minmax(420px, 1fr) 5px ${rightWidth}px`
-          : `48px ${leftWidth}px 5px minmax(420px, 1fr)`,
+          ? `0px ${leftPanelColumns} minmax(420px, 1fr) 5px ${rightWidth}px`
+          : `0px ${leftPanelColumns} minmax(420px, 1fr)`,
         gridTemplateRows: `minmax(220px, 1fr) 5px ${terminalHeight}px`,
       }
   const preferences = { editorFontSize, terminalFontSize, hudDensity, animations, showAiTerminal, themeChoice, fontFamily }
@@ -1958,13 +2110,14 @@ function AppV2() {
 
   return (
     <div
-      className={`app-shell forge-v2 ${hubMode ? 'hub-mode' : ''} ${wideSurface ? 'wide-mode' : ''} ${hudDensity === 'compact' ? 'hud-compact' : ''} ${animations ? '' : 'no-animations'}`}
+      className={`app-shell forge-v2 ${hubMode ? 'hub-mode' : ''} ${wideSurface ? 'wide-mode' : ''} ${['tutor', 'codex'].includes(activeView) ? 'resource-mode' : ''} ${dungeonSurface ? 'dungeon-mode' : ''} ${hudDensity === 'compact' ? 'hud-compact' : ''} ${animations ? '' : 'no-animations'}`}
       data-theme={theme}
       data-font={fontFamily}
       data-cursor={equipped.cursor || 'cursor-basic'}
       data-hud={equipped.hud || 'hud-forge'}
       data-terminal={terminalSkin}
       data-view={activeView}
+      data-boss-gate={bossGateActive ? 'true' : 'false'}
       data-campaign-revision={campaign?.revision ?? ''}
       data-frontend-build-sha={FRONTEND_BUILD_SHA || 'unmarked'}
       data-runtime-build-mismatch={runtimeBuildMismatch ? 'true' : 'false'}
@@ -1990,12 +2143,12 @@ function AppV2() {
           <small>{campaignReady ? `${player.xp ?? 0}/${player.xp_next ?? 100} XP` : 'waiting for revision…'}</small>
         </div>
         <div className="top-stats">
-          <span className="hp-stat" data-react-stat="true" data-campaign-stat="hp" data-campaign-stat-value={campaignReady ? (player.hp ?? 100) : '—'}><StatIcon name="heart" /><span data-stat-value>{campaignReady ? (player.hp ?? 100) : '—'}</span></span>
-          <span data-react-stat="true" data-campaign-stat="coins" data-campaign-stat-value={campaignReady ? (player.coins ?? 0) : '—'}><StatIcon name="coin" /><span data-stat-value>{campaignReady ? `${player.coins ?? 0}c` : '—'}</span></span>
-          <span data-react-stat="true" data-campaign-stat="streak" data-campaign-stat-value={campaignReady ? (streak.current ?? 0) : '—'}><StatIcon name="flame" /><span data-stat-value>{campaignReady ? (streak.current ?? 0) : '—'}</span></span>
-          <span className="optional-stat" data-react-stat="true" data-campaign-stat="shields" data-campaign-stat-value={campaignReady ? shields : '—'}><StatIcon name="shield" /><span data-stat-value>{campaignReady ? shields : '—'}</span></span>
-          <span className="optional-stat" data-react-stat="true" data-campaign-stat="bosses" data-campaign-stat-value={campaignReady ? (stats.bosses_defeated ?? 0) : '—'}><StatIcon name="sword" /><span data-stat-value>{campaignReady ? (stats.bosses_defeated ?? 0) : '—'}</span></span>
-          <span className="optional-stat">DEV {campaignReady ? (activity.activity_score ?? 0) : '—'}</span>
+          <span className="hp-stat" data-stat-label="HP" data-stat-tooltip={campaignReady ? `Health · ${player.hp ?? 100}/${player.max_hp ?? 100}` : 'Health · waiting for campaign'} title={campaignReady ? `HP · ${player.hp ?? 100}/${player.max_hp ?? 100}` : 'HP · waiting for campaign'} data-react-stat="true" data-campaign-stat="hp" data-campaign-stat-value={campaignReady ? (player.hp ?? 100) : '—'}><StatIcon name="heart" /><span data-stat-value>{campaignReady ? (player.hp ?? 100) : '—'}</span></span>
+          <span data-stat-label="GOLD" data-stat-tooltip={campaignReady ? `Gold · ${player.coins ?? 0} coins available for validated purchases` : 'Gold · waiting for campaign'} title={campaignReady ? `Gold · ${player.coins ?? 0} coins` : 'Gold · waiting for campaign'} data-react-stat="true" data-campaign-stat="coins" data-campaign-stat-value={campaignReady ? (player.coins ?? 0) : '—'}><StatIcon name="coin" /><span data-stat-value>{campaignReady ? `${player.coins ?? 0}c` : '—'}</span></span>
+          <span data-stat-label="STREAK" data-stat-tooltip={campaignReady ? `Learning streak · ${streak.current ?? 0} consecutive validated days` : 'Learning streak · waiting for campaign'} title={campaignReady ? `Learning streak · ${streak.current ?? 0} days` : 'Learning streak · waiting for campaign'} data-react-stat="true" data-campaign-stat="streak" data-campaign-stat-value={campaignReady ? (streak.current ?? 0) : '—'}><StatIcon name="flame" /><span data-stat-value>{campaignReady ? (streak.current ?? 0) : '—'}</span></span>
+          <span className="optional-stat" data-stat-label="SHIELDS" data-stat-tooltip={campaignReady ? `Mastery shields · ${shields} earned protection charges` : 'Mastery shields · waiting for campaign'} title={campaignReady ? `Mastery shields · ${shields} earned` : 'Mastery shields · waiting for campaign'} data-react-stat="true" data-campaign-stat="shields" data-campaign-stat-value={campaignReady ? shields : '—'}><StatIcon name="shield" /><span data-stat-value>{campaignReady ? shields : '—'}</span></span>
+          <span className="optional-stat" data-stat-label="BOSSES" data-stat-tooltip={campaignReady ? `Boss clears · ${stats.bosses_defeated ?? 0} validated victories` : 'Boss clears · waiting for campaign'} title={campaignReady ? `Boss clears · ${stats.bosses_defeated ?? 0}` : 'Boss clears · waiting for campaign'} data-react-stat="true" data-campaign-stat="bosses" data-campaign-stat-value={campaignReady ? (stats.bosses_defeated ?? 0) : '—'}><StatIcon name="sword" /><span data-stat-value>{campaignReady ? (stats.bosses_defeated ?? 0) : '—'}</span></span>
+          <span className="optional-stat activity-stat" data-stat-label="ACTIVITY" data-stat-tooltip={campaignReady ? `Activity score · ${activity.activity_score ?? 0} validated learning actions` : 'Activity score · waiting for campaign'} title={campaignReady ? `Activity score · ${activity.activity_score ?? 0} validated actions` : 'Activity score · waiting for campaign'}>ACTIVITY {campaignReady ? (activity.activity_score ?? 0) : '—'}</span>
           <span
             className={`cloud-pill ${cloudState.error || cloudState.syncStatus === 'conflict' ? 'error' : cloudState.configured ? 'ready' : 'local'}`}
             title={cloudState.detail}
@@ -2017,40 +2170,51 @@ function AppV2() {
         <div className="git-pill">{campaignReady ? `${git.branch || 'no branch'} · ${git.dirty_count ?? 0} changes` : 'campaign unavailable'}</div>
       </div>
 
-      <main className="workspace-grid" style={gridStyle}>
-        {!wideSurface && <ActivityRail activeView={activeView} setActiveView={setActiveView} player={player} avatarDataUrl={cloudState.avatar?.dataUrl || ''} campaignReady={campaignReady} />}
+      <SurfaceNavigation activeView={activeView} onNavigate={setActiveView} />
 
-        {!wideSurface && <aside className="left-panel panel">
+      <main className="workspace-grid" style={gridStyle}>
+        {!wideSurface && !dungeonSurface && <aside className={`left-panel panel ${leftPanelCollapsed ? 'left-panel-compact' : ''}`}>
           <ContextPanel
             activeView={activeView}
             campaign={campaign}
             files={files}
             activePath={activePath}
+            compact={leftPanelCollapsed}
+            onToggleCompact={() => setLeftPanelCollapsed((collapsed) => !collapsed)}
+            editorMode={editorMode}
             openFile={openFile}
+            openQuestDocument={openQuestDocument}
             newFile={newFile}
             setActiveView={setActiveView}
             submitBattle={submitBattle}
+            submitBoss={submitBoss}
             busy={busy}
           />
         </aside>}
 
-        {!wideSurface && <div className="resize-handle vertical left-resizer" onPointerDown={(event) => startResize('left', event)} />}
+        {!wideSurface && !dungeonSurface && !leftPanelCollapsed && <div className="resize-handle vertical left-resizer" role="separator" aria-orientation="vertical" aria-label="Resize encounter panel" onPointerDown={(event) => startResize('left', event)} />}
 
         <section className={`editor-panel panel ${showEditor ? '' : 'surface-hidden'} ${tutorSurface ? 'tutor-editor-panel' : ''}`}>
-          <div className="editor-toolbar">
-            <div className="active-file">
-              {tutorSurface ? (
-                <><span className="safe-badge">PYR WRITABLE</span> tutor.py{tutorDirty ? ' •' : ''}</>
-              ) : (
-                <>{activePath || 'No file selected'}{dirty ? ' •' : ''}</>
-              )}
-            </div>
-            <div className="toolbar-actions">
+            <div className="editor-toolbar">
+              <div className="active-file">
+                {tutorSurface ? (
+                  <><span className="safe-badge">PYR WRITABLE</span> tutor.py{tutorDirty ? ' •' : ''}</>
+                ) : questSurface ? (
+                  <><span className="safe-badge">STATE VIEW</span> quest.md</>
+                ) : (
+                  <>{activePath || 'No file selected'}{dirty ? ' •' : ''}</>
+                )}
+              </div>
+              <div className="toolbar-actions">
               {tutorSurface ? (
                 <>
                   <button onClick={saveTutor} disabled={busy}>Save Tutor</button>
                   <button onClick={formatTutor} disabled={busy}>Pretty</button>
                   <button className="primary" onClick={runTutor} disabled={busy}>▶ Run Tutor</button>
+                </>
+              ) : questSurface ? (
+                <>
+                  <span className="editor-readonly-note">Read-only projection</span>
                 </>
               ) : (
                 <>
@@ -2079,9 +2243,9 @@ function AppV2() {
           )}
           <div className="editor-wrap">
             <Editor
-              path={tutorSurface ? 'tutor.py' : (activePath || 'untitled.txt')}
-              language={tutorSurface ? 'python' : languageFor(activePath)}
-              value={tutorSurface ? tutorCode : code}
+              path={tutorSurface ? 'tutor.py' : questSurface ? 'quest.md' : (activePath || 'untitled.txt')}
+              language={tutorSurface ? 'python' : questSurface ? 'markdown' : languageFor(activePath)}
+              value={tutorSurface ? tutorCode : questSurface ? questDocument : code}
               onMount={(editor) => {
                 editorSelectionSubscriptionRef.current?.dispose()
                 const updateSelection = () => {
@@ -2096,7 +2260,7 @@ function AppV2() {
                 if (tutorSurface) {
                   setTutorCode(value ?? '')
                   setTutorDirty(true)
-                } else {
+                } else if (!questSurface) {
                   setCode(value ?? '')
                   setDirty(true)
                 }
@@ -2111,6 +2275,7 @@ function AppV2() {
                 smoothScrolling: true,
                 automaticLayout: true,
                 tabSize: 4,
+                readOnly: questSurface,
               }}
             />
           </div>
@@ -2137,7 +2302,7 @@ function AppV2() {
         </section>
 
         {!showEditor && (
-          <section className="game-screen panel">
+          <section className={`game-screen panel ${['tutor', 'codex'].includes(activeView) ? 'resource-game-screen' : ''}`}>
             <GameScreen
               activeView={activeView}
               progress={progress}
@@ -2158,11 +2323,15 @@ function AppV2() {
               }}
               onSaveDungeon={saveDungeon}
               onDungeonRest={useDungeonRest}
+              onDungeonCampAction={useDungeonCampAction}
+              onDungeonRevealRisk={revealDungeonRisk}
+              onDungeonEnterRisk={enterDungeonRisk}
               onDungeonMarketPurchase={buyDungeonItem}
               onDungeonEquip={equipDungeonItem}
               onDungeonChoose={chooseDungeonRoom}
               onDungeonLeave={leaveDungeonRoom}
               onDungeonFinish={finishDungeonRun}
+              onDungeonReset={resetDungeonRun}
               onStartDungeon={startDungeon}
               onPracticePrompt={requestPracticePrompt}
               dungeonSaving={dungeonSaving}
@@ -2172,6 +2341,8 @@ function AppV2() {
               purchaseCosmetic={purchaseCosmetic}
               equipCosmetic={equipCosmetic}
               equipCampaignItem={equipCampaignItem}
+              buildRoomUpgrade={buildRoomUpgrade}
+              performHomesteadAction={performHomesteadAction}
               saveCodexNote={saveCodexNote}
               busy={busy}
               preferences={preferences}
@@ -2191,9 +2362,23 @@ function AppV2() {
               onWorkspaceTransferRefresh={refreshWorkspaceTransfer}
               onWorkspaceTransferPush={pushWorkspaceFiles}
               onWorkspaceTransferPreviewPull={previewWorkspacePull}
-              onWorkspaceTransferApplyPull={applyWorkspacePull}
-              onNavigate={setActiveView}
-              campaignReady={campaignReady}
+               onWorkspaceTransferApplyPull={applyWorkspacePull}
+               onNavigate={setActiveView}
+               tutorCode={tutorCode}
+               tutorDirty={tutorDirty}
+               tutorExternalChange={tutorExternalChange}
+               editorFontSize={editorFontSize}
+               onTutorChange={(value) => {
+                 setTutorCode(value ?? '')
+                 setTutorDirty(true)
+               }}
+               onTutorSave={saveTutor}
+               onTutorFormat={formatTutor}
+               onTutorRun={runTutor}
+               onTutorReloadExternal={reloadExternalTutor}
+               onTutorKeepEdits={keepTutorEdits}
+               campaignReady={campaignReady}
+               showNavigation={false}
             />
           </section>
         )}
@@ -2210,6 +2395,7 @@ function AppV2() {
               <button disabled={runtime && !commands.codex} onClick={() => summon('codex')} title={commands.codex === false ? 'Codex CLI not found' : 'Launch Codex'}>Codex</button>
               <button disabled={runtime && !commands.claude} onClick={() => summon('claude')} title={commands.claude === false ? 'Claude CLI not found' : 'Launch Claude'}>Claude</button>
               <button disabled={runtime && !commands.agy} onClick={() => summon('agy')} title={commands.agy === false ? 'AGY CLI not found' : 'Launch AGY'}>AGY</button>
+              <button disabled={runtime && commands.copilot === false} onClick={() => summon('copilot')} title={commands.copilot === false ? 'GitHub Copilot CLI not found' : 'Launch GitHub Copilot CLI'}>Copilot</button>
               <button onClick={() => aiTerminalRef.current?.clear()}>Clear</button>
             </div>
           </div>
@@ -2221,7 +2407,7 @@ function AppV2() {
           <TerminalPane
             ref={aiTerminalRef}
             role="ai"
-            banner="PYR channel ready. Choose Codex, Claude, or AGY above."
+            banner="PYR channel ready. Choose Codex, Claude, AGY, or Copilot above."
             fontSize={terminalFontSize}
             skin={terminalSkin}
             onStateChange={setAiState}
@@ -2245,8 +2431,10 @@ function AppV2() {
         <span>
           {busy
             ? 'working…'
-            : tutorSurface
+          : tutorSurface
               ? 'tutor.py · Ctrl+S save · Ctrl+Enter run · Shift+Alt+F format'
+              : questSurface
+                ? 'quest.md · state-owned current quest · read-only'
               : activeView === 'dungeon'
                 ? `dungeon.py · ${dungeonDirty ? 'checkpoint pending' : 'checkpoint saved'}`
               : activePath

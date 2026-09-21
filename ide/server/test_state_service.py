@@ -204,7 +204,7 @@ class StateServiceBehaviorTests(unittest.TestCase):
         before = self.read(path)
         started = service.apply(
             "dungeon_start_run",
-            {"concept_id": "lists", "seed": "test-seed"},
+            {"concept_id": "lists", "seed": "loop-seed"},
             "player",
         )
         run = started["result"]["run"]
@@ -222,15 +222,15 @@ class StateServiceBehaviorTests(unittest.TestCase):
 
         chosen = service.apply(
             "dungeon_choose_room",
-            {"run_id": run["run_id"], "choice_id": run["room_choices"][0]["id"]},
+            {"run_id": run["run_id"], "choice_id": next(choice["id"] for choice in run["room_choices"] if choice["kind"] in {"encounter", "elite"})},
             "player",
         )
         run = chosen["result"]["run"]
         self.assertEqual(run["room_type"], "encounter")
         self.assertIsNotNone(run["question"])
-        self.assertEqual(run["encounter"]["name"], "The Verdict Wisp")
-        self.assertEqual(run["encounter"]["category"], "signal check")
-        self.assertEqual(run["encounter"]["phase"], "I")
+        self.assertTrue(run["encounter"]["name"])
+        self.assertTrue(run["encounter"]["category"])
+        self.assertIn(run["encounter"]["phase"], {"I", "II", "III"})
 
         saved = service.apply(
             "dungeon_save_editor",
@@ -250,7 +250,7 @@ class StateServiceBehaviorTests(unittest.TestCase):
         started = service.apply("dungeon_start_run", {"concept_id": "loops"}, "player")
         started_run = started["result"]["run"]
         run_id = started_run["run_id"]
-        selected = service.apply("dungeon_choose_room", {"run_id": run_id, "choice_id": started_run["room_choices"][0]["id"]}, "player")
+        selected = service.apply("dungeon_choose_room", {"run_id": run_id, "choice_id": next(choice["id"] for choice in started_run["room_choices"] if choice["kind"] in {"encounter", "elite"})}, "player")
         question_id = selected["result"]["run"]["question"]["id"]
         service.apply("dungeon_save_editor", {"run_id": run_id, "question_id": question_id, "content": "tips = 'old'\n"}, "player")
 
@@ -303,6 +303,24 @@ class StateServiceBehaviorTests(unittest.TestCase):
         self.assertEqual(fresh_run["editor_content"], "")
         self.assertEqual(fresh_run["loadout"]["heals"], 1)
 
+    def test_dungeon_reset_discards_only_active_checkpoint_and_records_event(self):
+        service, path = self.make_service()
+        started = service.apply("dungeon_start_run", {"concept_id": "loops", "seed": "reset-seed"}, "player")
+        run_id = started["result"]["run"]["run_id"]
+        before = self.read(path)
+        reset = service.apply("dungeon_reset_run", {"run_id": run_id}, "player")
+
+        self.assertTrue(reset["changed"])
+        self.assertTrue(reset["result"]["reset"])
+        self.assertFalse(reset["result"]["run"]["active"])
+        self.assertEqual(reset["event"]["reason"], "dungeon_run_reset")
+        self.assertTrue(reset["event"]["campaign_untouched"])
+        after = self.read(path)
+        self.assertIsNone(after["dungeon_run"])
+        self.assertEqual(after["player"], before["player"])
+        self.assertEqual(after["projects"], before["projects"])
+        self.assertEqual(after["state_events"][-1]["action"], "dungeon_reset_run")
+
     def test_dungeon_questions_reject_hidden_fields_and_active_runs_cannot_reset(self):
         service, _ = self.make_service()
         started = service.apply("dungeon_start_run", {"concept_id": "lists"}, "player")
@@ -330,64 +348,59 @@ class StateServiceBehaviorTests(unittest.TestCase):
 
     def test_dungeon_verdicts_advance_rooms_without_campaign_rewards_and_support_rest_market_finish(self):
         service, path = self.make_service()
-        started = service.apply("dungeon_start_run", {"concept_id": "lists", "seed": "loop-seed"}, "player")
+        started = service.apply("dungeon_start_run", {"concept_id": "lists", "seed": "test-34"}, "player")
         run = started["result"]["run"]
-        run = service.apply("dungeon_choose_room", {"run_id": run["run_id"], "choice_id": run["room_choices"][0]["id"]}, "player")["result"]["run"]
+        run = service.apply(
+            "dungeon_choose_room",
+            {"run_id": run["run_id"], "choice_id": next(choice["id"] for choice in run["room_choices"] if choice["kind"] in {"encounter", "elite"} and choice["id"].endswith("c3"))},
+            "player",
+        )["result"]["run"]
         initial_player = self.read(path)["player"].copy()
 
-        for index in range(4):
-            current = service.dungeon_projection(service.snapshot())
-            result = service.apply_internal(
-                "dungeon_record_verdict",
-                {
-                    "run_id": run["run_id"],
-                    "question_id": current["question"]["id"],
-                    "verdict": "correct",
-                    "evidence_id": f"dungeon-proof-{index}",
-                    "reason": "Provider validated the current room",
-                },
-            )
-            self.assertEqual(result["result"]["outcome"], "correct")
-            self.assertTrue(result["event"]["mob_name"])
-            if index < 3:
-                selector = service.dungeon_projection(service.snapshot())
-                run = service.apply("dungeon_choose_room", {"run_id": run["run_id"], "choice_id": selector["room_choices"][0]["id"]}, "player")["result"]["run"]
-
-        rest = service.dungeon_projection(service.snapshot())
-        self.assertEqual(rest["room"], 5)
-        self.assertEqual(rest["room_type"], "selector")
-        rest = service.apply("dungeon_choose_room", {"run_id": run["run_id"], "choice_id": next(choice["id"] for choice in rest["room_choices"] if choice["kind"] == "rest")}, "player")["result"]["run"]
-        self.assertEqual(rest["room_type"], "rest")
-        self.assertIsNone(rest["question"])
-        state = self.read(path)
-        state["dungeon_run"]["loadout"]["hp"] = 40
-        path.write_text(json.dumps(state), encoding="utf-8")
-        rested = service.apply("dungeon_use_rest", {"run_id": run["run_id"]}, "player")
-        self.assertEqual(rested["result"]["healed"], 30)
-        self.assertEqual(rested["result"]["run"]["room_type"], "selector")
-        self.assertEqual(rested["result"]["run"]["loadout"]["hp"], 70)
-
-        selector = service.dungeon_projection(service.snapshot())
-        current = service.apply("dungeon_choose_room", {"run_id": run["run_id"], "choice_id": next(choice["id"] for choice in selector["room_choices"] if choice["kind"] == "encounter")}, "player")["result"]["run"]
-        service.apply_internal(
+        current = service.dungeon_projection(service.snapshot())
+        result = service.apply_internal(
             "dungeon_record_verdict",
             {
                 "run_id": run["run_id"],
                 "question_id": current["question"]["id"],
                 "verdict": "correct",
-                "evidence_id": "dungeon-proof-market-0",
+                "evidence_id": "dungeon-proof-0",
                 "reason": "Provider validated the current room",
             },
         )
+        self.assertEqual(result["result"]["outcome"], "correct")
+        self.assertTrue(result["event"]["mob_name"])
+
+        # The prototype map is intentionally randomized by seed.  Follow the
+        # middle lane so this test exercises both market and recovery actions
+        # without assuming every row is combat.
         selector = service.dungeon_projection(service.snapshot())
         market = service.apply("dungeon_choose_room", {"run_id": run["run_id"], "choice_id": next(choice["id"] for choice in selector["room_choices"] if choice["kind"] == "market")}, "player")["result"]["run"]
         self.assertEqual(market["room_type"], "market")
         self.assertTrue(market["market_catalog"])
+        state = self.read(path)
+        state["dungeon_run"]["run_coins"] = 30
+        path.write_text(json.dumps(state), encoding="utf-8")
         purchased = service.apply("dungeon_market_purchase", {"run_id": run["run_id"], "item_id": "dungeon-ward"}, "player")
         self.assertEqual(purchased["result"]["item"]["id"], "dungeon-ward")
         self.assertEqual(purchased["result"]["run"]["loadout"]["armor"], "Ember Ward")
         left = service.apply("dungeon_leave_room", {"run_id": run["run_id"]}, "player")
         self.assertEqual(left["result"]["run"]["room_type"], "selector")
+
+        selector = service.dungeon_projection(service.snapshot())
+        rest = service.apply("dungeon_choose_room", {"run_id": run["run_id"], "choice_id": next(choice["id"] for choice in selector["room_choices"] if choice["kind"] == "rest")}, "player")["result"]["run"]
+        self.assertEqual(rest["room_type"], "rest")
+        self.assertIsNone(rest["question"])
+        state = self.read(path)
+        state["dungeon_run"]["loadout"]["hp"] = 40
+        path.write_text(json.dumps(state), encoding="utf-8")
+        rested = service.apply("dungeon_camp_action", {"run_id": run["run_id"], "action": "rest"}, "player")
+        self.assertEqual(rested["result"]["healed"], 30)
+        self.assertEqual(rested["result"]["run"]["room_type"], "rest")
+        self.assertEqual(rested["result"]["run"]["loadout"]["hp"], 70)
+        with self.assertRaises(StateCommandError):
+            service.apply("dungeon_camp_action", {"run_id": run["run_id"], "action": "rest"}, "player")
+        service.apply("dungeon_leave_room", {"run_id": run["run_id"]}, "player")
 
         finished = service.apply("dungeon_finish_run", {"run_id": run["run_id"]}, "player")
         self.assertEqual(finished["result"]["run"]["status"], "complete")
@@ -395,6 +408,31 @@ class StateServiceBehaviorTests(unittest.TestCase):
         self.assertTrue(all("answer_key" not in entry for entry in finished["result"]["run"]["history"]))
         self.assertEqual(len(self.read(path)["dungeon_leaderboard"]), 1)
         self.assertEqual(finished["result"]["run"]["leaderboard"][0]["status"], "complete")
+
+    def test_dungeon_verdicts_support_legacy_rest_endpoint(self):
+        service, path = self.make_service()
+        started = service.apply("dungeon_start_run", {"concept_id": "lists", "seed": "loop-seed"}, "player")
+        run = started["result"]["run"]
+        run = service.apply("dungeon_choose_room", {"run_id": run["run_id"], "choice_id": next(choice["id"] for choice in run["room_choices"] if choice["kind"] == "encounter")}, "player")["result"]["run"]
+        result = service.apply_internal(
+            "dungeon_record_verdict",
+            {
+                "run_id": run["run_id"],
+                "question_id": run["question"]["id"],
+                "verdict": "correct",
+                "evidence_id": "dungeon-proof-rest-compat",
+                "reason": "Provider validated the current room",
+            },
+        )
+        selector = service.dungeon_projection(service.snapshot())
+        rest = service.apply("dungeon_choose_room", {"run_id": run["run_id"], "choice_id": next(choice["id"] for choice in selector["room_choices"] if choice["kind"] == "rest")}, "player")["result"]["run"]
+        state = self.read(path)
+        state["dungeon_run"]["loadout"]["hp"] = 40
+        path.write_text(json.dumps(state), encoding="utf-8")
+        rested = service.apply("dungeon_use_rest", {"run_id": run["run_id"]}, "player")
+        self.assertEqual(rested["result"]["healed"], 30)
+        self.assertEqual(rested["result"]["run"]["room_type"], "selector")
+        self.assertEqual(rested["result"]["run"]["loadout"]["hp"], 70)
 
     def test_dungeon_focus_uses_only_recorded_codex_weakness_evidence(self):
         service, path = self.make_service()
@@ -419,9 +457,9 @@ class StateServiceBehaviorTests(unittest.TestCase):
 
     def test_dungeon_incorrect_verdict_can_end_only_the_run(self):
         service, path = self.make_service()
-        started = service.apply("dungeon_start_run", {"concept_id": "loops"}, "player")
+        started = service.apply("dungeon_start_run", {"concept_id": "loops", "seed": "loop-seed"}, "player")
         run = started["result"]["run"]
-        run = service.apply("dungeon_choose_room", {"run_id": run["run_id"], "choice_id": run["room_choices"][0]["id"]}, "player")["result"]["run"]
+        run = service.apply("dungeon_choose_room", {"run_id": run["run_id"], "choice_id": next(choice["id"] for choice in run["room_choices"] if choice["kind"] in {"encounter", "elite"})}, "player")["result"]["run"]
         state = self.read(path)
         state["dungeon_run"]["loadout"]["hp"] = 1
         path.write_text(json.dumps(state), encoding="utf-8")
@@ -524,6 +562,64 @@ class StateServiceBehaviorTests(unittest.TestCase):
         self.assertEqual(state["homestead"]["equipped"]["cursor"], "cursor-golden-spark")
         self.assertEqual([event["action"] for event in state["state_events"]], ["homestead_purchase", "homestead_equip"])
 
+    def test_homestead_room_upgrade_uses_authored_catalog_and_migrates_first_token(self):
+        service, path = self.make_service()
+        built = service.apply("homestead_room_upgrade", {"upgrade_id": "reinforced-hearth"}, "player")
+        state = self.read(path)
+
+        self.assertTrue(built["changed"])
+        self.assertEqual(built["revision"], 5)
+        self.assertEqual(built["result"]["upgrade"]["id"], "reinforced-hearth")
+        self.assertEqual(state["homestead"]["room_upgrades"], ["reinforced-hearth"])
+        self.assertEqual(state["homestead"]["upgrade_tokens"], 0)
+        self.assertEqual(state["player"]["max_hp"], 110)
+        self.assertEqual(state["player"]["hp"], 110)
+        self.assertEqual(state["state_events"][-1]["action"], "homestead_room_upgrade")
+
+        duplicate = service.apply("homestead_room_upgrade", {"upgrade_id": "reinforced-hearth"}, "player")
+        self.assertFalse(duplicate["changed"])
+        self.assertEqual(self.read(path)["meta"]["revision"], 5)
+
+    def test_homestead_room_upgrade_rejects_unknown_and_unaffordable_builds(self):
+        service, path = self.make_service()
+        with self.assertRaises(StateCommandError) as unknown:
+            service.apply("homestead_room_upgrade", {"upgrade_id": "not-a-room"}, "player")
+        self.assertEqual(unknown.exception.status_code, 404)
+
+        state = self.read(path)
+        state["homestead"]["upgrade_tokens"] = 0
+        path.write_text(json.dumps(state), encoding="utf-8")
+        with self.assertRaises(StateCommandError) as unaffordable:
+            service.apply("homestead_room_upgrade", {"upgrade_id": "reinforced-hearth"}, "player")
+        self.assertEqual(unaffordable.exception.status_code, 409)
+        self.assertEqual(self.read(path)["meta"]["revision"], 4)
+
+    def test_homestead_actions_match_prototype_recovery_supply_and_pyr_loop(self):
+        service, path = self.make_service()
+        state = self.read(path)
+        state["player"].update({"hp": 70, "max_hp": 100, "potions": 1})
+        state["supplies"] = {"bandages": 1, "tonics": 0, "meals": 1}
+        state["companion"] = {"name": "PYR", "form": "Tiny Code-Flame", "level": 1, "bond": 0}
+        path.write_text(json.dumps(state), encoding="utf-8")
+
+        bandage = service.apply("homestead_action", {"action": "bandage"}, "player")
+        self.assertEqual(bandage["result"]["healed"], 20)
+        self.assertEqual(self.read(path)["supplies"]["bandages"], 0)
+        self.assertEqual(self.read(path)["player"]["potions"], 0)
+
+        meal = service.apply("homestead_action", {"action": "meal"}, "player")
+        self.assertEqual(meal["result"]["healed"], 10)
+        self.assertEqual(self.read(path)["supplies"]["meals"], 0)
+
+        with self.assertRaises(StateCommandError) as no_meals:
+            service.apply("homestead_action", {"action": "feed_pyr"}, "player")
+        self.assertEqual(no_meals.exception.status_code, 409)
+
+        train = service.apply("homestead_action", {"action": "train_pyr"}, "player")
+        self.assertEqual(train["result"]["companion"]["bond"], 1)
+        self.assertEqual(self.read(path)["companion"]["energy"], 1)
+        self.assertEqual(self.read(path)["state_events"][-1]["action"], "homestead_action")
+
     def test_campaign_loadout_only_equips_state_owned_gear(self):
         service, path = self.make_service()
         state = self.read(path)
@@ -574,6 +670,7 @@ class StateServiceBehaviorTests(unittest.TestCase):
                     "question_types": ["prediction"],
                     "weaknesses": ["indexing"],
                     "notes": ["Validated collection reasoning"],
+                    "code_snippet": "cards = ['hit', 'stand']\nfor card in cards:\n    print(card)",
                     "attempts": 2,
                     "results": [{"outcome": "defeated", "evidence_id": "mob-1", "answer_key": "secret"}],
                     "interview_history": [],
@@ -585,7 +682,10 @@ class StateServiceBehaviorTests(unittest.TestCase):
         projection = service.codex_projection(service.snapshot())
         lists_page = next(page for page in projection["pages"] if page["id"] == "lists")
         self.assertIn("blackjack-lists", lists_page["encounter_ids"])
+        self.assertTrue(lists_page["common_mistakes"])
+        self.assertTrue(lists_page["check_prompt"])
         self.assertEqual(projection["entries"][0]["page_id"], "lists")
+        self.assertIn("for card in cards", projection["entries"][0]["code_snippet"])
         self.assertNotIn("answer_key", projection["entries"][0]["results"][0])
 
         saved = service.apply("record_codex_note", {"entry_id": "blackjack-lists", "note": "Revisit indexing tomorrow."}, "player")
@@ -605,7 +705,7 @@ class StateServiceBehaviorTests(unittest.TestCase):
         service, path = self.make_service()
         first = service.apply_internal(
             "record_battle_objective",
-            {"objective_id": "table_setup", "evidence_id": "mob-000-table", "reason": "Verified table state explanation"},
+            {"objective_id": "table_setup", "evidence_id": "mob-000-table", "reason": "Verified table state explanation", "code_snippet": "table = []\ntable.append('hit')"},
         )
         state = self.read(path)
         self.assertEqual(first["result"]["resolve_before"], 4)
@@ -616,7 +716,7 @@ class StateServiceBehaviorTests(unittest.TestCase):
 
         second = service.apply_internal(
             "record_battle_objective",
-            {"objective_id": "state_explanation", "evidence_id": "mob-000-state", "reason": "Verified state boundary"},
+            {"objective_id": "state_explanation", "evidence_id": "mob-000-state", "reason": "Verified state boundary", "code_snippet": "table = []\nfor card in cards:\n    table.append(card)"},
         )
         state = self.read(path)
         self.assertTrue(second["result"]["mob_defeated"])
@@ -630,6 +730,7 @@ class StateServiceBehaviorTests(unittest.TestCase):
         self.assertEqual(state["encounter_state"]["status"], "defeated")
         self.assertEqual(state["codex"]["encounters"][0]["status"], "defeated")
         self.assertEqual(state["codex"]["encounters"][0]["attempts"], 2)
+        self.assertIn("for card in cards", state["codex"]["encounters"][0]["code_snippet"])
         self.assertTrue(next(item for item in state["achievements"] if item["name"] == "First Blood")["unlocked"])
 
     def test_bounded_trinket_triggers_are_state_service_owned(self):
@@ -697,17 +798,36 @@ class StateServiceBehaviorTests(unittest.TestCase):
         )
         self.assertTrue(phase["changed"])
         self.assertEqual(phase["result"]["boss_phase"], "explanation")
+        self.assertEqual(phase["result"]["boss_damage"], 4)
+        self.assertEqual(phase["result"]["boss_resolve_before"], 12)
+        self.assertEqual(phase["result"]["boss_resolve_after"], 8)
         self.assertEqual(phase["result"]["verified_boss_requirements"], ["required_behavior"])
         self.assertEqual(phase["result"]["remaining_boss_requirements"], ["explanation", "interview"])
         projection = service.encounter_projection(self.read(path))
         self.assertEqual(projection["status"], "boss_available")
         self.assertEqual(projection["verified_boss_requirements"], ["required_behavior"])
+        self.assertEqual(projection["boss_resolve"], 8)
+        self.assertEqual(projection["boss_max_resolve"], 12)
+        self.assertEqual(projection["boss_current_requirement"]["id"], "explanation")
+        self.assertEqual(projection["boss_current_requirement"]["damage"], 3)
+        self.assertEqual(projection["current_quest"]["id"], "explanation")
+        self.assertEqual(projection["current_quest"]["quest"], projection["boss_current_requirement"]["quest"])
+        self.assertEqual([item["id"] for item in projection["mechanics"]], ["execution_gate", "bug_feedback", "verified_goal"])
+        self.assertEqual(projection["reward_envelope"]["xp"], 100)
+        self.assertIn("boss_lore", projection)
         self.assertNotIn("prompt", projection)
         duplicate = service.apply_internal(
             "record_boss_requirement",
             {"requirement_id": "required_behavior", "evidence_id": "boss-phase-1", "reason": "Duplicate provider retry"},
         )
         self.assertFalse(duplicate["changed"])
+
+        with self.assertRaises(StateCommandError) as out_of_order:
+            service.apply_internal(
+                "record_boss_requirement",
+                {"requirement_id": "interview", "evidence_id": "boss-phase-skip", "reason": "Skipped the current goal"},
+            )
+        self.assertEqual(out_of_order.exception.status_code, 409)
 
     def test_final_mob_opens_boss_gate_and_verified_boss_clear_awards_canonical_progression(self):
         service, path = self.make_service()
@@ -973,7 +1093,7 @@ class StateServiceBehaviorTests(unittest.TestCase):
                         ],
                     }],
                     "current_quest": "Blackjack - Mob 3: The Hitman",
-                    "codex": {"encounters": [{"id": "legacy-empty-table", "project_id": "01-blackjack", "mob_name": "The Empty Table", "concept": "Variables", "status": "defeated", "player_notes": ["Review indexing before the next encounter."], "results": [{"outcome": "defeated", "evidence_id": "legacy-1"}]}]},
+                    "codex": {"encounters": [{"id": "legacy-empty-table", "project_id": "01-blackjack", "mob_name": "The Empty Table", "concept": "Variables", "status": "defeated", "player_notes": ["Review indexing before the next encounter."], "code_snippet": "score = 0\nscore += 1", "results": [{"outcome": "defeated", "evidence_id": "legacy-1"}]}]},
                     "dungeon_run": {
                         "status": "active",
                         "run_id": "dungeon-1",
@@ -996,6 +1116,7 @@ class StateServiceBehaviorTests(unittest.TestCase):
         self.assertEqual(after["projects"][0]["mobs"][1]["resolve"], 8)
         self.assertEqual(after["codex"]["encounters"][0]["mob_name"], "The Empty Table")
         self.assertEqual(after["codex"]["encounters"][0]["player_notes"], ["Review indexing before the next encounter."])
+        self.assertEqual(after["codex"]["encounters"][0]["code_snippet"], "score = 0\nscore += 1")
         self.assertEqual(after["dungeon_run"]["run_id"], "dungeon-1")
         self.assertEqual(after["state_events"][-1]["action"], "sync_apply_cloud")
 
@@ -1271,6 +1392,19 @@ class StateGatewayHttpTests(unittest.TestCase):
         self.assertEqual(body["encounter"]["mob_name"], "The Empty Table")
         self.assertEqual(body["encounter"]["resolve"], 4)
         self.assertEqual(body["encounter"]["available_objectives"][0]["impact"], 2)
+        self.assertEqual(body["encounter"]["available_objectives"][0]["label"], "Set up the table")
+        self.assertIn("state", body["encounter"]["available_objectives"][0]["brief"])
+        self.assertEqual(body["encounter"]["available_objectives"][0]["question_type"], "prediction")
+        self.assertEqual(body["encounter"]["mob"]["name"], "The Empty Table")
+        self.assertEqual(body["encounter"]["mob"]["index"], 0)
+        self.assertIn("bounded field encounter", body["encounter"]["mob"]["lore"])
+        self.assertEqual(body["encounter"]["current_quest"]["id"], "table_setup")
+        self.assertEqual(len(body["encounter"]["mechanics"]), 3)
+        self.assertEqual(body["encounter"]["reward_envelope"], {"xp": 25, "coins": 10, "authorized_items": []})
+        projection_text = json.dumps(body["encounter"])
+        self.assertNotIn("The Dealer's Hand", projection_text)
+        self.assertNotIn("locked_prompt", projection_text)
+        self.assertNotIn("answer_key", projection_text)
         self.assertEqual(body["state_authority"]["canonical_path"], str(canonical.resolve()))
         self.assertFalse(body["state_authority"]["legacy_authoritative"])
 
@@ -1301,6 +1435,7 @@ class StateGatewayHttpTests(unittest.TestCase):
         response = client.get("/api/runtime", headers={"host": "127.0.0.1"})
         self.assertEqual(response.status_code, 200)
         body = response.json()
+        self.assertIn("copilot", body["commands"])
         repo_git = body["repo_git"]
         self.assertIn("head_sha", repo_git)
         self.assertIn("upstream_ref", repo_git)

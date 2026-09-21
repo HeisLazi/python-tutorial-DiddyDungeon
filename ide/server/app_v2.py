@@ -37,6 +37,7 @@ from ide.server.security import allowed_hosts, allowed_origins, is_allowed_origi
 from ide.server.state import (
     BOSS_REQUIREMENTS,
     MAX_CODEX_NOTE_BYTES,
+    MAX_CODEX_SNIPPET_BYTES,
     MAX_DUNGEON_EDITOR_BYTES,
     MAX_IDENTIFIER_LENGTH,
     MAX_REASON_LENGTH,
@@ -120,11 +121,16 @@ IGNORED_DIRS = {
     "node_modules",
     ".venv",
     "venv",
+    ".ruff_cache",
     "__pycache__",
     ".idea",
     ".vscode",
     "dist",
     "build",
+    # A malformed transfer once created a literal ``\\`` directory under the
+    # checkout. It mirrors a filesystem root and must never appear as a
+    # second workspace root in the editor tree.
+    "\\",
 }
 
 TUTOR_TEMPLATE = '''"""Quest Lab Tutor Notebook.
@@ -205,6 +211,18 @@ class HomesteadEquip(BaseModel):
     item_id: str
 
 
+class HomesteadRoomUpgrade(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    upgrade_id: str = Field(min_length=1, max_length=MAX_IDENTIFIER_LENGTH)
+
+
+class HomesteadAction(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    action: Literal["recover", "bandage", "meal", "feed_pyr", "train_pyr", "spend_token"]
+
+
 class EquipmentEquip(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -269,6 +287,9 @@ class PyrBattleSubmissionRequest(BaseModel):
     nonce: str = Field(min_length=16, max_length=128)
     objective_id: str = Field(min_length=1, max_length=MAX_IDENTIFIER_LENGTH)
     answer: str = Field(min_length=1, max_length=20_000)
+    answer_source: Literal["manual", "forge_active_file"] = "manual"
+    source_path: str | None = Field(default=None, max_length=240)
+    file_digest: str | None = Field(default=None, min_length=64, max_length=64, pattern=r"^[0-9a-f]{64}$")
 
 
 class PyrBossSubmissionRequest(BaseModel):
@@ -277,6 +298,9 @@ class PyrBossSubmissionRequest(BaseModel):
     nonce: str = Field(min_length=16, max_length=128)
     requirement_id: Literal["required_behavior", "explanation", "interview"]
     answer: str = Field(min_length=1, max_length=20_000)
+    answer_source: Literal["manual", "forge_active_file"] = "manual"
+    source_path: str | None = Field(default=None, max_length=240)
+    file_digest: str | None = Field(default=None, min_length=64, max_length=64, pattern=r"^[0-9a-f]{64}$")
 
 
 class PyrBossVerdictRequest(BaseModel):
@@ -296,6 +320,7 @@ class DungeonStartRequest(BaseModel):
 
     concept_id: str | None = Field(default=None, max_length=MAX_IDENTIFIER_LENGTH)
     seed: str | None = Field(default=None, max_length=MAX_IDENTIFIER_LENGTH)
+    class_id: str | None = Field(default=None, max_length=MAX_IDENTIFIER_LENGTH)
 
 
 class DungeonChooseRoomRequest(BaseModel):
@@ -317,6 +342,10 @@ class DungeonRunRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     run_id: str = Field(min_length=1, max_length=MAX_IDENTIFIER_LENGTH)
+
+
+class DungeonCampActionRequest(DungeonRunRequest):
+    action: Literal["rest", "bandage", "cook", "sharpen", "fortify", "tonic"]
 
 
 class DungeonMarketRequest(DungeonRunRequest):
@@ -744,6 +773,11 @@ def build_tree() -> list[dict]:
                 NOTES_DIR_NAME,
             } or child.name.startswith(".DS_Store"):
                 continue
+            # Do not follow symlinks while projecting the workspace. A linked
+            # directory can escape the checkout and flood the tree with host
+            # files; the file API still enforces the same safe workspace root.
+            if child.is_symlink():
+                continue
             try:
                 relative = child.relative_to(WORKSPACE).as_posix()
             except ValueError:
@@ -863,6 +897,7 @@ def runtime():
             "codex": command_available("codex"),
             "claude": command_available("claude"),
             "agy": command_available("agy"),
+            "copilot": command_available("copilot"),
             "ruff": importlib.util.find_spec("ruff") is not None,
         },
     }
@@ -961,6 +996,21 @@ def use_dungeon_rest(payload: DungeonRunRequest):
     return _dungeon_player_action("dungeon_use_rest", payload.model_dump())
 
 
+@app.post("/api/dungeon/camp")
+def use_dungeon_camp_action(payload: DungeonCampActionRequest):
+    return _dungeon_player_action("dungeon_camp_action", payload.model_dump())
+
+
+@app.post("/api/dungeon/risk/reveal")
+def reveal_dungeon_risk(payload: DungeonRunRequest):
+    return _dungeon_player_action("dungeon_reveal_risk", payload.model_dump())
+
+
+@app.post("/api/dungeon/risk/enter")
+def enter_dungeon_risk(payload: DungeonRunRequest):
+    return _dungeon_player_action("dungeon_enter_risk", payload.model_dump())
+
+
 @app.post("/api/dungeon/market")
 def purchase_dungeon_market(payload: DungeonMarketRequest):
     return _dungeon_player_action("dungeon_market_purchase", payload.model_dump())
@@ -979,6 +1029,11 @@ def leave_dungeon_room(payload: DungeonRunRequest):
 @app.post("/api/dungeon/finish")
 def finish_dungeon_run(payload: DungeonRunRequest):
     return _dungeon_player_action("dungeon_finish_run", payload.model_dump())
+
+
+@app.post("/api/dungeon/reset")
+def reset_dungeon_run(payload: DungeonRunRequest):
+    return _dungeon_player_action("dungeon_reset_run", payload.model_dump())
 
 
 @app.get("/api/practice")
@@ -1248,6 +1303,9 @@ def _attach_pyr_verdict_challenge(
 
     project_id = encounter.get("project_id")
     mob_name = encounter.get("mob_name")
+    active_file = context.get("active_file")
+    active_path = active_file.get("path") if isinstance(active_file, dict) else None
+    active_file_digest = active_file.get("digest") if isinstance(active_file, dict) else None
     boss_mode = encounter.get("status") == "boss_available" or encounter.get("boss_status") == "available"
     boss_name = encounter.get("boss") if boss_mode else None
     if not project_id or (not mob_name and not boss_mode):
@@ -1272,6 +1330,8 @@ def _attach_pyr_verdict_challenge(
             and existing.get("project_id") == project_id
             and existing.get("challenge_type") == ("boss" if boss_mode else "battle")
             and (existing.get("boss_name") == boss_name if boss_mode else existing.get("mob_name") == mob_name)
+            and existing.get("active_path") == active_path
+            and existing.get("active_file_digest") == active_file_digest
             and float(existing.get("expires_at", 0)) > now
         )
         # Keep an issued answer-bound challenge stable while the user submits
@@ -1287,6 +1347,8 @@ def _attach_pyr_verdict_challenge(
                 "revision": revision,
                 "project_id": project_id,
                 "challenge_type": "boss" if boss_mode else "battle",
+                "active_path": active_path,
+                "active_file_digest": active_file_digest,
                 "expires_at": now + PYR_VERDICT_TTL_SECONDS,
             }
             if boss_mode:
@@ -1319,6 +1381,13 @@ def _attach_pyr_verdict_challenge(
             context["verdict"]["boss_name"] = existing["boss_name"]
             context["verdict"]["requirements"] = list(BOSS_REQUIREMENTS)
             context["verdict"]["verified_requirements"] = sorted(existing.get("boss_verified", {}).keys())
+            current_requirement = encounter.get("boss_current_requirement")
+            if isinstance(current_requirement, dict):
+                context["verdict"]["current_requirement"] = current_requirement.get("id")
+        if existing.get("active_path"):
+            context["verdict"]["active_path"] = existing["active_path"]
+        if existing.get("active_file_digest"):
+            context["verdict"]["file_digest"] = existing["active_file_digest"]
         for field in ("submission_id", "objective_id", "answer_digest", "evidence_id"):
             if field in existing:
                 context["verdict"][field] = existing[field]
@@ -1528,6 +1597,55 @@ def write_pyr_context(payload: PyrContextRequest):
     return {"ok": True, "context": _capture_pyr_context(payload, rotate_challenge=True)}
 
 
+def _validate_forge_submission_source(
+    *, answer_source: str, source_path: str | None, file_digest: str | None, answer: str, challenge: dict[str, object]
+) -> None:
+    """Bind Forge submissions to the file that issued the current challenge.
+
+    The provider still decides the verdict, but the gateway prevents a stale
+    editor tab (or a different file) from being presented as the active Forge
+    answer.  Manual callers remain compatible for tests and older clients.
+    """
+
+    if answer_source != "forge_active_file":
+        return
+    normalized = (source_path or "").strip().replace("\\", "/")
+    expected = str(challenge.get("active_path") or "")
+    expected_digest = str(challenge.get("active_file_digest") or "")
+    filename = Path(normalized).name.lower()
+    if not normalized or normalized != expected:
+        raise HTTPException(status_code=409, detail="Forge file changed; capture the active Forge context again")
+    if not expected_digest or (file_digest or "").lower() != expected_digest:
+        raise HTTPException(status_code=409, detail="Forge file digest changed; capture the active Forge context again")
+    if not normalized.lower().endswith(".py") or filename in {"tutor.py", "dungeon.py"}:
+        raise HTTPException(status_code=422, detail="Forge submissions must use the active campaign .py file")
+    if not answer.strip():
+        raise HTTPException(status_code=422, detail="Active Forge file is empty")
+    if hashlib.sha256(answer.encode("utf-8")).hexdigest() != expected_digest:
+        raise HTTPException(status_code=409, detail="Forge file contents do not match the captured digest")
+    try:
+        current_file = bounded_file(safe_path(normalized))
+    except (ContextValueError, HTTPException) as exc:
+        raise HTTPException(status_code=409, detail="Forge file changed; capture the active Forge context again") from exc
+    if current_file.get("digest") != expected_digest:
+        raise HTTPException(status_code=409, detail="Forge file changed; capture the active Forge context again")
+
+
+def _codex_code_snippet(answer: str, answer_source: str) -> str | None:
+    """Return only a small learner-authored Forge excerpt for valid Codex evidence.
+
+    Raw answers remain ephemeral until a provider verdict.  If the submitted
+    answer came from the active campaign file, the state service may retain a
+    bounded, control-character-clean excerpt after a correct verdict so the
+    encounter record feels personal without becoming an answer archive.
+    """
+
+    if answer_source != "forge_active_file":
+        return None
+    snippet, _ = bounded_text(answer, "code_snippet", max_bytes=MAX_CODEX_SNIPPET_BYTES)
+    return snippet.strip() or None
+
+
 @app.post("/api/pyr/battle-submission")
 def create_pyr_battle_submission(payload: PyrBattleSubmissionRequest):
     """Bind one bounded player answer to the current PYR challenge.
@@ -1566,6 +1684,13 @@ def create_pyr_battle_submission(payload: PyrBattleSubmissionRequest):
             PYR_CONTEXT_CHALLENGES[client_id] = challenge
         if challenge.get("submission_id"):
             raise HTTPException(status_code=409, detail="This PYR challenge already has a Battle submission")
+        _validate_forge_submission_source(
+            answer_source=payload.answer_source,
+            source_path=payload.source_path,
+            file_digest=payload.file_digest,
+            answer=answer,
+            challenge=challenge,
+        )
 
         with PROGRESS_LOCK:
             try:
@@ -1595,6 +1720,7 @@ def create_pyr_battle_submission(payload: PyrBattleSubmissionRequest):
                 submission_id = f"battle-{secrets.token_hex(12)}"
                 evidence_id = submission_id
                 answer_digest = hashlib.sha256(answer.encode("utf-8")).hexdigest()
+                answer_snippet = _codex_code_snippet(answer, payload.answer_source)
                 challenge.update(
                     {
                         "submission_id": submission_id,
@@ -1603,6 +1729,10 @@ def create_pyr_battle_submission(payload: PyrBattleSubmissionRequest):
                         "impact": int(objective.get("impact") or 0),
                         "evidence_id": evidence_id,
                         "answer_digest": answer_digest,
+                        "answer_snippet": answer_snippet,
+                        "answer_source": payload.answer_source,
+                        "source_path": payload.source_path.strip().replace("\\", "/") if payload.source_path else None,
+                        "file_digest": payload.file_digest,
                     }
                 )
             except StateCommandError as exc:
@@ -1621,6 +1751,9 @@ def create_pyr_battle_submission(payload: PyrBattleSubmissionRequest):
             "impact": challenge["impact"],
             "evidence_id": evidence_id,
             "answer_digest": answer_digest,
+            "answer_source": challenge.get("answer_source", "manual"),
+            "source_path": challenge.get("source_path"),
+            "file_digest": challenge.get("file_digest"),
             "expires_in": max(0, int(float(challenge["expires_at"]) - time.monotonic())),
         },
     }
@@ -1881,6 +2014,13 @@ def create_pyr_boss_submission(payload: PyrBossSubmissionRequest):
             raise HTTPException(status_code=409, detail="This boss requirement is already verified")
         if requirement_id in submissions:
             raise HTTPException(status_code=409, detail="This boss requirement already has a pending submission")
+        _validate_forge_submission_source(
+            answer_source=payload.answer_source,
+            source_path=payload.source_path,
+            file_digest=payload.file_digest,
+            answer=answer,
+            challenge=challenge,
+        )
 
         with PROGRESS_LOCK:
             try:
@@ -1898,15 +2038,27 @@ def create_pyr_boss_submission(payload: PyrBossSubmissionRequest):
                     raise HTTPException(status_code=409, detail="The boss gate is no longer available")
                 if requirement_id not in BOSS_REQUIREMENTS:
                     raise HTTPException(status_code=422, detail="Unsupported boss requirement")
+                current_requirement = encounter.get("boss_current_requirement")
+                current_requirement_id = current_requirement.get("id") if isinstance(current_requirement, dict) else None
+                if current_requirement_id and requirement_id != current_requirement_id:
+                    raise HTTPException(status_code=409, detail="Submit the current boss goal before a later goal")
                 submission_id = f"boss-{secrets.token_hex(12)}"
                 evidence_id = submission_id
                 answer_digest = hashlib.sha256(answer.encode("utf-8")).hexdigest()
+                question_type = (
+                    str(current_requirement.get("question_type") or "explanation")
+                    if isinstance(current_requirement, dict)
+                    else "explanation"
+                )
                 submissions[requirement_id] = {
                     "submission_id": submission_id,
                     "evidence_id": evidence_id,
                     "answer_digest": answer_digest,
                     "requirement_id": requirement_id,
-                    "question_type": "interview" if requirement_id == "interview" else "explanation",
+                    "question_type": question_type,
+                    "answer_source": payload.answer_source,
+                    "source_path": payload.source_path.strip().replace("\\", "/") if payload.source_path else None,
+                    "file_digest": payload.file_digest,
                 }
             except StateCommandError as exc:
                 raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
@@ -1924,6 +2076,9 @@ def create_pyr_boss_submission(payload: PyrBossSubmissionRequest):
             "question_type": submissions[requirement_id]["question_type"],
             "evidence_id": evidence_id,
             "answer_digest": answer_digest,
+            "answer_source": submissions[requirement_id].get("answer_source", "manual"),
+            "source_path": submissions[requirement_id].get("source_path"),
+            "file_digest": submissions[requirement_id].get("file_digest"),
             "expires_in": max(0, int(float(challenge["expires_at"]) - time.monotonic())),
         },
     }
@@ -2108,6 +2263,7 @@ def apply_pyr_verdict(payload: PyrVerdictRequest):
                         "objective_id": objective_id,
                         "evidence_id": evidence_id,
                         "reason": payload.reason,
+                        "code_snippet": challenge.get("answer_snippet"),
                     }
                 else:
                     action = "record_battle_miss"
@@ -2396,6 +2552,18 @@ def purchase_homestead_item(payload: HomesteadPurchase):
 @app.post("/api/homestead/equip")
 def equip_homestead_item(payload: HomesteadEquip):
     envelope = _apply_state_or_http("homestead_equip", payload.model_dump(), "player")
+    return _flatten_state_result(envelope)
+
+
+@app.post("/api/homestead/room-upgrade")
+def build_homestead_room_upgrade(payload: HomesteadRoomUpgrade):
+    envelope = _apply_state_or_http("homestead_room_upgrade", payload.model_dump(), "player")
+    return _flatten_state_result(envelope)
+
+
+@app.post("/api/homestead/action")
+def perform_homestead_action(payload: HomesteadAction):
+    envelope = _apply_state_or_http("homestead_action", payload.model_dump(), "player")
     return _flatten_state_result(envelope)
 
 

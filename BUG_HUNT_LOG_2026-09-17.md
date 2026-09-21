@@ -971,3 +971,575 @@ modules**, supported WSL backend tests **116/116**, and both live Vite sources
 (`5181`, `5190`) expose the F-154 CSS through HMR. No player state, learner
 file, PTY or hosted migration changed. Fresh browser K&M remains blocked by
 F-080.
+
+## Forge-first acceptance pass — 2026-09-18
+
+| ID | Severity | Finding | Status |
+|---|---|---|---|
+| B-155 | P1 | Forge-file objective submission initially failed even with the correct active campaign file, and the first binding did not expose an explicit file digest. | Fixed: challenge construction now reads `context.active_file.path` and its SHA-256 digest, rechecks the disk at submission time, and rejects unsupported paths, stale digests, or changed contents. |
+| B-156 | P1 | The live user launcher on `5173` can display the previous bundle after a source slice is built, making the old Battle Shell appear to remain. | Confirmed runtime-cache/process-group issue, not a current-source regression. Disposable current-source `5198` served the new route/UI. Logged as F-170; managed launcher restart remains an operator action because the existing shell/AI PTYs were intentionally preserved. |
+| B-157 | P2 | A projection that mutates a disposable canonical copy must update every surface without a browser refresh, or the UI can silently drift. | Passed: state-service mutation changed Resolve `4/4 → 2/4` and produced a verified-objective toast; a second mutation produced mob-defeat, next-encounter, reward and level-up notifications, HUD `LV 4 / 20 XP / 115c`, and Forge switched to The Dealer's Hand. Codex Encounter folio also recorded the verified browser evidence. |
+| B-158 | P2 | Nested HUD icon spans could regress to empty pills when route styles are applied. | Passed current-source visual check: heart, coin, flame, shield and boss/sword monochrome SVGs were visible with DEV/RANK unchanged; direct-child selectors and nested reset rules remained intact. |
+
+Verification: browser keyboard/mouse only (no Playwright) on disposable current-source port `5198`; backend **117/117**, frontend **86/86**, Vite build **1,346 modules**, and `git diff --check` pass. Existing launcher/backend/PTY PIDs were not reset; disposable servers used separate processes and a temporary state copy.
+
+## Current-source UI regression sweep — 2026-09-18
+
+| ID | Severity | Finding | Result |
+|---|---|---|---|
+| B-159 | P1 | Codex concept heading and definition could be covered by the pager in a short viewport. | Fixed and verified on disposable `5198`; the heading is readable and the selected folio owns the bounded scroll region. |
+| B-160 | P1 | Workspace transfer tree opened every folder and a malformed literal-backslash path could mirror a host-root tree. | Fixed with collapsed disclosure controls plus frontend/server filtering and symlink protection; the user-owned malformed directory was not deleted. |
+| B-161 | P2 | HUD stat labels did not explain themselves and the wide route row could push navigation off-center. | Fixed with icon-only Hub navigation, centered links, rail/topbar animation, and hover/focus/native-title stat descriptions; SVG icons remain visible. |
+
+Verification: CUA keyboard/mouse only (no Playwright), frontend **87/87**, backend **117/117**, WSL build **1,346 modules**, and `git diff --check` pass. Managed launcher, shell/AI PTYs, canonical state, and hosted state were left untouched.
+
+## Copilot provider sweep — 2026-09-18
+
+| ID | Severity | Finding | Result |
+|---|---|---|---|
+| B-162 | P2 | GitHub Copilot CLI was installed in WSL but invisible to Forge’s provider controls and runtime capability report. | Fixed and covered: Copilot launch button, command-palette action, provider tracking, runtime detection, and bounded-provider messaging are present; state authority remains unchanged. |
+
+Verification: WSL `copilot --version` returned **1.0.83**; frontend **88/88**, backend **117/117**, WSL build **1,346 modules**, and `git diff --check` pass.
+
+## Boss gate / workspace tree sweep — 2026-09-18
+
+| ID | Severity | Finding | Result |
+|---|---|---|---|
+| B-163 | P1 | Boss Gate still mixed a requirement picker and duplicate file-submit action into the campaign Forge surface, and did not place the current state-owned goal/damage directly under the Resolve bar. | Fixed: lore, Resolve/max Resolve, current sequential goal, canonical damage, and bounded reward envelope are rendered from the encounter projection; the goal advances only after the validated state-service mutation. The boss gate now has one `Send current goal to PYR` action. |
+| B-164 | P2 | Single-file campaign steps showed a noisy full repository tree even though the editor file was the only answer surface. | Fixed: single-file steps show an active-file summary; multifile projects retain collapsed folder disclosure and an explicit Files toggle. |
+
+Verification: CUA browser keyboard/mouse only (no Playwright) on disposable `5198`; no canonical save or PTY reset.
+
+## Boss Gate encounter-card sweep — 2026-09-18
+
+| ID | Severity | Area | Finding | Result |
+|---|---|---|---|---|
+| B-166 | P1 | Forge encounter UX / layout | The Boss Gate still presented a redundant `Send current goal to PYR` action beside Forge's real `Submit run`, while its state-owned quest, reward context, and damage mechanics were not framed as a playable encounter. The boss-specific width override also made the left sidebar resizer appear broken. | Fixed. Forge now keeps one answer surface: the active file and `Submit run`. The encounter card presents lore, Resolve, a dynamic state-owned current quest, `BOSS / MOB MECHANICS`, and bounded loot-at-stake data. The gateway owns damage/reward outcomes, and the left panel is resizable from 260–430px with a visible separator. |
+
+Verification: CUA keyboard/mouse only (no Playwright) on disposable current-source `5198` at 1280×720; the panel widened from roughly 320px to 400px and remained readable. Frontend **90/90**, targeted backend state/context tests **54/54**, WSL Vite build **1,346 modules**, and `git diff --check` passed. The managed launcher, canonical save, hosted state, shell PTY and AI PTY were not reset; disposable preview sessions were separate.
+
+## Boss Gate vertical presentation pass — 2026-09-18
+
+| ID | Severity | Area | Finding | Result |
+|---|---|---|---|---|
+| B-167 | P2 | Forge encounter UX | The Boss Gate left unused vertical space below a compressed mechanics strip, so the encounter did not feel like a readable game brief even though all fields technically fit. | Fixed with a flex-based encounter track: multi-line lore, a roomier current quest card, stacked mechanics rows with state-owned outcomes, and a loot footer anchored at the bottom. A short-height rule preserves the compact layout when needed. |
+
+Verification: CUA browser keyboard/mouse only (no Playwright) on disposable `5198` at 1280×960; the full Boss Gate remained visible and readable after the CSS change. Frontend **90/90**, WSL Vite build **1,346 modules**, and `git diff --check` passed. Managed launcher, canonical/hosted state, shell PTY and AI PTY were not reset.
+
+## App-level route menu / Boss Gate visual sweep — 2026-09-18
+
+| ID | Severity | Finding | Result |
+|---|---|---|---|
+| B-165 | P1 | The Forge Boss Gate used a narrow, capped scroll region. On a real 1280×720 viewport the state-owned action and reward fell below the visible panel when the scrollbar was removed. Non-wide routes also lacked the same top navigation affordance. | Fixed with one app-level centered SVG navigation row, the logo-only Hub control, a wider boss context track, and a compact no-scroll Boss Gate layout. |
+
+Verification: CUA keyboard/mouse only (no Playwright) on disposable `5198`: Forge showed lore, Resolve, current goal/damage, submit action and reward together; Tutor, Dungeon, Codex, Settings and Hub all navigated from the same top menu. Managed launcher, shell/AI PTYs, canonical state and hosted state were untouched.
+
+## Simplified Forge answer surface — B-168 (2026-09-18)
+
+| ID | Severity | Area | Finding | Result |
+|---|---|---|---|---|
+| B-168 | P1 | Forge / Boss Gate | The encounter sidebar asked the learner to read and submit a separate goal while the editor already had the real campaign answer and `Submit run` action. The result felt like a text wall and made it unclear where to work. | Fixed. The sidebar is now Resolve plus a small pixel PYR companion. A virtual state-owned `quest.md` tab carries only the current lore, goal, mechanics and authorized reward envelope; it is explicitly read-only. The existing toolbar submission sends the active `.py` with the current campaign revision/nonce/digest to the canonical gateway. |
+
+Verification: frontend **90/90**, backend **117/117**, WSL Vite production build (**1,346 modules**), and `git diff --check` pass. CUA keyboard/mouse visual verification on disposable current-source `5198` showed the read-only `quest.md` projection, active `.py` editor, single `Submit run`, Resolve bar and pixel PYR companion. No duplicate objective picker, Battle Shell component, or second submit action remains in Forge; no managed launcher, canonical state, hosted state, shell PTY or AI PTY was restarted.
+
+## Forge sidebar compact-mode sweep — B-169 (2026-09-18)
+
+| ID | Severity | Area | Finding | Result |
+|---|---|---|---|---|
+| B-169 | P2 | Forge sidebar / editor focus | The full encounter sidebar was useful for reading Resolve/PYR but wasteful while writing; there was no fast way to keep only the two campaign document choices visible. | Fixed with a persistent 76px Forge rail: Python and Markdown SVG file buttons, a full-view restore button, and no Boss Gate/PYR content in compact mode. Full view preserves the existing Resolve layout and enlarges/centers PYR. |
+
+Verification: frontend **91/91**, WSL build **1,346 modules**, and `git diff --check` pass. CUA visual check confirmed the compact rail opens `.py` and `quest.md`, the latter remains read-only, and expanding restores the full Resolve/Boss Gate/PYR view. No managed launcher, state file, hosted state or PTY was changed.
+
+## B-170 — PYR companion felt static and floated too high (2026-09-18)
+
+| Point | Severity | Surface | Finding | Result |
+|---|---|---|---|---|
+| 1 | P2 | Forge Boss Gate / companion | The PYR badge did not communicate a living companion and remained centered above a large empty lower area in the full encounter track. | Fixed with a small idle float and timed blink, motion-reduction fallbacks, and a lower flex anchor for the full Boss Gate. Compact mode remains deliberately quiet with only file shortcuts. |
+
+Verification: frontend **92/92**, WSL Vite build (**1,346 modules**), and `git diff --check` pass. CUA visual inspection confirmed the full and compact states without mutating player state or resetting managed PTYs.
+
+## B-171 — Boot needed a softer entrance and learning sidebars could not collapse (2026-09-18)
+
+| Point | Severity | Surface | Finding | Result |
+|---|---|---|---|---|
+| 1 | P2 | Boot / Tutor / Infinite Dungeon | The shell had no explicit boot fade, and the Tutor/Dungeon editor routes always kept their full context sidebar open. | Fixed with a 360ms shell fade-in that respects reduced motion and the animation setting, plus route-aware slim rails and restore controls for Tutor and Infinite Dungeon. |
+
+Verification: frontend **94/94**. CUA visual inspection confirmed both compact routes and their restore actions on disposable `5198`; no state or managed PTY was changed.
+
+## B-172 — Slim-rail restore was too far away (2026-09-18)
+
+| Point | Severity | Surface | Finding | Result |
+|---|---|---|---|---|
+| 1 | P2 | Compact editor rails | The uncollapse button sat at the bottom of the full-height rail, so recovering from an accidental collapse required an unnecessary reach. | Fixed by keeping the existing compact button size and placing it above the `.py`/`.md` or route-file shortcut(s). |
+
+Verification: frontend **94/94**, WSL Vite production build (**1,346 modules**), and fresh CUA visual inspection on disposable `5198` confirmed the same-sized restore button is now immediately above the active route/file shortcut. No state mutation, managed launcher restart, or PTY reset occurred.
+
+## B-173 — Redundant Dungeon Forge link and invisible Tutor Forge icon (2026-09-18)
+
+| Point | Severity | Surface | Finding | Result |
+|---|---|---|---|---|
+| 1 | P2 | Route-local navigation | Infinite Dungeon repeated the global Forge link, while Tutor's Forge icon could disappear because nested title SVGs had no explicit size/stroke rule. Forge had no equally quick Tutor shortcut. | Removed the Dungeon duplicate, kept Tutor's return action, added Forge → Tutor, and added shared nested title-icon styling. |
+
+Verification: frontend **94/94**, WSL Vite production build (**1,346 modules**), and fresh CUA visual inspection on disposable `5198` confirmed the three route behaviors. No state mutation, managed launcher restart, or PTY reset occurred.
+
+## B-174 — Homestead route crash (2026-09-18)
+
+| Point | Severity | Surface | Finding | Result |
+|---|---|---|---|---|
+| 1 | P1 | Homestead | Opening Homestead blanked the app because `GameScreen` referenced an undefined `equipCampaignItem` callback while constructing the loadout surface. | Fixed by adding the callback to `GameScreen` props. The route now renders live loadout, shop and campaign revision content. |
+
+## B-175 — Settings inherited Forge compact state (2026-09-18)
+
+| Point | Severity | Surface | Finding | Result |
+|---|---|---|---|---|
+| 1 | P2 | Settings / navigation | Collapsing Forge persisted a shared left-panel flag; navigating to Settings then showed the editor rail instead of the complete settings surface. | Fixed by making Settings a wide route in both app layout and `GameScreen`, so the settings page is independent of Forge/Tutor/Dungeon collapse state. |
+
+## B-176 — HUD centre drift (2026-09-18)
+
+| Point | Severity | Surface | Finding | Result |
+|---|---|---|---|---|
+| 1 | P2 | Top HUD | Space-between flex alignment made the level/XP strip shift left as stat pills and account status changed width. | Fixed with a responsive three-column topbar grid; visual CUA check confirmed the level bar remains centred at the desktop viewport. |
+
+Verification for B-174–B-176: CUA keyboard/mouse only (no Playwright) on disposable `5198`; frontend **95/95**, WSL Vite production build **1,346 modules**, and `git diff --check` pass. No player-state mutation, launcher restart, or managed PTY reset occurred.
+
+## B-177 — Dungeon PYR feedback was too chat-like (2026-09-18)
+
+| Point | Severity | Surface | Finding | Result |
+|---|---|---|---|---|
+| 1 | P2 | Infinite Dungeon design lab | The new prototype needed contextual AI feedback without a second terminal, and error submissions needed a fair damage/hint loop rather than a hidden solution or an immediate unexplained reset. | Added compact room-entry/submission event cards, removed any persistent AI surface, applied 18 HP damage to short/error submissions, kept the IDE open for retry while HP remains, and used text-only hints such as checking the line named by the error. |
+
+Verification: `node --check prototypes/infinite-dungeon/src/main.js` and `git diff --check` pass; live CUA checks follow after restarting Vite so the OneDrive/WSL watcher cannot serve stale source.
+
+## B-178 — Dungeon map had no route graph or floor conclusion (2026-09-18)
+
+| Point | Severity | Surface | Finding | Result |
+|---|---|---|---|---|
+| 1 | P2 | Infinite Dungeon design lab map | Every room was presented as an independent clickable tile, so there was no route planning, branch risk, or final floor objective. | Replaced the flat tile set with a six-row branching graph, edge lines and visited-path highlighting. Unconnected rooms are disabled; all routes converge on The Count Keeper. A clean boss submission advances to the next floor and resets the map to its start campsite. |
+
+Verification: CUA keyboard/mouse only (no Playwright) on `5201` followed connected branches, confirmed disabled off-path nodes, opened the boss room, and confirmed the live Floor 4 transition after a clean boss submission.
+
+## B-179 — Dungeon runs had no starter class identity (2026-09-18)
+
+| Point | Severity | Surface | Finding | Result |
+|---|---|---|---|---|
+| 1 | P2 | Infinite Dungeon design lab / run boot | Players entered the map with the same weapon and rules every time, so the proposed class-and-gimmick layer was missing. | Added a pre-run class screen and wired three bounded starter kits into the prototype: Syntax Warden error protection, Resolve Duelist clean-hit bonus, and Route Merchant opening economy. Character displays the active class and remaining passive state. |
+
+Verification: CUA keyboard/mouse only (no Playwright) confirmed class selection, route boot, altered coins/loadout, and Syntax Warden’s first error absorption. Market/campsite expansion remains the next deliberate slice.
+
+## B-180 — Class setup screen diluted the descent moment (2026-09-18)
+
+| Point | Severity | Surface | Finding | Result |
+|---|---|---|---|---|
+| 1 | P2 | Infinite Dungeon design lab class gate | Starter-rule copy, the setup paragraph, stretched grid rows, and a low-weighted action made the class choice feel like a form instead of the beginning of a run. | Removed the redundant copy, moved the cards up, enlarged the cards, and made the selected-class `Enter the dungeon` action appear centered beneath them. Added a short phase-in into the map/room screen. |
+
+Verification: CUA keyboard/mouse only (no Playwright) on `5201` checked the initial and selected states and clicked through into the dungeon. No live campaign state was touched.
+
+## B-181 — Class selection sat too high (2026-09-18)
+
+| Point | Severity | Surface | Finding | Result |
+|---|---|---|---|---|
+| 1 | P3 | Infinite Dungeon design lab class gate | The class choice sat too close to the top of the viewport, weakening the sense of a deliberate run setup. | Centered the full-width class composition in the available page area and kept the original card sizing; mobile still collapses to one column. |
+
+Verification: CUA visual check only (no Playwright) on `5201` confirmed the centered composition and selected CTA.
+
+## B-182 — Dungeon-entry CTA had unnecessary setup copy (2026-09-18)
+
+| Point | Severity | Surface | Finding | Result |
+|---|---|---|---|---|
+| 1 | P3 | Infinite Dungeon design lab class gate | `READY TO DESCEND` and the selected-class label made the entry action heavier than necessary. | Reduced the selected state to a single black-and-gold `Enter the dungeon` button and verified the existing phase-in on click. |
+
+Verification: CUA keyboard/mouse only (no Playwright) on `5201` confirmed the simplified CTA and dungeon transition.
+
+## B-183 — Class choices lacked an explicit prompt (2026-09-18)
+
+| Point | Severity | Surface | Finding | Result |
+|---|---|---|---|---|
+| 1 | P3 | Infinite Dungeon design lab class gate | The heading moved directly into the cards without a small instruction cue. | Added `PICK A CLASS` beneath the heading, pulled it close to the title, and retained breathing room before the class cards. |
+
+Verification: CUA visual check only (no Playwright) on `5201` confirmed the prompt spacing in both unselected and selected states.
+
+## B-184 — Prompt needed more separation from the class picker (2026-09-18)
+
+| Point | Severity | Surface | Finding | Result |
+|---|---|---|---|---|
+| 1 | P3 | Infinite Dungeon design lab class gate | `PICK A CLASS` did not have enough breathing room before the cards. | Lifted the prompt toward the heading and increased the gap before the class selection. |
+
+Verification: CUA visual check only (no Playwright) on `5201` confirmed the updated spacing.
+
+## B-185 — Class-to-dungeon fade was too quick (2026-09-18)
+
+| Point | Severity | Surface | Finding | Result |
+|---|---|---|---|---|
+| 1 | P3 | Infinite Dungeon design lab run transition | The route appeared almost immediately after pressing Enter, making the descent feel abrupt. | Extended the phase-in to a smoother 0.95s and verified the button still lands on the route cleanly. |
+
+Verification: CUA keyboard/mouse only (no Playwright) on `5201` captured the transition mid-fade and confirmed the resulting dungeon screen.
+
+## B-186 — Descent transition still needed more time (2026-09-18)
+
+| Point | Severity | Surface | Finding | Result |
+|---|---|---|---|---|
+| 1 | P3 | Infinite Dungeon design lab run transition | The shorter phase-in did not give the dungeon entry enough dramatic weight. | Extended the phase-in to 2.5s and confirmed the route settles cleanly at the end. |
+
+Verification: CUA keyboard/mouse only (no Playwright) on `5201` captured both the longer fade and the final route.
+
+## B-187 — Map grid added visual clutter (2026-09-18)
+
+| Point | Severity | Surface | Finding | Result |
+|---|---|---|---|---|
+| 1 | P3 | Infinite Dungeon design lab route map | The background grid competed with the route edges and made the branching map harder to parse. | Hid only the background grid for this first visual pass; route edges are intentionally unchanged for comparison. |
+
+Verification: CUA keyboard/mouse only (no Playwright) on `5201` confirmed the cleaner map background.
+
+## B-188 — Route edges bled through location cards (2026-09-18)
+
+| Point | Severity | Surface | Finding | Result |
+|---|---|---|---|---|
+| 1 | P3 | Infinite Dungeon design lab route map | Disabled nodes used global opacity, so branch lines remained visible through the location surfaces. | Made map nodes opaque and reduced only their inner icon/label opacity, preserving the locked visual state without bleed-through. |
+
+Verification: CUA keyboard/mouse only (no Playwright) on `5201` confirmed the cleaned node layering.
+
+## B-189 — Dungeon CTA had a redundant outer box (2026-09-18)
+
+| Point | Severity | Surface | Finding | Result |
+|---|---|---|---|---|
+| 1 | P3 | Infinite Dungeon design lab class gate | The entry button was wrapped in a second bordered panel, making the action feel heavier than the rest of the setup. | Removed the outer layer and kept the black/gold `Enter the dungeon` button as the only visible panel. |
+
+Verification: CUA keyboard/mouse only (no Playwright) on `5201` confirmed the cleaner entry action.
+
+## B-190 — Enter action needed its own fade-in (2026-09-18)
+
+| Point | Severity | Surface | Finding | Result |
+|---|---|---|---|---|
+| 1 | P3 | Infinite Dungeon design lab class gate | The button did not have a distinct entrance motion after class selection. | Added a short delayed button fade/settle animation while preserving the parent CTA animation. |
+
+Verification: CUA visual check only (no Playwright) on `5201` confirmed the selected-state button presentation.
+
+## B-191 — Room economy lacked meaningful campsite and market choices (2026-09-18)
+
+| Point | Severity | Surface | Finding | Result |
+|---|---|---|---|---|
+| 1 | P2 | Infinite Dungeon design lab room loop | Campsites were limited to bandage/cook, while markets exposed only two small offers and did not foreground the run purse. | Added five campsite actions, a visible supply strip, a four-item market shelf, live coin purse, and state-backed purchase/preparation feedback. |
+
+Verification: CUA keyboard/mouse only (no Playwright) on `5201` exercised rest, sharpened edge and ration purchase flows and confirmed visible state changes.
+
+## B-192 — Boss route could skip every fight (2026-09-18)
+
+| Point | Severity | Surface | Finding | Result |
+|---|---|---|---|---|
+| 1 | P1 | Infinite Dungeon design lab map | Every branch converged on the boss, but the prototype did not enforce a minimum cleared fight. | Boss nodes are now unreachable and their challenge button disabled until `clearedFights > 0`; the first branch row contains a normal gate on every route, and the pre-boss row contains only markets/campsite. |
+
+Verification: CUA-only run `?v=27` confirmed a fresh boss is disabled, then confirmed boss access after a normal gate and elite clear plus the final campsite.
+
+## B-193 — Market had no run gear shelf or owned-item handoff (2026-09-18)
+
+| Point | Severity | Surface | Finding | Result |
+|---|---|---|---|---|
+| 1 | P2 | Infinite Dungeon design lab market/character | Supplies were visible, but a market could not offer weapons/armor or hand purchased gear into the run loadout. | Each market now deterministically stocks two weapons and two armor pieces; purchase state, coins, owned items, and Character equip controls update together. |
+
+Verification: CUA-only run `?v=27` bought `Market Mnemonic` from the rotating shelf and equipped it from Character without a page refresh.
+
+## B-194 — Risk key did not explain what it revealed (2026-09-18)
+
+| Point | Severity | Surface | Finding | Result |
+|---|---|---|---|---|
+| 1 | P2 | Infinite Dungeon design lab mystery room | The route key promised a “safe market” regardless of the unknown room, so players could not understand the actual choice. | The key now reveals a bounded profile preview (elite/quiz/reward/debuff/buff/teleport/discount/armory) without revealing future questions or unsupported rewards. Full risk outcomes remain deferred and documented. |
+
+Verification: CUA-only risk-room inspection on `?v=27` showed the explicit route-key purpose and bounded unknown-room copy; no future question or answer was rendered.
+
+## B-195 — Route map underfilled its panel (2026-09-18)
+
+| Point | Severity | Surface | Finding | Result |
+|---|---|---|---|---|
+| 1 | P3 | Infinite Dungeon design lab map | The six-row graph left a large unused area below the boss and made the run feel short. | Added a seventh deep-risk row, moved preparation rooms to row six, and moved the converged boss to row seven while preserving opaque location cards and the fight-gated boss rule. |
+
+Verification: CUA-only visual check on `?v=29` confirmed the longer map fills the panel and still keeps the final row free of gates/elites.
+
+## B-196 — Risk pacing and key semantics were unclear (2026-09-18)
+
+| Point | Severity | Surface | Finding | Result |
+|---|---|---|---|---|
+| 1 | P2 | Infinite Dungeon design lab route/risk rooms | The route had consecutive unknown rows, and a route key could be read as the thing that enabled risk-room entry. | Replaced the second risk row with recovery/market choices, added one authored preparation row, renamed the item Vision Scroll, made it expensive/rare, and added an unconditional Enter the risk action. |
+
+Verification: CUA-only run `?v=30` confirmed a zero-scroll risk room still exposes `Enter the risk`, an elite awards a Vision scroll, and a market lists the scroll at `80c`.
+
+## B-197 — Route lanes could be joined and recovery was top-heavy (2026-09-18)
+
+| Point | Severity | Surface | Finding | Result |
+|---|---|---|---|---|
+| 1 | P2 | Infinite Dungeon design lab map | Each row offered diagonal cross-links, so the opening choice did not commit the run to a readable route. Most combat was front-loaded while the lower rows repeated camp/market nodes. | Replaced the crossing graph with three independent authored lanes. The first fork now commits the player to one same-column node per row; rows two through six mix gates, elites, fate/risk, camps and markets, and only row seven is the final camp/market preparation row before the boss. | |
+
+Verification: CUA-only map check on `?v=33` selected the middle lane, confirmed one reachable same-lane continuation and no cross-lane edges, and visually confirmed the final-row-only preparation rule.
+
+## B-198 — Hand-balanced room types removed meaningful run luck (2026-09-18)
+
+| Point | Severity | Surface | Finding | Result |
+|---|---|---|---|---|
+| 1 | P2 | Infinite Dungeon design lab route generation | Every lane had a preselected mix, so players could not experience genuinely unlucky rows such as three elites in one row. | Each non-final node now rolls independently at run generation. No row or lane quotas are applied; only the final pre-boss row is camp/market. A global no-fight fallback preserves the existing boss-access rule without balancing the route. | |
+
+Verification: Browser-only CUA checks on `?v=35` and `?v=36` showed two different independent room rolls, with the final preparation row constrained to camp/market in both runs.
+
+## B-199 — Dangerous random rows lacked a recovery signal and passive/weapon roles were blurred (2026-09-18)
+
+| Point | Severity | Surface | Finding | Result |
+|---|---|---|---|---|
+| 1 | P2 | Infinite Dungeon design lab route/class setup | A run could stack two elites or three normal gates without an authored recovery cue, and class selection visually grouped the passive as a weapon gimmick. | Two-elite and three-gate rows now force a campsite next and a market at the end of that recovery row. Other rows get only the requested right-edge fallback. Class passives are now first-class data independent of starter/equipped weapons and remain active after weapon swaps. | |
+
+Verification: Browser-only CUA on `?v=37` showed the random route with its final preparation row, the two-elite/three-gate recovery copy, and separate `STARTER WEAPON` / `PASSIVE` fields on class selection and Character.
+
+## B-200 — Starter weapons duplicated class passives (2026-09-18)
+
+| Point | Severity | Surface | Finding | Result |
+|---|---|---|---|---|
+| 1 | P2 | Infinite Dungeon design lab class/loadout | Lint Lantern, Loopblade and Branch Compass repeated the same text/effect as their class passives. | Starter weapons now carry distinct playstyle-adjacent effects and are evaluated independently: extra bounded hint, elite Resolve bonus, and free risk preview respectively. The class passive persists independently when the weapon changes. | |
+
+Verification: Browser-only CUA on `?v=38` and `?v=39` showed distinct starter-weapon descriptions, `ACTIVE CLASS · PASSIVE`, and Branch Compass equipped as a separate loadout item; `node --check` passed.
+
+## B-201 — Vision Scroll was not a usable loadout item (2026-09-18)
+
+| Point | Severity | Surface | Finding | Result |
+|---|---|---|---|---|
+| 1 | P2 | Infinite Dungeon design lab Character/map | A Vision Scroll could be read only from an entered risk room, so the player could not spend a scroll from the run loadout to inspect a different risk on the map. Fights cleared was also mixed into inventory. | Character → Loadout now has a `Use on map` action. While active, every unrevealed risk node becomes selectable regardless of lane/reachability; selecting one consumes one scroll and records that risk in the shared revealed ledger. Character → Stats now owns Fights cleared and boss-gate status, while Inventory stays consumables only. | |
+
+Verification: Browser-only CUA on `http://127.0.0.1:5201/?v=40` cleared an elite to earn one Vision scroll, used it from Character → Loadout, selected an off-route unrevealed risk, confirmed the bounded profile and one-scroll consumption, confirmed the node could not be scouted again, and checked Stats vs Inventory ownership. Static syntax/diff checks pass; room-local scouting also cancels active map-scout state to prevent stale targeting.
+
+## B-202 — Route Merchant Branch Compass had no map-use affordance (2026-09-18)
+
+| Point | Severity | Surface | Finding | Result |
+|---|---|---|---|---|
+| 1 | P2 | Infinite Dungeon design lab class/loadout/map | Route Merchant started with Branch Compass equipped, but the weapon could not be used from the loadout. Its free read only appeared after entering a risk room, so the promised starter weapon did nothing during route planning. | Added an equipped-weapon `Read on map` action. It enables any unrevealed risk node without consuming a scroll, spends the one free read for the floor, writes the shared revealed-risk ledger, and exposes a clear active/cancel/spent state. | |
+
+Verification: Browser-only CUA on `http://127.0.0.1:5201/?v=41` selected Route Merchant, used `Read on map` from its equipped Branch Compass, revealed an off-route risk with `0` Vision Scrolls, and confirmed the weapon changed to `Spent` after one read. No campaign save or PTY was touched.
+
+## B-203 — Risk resolution could strand the run after a shop/cache purchase (2026-09-18)
+
+| Point | Severity | Surface | Finding | Result |
+|---|---|---|---|---|
+| 1 | P1 | Infinite Dungeon design lab risk room | A resolved armory or discount purchase cleared `activeRisk` on the next click but kept the node in `enteredRisks`; the fallback renderer then showed “Risk entered” with a disabled commit button and no meaningful resolution summary. | Added an explicit resolved-risk card with a single `Leave the room` exit. The room remains recorded and cannot be entered or rewarded twice, while the route can continue normally. | |
+| 2 | P2 | Infinite Dungeon design lab map/room identity | A known risk continued to display generic Fate/Risk chrome even after scouting or entry, so a market-like risk did not feel like a market. | Added server-like `roomType` metadata to each bounded profile and a presentation resolver. Revealed/entered profiles now render as Market, Elite Gate, Challenge Gate, Hidden Cache, Risk Shrine, or Folding Corridor while the underlying mystery node remains unchanged for route logic. | |
+
+Verification: Browser-only CUA on the WSL-served prototype reproduced the purchase → exit path, then confirmed the green `RISK RESOLVED` card and route exit. A cache outcome changes the map node and Room Screen to `Hidden Cache` with its own bounded description; discount and armory outcomes present as Market variants. No Forge state, campaign save, Supabase transport, or PTY was touched.
+
+## B-204 — Dungeon memory vanished between runs (2026-09-19)
+
+| Point | Severity | Surface | Finding | Result |
+|---|---|---|---|---|
+| 1 | P2 | Infinite Dungeon design lab / Character → Codex | The room prototype reset its whole visible history with each mock run, so a learner could not revisit discovered room types or question lenses. | Added a bounded local-only Codex archive. It records only surfaced rooms and attempted encounters, survives run reset/refresh through `localStorage`, and excludes future questions, answer keys and locked rewards. | |
+
+Verification: Browser-only CUA on the WSL-served prototype showed `1 rooms · 0 encounters`, kept the campsite record after Reset mock run and a browser refresh, then showed `2 rooms · 1 encounters` after a clean elite submission (`The Faultline · BUG HUNT`). Campaign state, Supabase transport and both PTY sessions remain outside the prototype boundary.
+
+## B-205 — Campsite actions were not mutually exclusive and ration/armor prep was underspecified (2026-09-19)
+
+| Point | Severity | Surface | Finding | Result |
+|---|---|---|---|---|
+| 1 | P2 | Infinite Dungeon design lab campsite | A player could trigger multiple campsite preparations in one visit, which removed the tradeoff between recovery, max-HP growth, Resolve preparation and defense. Cooking a ration also changed score rather than the requested max-HP ceiling. | Added a shared one-action-per-campsite guard. Ration cooking now consumes one ration for +10 maximum HP only; bandage, rest, sharpen, tonic and armor preparation all spend the same campsite action. | |
+| 2 | P2 | Infinite Dungeon design lab combat feedback | There was no small defensive preparation for a player who wanted to trade the campsite action for error protection. | Added `Fortify your armor`: a starting-value 6 HP one-shot brace shown in the campsite supply strip and Character inventory. The next failed normal/risk submission consumes only the absorbed portion and emits a bounded PYR/notice message; syntax-ward full absorption does not waste the brace. | |
+
+Verification: static syntax/diff checks pass. Browser-only CUA confirmed a fresh campsite changed max HP from 78/100 to 78/110 with score unchanged, disabled every other action after cooking, and reported brace absorption on a later short submission without resetting the browser or any PTY.
+
+## B-206 — Ration max-HP increase survived a fresh mock-run reset (2026-09-19)
+
+| Point | Severity | Surface | Finding | Result |
+|---|---|---|---|---|
+| 1 | P2 | Infinite Dungeon design lab run lifecycle | `Reset mock run` cleared the route and inventory but left `maxHp` at the prior run's cooked-ration value, so the next run could begin at 78/110 instead of the starter 78/100 baseline. | Added an explicit `maxHp: 100` reset to both the run-start and reset assignments. A cooked ration now affects only the current run. | |
+
+Verification: CUA reproduced the stale 78/110 state before this repair; after restarting the prototype server and starting a clean run, the HUD/campsite showed `HP 78/100`.
+
+## B-207 — Infinite Dungeon editor/combat slice lost learning context and safe file custody (2026-09-19)
+
+| Point | Severity | Surface | Finding | Result |
+|---|---|---|---|---|
+| 1 | P1 | Infinite Dungeon question room | The challenge surface was a plain textarea with no local completion, no floor-scaled guide, and no clear distinction between previewing progress and committing Resolve. | Reused the bundled Monaco editor/worker, added identifier and Python vocabulary completion, authored guide steps for floors 1–2, partial guidance for floors 3–4, and question-only presentation from floor 5. Typing only updates preview state; verified clean submission commits Resolve/rewards. |
+| 2 | P1 | Infinite Dungeon mechanics and file bridge | Bug Hunt/Self-Destruct/Lifesteal/Double Strike behavior was not serializable or reversible, and a connected learner file had no stale-edit or backup guard. | Added explicit mechanic/timer/mutation/reward-lock fields, real hidden-tab-safe timers, bounded Bug Hunt mutations, SHA-256/FNV digest checks, capped localStorage snapshots, timestamped sibling backups, IndexedDB handle restoration, and one restore token that rerolls the mechanic. Unwritable browsers automatically avoid Bug Hunt. |
+| 3 | P2 | Infinite Dungeon feedback | PYR was too persistent and combat feedback did not explain the active mechanic or failure cost. | PYR now appears only on room entry, mutation, timer expiry, restore or submission and docks below editor actions. Run HP and Mob Profile show the telegraph, failure consequence and reward lock without displaying answer code. |
+
+Verification: Claude Sonnet read-only review found and the implementation fixed Monaco remount/view-state loss, unused guide validation, uncleared success timers, unbounded backup growth and unsafe Bug Hunt fallback. Prototype tests pass 9/9, WSL build passes, and browser-only CUA on port `5202` confirmed Monaco typing, guide preview (`3 / 6` then `6 / 6`), clean commit, PYR spacing and return to map. No arbitrary Python execution or canonical Forge mutation is included in this design-lab slice.
+
+## B-208 — IDE brief spilled beneath the prototype footer (2026-09-19)
+
+| Point | Severity | Surface | Finding | Result |
+|---|---|---|---|---|
+| 1 | P2 | Infinite Dungeon IDE layout | The guide, Mob Profile and project-file card were taller than the fixed IDE row, so the left brief could visually run beneath the footer while the editor stayed full-height. | Made the left challenge brief its own bounded vertical scroll region. The editor and docked PYR card keep their full-height layout, while the footer remains below the row with no overlap. | |
+
+Verification: After restarting the WSL prototype server to pick up the cross-filesystem CSS change, browser-only CUA screenshots showed the left-panel scrollbar, readable Mob Profile/file bridge, docked PYR card and no footer overlap. The focused Self-Destruct editor also displayed its live fuse countdown.
+
+## B-209 — Dungeon editor lacked Forge parity and conflated Run with Submit (2026-09-19)
+
+| Point | Severity | Surface | Finding | Result |
+|---|---|---|---|---|
+| 1 | P1 | Infinite Dungeon Challenge IDE | The prototype's Monaco instance exposed a plain-looking editor: Python token colours and the suggestion widget were missing because the standalone language/contribution modules were not loaded. | Loaded the bundled Python tokenizer and Monaco suggestion controller, added a Forge-aligned local theme, and classified local identifiers, built-ins and keywords. Typing `tru` now visibly offers the valid `True` literal; no LSP, network AI or answer generator is used. |
+| 2 | P1 | Infinite Dungeon combat loop | One `Run & submit` button made a self-check indistinguishable from the state-changing PYR verdict. | Added a visible Local Terminal self-check panel and separate `Run self-check` / `Submit to PYR` actions. Run reports bounded syntax/concept/literal-output previews and never changes HP, Resolve or rewards; Submit remains the only adjudication path. |
+| 3 | P2 | Mob mechanics feedback | Mechanics described failure effects but did not tell players whether a safe Run could trigger them. | Added authored `runEffect` metadata to every mechanic and an `ON RUN` Mob Profile field. Lifesteal, Double Strike, Static Ward and Self-Destruct now explicitly telegraph that their combat effect is Submit/expiry-only. |
+
+Verification: `npm test --prefix prototypes/infinite-dungeon` passes 12/12; WSL production build passes (749 modules transformed). Browser-only CUA on `http://172.26.238.39:5202/` visually confirmed Python token colours, the `True` completion popup, a successful local self-check with literal stdout preview, a syntax-error self-check showing `CHECK FAILED · NO DAMAGE`, unchanged `78/100` HP and `6/6` Resolve, and a subsequent clean Submit producing an elite verdict/reward. No canonical Forge, state service, Supabase, Campaign file or PTY was touched.
+
+## B-210 — Infinite Dungeon editor keyboard contract was missing (2026-09-19)
+
+| Point | Severity | Surface | Finding | Result |
+|---|---|---|---|---|
+| 1 | P1 | Infinite Dungeon Challenge IDE | The Monaco room editor had separate Run and Submit buttons but no campaign-parity keyboard contract, so Ctrl/Cmd+Enter, Ctrl/Cmd+S and Ctrl/Cmd+Shift+Enter could insert editor input or invoke the browser instead of the intended action. | Added capture-phase and Monaco bindings for `Ctrl/Cmd+Enter` → Run self-check, `Ctrl/Cmd+S` → Save draft, and `Ctrl/Cmd+Shift+Enter` → Submit to PYR. Save writes the connected `dungeon.py` only after its digest check, or stores a browser-local draft when no folder is connected; it never adjudicates combat. Added visible shortcut hints and accessible key metadata. | |
+
+Verification: `node --check` passed for the prototype entry/editor, isolated prototype tests pass 12/12, WSL production build passes (749 modules transformed), and the existing frontend suite passes 95/95. Browser-only CUA on `http://172.26.238.39:5202/` pressed each shortcut in the live Monaco editor: Run produced both a valid `PASS · LOCAL PREVIEW` and an invalid `CHECK FAILED · NO DAMAGE` while HP stayed `78/100` and Resolve stayed `6/6`; Save reported `Saved a browser-local dungeon.py draft` without a verdict; Submit produced a PYR verdict, changed the prototype reward state, and returned map control. A desktop screenshot confirmed the three action buttons and compact shortcut labels. No canonical Forge, state service, Supabase, Campaign file or PTY was touched.
+
+## B-211 — Infinite Dungeon duplicated the canonical Codex surface (2026-09-19)
+
+| Point | Severity | Surface | Finding | Result |
+|---|---|---|---|---|
+| 1 | P2 | Infinite Dungeon Character menu | The isolated Dungeon prototype exposed a local Codex tab and localStorage archive even though learning history belongs to the canonical Campaign Codex. That created a second memory surface before the Dungeon loop was ported. | Removed the prototype Codex tab, archive renderer, record/write helpers and Codex-only styling. Character now keeps only Loadout, Inventory and Stats; room/combat flow remains unchanged. The old browser key is no longer read or written. | |
+
+Verification: Prototype tests pass 12/12, the WSL build passes (749 modules transformed), and browser-only CUA on port 5202 showed Character with exactly `LOADOUT`, `INVENTORY`, and `STATS`; no Codex tab or archive rendered. A desktop screenshot confirmed the remaining Character panel has no empty Codex slot. No canonical Campaign Codex, state service, Supabase or PTY state was changed.
+
+## B-212 — Infinite Dungeon needed a canonical main-game entry point (2026-09-19)
+
+| Point | Severity | Surface | Finding | Result |
+|---|---|---|---|---|
+| 1 | P1 | Main-game navigation and Dungeon state | The completed Dungeon learning loop only existed in the isolated design lab, so the canonical game had no state-backed route for its class/passive, starter weapon, checkpoint, editor and Run/Submit split. | Ported the bounded vertical slice into the canonical game: Infinite Dungeon is a first-class route, class/passive and starter weapon are server-owned, the run/checkpoint stays in the canonical state gateway, and the room uses the bundled Monaco editor with local completion, Local Terminal self-check, Save checkpoint and separate Submit to PYR. |
+| 2 | P2 | Dungeon map projection | The client generated future encounter nodes even when the gateway had not issued a route, making the map look like a second source of truth. | Map now renders only recorded history, the current room and state-issued next choices; unknown future questions remain hidden. |
+| 3 | P2 | Duplicate learning surfaces | The isolated prototype Codex was still present at the point of port planning. | Removed the prototype Codex before porting. The canonical Campaign Codex remains the only Codex surface. |
+
+Verification: frontend suite passes 95/95; WSL production build passes (1,346 modules transformed); server files pass `py_compile`; browser-only CUA on the canonical main-game tab confirmed the global route, active Dungeon class/passive/weapon, Monaco editor, Local Terminal, distinct Run/Submit controls, and a map containing only the current state-backed room. The richer prototype-only route/risk/elite/campsite and file-mutation mechanics are not claimed as canonical parity yet.
+
+## B-213 — Canonical Dungeon room drifted from the prototype (2026-09-19)
+
+| Point | Severity | Surface | Finding | Result |
+|---|---|---|---|---|
+| 1 | P1 | Main-game Dungeon room | Map & route had been ported, but the room card still showed a generic mob/brief and reset was not visible in the first viewport. | The state projection now labels the code-checkpoint encounter `The Count Keeper`; the room card renders the state-owned concept, difficulty and prototype-style handoff copy; and a header-level `Reset run` action is visible on both Room and Challenge IDE views. |
+
+Verification: CUA screenshots of prototype and canonical rooms were compared after a clean frontend/backend restart. The canonical room now shows the aligned mob brief, route lock, editor handoff and visible reset action. Reset was not clicked; no run or campaign state was changed.
+
+## B-214 — Canonical Dungeon port was visually tightened and clipped (2026-09-19)
+
+| Point | Severity | Surface | Finding | Result |
+|---|---|---|---|---|
+| 1 | P1 | Main-game Infinite Dungeon route | The canonical route had been reinterpreted after the prototype port: class cards were compressed into one row, the map used shorter rows, the route tab strip consumed space, and the app-wide overflow lock clipped lower room/character content. | Restored the prototype class-card hierarchy and selection CTA, the three-column/header/map proportions, correctly aligned eight-row route edges, and prototype room spacing. The canonical-only tab strip is hidden while its state-compatible DOM remains. Dungeon now owns vertical scrolling at the page boundary. |
+
+Verification: frontend suite passes 96/96; WSL production build passes (1,346 modules transformed); static parity checks cover the class hierarchy, map geometry and scroll owner. A live browser/CUA screenshot pass was not available in this turn, so visual certification remains pending on the running `?parity=3` tab.
+
+## B-215 — Codex was visually overbuilt for theory study (2026-09-19)
+
+| Point | Severity | Surface | Finding | Result |
+|---|---|---|---|---|
+| 1 | P2 | Campaign Codex | The Codex repeated the definition in the page header and folio, surrounded short theory with dashboard chips and heavy nested cards, and offered no obvious next learning action. | Reworked the final Codex cascade into a quiet concept reader: compact concept index, one definition, generic examples, a self-check prompt, explicit encounter/notes/mastery sections, and a direct Tutor handoff. The page remains finite and canonical; React does not invent rewards, answers or future encounters. |
+| 2 | P2 | Canonical concept projection | Generic pages had examples and question lenses but no authored, student-readable mistake cues or self-check prompt. | Added bounded `common_mistakes` and `check_prompt` metadata to the state-owned concept projection for the nine generic Python pages. These are transferable theory prompts, not campaign answer keys. |
+
+Verification: frontend tests pass 97/97; state-service tests pass 46/46; WSL build passes. Browser/CUA visual inspection was unavailable for this edit, so desktop and narrow live screenshots are still required before closing the visual bug.
+
+## B-216 — Codex needed a resource-first prototype before another live rewrite (2026-09-19)
+
+| Point | Severity | Surface | Finding | Result |
+|---|---|---|---|---|
+| 1 | P2 | Codex design flow | The canonical Codex could be changed repeatedly without first testing whether a dictionary/reference layout made theory the primary task. | Added a disposable medium-fidelity coded prototype with concept groups, search, a lesson-first page, secondary encounter evidence, notes, self-check hints and a Tutor handoff. It is isolated from canonical state and persists no player data. |
+
+Verification: syntax check passes and WSL prototype build passes. No live visual claim yet; the prototype should be opened at port 5206 and reviewed before canonical implementation.
+
+## B-217 — Encounter evidence did not earn space in the Codex prototype (2026-09-19)
+
+| Point | Severity | Surface | Finding | Result |
+|---|---|---|---|---|
+| 1 | P2 | Codex resource prototype | The encounter tab showed a mob name, question lens and cleared status, but no actionable learning context. It competed with the reference material without helping revision. | Removed it from the prototype. Notes and the theory lesson remain first-class. Encounter history is deferred until it can show validated attempts, repeated mistakes and a useful takeaway rather than a combat log. |
+
+Verification: prototype syntax check and WSL build pass; visual review is available on port 5206.
+
+## B-218 — Codex lesson page was longer than necessary (2026-09-19)
+
+| Point | Severity | Surface | Finding | Result |
+|---|---|---|---|---|
+| 1 | P2 | Codex resource prototype | The lesson blocks were all full-width, so the good reference content felt like a long vertical document. | Added a responsive compact study spread for desktop while preserving the single-column mobile fallback and the same reading order. |
+
+Verification: syntax check, WSL build and HTTP 200 probe pass; live visual review is ready at port 5206.
+
+## B-219 — Tutor needed one bounded practice loop beside the reference (2026-09-19)
+
+| Point | Severity | Surface | Finding | Result |
+|---|---|---|---|---|
+| 1 | P2 | Tutor/Codex prototype | A reference page alone did not give the learner a clear next step, while an unbounded chat flow could drift into answer-giving. | Added an IDE practice tab with five bounded thinking modes and explicit preview-versus-feedback actions. PYR suggestions are represented as review-queue events; the prototype does not generate or reveal campaign answers. Learners can suggest, pin and dismiss queue items. |
+
+Verification: browser keyboard/mouse flow exercised mode selection, response entry, feedback submission, queue mutation, pin/unpin, dismissal, learner suggestion, and reload persistence. Syntax check and WSL build pass; canonical Forge/state/Supabase/PTY surfaces remain untouched.
+
+## B-220 — Tutor IDE lacked the campaign workbench rhythm (2026-09-19)
+
+| Point | Severity | Surface | Finding | Result |
+|---|---|---|---|---|
+| 1 | P2 | Tutor IDE prototype | Practice had a single response box and no visible run terminal or AI terminal, so moving from a failed campaign concept into Tutor would feel like a separate product. | Ported the visual IDE pattern into the disposable prototype: real local Monaco editor with Python colours/completions, compact file rail, local self-check terminal, bounded PYR terminal, and explicit save/run/submit controls. Moved the practice-mode selector above the workbench to give the editor more width. |
+
+Verification: browser screenshot and keyboard/mouse checks confirmed the widened editor, practice strip, Monaco rendering, local pass output, and PYR hint flow. Build and syntax checks pass; no canonical state or PTY is touched.
+
+## B-221 — `.md` needed to be a writing notebook, not a second Codex reader (2026-09-19)
+
+| Point | Severity | Surface | Finding | Result |
+|---|---|---|---|---|
+| 1 | P2 | Tutor `.md` / Codex notes | Clicking `.md` initially showed reference-style content again, and the Codex Notes panel meant two places could appear to own learner notes. | Replaced the `.md` route with a book-like, warm-paper notebook: chapter/type selector, linked concept context, four editable note pages, separate browser-local notebook storage, save feedback, longer folios and 360ms page-turn motion. Removed the Codex Notes tab and left one Open notebook handoff. | |
+
+Verification: CUA opened the `.md` rail button, visually inspected the longer two-page spread, typed and saved a note, and confirmed `Saved to this notebook locally.` The chapter selector changed the linked concept to Lists & collections without exposing duplicate Codex text. No campaign state, Supabase or PTY was touched.
+
+## B-222 — Notebook was exposed as a third top-level page selector (2026-09-19)
+
+| Point | Severity | Surface | Finding | Result |
+|---|---|---|---|---|
+| 1 | P2 | Tutor navigation | Codex, IDE practice and Notebook were all top-level selectors, so the `.md` file did not feel like the IDE's screen switcher. | Reduced the shell to two selectors. The compact IDE rail now owns `.py`/`.md` screen switching; `.md` opens the writing folio and `.py` returns to tutor.py. The selected file is marked active and Codex routes into the same Notebook screen. | |
+
+Verification: CUA browser inspection confirmed only Codex and IDE practice in the top bar and a working `.py`/`.md` switcher inside the IDE surface.
+
+## B-223 — Notebook needed practical writing formats and overflow behavior (2026-09-19)
+
+| Point | Severity | Surface | Finding | Result |
+|---|---|---|---|---|
+| 1 | P2 | Tutor notebook folio | Notes used a fixed-height textarea, and learners had no fast way to make bullets, numbered lists or other small note structures. | Added bounded note pages with an inner scrollbar, `*`/`-` to `•` normalization, list continuation on Enter, Bullet/Number/Quote/Code controls, and persisted Lined/Graph/Plain page looks. F-235/B-224 add chapter CRUD, page colors and the slash command palette. | |
+
+Verification: CUA visual checks confirmed long notes scroll inside the folio, bullet conversion works, and Graph paper changes the page texture without leaving the two-selector Tutor flow.
+
+## B-224 — Notebook controls needed authoring parity and bounded scrolling (2026-09-19)
+
+| Point | Severity | Surface | Finding | Result |
+|---|---|---|---|---|
+| 1 | P2 | Tutor `.md` notebook | Chapters could not be edited, added or removed; page color was fixed; long notes could push the Save page row out of view; and users had no Notion-like slash command palette. | Added browser-local chapter CRUD controls and a chapter editor, five page-color themes, a finite two-page folio with an inner textarea scrollbar and anchored save action, plus a keyboard-friendly `/` menu for headings, lists, to-dos, quotes, code blocks and dividers. | |
+
+Verification: CUA opened the `.md` rail, inspected `+ New`/`Edit`/`Delete`, changed the page color, opened `/`, inserted a heading, and filled the note with 50 lines. The final screenshot showed the inner scrollbar and a visible Save page button without bleed. Canonical Forge/state/Supabase/PTY surfaces were not touched.
+
+## B-225 — Ported Forge folio initially clipped below the fixed shell (2026-09-19)
+
+| Point | Severity | Surface | Finding | Result |
+|---|---|---|---|---|
+| 1 | P1 | Canonical Forge Tutor/Codex | The first React port rendered the prototype book but its `WideSurfaceFrame` sat inside the fixed game grid, so the lower notebook controls were below the viewport and the frame had no clear scroll owner. | Added a resource-only scroll viewport around the port, allowed the resource surface to grow inside the bounded workspace, and styled its scrollbar. The lower Save page/pager are now reachable without changing the shell, state gateway or PTYs. |
+
+Verification: CUA visual comparison of prototype `:5206` and Forge `:5174`; clicking the live Forge Save page control moved the resource frame to the lower folio, showing the textarea, save status and pager. No Playwright or browser refresh was used for the interaction check.
+
+## B-226 — Tutor `.md` route hid the IDE switcher and output panels (2026-09-19)
+
+| Point | Severity | Surface | Finding | Result |
+|---|---|---|---|---|
+| 1 | P1 | Forge Tutor Notebook | Selecting `notes.md` unmounted the compact file rail, so the learner could not return to the IDE from the notebook. The IDE editor height also pushed the local terminal below the useful viewport and left the bounded PYR panel cramped or hard to reach. | Added the same file rail to the notebook screen with a working `tutor.py` return action; reduced the Monaco viewport and reserved a visible local self-check terminal; made PYR messages scroll inside a bounded panel. Removed Codex from the duplicate shared top menu because it is already inside Tutor Notebook. | |
+
+Verification: Fresh CUA at Forge `:5175` visually showed the local terminal and PYR panel together, clicked `notes.md`, and returned via `tutor.py`; no Playwright, state migration, Supabase transport or managed PTY restart was used. Frontend tests **97/97** and production build (**1,346 modules**) pass.
+
+## B-228 — Home room viewpoint corrected to top-down (2026-09-21)
+
+| Point | Severity | Surface | Finding | Result |
+|---|---|---|---|---|
+| 1 | P1 | Campaign v1 Home | The modular room pass was initially interpreted as a straight-on interior. That conflicted with the requested Stardew-like overhead room and made the floor feel like a stage instead of a place to expand. | Replaced the room treatment in the isolated prototype with a CSS-built top-down floor plan: wall strip, tiled floor, furniture footprints, rectangular rug, aligned station hotspots, and a top-down Pyr placement. Existing Home actions and data remain intact. |
+
+Verification: CUA desktop screenshot at 1569×958 confirmed the overhead wall/floor split and station alignment. Mobile checks were not part of this PC-only prototype scope. Prototype tests **15/15** and the WSL production build pass.
+
+## B-229 — Home upgrades and achievement plaques (2026-09-21)
+
+| Point | Severity | Surface | Finding | Result |
+|---|---|---|---|---|
+| 1 | P1 | Campaign v1 Home | The top-down room had no authored progression surface for upgrade tokens and no visible record of memorable clears. The visual review also found a weak floor boundary, an ungrounded plant, and a rug that read too much like a panel. | Added five data-driven room upgrades with stat/trinket effects, four milestone achievement plaques, a toggleable wall station/drawer, purchase-state rendering, and deterministic state tests. Strengthened the floor trim, grounded the plant at the right wall, and added a woven rug border/fringe while keeping the room modular and CSS-built. | Fixed / verified |
+
+Verification: Desktop CUA screenshot and interaction check confirmed the drawer, purchase state, HP/token update, and achievement row. Prototype tests **18/18** and WSL production build pass. Mobile checks remain intentionally out of scope for this PC-only prototype.
+
+## B-227 — Codex signals crowded the mistake folio (2026-09-20)
+
+| Point | Severity | Surface | Finding | Result |
+|---|---|---|---|---|
+| 1 | P2 | Codex Mistakes & signals | The generic question lens shared a two-column row with Common Mistakes, leaving the actual examples cramped and making the signal tags feel like filler. | Moved the validated Practice Signals tags below the mistake examples in a compact full-width strip. | |
+
+Verification: CUA visual inspection confirmed both mistake code examples use the full reader width and the signal tags sit beneath them without a competing column.
+
+## 2026-09-21 — Home port verification note
+
+The Home/Homestead port is a UI/state projection task, not a Bug Hunt
+mutation. The prototype source of truth is preserved at
+`prototypes/campaign-v1/HOME_PORT_SOURCE_OF_TRUTH.md`; Home actions route through
+the canonical state service and do not touch learner challenge files. Any future
+Bug Hunt run should use a disposable connected project and remain separate from
+this Home parity verification.

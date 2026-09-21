@@ -556,6 +556,33 @@ test('silent background sync does not flap a settled HUD status', async () => {
   engine.dispose()
 })
 
+test('silent background sync does not flap an error or migration HUD status', async () => {
+  const config = resolveCloudConfig({ VITE_SUPABASE_URL: 'https://example.supabase.co', VITE_SUPABASE_ANON_KEY: 'public-anon-key' })
+  const user = { id: '00000000-0000-4000-8000-000000000032', email: 'error-background@example.test' }
+  const storage = new MemoryStorage()
+  const local = fakeLocalApi(campaign(5), 1)
+  const client = fakeCloudClient(user)
+  client.rpc = async () => ({ data: null, error: { message: 'next_state contains unsupported domains' } })
+  const engine = new SyncEngine({ config, clientFactory: () => client, storage, fetchImpl: local.fetch })
+
+  engine.initialize()
+  await engine.restoreSession()
+  await engine.sync()
+  assert.equal(engine.getState().syncStatus, 'error')
+  assert.equal(engine.getState().label, 'Cloud schema needs migration')
+
+  const statuses = []
+  const unsubscribe = engine.subscribe((state) => statuses.push(state.syncStatus))
+  statuses.length = 0
+  await engine.sync({ silent: true })
+
+  assert.equal(statuses.includes('syncing'), false)
+  assert.equal(engine.getState().syncStatus, 'error')
+  assert.equal(engine.getState().label, 'Cloud schema needs migration')
+  unsubscribe()
+  engine.dispose()
+})
+
 test('cloud writes require an account-owned device provenance row', async () => {
   const config = resolveCloudConfig({ VITE_SUPABASE_URL: 'https://example.supabase.co', VITE_SUPABASE_ANON_KEY: 'public-anon-key' })
   const user = { id: '00000000-0000-4000-8000-000000000061', email: 'device-owner@example.test' }

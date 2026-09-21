@@ -8,6 +8,7 @@ the state files themselves.
 
 from __future__ import annotations
 
+import hashlib
 import re
 import subprocess
 from collections.abc import Mapping
@@ -17,6 +18,7 @@ from typing import Any
 
 MAX_CONTEXT_TEXT_BYTES = 20_000
 MAX_CONTEXT_FILE_BYTES = 40_000
+MAX_CONTEXT_DIGEST_BYTES = 2_000_000
 MAX_CONTEXT_DIFF_BYTES = 24_000
 MAX_CONTEXT_LINES = 80
 
@@ -83,9 +85,22 @@ def bounded_file(path: Path) -> dict[str, Any]:
         size = path.stat().st_size
         with path.open("rb") as handle:
             raw = handle.read(MAX_CONTEXT_FILE_BYTES)
-            has_more = bool(handle.read(1))
+            first_tail = handle.read(1)
+            has_more = bool(first_tail)
+            digest_bytes = bytearray(raw)
+            if first_tail:
+                digest_bytes.extend(first_tail)
+                while True:
+                    chunk = handle.read(64 * 1024)
+                    if not chunk:
+                        break
+                    if len(digest_bytes) + len(chunk) > MAX_CONTEXT_DIGEST_BYTES:
+                        raise ContextValueError("Active file is too large for a stable digest")
+                    digest_bytes.extend(chunk)
     except FileNotFoundError as exc:
         raise ContextValueError("Active file was not found") from exc
+    except ContextValueError:
+        raise
     except OSError as exc:
         raise ContextValueError("Active file could not be read") from exc
     truncated = size > MAX_CONTEXT_FILE_BYTES or has_more
@@ -102,7 +117,16 @@ def bounded_file(path: Path) -> dict[str, Any]:
         except UnicodeDecodeError as nested:
             raise ContextValueError("Active file is not UTF-8 text") from nested
     text, text_truncated = bounded_text(content, "active_file", max_bytes=MAX_CONTEXT_FILE_BYTES)
-    return {"content": text, "bytes": size, "truncated": truncated or text_truncated}
+    # The normal file endpoint exposes universal-newline text. Hash that same
+    # wire representation so a CRLF checkout and a LF editor buffer bind to
+    # the same Forge file on every supported host.
+    normalized_bytes = bytes(digest_bytes).replace(b"\r\n", b"\n").replace(b"\r", b"\n")
+    return {
+        "content": text,
+        "bytes": size,
+        "digest": hashlib.sha256(normalized_bytes).hexdigest(),
+        "truncated": truncated or text_truncated,
+    }
 
 
 def _run_git(workspace: Path, *args: str) -> str:
@@ -187,10 +211,26 @@ def quest_context(progress: Mapping[str, Any], encounter: Mapping[str, Any] | No
             "available_objectives": [
                 {
                     "id": item.get("id"),
+                    "label": item.get("label"),
+                    "brief": item.get("brief"),
                     "question_type": item.get("question_type"),
                     "impact": item.get("impact"),
                 }
                 for item in encounter.get("available_objectives", [])
+                if isinstance(item, Mapping)
+            ][:MAX_CONTEXT_LINES],
+            "current_quest": {
+                key: encounter.get("current_quest").get(key)
+                for key in ("id", "label", "brief", "quest", "question_type", "impact", "damage")
+                if isinstance(encounter.get("current_quest"), Mapping) and key in encounter.get("current_quest")
+            } if isinstance(encounter.get("current_quest"), Mapping) else None,
+            "mechanics": [
+                {
+                    key: item.get(key)
+                    for key in ("id", "label", "detail", "outcome")
+                    if key in item
+                }
+                for item in encounter.get("mechanics", [])
                 if isinstance(item, Mapping)
             ][:MAX_CONTEXT_LINES],
         }
@@ -199,6 +239,20 @@ def quest_context(progress: Mapping[str, Any], encounter: Mapping[str, Any] | No
             # future locked encounter prompt or answer is included.
             current["concept"] = str(mob.get("concept") or "")
             current["encounter"] = str(mob.get("encounter") or "")
+        projected_mob = encounter.get("mob")
+        if isinstance(projected_mob, Mapping):
+            current["concept"] = str(projected_mob.get("concept") or current.get("concept") or "")
+            current["lore"] = str(projected_mob.get("lore") or "")
+            current["brief"] = str(projected_mob.get("brief") or current.get("encounter") or "")
+        reward_envelope = encounter.get("reward_envelope")
+        if isinstance(reward_envelope, Mapping):
+            current["reward_envelope"] = {
+                "xp": reward_envelope.get("xp", 0),
+                "coins": reward_envelope.get("coins", 0),
+                "authorized_items": [
+                    item for item in reward_envelope.get("authorized_items", []) if isinstance(item, Mapping)
+                ][:MAX_CONTEXT_LINES],
+            }
 
     learning = progress.get("learning_state")
     learning = learning if isinstance(learning, Mapping) else {}
@@ -214,9 +268,50 @@ def quest_context(progress: Mapping[str, Any], encounter: Mapping[str, Any] | No
         "reference_mode_uses": assist.get("reference_mode_uses", 0),
         "guided_milestones": assist.get("guided_milestones", 0),
     }
+    boss = None
+    if isinstance(encounter, Mapping) and encounter.get("status") == "boss_available":
+        current_requirement = encounter.get("boss_current_requirement")
+        if isinstance(current_requirement, Mapping):
+            current_requirement = {
+                key: current_requirement.get(key)
+                for key in ("id", "label", "question_type", "impact", "damage", "brief", "quest")
+                if key in current_requirement
+            }
+        else:
+            current_requirement = None
+        reward = encounter.get("reward_envelope")
+        boss = {
+            "name": str(encounter.get("boss") or "Campaign boss"),
+            "status": str(encounter.get("boss_status") or "available"),
+            "phase": str(encounter.get("boss_phase") or ""),
+            "phase_label": str(encounter.get("boss_phase_label") or ""),
+            "resolve": encounter.get("boss_resolve", encounter.get("resolve")),
+            "max_resolve": encounter.get("boss_max_resolve", encounter.get("max_resolve")),
+            "current_requirement": current_requirement,
+            "verified_count": len(encounter.get("verified_boss_requirements", [])) if isinstance(encounter.get("verified_boss_requirements"), list) else 0,
+            "lore": str(encounter.get("boss_lore") or ""),
+            "brief": str(encounter.get("boss_brief") or ""),
+            "mechanics": [
+                {
+                    key: item.get(key)
+                    for key in ("id", "label", "detail", "outcome")
+                    if key in item
+                }
+                for item in encounter.get("mechanics", [])
+                if isinstance(item, Mapping)
+            ][:MAX_CONTEXT_LINES],
+            "current_quest": current_requirement,
+            "reward_envelope": {
+                "xp": reward.get("xp", 0),
+                "coins": reward.get("coins", 0),
+                "authorized_items": [item for item in reward.get("authorized_items", []) if isinstance(item, Mapping)][:MAX_CONTEXT_LINES],
+            } if isinstance(reward, Mapping) else None,
+        }
+
     return {
         "project": project,
         "mob": current,
+        "boss": boss,
         "phase": str(learning.get("phase") or "teach"),
         "concept": str(learning.get("concept") or (current or {}).get("concept") or ""),
         "assistance": assistance,

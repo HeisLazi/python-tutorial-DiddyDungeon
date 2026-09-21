@@ -15,6 +15,7 @@ __pycache__/
 # Frontend
 node_modules/
 dist/
+.vite/
 ide/frontend/node_modules/
 ide/frontend/dist/
 

@@ -52,7 +52,7 @@ test('campaign projections use revision polling and state-service events', () =>
   assert.match(app, /state_events/)
   assert.match(app, /questlab:campaign-updated/)
   assert.match(app, /<RewardQueue items=\{rewardQueue\} \/>/)
-  assert.match(views, /data-testid="encounter-resolve"/)
+  assert.match(views, /data-testid="forge-encounter-resolve"/)
   assert.match(views, /progress\.codex\?\.encounters/)
   assert.match(views, /data-campaign-revision=\{revision\}/)
   assert.match(combat, /questlab:campaign-updated/)
@@ -141,19 +141,107 @@ test('provider launch unlocks bounded Tutor/Practice requests for this tab', () 
   assert.match(app, /Practice drill requested from \$\{provider\}/)
 })
 
-test('Battle Journal binds player answers before provider adjudication', () => {
+test('GitHub Copilot CLI is an available raw provider without becoming a state authority', () => {
+  const app = source('../AppV2.jsx')
+  const server = source('../../../server/app_v2.py')
+  const commandPalette = source('../commandPalette.js')
+  const enhancements = source('../forgeEnhancements.js')
+  const state = source('../../../server/state.py')
+
+  assert.match(app, /commands\.copilot === false/)
+  assert.match(app, /summon\('copilot'\)/)
+  assert.match(app, />Copilot<\/button>/)
+  assert.match(app, /Choose Codex, Claude, AGY, or Copilot above\./)
+  assert.match(server, /"copilot": command_available\("copilot"\)/)
+  assert.match(commandPalette, /Launch Copilot CLI/)
+  assert.match(enhancements, /'Copilot'/)
+  assert.doesNotMatch(state, /copilot.*reward|reward.*copilot/i)
+})
+
+test('Forge binds the active campaign file before provider adjudication', () => {
   const app = source('../AppV2.jsx')
   const views = source('../RpgViews.jsx')
 
-  assert.match(app, /const submitBattle = async/)
+  assert.match(app, /const forgeSubmission = \(\) =>/)
+  assert.match(app, /answer_source: 'forge_active_file'/)
+  assert.match(app, /source_path: forge\.path/)
+  assert.match(app, /file_digest: context\?\.active_file\?\.digest/)
   assert.match(app, /pasteAiPrompt/)
-  assert.match(app, /Battle answer sent to/)
+  assert.match(app, /File sent|Battle answer sent to/)
   assert.match(app, /Bounded Quest Lab context/)
-  assert.match(app, /Active file \(\$\{context\.active_file/)
-  assert.match(app, /BATTLE ATTEMPT RECORDED/)
-  assert.match(views, /data-testid="battle-submission"/)
-  assert.match(views, /Send to PYR/)
-  assert.match(views, /Resolve and rewards change only after the provider returns a validated verdict/)
+  assert.match(app, /Active Forge file \(\$\{forge\.path/)
+  assert.match(app, /const submitCampaignRun = async/)
+  assert.match(app, /__questlabSubmitCampaignRun/)
+  assert.match(views, /data-testid="forge-document-tabs"|className="forge-document-tabs"/)
+  assert.match(views, /quest\.md <small>STATE VIEW<\/small>/)
+  assert.match(views, /data-testid="pyr-sidebar-companion"/)
+  assert.doesNotMatch(views, /data-testid="forge-file-submission"/)
+  assert.doesNotMatch(views, /Submit current Forge file to PYR/)
+  assert.doesNotMatch(views, /battle-answer-editor/)
+  assert.doesNotMatch(views, /function BattleSubmission/)
+})
+
+test('Forge left panel can collapse to file shortcuts and restore its drawable encounter view', () => {
+  const app = source('../AppV2.jsx')
+  const views = source('../RpgViews.jsx')
+  const foundation = source('../foundation.css')
+
+  assert.match(app, /const \[leftPanelCollapsed, setLeftPanelCollapsed\] = usePersistentState\('questlab\.leftPanelCollapsed', false\)/)
+  assert.match(app, /const leftPanelColumns = leftPanelCollapsed \? '76px 5px'/)
+  assert.match(app, /compact=\{leftPanelCollapsed\}/)
+  assert.match(app, /onToggleCompact=\{\(\) => setLeftPanelCollapsed/)
+  assert.match(views, /data-testid="forge-compact-panel"/)
+  assert.match(views, /Open quest\.md state view/)
+  assert.match(views, /Compact Forge sidebar/)
+  assert.match(views, /Expand Forge sidebar/)
+  assert.match(views, /onClick=\{\(\) => setActiveView\('tutor'\)\} title="Open Tutor Notebook"/)
+  assert.match(views, /className="sidebar-collapse-toggle"/)
+  assert.match(views, /className="forge-compact-expand"[\s\S]*?className=\{`forge-compact-file/)
+  assert.match(foundation, /\.forge-compact-panel \{ display: flex;/)
+  assert.match(foundation, /\.forge-compact-file\.active/)
+  assert.match(foundation, /\.campaign-battle-sidebar \.pyr-sidebar-companion \{ margin: 30px auto 24px;/)
+  assert.match(foundation, /\.campaign-battle-sidebar \.pyr-pixel-character, \.campaign-battle-sidebar \.pyr-pixel-character svg \{ width: 44px; height: 44px;/)
+})
+
+test('Tutor and Infinite Dungeon can collapse to a slim route rail', () => {
+  const views = source('../RpgViews.jsx')
+  const foundation = source('../foundation.css')
+
+  assert.match(views, /function ContextCompactPanel/)
+  assert.match(views, /data-testid=\{`\$\{mode\}-compact-panel`\}/)
+  assert.match(views, /title=\{`Compact \$\{label\} sidebar`\}/)
+  assert.match(views, /title=\{`Expand \$\{label\} sidebar`\}/)
+  assert.match(views, /if \(compact && collapsibleContext\) return <ContextCompactPanel/)
+  assert.match(views, /activeView !== 'dungeon' && <button onClick=\{\(\) => setActiveView\('forge'\)\}/)
+  assert.match(views, /activeView === 'dungeon' && <ContextCollapseButton label="Dungeon"/)
+  assert.match(foundation, /\.context-compact-file \{ cursor: default;/)
+  assert.match(foundation, /\.panel-title-actions > button svg/)
+  assert.match(foundation, /\.forge-compact-expand \{ margin: 0 0 8px;/)
+  assert.doesNotMatch(foundation, /\.forge-compact-expand \{ margin-top: auto;/)
+})
+
+test('Forge boot has a short fade-in with reduced-motion and preference fallbacks', () => {
+  const foundation = source('../foundation.css')
+
+  assert.match(foundation, /\.app-shell \{ animation: questlab-boot-in \.36s ease-out both; \}/)
+  assert.match(foundation, /@keyframes questlab-boot-in/)
+  assert.match(foundation, /prefers-reduced-motion: reduce/)
+  assert.match(foundation, /\.app-shell\.no-animations \{ animation: none !important; \}/)
+})
+
+test('PYR companion has a restrained pet idle loop, lower boss-gate placement, and motion-safe fallback', () => {
+  const views = source('../RpgViews.jsx')
+  const foundation = source('../foundation.css')
+  const v2 = source('../v2.css')
+
+  assert.match(views, /data-pyr-motion="idle"/)
+  assert.match(views, /className="pyr-eye pyr-eye-left"/)
+  assert.match(views, /className="pyr-eye pyr-eye-right"/)
+  assert.match(foundation, /@keyframes pyr-float/)
+  assert.match(foundation, /@keyframes pyr-blink/)
+  assert.match(foundation, /prefers-reduced-motion: reduce/)
+  assert.match(foundation, /\.no-animations \.pyr-pixel-character, \.no-animations \.pyr-eye \{ animation: none !important;/)
+  assert.match(v2, /data-boss-gate="true"\][\s\S]*?\.campaign-battle-sidebar \.pyr-sidebar-companion \{[\s\S]*?margin-top: auto;/)
 })
 
 test('Dungeon checkpoints and Practice remain separate learning modes', () => {
@@ -175,7 +263,7 @@ test('Dungeon checkpoints and Practice remain separate learning modes', () => {
   assert.match(views, /dungeon\.py · current room buffer/)
   assert.match(views, /data-testid="practice"/)
   assert.match(views, /Practice is unlimited and separate from Campaign and Dungeon/)
-  assert.match(views, /Send answer to PYR/)
+  assert.match(views, /Submit to PYR/)
   assert.match(views, /RECENT PRACTICE HISTORY/)
   assert.match(views, /id: 'tutor', label: 'Tutor Notebook'/)
   assert.doesNotMatch(views, /<option value="python-basics">python-basics<\/option>/)
@@ -194,7 +282,24 @@ test('Dungeon exposes a state-preserving map and editable code-editor tab', () =
   assert.match(views, /Open code editor/)
 })
 
-test('navigation keeps Tutor as the single practice workspace and parks hidden AI without a blank grid column', () => {
+test('Dungeon main route keeps prototype proportions and owns the page scroll', () => {
+  const views = source('../RpgViews.jsx')
+  const v2 = source('../v2.css')
+
+  assert.match(views, /dungeon-class-card-top/)
+  assert.match(views, /dungeon-class-weapon/)
+  assert.match(views, /dungeon-class-passive/)
+  assert.match(views, /dungeon-class-cta/)
+  assert.match(views, /viewBox="0 0 100 120"/)
+  assert.match(v2, /F-225: the canonical Dungeon route is a state-backed port/)
+  assert.match(v2, /\.forge-v2\.dungeon-mode \.game-screen \{[\s\S]*?overflow-y: auto;/)
+  assert.match(v2, /grid-template-columns: minmax\(300px, \.92fr\) minmax\(390px, 1\.14fr\) minmax\(285px, \.84fr\)/)
+  assert.match(v2, /grid-template-rows: repeat\(8, 54px\)/)
+  assert.match(v2, /\.forge-v2\.dungeon-mode \.dungeon-class-card \{[\s\S]*?min-height: 340px;/)
+  assert.match(v2, /\.forge-v2\.dungeon-mode \.dungeon-workspace-tabs \{ display: none; \}/)
+})
+
+test('navigation keeps Tutor as the single practice workspace and uses one app-level menu', () => {
   const app = source('../AppV2.jsx')
   const views = source('../RpgViews.jsx')
   const v2 = source('../v2.css')
@@ -202,17 +307,21 @@ test('navigation keeps Tutor as the single practice workspace and parks hidden A
   const palette = source('../commandPalette.js')
 
   assert.match(app, /const normalizeView = \(value\) => value === 'practice' \? 'tutor' : value === 'quests' \? 'codex' : value/)
+  assert.doesNotMatch(app, /value === 'dungeon' \? 'forge'/)
   assert.match(app, /return normalizeView\(candidate\)/)
   assert.doesNotMatch(views, /id: 'practice', icon:/)
   assert.doesNotMatch(palette, /Open Quest Journal/)
   assert.match(app, /gridStyle = wideSurface\s*\? \{/)
-  assert.match(app, /const wideSurface = \['hub', 'character', 'homestead', 'codex'\]/)
-  assert.match(app, /!wideSurface && <ActivityRail/)
+  assert.match(app, /const wideSurface = \['hub', 'character', 'homestead', 'codex', 'settings'\]/)
+  assert.match(app, /import \{ buildQuestDocument, ContextPanel, GameScreen, RewardQueue, SurfaceNavigation, TutorPracticeBar \}/)
+  assert.match(app, /<SurfaceNavigation activeView=\{activeView\} onNavigate=\{setActiveView\} \/>/)
+  assert.doesNotMatch(app, /!wideSurface && <ActivityRail/)
   assert.match(views, /data-testid="wide-route-nav"/)
   assert.match(views, /aria-label="Wide route navigation"/)
   assert.match(views, /data-wide-route=\{activeView\}/)
   assert.match(views, /<SurfaceNavigation activeView="codex" onNavigate=\{onNavigate\} \/>/)
-  assert.match(views, /const wideRoute = \['hub', 'character', 'homestead', 'codex'\]/)
+  assert.match(views, /const wideRoute = \['hub', 'character', 'homestead', 'codex', 'settings'\]/)
+  assert.match(views, /purchaseCosmetic, equipCosmetic, equipCampaignItem, saveCodexNote/)
   assert.match(foundation, /\.surface-nav \{ position: sticky;/)
   assert.match(views, /withWideNavigation/)
   assert.match(views, /function RouteIcon\(/)
@@ -222,13 +331,45 @@ test('navigation keeps Tutor as the single practice workspace and parks hidden A
   assert.match(foundation, /\.wide-screen-frame > \.codex-screen \{ flex: 1 1 auto; min-height: 0; height: auto; \}/)
   assert.match(foundation, /\.surface-nav-link\.active/)
   assert.match(foundation, /\.surface-nav-link > span:first-child svg/)
-  assert.match(app, /aiGridVisible\s*\?\s*`48px/)
+  assert.match(app, /aiGridVisible\s*\?\s*`0px \$\{leftPanelColumns\}/)
   assert.match(app, /aiGridVisible\s*\?\s*''\s*:\s*aiPopoverOpen/)
   assert.match(v2, /ai-panel-parked/)
   assert.match(v2, /wide-mode \.game-screen\{grid-column:1/)
   assert.match(v2, /hub-mode \.game-screen\{grid-column:1/)
   assert.match(app, /initialLaunch\.returning \? `Welcome back, \$\{welcomeName\}`/)
   assert.match(foundation, /questlab-splash-in/)
+  assert.match(v2, /F-176: route navigation is one app-level surface/)
+})
+
+test('wide settings never inherits the Forge rail and the level HUD stays centered', () => {
+  const app = source('../AppV2.jsx')
+  const views = source('../RpgViews.jsx')
+  const v2 = source('../v2.css')
+
+  assert.match(app, /const wideSurface = \['hub', 'character', 'homestead', 'codex', 'settings'\]/)
+  assert.match(views, /const wideRoute = \['hub', 'character', 'homestead', 'codex', 'settings'\]/)
+  assert.match(v2, /F-185: keep the level\/title\/XP strip on the page centre line/)
+  assert.match(v2, /\.forge-v2 \.topbar \{[\s\S]*display: grid;[\s\S]*grid-template-columns: minmax\(165px, 1fr\) minmax\(0, min\(360px, 35vw\)\) minmax\(0, 1fr\)/)
+  assert.match(v2, /\.forge-v2 \.topbar \.hud-xp \{ justify-self: center;/)
+})
+
+test('Forge-first rail keeps the locked route order', () => {
+  const views = source('../RpgViews.jsx')
+  const expected = [
+    "{ id: 'hub', label: 'Quest Hub' }",
+    "{ id: 'forge', label: 'Forge' }",
+    "{ id: 'tutor', label: 'Tutor Notebook' }",
+    "{ id: 'dungeon', label: 'Infinite Dungeon' }",
+    "{ id: 'codex', label: 'Codex' }",
+    "{ id: 'character', label: 'Character' }",
+    "{ id: 'homestead', label: 'Homestead' }",
+    "{ id: 'settings', label: 'Settings' }",
+  ]
+  const start = views.indexOf('export const viewItems')
+  const rail = views.slice(start, views.indexOf(']', start) + 1)
+  assert.deepEqual(expected, expected.filter((item) => rail.indexOf(item) >= 0).sort((a, b) => rail.indexOf(a) - rail.indexOf(b)))
+  assert.equal(rail.includes("{ id: 'practice'"), false)
+  assert.equal(rail.includes("{ id: 'dungeon'"), true)
 })
 
 test('splash idle timing follows real activity instead of a background heartbeat', () => {
@@ -266,24 +407,26 @@ test('legacy rail icon enhancement yields to the React-owned SVG rail', () => {
   assert.match(enhancements, /if \(reactRail\) return/)
 })
 
-test('Journal and Codex keep the active encounter projection visible', () => {
+test('Forge and Codex keep the active encounter projection visible without Battle Shell UI', () => {
   const app = source('../AppV2.jsx')
   const views = source('../RpgViews.jsx')
   const foundation = source('../foundation.css')
 
   assert.match(views, /data-testid="forge-encounter-resolve"/)
-  assert.match(views, /data-testid="quest-battle-screen"/)
-  assert.match(views, /journal-mode-tabs/)
-  assert.match(views, /battle-answer-editor/)
+  assert.match(views, /buildQuestDocument\(campaign\)/)
+  assert.match(views, /encounter\.mob\?\.lore/)
+  assert.match(views, /reward_envelope/)
+  assert.match(views, /quest\.md <small>STATE VIEW<\/small>/)
+  assert.match(views, /data-testid="pyr-sidebar-companion"/)
+  assert.doesNotMatch(views, /data-testid="forge-file-submission"/)
   assert.match(views, /data-testid="codex-active-quest"/)
-  assert.match(views, /data-testid="codex-mode-tabs"/)
-  assert.match(views, /data-testid="battle-story-background"/)
-  assert.match(views, /data-testid="battle-encounter-details"/)
+  assert.match(views, /data-testid="codex-folio-controls"/)
+  assert.doesNotMatch(views, /data-testid="codex-mode-tabs"/)
+  assert.doesNotMatch(views, /data-testid="quest-battle-screen"/)
+  assert.doesNotMatch(views, /journal-mode-tabs/)
   assert.match(views, /className="codex-screen"/)
   assert.match(views, /data-testid="codex-mastery"/)
-  assert.match(views, /function QuestBattleScreen\(\{ activeProject, currentMob, encounter, resolve/)
-  assert.match(views, /currentMob=\{battleMob\}\s+encounter=\{encounter\}/)
-  assert.match(views, /function Codex\(\{ progress, revision, codexProjection, encounter, submitBattle, submitBoss/)
+  assert.match(views, /function Codex\(\{ progress, revision, codexProjection, encounter, saveCodexNote/)
   assert.doesNotMatch(views, /id: 'quests', label:/)
   assert.match(app, /value === 'quests' \? 'codex'/)
   assert.match(views, /data-testid="dungeon-inventory"/)
@@ -299,7 +442,7 @@ test('Journal and Codex keep the active encounter projection visible', () => {
   assert.doesNotMatch(foundation, /\.codex-screen \{ grid-template-rows: auto auto auto; height: auto; overflow: auto;/)
   assert.match(views, /data-testid="codex-book-tabs"/)
   assert.match(views, /data-testid="codex-page-controls"/)
-  assert.match(views, /key=\{`\$\{codexView\}:\$\{selectedPage\?\.id \|\| 'empty'\}:\$\{codexSection\}`\}/)
+  assert.match(views, /data-codex-folio=\{readSubpage\}/)
   assert.match(views, /<section className="codex-book-section codex-mastery-panel" data-testid="codex-mastery">/)
   assert.match(views, /data-testid="workspace-transfer"/)
   assert.match(app, /\/api\/workspace-transfer/)
@@ -481,11 +624,12 @@ test('Codex reader contract keeps the outer page finite and the shelf paged', ()
   const foundation = source('../foundation.css')
 
   assert.match(views, /<h2>Codex<\/h2>/)
-  assert.match(views, />Books<\/button>/)
-  assert.match(foundation, /F-146: the Codex is a reader, not an infinite dashboard/)
-  assert.match(foundation, /\.game-screen > \.codex-screen \{[\s\S]*?height: 100%;[\s\S]*?overflow: hidden;/)
-  assert.match(foundation, /\.codex-screen > \.codex-tab-page\[data-codex-tab="books"\] \{[\s\S]*?grid-row: 3;[\s\S]*?overflow: hidden;/)
-  assert.match(foundation, /\.codex-screen > \.codex-tab-page\[data-codex-tab="books"\] > \.codex-library \{[\s\S]*?height: 100%;[\s\S]*?overflow: hidden;/)
+  assert.match(views, /data-testid="codex-folio-controls"/)
+  assert.match(views, /Definition.*Examples.*Mistakes & signals/)
+  assert.doesNotMatch(views, /codex-mode-tabs/)
+  assert.match(foundation, /Final Forge-first cascade/)
+  assert.match(foundation, /\.wide-screen-frame > \.codex-screen > \.codex-library \{[\s\S]*?height: 100%;[\s\S]*?overflow: hidden;/)
+  assert.match(foundation, /\.codex-screen \.codex-book-section \{[\s\S]*?overflow-y: auto;/)
   assert.match(foundation, /\.codex-screen \.codex-page-list \{[\s\S]*?overflow: visible;/)
 })
 
@@ -532,12 +676,15 @@ test('Codex uses the shared wide-surface frame instead of nesting a page in the 
   assert.match(foundation, /\.wide-screen-frame > \.codex-screen > \.codex-tab-page\[data-codex-tab="books"\] \.codex-book-section \{[\s\S]*?overflow-y: hidden;/)
 })
 
-test('Codex and legacy Journal Battle Shells render state-owned completed objectives', () => {
+test('Codex and legacy Journal Battle Shells are removed from the campaign surface', () => {
   const views = source('../RpgViews.jsx')
 
-  assert.match(views, /function QuestBattleScreen\(\{[\s\S]*?completedObjectives = \[\]/)
-  assert.equal((views.match(/availableObjectives=\{availableObjectives\}\s+completedObjectives=\{completedObjectives\}\s+bossUnlocked=\{bossUnlocked\}/g) || []).length, 2)
-  assert.match(views, /const completedObjectiveCount = Array\.isArray\(completedObjectives\) \? completedObjectives\.length : 0/)
+  assert.doesNotMatch(views, /function QuestBattleScreen/)
+  assert.doesNotMatch(views, /function QuestJournal/)
+  assert.doesNotMatch(views, /journal-mode-tabs|codex-mode-tabs|battle-answer-editor/)
+  assert.match(views, /className="forge-document-tabs"/)
+  assert.doesNotMatch(views, /function ForgeBossSubmission|function ForgeObjectiveSubmission|function EncounterMechanics/)
+  assert.doesNotMatch(views, /Send current goal to PYR|Submit current Forge file to PYR/)
 })
 
 test('friend packages strip tracked player state before archive output', () => {
@@ -560,7 +707,7 @@ test('Dungeon renders state-owned adaptive mob identity and reward feedback', ()
   assert.match(app, /event\.mob_name \? 'MOB COUNTERATTACK'/)
 })
 
-test('Campaign completion keeps the boss gate and state-service boundary explicit', () => {
+test('Campaign boss validation remains a state-service boundary without a second answer screen', () => {
   const app = source('../AppV2.jsx')
   const views = source('../RpgViews.jsx')
 
@@ -569,10 +716,14 @@ test('Campaign completion keeps the boss gate and state-service boundary explici
   assert.match(app, /action === 'record_boss_clear'/)
   assert.match(app, /BOSS DEFEATED/)
   assert.match(app, /CAMPAIGN COMPLETE/)
-  assert.match(views, /data-testid="boss-gate"/)
-  assert.match(views, /data-testid="campaign-complete"/)
-  assert.match(views, /required_behavior.*explanation.*interview/)
-  assert.match(views, /No future questions or answers are revealed here/)
+  assert.match(app, /answer_source: 'forge_active_file'/)
+  assert.match(views, /data-testid="forge-boss-resolve"/)
+  assert.match(views, /data-testid="pyr-sidebar-companion"/)
+  assert.match(app, /const submitCampaignRun = async/)
+  assert.match(app, /return submitBoss\(\)/)
+  assert.doesNotMatch(views, /function ForgeBossSubmission|BOSS \/ MOB MECHANICS/)
+  assert.doesNotMatch(views, /Send current goal to PYR/)
+  assert.doesNotMatch(views, /data-testid="boss-gate"|data-testid="campaign-complete"/)
   assert.doesNotMatch(views, /boss.*reward.*\+100/)
 })
 
@@ -584,11 +735,17 @@ test('boss gate provider bridge binds behaviour, explanation and interview evide
   assert.match(app, /const submitBoss = async/)
   assert.match(app, /\/api\/pyr\/boss-submission/)
   assert.match(app, /\/api\/pyr\/boss-verdict/)
-  assert.match(app, /A project completes only after all three requirements are separately verified/)
-  assert.match(views, /data-testid="boss-submission"/)
-  assert.match(views, /Send to PYR/)
+  assert.match(app, /A correct verdict applies the canonical damage and reveals the next goal/)
+  assert.match(app, /const submitCampaignRun = async/)
+  assert.match(app, /window\.__questlabSubmitCampaignRun/)
+  assert.match(views, /quest\.md <small>STATE VIEW<\/small>/)
+  assert.match(views, /data-testid="forge-boss-resolve"/)
+  assert.doesNotMatch(views, /data-testid="forge-boss-submission"|CURRENT QUEST|data-testid="forge-encounter-mechanics"/)
+  assert.doesNotMatch(views, /Send current goal to PYR/)
   assert.match(server, /class PyrBossSubmissionRequest/)
   assert.match(server, /class PyrBossVerdictRequest/)
+  assert.match(server, /answer_source: Literal\["manual", "forge_active_file"\]/)
+  assert.match(server, /current_requirement\.get\("question_type"\)/)
   assert.match(server, /all\(requirement in verified for requirement in BOSS_REQUIREMENTS\)/)
 })
 
@@ -604,8 +761,51 @@ test('boss phases and bounded trinket triggers stay state-service sourced', () =
   assert.match(server, /Phoenix Ember/)
   assert.match(app, /BOSS PHASE VERIFIED/)
   assert.match(app, /TRINKET TRIGGERED/)
-  assert.match(views, /data-testid="boss-phase-track"/)
-  assert.match(views, /bossPhaseLabel/)
+  assert.match(views, /data-testid="forge-boss-resolve"/)
+  assert.match(views, /data-testid="pyr-sidebar-companion"/)
+  assert.doesNotMatch(views, /function ForgeBossSubmission/)
+  assert.doesNotMatch(views, /data-testid="boss-phase-track"/)
+})
+
+test('boss gate keeps Resolve in the sidebar and moves the state-owned quest into quest.md', () => {
+  const app = source('../AppV2.jsx')
+  const views = source('../RpgViews.jsx')
+  const server = source('../../../server/state.py')
+  const bridge = source('../../../server/context_bridge.py')
+  const v2 = source('../v2.css')
+
+  assert.match(views, /data-testid="forge-boss-resolve"/)
+  assert.match(views, /data-testid="pyr-sidebar-companion"/)
+  assert.match(views, /quest\.md <small>STATE VIEW<\/small>/)
+  assert.match(views, /STATE-OWNED CURRENT ENCOUNTER/)
+  assert.match(views, /## Current quest/)
+  assert.match(views, /## Boss \/ mob mechanics/)
+  assert.match(views, /## Loot at stake/)
+  assert.doesNotMatch(views, /data-testid="forge-boss-current-goal"|data-testid="forge-boss-reward"|CURRENT QUEST|data-testid="forge-encounter-mechanics"/)
+  assert.doesNotMatch(views, /Send current goal to PYR/)
+  assert.doesNotMatch(views, /<span>Requirement<\/span><select/)
+  assert.match(app, /const currentGoal = context\?\.encounter\?\.boss_current_requirement/)
+  assert.match(app, /const requirementId = currentGoal\?\.id/)
+  assert.match(server, /boss_current_requirement/)
+  assert.match(server, /boss_resolve_before/)
+  assert.match(server, /boss_damage/)
+  assert.match(server, /ENCOUNTER_MECHANICS/)
+  assert.match(bridge, /"current_requirement": current_requirement/)
+  assert.match(bridge, /"mechanics"/)
+  assert.match(app, /data-boss-gate=\{bossGateActive \? 'true' : 'false'\}/)
+  assert.match(v2, /F-176: route navigation is one app-level surface/)
+  assert.match(v2, /data-boss-gate="true"\]\s+\.campaign-battle-sidebar[\s\S]*max-height: none/)
+  assert.match(app, /const effectiveLeftWidth = Math\.max\(260, Number\(leftWidth\)/)
+  assert.match(source('../styles.css'), /left-resizer/)
+})
+
+test('single-file Forge steps hide the workspace tree while multifile projects can reveal it', () => {
+  const views = source('../RpgViews.jsx')
+
+  assert.match(views, /const multiFileProject = activeProject\?\.multi_file === true/)
+  assert.match(views, /data-testid="forge-active-file-summary"/)
+  assert.match(views, /Show project files/)
+  assert.match(views, /Hide project files/)
 })
 
 test('PTY state commands inherit the canonical gateway instead of workspace progress.json', () => {
@@ -656,10 +856,11 @@ test('terminal reconnect control uses the stable session handler', () => {
   assert.doesNotMatch(app, /onClick=\{connect\}/)
 })
 
-test('legacy Quest Journal binds completed objectives before rendering Battle Shell', () => {
+test('legacy Quest Journal is not rendered; Codex owns the active quest rail', () => {
   const journal = source('../RpgViews.jsx')
-  assert.match(journal, /function QuestJournal\([\s\S]*?const completedObjectives = encounter\?\.completed_objectives \|\| \[\]/)
-  assert.match(journal, /completedObjectives=\{completedObjectives\}/)
+  assert.doesNotMatch(journal, /function QuestJournal|function QuestBattleScreen/)
+  assert.match(journal, /data-testid="codex-active-quest"/)
+  assert.match(journal, /data-testid="codex-folio-controls"/)
 })
 
 test('Codex renders a searchable concept library and writes bounded field notes through the gateway', () => {
@@ -824,6 +1025,53 @@ test('top HUD SVG icons are nested content, not nested stat pills', () => {
   assert.match(styles, /\.top-stats\s*>\s*span\s+\.quest-icon/)
   assert.match(styles, /\.top-stats\s*>\s*span\s+\[data-stat-value\]/)
   assert.match(styles, /\.top-stats\s+\.cloud-pill\{[^}]*min-width:15ch/)
+})
+
+test('Codex chrome and workspace files stay readable and bounded', () => {
+  const views = source('../RpgViews.jsx')
+  const app = source('../AppV2.jsx')
+  const v2 = source('../v2.css')
+  const server = source('../../../server/app_v2.py')
+
+  assert.match(v2, /F-172: Codex folio chrome must reserve its own rows/)
+  assert.match(v2, /grid-template-rows: max-content max-content max-content minmax\(0, 1fr\)/)
+  assert.match(v2, /F-173: the three read folios need visible editorial hierarchy/)
+  assert.match(v2, /codex-definition-card/)
+  assert.match(v2, /codex-example-card/)
+  assert.match(v2, /codex-signal-card/)
+  assert.match(views, /role="tree" aria-label="Workspace files"/)
+  assert.match(views, /role="treeitem"/)
+  assert.match(views, /Collapse all folders/)
+  assert.match(views, /const treeFiles = files\.filter/)
+  assert.match(app, /data-stat-label="HP"/)
+  assert.match(app, /title=\{campaignReady \? `HP/)
+  assert.match(server, /"\\\\"/)
+  assert.match(server, /child\.is_symlink\(\)/)
+})
+
+test('Codex lesson reader keeps theory, practice and evidence in one simple path', () => {
+  const views = source('../RpgViews.jsx')
+  const v2 = source('../v2.css')
+  const state = source('../../../server/state.py')
+
+  assert.match(v2, /F-226: simplify Codex into a focused lesson reader/)
+  assert.match(views, /data-testid="codex-study-prompt"/)
+  assert.match(views, /selectedPage\.check_prompt/)
+  assert.match(views, /onNavigate\('tutor'\)/)
+  assert.match(views, /selectedPage\.common_mistakes/)
+  assert.match(views, /ResourceCodexExamples/)
+  assert.match(views, /ResourceEncounterRecords/)
+  assert.match(views, /page\.mistake_examples/)
+  assert.match(views, /entry\.code_snippet/)
+  assert.match(views, /resource-practice-signals/)
+  assert.match(v2, /codex-study-prompt/)
+  assert.match(v2, /resource-signals \{ display: grid; grid-template-columns: minmax\(0, 1fr\)/)
+  assert.match(v2, /codex-page-list button\.active/)
+  assert.match(state, /"common_mistakes":/)
+  assert.match(state, /"check_prompt":/)
+  assert.match(state, /"mistake_examples":/)
+  assert.match(state, /"code_snippet": str\(entry\.get\("code_snippet"/)
+  assert.match(state, /"common_mistakes": \[item for item in page\.get\("common_mistakes"/)
 })
 
 test('Codex reader typography stays book-like without adding another scroll owner', () => {

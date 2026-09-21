@@ -1056,7 +1056,7 @@ export class SyncEngine {
     // Keep a settled background state visible while polling.  We still show
     // the transient status for an explicit sync (sign-in, a local mutation,
     // or reconnect), and conflict/error states are always surfaced below.
-    if (!silent || this.state.syncStatus !== 'synced') {
+    if (!silent) {
       this.setState({ syncStatus: 'syncing', label: 'Syncing…', detail: 'Comparing the local cache with the cloud revision.', error: null })
     }
     const local = await this._fetchLocalSnapshot()
