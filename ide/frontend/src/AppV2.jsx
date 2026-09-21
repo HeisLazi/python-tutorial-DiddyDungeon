@@ -430,7 +430,15 @@ function AppV2() {
   // Practice was an older navigation alias for the Tutor notebook. Keep old
   // Keep one Tutor route while allowing the now state-backed Infinite Dungeon
   // to be a first-class surface. Legacy quests still land in the Codex.
-  const normalizeView = (value) => value === 'practice' ? 'tutor' : value === 'quests' ? 'codex' : value
+  const normalizeView = (value) => {
+    if (value === 'practice') return 'tutor'
+    if (value === 'quests') return 'codex'
+    // The prototype replaces the old standalone Character and Homestead
+    // destinations with the merged Campaign surface. Redirect persisted
+    // legacy routes so a reload cannot reopen the retired pages.
+    if (value === 'character' || value === 'homestead') return 'hub'
+    return value
+  }
   const activeView = normalizeView(storedActiveView)
   const setActiveView = (next) => setStoredActiveView((current) => {
     const candidate = typeof next === 'function' ? next(current) : next
