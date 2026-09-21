@@ -48,42 +48,42 @@ const TRINKETS = [
   },
 ]
 
-const ENCOUNTER_PROFILES = [
-  { resolve: 4, threat: 'I', raw: '5–8' },
-  { resolve: 6, threat: 'I', raw: '5–8' },
-  { resolve: 9, threat: 'II', raw: '10–14' },
-  { resolve: 8, threat: 'II', raw: '10–14' },
-  { resolve: 7, threat: 'II', raw: '10–14' },
-  { resolve: 8, threat: 'III', raw: '15–20' },
-  { resolve: 7, threat: 'III', raw: '15–20' },
-  { resolve: 8, threat: 'III', raw: '15–20' },
+const THREAT_PROFILES = [
+  { threat: 'I', raw: '5–8' },
+  { threat: 'I', raw: '5–8' },
+  { threat: 'II', raw: '10–14' },
+  { threat: 'II', raw: '10–14' },
+  { threat: 'II', raw: '10–14' },
+  { threat: 'III', raw: '15–20' },
+  { threat: 'III', raw: '15–20' },
+  { threat: 'III', raw: '15–20' },
 ]
 
 let campaign = null
-let loading = false
+let revision = null
 
-async function refreshCampaign() {
-  if (loading) return
-  loading = true
-  try {
-    const response = await fetch('/api/campaign')
-    if (response.ok) campaign = await response.json()
-  } catch {
-    // The base UI already surfaces backend errors. Combat polish should not break Forge.
-  } finally {
-    loading = false
-  }
-}
+const escapeHtml = (value) => String(value ?? '').replace(/[&<>"']/g, (character) => ({
+  '&': '&amp;',
+  '<': '&lt;',
+  '>': '&gt;',
+  '"': '&quot;',
+  "'": '&#39;',
+}[character]))
 
 function activeProject(progress) {
   return (progress.projects || []).find((project) => project.status === 'active') || null
 }
 
+// Legacy snapshots used `cleared` while the state service now emits
+// `defeated`. Treat both as terminal so the DOM combat shell cannot fall back
+// to an already-cleared encounter when it receives an older projection.
+const isMobDefeated = (mob) => mob?.status === 'defeated' || mob?.status === 'cleared'
+
 function currentMob(project) {
   if (!project) return { mob: null, index: -1 }
   const mobs = project.mobs || []
   let index = mobs.findIndex((mob) => mob.status === 'available')
-  if (index < 0) index = mobs.findIndex((mob) => mob.status !== 'defeated')
+  if (index < 0) index = mobs.findIndex((mob) => !isMobDefeated(mob))
   if (index < 0 && mobs.length) index = mobs.length - 1
   return { mob: index >= 0 ? mobs[index] : null, index }
 }
@@ -103,30 +103,33 @@ function trinketState(progress) {
 function renderCharacterGear() {
   const progress = campaign?.progress
   const list = document.querySelector('.equipment-list')
-  if (!progress || !list || list.dataset.combatGear === 'true') return
+  if (!progress || !list) return
 
   const armor = armorState(progress)
   const trinket = trinketState(progress)
   const title = progress.equipment?.title || progress.player?.title || 'None'
+  const signature = JSON.stringify({ armor: armor.name, reduction: armor.reduction, tier: armor.tier, trinket: trinket.name, effect: trinket.effect, title })
+  if (list.dataset.combatGearSignature === signature) return
 
   list.dataset.combatGear = 'true'
+  list.dataset.combatGearSignature = signature
   list.innerHTML = `
     <div class="combat-gear-row">
       ${gearIcon('shield')}
       <small>Armor</small>
-      <strong>${armor.name}</strong>
-      <em>${armor.tier} · ${armor.reduction}% Battle damage reduction</em>
+      <strong>${escapeHtml(armor.name)}</strong>
+      <em>${escapeHtml(armor.tier)} · ${armor.reduction}% Battle damage reduction</em>
     </div>
     <div class="combat-gear-row">
       ${gearIcon('relic')}
       <small>Trinket</small>
-      <strong>${trinket.name}</strong>
-      <em>${trinket.effect}</em>
+      <strong>${escapeHtml(trinket.name)}</strong>
+      <em>${escapeHtml(trinket.effect)}</em>
     </div>
     <div class="combat-gear-row">
       ${gearIcon('crown')}
       <small>Title</small>
-      <strong>${title}</strong>
+      <strong>${escapeHtml(title)}</strong>
       <em>Identity / achievement slot. No combat power.</em>
     </div>
   `
@@ -142,10 +145,13 @@ function renderCharacterGear() {
         <div><strong>Safe Mode</strong><span>Code, debug, ask questions and learn with zero HP risk.</span></div>
         <div><strong>Battle submission</strong><span>Only an explicit submitted answer/checkpoint can trigger a counterattack.</span></div>
         <div><strong>Offense</strong><span>Verified work deals Impact. There is no weapon-damage stat.</span></div>
-        <div><strong>Defense</strong><span>${armor.name} currently blocks ${armor.reduction}% of Battle damage.</span></div>
+        <div><strong>Defense</strong><span data-combat-defense>${escapeHtml(armor.name)} currently blocks ${armor.reduction}% of Battle damage.</span></div>
       </div>
     `
     characterLayout.appendChild(card)
+  } else {
+    const defense = characterLayout?.querySelector('[data-combat-defense]')
+    if (defense) defense.textContent = `${armor.name} currently blocks ${armor.reduction}% of Battle damage.`
   }
 }
 
@@ -153,23 +159,47 @@ function renderQuestBattleShell() {
   const progress = campaign?.progress
   const hero = document.querySelector('.quest-hero')
   if (!progress || !hero) return
-  if (document.querySelector('[data-battle-shell]')) return
-
   const project = activeProject(progress)
   const { mob, index } = currentMob(project)
-  const profile = ENCOUNTER_PROFILES[index] || { resolve: 6, threat: 'I', raw: '5–8' }
+  const projected = campaign?.encounter && campaign.encounter.mob_name === mob?.name ? campaign.encounter : null
+  const maxResolve = Number(projected?.max_resolve ?? mob?.max_resolve ?? mob?.resolve ?? 0)
+  const resolve = Number(projected?.resolve ?? mob?.resolve ?? maxResolve)
+  const availableObjectives = Array.isArray(projected?.available_objectives) ? projected.available_objectives : []
+  const profile = THREAT_PROFILES[index] || { threat: 'I', raw: '5–8' }
   const armor = armorState(progress)
   const trinket = trinketState(progress)
+  const existing = document.querySelector('[data-battle-shell]')
+  const signature = JSON.stringify({ mob: mob?.name || project?.boss, resolve, maxResolve, status: projected?.status || mob?.status, objectives: availableObjectives, armor: armor.name, trinket: trinket.name })
+
+  if (existing && existing.dataset.battleSignature === signature) return
+  if (existing) {
+    existing.dataset.battleSignature = signature
+    const setText = (selector, value) => {
+      const node = existing.querySelector(selector)
+      if (node) node.textContent = value
+    }
+    setText('[data-battle-mob]', mob?.name || project?.boss || 'Current Encounter')
+    setText('[data-battle-description]', mob?.encounter || 'Complete verified objectives to break the encounter.')
+    setText('[data-battle-resolve]', `${Math.max(0, resolve)} / ${Math.max(0, maxResolve)}`)
+    setText('[data-battle-armor]', `${armor.reduction}%`)
+    setText('[data-battle-armor-copy]', `${armor.name} · percentage damage reduction.`)
+    setText('[data-battle-trinket]', trinket.name)
+    setText('[data-battle-trinket-copy]', trinket.effect)
+    const objectiveList = existing.querySelector('[data-battle-objectives]')
+    if (objectiveList) objectiveList.innerHTML = availableObjectives.map((objective) => `<span>${escapeHtml(objective.question_type || 'verified')} · ${escapeHtml(objective.impact)} Impact</span>`).join('') || '<span>Awaiting verified objective</span>'
+    return
+  }
 
   const card = document.createElement('section')
   card.className = 'game-card battle-shell-card'
   card.dataset.battleShell = 'true'
+  card.dataset.battleSignature = signature
   card.innerHTML = `
     <div class="battle-shell-head">
       <div>
         <span class="screen-kicker">BATTLE SHELL · SLICE 1</span>
-        <h3>${mob?.name || project?.boss || 'Current Encounter'}</h3>
-        <p>${mob?.encounter || 'Complete verified objectives to break the encounter.'}</p>
+        <h3 data-battle-mob>${escapeHtml(mob?.name || project?.boss || 'Current Encounter')}</h3>
+        <p data-battle-description>${escapeHtml(mob?.encounter || 'Complete verified objectives to break the encounter.')}</p>
       </div>
       <div class="safe-mode-badge">SAFE MODE</div>
     </div>
@@ -177,8 +207,8 @@ function renderQuestBattleShell() {
     <div class="battle-meters">
       <div class="battle-meter resolve">
         <span>${icon('impact')} ENEMY RESOLVE</span>
-        <strong>${profile.resolve} / ${profile.resolve}</strong>
-        <small>Future verified objectives reduce this with Impact.</small>
+        <strong data-battle-resolve>${Math.max(0, resolve)} / ${Math.max(0, maxResolve)}</strong>
+        <small>Verified state-service objectives reduce this with Impact.</small>
       </div>
       <div class="battle-meter threat">
         <span>THREAT</span>
@@ -187,13 +217,13 @@ function renderQuestBattleShell() {
       </div>
       <div class="battle-meter armor">
         <span>${icon('shield')} ARMOR</span>
-        <strong>${armor.reduction}%</strong>
-        <small>${armor.name} · percentage damage reduction.</small>
+        <strong data-battle-armor>${armor.reduction}%</strong>
+        <small data-battle-armor-copy>${escapeHtml(armor.name)} · percentage damage reduction.</small>
       </div>
       <div class="battle-meter trinket">
         <span>${icon('relic')} TRINKET</span>
-        <strong>${trinket.name}</strong>
-        <small>${trinket.effect}</small>
+        <strong data-battle-trinket>${escapeHtml(trinket.name)}</strong>
+        <small data-battle-trinket-copy>${escapeHtml(trinket.effect)}</small>
       </div>
     </div>
 
@@ -203,35 +233,16 @@ function renderQuestBattleShell() {
       <div><b>4–8 Impact</b><span>major verified objective</span></div>
     </div>
 
+    <div class="impact-objectives" data-battle-objectives aria-label="Available verified objectives">
+      ${availableObjectives.map((objective) => `<span>${escapeHtml(objective.question_type || 'verified')} · ${escapeHtml(objective.impact)} Impact</span>`).join('') || '<span>Awaiting verified objective</span>'}
+    </div>
+
     <div class="battle-shell-note">
-      This first slice is display-only. <strong>Submit Run does not alter HP or Resolve yet.</strong>
-      The next combat slice lets controlled PYR judge a submitted checkpoint before any state changes.
+      <strong>Safe Mode:</strong> only a verified state-service result can change HP, Resolve, rewards or encounter progression.
     </div>
   `
   hero.insertAdjacentElement('afterend', card)
 
-  if (!document.querySelector('[data-raid-gate]')) {
-    const raid = document.createElement('section')
-    raid.className = 'game-card raid-gate-card'
-    raid.dataset.raidGate = 'true'
-    raid.innerHTML = `
-      <div class="raid-gate-icon">${icon('raid')}</div>
-      <div>
-        <span class="screen-kicker">FUTURE PARTY CONTENT</span>
-        <h3>Weekly Raids</h3>
-        <p>Shared mini software projects where predefined objectives deal verified Impact to one party boss.</p>
-        <div class="raid-example">
-          <span>Core system <b>25</b></span>
-          <span>Validation <b>20</b></span>
-          <span>Tests / debugging <b>20</b></span>
-          <span>Integration <b>20</b></span>
-          <span>Party review <b>15</b></span>
-        </div>
-      </div>
-      <div class="raid-locked">MULTIPLAYER LAYER NOT ENABLED</div>
-    `
-    card.insertAdjacentElement('afterend', raid)
-  }
 }
 
 function renderTrinketVault() {
@@ -260,14 +271,33 @@ function renderTrinketVault() {
 }
 
 function render() {
-  renderCharacterGear()
-  renderQuestBattleShell()
-  renderTrinketVault()
+  // React owns the Character, Homestead and Quest Journal surfaces now. The
+  // original combat polish layer used DOM mutation to append a second Battle
+  // Shell and replace the React equipment list, which made the Journal appear
+  // to jump between layouts and left duplicate shells after a revision poll.
+  // Keep this module as a compatibility listener for older markup, but clean
+  // stale legacy nodes instead of injecting new UI into the React tree.
+  document.querySelectorAll('[data-battle-shell], [data-trinket-vault], [data-combat-doctrine]').forEach((node) => node.remove())
 }
 
-const observer = new MutationObserver(render)
+let renderFrame = 0
+const observer = new MutationObserver(() => {
+  if (renderFrame) return
+  renderFrame = requestAnimationFrame(() => {
+    renderFrame = 0
+    render()
+  })
+})
 observer.observe(document.documentElement, { subtree: true, childList: true })
 
-refreshCampaign().then(render)
-setInterval(() => refreshCampaign().then(render), 6000)
-window.addEventListener('load', () => refreshCampaign().then(render))
+// AppV2 owns the single revision poll and publishes the committed projection.
+// This legacy DOM polish layer only consumes that event; a second timer here
+// would refetch the campaign, duplicate git work and make the HUD appear to
+// jump during an otherwise ordinary state update.
+window.addEventListener('questlab:campaign-updated', (event) => {
+  if (event.detail && typeof event.detail === 'object') {
+    campaign = event.detail
+    revision = Number(campaign.revision ?? campaign.progress?.meta?.revision ?? 0)
+    render()
+  }
+})

@@ -1,0 +1,23 @@
+{
+  "skill_name": "questlab-bug-hunt",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Run a no-refresh Quest Lab Forge bug hunt across HUD, Journal, Codex, Character, Homestead, Tutor, Dungeon and Practice using browser click/scroll/type only. Keep the player's save and both PTYs untouched, and record every reproducible defect with severity and evidence.",
+      "expected_output": "A persistent severity-ordered bug log with custody evidence, no Playwright, no protected-save mutation, and a reproducible browser acceptance summary.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "Compare two independent read-only reviewers, Claude and Copilot, on the same current Quest Lab commit. Deduplicate their findings, validate them in an isolated runtime, and score each confirmed bug fairly.",
+      "expected_output": "A reviewer scorecard showing unique confirmed findings, duplicates, false positives, points, and the winner without allowing either reviewer to edit the checkout.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "Exercise negative paths in Quest Lab: stale revision/question IDs, empty answers, malformed Dungeon projection, unavailable provider, invalid purchase, duplicate clicks, and a stray workspace progress.json edit. Prove the canonical state gateway remains the only authority.",
+      "expected_output": "A bounded negative-path report with exact failures or safe rejections, no invented rewards, and evidence that the stray workspace file does not change the canonical revision or UI.",
+      "files": []
+    }
+  ]
+}

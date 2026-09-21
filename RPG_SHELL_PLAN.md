@@ -242,14 +242,23 @@ Purchases spend existing campaign coins. They grant no learning or competitive p
 
 ## Canonical campaign state
 
-`progress.json` stores:
+Offline/anonymous Forge stores the local canonical campaign state in
+`progress.json`. After signed-in cloud sync is enabled, Supabase is the
+synchronized account/game-state authority and `progress.json` is the local
+cache/device working copy. All progression mutations go through the local
+state/sync service; PYR does not independently write an authoritative
+`progress.json` snapshot.
+
+The local cache stores:
 
 - owned cosmetics;
 - equipped cosmetic IDs;
 - purchase history;
 - catalog metadata used by the Homestead.
 
-This makes purchases portable across clones/forks once committed/pushed.
+Offline purchases remain portable across clones/forks once committed/pushed;
+GitHub is source-code history, not multiplayer or signed-in game-state
+transport.
 
 ## Local IDE preferences
 

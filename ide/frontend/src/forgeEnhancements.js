@@ -1,4 +1,17 @@
+import { syncEngine } from './cloud/syncEngine.js'
+import {
+  AVATAR_CLOUD_MIME_TYPES,
+  AVATAR_MAX_BYTES,
+  AVATAR_MAX_SOURCE_BYTES,
+  AVATAR_MIME_TYPES,
+  readCachedAvatar,
+  validateAvatarDataUrl,
+  writeCachedAvatar,
+} from './cloud/avatarStorage.js'
+import { pyrClientId } from './cloud/pyrClient.js'
+
 const ICONS = {
+  'Quest Hub': '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 10 9-7 9 7M5 9v11h14V9M9 20v-6h6v6"/></svg>',
   Forge: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 15h16M7 15V9l5-4 5 4v6M9 19h6"/></svg>',
   'Tutor Notebook': '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3v5l-4 8a3 3 0 0 0 2.7 4h8.6A3 3 0 0 0 19 16l-4-8V3M8 11h8M9 16h6"/></svg>',
   'Quest Journal': '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 4h12v16H6zM9 8h6M9 12h6M9 16h4"/></svg>',
@@ -13,6 +26,8 @@ const ICONS = {
   Crown: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m4 7 4 4 4-7 4 7 4-4-2 11H6zM6 21h12"/></svg>',
   Trophy: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 4h8v4a4 4 0 0 1-8 0zM8 6H4v2a4 4 0 0 0 4 4M16 6h4v2a4 4 0 0 1-4 4M12 12v5M8 21h8M9 17h6"/></svg>',
   Monitor: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 21h8M12 16v5"/></svg>',
+  'Infinite Dungeon': '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 20V8l7-5 7 5v12M8 20v-5h8v5M9 9h6M12 9v3"/></svg>',
+  Practice: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h14v16H5zM8 8h8M8 12h8M8 16h5"/></svg>',
 }
 
 const icon = (name, className = 'quest-icon') => `<span class="${className}">${ICONS[name] || ICONS.Forge}</span>`
@@ -69,7 +84,81 @@ function showToast(message, tone = 'default') {
   showToast.timer = setTimeout(() => toast.classList.remove('show'), 2600)
 }
 
-function submitRunToAI() {
+async function requestPyrContext(output) {
+  const publisher = window.__questlabPublishPyrContext
+  if (typeof publisher === 'function') {
+    try {
+      return await publisher({ terminalTail: output })
+    } catch {
+      // Fall through to the direct local bridge request when React is still
+      // mounting or the current editor surface is unavailable.
+    }
+  }
+
+  const response = await fetch('/api/pyr/context', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      active_path: activeFileLabel(),
+      selection: '',
+      terminal_tail: output,
+      client_id: pyrClientId(),
+    }),
+  })
+  if (!response.ok) throw new Error('The local PYR context bridge is unavailable.')
+  const result = await response.json()
+  return result.context || result
+}
+
+function contextPrompt(context, fallbackOutput) {
+  const activeFile = context?.active_file
+  const selection = context?.selection?.text || ''
+  const terminalTail = context?.terminal?.tail || fallbackOutput
+  const quest = context?.quest || {}
+  const encounter = context?.encounter || null
+  const assistance = quest.assistance || {}
+  const fileLabel = activeFile?.path || activeFileLabel()
+  const fileContent = activeFile?.content || ''
+  const gitDiff = context?.git?.diff || ''
+  const verdict = context?.verdict || null
+
+  return [
+    'Quest Lab structured context from the local PYR bridge.',
+    `Campaign revision: ${context?.revision ?? 'unknown'}`,
+    `Active file: ${fileLabel}${activeFile?.truncated ? ' (content truncated)' : ''}`,
+    '',
+    'Selected code:',
+    '```text',
+    selection || '(no selection)',
+    '```',
+    '',
+    'Active file content:',
+    '```text',
+    fileContent || '(file content unavailable)',
+    '```',
+    '',
+    'Recent Forge terminal output:',
+    '```text',
+    terminalTail || '(no terminal output)',
+    '```',
+    '',
+    'Git diff (state files and secret-looking files are excluded):',
+    '```diff',
+    gitDiff || '(no code diff)',
+    '```',
+    '',
+    'Validated current quest/mob state (future locked encounters are omitted):',
+    JSON.stringify({ quest, encounter, assistance }, null, 2),
+    '',
+    `Battle verdict challenge: ${verdict?.nonce || '(none; capture context while an encounter is active)'}`,
+    'For Battle, first bind the player answer with POST /api/pyr/battle-submission, then independently adjudicate that submission and use POST /api/pyr/verdict with its exact tokens. Never supply Impact, reward or damage values.',
+    '',
+    'Act as PYR under TUTOR_CONTRACT.md. Do not invent rewards or mutate player state directly. Tutor me from this context using the hint ladder; use tutor.py for examples and send any progression decision through the controlled state service.',
+    '',
+  ].join('\n')
+}
+
+async function submitRunToAI() {
   const output = terminalText()
   if (!output) {
     showToast('Nothing recent in the Forge terminal to submit.', 'warn')
@@ -78,8 +167,24 @@ function submitRunToAI() {
 
   const provider = sessionStorage.getItem('questlab.aiProvider')
   if (!provider) {
-    showToast('Launch Codex, Claude, or AGY first, then submit the run.', 'warn')
+    showToast('Launch Codex, Claude, AGY, or Copilot first, then submit the run.', 'warn')
     focusTerminal('.ai-panel')
+    return
+  }
+
+  // React owns the canonical campaign submission. When Forge is active, the
+  // single toolbar button binds the current state-owned quest/boss goal and
+  // active .py digest before handing the bounded prompt to the provider. Keep
+  // the older terminal-context fallback for non-campaign surfaces only.
+  const campaignSubmit = window.__questlabSubmitCampaignRun
+  const forgeIsActive = document.querySelector('.forge-v2')?.dataset.view === 'forge'
+  if (forgeIsActive && typeof campaignSubmit === 'function') {
+    try {
+      await campaignSubmit()
+      showToast(`Active Forge file sent to ${provider}; waiting for its validated verdict.`, 'success')
+    } catch (error) {
+      showToast(error?.message || 'Campaign submission failed.', 'warn')
+    }
     return
   }
 
@@ -89,20 +194,9 @@ function submitRunToAI() {
     return
   }
 
-  const payload = [
-    'Quest Lab context submission.',
-    `Active file: ${activeFileLabel()}`,
-    '',
-    'Recent Forge terminal output:',
-    '```text',
-    output,
-    '```',
-    '',
-    'Act as PYR under TUTOR_CONTRACT.md. Read the project source if needed, but do not edit required project files. Tutor me from this run using the hint ladder; use tutor.py for any examples.',
-    '',
-  ].join('\n')
-
   try {
+    const context = await requestPyrContext(output)
+    const payload = contextPrompt(context, output)
     textarea.focus()
     const data = new DataTransfer()
     data.setData('text/plain', `${payload}\n`)
@@ -110,7 +204,19 @@ function submitRunToAI() {
     textarea.dispatchEvent(event)
     showToast(`Submitted recent run to ${provider}.`, 'success')
   } catch {
-    navigator.clipboard?.writeText(payload)
+    const fallback = [
+      'Quest Lab context submission (local bridge unavailable).',
+      `Active file: ${activeFileLabel()}`,
+      '',
+      'Recent Forge terminal output:',
+      '```text',
+      output,
+      '```',
+      '',
+      'Act as PYR under TUTOR_CONTRACT.md. Do not edit required project files. Tutor me from this run using the hint ladder; use tutor.py for examples.',
+      '',
+    ].join('\n')
+    navigator.clipboard?.writeText(fallback)
     focusTerminal('.ai-panel')
     showToast('Context copied. Paste it into the AI terminal with Ctrl+V.', 'warn')
   }
@@ -132,7 +238,7 @@ function trackAIProvider() {
   document.querySelectorAll('.ai-actions button').forEach((button) => {
     if (button.dataset.providerTracked) return
     const label = button.textContent.trim()
-    if (!['Codex', 'Claude', 'AGY'].includes(label)) return
+    if (!['Codex', 'Claude', 'AGY', 'Copilot'].includes(label)) return
     button.dataset.providerTracked = 'true'
     button.addEventListener('click', () => {
       sessionStorage.setItem('questlab.aiProvider', label)
@@ -142,6 +248,11 @@ function trackAIProvider() {
 }
 
 function replaceRailIcons() {
+  // React now owns the rail markup and its inline SVG icons. The legacy
+  // enhancement remains for older surfaces, but must not rewrite React
+  // children during revision polling or route changes.
+  const reactRail = document.querySelector('.activity-rail[data-react-owned="true"]')
+  if (reactRail) return
   const mark = document.querySelector('.activity-mark')
   if (mark && !mark.dataset.vectorized) {
     mark.dataset.vectorized = 'true'
@@ -165,7 +276,7 @@ function replaceGameIcons() {
   }
 
   const equipment = [...document.querySelectorAll('.equipment-list > div > span')]
-  const equipmentIcons = ['Sword', 'Shield', 'Gem', 'Crown']
+  const equipmentIcons = ['Shield', 'Gem', 'Crown']
   equipment.forEach((node, index) => {
     if (node.dataset.vectorized) return
     node.dataset.vectorized = 'true'
@@ -189,23 +300,16 @@ function replaceGameIcons() {
   }
 }
 
-const AVATAR_KEY = 'questlab.avatar.v1'
+let activeAvatar
 
 function getAvatar() {
-  try {
-    return localStorage.getItem(AVATAR_KEY) || ''
-  } catch {
-    return ''
-  }
+  if (activeAvatar !== undefined) return activeAvatar
+  return syncEngine.getState()?.avatar?.dataUrl || readCachedAvatar()
 }
 
-function setAvatar(dataUrl) {
-  try {
-    if (dataUrl) localStorage.setItem(AVATAR_KEY, dataUrl)
-    else localStorage.removeItem(AVATAR_KEY)
-  } catch {
-    showToast('Could not store the avatar in this browser.', 'warn')
-  }
+function setLocalAvatar(dataUrl) {
+  activeAvatar = dataUrl || ''
+  if (!writeCachedAvatar(activeAvatar)) showToast('Could not store the avatar in this browser.', 'warn')
   applyAvatar(true)
 }
 
@@ -225,7 +329,7 @@ function applyAvatar(force = false) {
   const dataUrl = getAvatar()
   const version = avatarVersion(dataUrl)
   const activity = document.querySelector('.activity-avatar')
-  if (activity) {
+  if (activity && activity.dataset.reactAvatar !== 'true') {
     let slot = activity.querySelector('.quest-avatar-slot')
     if (!slot) {
       slot = activity.querySelector('span')
@@ -240,7 +344,7 @@ function applyAvatar(force = false) {
   }
 
   const sigil = document.querySelector('.character-sigil')
-  if (sigil && (force || sigil.dataset.avatarVersion !== version)) {
+  if (sigil && sigil.dataset.reactAvatar !== 'true' && (force || sigil.dataset.avatarVersion !== version)) {
     sigil.dataset.avatarVersion = version
     sigil.innerHTML = ''
     if (dataUrl) sigil.appendChild(avatarImage(dataUrl, 'quest-avatar-img character'))
@@ -260,7 +364,11 @@ function createAvatarInput() {
     const file = input.files?.[0]
     input.value = ''
     if (!file) return
-    if (file.size > 5_000_000) {
+    if (!AVATAR_MIME_TYPES.includes(file.type)) {
+      showToast('Avatar must be a PNG, JPEG or WebP image.', 'warn')
+      return
+    }
+    if (file.size > AVATAR_MAX_SOURCE_BYTES) {
       showToast('Avatar image must be under 5 MB.', 'warn')
       return
     }
@@ -284,16 +392,36 @@ function createAvatarInput() {
       canvas.width = 256
       canvas.height = 256
       const context = canvas.getContext('2d')
+      if (!context) throw new Error('Canvas is unavailable.')
       const side = Math.min(image.naturalWidth, image.naturalHeight)
       const sx = (image.naturalWidth - side) / 2
       const sy = (image.naturalHeight - side) / 2
       context.drawImage(image, sx, sy, side, side, 0, 0, 256, 256)
-      setAvatar(canvas.toDataURL('image/webp', 0.86))
+
+      let dataUrl = ''
+      for (const quality of [0.86, 0.72, 0.58, 0.44, 0.32]) {
+        const candidate = canvas.toDataURL('image/webp', quality)
+        try {
+          validateAvatarDataUrl(candidate, { maxBytes: AVATAR_MAX_BYTES, allowedMimeTypes: AVATAR_CLOUD_MIME_TYPES })
+          dataUrl = candidate
+          break
+        } catch {
+          // Try a lower quality before refusing an oversized portrait.
+        }
+      }
+      if (!dataUrl) throw new Error('Avatar image must be under 1 MB after processing.')
+
+      if (syncEngine.getState().authStatus === 'signed-in') {
+        await syncEngine.setAvatarDataUrl(dataUrl)
+        showToast('Character portrait synced to your account.', 'success')
+      } else {
+        setLocalAvatar(dataUrl)
+        showToast('Character portrait updated on this device.', 'success')
+      }
       document.querySelector('.avatar-controls')?.remove()
       installAvatarControls()
-      showToast('Character portrait updated on this device.', 'success')
-    } catch {
-      showToast('That image could not be loaded.', 'warn')
+    } catch (error) {
+      showToast(error?.message || 'That image could not be loaded.', 'warn')
     }
   })
   document.body.appendChild(input)
@@ -314,17 +442,28 @@ function installAvatarControls() {
   if (getAvatar()) {
     const remove = document.createElement('button')
     remove.textContent = 'Remove'
-    remove.addEventListener('click', () => {
-      setAvatar('')
-      controls.remove()
-      installAvatarControls()
-      showToast('Character portrait removed.')
+    remove.addEventListener('click', async () => {
+      try {
+        if (syncEngine.getState().authStatus === 'signed-in') await syncEngine.removeAvatar()
+        else setLocalAvatar('')
+        controls.remove()
+        installAvatarControls()
+        showToast(syncEngine.getState().authStatus === 'signed-in' ? 'Character portrait removed from your account.' : 'Character portrait removed.')
+      } catch (error) {
+        showToast(error?.message || 'Avatar could not be removed.', 'warn')
+      }
     })
     controls.appendChild(remove)
   }
 
   card.appendChild(controls)
 }
+
+window.addEventListener('questlab:avatar-updated', (event) => {
+  activeAvatar = typeof event.detail?.dataUrl === 'string' ? event.detail.dataUrl : ''
+  applyAvatar(true)
+  installAvatarControls()
+})
 
 function enhance() {
   installSubmitButton()
@@ -336,39 +475,53 @@ function enhance() {
 }
 
 window.addEventListener('keydown', (event) => {
+  if (event.defaultPrevented || event.__questlabHandled) return
   const modifier = event.ctrlKey || event.metaKey
   if (modifier && !event.shiftKey && event.key.toLowerCase() === 's') {
     event.preventDefault()
+    event.__questlabHandled = true
     clickSave()
     return
   }
   if (modifier && !event.shiftKey && event.key === 'Enter') {
     event.preventDefault()
+    event.__questlabHandled = true
     clickRun()
     return
   }
   if (modifier && event.shiftKey && event.key === 'Enter') {
     event.preventDefault()
+    event.__questlabHandled = true
     submitRunToAI()
     return
   }
   if (event.shiftKey && event.altKey && event.key.toLowerCase() === 'f') {
     event.preventDefault()
+    event.__questlabHandled = true
     clickPretty()
     return
   }
   if (modifier && !event.shiftKey && event.key === '`') {
     event.preventDefault()
+    event.__questlabHandled = true
     focusTerminal('.terminal-panel')
     return
   }
   if (modifier && event.shiftKey && event.key === '`') {
     event.preventDefault()
+    event.__questlabHandled = true
     focusTerminal('.ai-panel')
   }
 })
 
-const observer = new MutationObserver(enhance)
+let enhanceFrame = 0
+const observer = new MutationObserver(() => {
+  if (enhanceFrame) return
+  enhanceFrame = requestAnimationFrame(() => {
+    enhanceFrame = 0
+    enhance()
+  })
+})
 observer.observe(document.documentElement, { subtree: true, childList: true })
 window.addEventListener('load', enhance)
 queueMicrotask(enhance)

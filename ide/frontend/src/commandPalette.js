@@ -21,7 +21,6 @@ const commands = [
   { label: 'Submit recent run to PYR', keys: 'Ctrl+Shift+Enter', run: () => document.querySelector('[data-qol-submit]')?.click() },
   { label: 'Open Forge', run: () => clickRail('Forge') },
   { label: 'Open Tutor Notebook', run: () => clickRail('Tutor Notebook') },
-  { label: 'Open Quest Journal', run: () => clickRail('Quest Journal') },
   { label: 'Open Codex', run: () => clickRail('Codex') },
   { label: 'Open Character', run: () => clickRail('Character') },
   { label: 'Open Homestead', run: () => clickRail('Homestead') },
@@ -31,6 +30,7 @@ const commands = [
   { label: 'Launch Codex CLI', run: () => clickText('Codex') },
   { label: 'Launch Claude CLI', run: () => clickText('Claude') },
   { label: 'Launch AGY CLI', run: () => clickText('AGY') },
+  { label: 'Launch Copilot CLI', run: () => clickText('Copilot') },
   { label: 'Reconnect Forge terminal', run: () => {
       const button = buttons().find((candidate) => isVisible(candidate) && /reconnect/i.test(candidate.textContent) && candidate.closest('.terminal-panel'))
       button?.click()

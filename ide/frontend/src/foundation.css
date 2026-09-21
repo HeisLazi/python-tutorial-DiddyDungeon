@@ -1,0 +1,2085 @@
+/* Shared foundations for the hub, launch gate, settings and Tutor/Practice
+   surface. These variables stay local to the shell; campaign rewards and
+   equipment remain canonical state-service data. */
+.app-shell[data-theme="gruvbox-light"],
+.app-shell[data-theme="github-light"] {
+  color-scheme: light;
+  --bg: #f4f1ea;
+  --panel: #fffdf8;
+  --panel2: #f0ede5;
+  --panel3: #e8e4da;
+  --line: #d4cec1;
+  --line2: #b9b1a2;
+  --text: #282522;
+  --muted: #6b6257;
+  --dim: #8a8072;
+  --gold: #9b5b16;
+  --gold2: #7b4310;
+  --ember: #b94f2a;
+  --green: #39734d;
+  --blue: #28698a;
+  --danger: #a23b36;
+  background: radial-gradient(circle at 38% -20%, #fffaf0 0, var(--bg) 48%);
+}
+
+.app-shell[data-theme="github-light"] {
+  --bg: #f6f8fa;
+  --panel: #ffffff;
+  --panel2: #f6f8fa;
+  --panel3: #eef1f4;
+  --line: #d0d7de;
+  --line2: #afb8c1;
+  --text: #1f2328;
+  --muted: #59636e;
+  --dim: #7d8790;
+  --gold: #8250df;
+  --gold2: #6639aa;
+  --ember: #cf222e;
+  --green: #1a7f37;
+  --blue: #0969da;
+  --danger: #cf222e;
+  background: radial-gradient(circle at 38% -20%, #ffffff 0, var(--bg) 48%);
+}
+.app-shell[data-theme="gruvbox-dark"] {
+  --bg: #282828;
+  --panel: #32302f;
+  --panel2: #3c3836;
+  --panel3: #1d2021;
+  --line: #504945;
+  --line2: #665c54;
+  --text: #ebdbb2;
+  --muted: #bdae93;
+  --dim: #928374;
+  --gold: #fabd2f;
+  --gold2: #ffd75f;
+  --ember: #fe8019;
+  --green: #b8bb26;
+  --blue: #83a598;
+  --danger: #fb4934;
+  background: radial-gradient(circle at 38% -20%, #504945 0, var(--bg) 48%);
+}
+.app-shell[data-theme="github-dark"] {
+  --bg: #0d1117;
+  --panel: #161b22;
+  --panel2: #21262d;
+  --panel3: #010409;
+  --line: #30363d;
+  --line2: #484f58;
+  --text: #e6edf3;
+  --muted: #8b949e;
+  --dim: #6e7681;
+  --gold: #d2a8ff;
+  --gold2: #bc8cff;
+  --ember: #ff7b72;
+  --green: #7ee787;
+  --blue: #79c0ff;
+  --danger: #ff7b72;
+  background: radial-gradient(circle at 38% -20%, #21262d 0, var(--bg) 48%);
+}
+.app-shell[data-font="ibm-plex"] { font-family: "IBM Plex Sans", "Segoe UI", sans-serif; }
+.app-shell[data-font="atkinson"] { font-family: "Atkinson Hyperlegible", "Segoe UI", sans-serif; }
+.app-shell[data-font="system"] { font-family: system-ui, -apple-system, "Segoe UI", sans-serif; }
+.app-shell[data-font="inter"] { font-family: Inter, ui-sans-serif, system-ui, sans-serif; }
+
+.launch-splash {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 10px;
+  padding: 30px;
+  text-align: center;
+  background: color-mix(in srgb, var(--bg) 94%, #000);
+  backdrop-filter: blur(12px);
+  animation: questlab-splash-in .28s ease-out both;
+}
+.launch-splash.is-closing { animation: questlab-splash-out .32s ease-in both; }
+.launch-splash > * { max-width: 520px; }
+.launch-splash-mark { width: 70px; height: 70px; display: grid; place-items: center; margin-bottom: 8px; border: 1px solid color-mix(in srgb, var(--gold) 48%, var(--line)); border-radius: 22px; background: color-mix(in srgb, var(--gold) 10%, var(--panel2)); color: var(--gold); }
+.launch-splash-mark .quest-icon { width: 38px; height: 38px; }
+.launch-splash h2 { margin: 0; font: 800 30px/1.1 ui-monospace, monospace; color: var(--text); }
+.launch-splash p { margin: 0 0 8px; color: var(--muted); font-size: 13px; line-height: 1.6; }
+.launch-splash button { min-width: 150px; padding: 10px 16px; }
+.app-shell { animation: questlab-boot-in .36s ease-out both; }
+@keyframes questlab-boot-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes questlab-splash-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes questlab-splash-out { from { opacity: 1; } to { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) {
+  .app-shell { animation: none !important; }
+}
+.app-shell.no-animations { animation: none !important; }
+
+.tutor-practice-bar { display: grid; grid-template-columns: minmax(160px, 1.25fr) repeat(3, minmax(100px, .7fr)) auto; gap: 8px; align-items: end; padding: 9px 11px; border-bottom: 1px solid var(--line); background: color-mix(in srgb, var(--gold) 5%, var(--panel)); }
+.tutor-practice-heading { display: grid; gap: 3px; align-self: center; }
+.tutor-practice-heading small { color: var(--muted); font-size: 9px; line-height: 1.3; }
+.tutor-practice-bar label { display: grid; gap: 4px; min-width: 0; color: var(--muted); font: 9px ui-monospace, monospace; text-transform: uppercase; letter-spacing: .06em; }
+.tutor-practice-bar select { min-width: 0; width: 100%; background: var(--panel3); color: var(--text); border: 1px solid var(--line); border-radius: 6px; padding: 5px 6px; font-size: 10px; text-transform: none; letter-spacing: 0; }
+.tutor-practice-bar button { white-space: nowrap; padding: 6px 9px; }
+.tutor-practice-status { grid-column: 1 / -1; color: var(--muted); font: 10px/1.35 ui-monospace, monospace; }
+.workspace-notebook { margin: 14px 0; padding: 12px 14px; border-left-width: 3px; background: color-mix(in srgb, var(--gold) 6%, var(--panel3)); }
+.workspace-notebook pre { margin: 5px 0 0; max-height: 220px; overflow: auto; white-space: pre-wrap; color: var(--text); font: 11px/1.55 ui-monospace, monospace; }
+/* The Codex owns its height from the viewport-pinned shell below.  Keep the
+   shared library primitive flexible so a compatibility shell cannot resurrect
+   the old 620px feed-sized minimum before the final folio rules run. */
+.codex-library { grid-template-columns: minmax(210px, .28fr) minmax(0, 1fr); min-height: 0; }
+.codex-mode-tabs { display: flex; gap: 7px; margin: 0 auto 12px; padding: 4px; border: 1px solid color-mix(in srgb, var(--gold) 22%, var(--line)); border-radius: 10px; background: color-mix(in srgb, var(--panel3) 78%, transparent); width: fit-content; }
+.codex-mode-tabs button { min-width: 150px; border: 0; background: transparent; color: var(--muted); font: 800 10px ui-monospace, monospace; letter-spacing: .06em; text-transform: uppercase; }
+.codex-mode-tabs button.active { color: var(--text); background: color-mix(in srgb, var(--gold) 15%, var(--panel2)); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--gold) 35%, transparent); }
+.codex-mode-tabs button span { margin-left: 4px; color: var(--gold); font-size: 8px; }
+.codex-book-page { padding: 8px 14px 16px; }
+.codex-page-heading h3 { font-size: 25px; }
+.codex-page-heading p { font-size: 13px; max-width: 900px; }
+.codex-page-grid { grid-template-columns: minmax(0, 1.35fr) minmax(230px, .65fr); }
+.codex-examples pre { min-height: 84px; padding: 13px; font-size: 12px; line-height: 1.65; }
+.codex-subsection-label { margin-top: 16px; }
+.codex-mistakes { display: grid; gap: 6px; }
+.codex-mistakes p { margin: 0; padding: 8px 10px; border-left: 2px solid color-mix(in srgb, var(--danger) 55%, var(--line)); color: var(--muted); font-size: 10px; line-height: 1.45; background: color-mix(in srgb, var(--danger) 5%, transparent); }
+.codex-active-chapter { border-color: color-mix(in srgb, var(--gold) 28%, var(--line)); }
+.codex-active-chapter-grid { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(220px, .7fr); gap: 16px; align-items: center; }
+.codex-active-chapter-grid h3 { margin: 4px 0; font: 800 18px ui-monospace, monospace; }
+.codex-active-chapter-grid p { margin: 0; color: var(--muted); font-size: 11px; line-height: 1.5; }
+.codex-chapter-status { display: grid; gap: 4px; padding: 11px; border: 1px solid var(--line); border-radius: 9px; background: color-mix(in srgb, var(--gold) 5%, var(--panel3)); }
+.codex-chapter-status span,.codex-chapter-status small { color: var(--muted); font: 9px/1.4 ui-monospace, monospace; }
+.codex-chapter-status strong { color: var(--text); font: 800 12px ui-monospace, monospace; }
+.codex-active-quest-sidebar { display: grid; gap: 7px; margin: 10px 0 13px; padding: 10px; border: 1px solid color-mix(in srgb, var(--gold) 36%, var(--line)); border-radius: 10px; background: linear-gradient(145deg, color-mix(in srgb, var(--gold) 8%, var(--panel3)), var(--panel3)); }
+.codex-sidebar-kicker { color: var(--gold); font: 800 8px ui-monospace, monospace; letter-spacing: .14em; }
+.codex-active-quest-sidebar h3 { margin: 0; color: var(--text); font: 800 14px ui-monospace, monospace; }
+.codex-active-quest-sidebar p { margin: 0; color: var(--muted); font-size: 10px; line-height: 1.45; }
+.codex-sidebar-progress { display: flex; justify-content: space-between; gap: 7px; color: var(--dim); font: 8px ui-monospace, monospace; text-transform: uppercase; }
+.codex-sidebar-mobs { display: grid; gap: 4px; margin-top: 2px; }
+.codex-sidebar-mobs > div { display: grid; grid-template-columns: 18px minmax(0,1fr) auto; gap: 6px; align-items: center; padding: 4px 6px; color: var(--muted); }
+.codex-sidebar-mobs > div > span { display: grid; place-items: center; width: 17px; height: 17px; border: 1px solid var(--line2); border-radius: 50%; font-size: 8px; }
+.codex-sidebar-mobs > div strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 9px ui-monospace, monospace; }
+.codex-sidebar-mobs > div small { color: var(--gold); font: 7px ui-monospace, monospace; letter-spacing: .08em; }
+.codex-sidebar-mobs > div.current { border-radius: 6px; background: color-mix(in srgb, var(--gold) 9%, transparent); color: var(--text); }
+.codex-sidebar-mobs > div.current > span { border-color: var(--gold); color: var(--gold); }
+.codex-sidebar-mobs > div.locked { opacity: .45; }
+.codex-books-heading { margin-top: 4px; }
+.battle-lore-card { display: grid; grid-template-columns: minmax(0, 1fr) minmax(260px, .7fr); gap: 18px; align-items: stretch; border-color: color-mix(in srgb, var(--ember) 28%, var(--line)); background: linear-gradient(145deg, color-mix(in srgb, var(--ember) 7%, var(--panel2)), var(--panel)); }
+.battle-lore-copy { display: grid; align-content: start; gap: 7px; }
+.battle-lore-copy h3 { margin: 0; font: 800 22px/1.2 ui-monospace, monospace; color: var(--text); }
+.battle-lore-copy p { margin: 0; max-width: 760px; color: var(--muted); font-size: 12px; line-height: 1.6; }
+.battle-lore-copy .battle-lore-brief { color: var(--text); font-size: 11px; }
+.battle-stat-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; align-content: start; }
+.battle-stat-grid > div { display: grid; gap: 4px; padding: 9px; border: 1px solid var(--line); border-radius: 8px; background: color-mix(in srgb, var(--panel3) 82%, transparent); }
+.battle-stat-grid small { color: var(--muted); font: 800 8px ui-monospace, monospace; letter-spacing: .1em; }
+.battle-stat-grid strong { color: var(--gold); font: 800 12px ui-monospace, monospace; overflow-wrap: anywhere; }
+
+/* Codex is a workstation, not an endlessly stacked feed. Keep the shell in
+   the Forge viewport and give the library/reading panes their own scroll. The
+   explicit grid rows are important: without them the browser grows the whole
+   screen as the book gains encounter notes, which feels like an infinite page. */
+.codex-screen { display: grid; grid-template-rows: auto auto minmax(0, 1fr); min-width: 0; min-height: 0; height: 100%; overflow: hidden; }
+.codex-screen > .screen-hero { min-height: 0; max-height: clamp(92px, 15vh, 136px); margin-bottom: 9px; padding: 12px 15px; overflow: hidden; }
+.codex-screen > .screen-hero > div:first-child { min-width: 0; }
+.codex-screen > .screen-hero h2 { margin: 4px 0 6px; font-size: clamp(20px, 2vw, 27px); }
+.codex-screen > .screen-hero p { max-width: 720px; font-size: 11px; line-height: 1.45; }
+.codex-screen > .codex-mode-tabs { align-self: start; margin: 0 0 9px; }
+.codex-screen > .codex-tab-page { display: flex; min-height: 0; overflow: hidden; }
+.codex-screen > .codex-tab-page[data-codex-tab="battle"] { display: block; overflow: auto; padding: 1px 2px 16px; overscroll-behavior: contain; }
+.codex-screen > .codex-tab-page.page-turn { animation: codex-page-turn .22s ease-out; transform-origin: 48% 7%; }
+.codex-screen .codex-library { display: grid; grid-template-columns: minmax(238px, .3fr) minmax(0, 1fr); min-height: 0; height: 100%; margin-bottom: 0; padding: 0; overflow: hidden; border-color: color-mix(in srgb, var(--gold) 28%, var(--line)); background: linear-gradient(125deg, color-mix(in srgb, var(--gold) 5%, var(--panel2)), var(--panel)); box-shadow: 0 14px 28px rgba(0,0,0,.12); }
+.codex-screen .codex-index { display: flex; flex-direction: column; min-width: 0; min-height: 0; overflow: hidden; padding: 12px 11px 14px 13px; border-right: 1px solid color-mix(in srgb, var(--gold) 22%, var(--line)); overscroll-behavior: contain; }
+.codex-screen .codex-book-page { display: flex; flex-direction: column; min-height: 0; overflow: hidden; padding: 16px 21px 22px; background: color-mix(in srgb, var(--panel) 82%, transparent); overscroll-behavior: contain; }
+.codex-screen .codex-page-list { flex: 1 1 auto; min-height: 0; max-height: none; overflow-y: auto; overflow-x: hidden; scrollbar-width: thin; scrollbar-gutter: stable; }
+.codex-screen .codex-entry-picker { max-height: 190px; }
+.codex-screen .codex-page-heading { padding-bottom: 16px; }
+.codex-screen .codex-page-heading h3 { font-size: clamp(24px, 2.2vw, 32px); letter-spacing: -.03em; }
+.codex-screen .codex-page-heading p { max-width: 840px; font-size: 13px; line-height: 1.65; }
+.codex-screen .codex-page-grid { gap: 22px; padding: 18px 0; }
+.codex-screen .codex-examples pre { min-height: 96px; padding: 14px; border-radius: 10px; font-size: 12px; line-height: 1.7; }
+.codex-screen .codex-entry-detail { padding: 16px 0 0; }
+.codex-screen .codex-mastery-panel { margin: 20px 0 0; padding: 14px 0 0; border: 0; border-top: 1px solid var(--line); box-shadow: none; background: transparent; }
+.codex-screen .codex-mastery-panel > summary { cursor: pointer; list-style: none; }
+.codex-screen .codex-mastery-panel > summary::-webkit-details-marker { display: none; }
+.codex-screen .codex-mastery-panel > summary.card-heading { margin-bottom: 0; }
+.codex-screen .codex-mastery-panel > summary.card-heading span { display: inline-flex; align-items: baseline; gap: 7px; }
+.codex-screen .codex-mastery-panel > summary.card-heading span small { color: var(--dim); font: 8px ui-monospace, monospace; letter-spacing: .04em; text-transform: none; }
+.codex-screen .codex-mastery-panel > summary.card-heading b::after { content: '  +' ; color: var(--gold); }
+.codex-screen .codex-mastery-panel[open] > summary.card-heading b::after { content: '  −' ; }
+.codex-screen .codex-mastery-panel[open] > summary.card-heading { margin-bottom: 9px; }
+.codex-screen .codex-mastery-panel[open] .skill-grid { margin-top: 9px; }
+.codex-screen .codex-mastery-panel .skill-grid { grid-template-columns: repeat(auto-fit, minmax(175px, 1fr)); gap: 7px; }
+.codex-screen .codex-mastery-panel .skill-card { padding: 9px; border-radius: 9px; }
+.codex-screen .codex-mastery-panel .skill-card h3 { font-size: 12px; }
+.codex-screen .codex-mastery-panel .skill-meta,
+.codex-screen .codex-mastery-panel .shield-line { font-size: 8px; }
+.codex-book-page { display: flex; flex-direction: column; min-width: 0; }
+.codex-page-controls { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex: 0 0 auto; margin: 0 0 9px; padding: 6px 0 9px; border-bottom: 1px solid var(--line); }
+.codex-page-controls button { min-width: 92px; padding: 5px 8px; border-color: color-mix(in srgb, var(--gold) 28%, var(--line)); background: color-mix(in srgb, var(--panel3) 78%, transparent); color: var(--muted); font: 800 9px ui-monospace, monospace; }
+.codex-page-controls button:hover:not(:disabled), .codex-page-controls button:focus-visible { border-color: var(--gold); color: var(--text); background: color-mix(in srgb, var(--gold) 9%, var(--panel2)); }
+.codex-page-controls button:disabled { opacity: .38; }
+.codex-page-controls span { color: var(--dim); font: 800 9px ui-monospace, monospace; letter-spacing: .12em; }
+.codex-book-tabs { display: flex; flex: 0 0 auto; gap: 5px; margin: 0 0 13px; padding: 4px; border: 1px solid color-mix(in srgb, var(--gold) 25%, var(--line)); border-radius: 9px; background: color-mix(in srgb, var(--panel3) 88%, transparent); }
+.codex-book-tabs button { flex: 0 0 auto; min-height: 30px; padding: 6px 10px; border: 1px solid transparent; border-radius: 6px; background: transparent; color: var(--muted); font: 800 9px ui-monospace, monospace; letter-spacing: .05em; text-transform: uppercase; }
+.codex-book-tabs button:hover, .codex-book-tabs button:focus-visible { border-color: var(--line2); background: color-mix(in srgb, var(--panel2) 85%, transparent); color: var(--text); }
+.codex-book-tabs button.active { border-color: color-mix(in srgb, var(--gold) 45%, var(--line)); background: color-mix(in srgb, var(--gold) 13%, var(--panel2)); color: var(--gold); }
+.codex-book-section { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 0 8px 8px 0; scrollbar-width: thin; overscroll-behavior: contain; animation: codex-section-in .18s ease-out; }
+.codex-section-heading { display: flex; align-items: end; justify-content: space-between; gap: 12px; margin: 2px 0 12px; padding-bottom: 9px; border-bottom: 1px solid var(--line); }
+.codex-section-heading h4 { margin: 4px 0 0; color: var(--text); font: 800 18px/1.2 ui-monospace, monospace; }
+.codex-section-heading > span { color: var(--dim); font: 9px ui-monospace, monospace; text-transform: uppercase; letter-spacing: .08em; }
+.codex-section-hint { margin: 18px 0 0; padding: 10px 11px; border-left: 2px solid color-mix(in srgb, var(--gold) 44%, var(--line)); color: var(--muted); font-size: 10px; line-height: 1.5; background: color-mix(in srgb, var(--gold) 4%, transparent); }
+.codex-entry-picker-expanded { grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); max-height: none; margin-bottom: 14px; }
+.codex-entry-picker-inline { grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); max-height: none; margin-bottom: 14px; }
+.codex-book-section .codex-entry-detail { padding-top: 3px; }
+@keyframes codex-section-in { from { opacity: .45; transform: translateY(3px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes codex-page-turn { from { opacity: .42; transform: perspective(1100px) rotateY(-2deg) translateX(6px); } to { opacity: 1; transform: perspective(1100px) rotateY(0) translateX(0); } }
+
+/* The field library should read like a finite book, not a dark dashboard
+   bolted onto the shell. Keep the layout mechanics above unchanged while
+   giving the index, page and examples a calmer paper hierarchy in every
+   supported theme. */
+.codex-screen .codex-library {
+  border-radius: 16px;
+  background:
+    radial-gradient(circle at 90% 8%, color-mix(in srgb, var(--gold) 10%, transparent), transparent 32%),
+    linear-gradient(135deg, color-mix(in srgb, var(--gold) 7%, var(--panel2)), var(--panel));
+  box-shadow: 0 18px 36px color-mix(in srgb, var(--text) 12%, transparent), inset 0 0 0 1px color-mix(in srgb, var(--gold) 9%, transparent);
+}
+.codex-screen .codex-index {
+  background: color-mix(in srgb, var(--panel2) 58%, transparent);
+}
+.codex-screen .codex-index > .card-heading,
+.codex-screen .codex-books-heading {
+  letter-spacing: .1em;
+}
+.codex-screen .codex-book-page {
+  position: relative;
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--gold) 7%, transparent), transparent 26px),
+    radial-gradient(circle at 95% 2%, color-mix(in srgb, var(--gold) 7%, transparent), transparent 30%),
+    color-mix(in srgb, var(--panel) 92%, var(--gold) 8%);
+  box-shadow: inset 1px 0 0 color-mix(in srgb, var(--gold) 18%, transparent);
+}
+.codex-screen .codex-page-heading h3,
+.codex-screen .codex-section-heading h4,
+.codex-screen .codex-active-quest-sidebar h3 {
+  font-family: inherit;
+  letter-spacing: -.025em;
+}
+.codex-screen .codex-page-heading h3 { font-weight: 850; }
+.codex-screen .codex-page-heading p { color: color-mix(in srgb, var(--text) 68%, var(--muted)); }
+.codex-screen .codex-page-summary span {
+  background: color-mix(in srgb, var(--panel2) 72%, transparent);
+  box-shadow: inset 0 -1px 0 color-mix(in srgb, var(--gold) 12%, transparent);
+}
+.codex-screen .codex-examples pre {
+  background: color-mix(in srgb, var(--panel3) 80%, var(--gold) 4%);
+  color: var(--text);
+  border-left: 3px solid color-mix(in srgb, var(--gold) 62%, var(--line));
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--text) 5%, transparent);
+}
+.codex-screen .codex-book-tabs,
+.codex-screen .codex-page-controls {
+  background: color-mix(in srgb, var(--panel2) 62%, transparent);
+}
+.codex-screen .codex-section-hint { border-radius: 0 8px 8px 0; }
+.workspace-transfer-card { grid-column: 1 / -1; }
+.workspace-transfer-meta { display: flex; justify-content: space-between; gap: 10px; margin: 9px 0; color: var(--dim); font: 9px ui-monospace, monospace; }
+.workspace-transfer-files { display: grid; gap: 5px; padding: 9px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel3); }
+.workspace-transfer-files > div { display: flex; justify-content: space-between; gap: 10px; color: var(--text); font: 10px ui-monospace, monospace; }
+.transfer-file-status { color: var(--muted); font-size: 8px; text-transform: uppercase; letter-spacing: .06em; }
+.transfer-file-status.different { color: var(--gold); }
+.transfer-file-status.dirty { color: var(--ember); }
+.workspace-transfer-conflict { margin: 9px 0 0; padding: 8px 10px; border: 1px solid color-mix(in srgb, var(--danger) 48%, var(--line)); border-radius: 7px; color: var(--danger); background: color-mix(in srgb, var(--danger) 7%, var(--panel)); font-size: 10px; line-height: 1.45; }
+.workspace-transfer-actions { margin-top: 10px; }
+.workspace-transfer-summary { display: flex; gap: 7px; flex-wrap: wrap; margin: 9px 0; color: var(--muted); font: 8px ui-monospace, monospace; text-transform: uppercase; letter-spacing: .05em; }
+.workspace-transfer-summary span { padding: 4px 6px; border: 1px solid var(--line); border-radius: 999px; background: var(--panel3); }
+.workspace-transfer-file-meta { display: flex; align-items: flex-end; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+.workspace-transfer-file-meta small { color: var(--dim); font: 8px ui-monospace, monospace; }
+.dungeon-inventory-list { display: grid; gap: 7px; margin: 8px 0 12px; }
+.dungeon-inventory-item { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: center; padding: 9px; border: 1px solid var(--line); border-radius: 9px; background: var(--panel3); }
+.dungeon-inventory-item.equipped { border-color: color-mix(in srgb, var(--gold) 55%, var(--line)); background: color-mix(in srgb, var(--gold) 7%, var(--panel3)); }
+.dungeon-inventory-item > div { display: grid; gap: 3px; min-width: 0; }
+.dungeon-inventory-item small { font: 800 8px ui-monospace, monospace; letter-spacing: .1em; color: var(--gold); }
+.dungeon-inventory-item strong { font: 11px ui-monospace, monospace; color: var(--text); }
+.dungeon-inventory-item span { font-size: 9px; line-height: 1.35; color: var(--muted); }
+.dungeon-inventory-item button { padding: 5px 8px; font-size: 9px; }
+.dungeon-inventory-item button:disabled { opacity: .7; }
+
+.hub-grid { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(280px, .9fr); gap: 14px; }
+.hub-hero { min-height: 150px; }
+.hub-hero-actions { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+.hub-hero-actions button { white-space: nowrap; }
+.hub-raid-banner { display: grid; grid-template-columns: auto 1fr auto; gap: 9px; align-items: center; margin: 0 0 12px; padding: 9px; border: 1px dashed var(--line2); border-radius: 9px; background: color-mix(in srgb, var(--gold) 5%, var(--panel3)); }
+.hub-raid-banner .raid-gate-icon { width: 34px; height: 34px; border-radius: 9px; }
+.hub-raid-banner .raid-gate-icon svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.4; stroke-linecap: round; }
+.hub-raid-banner strong { font-size: 10px; color: var(--text); }
+.hub-raid-banner p { margin: 2px 0 0; color: var(--muted); font-size: 9px; line-height: 1.35; }
+.hub-raid-banner .raid-locked { padding: 5px 7px; max-width: none; }
+.context-kicker-spaced { margin-top: 18px; }
+.context-cta { width: 100%; margin-top: 14px; }
+.campaign-battle-sidebar { flex: 0 0 auto; max-height: 48%; overflow: auto; border-top: 1px solid var(--line); }
+.campaign-battle-sidebar .panel-title { position: sticky; top: 0; background: var(--panel); z-index: 1; }
+.campaign-battle-copy { display: grid; gap: 3px; padding: 9px 10px 0; }
+.campaign-battle-copy strong { font-size: 11px; color: var(--text); }
+.campaign-battle-copy span { font-size: 9px; line-height: 1.4; color: var(--muted); }
+.campaign-battle-sidebar .battle-submit-card { margin: 0; padding: 10px; border: 0; background: transparent; box-shadow: none; }
+.campaign-battle-sidebar .battle-submit-card .card-heading { display: none; }
+.campaign-battle-sidebar .battle-submit-card p { font-size: 9px; margin: 0 0 8px; }
+.campaign-battle-sidebar .battle-submit-card textarea { min-height: 64px; }
+.panel-title-actions { display: inline-flex; align-items: center; gap: 5px; min-width: 0; }
+.sidebar-collapse-toggle { width: 26px; height: 26px; padding: 4px; border: 1px solid var(--line2); border-radius: 6px; background: var(--panel3); color: var(--muted); }
+.sidebar-collapse-toggle:hover, .sidebar-collapse-toggle:focus-visible { color: var(--gold); border-color: var(--gold); background: color-mix(in srgb,var(--gold) 9%,var(--panel3)); }
+.sidebar-collapse-toggle svg { display: block; width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.forge-compact-panel { display: flex; flex-direction: column; align-items: center; gap: 9px; height: 100%; padding: 12px 6px 9px; background: var(--panel); }
+.forge-compact-file, .forge-compact-expand { width: 56px; min-height: 54px; display: grid; place-items: center; gap: 3px; padding: 7px 4px; border: 1px solid var(--line2); border-radius: 8px; background: var(--panel3); color: var(--muted); }
+.forge-compact-file:hover, .forge-compact-file:focus-visible, .forge-compact-expand:hover, .forge-compact-expand:focus-visible { color: var(--text); border-color: var(--gold); background: color-mix(in srgb,var(--gold) 8%,var(--panel3)); }
+.forge-compact-file.active { color: var(--gold); border-color: color-mix(in srgb,var(--gold) 75%,var(--line2)); background: color-mix(in srgb,var(--gold) 12%,var(--panel3)); box-shadow: inset 2px 0 0 var(--gold); }
+.forge-compact-file svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 1.45; stroke-linecap: round; stroke-linejoin: round; }
+.forge-compact-file small { color: currentColor; font: 700 9px ui-monospace,monospace; letter-spacing: .04em; }
+.forge-compact-expand { margin: 0 0 8px; min-height: 38px; width: 42px; padding: 6px; }
+.forge-compact-expand svg { display: block; width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.context-compact-file { cursor: default; }
+.context-compact-file:hover { border-color: color-mix(in srgb,var(--line2) 80%,var(--gold) 20%); background: var(--panel3); }
+.context-compact-file small { font-size: 8px; letter-spacing: .08em; }
+.campaign-battle-sidebar .pyr-sidebar-companion { margin: 30px auto 24px; padding: 11px 17px; gap: 12px; }
+.campaign-battle-sidebar .pyr-pixel-character, .campaign-battle-sidebar .pyr-pixel-character svg { width: 44px; height: 44px; }
+.campaign-battle-sidebar .pyr-sidebar-companion strong { font-size: 10px; }
+.campaign-battle-sidebar .pyr-sidebar-companion span { font-size: 8px; }
+.campaign-battle-resolve { padding: 0 10px 4px; }
+.forge-document-tabs { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 4px; margin: 6px 10px 8px; }
+.forge-document-tabs button { min-width: 0; display: flex; align-items: center; justify-content: space-between; gap: 5px; padding: 6px 7px; border: 1px solid var(--line2); border-radius: 6px; background: var(--panel3); color: var(--muted); font: 8px ui-monospace,monospace; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.forge-document-tabs button.active { border-color: color-mix(in srgb,var(--gold) 65%,var(--line2)); background: color-mix(in srgb,var(--gold) 10%,var(--panel3)); color: var(--text); }
+.forge-document-tabs button:disabled { opacity: 1; cursor: default; }
+.forge-document-tabs button small { flex: 0 0 auto; color: var(--gold2); font-size: 6px; letter-spacing: .05em; }
+.pyr-sidebar-companion { display: flex; align-items: center; gap: 8px; width: max-content; margin: 16px auto 18px; padding: 7px 9px; border: 1px solid var(--line2); border-radius: 8px; background: color-mix(in srgb,var(--panel3) 82%,var(--gold) 5%); color: var(--gold); }
+.pyr-pixel-character { width: 31px; height: 31px; display: grid; place-items: center; filter: drop-shadow(0 3px 0 color-mix(in srgb,var(--gold) 18%,transparent)); transform-origin: 50% 100%; animation: pyr-float 3.4s ease-in-out infinite; will-change: transform; }
+.pyr-pixel-character svg { display: block; width: 31px; height: 31px; }
+.pyr-eye { transform-box: fill-box; transform-origin: center; animation: pyr-blink 5.8s ease-in-out infinite; }
+.pyr-sidebar-companion strong { display: block; color: var(--text); font: 800 9px ui-monospace,monospace; letter-spacing: .1em; }
+.pyr-sidebar-companion span { display: block; margin-top: 2px; color: var(--muted); font: 8px ui-monospace,monospace; }
+@keyframes pyr-float {
+  0%, 100% { transform: translateY(0) scaleY(1); }
+  50% { transform: translateY(-2px) scaleY(1.025); }
+}
+@keyframes pyr-blink {
+  0%, 43%, 48%, 100% { transform: scaleY(1); }
+  45%, 46% { transform: scaleY(.16); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pyr-pixel-character, .pyr-eye { animation: none !important; }
+}
+.no-animations .pyr-pixel-character, .no-animations .pyr-eye { animation: none !important; }
+.editor-readonly-note { align-self: center; padding: 4px 7px; border: 1px solid var(--line2); border-radius: 5px; color: var(--gold2); font: 8px ui-monospace,monospace; letter-spacing: .05em; text-transform: uppercase; }
+.encounter-mechanics { margin: 5px 10px 4px; padding: 7px 8px; border: 1px solid var(--line2); border-radius: 8px; background: color-mix(in srgb,var(--panel3) 88%,var(--gold) 4%); }
+.encounter-mechanics .card-heading { margin: 0 0 5px; }
+.encounter-mechanics .card-heading span { color: var(--gold2); }
+.mechanics-list { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 5px; }
+.mechanic-row { display: grid; gap: 2px; min-width: 0; }
+.mechanic-row strong { color: var(--text); font-size: 8px; }
+.mechanic-row span { color: var(--muted); font-size: 7px; line-height: 1.25; }
+.mechanic-row small { color: var(--gold2); font: 6px ui-monospace,monospace; letter-spacing: .03em; }
+.chapter-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; }
+.chapter-card { display: grid; grid-template-columns: auto 1fr; gap: 10px; align-items: start; padding: 11px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel3); min-height: 126px; }
+.chapter-card.active { border-color: color-mix(in srgb, var(--gold) 55%, var(--line)); background: color-mix(in srgb, var(--gold) 7%, var(--panel3)); }
+.chapter-card.complete { border-color: color-mix(in srgb, var(--green) 45%, var(--line)); }
+.chapter-card.locked { opacity: .58; filter: saturate(.55); }
+.chapter-art { width: 34px; height: 34px; display: grid; place-items: center; border: 1px solid var(--line2); border-radius: 9px; color: var(--gold); font: 800 18px ui-monospace, monospace; }
+.chapter-category { color: var(--gold); font: 8px ui-monospace, monospace; letter-spacing: .12em; text-transform: uppercase; }
+.chapter-card h3 { margin: 3px 0; font-size: 13px; }
+.chapter-card p { margin: 0; color: var(--muted); font-size: 10px; line-height: 1.45; }
+.chapter-card button { grid-column: 2; justify-self: start; padding: 4px 7px; font-size: 10px; }
+.encounter-silhouette-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 8px; }
+.encounter-silhouette { display: flex; align-items: center; gap: 9px; padding: 9px; border: 1px solid var(--line); border-radius: 9px; background: var(--panel3); }
+.encounter-silhouette > span { width: 26px; height: 26px; display: grid; place-items: center; border: 1px solid var(--line2); border-radius: 50%; color: var(--gold); font: 10px ui-monospace, monospace; }
+.encounter-silhouette > div { display: grid; gap: 2px; min-width: 0; }
+.encounter-silhouette strong { font-size: 10px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.encounter-silhouette small { color: var(--muted); font: 8px ui-monospace, monospace; }
+.encounter-silhouette.locked { opacity: .48; }
+
+.quest-journal-screen { background: radial-gradient(circle at 50% 0, color-mix(in srgb, var(--gold) 7%, transparent), transparent 42%); }
+.quest-journal-screen .screen-hero, .quest-journal-screen .journal-page { background: linear-gradient(135deg, color-mix(in srgb, #c6a875 10%, var(--panel2)), var(--panel)); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--gold) 5%, transparent), 0 14px 34px rgba(0,0,0,.12); }
+.journal-mode-tabs { display: flex; gap: 7px; margin: 0 auto 12px; padding: 4px; border: 1px solid color-mix(in srgb, var(--gold) 22%, var(--line)); border-radius: 10px; background: color-mix(in srgb, var(--panel3) 78%, transparent); width: fit-content; }
+.journal-mode-tabs button { min-width: 132px; border: 0; background: transparent; color: var(--muted); font: 800 10px ui-monospace, monospace; letter-spacing: .06em; text-transform: uppercase; }
+.journal-mode-tabs button.active { color: var(--text); background: color-mix(in srgb, var(--gold) 15%, var(--panel2)); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--gold) 35%, transparent); }
+.journal-mode-tabs button span { margin-left: 4px; color: var(--gold); font-size: 8px; }
+.quest-battle-screen { display: grid; gap: 14px; animation: dungeon-fade-in .22s ease-out; }
+.battle-screen-hero { display: grid; grid-template-columns: minmax(0, 1fr) minmax(220px, .35fr); gap: 18px; align-items: center; background: linear-gradient(135deg, color-mix(in srgb, var(--ember) 8%, var(--panel2)), var(--panel)); }
+.battle-screen-hero h3 { margin: 6px 0; font: 800 24px/1.15 ui-monospace, monospace; }
+.battle-screen-hero p { max-width: 760px; margin: 0; color: var(--muted); font-size: 12px; line-height: 1.55; }
+.battle-resolve-hero { display: grid; gap: 5px; padding: 13px; border: 1px solid color-mix(in srgb, var(--gold) 38%, var(--line)); border-radius: 10px; background: color-mix(in srgb, var(--gold) 6%, var(--panel3)); }
+.battle-resolve-hero small { color: var(--muted); font: 800 9px ui-monospace, monospace; letter-spacing: .12em; }
+.battle-resolve-hero strong { color: var(--gold); font: 800 20px ui-monospace, monospace; }
+.battle-workspace-card { min-height: 430px; }
+.battle-workspace-card > .context-note { max-width: 840px; }
+.battle-screen-submit { margin: 16px 0 0; padding: 0; border: 0; box-shadow: none; background: transparent; }
+.battle-screen-submit .card-heading { padding-bottom: 9px; }
+.battle-screen-submit form { max-width: 980px; }
+.battle-screen-submit .battle-answer-editor { min-height: 300px; resize: vertical; font: 12px/1.6 ui-monospace, monospace; tab-size: 4; }
+.boss-phase-track { margin: 16px 0 6px; padding: 10px 0 0; border-top: 1px solid var(--line); }
+.boss-phase-list { display: flex; flex-wrap: wrap; gap: 7px; margin: 8px 0 4px; }
+.boss-phase-list span { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--line2); border-radius: 999px; padding: 5px 8px; color: var(--muted); font: 9px ui-monospace, monospace; text-transform: uppercase; }
+.boss-phase-list span b { color: var(--dim); }
+.boss-phase-list span.verified { border-color: color-mix(in srgb, var(--green) 55%, var(--line)); color: var(--green); }
+.boss-phase-list span.verified b { color: var(--green); }
+.boss-phase-list span.current { border-color: color-mix(in srgb, var(--gold) 65%, var(--line)); color: var(--gold); background: color-mix(in srgb, var(--gold) 7%, var(--panel3)); }
+.boss-phase-list span.current b { color: var(--gold); }
+.battle-back-button { margin-top: 12px; justify-self: start; }
+.journal-battle-link { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 14px; padding: 11px; border: 1px dashed color-mix(in srgb, var(--gold) 42%, var(--line)); border-radius: 10px; background: color-mix(in srgb, var(--gold) 6%, var(--panel3)); }
+.journal-battle-link > div { display: grid; gap: 3px; }
+.journal-battle-link strong { color: var(--text); font: 800 12px ui-monospace, monospace; }
+.journal-battle-link small,.journal-battle-link > span { color: var(--muted); font-size: 10px; line-height: 1.35; }
+.journal-battle-link button { flex: 0 0 auto; }
+.journal-controls { display: flex; align-items: center; justify-content: center; gap: 12px; margin: 0 auto 12px; }
+.journal-controls span { color: var(--muted); font: 9px ui-monospace, monospace; letter-spacing: .14em; }
+.journal-controls button { padding: 6px 10px; font-size: 10px; }
+.journal-page { padding: 2px; border: 1px solid color-mix(in srgb, var(--gold) 28%, var(--line)); border-radius: 14px; }
+.quest-journal-screen .journal-page { grid-template-columns: minmax(0, 1fr); }
+.journal-page .game-card { margin: 0; border: 0; border-radius: 12px; box-shadow: none; background: color-mix(in srgb, var(--panel2) 70%, transparent); }
+.journal-page[data-journal-page="0"] .journal-contract-page { display: none; }
+.journal-page[data-journal-page="1"] .journal-main-page { display: none; }
+.journal-page[data-journal-page="1"] { grid-template-columns: minmax(0, 1fr); }
+.journal-page.page-turn { animation: journal-page-turn .26s ease-out; transform-origin: 50% 8%; }
+@keyframes journal-page-turn { from { opacity: .35; transform: perspective(900px) rotateY(-5deg) translateX(8px); } to { opacity: 1; transform: perspective(900px) rotateY(0) translateX(0); } }
+.dungeon-map-card { animation: dungeon-fade-in .22s ease-out; }
+.dungeon-map-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; max-width: 720px; margin: 0 auto; }
+.dungeon-map-node { display: grid; grid-template-columns: auto 1fr; grid-template-rows: auto auto; align-items: center; gap: 2px 7px; min-height: 54px; padding: 7px 8px; border: 1px solid var(--line); border-radius: 9px; background: color-mix(in srgb, var(--panel3) 82%, transparent); color: var(--muted); }
+.dungeon-map-node > span { grid-row: 1 / 3; width: 26px; height: 26px; display: grid; place-items: center; border: 1px solid var(--line2); border-radius: 50%; color: var(--dim); font-size: 13px; }
+.dungeon-map-node small { font: 8px ui-monospace, monospace; letter-spacing: .08em; color: var(--dim); }
+.dungeon-map-node strong { font: 800 11px ui-monospace, monospace; color: var(--text); }
+.dungeon-map-node.current { border-color: var(--gold); background: color-mix(in srgb, var(--gold) 10%, var(--panel3)); box-shadow: 0 0 0 1px color-mix(in srgb, var(--gold) 22%, transparent); }
+.dungeon-map-node.current > span, .dungeon-map-node.current small { color: var(--gold); border-color: var(--gold); }
+.dungeon-map-node.seen:not(.current) { border-color: color-mix(in srgb, var(--green) 40%, var(--line)); }
+.dungeon-map-node.available { border-color: color-mix(in srgb, var(--gold) 45%, var(--line)); background: color-mix(in srgb, var(--gold) 5%, var(--panel3)); }
+.dungeon-map-node.available small { color: var(--gold); }
+.dungeon-map-node strong { overflow-wrap: anywhere; }
+.dungeon-map-node.rest > span { color: var(--green); }
+.dungeon-map-node.market > span { color: var(--gold); }
+.dungeon-map-card > .context-note { margin: 10px 0 0; text-align: center; }
+.dungeon-room-card { animation: dungeon-fade-in .22s ease-out; }
+.dungeon-route-choices { display: grid; gap: 8px; margin: 14px auto 0; max-width: 720px; }
+.dungeon-route-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; color: var(--text); }
+.dungeon-route-heading span { font: 800 10px ui-monospace, monospace; letter-spacing: .12em; }
+.dungeon-route-heading small { color: var(--dim); font-size: 11px; }
+.dungeon-route-choice { display: grid; grid-template-columns: 30px 1fr auto; align-items: center; gap: 10px; min-height: 58px; padding: 9px 11px; text-align: left; border: 1px solid var(--line); border-radius: 10px; background: color-mix(in srgb, var(--panel3) 88%, transparent); color: var(--text); transition: border-color .16s ease, background .16s ease, transform .16s ease; }
+.dungeon-route-choice:hover:not(:disabled), .dungeon-route-choice:focus-visible { border-color: var(--gold); background: color-mix(in srgb, var(--gold) 9%, var(--panel3)); transform: translateY(-1px); }
+.dungeon-route-choice:disabled { opacity: .55; cursor: wait; }
+.dungeon-route-choice > span:nth-child(2) { display: grid; gap: 3px; }
+.dungeon-route-choice strong { font-size: 12px; }
+.dungeon-route-choice small { color: var(--muted); font-size: 11px; }
+.dungeon-route-choice > b { color: var(--gold); font-size: 18px; }
+.dungeon-route-glyph { display: grid; place-items: center; width: 27px; height: 27px; border: 1px solid var(--line2); border-radius: 50%; color: var(--gold); }
+.dungeon-route-choice.rest .dungeon-route-glyph { color: var(--green); }
+.dungeon-route-choice.market .dungeon-route-glyph { color: var(--gold); }
+@keyframes dungeon-fade-in { from { opacity: .4; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+
+/* Ported Infinite Dungeon setup/editor surface.  The class and editor stay in
+   the canonical Dungeon route; no prototype-only Codex panel is reintroduced. */
+.dungeon-class-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin: 16px 0; }
+.dungeon-class-card { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 11px; align-items: start; min-height: 148px; padding: 14px; text-align: left; color: var(--text); background: var(--panel3); border: 1px solid var(--line); border-radius: 12px; transition: border-color .16s ease, transform .16s ease, background .16s ease; }
+.dungeon-class-card:hover:not(:disabled), .dungeon-class-card.selected { border-color: var(--gold); background: color-mix(in srgb, var(--gold) 9%, var(--panel3)); transform: translateY(-2px); }
+.dungeon-class-card > span:last-child { display: grid; gap: 5px; min-width: 0; }
+.dungeon-class-card strong { font: 800 13px ui-monospace, monospace; }
+.dungeon-class-card small { color: var(--gold); font: 9px ui-monospace, monospace; letter-spacing: .08em; text-transform: uppercase; }
+.dungeon-class-card em { color: var(--muted); font-size: 10px; line-height: 1.45; font-style: normal; }
+.dungeon-class-card b { color: var(--text); font: 9px ui-monospace, monospace; }
+.dungeon-class-icon { display: grid; place-items: center; flex: 0 0 auto; width: 34px; height: 34px; border: 1px solid color-mix(in srgb, var(--gold) 55%, var(--line)); border-radius: 50%; color: var(--gold); font: 700 20px ui-monospace, monospace; }
+.dungeon-class-icon svg { width: 17px; height: 17px; }
+.dungeon-class-strip { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 10px; align-items: center; margin: 10px 0; padding: 9px 10px; border: 1px solid color-mix(in srgb, var(--gold) 35%, var(--line)); border-radius: 9px; background: color-mix(in srgb, var(--gold) 6%, var(--panel3)); }
+.dungeon-class-strip > div { display: grid; gap: 3px; min-width: 0; }
+.dungeon-class-strip small { color: var(--gold); font: 9px ui-monospace, monospace; letter-spacing: .08em; text-transform: uppercase; }
+.dungeon-class-strip strong, .dungeon-class-strip > span:last-child { color: var(--muted); font-size: 10px; line-height: 1.35; }
+.dungeon-editor-surface { display: grid; gap: 0; margin-top: 12px; overflow: hidden; border: 1px solid var(--line); border-radius: 10px; background: #0d1117; }
+.dungeon-editor-toolbar, .dungeon-editor-terminal-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 10px; color: var(--muted); font: 9px ui-monospace, monospace; letter-spacing: .08em; text-transform: uppercase; }
+.dungeon-editor-toolbar { border-bottom: 1px solid var(--line); background: #111820; }
+.dungeon-editor-wrap { min-height: 280px; }
+.dungeon-editor-terminal { border-top: 1px solid var(--line); background: #070a0d; }
+.dungeon-editor-terminal.passed .dungeon-editor-terminal-heading b { color: var(--green); }
+.dungeon-editor-terminal.failed .dungeon-editor-terminal-heading b { color: var(--danger); }
+.dungeon-editor-terminal pre { max-height: 130px; min-height: 74px; margin: 0; padding: 0 10px 10px; overflow: auto; color: #cbd5c0; font: 10px/1.5 ui-monospace, monospace; white-space: pre-wrap; }
+.dungeon-editor-actions { display: flex; flex-wrap: wrap; gap: 8px; padding: 10px; border-top: 1px solid var(--line); background: #111820; }
+.dungeon-editor-actions button { margin: 0; }
+.dungeon-editor-actions kbd { margin-left: 5px; color: var(--dim); font: 8px ui-monospace, monospace; }
+@media (max-width: 820px) {
+  .dungeon-class-grid { grid-template-columns: 1fr; }
+  .dungeon-class-card { min-height: 0; }
+  .dungeon-class-strip { grid-template-columns: auto minmax(0, 1fr); }
+  .dungeon-class-strip > span:last-child { grid-column: 2; }
+}
+
+@media (max-width: 980px) {
+  .tutor-practice-bar { grid-template-columns: repeat(3, minmax(100px, 1fr)); }
+  .tutor-practice-heading { grid-column: 1 / -1; }
+  .tutor-practice-bar button { justify-self: start; }
+  .hub-grid { grid-template-columns: 1fr; }
+  .codex-active-chapter-grid { grid-template-columns: 1fr; }
+  .battle-screen-hero { grid-template-columns: 1fr; }
+  .battle-lore-card { grid-template-columns: 1fr; }
+}
+@media (max-width: 620px) {
+  .tutor-practice-bar { grid-template-columns: 1fr 1fr; }
+  .tutor-practice-bar button { grid-column: 1 / -1; }
+  .journal-mode-tabs { width: 100%; }
+  .journal-mode-tabs button { min-width: 0; flex: 1; padding-inline: 5px; }
+  .codex-mode-tabs { width: 100%; }
+  .codex-mode-tabs button { min-width: 0; flex: 1; padding-inline: 5px; }
+  .codex-book-tabs { overflow-x: auto; }
+  .codex-book-tabs button { flex: 1 0 auto; }
+  .battle-stat-grid { grid-template-columns: 1fr 1fr; }
+  .journal-battle-link { align-items: flex-start; flex-direction: column; }
+  .battle-screen-submit .battle-answer-editor { min-height: 220px; }
+}
+.shop-icon { display: grid; place-items: center; width: 31px; height: 31px; color: var(--gold); }
+.shop-icon svg { width: 28px; height: 28px; fill: none; stroke: currentColor; stroke-width: 1.35; stroke-linecap: round; stroke-linejoin: round; }
+.daily-shop { border-color: color-mix(in srgb, var(--gold) 24%, var(--line)); }
+.campaign-loadout { border-color: color-mix(in srgb, var(--ember) 24%, var(--line)); }
+.campaign-loadout-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.campaign-loadout-slot { display: grid; gap: 8px; padding: 11px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel3); }
+.campaign-loadout-heading { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
+.campaign-loadout-heading span { color: var(--gold); font: 800 9px ui-monospace, monospace; letter-spacing: .12em; }
+.campaign-loadout-heading strong { color: var(--text); font: 800 12px ui-monospace, monospace; text-align: right; }
+.campaign-loadout-items { display: grid; gap: 7px; }
+.campaign-loadout-item { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 9px; align-items: center; padding: 9px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel2); }
+.campaign-loadout-item.equipped { border-color: color-mix(in srgb, var(--green) 45%, var(--line)); background: color-mix(in srgb, var(--green) 6%, var(--panel2)); }
+.campaign-loadout-item > div { display: grid; gap: 2px; min-width: 0; }
+.campaign-loadout-item small { color: var(--muted); font: 8px ui-monospace, monospace; text-transform: uppercase; }
+.campaign-loadout-item strong { color: var(--text); font: 800 11px ui-monospace, monospace; }
+.campaign-loadout-item span { color: var(--gold); font-size: 10px; line-height: 1.35; }
+.campaign-loadout-item p { margin: 1px 0 0; color: var(--muted); font-size: 9px; line-height: 1.35; }
+.campaign-loadout-item button { padding: 5px 8px; font-size: 9px; }
+@media (max-width: 720px) { .campaign-loadout-grid { grid-template-columns: 1fr; } }
+.wide-screen-frame { position: relative; display: flex; flex-direction: column; min-height: 0; height: 100%; background: linear-gradient(180deg, var(--panel), color-mix(in srgb, var(--bg) 75%, var(--panel))); }
+.wide-screen-frame > .game-screen-scroll { flex: 1 1 auto; min-height: 0; }
+/* Codex is rendered directly as a folio rather than through the scrolling
+   game-screen wrapper. Give it the same bounded flex budget as the wide
+   surfaces so the nav consumes its own row instead of pushing the book below
+   the viewport. */
+.wide-screen-frame > .codex-screen { flex: 1 1 auto; min-height: 0; height: auto; }
+.surface-nav { position: sticky; top: 0; z-index: 8; display: flex; align-items: center; gap: 10px; flex: 0 0 auto; min-height: 50px; padding: 7px clamp(12px, 2.4vw, 30px); border-bottom: 1px solid var(--line); background: color-mix(in srgb, var(--panel2) 96%, var(--bg)); box-shadow: 0 8px 18px rgba(0,0,0,.14); overflow-x: auto; scrollbar-width: thin; }
+.surface-nav-brand { display: inline-flex; align-items: center; gap: 7px; flex: 0 0 auto; padding: 7px 10px; border: 1px solid color-mix(in srgb, var(--gold) 30%, var(--line)); color: var(--gold); background: color-mix(in srgb, var(--gold) 7%, transparent); font: 800 10px ui-monospace, monospace; letter-spacing: .1em; white-space: nowrap; }
+.surface-nav-brand svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.45; stroke-linecap: round; stroke-linejoin: round; }
+.surface-nav-links { display: flex; align-items: center; gap: 4px; min-width: max-content; }
+.surface-nav-link { display: inline-flex; align-items: center; gap: 6px; min-height: 34px; padding: 7px 9px; border: 1px solid transparent; color: var(--muted); background: transparent; font: 700 10px ui-monospace, monospace; white-space: nowrap; touch-action: manipulation; }
+.surface-nav-link > span:first-child { display: inline-grid; place-items: center; color: var(--dim); }
+.surface-nav-link > span:first-child svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 1.45; stroke-linecap: round; stroke-linejoin: round; }
+.surface-nav-link:hover, .surface-nav-link:focus-visible { border-color: var(--line2); color: var(--text); background: color-mix(in srgb, var(--panel3) 70%, transparent); }
+.surface-nav-link.active { border-color: color-mix(in srgb, var(--gold) 48%, var(--line)); color: var(--gold); background: color-mix(in srgb, var(--gold) 10%, var(--panel3)); }
+.surface-nav-link.active > span:first-child { color: var(--gold); }
+@media (max-width: 720px) { .surface-nav { align-items: stretch; padding-inline: 9px; } .surface-nav-brand { padding-inline: 8px; } .surface-nav-link { padding-inline: 7px; } .surface-nav-link > span:last-child { display: none; } }
+
+@media (max-width: 760px) {
+  /* Keep compact Forge windows bounded too. The old fallback made the whole
+     Codex page grow again, which recreated the reported infinite-scroll feed.
+     The index and book remain the only scroll owners at every width. */
+  .codex-screen { grid-template-rows: auto auto minmax(0, 1fr); height: 100%; min-height: 0; overflow: hidden; }
+  .codex-screen > .screen-hero { max-height: 142px; overflow: hidden; }
+  .codex-screen > .codex-tab-page { display: flex; min-height: 0; overflow: hidden; }
+  .codex-screen > .codex-tab-page[data-codex-tab="battle"] { display: block; overflow: auto; }
+  .codex-screen .codex-library { grid-template-columns: 1fr; height: 100%; min-height: 0; flex: 1 1 auto; overflow: hidden; }
+  .codex-screen .codex-index { display: flex; min-height: 0; max-height: min(31vh, 220px); overflow: hidden; border-right: 0; border-bottom: 1px solid color-mix(in srgb, var(--gold) 22%, var(--line)); }
+  .codex-screen .codex-book-page { min-height: 0; overflow: hidden; padding: 14px 14px 20px; }
+}
+
+/* Keep the Codex inside the Forge viewport. Its book pages are finite UI
+   panels; the surrounding game surface must never grow into a feed. */
+.game-screen { position: relative; width: 100%; height: 100%; min-width: 0; min-height: 0; overflow: hidden; }
+.game-screen > .codex-screen {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  max-height: 100%;
+  padding: 18px;
+  overflow: hidden;
+  overscroll-behavior: none;
+  box-sizing: border-box;
+  contain: layout paint;
+}
+.codex-screen .codex-tab-page,
+.codex-screen .codex-library,
+.codex-screen .codex-book-page { min-width: 0; min-height: 0; }
+.codex-screen .codex-book-section {
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-gutter: stable;
+  overscroll-behavior: contain;
+}
+
+@media (max-width: 1050px) {
+  .game-screen > .codex-screen { padding: 12px; }
+}
+
+/* F-130: the Codex is a finite reading room. Keep the header and controls
+   visible, reserve the remaining viewport for one book frame, and let only
+   the book list/reading section scroll when their content genuinely needs it. */
+.game-screen > .codex-screen {
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr);
+  gap: 10px;
+}
+.codex-screen > .screen-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(300px, auto);
+  align-items: center;
+  min-height: 0;
+  max-height: none;
+  margin: 0;
+  padding: 14px 18px;
+}
+.codex-screen > .screen-hero h2 {
+  font-family: inherit;
+  letter-spacing: -.035em;
+}
+.codex-screen > .screen-hero p {
+  max-width: 58ch;
+  font-family: inherit;
+}
+.codex-screen .codex-summary-grid {
+  min-width: 0;
+  width: min(470px, 100%);
+}
+.codex-screen > .codex-mode-tabs {
+  margin: 0;
+}
+.codex-screen > .codex-tab-page {
+  flex: 1 1 auto;
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
+}
+.codex-screen .codex-library {
+  min-width: 0;
+  max-width: 100%;
+}
+.codex-screen .codex-index,
+.codex-screen .codex-book-page,
+.codex-screen .codex-book-section {
+  scrollbar-width: thin;
+  scrollbar-gutter: stable;
+  overscroll-behavior: contain;
+}
+.codex-screen .codex-page-list {
+  overscroll-behavior: contain;
+}
+@media (max-width: 900px) {
+  .codex-screen > .screen-hero {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+  .codex-screen .codex-summary-grid {
+    width: 100%;
+  }
+}
+
+/* Keep secondary RPG surfaces on the same monochrome SVG icon language as the
+   HUD and navigation; no emoji fallback should change metrics between themes. */
+.skill-icon svg,
+.pyr-orb svg,
+.homestead-hearth > svg {
+  display: block;
+  width: 1em;
+  height: 1em;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.45;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.skill-icon svg { width: 24px; height: 24px; }
+.pyr-orb svg { width: 32px; height: 32px; }
+.homestead-hearth > svg { width: 26px; height: 26px; }
+
+/* F-133: make the Codex a quiet reading room instead of a stacked dashboard.
+   The shelf is paged (five books at a time), so the index never becomes an
+   endless scroll. The reading pane remains the one bounded content surface. */
+.codex-screen > .screen-hero {
+  border-color: color-mix(in srgb, var(--gold) 24%, var(--line));
+  background:
+    linear-gradient(115deg, color-mix(in srgb, var(--gold) 8%, var(--panel2)), transparent 64%),
+    var(--panel2);
+  box-shadow: inset 0 -1px 0 color-mix(in srgb, var(--gold) 12%, transparent);
+}
+.codex-screen > .screen-hero h2 { max-width: 26ch; }
+.codex-screen .codex-summary-grid { gap: 0; border-left: 1px solid color-mix(in srgb, var(--gold) 25%, var(--line)); }
+.codex-screen .codex-summary-grid > div {
+  min-height: 48px;
+  padding: 5px 11px;
+  border: 0;
+  border-right: 1px solid color-mix(in srgb, var(--gold) 16%, var(--line));
+  border-radius: 0;
+  background: transparent;
+}
+.codex-screen .codex-summary-grid > div:last-child { border-right: 0; }
+.codex-screen .codex-summary-grid strong { font-size: 16px; }
+.codex-screen .codex-library {
+  grid-template-columns: minmax(238px, .28fr) minmax(0, 1fr);
+  gap: 0;
+  border-radius: 18px;
+  background: var(--panel2);
+}
+.codex-screen .codex-index {
+  padding: 16px 14px 18px;
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--gold) 6%, transparent), transparent 32%),
+    color-mix(in srgb, var(--panel3) 45%, var(--panel2));
+}
+.codex-screen .codex-active-quest-sidebar {
+  margin: 11px 0 15px;
+  border-color: color-mix(in srgb, var(--gold) 24%, var(--line));
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--panel) 56%, transparent);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--gold) 10%, transparent);
+}
+.codex-screen .codex-books-heading {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  margin: 12px 0 9px;
+}
+.codex-screen .codex-books-heading .card-heading { margin: 0; padding: 0; border: 0; }
+.codex-shelf-controls {
+  display: grid;
+  grid-template-columns: 23px auto 23px;
+  align-items: center;
+  gap: 4px;
+  color: var(--dim);
+  font: 800 8px ui-monospace, monospace;
+  letter-spacing: .08em;
+  white-space: nowrap;
+}
+.codex-shelf-controls button {
+  display: grid;
+  place-items: center;
+  width: 23px;
+  height: 23px;
+  padding: 0;
+  border-color: color-mix(in srgb, var(--gold) 22%, var(--line));
+  background: color-mix(in srgb, var(--panel) 60%, transparent);
+  color: var(--muted);
+  font-size: 12px;
+}
+.codex-shelf-controls button:hover:not(:disabled),
+.codex-shelf-controls button:focus-visible { border-color: var(--gold); color: var(--gold); }
+.codex-screen .codex-page-list {
+  flex: 0 0 auto;
+  max-height: none;
+  overflow: visible;
+  gap: 6px;
+}
+.codex-screen .codex-page-list button {
+  position: relative;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  min-height: 48px;
+  padding: 8px 9px 8px 13px;
+  border-color: color-mix(in srgb, var(--line) 82%, transparent);
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--panel) 44%, transparent);
+}
+.codex-screen .codex-page-list button::before {
+  content: '';
+  position: absolute;
+  left: 6px;
+  top: 10px;
+  bottom: 10px;
+  width: 2px;
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--gold) 22%, var(--line));
+}
+.codex-screen .codex-page-list button > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text); font-weight: 700; }
+.codex-screen .codex-page-list button small { color: var(--dim); text-align: right; }
+.codex-screen .codex-page-list button.active { border-color: color-mix(in srgb, var(--gold) 50%, var(--line)); background: color-mix(in srgb, var(--gold) 10%, var(--panel)); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--gold) 9%, transparent); }
+.codex-screen .codex-page-list button.active::before { background: var(--gold); }
+.codex-screen .codex-sidebar-mobs > div > span { border: 0; background: transparent; }
+.codex-screen .codex-sidebar-mobs > div > span svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+.codex-screen .codex-book-page {
+  padding: 21px 26px 24px;
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--gold) 9%, transparent), transparent 34px),
+    radial-gradient(circle at 96% 4%, color-mix(in srgb, var(--gold) 8%, transparent), transparent 34%),
+    color-mix(in srgb, var(--panel) 88%, var(--gold) 12%);
+  box-shadow: inset 14px 0 20px -24px color-mix(in srgb, var(--text) 85%, transparent);
+}
+.codex-screen .codex-book-page::before {
+  content: '';
+  position: absolute;
+  left: 12px;
+  top: 18px;
+  bottom: 18px;
+  width: 1px;
+  background: color-mix(in srgb, var(--gold) 30%, var(--line));
+}
+.codex-screen .codex-page-heading { padding-left: 8px; }
+.codex-screen .codex-page-heading h3 { font-size: clamp(26px, 2.5vw, 36px); }
+.codex-screen .codex-page-controls { padding-left: 8px; }
+.codex-screen .codex-book-tabs { margin-left: 8px; margin-right: 8px; }
+.codex-screen .codex-book-section { padding-left: 8px; }
+@media (max-width: 900px) {
+  .codex-screen .codex-summary-grid { border-left: 0; }
+  .codex-screen .codex-summary-grid > div { border-top: 1px solid color-mix(in srgb, var(--gold) 16%, var(--line)); }
+  .codex-screen .codex-book-page { padding: 16px 16px 20px; }
+  .codex-screen .codex-book-page::before { left: 8px; }
+}
+
+/* F-134: extend the shared 24px monochrome icon grid to Character and
+   Homestead props so font-dependent legacy symbols do not reappear outside
+   the Codex. Icons are decorative and remain paired with visible text. */
+.equipment-list > div > span svg,
+.achievement-grid article > span svg,
+.homestead-window > svg,
+.homestead-desk > svg,
+.homestead-shelf > svg {
+  display: block;
+  width: 24px;
+  height: 24px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.45;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.achievement-grid article > span svg { width: 18px; height: 18px; }
+.homestead-window > svg { width: 28px; height: 28px; }
+.homestead-desk > svg { width: 29px; height: 29px; }
+.homestead-shelf > svg { width: 22px; height: 22px; }
+
+/* F-135: keep the Codex a finite reader even when encounter evidence grows.
+   The selected book owns a fixed page frame; long record/notes collections use
+   explicit page controls instead of turning the whole surface into a feed. */
+.codex-screen .codex-book-section {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  max-height: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: thin;
+  scrollbar-gutter: stable;
+  overscroll-behavior: contain;
+}
+.codex-screen .codex-page-grid,
+.codex-screen .codex-entry-detail,
+.codex-screen .codex-mastery-panel .skill-grid {
+  min-height: 0;
+}
+.codex-screen .codex-entry-picker-expanded,
+.codex-screen .codex-entry-picker-inline {
+  flex: 0 0 auto;
+  max-height: none;
+  overflow: visible;
+}
+.codex-entry-pager {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 7px;
+  flex: 0 0 auto;
+  margin: -5px 0 8px;
+  color: var(--dim);
+  font: 800 8px ui-monospace, monospace;
+  letter-spacing: .08em;
+}
+.codex-entry-pager button {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border-color: color-mix(in srgb, var(--gold) 22%, var(--line));
+  background: color-mix(in srgb, var(--panel2) 70%, transparent);
+  color: var(--muted);
+}
+.codex-entry-pager button:hover:not(:disabled),
+.codex-entry-pager button:focus-visible { border-color: var(--gold); color: var(--gold); }
+.codex-entry-pager button:disabled { opacity: .34; }
+.codex-screen .codex-notes.workspace-notebook pre {
+  max-height: 148px;
+  overflow: auto;
+  scrollbar-width: thin;
+}
+
+/* F-151: future chapters and encounters stay silhouettes until the campaign
+   state service unlocks them. Keep their identity hidden without making the
+   locked path look like a broken/missing card. */
+.chapter-card.locked .chapter-art,
+.encounter-silhouette.locked > span {
+  color: var(--dim);
+  border-style: dashed;
+  background: color-mix(in srgb, var(--panel3) 72%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--line2) 38%, transparent);
+}
+.encounter-silhouette.locked strong {
+  color: var(--muted);
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+/* F-136: finish SVG parity on route, quest and Dungeon markers. Decorative
+   status marks remain paired with visible labels; only their font-dependent
+   glyphs are removed. */
+.chapter-art svg,
+.encounter-silhouette > span svg,
+.mob-node > span svg,
+.quest-item > span svg,
+.boss-phase-list b svg,
+.dungeon-map-node > span svg,
+.dungeon-route-glyph svg,
+.dungeon-mob-sigil svg,
+.context-row > span svg,
+.context-row.stacked strong > span svg,
+.panel-title > button svg,
+.panel-title-actions > button svg {
+  display: block;
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.45;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.chapter-art svg { width: 20px; height: 20px; }
+.encounter-silhouette > span svg,
+.mob-node > span svg,
+.dungeon-map-node > span svg,
+.dungeon-route-glyph svg,
+.dungeon-mob-sigil svg { width: 17px; height: 17px; }
+.boss-phase-list b { display: inline-grid; place-items: center; }
+.panel-title > button,
+.panel-title-actions > button { display: inline-grid; place-items: center; }
+.panel-title-actions > button:not(.sidebar-collapse-toggle) { width: 26px; height: 26px; padding: 4px; border: 1px solid var(--line2); border-radius: 6px; background: var(--panel3); color: var(--muted); }
+.panel-title-actions > button:not(.sidebar-collapse-toggle):hover,
+.panel-title-actions > button:not(.sidebar-collapse-toggle):focus-visible { color: var(--gold); border-color: var(--gold); background: color-mix(in srgb,var(--gold) 9%,var(--panel3)); }
+
+/* F-137: keep the active-quest rail compact so the bookshelf, not an eight
+   chapter list, owns the Codex's visual weight. Native select navigation keeps
+   every unlocked chapter reachable without another scrolling column. */
+.codex-screen .codex-chapter-select {
+  display: grid;
+  gap: 5px;
+  margin: 9px 0 4px;
+  padding-top: 9px;
+  border-top: 1px solid var(--line);
+}
+.codex-screen .codex-chapter-select > span {
+  color: var(--dim);
+  font: 800 8px ui-monospace, monospace;
+  letter-spacing: .1em;
+}
+.codex-screen .codex-chapter-select select {
+  width: 100%;
+  min-width: 0;
+  min-height: 31px;
+  padding: 6px 8px;
+  border: 1px solid color-mix(in srgb, var(--gold) 28%, var(--line));
+  border-radius: 7px;
+  background: color-mix(in srgb, var(--panel2) 84%, transparent);
+  color: var(--text);
+  font: 800 9px ui-monospace, monospace;
+}
+.codex-screen .codex-chapter-select select:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--gold) 60%, transparent);
+  outline-offset: 1px;
+}
+.codex-screen .codex-sidebar-mobs {
+  margin-top: 5px;
+  padding-top: 5px;
+  border-top: 1px solid color-mix(in srgb, var(--line) 75%, transparent);
+}
+
+/* F-139: the Codex is a folio, not a social feed. Every visible book section
+   is a single bounded page; the bookshelf, book/section controls and the
+   record/mastery pagers decide what is visible. This removes the last
+   full-height reading scrollbar that made a small evidence set feel endless. */
+.codex-screen .codex-book-section {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  max-height: 100%;
+  overflow: hidden;
+  scrollbar-width: none;
+  overscroll-behavior: none;
+}
+.codex-screen .codex-book-section::-webkit-scrollbar { display: none; }
+.codex-screen .codex-page-grid {
+  min-height: 0;
+  overflow: hidden;
+}
+.codex-screen .codex-entry-detail,
+.codex-screen .codex-entry-insights,
+.codex-screen .codex-mastery-panel .skill-grid {
+  min-height: 0;
+  overflow: hidden;
+}
+.codex-screen .codex-entry-pager { margin-top: -2px; }
+.codex-screen .codex-mastery-pager { justify-content: space-between; }
+.codex-screen .codex-notes.workspace-notebook pre {
+  max-height: 9.5em;
+  overflow: auto;
+  scrollbar-width: thin;
+  overscroll-behavior: contain;
+}
+@media (max-width: 760px) {
+  /* The narrow index may still scroll between its chapter card and five-book
+     shelf, but the selected book itself remains a fixed folio page. */
+  .codex-screen .codex-index { overflow-y: auto; scrollbar-width: thin; }
+  .codex-screen .codex-book-section { overflow: hidden; }
+}
+
+/* F-141: the Codex is a compact folio, not a second document window. The
+   legacy .codex-library min-height (520px) could force the book frame past the
+   Forge viewport, making the page feel like an endless scroll even though the
+   content was already paged. These final constraints give the header, tabs and
+   folio a real flex budget at every desktop size. */
+.codex-screen > .screen-hero.codex-hero {
+  min-height: 0;
+  max-height: 108px;
+  padding: 11px 16px;
+  gap: 16px;
+}
+.codex-screen > .screen-hero.codex-hero h2 {
+  margin: 4px 0 5px;
+  font-size: clamp(19px, 2vw, 27px);
+}
+.codex-screen > .screen-hero.codex-hero p {
+  max-width: 56ch;
+  font-size: 10px;
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+}
+.codex-screen > .codex-mode-tabs {
+  min-height: 0;
+  padding: 3px;
+}
+.codex-screen > .codex-mode-tabs button { min-height: 28px; padding-block: 5px; }
+.codex-screen > .codex-tab-page,
+.codex-screen > .codex-tab-page[data-codex-tab="books"] {
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
+}
+.codex-screen > .codex-tab-page[data-codex-tab="battle"] {
+  display: block;
+  overflow: auto;
+  scrollbar-width: thin;
+  overscroll-behavior: contain;
+}
+.codex-screen .codex-library {
+  min-height: 0;
+  height: 100%;
+  margin-bottom: 0;
+}
+.codex-screen .codex-index,
+.codex-screen .codex-book-page {
+  min-height: 0;
+  height: 100%;
+}
+.codex-screen .codex-book-page {
+  overflow: hidden;
+}
+.codex-screen .codex-book-section {
+  flex: 1 1 0;
+  min-height: 0;
+  height: auto;
+}
+.codex-screen .codex-summary-grid > div {
+  min-height: 40px;
+  padding: 4px 9px;
+}
+.codex-screen .codex-summary-grid strong { font-size: 14px; }
+
+@media (max-width: 900px) {
+  .codex-screen > .screen-hero.codex-hero { max-height: 148px; }
+}
+
+/* F-146: the Codex is a reader, not an infinite dashboard.  This final
+   reader contract deliberately gives every layer a flex/grid budget.  The
+   only scroll owners are the small mobile index, code examples and the
+   user's note body; the Forge page itself never grows with encounter data. */
+.game-screen > .codex-screen {
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr);
+  gap: 10px;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+  padding: clamp(12px, 1.6vw, 20px);
+}
+.codex-screen > .screen-hero.codex-hero {
+  grid-row: 1;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 18px;
+  max-height: 96px;
+  padding: 12px 16px;
+  margin: 0;
+  border-radius: 14px;
+  background:
+    linear-gradient(115deg, color-mix(in srgb, var(--gold) 12%, var(--panel2)), transparent 58%),
+    var(--panel2);
+}
+.codex-screen > .screen-hero.codex-hero h2 {
+  margin: 3px 0 4px;
+  color: var(--text);
+  font-family: inherit;
+  font-size: clamp(22px, 2.4vw, 30px);
+  letter-spacing: -.04em;
+}
+.codex-screen > .screen-hero.codex-hero p {
+  max-width: 54ch;
+  margin: 0;
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.4;
+}
+.codex-screen .codex-summary-grid {
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+  min-width: min(430px, 48vw);
+  border-left: 1px solid color-mix(in srgb, var(--gold) 22%, var(--line));
+  background: transparent;
+}
+.codex-screen .codex-summary-grid > div {
+  display: grid;
+  min-width: 68px;
+  gap: 2px;
+  padding: 3px 11px;
+  border: 0;
+  border-right: 1px solid color-mix(in srgb, var(--gold) 16%, var(--line));
+  border-radius: 0;
+  background: transparent;
+  text-align: left;
+}
+.codex-screen .codex-summary-grid > div:last-child { border-right: 0; }
+.codex-screen .codex-summary-grid strong { font-size: 15px; line-height: 1; }
+.codex-screen .codex-summary-grid span { font-size: 7px; line-height: 1.2; }
+.codex-screen > .codex-mode-tabs {
+  grid-row: 2;
+  justify-self: start;
+  min-height: 0;
+  margin: 0;
+  padding: 3px;
+  border: 1px solid color-mix(in srgb, var(--gold) 20%, var(--line));
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--panel3) 86%, transparent);
+}
+.codex-screen > .codex-mode-tabs button {
+  min-height: 29px;
+  padding: 6px 12px;
+  border-color: transparent;
+  border-radius: 6px;
+  color: var(--muted);
+  font-size: 9px;
+  letter-spacing: .04em;
+}
+.codex-screen > .codex-mode-tabs button.active {
+  border-color: color-mix(in srgb, var(--gold) 45%, var(--line));
+  background: color-mix(in srgb, var(--gold) 11%, var(--panel2));
+  color: var(--gold2);
+}
+.codex-screen > .codex-tab-page[data-codex-tab="books"] {
+  grid-row: 3;
+  display: flex;
+  min-height: 0;
+  height: auto;
+  overflow: hidden;
+}
+.codex-screen > .codex-tab-page[data-codex-tab="books"] > .codex-library {
+  display: grid;
+  grid-template-columns: minmax(218px, 252px) minmax(0, 1fr);
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 100%;
+  gap: 0;
+  padding: 0;
+  margin: 0;
+  overflow: hidden;
+  border-radius: 16px;
+  border-color: color-mix(in srgb, var(--gold) 30%, var(--line));
+  background: var(--panel2);
+  box-shadow: 0 14px 36px rgba(0, 0, 0, .18);
+}
+.codex-screen > .codex-tab-page[data-codex-tab="books"] .codex-index {
+  display: grid;
+  grid-template-rows: auto minmax(0, auto) auto auto minmax(0, 1fr);
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
+  padding: 14px 12px 14px 14px;
+  border-right: 1px solid color-mix(in srgb, var(--gold) 20%, var(--line));
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--gold) 7%, transparent), transparent 38%),
+    color-mix(in srgb, var(--panel3) 60%, var(--panel2));
+}
+.codex-screen .codex-active-quest-sidebar {
+  min-height: 0;
+  max-height: 172px;
+  margin: 9px 0 11px;
+  overflow: hidden;
+}
+.codex-screen .codex-sidebar-mobs {
+  min-height: 0;
+  max-height: 62px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+.codex-screen .codex-books-heading { margin: 0 0 7px; }
+.codex-screen .codex-search { margin: 0 0 8px; }
+.codex-screen .codex-page-list {
+  min-height: 0;
+  max-height: none;
+  overflow: visible;
+  align-content: start;
+}
+.codex-screen .codex-page-list button { min-height: 42px; }
+.codex-screen > .codex-tab-page[data-codex-tab="books"] .codex-book-page {
+  display: grid;
+  grid-template-rows: auto auto auto minmax(0, 1fr);
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
+  padding: 18px 22px 18px;
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--gold) 8%, transparent), transparent 36px),
+    radial-gradient(circle at 94% 4%, color-mix(in srgb, var(--gold) 8%, transparent), transparent 34%),
+    color-mix(in srgb, var(--panel) 90%, var(--gold) 10%);
+}
+.codex-screen .codex-page-heading {
+  min-height: 0;
+  max-height: 136px;
+  overflow: hidden;
+  padding: 0 0 12px 8px;
+}
+.codex-screen .codex-page-heading h3 {
+  margin: 4px 0 5px;
+  color: var(--text);
+  font-family: inherit;
+  font-size: clamp(24px, 2.4vw, 34px);
+  letter-spacing: -.045em;
+}
+.codex-screen .codex-page-heading p {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow: hidden;
+  max-width: 62ch;
+  font-size: 11px;
+  line-height: 1.5;
+}
+.codex-screen .codex-page-controls,
+.codex-screen .codex-book-tabs { margin-left: 8px; margin-right: 8px; }
+.codex-screen .codex-book-section {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  max-height: 100%;
+  overflow: hidden;
+  padding: 0 8px 0;
+}
+.codex-screen .codex-page-grid,
+.codex-screen .codex-entry-detail,
+.codex-screen .codex-entry-insights,
+.codex-screen .codex-mastery-panel .skill-grid {
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+.codex-screen .codex-entry-picker { max-height: 94px; overflow: hidden; }
+.codex-screen .codex-entry-picker button { min-height: 36px; }
+.codex-screen .codex-notes.workspace-notebook pre { max-height: 8em; overflow: auto; }
+.codex-screen > .codex-tab-page[data-codex-tab="battle"] {
+  grid-row: 3;
+  min-height: 0;
+  height: auto;
+  overflow: auto;
+  padding: 0 2px 12px;
+  scrollbar-width: thin;
+}
+@media (max-width: 900px) {
+  .codex-screen > .screen-hero.codex-hero { max-height: 142px; grid-template-columns: 1fr; }
+  .codex-screen .codex-summary-grid { min-width: 0; width: 100%; }
+}
+@media (max-width: 760px) {
+  .game-screen > .codex-screen { padding: 10px; }
+  .codex-screen > .codex-tab-page[data-codex-tab="books"] > .codex-library { grid-template-columns: 1fr; }
+  .codex-screen > .codex-tab-page[data-codex-tab="books"] .codex-index {
+    grid-template-rows: auto minmax(0, auto) auto auto minmax(0, 1fr);
+    max-height: min(36vh, 250px);
+    overflow-y: auto;
+    scrollbar-width: thin;
+  }
+  .codex-screen > .codex-tab-page[data-codex-tab="books"] .codex-book-page { padding: 14px 14px 16px; }
+}
+
+/* F-147: visual reader pass.  The Codex has a finite information model, so
+   its chrome should read like a small field guide instead of a dashboard
+   assembled from nested cards.  These rules deliberately refine the existing
+   bounded layout; they do not add a new scroll owner or change projections. */
+.codex-screen {
+  --codex-paper: color-mix(in srgb, var(--panel) 92%, var(--gold) 8%);
+  --codex-ink: color-mix(in srgb, var(--text) 92%, var(--gold2) 8%);
+}
+.codex-screen > .screen-hero.codex-hero {
+  border: 1px solid color-mix(in srgb, var(--gold) 28%, var(--line));
+  background:
+    linear-gradient(108deg, color-mix(in srgb, var(--gold) 14%, var(--panel2)), transparent 62%),
+    var(--panel2);
+  box-shadow: inset 0 -1px 0 color-mix(in srgb, var(--gold) 18%, transparent);
+}
+.codex-screen > .screen-hero.codex-hero .screen-kicker,
+.codex-screen .codex-label,
+.codex-screen .codex-sidebar-kicker { letter-spacing: .14em; }
+.codex-screen .codex-summary-grid {
+  min-width: 0;
+  max-width: 42vw;
+  overflow: hidden;
+  border-left: 1px solid color-mix(in srgb, var(--gold) 25%, var(--line));
+}
+.codex-screen .codex-summary-grid > div {
+  min-width: 62px;
+  padding-inline: 9px;
+  text-align: center;
+}
+.codex-screen .codex-summary-grid strong { color: var(--gold2); font-size: 15px; }
+.codex-screen .codex-summary-grid span { color: var(--dim); }
+.codex-screen > .codex-tab-page[data-codex-tab="books"] > .codex-library {
+  border-radius: 14px;
+  border-color: color-mix(in srgb, var(--gold) 32%, var(--line));
+  background: var(--panel2);
+  box-shadow: 0 18px 40px rgba(0, 0, 0, .2);
+}
+.codex-screen > .codex-tab-page[data-codex-tab="books"] .codex-index {
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--gold) 9%, transparent), transparent 44%),
+    color-mix(in srgb, var(--panel3) 72%, var(--panel2));
+  box-shadow: inset -10px 0 18px -22px color-mix(in srgb, var(--text) 70%, transparent);
+}
+.codex-screen .codex-active-quest-sidebar {
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--panel) 68%, transparent);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--gold) 12%, transparent);
+}
+.codex-screen .codex-books-heading .card-heading,
+.codex-screen .codex-index > .card-heading { color: var(--dim); }
+.codex-screen .codex-page-list button {
+  border-radius: 7px;
+  background: color-mix(in srgb, var(--panel2) 52%, transparent);
+}
+.codex-screen .codex-page-list button > span { font-size: 10px; }
+.codex-screen .codex-page-list button.active {
+  background: color-mix(in srgb, var(--gold) 12%, var(--panel));
+  box-shadow: inset 3px 0 0 var(--gold);
+}
+.codex-screen > .codex-tab-page[data-codex-tab="books"] .codex-book-page {
+  position: relative;
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--gold) 10%, transparent), transparent 42px),
+    radial-gradient(circle at 96% 4%, color-mix(in srgb, var(--gold) 9%, transparent), transparent 35%),
+    var(--codex-paper);
+  color: var(--codex-ink);
+  box-shadow: inset 14px 0 22px -26px color-mix(in srgb, var(--text) 92%, transparent);
+}
+.codex-screen > .codex-tab-page[data-codex-tab="books"] .codex-book-page::before {
+  left: 13px;
+  background: color-mix(in srgb, var(--gold) 38%, var(--line));
+}
+.codex-screen .codex-page-heading h3,
+.codex-screen .codex-section-heading h4 { color: var(--codex-ink); letter-spacing: -.035em; }
+.codex-screen .codex-page-heading p { color: color-mix(in srgb, var(--codex-ink) 68%, var(--muted)); }
+.codex-screen .codex-page-summary span {
+  border-color: color-mix(in srgb, var(--gold) 24%, var(--line));
+  background: color-mix(in srgb, var(--gold) 5%, transparent);
+}
+.codex-screen .codex-examples pre {
+  border-color: color-mix(in srgb, var(--gold) 22%, var(--line));
+  border-left: 3px solid color-mix(in srgb, var(--gold) 62%, var(--line));
+  background: color-mix(in srgb, var(--panel3) 88%, var(--gold) 12%);
+}
+.codex-screen .codex-section-hint { background: color-mix(in srgb, var(--gold) 6%, transparent); }
+@media (max-width: 760px) {
+  .codex-screen .codex-summary-grid { max-width: none; }
+  .codex-screen .codex-summary-grid > div { min-width: 0; padding-inline: 6px; }
+  .codex-screen > .codex-tab-page[data-codex-tab="books"] .codex-book-page::before { left: 8px; }
+}
+
+/* F-154: final Codex reader contract.  Keep the route inside the Forge
+   viewport and give it one intentional reading scroll, instead of allowing
+   the old dashboard rules to create a page-long feed.  The shelf is already
+   paged in React, so it never needs its own desktop scrollbar. */
+.game-screen > .codex-screen {
+  display: grid;
+  grid-template-rows: auto minmax(72px, auto) auto minmax(0, 1fr);
+  gap: 8px;
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  max-height: 100%;
+  padding: clamp(10px, 1.5vw, 18px);
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+.game-screen > .codex-screen > .surface-nav {
+  grid-row: 1;
+  position: relative;
+  top: auto;
+  min-width: 0;
+  min-height: 50px;
+  margin: -10px -10px 0;
+  padding-inline: clamp(10px, 1.5vw, 18px);
+  overflow-x: auto;
+  overflow-y: hidden;
+  box-shadow: 0 8px 18px rgba(0,0,0,.12);
+}
+.game-screen > .codex-screen > .screen-hero.codex-hero {
+  grid-row: 2;
+  min-height: 0;
+  max-height: none;
+  height: auto;
+  margin: 0;
+  overflow: hidden;
+}
+.game-screen > .codex-screen > .codex-mode-tabs {
+  grid-row: 3;
+  min-height: 0;
+  margin: 0;
+}
+.game-screen > .codex-screen > .codex-tab-page[data-codex-tab="books"] {
+  grid-row: 4;
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+  height: auto;
+  overflow: hidden;
+}
+.game-screen > .codex-screen > .codex-tab-page[data-codex-tab="books"] > .codex-library {
+  display: grid;
+  grid-template-columns: minmax(218px, 252px) minmax(0, 1fr);
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+}
+.game-screen > .codex-screen > .codex-tab-page[data-codex-tab="books"] .codex-index {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
+}
+.game-screen > .codex-screen > .codex-tab-page[data-codex-tab="books"] .codex-page-list {
+  flex: 0 0 auto;
+  min-height: 0;
+  max-height: none;
+  overflow: visible;
+}
+.game-screen > .codex-screen > .codex-tab-page[data-codex-tab="books"] .codex-book-page {
+  display: grid;
+  grid-template-rows: auto auto auto minmax(0, 1fr);
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
+}
+.game-screen > .codex-screen > .codex-tab-page[data-codex-tab="books"] .codex-book-section {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+  max-height: none;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: thin;
+  scrollbar-gutter: stable;
+  overscroll-behavior: contain;
+}
+.game-screen > .codex-screen > .codex-tab-page[data-codex-tab="books"] .codex-page-grid,
+.game-screen > .codex-screen > .codex-tab-page[data-codex-tab="books"] .codex-entry-detail,
+.game-screen > .codex-screen > .codex-tab-page[data-codex-tab="books"] .codex-entry-insights,
+.game-screen > .codex-screen > .codex-tab-page[data-codex-tab="books"] .codex-mastery-panel .skill-grid {
+  min-width: 0;
+  overflow: visible;
+}
+.game-screen > .codex-screen > .codex-tab-page[data-codex-tab="battle"] {
+  grid-row: 4;
+  min-width: 0;
+  min-height: 0;
+  height: auto;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: thin;
+  overscroll-behavior: contain;
+}
+@media (max-width: 760px) {
+  .game-screen > .codex-screen > .codex-tab-page[data-codex-tab="books"] > .codex-library {
+    grid-template-columns: 1fr;
+  }
+  .game-screen > .codex-screen > .codex-tab-page[data-codex-tab="books"] .codex-index {
+    height: auto;
+    max-height: min(36vh, 250px);
+    overflow-y: auto;
+    scrollbar-width: thin;
+  }
+}
+
+/* F-155: make the bounded reader feel like a field guide, not a second IDE.
+   Display copy uses a readable book face while code/evidence remains
+   deliberately monospace.  This is a presentation-only layer: the single
+   bounded reading surface and React-owned paging contract remain unchanged. */
+.codex-screen {
+  --codex-display-font: Georgia, "Iowan Old Style", "Palatino Linotype", serif;
+  --codex-body-font: "Segoe UI", system-ui, sans-serif;
+}
+.codex-screen > .screen-hero.codex-hero h2,
+.codex-screen .codex-page-heading h3,
+.codex-screen .codex-section-heading h4,
+.codex-screen .codex-entry-detail > p,
+.codex-screen .codex-mistakes p,
+.codex-screen .codex-insight-empty,
+.codex-screen .codex-section-hint {
+  font-family: var(--codex-display-font);
+}
+.codex-screen > .screen-hero.codex-hero h2 {
+  letter-spacing: -.025em;
+  font-weight: 700;
+}
+.codex-screen .codex-page-heading h3,
+.codex-screen .codex-section-heading h4 {
+  font-weight: 700;
+}
+.codex-screen .codex-page-heading p,
+.codex-screen .codex-entry-detail > p,
+.codex-screen .codex-mistakes p,
+.codex-screen .codex-insight-empty,
+.codex-screen .codex-section-hint {
+  font-family: var(--codex-body-font);
+  line-height: 1.65;
+}
+.codex-screen .codex-page-heading p {
+  font-size: 13px;
+}
+.codex-screen .codex-book-tabs {
+  border-radius: 5px;
+  background: color-mix(in srgb, var(--panel3) 58%, transparent);
+}
+.codex-screen .codex-book-tabs button {
+  border-radius: 4px;
+  font-family: var(--codex-body-font);
+  font-size: 10px;
+  letter-spacing: .08em;
+}
+.codex-screen .codex-page-controls,
+.codex-screen .codex-entry-pager,
+.codex-screen .codex-shelf-controls {
+  font-family: var(--codex-body-font);
+}
+.codex-screen .codex-page-summary span,
+.codex-screen .codex-tags span,
+.codex-screen .codex-entry-meta,
+.codex-screen .codex-entry-picker button small,
+.codex-screen .codex-page-list button small {
+  font-family: var(--codex-body-font);
+}
+.codex-screen .codex-book-section {
+  scroll-behavior: smooth;
+}
+
+/* F-156: expose portrait transport state beside the account revision
+   diagnostics.  The label is derived from SyncEngine's validated avatar
+   projection; it never guesses whether another device has a portrait. */
+.account-avatar-sync {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 4px 10px;
+  align-items: baseline;
+  padding: 8px 9px;
+  border: 1px solid color-mix(in srgb, var(--line2) 72%, var(--line));
+  border-radius: 7px;
+  background: color-mix(in srgb, var(--panel3) 70%, transparent);
+}
+.account-avatar-sync span {
+  color: var(--muted);
+  font: 8px ui-monospace, monospace;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+}
+.account-avatar-sync strong {
+  color: var(--gold2);
+  font: 9px ui-monospace, monospace;
+  letter-spacing: .06em;
+}
+.account-avatar-sync small {
+  grid-column: 1 / -1;
+  color: var(--dim);
+  font-size: 9px;
+}
+
+/* F-157: the Codex is a page-turning folio, not a document inside a
+   document.  The previous cascade correctly clipped the outer shell but
+   still left the selected section as a visible long-scroll surface.  Keep
+   desktop pages finite and let React-owned shelf/record pagers decide what
+   is shown.  Narrow windows retain a bounded fallback scroll because a
+   single-column phone layout cannot display both book columns at once. */
+.game-screen > .codex-screen {
+  grid-template-rows: auto minmax(96px, auto) minmax(0, 1fr);
+  gap: 8px;
+}
+.game-screen > .codex-screen > .screen-hero.codex-hero {
+  grid-row: 2;
+  min-height: 96px;
+  max-height: 112px;
+  padding: 13px 16px 42px;
+  overflow: hidden;
+}
+.game-screen > .codex-screen > .codex-mode-tabs {
+  grid-row: 2;
+  align-self: end;
+  justify-self: start;
+  position: relative;
+  z-index: 2;
+  margin: 0 0 10px 16px;
+  padding: 3px;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--panel3) 78%, transparent);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, .12);
+}
+.game-screen > .codex-screen > .codex-tab-page[data-codex-tab="books"],
+.game-screen > .codex-screen > .codex-tab-page[data-codex-tab="battle"] {
+  grid-row: 3;
+}
+.codex-screen .codex-book-section {
+  overflow: hidden;
+  padding-right: 2px;
+  scrollbar-width: none;
+  overscroll-behavior: none;
+}
+.codex-screen .codex-book-section::-webkit-scrollbar { display: none; }
+.codex-screen [data-testid="codex-read-section"] .codex-page-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(210px, .65fr);
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+  padding: 6px 0 0;
+  border-bottom: 0;
+}
+.codex-screen [data-testid="codex-read-section"] .codex-page-grid > div {
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+.codex-screen [data-testid="codex-read-section"] .codex-examples {
+  max-height: 220px;
+  overflow: hidden;
+}
+.codex-screen [data-testid="codex-read-section"] .codex-examples pre {
+  max-height: 104px;
+  overflow: auto;
+  scrollbar-width: thin;
+}
+.codex-screen [data-testid="codex-read-section"] .codex-mistakes,
+.codex-screen [data-testid="codex-read-section"] .codex-recorded-signals {
+  max-height: 96px;
+  overflow: hidden;
+}
+.codex-screen [data-testid="codex-encounters-section"] .codex-entry-picker-expanded,
+.codex-screen [data-testid="codex-notes-section"] .codex-entry-picker-inline {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  max-height: 78px;
+  overflow: hidden;
+  margin-bottom: 9px;
+}
+.codex-screen [data-testid="codex-encounters-section"] .codex-entry-detail,
+.codex-screen [data-testid="codex-notes-section"] > .codex-notes,
+.codex-screen [data-testid="codex-notes-section"] > .codex-note-form {
+  min-height: 0;
+  overflow: hidden;
+}
+.codex-screen [data-testid="codex-encounters-section"] .codex-entry-insights {
+  max-height: 126px;
+  overflow: hidden;
+}
+.codex-screen [data-testid="codex-encounters-section"] .codex-entry-detail > p {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow: hidden;
+}
+.codex-screen [data-testid="codex-notes-section"] .codex-notes.workspace-notebook pre {
+  max-height: 6.5em;
+  overflow: auto;
+  scrollbar-width: thin;
+}
+.codex-screen [data-testid="codex-notes-section"] .codex-note-form textarea {
+  resize: none;
+  max-height: 76px;
+}
+.codex-screen [data-testid="codex-mastery"] .skill-grid {
+  overflow: hidden;
+}
+@media (max-width: 760px) {
+  .game-screen > .codex-screen > .screen-hero.codex-hero {
+    min-height: 126px;
+    max-height: 156px;
+    padding-bottom: 42px;
+  }
+  .game-screen > .codex-screen > .codex-mode-tabs { margin-left: 8px; }
+  .codex-screen [data-testid="codex-read-section"] .codex-page-grid {
+    grid-template-columns: 1fr;
+    overflow-y: auto;
+    scrollbar-width: thin;
+  }
+  .codex-screen .codex-book-section { overflow-y: auto; scrollbar-width: thin; }
+  .codex-screen [data-testid="codex-encounters-section"] .codex-entry-picker-expanded,
+  .codex-screen [data-testid="codex-notes-section"] .codex-entry-picker-inline {
+    grid-template-columns: 1fr;
+    max-height: 128px;
+    overflow-y: auto;
+  }
+}
+
+/* F-158: the old cascade still won on desktop because its more-specific
+   viewport rule reintroduced overflow-y:auto after the F-157 compact pass.
+   The Codex book is already paged by React, so desktop sections must be a
+   finite folio surface rather than a second document scrollbar.  Keep the
+   narrow one-column fallback scrollable when the available height genuinely
+   cannot show both the index and the page. */
+.game-screen > .codex-screen > .codex-tab-page[data-codex-tab="books"] .codex-book-section {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  max-height: 100%;
+  overflow: hidden;
+  overflow-y: hidden;
+  scrollbar-width: none;
+  overscroll-behavior: none;
+}
+.game-screen > .codex-screen > .codex-tab-page[data-codex-tab="books"] .codex-book-section::-webkit-scrollbar { display: none; }
+.game-screen > .codex-screen > .codex-tab-page[data-codex-tab="books"] [data-testid="codex-read-section"] .codex-page-grid {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+}
+@media (max-width: 760px) {
+  .game-screen > .codex-screen > .codex-tab-page[data-codex-tab="books"] .codex-book-section {
+    height: auto;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    overscroll-behavior: contain;
+  }
+}
+
+/* F-161: wide RPG surfaces share one bounded frame. Codex used to be the
+   exception: it rendered its own route navigation directly inside the Forge
+   grid and needed an absolute-positioned overflow cascade to fit. Mounting it
+   beside Hub/Character/Homestead gives the browser a real flex budget, so the
+   navigation consumes one row and the folio owns the remaining viewport. */
+.wide-screen-frame > .codex-screen {
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr);
+  gap: 8px;
+  flex: 1 1 auto;
+  width: 100%;
+  height: auto;
+  min-width: 0;
+  min-height: 0;
+  max-height: 100%;
+  padding: clamp(10px, 1.5vw, 18px);
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+.wide-screen-frame > .codex-screen > .screen-hero.codex-hero {
+  grid-row: 1;
+  min-height: 0;
+  max-height: 112px;
+  margin: 0;
+  overflow: hidden;
+}
+.wide-screen-frame > .codex-screen > .codex-mode-tabs {
+  grid-row: 2;
+  align-self: start;
+  justify-self: start;
+  min-height: 0;
+  margin: 0;
+}
+.wide-screen-frame > .codex-screen > .codex-tab-page[data-codex-tab="books"] {
+  grid-row: 3;
+  display: flex;
+  flex: 1 1 auto;
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
+  height: auto;
+  overflow: hidden;
+}
+.wide-screen-frame > .codex-screen > .codex-tab-page[data-codex-tab="books"] > .codex-library {
+  display: grid;
+  grid-template-columns: minmax(218px, 252px) minmax(0, 1fr);
+  flex: 1 1 auto;
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+}
+.wide-screen-frame > .codex-screen > .codex-tab-page[data-codex-tab="books"] .codex-index,
+.wide-screen-frame > .codex-screen > .codex-tab-page[data-codex-tab="books"] .codex-book-page {
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
+}
+.wide-screen-frame > .codex-screen > .codex-tab-page[data-codex-tab="books"] .codex-page-list {
+  flex: 0 0 auto;
+  min-height: 0;
+  max-height: none;
+  overflow: visible;
+}
+.wide-screen-frame > .codex-screen > .codex-tab-page[data-codex-tab="books"] .codex-book-section {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  max-height: 100%;
+  overflow: hidden;
+  overflow-y: hidden;
+  scrollbar-width: none;
+  overscroll-behavior: none;
+}
+.wide-screen-frame > .codex-screen > .codex-tab-page[data-codex-tab="books"] .codex-book-section::-webkit-scrollbar { display: none; }
+.wide-screen-frame > .codex-screen > .codex-tab-page[data-codex-tab="battle"] {
+  grid-row: 3;
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: thin;
+  overscroll-behavior: contain;
+}
+@media (max-width: 760px) {
+  .wide-screen-frame > .codex-screen { padding: 10px; }
+  .wide-screen-frame > .codex-screen > .codex-tab-page[data-codex-tab="books"] > .codex-library { grid-template-columns: 1fr; }
+  .wide-screen-frame > .codex-screen > .codex-tab-page[data-codex-tab="books"] .codex-index {
+    height: auto;
+    max-height: min(36vh, 250px);
+    overflow-y: auto;
+    scrollbar-width: thin;
+  }
+  .wide-screen-frame > .codex-screen > .codex-tab-page[data-codex-tab="books"] .codex-book-section {
+    height: auto;
+    overflow-y: auto;
+    scrollbar-width: thin;
+  }
+}
+/* Final Forge-first cascade: explicit folios, readable notes, and no legacy Battle Shell clipping. */
+.wide-screen-frame > .codex-screen { grid-template-rows: auto minmax(0, 1fr); }
+.wide-screen-frame > .codex-screen > .codex-library { grid-row: 2; display: grid; grid-template-columns: minmax(218px,252px) minmax(0,1fr); min-width: 0; min-height: 0; height: 100%; overflow: hidden; }
+.wide-screen-frame > .codex-screen > .codex-library > .codex-index { min-width: 0; min-height: 0; height: 100%; overflow-y: auto; scrollbar-width: thin; }
+.wide-screen-frame > .codex-screen > .codex-library > .codex-book-page { display: flex; flex-direction: column; min-width: 0; min-height: 0; height: 100%; overflow: hidden; }
+.codex-screen .codex-book-section { display: flex; flex: 1 1 auto; flex-direction: column; min-height: 0; max-height: none; overflow-y: auto; overflow-x: hidden; padding-right: 8px; scrollbar-width: thin; overscroll-behavior: contain; }
+.codex-screen .codex-read-folio { min-height: 0; flex: 1 1 auto; overflow-y: auto; padding: 14px 2px 18px 0; }
+.codex-screen .codex-folio-copy { display: grid; gap: 9px; min-height: 100%; align-content: start; }
+.codex-screen .codex-folio-copy h4 { margin: 0; font: 800 18px ui-monospace,monospace; color: var(--text); }
+.codex-screen .codex-definition-copy { max-width: 760px; margin: 0; color: var(--text); font-size: 14px; line-height: 1.75; }
+.codex-folio-controls { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin: 10px 0 0; padding: 5px; border: 1px solid var(--line); border-radius: 8px; background: color-mix(in srgb,var(--panel3) 80%,transparent); }
+.codex-folio-controls button { padding: 5px 8px; color: var(--muted); font: 9px ui-monospace,monospace; }
+.codex-folio-controls button.active { border-color: color-mix(in srgb,var(--gold) 60%,var(--line)); background: color-mix(in srgb,var(--gold) 10%,transparent); color: var(--text); }
+.codex-folio-controls span { margin-left: auto; color: var(--dim); font: 9px ui-monospace,monospace; }
+.codex-screen .codex-page-grid, .codex-screen .codex-page-grid > div { min-height: 0; overflow: visible; }
+.codex-screen .codex-examples, .codex-screen .codex-mistakes, .codex-screen .codex-recorded-signals, .codex-screen .codex-entry-insights { max-height: none; overflow: visible; }
+.codex-screen .codex-examples pre { max-height: none; overflow-x: auto; white-space: pre-wrap; overflow-wrap: anywhere; }
+.codex-screen .codex-notes, .codex-screen .codex-notes.workspace-notebook pre, .codex-screen .codex-note-form { max-height: none; overflow: visible; }
+.codex-screen .codex-notes.workspace-notebook pre { white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.65; }
+.codex-screen .codex-note-form textarea { min-height: 120px; max-height: none; resize: vertical; }
+.codex-screen .codex-entry-detail > p { display: block; overflow: visible; }
+.forge-submit-card { display: grid; gap: 8px; margin: 10px; padding: 10px; border: 1px solid color-mix(in srgb,var(--gold) 22%,var(--line)); border-radius: 9px; background: color-mix(in srgb,var(--panel2) 72%,transparent); }
+.forge-submit-card .card-heading { margin: 0; }
+.forge-submit-card form { display: grid; gap: 8px; }
+.forge-submit-card .battle-field { display: grid; gap: 4px; color: var(--muted); font: 9px ui-monospace,monospace; text-transform: uppercase; letter-spacing: .06em; }
+.forge-submit-card select { width: 100%; min-width: 0; padding: 6px 7px; background: var(--panel3); border: 1px solid var(--line); border-radius: 6px; color: var(--text); font-size: 10px; text-transform: none; letter-spacing: 0; }
+.forge-objective-brief { display: grid; gap: 3px; padding: 8px; border-left: 2px solid var(--gold); background: color-mix(in srgb,var(--gold) 6%,var(--panel3)); }
+.forge-objective-brief strong { color: var(--gold2); font: 9px ui-monospace,monospace; text-transform: uppercase; }
+.forge-objective-brief span { color: var(--muted); font-size: 10px; line-height: 1.4; }
+.boss-current-goal { display: grid; gap: 5px; padding: 9px; border: 1px solid color-mix(in srgb,var(--ember) 38%,var(--line)); border-radius: 8px; background: color-mix(in srgb,var(--ember) 7%,var(--panel3)); }
+.boss-current-goal > div { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+.boss-current-goal strong { color: var(--text); font-size: 11px; }
+.boss-current-goal span { color: var(--gold2); font: 800 8px ui-monospace,monospace; letter-spacing: .06em; text-transform: uppercase; }
+.boss-current-goal p { margin: 0; color: var(--muted); font-size: 10px; line-height: 1.45; }
+.boss-submit-card .forge-submit-status { display: block; }
+.active-file-summary { display: grid; gap: 4px; margin: 8px 10px 12px; padding: 10px; border: 1px solid var(--line); border-radius: 8px; background: color-mix(in srgb,var(--panel3) 76%,transparent); }
+.active-file-summary span { color: var(--gold); font: 800 8px ui-monospace,monospace; letter-spacing: .1em; }
+.active-file-summary strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text); font: 11px ui-monospace,monospace; }
+.active-file-summary small { color: var(--muted); font-size: 9px; line-height: 1.35; }
+.forge-submit-status { color: var(--muted); font: 9px/1.4 ui-monospace,monospace; }
+.forge-reward-envelope { display: grid; gap: 3px; margin: 4px 10px; padding: 7px 8px; border: 1px dashed color-mix(in srgb,var(--gold) 40%,var(--line)); border-radius: 7px; color: var(--gold2); }
+.forge-reward-envelope small { color: var(--dim); font: 8px ui-monospace,monospace; letter-spacing: .08em; }
+.forge-reward-envelope span { font: 10px ui-monospace,monospace; }
+.character-progress-cockpit { margin-bottom: 14px; }
+.character-cockpit-grid { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 8px; }
+.character-cockpit-grid > div { display: grid; gap: 4px; min-width: 0; padding: 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel3); }
+.character-cockpit-grid small, .character-event-strip > small { color: var(--muted); font: 8px ui-monospace,monospace; letter-spacing: .08em; }
+.character-cockpit-grid strong { color: var(--gold); font: 800 12px ui-monospace,monospace; overflow-wrap: anywhere; }
+.character-cockpit-grid span { color: var(--muted); font-size: 9px; line-height: 1.4; overflow-wrap: anywhere; }
+.character-cockpit-actions { display: flex; gap: 7px; flex-wrap: wrap; margin-top: 10px; }
+.character-event-strip { display: grid; gap: 4px; margin-top: 12px; padding-top: 9px; border-top: 1px solid var(--line); }
+.character-event-strip span { color: var(--muted); font: 9px/1.35 ui-monospace,monospace; }
+.settings-layout-actions { display: flex; align-items: center; justify-content: space-between; gap: 9px; margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--line); color: var(--muted); font-size: 10px; }
+.tutor-practice-heading p { margin: 0; color: var(--muted); font-size: 9px; line-height: 1.35; }
+.tutor-practice-heading em { color: var(--dim); font-size: 8px; line-height: 1.3; }
+@media (max-width:900px) { .character-cockpit-grid { grid-template-columns: repeat(2,minmax(0,1fr)); } }
+@media (max-width:760px) { .wide-screen-frame > .codex-screen > .codex-library { grid-template-columns: 1fr; height: auto; overflow: visible; } .wide-screen-frame > .codex-screen > .codex-library > .codex-index { height: auto; max-height: 34vh; } .wide-screen-frame > .codex-screen > .codex-library > .codex-book-page { height: auto; min-height: 55vh; overflow: visible; } .codex-screen .codex-book-section { overflow-y: visible; } }
+
+/* Infinite Dungeon parity surface.  The prototype is deliberately scoped to
+   this root so the campaign Forge keeps its established layout and tokens. */
+.dungeon-screen-shell {
+  --dungeon-bg: #0d100d;
+  --dungeon-panel: #151a16;
+  --dungeon-panel-2: #1b221c;
+  --dungeon-panel-3: #0f130f;
+  --dungeon-line: #354237;
+  --dungeon-line-bright: #596d56;
+  --dungeon-text: #f1ead7;
+  --dungeon-muted: #a9ad9c;
+  --dungeon-dim: #6f796c;
+  --dungeon-gold: #e8b94e;
+  --dungeon-gold-soft: #f3d889;
+  --dungeon-ember: #dc7545;
+  --dungeon-green: #78b36f;
+  --dungeon-blue: #7cb9c9;
+  --dungeon-danger: #e47a6c;
+  display: grid;
+  gap: 12px;
+  width: 100%;
+  min-width: 0;
+  min-height: 100%;
+  padding: 14px;
+  color: var(--dungeon-text);
+  background: radial-gradient(circle at 50% -20%, #273126 0, var(--dungeon-bg) 48%);
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+}
+.dungeon-screen-shell *, .dungeon-screen-shell *::before, .dungeon-screen-shell *::after { box-sizing: border-box; }
+.dungeon-screen-shell h1, .dungeon-screen-shell h2, .dungeon-screen-shell h3, .dungeon-screen-shell p { margin: 0; }
+.dungeon-screen-shell button, .dungeon-screen-shell input { font: inherit; }
+.dungeon-screen-shell button { cursor: pointer; }
+.dungeon-screen-shell button:disabled { cursor: not-allowed; opacity: .42; }
+.dungeon-screen-shell svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.45; stroke-linecap: round; stroke-linejoin: round; }
+.dungeon-local-header {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) auto minmax(300px, 1fr);
+  align-items: center;
+  gap: 18px;
+  min-height: 72px;
+  padding: 13px 16px;
+  border: 1px solid var(--dungeon-line);
+  border-radius: 12px;
+  background: rgb(10 13 10 / 86%);
+  box-shadow: 0 22px 60px rgb(0 0 0 / 24%);
+}
+.dungeon-local-brand { display: flex; align-items: center; gap: 11px; min-width: 0; }
+.dungeon-brand-mark, .dungeon-class-icon, .dungeon-item-art, .dungeon-mob-sigil { display: grid; place-items: center; }
+.dungeon-brand-mark { flex: 0 0 40px; width: 40px; height: 40px; border: 1px solid color-mix(in srgb, var(--dungeon-gold) 48%, var(--dungeon-line)); border-radius: 12px; color: var(--dungeon-gold); background: color-mix(in srgb, var(--dungeon-gold) 9%, var(--dungeon-panel)); box-shadow: 0 0 20px rgb(232 185 78 / 10%); }
+.dungeon-local-brand h1 { margin-top: 3px; color: var(--dungeon-text); font: 800 19px/1 ui-monospace, monospace; letter-spacing: -.03em; }
+.dungeon-eyebrow { display: block; color: var(--dungeon-gold); font: 800 9px/1.2 ui-monospace, monospace; letter-spacing: .15em; text-transform: uppercase; }
+.dungeon-local-badge { display: inline-flex; align-items: center; justify-self: center; gap: 7px; padding: 6px 9px; border: 1px solid var(--dungeon-line); border-radius: 999px; color: var(--dungeon-muted); font: 8px ui-monospace, monospace; letter-spacing: .07em; white-space: nowrap; }
+.dungeon-local-badge i { width: 7px; height: 7px; border-radius: 50%; background: var(--dungeon-green); box-shadow: 0 0 12px var(--dungeon-green); }
+.dungeon-run-stats { display: flex; justify-self: end; gap: 7px; }
+.dungeon-run-stats > div { display: grid; gap: 3px; min-width: 55px; padding: 6px 8px; border: 1px solid var(--dungeon-line); border-radius: 8px; background: var(--dungeon-panel-3); }
+.dungeon-run-stats small { color: var(--dungeon-dim); font: 800 7px ui-monospace, monospace; letter-spacing: .1em; }
+.dungeon-run-stats strong { color: var(--dungeon-gold-soft); font: 800 13px ui-monospace, monospace; }
+.dungeon-reset-header { align-self: stretch; padding: 6px 9px; border: 1px solid color-mix(in srgb, var(--dungeon-danger) 58%, var(--dungeon-line)); border-radius: 7px; color: var(--dungeon-danger); background: color-mix(in srgb, var(--dungeon-danger) 7%, transparent); font: 800 8px ui-monospace, monospace; white-space: nowrap; }
+.dungeon-reset-header:hover:not(:disabled) { border-color: var(--dungeon-danger); background: color-mix(in srgb, var(--dungeon-danger) 15%, transparent); }
+.dungeon-header-note { display: grid; justify-self: end; gap: 3px; text-align: right; }
+.dungeon-header-note strong { color: var(--dungeon-gold-soft); font: 800 10px ui-monospace, monospace; letter-spacing: .08em; }
+.dungeon-prototype-grid { display: grid; grid-template-columns: minmax(285px, .92fr) minmax(360px, 1.14fr) minmax(260px, .84fr); gap: 12px; min-height: calc(100vh - 170px); }
+.dungeon-proto-panel { display: flex; flex-direction: column; min-width: 0; padding: 15px; border: 1px solid var(--dungeon-line); border-radius: 12px; background: linear-gradient(180deg, color-mix(in srgb, var(--dungeon-panel) 96%, transparent), var(--dungeon-panel-3)); box-shadow: 0 22px 60px rgb(0 0 0 / 24%); }
+.dungeon-panel-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; padding-bottom: 12px; border-bottom: 1px solid var(--dungeon-line); }
+.dungeon-panel-heading h2 { margin-top: 4px; color: var(--dungeon-text); font: 800 18px/1 ui-monospace, monospace; }
+.dungeon-panel-tag, .dungeon-room-type, .dungeon-ide-risk { padding: 5px 7px; border: 1px solid var(--dungeon-line); border-radius: 5px; color: var(--dungeon-muted); font: 800 8px ui-monospace, monospace; letter-spacing: .08em; text-transform: uppercase; white-space: nowrap; }
+.dungeon-panel-copy { margin: 11px 0; color: var(--dungeon-muted); font-size: 11px; line-height: 1.5; }
+.dungeon-map-legend { display: flex; flex-wrap: wrap; gap: 7px; margin-bottom: 10px; color: var(--dungeon-dim); font: 8px ui-monospace, monospace; letter-spacing: .04em; text-transform: uppercase; }
+.dungeon-map-legend span { display: inline-flex; align-items: center; gap: 4px; }
+.legend-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--dungeon-dim); }
+.legend-dot.rest { background: var(--dungeon-green); }.legend-dot.market { background: var(--dungeon-gold); }.legend-dot.encounter { background: var(--dungeon-ember); }.legend-dot.elite { background: #c66ad7; }.legend-dot.mystery { background: var(--dungeon-blue); }.legend-dot.boss { background: var(--dungeon-danger); }
+.dungeon-proto-map { position: relative; display: grid; grid-template-columns: repeat(5, 1fr); grid-template-rows: repeat(8, minmax(45px, 1fr)); gap: 6px; min-height: 438px; padding: 11px; border: 1px solid var(--dungeon-line); border-radius: 10px; overflow: hidden; background: #101610; }
+.dungeon-map-edges { position: absolute; inset: 11px; z-index: 0; width: calc(100% - 22px); height: calc(100% - 22px); overflow: visible; }
+.dungeon-map-edges line { stroke: var(--dungeon-line); stroke-width: 1.1; vector-effect: non-scaling-stroke; opacity: .82; transition: stroke .16s ease, opacity .16s ease; }
+.dungeon-map-edges line.active { stroke: var(--dungeon-gold); opacity: .94; }
+.dungeon-map-node { position: relative; z-index: 1; display: grid; place-items: center; align-content: center; gap: 2px; min-width: 0; padding: 3px; border: 1px solid var(--dungeon-line); border-radius: 8px; color: var(--dungeon-muted); background: #171e17; transition: transform .16s ease, border-color .16s ease, background .16s ease; }
+.dungeon-map-node:hover:not(:disabled) { transform: translateY(-2px); border-color: var(--dungeon-gold); background: #232a20; }
+.dungeon-map-node:disabled { opacity: 1; color: var(--dungeon-dim); background: #151b16; }
+.dungeon-map-node:disabled > span, .dungeon-map-node:disabled strong, .dungeon-map-node:disabled small { opacity: .48; }
+.dungeon-map-node.current { border-color: var(--dungeon-gold); box-shadow: 0 0 0 2px rgb(232 185 78 / 13%), 0 0 20px rgb(232 185 78 / 10%); color: var(--dungeon-gold-soft); }
+.dungeon-map-node.reachable { border-color: color-mix(in srgb, var(--dungeon-green) 58%, var(--dungeon-line)); color: var(--dungeon-text); }
+.dungeon-map-node.visited:not(.current) { border-color: color-mix(in srgb, var(--dungeon-gold) 32%, var(--dungeon-line)); }
+.dungeon-map-node > span { font-size: 15px; line-height: 1; }.dungeon-map-node.rest > span { color: var(--dungeon-green); }.dungeon-map-node.market > span { color: var(--dungeon-gold); }.dungeon-map-node.encounter > span { color: var(--dungeon-ember); }.dungeon-map-node.elite > span { color: #c66ad7; }.dungeon-map-node.mystery > span { color: var(--dungeon-blue); }.dungeon-map-node.boss > span { color: var(--dungeon-danger); }
+.dungeon-map-node strong { max-width: 100%; overflow: hidden; color: inherit; font: 800 8px ui-monospace, monospace; text-overflow: ellipsis; white-space: nowrap; }.dungeon-map-node small { color: var(--dungeon-dim); font: 7px ui-monospace, monospace; text-transform: uppercase; }
+.dungeon-route-footer { display: flex; justify-content: space-between; gap: 8px; margin-top: 9px; color: var(--dungeon-dim); font: 8px ui-monospace, monospace; letter-spacing: .05em; text-transform: uppercase; }
+.dungeon-route-footer span:first-child { color: var(--dungeon-gold); }
+.dungeon-route-choice-list { display: grid; gap: 6px; margin-top: 10px; }.dungeon-route-choice-list button { display: grid; grid-template-columns: 25px minmax(0, 1fr) auto; align-items: center; gap: 7px; padding: 8px; border: 1px solid var(--dungeon-line); border-radius: 7px; color: var(--dungeon-text); text-align: left; background: var(--dungeon-panel-2); }.dungeon-route-choice-list button:hover:not(:disabled) { border-color: var(--dungeon-gold); }.dungeon-route-choice-list button > svg { color: var(--dungeon-gold); }.dungeon-route-choice-list button span { display: grid; gap: 3px; min-width: 0; }.dungeon-route-choice-list strong { font: 800 9px ui-monospace, monospace; }.dungeon-route-choice-list small { color: var(--dungeon-muted); font-size: 9px; }.dungeon-route-choice-list b { color: var(--dungeon-gold); }
+.dungeon-room-panel { overflow: hidden; }.dungeon-room-type { display: inline-flex; align-items: center; gap: 4px; }.dungeon-room-type.rest { color: var(--dungeon-green); border-color: color-mix(in srgb, var(--dungeon-green) 44%, var(--dungeon-line)); }.dungeon-room-type.market { color: var(--dungeon-gold); }.dungeon-room-type.encounter { color: var(--dungeon-ember); border-color: color-mix(in srgb, var(--dungeon-ember) 50%, var(--dungeon-line)); }.dungeon-room-type.elite { color: #c66ad7; border-color: color-mix(in srgb, #c66ad7 50%, var(--dungeon-line)); }.dungeon-room-type.mystery { color: var(--dungeon-blue); }.dungeon-room-type.boss { color: var(--dungeon-danger); border-color: color-mix(in srgb, var(--dungeon-danger) 54%, var(--dungeon-line)); }
+.dungeon-room-illustration { position: relative; display: grid; place-items: center; height: 142px; margin: 15px 0 12px; border: 1px solid var(--dungeon-line); border-radius: 10px; overflow: hidden; color: var(--dungeon-gold-soft); background: radial-gradient(circle, #29372a 0, #111711 68%); }.dungeon-room-illustration.market { background: radial-gradient(circle, #3a3222 0, #14140f 68%); }.dungeon-room-illustration.encounter { background: radial-gradient(circle, #482822 0, #17100f 68%); }.dungeon-room-illustration.elite { background: radial-gradient(circle, #3b2245 0, #171019 68%); }.dungeon-room-illustration.mystery { background: radial-gradient(circle, #1c3541 0, #0f1519 68%); }.dungeon-room-illustration.boss { color: var(--dungeon-danger); background: radial-gradient(circle, #4b242a 0, #171011 68%); }
+.dungeon-room-orbit { position: absolute; width: 125px; height: 125px; border: 1px solid rgb(232 185 78 / 22%); border-radius: 50%; transform: rotate(24deg); }.dungeon-room-orbit.orbit-a { border-style: dashed; }.dungeon-room-orbit.orbit-b { width: 190px; height: 76px; transform: rotate(-22deg); }.dungeon-room-illustration > svg { position: relative; z-index: 1; width: 42px; height: 42px; filter: drop-shadow(0 0 18px currentColor); }.dungeon-room-illustration small { position: absolute; bottom: 9px; color: var(--dungeon-muted); font: 800 8px ui-monospace, monospace; letter-spacing: .15em; text-transform: uppercase; }
+.dungeon-room-copy { margin-bottom: 11px; }.dungeon-room-copy h3 { margin: 6px 0; color: var(--dungeon-text); font: 800 16px/1.25 ui-monospace, monospace; }.dungeon-room-copy p { color: var(--dungeon-muted); font-size: 11px; line-height: 1.5; }
+.dungeon-mob-banner { display: grid; grid-template-columns: 34px minmax(0, 1fr) auto; align-items: center; gap: 9px; margin-bottom: 10px; padding: 9px; border: 1px solid color-mix(in srgb, var(--dungeon-ember) 45%, var(--dungeon-line)); border-radius: 8px; background: color-mix(in srgb, var(--dungeon-ember) 7%, var(--dungeon-panel-3)); }.dungeon-mob-sigil { width: 32px; height: 32px; border-radius: 8px; color: var(--dungeon-ember); background: rgb(220 117 69 / 12%); }.dungeon-mob-banner > div { display: grid; gap: 3px; min-width: 0; }.dungeon-mob-banner small { color: var(--dungeon-dim); font: 800 7px ui-monospace, monospace; letter-spacing: .06em; }.dungeon-mob-banner strong { overflow: hidden; color: var(--dungeon-text); font: 800 11px ui-monospace, monospace; text-overflow: ellipsis; white-space: nowrap; }.dungeon-mob-banner span { color: var(--dungeon-muted); font-size: 9px; }.dungeon-mob-banner > b { color: var(--dungeon-gold-soft); font: 800 8px ui-monospace, monospace; white-space: nowrap; }
+.dungeon-room-action, .dungeon-room-note { display: grid; gap: 5px; padding: 10px; border: 1px solid var(--dungeon-line); border-radius: 8px; background: var(--dungeon-panel-3); }.dungeon-room-action strong { font: 800 11px ui-monospace, monospace; }.dungeon-room-action span, .dungeon-room-note p { color: var(--dungeon-muted); font-size: 10px; line-height: 1.42; }.dungeon-room-note { margin-top: auto; padding: 10px 0 0; border-width: 1px 0 0; border-radius: 0; background: transparent; }.dungeon-room-note > span, .dungeon-camp-rule .dungeon-eyebrow { color: var(--dungeon-dim); font: 800 8px ui-monospace, monospace; letter-spacing: .12em; text-transform: uppercase; }
+.dungeon-room-supplies, .dungeon-market-wallet { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 9px; padding: 10px; border: 1px solid var(--dungeon-line); border-radius: 8px; background: color-mix(in srgb, var(--dungeon-panel-2) 72%, var(--dungeon-panel-3)); }.dungeon-room-supplies > div { display: grid; gap: 4px; }.dungeon-room-supplies strong { color: var(--dungeon-muted); font: 800 9px ui-monospace, monospace; }.dungeon-room-supplies > span { color: var(--dungeon-gold-soft); font: 800 13px ui-monospace, monospace; white-space: nowrap; }.dungeon-camp-rule { display: grid; gap: 4px; margin-bottom: 9px; padding: 8px 9px; border-left: 2px solid var(--dungeon-green); background: color-mix(in srgb, var(--dungeon-green) 6%, var(--dungeon-panel-3)); }.dungeon-camp-rule > span:last-child { color: var(--dungeon-muted); font-size: 9px; }
+.dungeon-action-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; }.dungeon-action-card, .dungeon-market-item { display: flex; align-items: flex-start; gap: 8px; width: 100%; min-width: 0; padding: 10px; border: 1px solid var(--dungeon-line); border-radius: 8px; color: var(--dungeon-text); text-align: left; background: var(--dungeon-panel-2); }.dungeon-action-card:hover:not(:disabled), .dungeon-market-item:hover { border-color: var(--dungeon-gold); }.dungeon-action-card > svg { flex: 0 0 auto; color: var(--dungeon-gold); }.dungeon-action-card > span { display: grid; gap: 3px; min-width: 0; }.dungeon-action-card strong, .dungeon-market-item strong { font: 800 9px ui-monospace, monospace; }.dungeon-action-card small, .dungeon-market-item small { color: var(--dungeon-muted); font-size: 9px; line-height: 1.35; }.dungeon-action-card b { margin-left: auto; color: var(--dungeon-gold); font: 800 8px ui-monospace, monospace; }.dungeon-primary-wide, .dungeon-danger-wide { display: inline-flex; align-items: center; justify-content: center; width: 100%; min-height: 34px; margin-top: 8px; padding: 7px 10px; border: 1px solid color-mix(in srgb, var(--dungeon-gold) 62%, var(--dungeon-line)); border-radius: 7px; color: #1a160d; background: var(--dungeon-gold); font: 800 10px ui-monospace, monospace; }.dungeon-danger-wide { border-color: color-mix(in srgb, var(--dungeon-ember) 65%, var(--dungeon-line)); color: #fff3e9; background: var(--dungeon-ember); }
+.dungeon-market-wallet { display: grid; align-items: stretch; gap: 9px; border-color: color-mix(in srgb, var(--dungeon-gold) 42%, var(--dungeon-line)); background: linear-gradient(100deg, color-mix(in srgb, var(--dungeon-gold) 8%, var(--dungeon-panel-2)), var(--dungeon-panel-3)); }.dungeon-market-wallet > div:first-child { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }.dungeon-market-wallet strong { color: var(--dungeon-gold-soft); font: 800 17px ui-monospace, monospace; }.dungeon-market-stock { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 5px; }.dungeon-market-stock span { display: flex; justify-content: space-between; gap: 3px; padding-top: 5px; border-top: 1px solid var(--dungeon-line); color: var(--dungeon-dim); font: 7px ui-monospace, monospace; text-transform: uppercase; }.dungeon-market-stock b { color: var(--dungeon-muted); }.dungeon-shelf-note { display: flex; align-items: baseline; justify-content: space-between; gap: 7px; margin: 0 0 8px; color: var(--dungeon-muted); font-size: 8px; }.dungeon-market-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; }.dungeon-market-item { align-items: center; min-height: 68px; padding: 9px; }.dungeon-market-item > svg { flex: 0 0 auto; color: var(--dungeon-gold); }.dungeon-market-item > span { display: grid; gap: 3px; min-width: 0; }.dungeon-market-item small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }.dungeon-market-item button { margin-left: auto; padding: 5px 7px; border: 1px solid var(--dungeon-line); border-radius: 5px; color: var(--dungeon-gold-soft); background: transparent; font: 800 8px ui-monospace, monospace; white-space: nowrap; }.dungeon-market-item button:hover:not(:disabled) { border-color: var(--dungeon-gold); }
+.dungeon-encounter-preview, .dungeon-risk-card { display: flex; gap: 9px; align-items: flex-start; padding: 10px; border: 1px solid color-mix(in srgb, var(--dungeon-ember) 45%, var(--dungeon-line)); border-radius: 8px; background: color-mix(in srgb, var(--dungeon-ember) 7%, var(--dungeon-panel-3)); }.dungeon-encounter-preview > svg, .dungeon-risk-card > svg { flex: 0 0 auto; margin-top: 2px; color: var(--dungeon-ember); }.dungeon-encounter-preview > div, .dungeon-risk-card > div { display: grid; gap: 4px; min-width: 0; }.dungeon-encounter-preview strong, .dungeon-risk-card strong { color: var(--dungeon-text); font: 800 11px ui-monospace, monospace; }.dungeon-encounter-preview p, .dungeon-risk-card p { color: var(--dungeon-muted); font-size: 10px; line-height: 1.42; }.dungeon-risk-card { border-color: color-mix(in srgb, var(--dungeon-blue) 48%, var(--dungeon-line)); background: linear-gradient(145deg, color-mix(in srgb, var(--dungeon-blue) 8%, var(--dungeon-panel-2)), var(--dungeon-panel-3)); }.dungeon-risk-card > svg { color: var(--dungeon-blue); }
+.dungeon-class-select { display: grid; align-content: center; gap: 16px; width: min(1100px, 100%); min-height: calc(100vh - 155px); margin: 0 auto; padding: 20px 18px 52px; }.dungeon-class-hero { display: grid; gap: 7px; max-width: 760px; }.dungeon-class-hero h2 { color: var(--dungeon-text); font: 800 clamp(30px, 4vw, 46px)/1.05 ui-monospace, monospace; letter-spacing: -.04em; }.dungeon-class-hero p { color: var(--dungeon-muted); font: 800 10px ui-monospace, monospace; letter-spacing: .13em; text-transform: uppercase; }.dungeon-class-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 13px; }.dungeon-class-card { position: relative; display: grid; grid-template-columns: 48px minmax(0, 1fr) auto; align-items: start; gap: 11px; min-width: 0; min-height: 230px; padding: 17px; border: 1px solid var(--dungeon-line); border-radius: 12px; color: var(--dungeon-text); text-align: left; background: linear-gradient(160deg, color-mix(in srgb, var(--dungeon-panel-2) 88%, transparent), var(--dungeon-panel-3)); box-shadow: 0 22px 60px rgb(0 0 0 / 24%); transition: transform .16s ease, border-color .16s ease, background .16s ease; }.dungeon-class-card:hover:not(:disabled) { transform: translateY(-3px); border-color: color-mix(in srgb, var(--dungeon-gold) 60%, var(--dungeon-line)); }.dungeon-class-card.selected { border-color: var(--dungeon-gold); background: linear-gradient(160deg, color-mix(in srgb, var(--dungeon-gold) 11%, var(--dungeon-panel-2)), var(--dungeon-panel-3)); box-shadow: 0 0 0 2px rgb(232 185 78 / 12%), 0 22px 60px rgb(0 0 0 / 24%); }.dungeon-class-card > span:nth-child(2) { display: grid; align-content: start; gap: 6px; min-width: 0; }.dungeon-class-card strong { font: 800 17px ui-monospace, monospace; }.dungeon-class-card b { color: var(--dungeon-gold-soft); font: 800 12px ui-monospace, monospace; }.dungeon-class-card em { color: var(--dungeon-muted); font-size: 10px; font-style: normal; line-height: 1.45; }.dungeon-class-icon { flex: 0 0 48px; width: 48px; height: 48px; border: 1px solid color-mix(in srgb, var(--dungeon-gold) 45%, var(--dungeon-line)); border-radius: 11px; color: var(--dungeon-gold); background: rgb(232 185 78 / 9%); }.dungeon-class-picked { align-self: start; padding: 4px 6px; border: 1px solid color-mix(in srgb, var(--dungeon-green) 50%, var(--dungeon-line)); border-radius: 5px; color: var(--dungeon-green); font: 800 8px ui-monospace, monospace; letter-spacing: .08em; }
+.dungeon-start-form { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: 10px; padding-top: 12px; border-top: 1px solid var(--dungeon-line); }.dungeon-start-form label { display: grid; gap: 5px; color: var(--dungeon-muted); font: 800 8px ui-monospace, monospace; letter-spacing: .08em; text-transform: uppercase; }.dungeon-start-form input { width: 100%; padding: 9px 10px; border: 1px solid var(--dungeon-line); border-radius: 7px; outline: none; color: var(--dungeon-text); background: var(--dungeon-panel-3); font-size: 11px; }.dungeon-start-form input:focus { border-color: var(--dungeon-gold); }.dungeon-primary-button { display: inline-flex; align-items: center; justify-content: center; gap: 10px; min-height: 38px; padding: 8px 13px; border: 1px solid var(--dungeon-gold); border-radius: 7px; color: #1a160d; background: var(--dungeon-gold); font: 800 10px ui-monospace, monospace; white-space: nowrap; }.dungeon-primary-button span { font-size: 15px; }
+.dungeon-workspace-tabs { display: flex; gap: 5px; padding: 4px; border: 1px solid var(--dungeon-line); border-radius: 8px; background: var(--dungeon-panel-3); }.dungeon-workspace-tabs button { flex: 1; padding: 8px 7px; border: 0; border-radius: 5px; color: var(--dungeon-dim); background: transparent; font: 800 9px ui-monospace, monospace; text-transform: uppercase; }.dungeon-workspace-tabs button.active { color: var(--dungeon-gold-soft); background: var(--dungeon-panel-2); }
+.dungeon-class-summary { display: flex; align-items: center; gap: 9px; margin-top: 12px; padding: 10px; border: 1px solid color-mix(in srgb, var(--dungeon-gold) 42%, var(--dungeon-line)); border-radius: 8px; background: color-mix(in srgb, var(--dungeon-gold) 7%, var(--dungeon-panel-3)); }.dungeon-class-summary > div { display: grid; gap: 3px; min-width: 0; }.dungeon-class-summary strong { font: 800 11px ui-monospace, monospace; }.dungeon-class-summary small { color: var(--dungeon-muted); font-size: 9px; line-height: 1.35; }.dungeon-character-tabs { display: flex; gap: 4px; margin: 12px 0; padding: 4px; border: 1px solid var(--dungeon-line); border-radius: 7px; background: var(--dungeon-panel-3); }.dungeon-character-tabs button { flex: 1; padding: 7px 4px; border: 0; border-radius: 5px; color: var(--dungeon-dim); background: transparent; font: 800 8px ui-monospace, monospace; }.dungeon-character-tabs button.active { color: var(--dungeon-gold-soft); background: var(--dungeon-panel-2); }
+.dungeon-loadout-list, .dungeon-inventory-list { display: grid; gap: 7px; }.dungeon-loadout-item { display: grid; grid-template-columns: 34px minmax(0, 1fr) auto; align-items: center; gap: 8px; padding: 8px; border: 1px solid var(--dungeon-line); border-radius: 8px; background: var(--dungeon-panel-3); }.dungeon-loadout-item > div, .dungeon-inventory-list > div > div { display: grid; gap: 3px; min-width: 0; }.dungeon-loadout-item small, .dungeon-inventory-list small { color: var(--dungeon-dim); font: 800 7px ui-monospace, monospace; letter-spacing: .08em; }.dungeon-loadout-item strong, .dungeon-inventory-list strong { color: var(--dungeon-text); font: 800 10px ui-monospace, monospace; }.dungeon-loadout-item span:not(.dungeon-item-art), .dungeon-inventory-list span { color: var(--dungeon-muted); font-size: 9px; line-height: 1.35; }.dungeon-item-art { width: 33px; height: 33px; border: 1px solid var(--dungeon-line); border-radius: 8px; color: var(--dungeon-gold); }.dungeon-loadout-item button, .dungeon-inventory-list button { padding: 5px 6px; border: 1px solid var(--dungeon-line); border-radius: 5px; color: var(--dungeon-gold-soft); background: transparent; font: 800 8px ui-monospace, monospace; }.dungeon-supply-item { display: grid; grid-template-columns: 23px minmax(0, 1fr) auto; align-items: center; gap: 7px; padding: 8px; border: 1px dashed var(--dungeon-line); border-radius: 8px; color: var(--dungeon-blue); }.dungeon-supply-item > div { display: grid; gap: 3px; min-width: 0; }.dungeon-supply-item strong { color: var(--dungeon-text); font: 800 9px ui-monospace, monospace; }.dungeon-supply-item small { color: var(--dungeon-dim); font: 7px ui-monospace, monospace; }.dungeon-supply-item span { color: var(--dungeon-muted); font-size: 8px; line-height: 1.3; }.dungeon-supply-item b { color: var(--dungeon-gold); font: 800 12px ui-monospace, monospace; }.dungeon-inventory-list > div { display: flex; align-items: center; gap: 8px; padding: 9px; border: 1px solid var(--dungeon-line); border-radius: 8px; background: var(--dungeon-panel-3); }.dungeon-inventory-list > div > div { flex: 1; }.dungeon-inventory-list .equipped { border-color: color-mix(in srgb, var(--dungeon-gold) 52%, var(--dungeon-line)); }.dungeon-muted { color: var(--dungeon-muted); font-size: 10px; line-height: 1.45; }.dungeon-stat-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 7px; }.dungeon-stat-grid > div { display: grid; gap: 4px; padding: 10px; border: 1px solid var(--dungeon-line); border-radius: 8px; background: var(--dungeon-panel-3); }.dungeon-stat-grid small { color: var(--dungeon-dim); font: 8px ui-monospace, monospace; text-transform: uppercase; }.dungeon-stat-grid strong { color: var(--dungeon-gold-soft); font: 800 18px ui-monospace, monospace; }.dungeon-character-note { display: flex; gap: 7px; align-items: flex-start; margin-top: auto; padding: 9px; border: 1px dashed var(--dungeon-line); border-radius: 8px; color: var(--dungeon-gold); }.dungeon-character-note p { color: var(--dungeon-muted); font-size: 9px; line-height: 1.4; }.dungeon-bank-button { width: 100%; min-height: 32px; margin-top: 9px; padding: 7px; border: 1px solid var(--dungeon-line); border-radius: 7px; color: var(--dungeon-muted); background: transparent; font: 800 9px ui-monospace, monospace; }
+.dungeon-checkpoint-note { padding: 0 4px 3px; color: var(--dungeon-dim); font: 9px ui-monospace, monospace; }.dungeon-checkpoint-note code { color: var(--dungeon-muted); }
+.dungeon-ide-screen { display: flex; flex-direction: column; min-width: 0; min-height: calc(100vh - 156px); padding: 15px; border: 1px solid var(--dungeon-line); border-radius: 12px; background: linear-gradient(180deg, color-mix(in srgb, var(--dungeon-panel) 96%, transparent), var(--dungeon-panel-3)); box-shadow: 0 22px 60px rgb(0 0 0 / 24%); }.dungeon-ide-topline { display: flex; align-items: center; gap: 10px; padding-bottom: 12px; border-bottom: 1px solid var(--dungeon-line); }.dungeon-ide-topline > .dungeon-eyebrow { flex: 1; text-align: center; }.dungeon-ghost-button { padding: 6px 8px; border: 1px solid var(--dungeon-line); border-radius: 6px; color: var(--dungeon-muted); background: transparent; font: 800 8px ui-monospace, monospace; }.dungeon-ide-layout { display: grid; grid-template-columns: minmax(285px, .8fr) minmax(520px, 1.4fr); gap: 13px; min-height: 0; height: calc(100vh - 222px); padding-top: 13px; }.dungeon-challenge-brief { display: flex; flex-direction: column; min-height: 0; overflow-y: auto; padding: 16px; border: 1px solid color-mix(in srgb, var(--dungeon-ember) 36%, var(--dungeon-line)); border-radius: 10px; background: linear-gradient(160deg, color-mix(in srgb, var(--dungeon-ember) 10%, var(--dungeon-panel)), var(--dungeon-panel-3)); }.dungeon-challenge-brief h2 { margin: 8px 0; color: var(--dungeon-text); font: 800 23px/1.1 ui-monospace, monospace; }.dungeon-challenge-brief > p { color: var(--dungeon-muted); font-size: 12px; line-height: 1.58; }.dungeon-resolve-preview { display: flex; align-items: end; justify-content: space-between; gap: 8px; margin: 17px 0; padding: 11px; border: 1px solid var(--dungeon-line); border-radius: 8px; background: var(--dungeon-panel-3); }.dungeon-resolve-preview div { display: grid; gap: 4px; }.dungeon-resolve-preview small { color: var(--dungeon-dim); font: 800 8px ui-monospace, monospace; letter-spacing: .1em; }.dungeon-resolve-preview strong { color: var(--dungeon-gold-soft); font: 800 24px ui-monospace, monospace; }.dungeon-resolve-preview > span { max-width: 17ch; color: var(--dungeon-muted); font-size: 9px; line-height: 1.35; text-align: right; }.dungeon-run-health { display: grid; grid-template-columns: auto auto 1fr; align-items: baseline; gap: 7px; margin-bottom: 11px; padding: 9px 10px; border-left: 2px solid var(--dungeon-ember); background: color-mix(in srgb, var(--dungeon-ember) 6%, var(--dungeon-panel-3)); }.dungeon-run-health span, .dungeon-run-health small { color: var(--dungeon-dim); font: 800 8px ui-monospace, monospace; letter-spacing: .08em; text-transform: uppercase; }.dungeon-run-health strong { color: var(--dungeon-gold-soft); font: 800 13px ui-monospace, monospace; }.dungeon-run-health small { justify-self: end; letter-spacing: .02em; text-transform: none; }.dungeon-mechanic-list { display: grid; gap: 6px; margin-top: auto; }.dungeon-mechanic-list > div { display: grid; grid-template-columns: 24px 1fr; gap: 7px; padding: 8px; border-top: 1px solid var(--dungeon-line); }.dungeon-mechanic-list > div > span { color: var(--dungeon-gold); font: 800 9px ui-monospace, monospace; }.dungeon-mechanic-list p { display: grid; gap: 3px; }.dungeon-mechanic-list strong { font: 800 9px ui-monospace, monospace; }.dungeon-mechanic-list small { color: var(--dungeon-muted); font-size: 9px; line-height: 1.35; }
+.dungeon-code-workbench { display: flex; flex-direction: column; min-width: 0; min-height: 0; overflow: hidden; border: 1px solid var(--dungeon-line); border-radius: 10px; background: #0b0e0c; }.dungeon-editor-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 9px 11px; color: var(--dungeon-muted); font: 8px ui-monospace, monospace; }.dungeon-editor-toolbar span:first-child { color: var(--dungeon-gold-soft); }.dungeon-code-workbench .dungeon-editor-surface { display: flex; flex: 1; min-height: 0; flex-direction: column; }.dungeon-code-workbench .dungeon-editor-surface > .dungeon-editor-toolbar { display: none; }.dungeon-code-workbench .dungeon-editor-wrap { flex: 1 1 auto; min-height: 0; }.dungeon-code-workbench .dungeon-editor-wrap > div { min-height: 360px; }.dungeon-editor-terminal { display: grid; gap: 6px; min-height: 108px; padding: 9px 11px; border-top: 1px solid var(--dungeon-line); background: #070a08; }.dungeon-editor-terminal-heading { display: flex; justify-content: space-between; gap: 8px; color: var(--dungeon-muted); font: 800 8px ui-monospace, monospace; }.dungeon-editor-terminal-heading b { color: var(--dungeon-gold-soft); }.dungeon-editor-terminal.passed .dungeon-editor-terminal-heading b { color: var(--dungeon-green); }.dungeon-editor-terminal.failed .dungeon-editor-terminal-heading b { color: var(--dungeon-danger); }.dungeon-editor-terminal pre { max-height: 70px; margin: 0; overflow: auto; color: #b6c7b2; font: 9px/1.4 ui-monospace, monospace; white-space: pre-wrap; }.dungeon-editor-actions { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 7px; padding: 9px 11px; border-top: 1px solid var(--dungeon-line); }.dungeon-editor-actions button { min-height: 30px; padding: 6px 8px; border: 1px solid var(--dungeon-line); border-radius: 6px; color: var(--dungeon-text); background: var(--dungeon-panel-2); font: 800 8px ui-monospace, monospace; }.dungeon-editor-actions button:hover:not(:disabled) { border-color: var(--dungeon-gold); }.dungeon-editor-actions button.primary { border-color: var(--dungeon-gold); color: #1a160d; background: var(--dungeon-gold); }.dungeon-editor-actions kbd { padding: 2px 4px; border: 1px solid color-mix(in srgb, var(--dungeon-line) 85%, #fff 15%); border-radius: 3px; color: var(--dungeon-dim); background: color-mix(in srgb, var(--dungeon-panel-3) 82%, #000 18%); font: 700 7px ui-monospace, monospace; }.dungeon-editor-actions .primary kbd { color: #1a160d; border-color: color-mix(in srgb, #1a160d 25%, var(--dungeon-gold) 75%); background: color-mix(in srgb, var(--dungeon-gold) 70%, #fff 30%); }.battle-submit-status { display: block; padding: 6px 11px; color: var(--dungeon-muted); font: 8px/1.4 ui-monospace, monospace; }
+@media (max-width: 1180px) { .dungeon-local-header { grid-template-columns: 1fr auto; }.dungeon-local-badge { display: none; }.dungeon-run-stats { grid-column: 1 / -1; justify-self: start; }.dungeon-prototype-grid { grid-template-columns: minmax(260px, .9fr) minmax(350px, 1.1fr); }.dungeon-character-panel { grid-column: 1 / -1; }.dungeon-loadout-list { grid-template-columns: repeat(3, minmax(0, 1fr)); }.dungeon-character-note { margin-top: 10px; }.dungeon-ide-layout { grid-template-columns: 1fr; height: auto; }.dungeon-challenge-brief { min-height: 360px; }.dungeon-code-workbench { min-height: 490px; } }
+@media (max-width: 760px) { .dungeon-screen-shell { padding: 9px; }.dungeon-prototype-grid { grid-template-columns: 1fr; min-height: auto; }.dungeon-class-grid { grid-template-columns: 1fr; }.dungeon-start-form { grid-template-columns: 1fr; }.dungeon-start-form .dungeon-primary-button { width: 100%; }.dungeon-market-list, .dungeon-action-grid { grid-template-columns: 1fr; }.dungeon-market-stock { grid-template-columns: repeat(2, minmax(0, 1fr)); }.dungeon-local-header { grid-template-columns: 1fr; }.dungeon-header-note { justify-self: start; text-align: left; }.dungeon-run-stats { grid-column: auto; }.dungeon-proto-map { min-height: 410px; }.dungeon-ide-screen { min-height: auto; }.dungeon-ide-topline { align-items: flex-start; flex-wrap: wrap; }.dungeon-ide-topline > .dungeon-eyebrow { order: 3; flex-basis: 100%; text-align: left; }.dungeon-ide-layout { height: auto; }.dungeon-code-workbench { min-height: 500px; } }
+@media (prefers-reduced-motion: reduce) { .dungeon-screen-shell *, .dungeon-screen-shell *::before, .dungeon-screen-shell *::after { transition-duration: .01ms !important; animation-duration: .01ms !important; } }
+.dungeon-run-management { display: grid; gap: 6px; margin-top: auto; padding-top: 10px; }
+.dungeon-run-management small { color: var(--dungeon-dim); font: 8px/1.35 ui-monospace, monospace; }
+.dungeon-reset-button { width: 100%; min-height: 30px; padding: 7px; border: 1px solid color-mix(in srgb, var(--dungeon-danger) 58%, var(--dungeon-line)); border-radius: 7px; color: var(--dungeon-danger); background: color-mix(in srgb, var(--dungeon-danger) 6%, transparent); font: 800 9px ui-monospace, monospace; }
+.dungeon-reset-button:hover:not(:disabled) { border-color: var(--dungeon-danger); background: color-mix(in srgb, var(--dungeon-danger) 14%, transparent); }
+.dungeon-guide-panel, .dungeon-mechanic-profile, .dungeon-file-bridge { display: grid; gap: 5px; margin-top: 6px; padding: 6px; border: 1px solid var(--dungeon-line); border-radius: 8px; background: var(--dungeon-panel-3); }
+.dungeon-guide-heading, .dungeon-mechanic-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+.dungeon-guide-heading strong, .dungeon-mechanic-heading strong { color: var(--dungeon-gold-soft); font: 800 9px ui-monospace, monospace; }
+.dungeon-guide-heading > strong { text-align: right; }
+.dungeon-guide-steps { display: grid; gap: 2px; }
+.dungeon-guide-step { display: grid; grid-template-columns: 22px minmax(0, 1fr); gap: 7px; align-items: center; padding: 5px 0; border-top: 1px solid var(--dungeon-line); }
+.dungeon-guide-step > span { display: grid; place-items: center; width: 20px; height: 20px; border: 1px solid var(--dungeon-line); border-radius: 50%; color: var(--dungeon-dim); font: 800 8px ui-monospace, monospace; }
+.dungeon-guide-step.complete > span { color: var(--dungeon-green); border-color: color-mix(in srgb, var(--dungeon-green) 55%, var(--dungeon-line)); }
+.dungeon-guide-step > div { display: grid; gap: 2px; min-width: 0; }
+.dungeon-guide-step strong { color: var(--dungeon-text); font: 800 9px ui-monospace, monospace; }
+.dungeon-guide-step small, .dungeon-guide-note, .dungeon-guide-question p, .dungeon-mechanic-grid p, .dungeon-file-bridge small { color: var(--dungeon-muted); font-size: 9px; line-height: 1.35; }
+.dungeon-guide-note, .dungeon-guide-question p { margin: 0; }
+.dungeon-guide-question { border-color: color-mix(in srgb, var(--dungeon-gold) 40%, var(--dungeon-line)); }
+.dungeon-mechanic-profile { border-color: color-mix(in srgb, var(--dungeon-ember) 42%, var(--dungeon-line)); background: color-mix(in srgb, var(--dungeon-ember) 6%, var(--dungeon-panel-3)); }
+.dungeon-mechanic-state, .dungeon-file-bridge-status { padding: 4px 6px; border: 1px solid var(--dungeon-line); border-radius: 4px; color: var(--dungeon-dim); font: 800 7px ui-monospace, monospace; letter-spacing: .06em; white-space: nowrap; }
+.dungeon-mechanic-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 3px 8px; }
+.dungeon-mechanic-grid > div { display: grid; gap: 2px; padding-top: 4px; border-top: 1px solid var(--dungeon-line); }
+.dungeon-mechanic-grid > div strong { color: var(--dungeon-text); font: 800 9px ui-monospace, monospace; }
+.dungeon-mechanic-grid p { margin: 0; }
+.dungeon-mechanic-reward { display: grid; gap: 3px; margin: 0; padding-top: 7px; border-top: 1px dashed var(--dungeon-line); }
+.dungeon-mechanic-reward strong { color: var(--dungeon-gold-soft); font: 800 9px ui-monospace, monospace; }
+.dungeon-file-bridge { display: flex; align-items: center; justify-content: space-between; gap: 9px; border-style: dashed; }
+.dungeon-file-bridge > div { display: grid; gap: 3px; min-width: 0; }
+.dungeon-file-bridge > div > strong { color: var(--dungeon-text); font: 800 9px ui-monospace, monospace; }
+.dungeon-file-bridge-status { color: var(--dungeon-green); border-color: color-mix(in srgb, var(--dungeon-green) 48%, var(--dungeon-line)); }
+.dungeon-reset-inline { padding: 6px 8px; border: 1px solid color-mix(in srgb, var(--dungeon-danger) 52%, var(--dungeon-line)); border-radius: 6px; color: var(--dungeon-danger); background: transparent; font: 800 8px ui-monospace, monospace; white-space: nowrap; }
+.dungeon-reset-inline:hover:not(:disabled) { border-color: var(--dungeon-danger); background: color-mix(in srgb, var(--dungeon-danger) 12%, transparent); }
+.dungeon-challenge-brief { padding: 12px; }
+.dungeon-challenge-brief h2 { margin: 6px 0; font-size: 21px; }
+.dungeon-challenge-brief > p { font-size: 11px; line-height: 1.45; }
+.dungeon-resolve-preview { margin: 10px 0; padding: 8px; }

@@ -37,6 +37,22 @@ const languageFor = (path = '') => {
 
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value))
 
+const LEGACY_STAT_PATHS = {
+  heart: '<path d="M20 8c0 5-8 11-8 11S4 13 4 8a4 4 0 0 1 7-3 4 4 0 0 1 7 0 4 4 0 0 1 2 3z"/>',
+  coin: '<circle cx="12" cy="12" r="8"/><path d="M9 9h5a2 2 0 0 1 0 4h-4a2 2 0 0 0 0 4h5M12 6v12"/>',
+  flame: '<path d="M13 2s1 4-2 7c-2 2-3 4-2 7 1 2 3 3 5 2 3-1 5-4 4-8 3 3 4 8 1 11-4 4-12 2-13-4-1-5 3-8 7-15z"/>',
+  shield: '<path d="M12 3 5 6v5c0 5 3 8 7 10 4-2 7-5 7-10V6z"/>',
+  sword: '<path d="m14 4 6-1-1 6-9 9-4-4zM6 14l-3 3 4 4 3-3"/>',
+}
+
+function LegacyStatIcon({ name }) {
+  return (
+    <span className="quest-icon" aria-hidden="true">
+      <svg viewBox="0 0 24 24" dangerouslySetInnerHTML={{ __html: LEGACY_STAT_PATHS[name] || LEGACY_STAT_PATHS.heart }} />
+    </span>
+  )
+}
+
 function usePersistentState(key, initialValue) {
   const [value, setValue] = useState(() => {
     try {
@@ -170,7 +186,10 @@ function App() {
   const [busy, setBusy] = useState(false)
   const [notice, setNotice] = useState('')
 
-  const [activeView, setActiveView] = usePersistentState('questlab.activeView', 'forge')
+  const [storedActiveView, setStoredActiveView] = usePersistentState('questlab.activeView', 'forge')
+  const normalizeView = (value) => value === 'practice' ? 'tutor' : value === 'quests' ? 'codex' : value === 'dungeon' ? 'forge' : value
+  const activeView = normalizeView(storedActiveView)
+  const setActiveView = (next) => setStoredActiveView((current) => normalizeView(typeof next === 'function' ? next(current) : next))
   const [leftWidth, setLeftWidth] = usePersistentState('questlab.leftWidth', 220)
   const [rightWidth, setRightWidth] = usePersistentState('questlab.rightWidth', 390)
   const [terminalHeight, setTerminalHeight] = usePersistentState('questlab.terminalHeight', 245)
@@ -190,6 +209,7 @@ function App() {
   const equipped = homestead.equipped || {}
   const theme = (equipped.theme || 'theme-ember-forge').replace('theme-', '')
   const terminalSkin = equipped.terminal || 'terminal-charcoal'
+  const campaignReady = Boolean(campaign && campaign.progress && typeof campaign.progress === 'object')
 
   const shields = useMemo(
     () => (progress.skills || []).filter((skill) => skill.shield?.tier && skill.shield.tier !== 'none').length,
@@ -357,7 +377,7 @@ function App() {
   const formatTutor = async () => {
     try {
       setBusy(true)
-      const result = await api('/api/format', {
+      const result = await api('/api/tutor/format', {
         method: 'POST',
         body: JSON.stringify({ path: 'tutor.py', content: tutorCode }),
       })
@@ -404,6 +424,11 @@ function App() {
   }
 
   const summon = (command) => {
+    try {
+      sessionStorage.setItem('questlab.aiProvider', command)
+    } catch {
+      // A storage-blocked browser can still use the raw AI terminal.
+    }
     aiTerminalRef.current?.send(`${command}\n`)
     aiTerminalRef.current?.focus()
   }
@@ -454,7 +479,7 @@ function App() {
 
   const preferences = { editorFontSize, terminalFontSize, hudDensity, animations }
   const setters = { setEditorFontSize, setTerminalFontSize, setHudDensity, setAnimations }
-  const xpPercent = clamp(((player.xp ?? 0) / Math.max(1, player.xp_next ?? 100)) * 100, 0, 100)
+  const xpPercent = campaignReady ? clamp(((player.xp ?? 0) / Math.max(1, player.xp_next ?? 100)) * 100, 0, 100) : 0
   const showEditor = activeView === 'forge' || activeView === 'tutor'
 
   return (
@@ -471,29 +496,29 @@ function App() {
           <h1>Forge</h1>
         </div>
         <div className="hud-xp">
-          <div><strong>LV {player.level ?? 1}</strong><span>{player.title || 'Apprentice Coder'}</span></div>
+          <div><strong>{campaignReady ? `LV ${player.level ?? 1}` : 'SYNCING'}</strong><span>{campaignReady ? (player.title || 'Apprentice Coder') : 'Campaign state'}</span></div>
           <div className="hud-xp-track"><span style={{ width: `${xpPercent}%` }} /></div>
-          <small>{player.xp ?? 0}/{player.xp_next ?? 100} XP</small>
+          <small>{campaignReady ? `${player.xp ?? 0}/${player.xp_next ?? 100} XP` : 'waiting for revision…'}</small>
         </div>
         <div className="top-stats">
-          <span className="hp-stat">♥ {player.hp ?? 100}</span>
-          <span>◈ {player.coins ?? 0}c</span>
-          <span>🔥 {streak.current ?? 0}</span>
-          <span className="optional-stat">🛡 {shields}</span>
-          <span className="optional-stat">⚔ {stats.bosses_defeated ?? 0}</span>
-          <span className="optional-stat">DEV {activity.activity_score ?? 0}</span>
-          <span className="rank-stat">RANK {player.rank || 'F'}</span>
+          <span className="hp-stat" data-react-stat="true" data-campaign-stat="hp"><LegacyStatIcon name="heart" /><span data-stat-value>{campaignReady ? (player.hp ?? 100) : '—'}</span></span>
+          <span data-react-stat="true" data-campaign-stat="coins"><LegacyStatIcon name="coin" /><span data-stat-value>{campaignReady ? (player.coins ?? 0) : '—'}{campaignReady ? 'c' : ''}</span></span>
+          <span data-react-stat="true" data-campaign-stat="streak"><LegacyStatIcon name="flame" /><span data-stat-value>{campaignReady ? (streak.current ?? 0) : '—'}</span></span>
+          <span className="optional-stat" data-react-stat="true" data-campaign-stat="shields"><LegacyStatIcon name="shield" /><span data-stat-value>{campaignReady ? shields : '—'}</span></span>
+          <span className="optional-stat" data-react-stat="true" data-campaign-stat="bosses"><LegacyStatIcon name="sword" /><span data-stat-value>{campaignReady ? (stats.bosses_defeated ?? 0) : '—'}</span></span>
+          <span className="optional-stat">DEV {campaignReady ? (activity.activity_score ?? 0) : '—'}</span>
+          <span className="rank-stat">RANK {campaignReady ? (player.rank || 'F') : '—'}</span>
         </div>
       </header>
 
       <div className="quest-banner">
-        <div><strong>{companion.name || 'PYR'}</strong> · {companion.form || 'Tiny Code-Flame'}</div>
-        <div className="quest-text">{progress.current_quest || 'Choose a quest.'}</div>
-        <div className="git-pill">{git.branch || 'no branch'} · {git.dirty_count ?? 0} changes</div>
+        <div><strong>{campaignReady ? (companion.name || 'PYR') : 'PYR'}</strong> · {campaignReady ? (companion.form || 'Tiny Code-Flame') : 'waiting for campaign'}</div>
+        <div className="quest-text">{campaignReady ? (progress.current_quest || 'Choose a quest.') : 'Syncing campaign state…'}</div>
+        <div className="git-pill">{campaignReady ? `${git.branch || 'no branch'} · ${git.dirty_count ?? 0} changes` : 'campaign unavailable'}</div>
       </div>
 
       <main className="workspace-grid" style={gridStyle}>
-        <ActivityRail activeView={activeView} setActiveView={setActiveView} player={player} />
+        <ActivityRail activeView={activeView} setActiveView={setActiveView} player={player} campaignReady={campaignReady} />
 
         <aside className="left-panel panel">
           <ContextPanel
@@ -593,6 +618,8 @@ function App() {
               preferences={preferences}
               setters={setters}
               resetLayout={resetLayout}
+              onNavigate={setActiveView}
+              campaignReady={campaignReady}
             />
           </section>
         )}
@@ -609,11 +636,12 @@ function App() {
               <button onClick={() => summon('codex')}>Codex</button>
               <button onClick={() => summon('claude')}>Claude</button>
               <button onClick={() => summon('gemini')}>Gemini</button>
+              <button onClick={() => summon('copilot')}>Copilot</button>
               <button onClick={() => aiTerminalRef.current?.clear()}>Clear</button>
             </div>
           </div>
           <div className="ai-note">Raw CLI terminal: powerful, not sandboxed. The future controlled PYR tutor will only be able to write tutor.py.</div>
-          <TerminalPane ref={aiTerminalRef} banner="PYR channel ready. Choose Codex, Claude, or Gemini above." fontSize={terminalFontSize} skin={terminalSkin} />
+          <TerminalPane ref={aiTerminalRef} banner="PYR channel ready. Choose Codex, Claude, Gemini, or Copilot above." fontSize={terminalFontSize} skin={terminalSkin} />
         </aside>
       </main>
 

@@ -44,13 +44,13 @@ The point is not to speedrun eight repos. The point is to make Python fundamenta
 | Companion | **PYR — Tiny Code-Flame, Lv. 1** |
 | Current quest | **Blackjack — learn the next concept, prove understanding, then Forge it from scratch.** |
 
-**Equipped:** Training Blade · Apprentice Coat · no trinket yet
+**Equipped:** Apprentice Coat · no trinket yet
 
 **Next major goals:** first Teach-back → first mob → first concept interview → first Mastery Shield → first hidden discovery → defeat **The House** → evolve PYR into an **Ember Sprite**.
 
 <!-- PUBLIC_STATS_END -->
 
-`progress.json` is the canonical learning/player state. PYR refreshes this block only when learning progress is genuinely earned.
+Before signed-in cloud sync, `progress.json` is the canonical local learning/player state. After signed-in cloud sync, Supabase is synchronized account/game-state authority and `progress.json` is the local/offline cache/device working copy. PYR refreshes this block only through the local state/sync service when learning progress is genuinely earned.
 
 ## Dev Activity League
 
@@ -58,12 +58,12 @@ The point is not to speedrun eight repos. The point is to make Python fundamenta
 
 | Dev activity | Current |
 |---|---:|
-| Activity score | **70** |
-| Commit streak | **1 days** — best: 1 |
-| Commits | **61** / 7d · **61** / 30d |
-| Active dev days | **1** / 7d · **1** / 30d |
-| Active branches (30d) | **10** |
-| Last commit day | **2026-09-14** |
+| Activity score | **152** |
+| Commit streak | **4 days** — best: 4 |
+| Commits | **396** / 7d · **396** / 30d |
+| Active dev days | **4** / 7d · **4** / 30d |
+| Active branches (30d) | **13** |
+| Last commit day | **2026-09-17** |
 
 `Activity score` is machine-derived from commit history. It rewards active days and streaks, caps effective commits per day, and does **not** grant learning XP or Mastery Shields.
 
