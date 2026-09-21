@@ -1,5 +1,14 @@
 /* Campaign Home port. Keep this scoped to the top-down room and its drawer;
    the prototype at prototypes/campaign-v1 is the visual authority. */
+.homestead-v2 {
+  /* Home was authored against the campaign-v1 palette. Keep these tokens
+     local so the room remains readable in every Forge theme and never falls
+     back to transparent when a theme omits a prototype-only variable. */
+  --panel-soft: #151b16;
+  --line-strong: #4b5c4a;
+  --gold-soft: #f3d889;
+  --violet: #bd8fd7;
+}
 .homestead-v2 .place-heading { display:flex; align-items:flex-start; justify-content:space-between; gap:16px; }
 .homestead-v2 .home-place-heading { display:grid; gap:5px; }
 .homestead-v2 .home-place-heading h2 { margin:0; font:800 25px/1.05 ui-monospace,monospace; }
