@@ -6,23 +6,23 @@ Remote: `origin/feature/cloud-sync-desktop`
 
 ## Read this first
 
-The latest prototype-to-canonical work is **not** a complete campaign port.
-The only newly ported campaign prototype surface is **Home / Homestead**.
-Market and the merged Forge + Market + Homestead workspace are still next
-work. Do not describe the current branch as having the new campaign Market.
+The prototype-to-canonical work now has a merged **Campaign** surface. It
+replaces the separate top-level Forge, Character, and Homestead destinations
+with one campaign workspace containing the Home, Market, and Bounty Office
+points of interest. Forge remains available as the internal coding screen
+opened from a selected bounty; it is no longer a top-level campaign tab.
 
 ## Current checkpoints
 
-- `cbf732c` — `port Home prototype into Forge`
-- `85f6b5d` — `fix(home): restore prototype palette tokens` (latest; pushed)
+- `3c93e02` — `feat(campaign): port merged map home market office surface`
+- `51bf0c1` — `fix(campaign): keep merchant sprite frames bounded`
+- `3b26ce3` — `fix(campaign): show merchant frame on first paint` (latest;
+  pushed)
 
-The second commit fixes a visible regression: the Home port used prototype
-palette variables (`--violet`, `--gold-soft`, `--panel-soft`, and
-`--line-strong`) that canonical Forge did not define. Pyr's DOM node existed,
-but its background computed as transparent. Those tokens now live on the
-scoped `.homestead-v2` root, matching the prototype palette. Restarting the
-managed launcher and checking the canonical Home route showed a visible purple
-Pyr sprite.
+The merchant fixes preserve the prototype's bounded 24x32 pixel frames and
+make the first frame visible immediately. The previous animation began with
+all frames hidden, which made the live Market scene look like an empty counter.
+The Home palette/Pyr repair from `85f6b5d` remains part of the port history.
 
 ## What is canonical now
 
@@ -51,27 +51,29 @@ Source files:
   contract; treat the prototype as visual authority and state service as
   gameplay authority.
 
-### Existing but not part of this port
+### Campaign workspace (ported)
 
-- Forge remains the existing editor/terminal surface;
-- Tutor Notebook and Codex are earlier canonical work;
-- Infinite Dungeon is an earlier separate route and has its own run-only
-  market;
-- the existing campaign/Bounty Office shell remains separate from Home.
+The canonical `activeView === 'hub'` route is now `CampaignSurface` in
+`ide/frontend/src/RpgViews.jsx`. It owns:
 
-### Not ported yet
+- the collapsible project-map rail;
+- Home / Homestead, including the existing state-backed stations and Pyr;
+- the prototype-style Market merchant intro and browse-lots screen;
+- the prototype-style Bounty Office poster board;
+- an internal Study-this-work handoff into the existing Forge editor.
 
-- the campaign Market prototype and merchant intro;
-- the shared campaign workspace where Forge, Market, and Homestead feel like
-  one area;
-- Village and its later NPC/grid work.
+The visible top navigation now exposes Campaign, Tutor Notebook, Infinite
+Dungeon, and Settings. Character and Homestead are not separate destinations.
+Infinite Dungeon remains a separate run mode and its run-only market is not
+merged into Campaign Market. Village and later NPC/grid work are still future
+work.
 
 Do not confuse Infinite Dungeon's run market with the campaign Market. They
 use different state boundaries and should not be merged accidentally.
 
 ## Truth sources
 
-1. Visual parity: `prototypes/campaign-v1/` (currently the Home prototype at
+1. Visual parity: `prototypes/campaign-v1/` (Home/Market/Office prototype at
    `http://127.0.0.1:5207/?home-upgrades-v1=20260921b` when its prototype
    server is running).
 2. Canonical state and rewards: `ide/server/state.py` and its validated API.
@@ -114,13 +116,18 @@ For the visual prototype:
 
 - prototype state tests: 18/18;
 - backend state tests: 49/49 on the relevant WSL suite;
-- frontend production Vite build: passed (1,347 modules at the port
-  checkpoint);
+- frontend production Vite build: passed (1,349 modules after the merged
+  Campaign surface);
 - desktop visual comparison: prototype and canonical Home inspected with
   browser screenshots;
 - canonical Pyr diagnosis: DOM node existed, computed background was
   transparent before `85f6b5d`, then `rgb(189, 143, 215)` after restart;
 - canonical Armory action: verified it scrolls to the live loadout;
+- merged Campaign desktop screenshots: verified Market merchant visibility,
+  Market lots, Home/Pyr DOM presence, Bounty Office posters, and the internal
+  Study-this-work handoff into Forge;
+- merchant sprite runtime check: bounded 24x32 frames rendered without an
+  exception; first frame computed visible after launcher restart;
 - two hostile Copilot review passes completed before the final token fix;
 - Claude prototype design gate passed. Claude's canonical CLI review was not
   completed because the CLI environment exposed a malformed tool schema;
@@ -149,37 +156,19 @@ roadmap before starting the next slice.
 
 ## Next implementation slice
 
-Port the campaign Market prototype, then merge the navigation/state shell so
-Forge, Market, and Homestead read as one campaign workspace without remounting
-the editor or either PTY.
-
-Before coding that slice:
-
-1. inspect the Market prototype and record its visual/interaction contract;
-2. decide the shared shell boundary (route switcher versus one composite
-   workspace) from the existing UI, not from a new redesign;
-3. keep campaign Market inventory separate from Infinite Dungeon run loot;
-4. wire purchases through the canonical state service;
-5. run a hostile visual review with Copilot and, when the Claude CLI schema is
-   fixed, Claude as the secondary reviewer;
-6. screenshot the prototype and canonical Market after every meaningful UI
-   adjustment;
-7. commit and push in small reviewable checkpoints.
-
-Suggested next commit sequence:
-
-1. `feat(market): port campaign merchant presentation`
-2. `feat(campaign): merge forge market and homestead navigation`
-3. `test(campaign): certify shared state and route persistence`
+The visual port is intentionally ahead of full campaign coherence. The next
+bounded slice is to connect Market purchases/equipment to the canonical state
+service and certify route persistence without changing the prototype layout.
+Keep Campaign Market inventory separate from Infinite Dungeon run loot. Then
+add any deeper Home/Market/Village progression as its own small, reviewable
+slice.
 
 ## Handoff prompt for the next agent
 
-> Read `CAMPAIGN_PORT_HANDOFF.md`,
-> `prototypes/campaign-v1/HOME_PORT_SOURCE_OF_TRUTH.md`, and the current
-> `git status` first. Preserve all intentionally dirty player/challenge
-> files. The Home port is complete through `85f6b5d`; verify Pyr visually if
-> needed, then work only on the campaign Market port. Do not claim the Market
-> or merged Forge/Market/Home shell is complete until the prototype and
-> canonical screenshots match and the state/action tests pass. Commit and
-> push each coherent slice separately.
-
+> Read `CAMPAIGN_PORT_HANDOFF.md`, the prototype source-of-truth files, and
+> the current `git status` first. Preserve all intentionally dirty
+> player/challenge files. The merged Campaign visual port is complete through
+> `3b26ce3`: Campaign replaces the separate Forge/Character/Homestead
+> destinations, while Study-this-work opens the internal Forge editor. Do not
+> redesign the surface while wiring state. Commit and push each coherent slice
+> separately, and perform a desktop screenshot check after each UI change.
