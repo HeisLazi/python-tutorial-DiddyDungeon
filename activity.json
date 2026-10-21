@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-10-20T01:06:20.058230+00:00",
+  "generated_at": "2026-10-21T00:39:37.062984+00:00",
   "source": "github-commit-history",
   "repository": "HeisLazi/python-tutorial-DiddyDungeon",
   "player_login": "HeisLazi",
@@ -8,23 +8,19 @@
   "current_streak": 0,
   "longest_streak": 4,
   "commits_7d": 0,
-  "commits_30d": 14,
+  "commits_30d": 1,
   "active_days_7d": 0,
-  "active_days_30d": 2,
-  "active_branches_30d": 2,
-  "activity_score": 46,
-  "effective_commits_30d": 6,
+  "active_days_30d": 1,
+  "active_branches_30d": 1,
+  "activity_score": 19,
+  "effective_commits_30d": 1,
   "total_unique_commits_scanned": 404,
   "last_active_day": "2026-09-24",
   "most_active_day_30d": {
-    "date": "2026-09-21",
-    "commits": 13
+    "date": "2026-09-24",
+    "commits": 1
   },
   "daily_30d": [
-    {
-      "date": "2026-09-21",
-      "commits": 13
-    },
     {
       "date": "2026-09-22",
       "commits": 0
@@ -140,13 +136,13 @@
     {
       "date": "2026-10-20",
       "commits": 0
+    },
+    {
+      "date": "2026-10-21",
+      "commits": 0
     }
   ],
   "branch_activity_30d": [
-    {
-      "branch": "feature/cloud-sync-desktop",
-      "commits": 13
-    },
     {
       "branch": "main",
       "commits": 1
