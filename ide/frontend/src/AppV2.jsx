@@ -2196,8 +2196,8 @@ function AppV2() {
           : `0px ${leftPanelColumns} minmax(420px, 1fr)`,
         gridTemplateRows: `minmax(220px, 1fr) 5px ${terminalHeight}px`,
       }
-  const preferences = { editorFontSize, terminalFontSize, hudDensity, animations, showAiTerminal, themeChoice, fontFamily }
-  const setters = { setEditorFontSize, setTerminalFontSize, setHudDensity, setAnimations, setShowAiTerminal, setThemeChoice, setFontFamily }
+  const preferences = { editorFontSize, terminalFontSize, hudDensity, animations, showAiTerminal, themeChoice, fontFamily, zenMode, crtMode: gameMode }
+  const setters = { setEditorFontSize, setTerminalFontSize, setHudDensity, setAnimations, setShowAiTerminal, setThemeChoice, setFontFamily, setZenMode, setCrtMode: setGameMode }
   const xpPercent = campaignReady ? clamp(((player.xp ?? 0) / Math.max(1, player.xp_next ?? 100)) * 100, 0, 100) : 0
 
   useEffect(() => {
@@ -2289,24 +2289,25 @@ function AppV2() {
           <span className="optional-stat" data-stat-label="SHIELDS" data-stat-tooltip={campaignReady ? `Mastery shields · ${shields} earned protection charges` : 'Mastery shields · waiting for campaign'} title={campaignReady ? `Mastery shields · ${shields} earned` : 'Mastery shields · waiting for campaign'} data-react-stat="true" data-campaign-stat="shields" data-campaign-stat-value={campaignReady ? shields : '—'}><StatIcon name="shield" /><span data-stat-value>{campaignReady ? shields : '—'}</span></span>
           <span className="optional-stat" data-stat-label="BOSSES" data-stat-tooltip={campaignReady ? `Boss clears · ${stats.bosses_defeated ?? 0} validated victories` : 'Boss clears · waiting for campaign'} title={campaignReady ? `Boss clears · ${stats.bosses_defeated ?? 0}` : 'Boss clears · waiting for campaign'} data-react-stat="true" data-campaign-stat="bosses" data-campaign-stat-value={campaignReady ? (stats.bosses_defeated ?? 0) : '—'}><StatIcon name="sword" /><span data-stat-value>{campaignReady ? (stats.bosses_defeated ?? 0) : '—'}</span></span>
           <span className="optional-stat activity-stat" data-stat-label="ACTIVITY" data-stat-tooltip={campaignReady ? `Activity score · ${activity.activity_score ?? 0} validated learning actions` : 'Activity score · waiting for campaign'} title={campaignReady ? `Activity score · ${activity.activity_score ?? 0} validated actions` : 'Activity score · waiting for campaign'}>ACTIVITY {campaignReady ? (activity.activity_score ?? 0) : '—'}</span>
-          <span
+          <button
+            type="button"
             className={`cloud-pill ${cloudState.error || cloudState.syncStatus === 'conflict' ? 'error' : cloudState.configured ? 'ready' : 'local'}`}
-            title={cloudState.detail}
+            title={`${cloudState.detail || ''} · open account settings`}
+            onClick={() => setActiveView('settings')}
           >
             {cloudState.label}
-          </span>
+          </button>
           <span className="rank-stat">RANK {campaignReady ? (player.rank || 'F') : '—'}</span>
           {showAiTerminal && aiRouteHidden && (
             <button className="ai-popout-toggle" type="button" onClick={() => setAiPopoverOpen((open) => !open)} aria-expanded={aiPopoverOpen} aria-controls="questlab-ai-panel">
               {aiPopoverOpen ? 'Hide AI' : 'Open AI'}
             </button>
           )}
-          <button className="zen-toggle" type="button" onClick={() => setZenMode((z) => !z)} title="Toggle Zen mode (maximize editor + terminal)">
-            {zenMode ? 'Exit Zen' : 'Zen Mode'}
-          </button>
-          <button className="game-toggle" type="button" onClick={() => setGameMode((g) => !g)} title="Toggle CRT scanlines" aria-pressed={gameMode}>
-            {gameMode ? 'CRT On' : 'CRT Off'}
-          </button>
+          {zenMode && (
+            <button className="zen-toggle" type="button" onClick={() => setZenMode(false)} title="Leave Zen mode (Ctrl+Shift+Z)">
+              Exit Zen
+            </button>
+          )}
         </div>
       </header>
 

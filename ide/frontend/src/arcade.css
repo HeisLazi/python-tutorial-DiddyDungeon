@@ -11,7 +11,7 @@
   font-family: "Arcade Body";
   src: url("../node_modules/@fontsource/vt323/files/vt323-latin-400-normal.woff2") format("woff2");
   font-display: swap;
-  size-adjust: 135%;
+  size-adjust: 150%;
 }
 @font-face {
   font-family: "Arcade Display";
@@ -227,10 +227,26 @@
 }
 .app-shell[data-theme="arcade"] .cloud-pill.local { display: none; }
 .app-shell[data-theme="arcade"] .cloud-pill {
-  max-width: 150px;
+  max-width: 170px;
   overflow: hidden;
+  padding: 6px 9px;
+  border: 2px solid var(--blue) !important;
+  background: var(--panel2) !important;
+  color: var(--blue) !important;
+  font-size: 9px !important;
   text-overflow: ellipsis;
   white-space: nowrap;
+  box-shadow: 2px 2px 0 var(--px-ink);
+}
+.app-shell[data-theme="arcade"] .cloud-pill.ready:not(.local) { border-color: var(--green) !important; color: var(--green) !important; }
+.app-shell[data-theme="arcade"] .cloud-pill.error { border-color: var(--danger) !important; color: var(--danger) !important; }
+.app-shell[data-theme="arcade"] .top-stats {
+  flex-wrap: nowrap;
+  min-width: 0;
+  overflow: hidden;
+}
+@media (max-width: 1500px) {
+  .app-shell[data-theme="arcade"] .top-stats .optional-stat { display: none; }
 }
 .app-shell[data-theme="arcade"] :is(.zen-toggle, .game-toggle, .ai-popout-toggle) {
   padding: 6px 9px;
@@ -327,7 +343,7 @@
   box-shadow: var(--px-shadow-sm) !important;
 }
 .app-shell[data-theme="arcade"] .poi-card strong { font-size: 18px; color: var(--text); }
-.app-shell[data-theme="arcade"] .poi-card em { font-style: normal; font-size: 15px; }
+.app-shell[data-theme="arcade"] .poi-card em { font-style: normal; font-size: 13px; line-height: 1.25; }
 .app-shell[data-theme="arcade"] .poi-card.active {
   border-color: var(--gold) !important;
   background: #2b2350 !important;
@@ -348,8 +364,8 @@
   height: 100%;
   background: repeating-linear-gradient(90deg, var(--gold) 0 8px, #d9a514 8px 10px);
 }
-.app-shell[data-theme="arcade"] .campaign-panel-copy,
-.app-shell[data-theme="arcade"] .campaign-place-heading:not([data-place="market"] *) p { font-size: 17px; }
+.app-shell[data-theme="arcade"] .campaign-panel-copy { font-size: 14px; }
+.app-shell[data-theme="arcade"] .campaign-place-heading:not([data-place="market"] *) p { font-size: 16px; }
 
 .app-shell[data-theme="arcade"] .office-toolbar,
 .app-shell[data-theme="arcade"] .office-board-header {
@@ -452,12 +468,14 @@
 .app-shell[data-theme="arcade"] ::-webkit-scrollbar-thumb { background: var(--line2); border: 3px solid var(--panel3); }
 .app-shell[data-theme="arcade"] ::-webkit-scrollbar-thumb:hover { background: var(--gold); }
 
-/* ── Merchant: keep the original Market look ───────────────────────── */
+/* ── Merchant: keep the vendor scene, sprite, type and layout ──────────
+   Surfaces follow the theme (panels, lines) so the Market sits in the same
+   room as the rest of the app; the illustrated stall stays as drawn. */
 .app-shell[data-theme="arcade"] .campaign-v1 [data-place="market"] {
-  --campaign-panel: #101510;
-  --campaign-panel-soft: #151b16;
-  --campaign-line: #344234;
-  --campaign-line-strong: #4b5c4a;
+  --campaign-panel: var(--panel);
+  --campaign-panel-soft: var(--panel2);
+  --campaign-line: var(--line);
+  --campaign-line-strong: var(--line2);
   --campaign-text: #e8eadf;
   --campaign-muted: #aab7a5;
   --campaign-dim: #71816d;
@@ -469,7 +487,85 @@
   color: var(--campaign-text);
   font-family: Inter, ui-sans-serif, system-ui, sans-serif;
 }
+.app-shell[data-theme="arcade"] .campaign-v1 [data-place="market"] :is(.market-greeting-copy, .market-greeting-purse, .market-purse-pill, .market-category-rail, .market-lot-list, .market-item-detail) {
+  background: var(--panel2);
+}
+.app-shell[data-theme="arcade"] .campaign-v1 [data-place="market"] .market-category { background: var(--panel3); }
+
+/* Home: room surfaces follow the theme; the illustrated room stays as drawn. */
+.app-shell[data-theme="arcade"] .homestead-v2 :is(.place-seal, .home-context-mark, .room-plaque) {
+  border: 2px solid var(--line2);
+  background: var(--panel2);
+}
+
+/* ── Readable sizes for the pixel display face ─────────────────────── */
+.app-shell[data-theme="arcade"] :is(.screen-hero, .resource-tutor-header, .campaign-place-heading, .panel-heading, .settings-hero, [class*="-hero"], [class*="heading"]) h2:not([data-place="market"] *) {
+  font-size: clamp(16px, 1.6vw, 24px) !important;
+}
+.app-shell[data-theme="arcade"] h3:not([data-place="market"] *, .bounty-poster *) {
+  font-size: clamp(14px, 1.3vw, 19px) !important;
+}
+
+/* ── Tutor Notebook: solid, distinct tab bars ──────────────────────── */
+.app-shell[data-theme="arcade"] :is(.resource-folio-controls, .resource-tutor-tabs) {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 6px;
+  border: 3px solid var(--line) !important;
+  background: var(--panel3);
+  box-shadow: var(--px-shadow-sm);
+}
+.app-shell[data-theme="arcade"] :is(.resource-folio-controls, .resource-tutor-tabs) button {
+  padding: 9px 14px !important;
+  border: 3px solid var(--line2) !important;
+  background: var(--panel2) !important;
+  color: var(--muted) !important;
+  font-size: 10px !important;
+  box-shadow: var(--px-shadow-sm) !important;
+}
+.app-shell[data-theme="arcade"] :is(.resource-folio-controls, .resource-tutor-tabs) button:hover {
+  border-color: var(--gold) !important;
+  color: var(--text) !important;
+}
+.app-shell[data-theme="arcade"] :is(.resource-folio-controls, .resource-tutor-tabs) button.active {
+  border-color: #fff1b8 !important;
+  background: var(--gold) !important;
+  color: #1d1240 !important;
+  transform: translate(2px, 2px);
+  box-shadow: 1px 1px 0 var(--px-ink) !important;
+}
+.app-shell[data-theme="arcade"] .resource-folio-controls > span { margin-left: auto; align-self: center; color: var(--dim); }
+
+/* ── PYR panel toolbar: wrap instead of clipping ───────────────────── */
+.app-shell[data-theme="arcade"] :is(.ai-toolbar, .ai-actions) {
+  flex-wrap: wrap;
+  gap: 6px;
+  min-width: 0;
+}
+.app-shell[data-theme="arcade"] .ai-actions button {
+  padding: 6px 9px;
+  font-size: 9px;
+}
 
 @media (prefers-reduced-motion: reduce) {
   .app-shell[data-theme="arcade"] * { transition: none !important; }
 }
+.app-shell[data-theme="arcade"] .resource-tutor-tabs { width: fit-content; }
+
+/* Place panels (Office, Market, Home) and Home cards: theme surfaces instead
+   of the prototype's hard-coded forest greens. */
+.app-shell[data-theme="arcade"] .campaign-v1 .campaign-place-panel { background: var(--panel); }
+.app-shell[data-theme="arcade"] .campaign-v1 .campaign-stat-row > span { background: var(--panel3); }
+.app-shell[data-theme="arcade"] .homestead-v2 .home-context-panel {
+  border-color: var(--line2);
+  background: var(--panel2);
+}
+.app-shell[data-theme="arcade"] .homestead-v2 :is(.home-status-row > span, .home-equip-card, .home-supply-strip, .home-achievement-icon) {
+  background: var(--panel3);
+}
+.app-shell[data-theme="arcade"] .homestead-v2 :is(.home-equip-card:hover, .home-equip-card:focus-visible, .home-equip-card.equipped) {
+  background: var(--panel2);
+  border-color: var(--gold);
+}
+.app-shell[data-theme="arcade"] .homestead-v2 .pyr-bond-meter > i { background: var(--px-ink); }

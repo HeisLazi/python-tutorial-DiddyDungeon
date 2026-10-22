@@ -405,6 +405,20 @@ export function ActivityRail({ activeView, setActiveView, player, avatarDataUrl 
   )
 }
 
+// The workspace is the platform checkout, so the raw tree also lists Quest
+// Lab's own docs, tooling and dot-folders. "Game" view keeps only what the
+// player builds: code files at the root and folders they created.
+const PLATFORM_TREE_ROOTS = new Set(['ide', 'tools', 'supabase', 'prototypes', 'questlab-state', 'questlab-files', 'node_modules'])
+const GAME_FILE_PATTERN = /\.(py|js|jsx|ts|tsx|html|css|sql|rs|go|java|c|cpp|h|rb|lua|txt)$/i
+
+function isGameTreeItem(item) {
+  const segments = String(item?.path || '').replaceAll('\\', '/').split('/').filter(Boolean)
+  if (!segments.length || segments.some((segment) => segment.startsWith('.'))) return false
+  if (PLATFORM_TREE_ROOTS.has(segments[0])) return false
+  if (segments.length === 1 && item.type === 'file') return GAME_FILE_PATTERN.test(segments[0]) && segments[0] !== 'index.html'
+  return true
+}
+
 export function ContextPanel({ activeView, campaign, files = [], activePath, compact = false, onToggleCompact, editorMode = 'file', openFile, openQuestDocument, newFile, setActiveView, submitBattle, submitBoss, busy }) {
   const progress = campaign?.progress || {}
   const player = progress.player || {}
@@ -416,9 +430,16 @@ export function ContextPanel({ activeView, campaign, files = [], activePath, com
   // A malformed legacy transfer can leave a literal backslash directory in
   // the checkout. It is not part of the learner workspace and must never be
   // rendered as a second filesystem root in the editor tree.
+  const [showAllFiles, setShowAllFiles] = useState(() => {
+    try { return window.localStorage.getItem('questlab.showAllFiles') === 'true' } catch { return false }
+  })
+  const toggleShowAllFiles = () => setShowAllFiles((current) => {
+    try { window.localStorage.setItem('questlab.showAllFiles', String(!current)) } catch { /* storage unavailable */ }
+    return !current
+  })
   const treeFiles = files.filter((item) => {
     const path = String(item?.path || '')
-    return path && !path.startsWith('\\') && !path.includes('\0')
+    return path && !path.startsWith('\\') && !path.includes('\0') && (showAllFiles || isGameTreeItem(item))
   })
   const campaignSourceFiles = treeFiles.filter((item) => {
     if (item.type !== 'file' || !/\.py$/i.test(String(item.path || ''))) return false
@@ -526,6 +547,7 @@ export function ContextPanel({ activeView, campaign, files = [], activePath, com
             {multiFileProject && <div className="file-tree-actions">
               <button type="button" onClick={() => setShowFiles((current) => !current)} title={showFiles ? 'Hide project files' : 'Show project files'} aria-label={showFiles ? 'Hide project files' : 'Show project files'}>{showFiles ? 'Hide' : 'Files'}</button>
               {showFiles && <>
+                <button type="button" onClick={toggleShowAllFiles} aria-pressed={showAllFiles} title={showAllFiles ? 'Showing every workspace file · switch to game files only' : 'Showing game files only · switch to every workspace file'}>{showAllFiles ? 'All' : 'Game'}</button>
                 <button type="button" onClick={toggleAllDirs} title={openDirs && openDirs.size === directoryPaths.length && directoryPaths.length > 0 ? 'Collapse all folders' : 'Expand all folders'} aria-label={openDirs && openDirs.size === directoryPaths.length && directoryPaths.length > 0 ? 'Collapse all folders' : 'Expand all folders'}>{openDirs && openDirs.size === directoryPaths.length && directoryPaths.length > 0 ? '−' : '+'}</button>
                 <button type="button" onClick={newFile} title="New file" aria-label="New file">＋</button>
               </>}
