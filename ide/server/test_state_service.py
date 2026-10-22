@@ -957,6 +957,50 @@ class StateServiceBehaviorTests(unittest.TestCase):
         self.assertTrue(after["state_events"][-1]["project_completed"])
         self.assertEqual(service.encounter_projection(after)["status"], "complete")
 
+    def test_boss_clear_opens_the_next_project_with_a_seeded_bounty_board(self):
+        service, path = self.make_service()
+        state = self.read(path)
+        first = state["projects"][0]
+        first.update({"order": 1, "branch": "01-blackjack", "boss": "The House", "boss_status": "available"})
+        first["mobs"] = [{"name": "The Empty Table", "status": "defeated", "concept": "Variables"}]
+        skipped = {"order": 0, "branch": "00-rps-tournament", "name": "Rock Paper Scissors Tournament", "status": "available", "boss": "The Pattern Warden", "progress": 0}
+        upcoming = {"order": 2, "branch": "02-detective-game", "name": "Guess Who / Detective Game", "status": "available", "boss": "The False Alibi", "progress": 0}
+        state["projects"] = [skipped, first, upcoming]
+        path.write_text(json.dumps(state), encoding="utf-8")
+
+        cleared = service.apply_internal(
+            "record_boss_clear",
+            {"evidence_id": "b1", "explanation_evidence_id": "b2", "interview_evidence_id": "b3", "reason": "Boss beaten"},
+        )
+        self.assertEqual(cleared["result"]["next_project"]["name"], "Guess Who / Detective Game")
+        self.assertFalse(cleared["result"]["campaign_complete"])
+        after = self.read(path)
+        by_branch = {item["branch"]: item for item in after["projects"]}
+        self.assertEqual(by_branch["01-blackjack"]["status"], "completed")
+        detective = by_branch["02-detective-game"]
+        self.assertEqual(detective["status"], "active")
+        self.assertEqual(detective["entry_file"], "detective.py")
+        self.assertEqual(len(detective["mobs"]), 8)
+        self.assertEqual([mob["status"] for mob in detective["mobs"]], ["available"] + ["locked"] * 7)
+        self.assertIn("The False Alibi", after["current_quest"])
+        # A fresh board means a fresh encounter, not an instantly open boss gate.
+        projection = service.encounter_projection(after)
+        self.assertEqual(projection["project_name"], "Guess Who / Detective Game")
+        self.assertNotEqual(projection["status"], "boss_available")
+
+        # Clearing the last project ahead wraps back to the skipped one.
+        detective_done = self.read(path)
+        for item in detective_done["projects"]:
+            if item["branch"] == "02-detective-game":
+                item["mobs"] = [dict(mob, status="defeated") for mob in item["mobs"]]
+                item["boss_status"] = "available"
+        path.write_text(json.dumps(detective_done), encoding="utf-8")
+        wrapped = service.apply_internal(
+            "record_boss_clear",
+            {"evidence_id": "c1", "explanation_evidence_id": "c2", "interview_evidence_id": "c3", "reason": "Second boss"},
+        )
+        self.assertEqual(wrapped["result"]["next_project"]["name"], "Rock Paper Scissors Tournament")
+
     def test_approved_legacy_reconciliation_restores_only_reviewed_fields_and_is_idempotent(self):
         service, path = self.make_service()
         state = self.read(path)

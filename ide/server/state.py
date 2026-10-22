@@ -23,6 +23,17 @@ from pydantic import BaseModel, ConfigDict, Field
 
 MAX_EVENT_RECORDS = 100
 MAX_REASON_LENGTH = 240
+# Bounty boards for campaign projects, keyed by project branch. Seeded into a
+# project the first time a boss clear opens it (see _advance_campaign).
+CAMPAIGN_BOUNTIES_PATH = Path(__file__).with_name("campaign_bounties.json")
+
+
+def load_campaign_bounties() -> dict[str, Any]:
+    try:
+        data = json.loads(CAMPAIGN_BOUNTIES_PATH.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+    return data if isinstance(data, dict) else {}
 MAX_IDENTIFIER_LENGTH = 120
 MAX_REWARD_XP = 100
 MAX_REWARD_COINS = 100
@@ -2279,6 +2290,11 @@ class LocalStateService:
         if not isinstance(projects, list):
             return None
         project = next((item for item in projects if isinstance(item, dict) and item.get("status") == "active"), None)
+        if project is None:
+            # Every project is cleared: report the most recent clear as the
+            # finished campaign instead of no encounter at all.
+            finished = [item for item in projects if isinstance(item, dict) and item.get("completed") is True]
+            project = max(finished, key=lambda item: str(item.get("completed_at") or ""), default=None)
         if project is None:
             return None
         mobs = project.get("mobs")
@@ -5528,6 +5544,58 @@ class LocalStateService:
             },
         )
 
+    def _advance_campaign(self, progress: dict[str, Any], cleared: dict[str, Any]) -> dict[str, Any] | None:
+        """Close a cleared project and open the next one.
+
+        The next project is the first unfinished one after the cleared
+        project's order, wrapping back to any earlier project that was
+        skipped. A project with no bounty board gets one seeded from
+        campaign_bounties.json (first bounty open, the rest locked) so its
+        boss can never unlock on an empty board.
+        """
+
+        cleared["status"] = "completed"
+        projects = [item for item in progress.get("projects", []) if isinstance(item, dict)]
+
+        def order(item: Mapping[str, Any]) -> int:
+            value = item.get("order")
+            return value if isinstance(value, int) else 0
+
+        current_order = order(cleared)
+        remaining = [
+            item for item in projects
+            if item is not cleared and item.get("completed") is not True and item.get("status") != "completed"
+        ]
+        remaining.sort(key=lambda item: (order(item) <= current_order, order(item)))
+        upcoming = remaining[0] if remaining else None
+        if upcoming is None:
+            progress["current_quest"] = "Campaign complete: every project boss is defeated."
+            return None
+
+        bounties = load_campaign_bounties().get(str(upcoming.get("branch") or ""), {})
+        mobs = upcoming.get("mobs")
+        if not isinstance(mobs, list) or not mobs:
+            seeded = [
+                {"name": item["name"], "concept": item["concept"], "encounter": item["encounter"], "status": "locked"}
+                for item in bounties.get("mobs", [])
+                if isinstance(item, Mapping) and all(isinstance(item.get(key), str) for key in ("name", "concept", "encounter"))
+            ]
+            if seeded:
+                seeded[0]["status"] = "available"
+            upcoming["mobs"] = seeded
+        if isinstance(bounties.get("entry_file"), str):
+            upcoming.setdefault("entry_file", bounties["entry_file"])
+        upcoming["status"] = "active"
+        upcoming.setdefault("progress", 0)
+        upcoming.setdefault("clean_clear_eligible", True)
+        upcoming.setdefault("creative_discoveries", [])
+        upcoming.pop("boss_status", None)
+        progress["current_quest"] = (
+            f"{upcoming.get('name') or upcoming.get('branch')}: clear the bounty board, "
+            f"then face {upcoming.get('boss') or 'the boss'}."
+        )
+        return upcoming
+
     @staticmethod
     def _unlock_boss_if_cleared(project: dict[str, Any]) -> None:
         """Match the encounter projection: a cleared board with no stored boss
@@ -5670,7 +5738,8 @@ class LocalStateService:
         if any(item.get("status") not in {"defeated", "cleared"} for item in mobs):
             raise StateCommandError("The active project still has unresolved mobs", status_code=409)
         boss_name = self._text(project.get("boss") or "", "boss_name", max_length=MAX_IDENTIFIER_LENGTH)
-        project_name = self._text(project.get("name") or project.get("branch") or "", "project_name")
+        # Display text, not a path: real names include "Guess Who / Detective Game".
+        project_name = self._campaign_text(project.get("name") or project.get("branch") or "project", "project_name")
         if project.get("boss_status") == "defeated" or project.get("completed") is True:
             return Mutation(
                 False,
@@ -5756,6 +5825,13 @@ class LocalStateService:
             companion_form_after = str(companion.get("form") or companion_form_before)
             companion_level_after = self._counter(companion, "level")
 
+        upcoming = self._advance_campaign(progress, project)
+        next_project = (
+            {"project_id": self._project_id(upcoming), "name": upcoming.get("name"), "boss": upcoming.get("boss"), "entry_file": upcoming.get("entry_file")}
+            if upcoming
+            else None
+        )
+
         return Mutation(
             True,
             {
@@ -5783,6 +5859,8 @@ class LocalStateService:
                 "boss_phase": "complete",
                 "boss_phase_label": "Boss clear",
                 "verified_boss_requirements": list(BOSS_REQUIREMENTS),
+                "next_project": next_project,
+                "campaign_complete": next_project is None,
             },
             {
                 "project_id": self._project_id(project),
@@ -5790,6 +5868,7 @@ class LocalStateService:
                 "boss_name": boss_name,
                 "boss_defeated": True,
                 "project_completed": True,
+                "next_project_name": next_project["name"] if next_project else None,
                 "reward_xp": 100,
                 "reward_coins": 0,
                 "boss_reward_xp": 100,

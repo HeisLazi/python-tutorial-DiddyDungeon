@@ -1,0 +1,324 @@
+{
+  "00-rps-tournament": {
+    "entry_file": "rps.py",
+    "concept_focus": "Loops, conditionals and score state in a first-to-N match",
+    "mobs": [
+      {
+        "name": "The Mimic",
+        "concept": "Input/output and random choice from a list",
+        "encounter": "Get a single round on the table: take the player's move, let the computer pick its own, and explain where each choice is remembered."
+      },
+      {
+        "name": "The Rule Sage",
+        "concept": "Conditionals (if / elif / else)",
+        "encounter": "Decide who wins a round by reasoning through ties, wins and losses without blindly writing out every pairing."
+      },
+      {
+        "name": "The Loop Imp",
+        "concept": "While loops",
+        "encounter": "Make rounds repeat and explain which condition keeps the loop alive and what would end it."
+      },
+      {
+        "name": "The Score Thief",
+        "concept": "Counters and score variables",
+        "encounter": "Track wins for both sides and pinpoint exactly where in a round each score is allowed to change."
+      },
+      {
+        "name": "The Trickster",
+        "concept": "Input validation and string handling",
+        "encounter": "Survive typos, capitals and nonsense so a bad move asks again instead of crashing or counting as a round."
+      },
+      {
+        "name": "The Crown Keeper",
+        "concept": "Loop exit conditions and formatted output",
+        "encounter": "End the match when someone reaches the target score, showing the round number and score along the way."
+      },
+      {
+        "name": "The Rule Splitter",
+        "concept": "Functions",
+        "encounter": "Pull repeated jobs like getting a move and judging a round into small named behaviours and explain their inputs and returns."
+      },
+      {
+        "name": "The Rematch Wraith",
+        "concept": "Outer game loop and reset state",
+        "encounter": "Offer a rematch after a finished match and explain how scores and round counts start fresh without restarting Python."
+      }
+    ]
+  },
+  "02-detective-game": {
+    "entry_file": "detective.py",
+    "concept_focus": "Dictionaries, lists of dictionaries and filtering data",
+    "mobs": [
+      {
+        "name": "The Lineup",
+        "concept": "Dictionaries and lists of dictionaries",
+        "encounter": "Build the suspect roster and decide which traits each suspect needs so every one can be told apart."
+      },
+      {
+        "name": "The Witness Board",
+        "concept": "Looping over lists and string output",
+        "encounter": "Display the remaining suspects and their traits readably and explain how the loop visits each one."
+      },
+      {
+        "name": "The Interrogator",
+        "concept": "Menus, input and dictionary lookup",
+        "encounter": "Offer a set of questions, take the player's pick and reason about which trait and value that question really checks."
+      },
+      {
+        "name": "The Vanishing Crowd",
+        "concept": "Filtering lists with conditionals",
+        "encounter": "Narrow the suspects after an answer by comparing what you know before and after the question."
+      },
+      {
+        "name": "The False Lead",
+        "concept": "Edge cases and list length",
+        "encounter": "Handle questions that eliminate nobody or everybody and always show how many suspects remain."
+      },
+      {
+        "name": "The Case Clerk",
+        "concept": "Functions",
+        "encounter": "Split asking, answering and filtering into named behaviours and explain what each receives and hands back."
+      },
+      {
+        "name": "The Accuser",
+        "concept": "Comparison and win conditions",
+        "encounter": "Let the player make a final accusation and justify how the program knows whether the case is solved."
+      },
+      {
+        "name": "The Cold Case",
+        "concept": "Turn limits, loop exits and reset state",
+        "encounter": "Cap questions or wrong guesses so the case can be lost, then open a new case without leftovers from the filtered list."
+      }
+    ]
+  },
+  "03-pokemon-battle": {
+    "entry_file": "battle.py",
+    "concept_focus": "Nested dictionaries, turn logic and state changes before classes",
+    "mobs": [
+      {
+        "name": "The Wild Slime",
+        "concept": "Nested dictionaries",
+        "encounter": "Design one creature with a name, HP, stats and a single move, and explain why each piece of data sits where it does."
+      },
+      {
+        "name": "The Feral Fang",
+        "concept": "Functions that change state",
+        "encounter": "Make one attack land and reason about which creature's data changes and which stays untouched."
+      },
+      {
+        "name": "The Miss Wisp",
+        "concept": "Randomness and probability",
+        "encounter": "Give moves an accuracy so attacks can miss and explain how a random roll becomes a hit or a miss."
+      },
+      {
+        "name": "The Turn Goblin",
+        "concept": "While loops and turn order",
+        "encounter": "Let both sides take repeated turns and trace whose turn it is at every point in the loop."
+      },
+      {
+        "name": "The Move Keeper",
+        "concept": "Lists of dictionaries and menu input",
+        "encounter": "Let the player pick from several moves and reject choices that do not exist."
+      },
+      {
+        "name": "The Mindless Rival",
+        "concept": "Random selection for enemy behaviour",
+        "encounter": "Have the enemy choose its own move each turn and explain how it reaches into the same move data as the player."
+      },
+      {
+        "name": "The Health Reaper",
+        "concept": "Conditionals and boundary checks",
+        "encounter": "End the battle exactly when a creature hits 0 HP, keeping HP from going negative and stopping a fallen creature from striking back."
+      },
+      {
+        "name": "The Battle Bard",
+        "concept": "String formatting and fresh state per battle",
+        "encounter": "Make battle text and remaining HP readable, then explain how a new battle starts at full HP instead of carrying old wounds."
+      }
+    ]
+  },
+  "04-casino-slots": {
+    "entry_file": "casino.py",
+    "concept_focus": "Randomness, probability thinking and bankroll (economy) state",
+    "mobs": [
+      {
+        "name": "The Coin Rat",
+        "concept": "Numeric variables and program state",
+        "encounter": "Track a starting bankroll and explain which actions should make it grow or shrink."
+      },
+      {
+        "name": "The Spin Imp",
+        "concept": "Lists and random selection",
+        "encounter": "Generate three random symbols per spin and reason about how many different outcomes are possible."
+      },
+      {
+        "name": "The Payout Mimic",
+        "concept": "Dictionaries and conditionals",
+        "encounter": "Reward different combinations correctly and decide what order to check them in so a big win is never paid as a small one."
+      },
+      {
+        "name": "The Debt Ghoul",
+        "concept": "Input validation",
+        "encounter": "Block bets that are negative, zero, not a number or bigger than the bankroll, and ask again instead of crashing."
+      },
+      {
+        "name": "The House Edge",
+        "concept": "Probability thinking and balancing",
+        "encounter": "Estimate how often each combination should appear and judge whether your payouts let a player win forever."
+      },
+      {
+        "name": "The Greed Spirit",
+        "concept": "While loops and exit conditions",
+        "encounter": "Keep the game running across many spins and explain every condition that ends the session."
+      },
+      {
+        "name": "The Croupier",
+        "concept": "Functions",
+        "encounter": "Split taking bets, spinning and paying out into named behaviours with clear inputs and returns."
+      },
+      {
+        "name": "The Tally Ghost",
+        "concept": "Session statistics and summary output",
+        "encounter": "Track wins, losses and net change across the session and present a clear summary when the player walks away."
+      }
+    ]
+  },
+  "05-dungeon-crawler": {
+    "entry_file": "crawler.py",
+    "concept_focus": "Connecting systems: encounters, inventory, shop and progression on shared state",
+    "mobs": [
+      {
+        "name": "The Hollow Adventurer",
+        "concept": "Dictionaries for player state",
+        "encounter": "Decide what the player must carry between rooms and how to keep HP, attack, gold and potions together in one place."
+      },
+      {
+        "name": "The Tunnel Rat",
+        "concept": "Combat loop and conditionals",
+        "encounter": "Make one enemy fight work with attack and run choices, and explain when the enemy gets to act."
+      },
+      {
+        "name": "The Potion Leech",
+        "concept": "Inventory quantities",
+        "encounter": "Let the player heal from a limited potion supply and reason about what should happen when it runs out."
+      },
+      {
+        "name": "The Gold Goblin",
+        "concept": "Updating shared state",
+        "encounter": "Award gold after a victory and explain why the reward must land on the same player state that survives into the next room."
+      },
+      {
+        "name": "The Spawn Pit",
+        "concept": "Randomness and functions that build data",
+        "encounter": "Generate enemies with different stats so fights vary, and explain where randomness enters each one."
+      },
+      {
+        "name": "The Merchant Shade",
+        "concept": "Shop loop with lists and dictionaries",
+        "encounter": "Build a shop that shows items and prices, checks affordability, updates gold and inventory, and lets the player leave empty-handed."
+      },
+      {
+        "name": "The Floor Stalker",
+        "concept": "Counters, random rooms and modulo",
+        "encounter": "Advance through numbered rooms with random events and reason about how the game knows a shop is due."
+      },
+      {
+        "name": "The Mini-Boss",
+        "concept": "Scheduled events and end-of-run state",
+        "encounter": "Bring a tougher encounter every few rooms and end the run on death with a final score."
+      }
+    ]
+  },
+  "06-gladiator-arena": {
+    "entry_file": "gladiator.py",
+    "concept_focus": "Reusable functions, turn-based combat state and run progression",
+    "mobs": [
+      {
+        "name": "The Rulescribe",
+        "concept": "Planning state and turn order in comments",
+        "encounter": "Sketch the combat rules and turn order before coding, naming every piece of state a fighter needs, including the secondary stat."
+      },
+      {
+        "name": "The Arena Recruit",
+        "concept": "Dictionaries and a turn-based loop",
+        "encounter": "Get one full duel working from first strike to a fallen fighter."
+      },
+      {
+        "name": "The Shield Bearer",
+        "concept": "Conditionals and temporary state",
+        "encounter": "Add a defend or block action and reason about how long its effect should last."
+      },
+      {
+        "name": "The Bloodletter",
+        "concept": "Randomness and risk/reward",
+        "encounter": "Add a stronger but riskier attack and argue when a player should gamble on it."
+      },
+      {
+        "name": "The Bookmaker",
+        "concept": "Rewards and upgrade menus",
+        "encounter": "Award coins or XP after a win and let the player pick an upgrade or item before the next fight."
+      },
+      {
+        "name": "The Veteran",
+        "concept": "Reusable functions and behaviour rules",
+        "encounter": "Give opponents different strengths and a simple rule for choosing actions, and explain why it is more than pure chance."
+      },
+      {
+        "name": "The Champion's Guard",
+        "concept": "Progression and difficulty scaling",
+        "encounter": "Make each opponent tougher across the run and test whether the curve stays challenging but beatable."
+      },
+      {
+        "name": "The Fallen Laurel",
+        "concept": "Run loop and reset state",
+        "encounter": "End the run on defeat with a summary and start a new run without carrying over old upgrades or HP."
+      }
+    ]
+  },
+  "07-football-manager": {
+    "entry_file": "football_manager.py",
+    "concept_focus": "Larger lists of dictionaries, interacting state and random simulation",
+    "mobs": [
+      {
+        "name": "The Scout",
+        "concept": "Lists of dictionaries and display",
+        "encounter": "Build squad data with name, position, rating and value and show it in a readable way."
+      },
+      {
+        "name": "The Talent Spotter",
+        "concept": "Filtering and searching",
+        "encounter": "Find players in the squad or market by position or rating and explain how the search decides who matches."
+      },
+      {
+        "name": "The Accountant",
+        "concept": "Numeric state and comparisons",
+        "encounter": "Track a club budget and decide whether a transfer is affordable before anything changes."
+      },
+      {
+        "name": "The Negotiator",
+        "concept": "Updating multiple structures together",
+        "encounter": "Buy a player so budget, squad and market all change together, and explain what breaks if only one of them does."
+      },
+      {
+        "name": "The Gaffer",
+        "concept": "Selection and validation",
+        "encounter": "Pick a simplified starting lineup from the squad and reject selections that are impossible or incomplete."
+      },
+      {
+        "name": "The Tactician",
+        "concept": "Loops and aggregation",
+        "encounter": "Reduce a lineup to a single team-strength number and justify why your formula is fair."
+      },
+      {
+        "name": "The Match Engine",
+        "concept": "Random simulation",
+        "encounter": "Produce believable results from team strength plus randomness, where the stronger side usually but not always wins."
+      },
+      {
+        "name": "The Fixture Keeper",
+        "concept": "Tracking results over time",
+        "encounter": "Run several matches in a row and keep a running record of wins, draws and losses."
+      }
+    ]
+  }
+}

@@ -519,6 +519,23 @@ function AppV2() {
   }, [])
   const progress = campaign?.progress || {}
   const player = progress.player || {}
+  // The active campaign project decides which file the Forge opens; a boss
+  // clear moves the campaign on to the next project and its entry file.
+  const activeProjectInfo = (progress.projects || []).find((project) => project.status === 'active') || {}
+  const activeEntryFile = typeof activeProjectInfo.entry_file === 'string' ? activeProjectInfo.entry_file : ''
+  const activeEntryFileRef = useRef('')
+  activeEntryFileRef.current = activeEntryFile
+  const lastProjectBranchRef = useRef(null)
+  useEffect(() => {
+    const branch = activeProjectInfo.branch || ''
+    if (!branch) return
+    if (lastProjectBranchRef.current && lastProjectBranchRef.current !== branch && activeEntryFile) {
+      const exists = files.some((item) => String(item.path || '').toLowerCase() === activeEntryFile.toLowerCase())
+      if (exists) void openFile(activeEntryFile, false)
+      else setNotice(`${activeProjectInfo.name || 'New project'} unlocked! Create ${activeEntryFile} in the Forge (＋ New file) to start its first bounty.`)
+    }
+    lastProjectBranchRef.current = branch
+  }, [activeProjectInfo.branch])
   if (prevLevelRef.current === null) prevLevelRef.current = player.level ?? 1
   const stats = progress.stats || {}
   const streak = progress.streak || {}
@@ -659,6 +676,7 @@ function AppV2() {
         detail: [
           bossRewardXp !== null ? `+${bossRewardXp} XP` : '',
           event.project_name || 'Project complete',
+          event.next_project_name ? `Unlocked: ${event.next_project_name}` : '',
         ].filter(Boolean).join(' · '),
       })
       if (event.project_completed) {
@@ -1120,7 +1138,7 @@ function AppV2() {
       })
       const activeProjectFile = projectFiles.some((item) => item.path === activePath)
       if (!activeProjectFile) {
-        const preferredNames = ['blackjack.py', 'campaign.py', 'main.py']
+        const preferredNames = [activeEntryFileRef.current, 'blackjack.py', 'campaign.py', 'main.py'].filter(Boolean)
         const preferred = preferredNames.map((name) => projectFiles.find((item) => item.path.toLowerCase() === name)).find(Boolean) || projectFiles[0]
         if (preferred) await openFile(preferred.path, false)
         else {
