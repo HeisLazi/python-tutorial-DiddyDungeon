@@ -4,14 +4,16 @@ import test from 'node:test'
 
 const source = (relativeUrl) => readFileSync(new URL(relativeUrl, import.meta.url), 'utf8')
 
-test('Monaco is bundled locally with local Vite workers and no CDN loader', () => {
+test('Monaco loads from the local same-origin copy with no CDN loader', () => {
   const main = source('../main.jsx')
   const packageJson = JSON.parse(source('../../package.json'))
+  const copyScript = source('../../scripts/copy-monaco.mjs')
 
   assert.ok(packageJson.dependencies['monaco-editor'])
-  assert.match(main, /loader\.config\(\{ monaco \}\)/)
-  assert.match(main, /monaco-editor\/esm\/vs\/editor\/editor\.worker\?worker/)
-  assert.match(main, /MonacoEnvironment\s*=\s*\{/)
+  assert.equal(packageJson.scripts.prebuild, 'node scripts/copy-monaco.mjs')
+  assert.equal(packageJson.scripts.predev, 'node scripts/copy-monaco.mjs')
+  assert.match(copyScript, /'monaco-editor', 'min'/)
+  assert.match(main, /loader\.config\(\{ paths: \{ vs: `\$\{import\.meta\.env\.BASE_URL\}monaco\/vs` \} \}\)/)
   assert.doesNotMatch(main, /https?:\/\/[^\s'"`]*(jsdelivr|unpkg|cdnjs)/i)
 })
 

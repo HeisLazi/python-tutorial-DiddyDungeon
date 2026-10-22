@@ -364,7 +364,7 @@ def main():
     print(f"   web:       {url}")
     if backend_port != args.backend_port:
         print(f"   note:      port {args.backend_port} was busy, so Forge moved the backend to {backend_port}")
-    if frontend_port != args.frontend_port:
+    if frontend_port != args.frontend_port and not args.app:
         print(f"   note:      port {args.frontend_port} was busy, so Forge moved the UI to {frontend_port}")
     print("   terminals: stable PTY mode (backend reload off)\n")
 
