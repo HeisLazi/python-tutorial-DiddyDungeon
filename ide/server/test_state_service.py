@@ -650,12 +650,12 @@ class StateServiceBehaviorTests(unittest.TestCase):
 
     def test_avatar_appearance_is_validated_projected_and_synced(self):
         service, path = self.make_service()
-        self.assertEqual(service.equipment_projection(self.read(path))["avatar"]["hair_style"], "short")
+        self.assertEqual(service.equipment_projection(self.read(path))["avatar"]["hair_style"], "locs_taper")
 
-        changed = service.apply("set_avatar", {"hair_style": "spiky", "outfit": "crimson"}, "player")
+        changed = service.apply("set_avatar", {"hair_style": "twists", "outfit": "crimson"}, "player")
         self.assertTrue(changed["changed"])
         avatar = self.read(path)["equipment"]["avatar"]
-        self.assertEqual((avatar["hair_style"], avatar["outfit"], avatar["skin"]), ("spiky", "crimson", "tan"))
+        self.assertEqual((avatar["hair_style"], avatar["outfit"], avatar["skin"]), ("twists", "crimson", "umber"))
         self.assertEqual(service.equipment_projection(self.read(path))["avatar"]["outfit"], "crimson")
 
         for bad in ({"hair_style": "glowing"}, {"wings": "yes"}):
@@ -663,7 +663,7 @@ class StateServiceBehaviorTests(unittest.TestCase):
                 service.apply("set_avatar", bad, "player")
 
         projection, _metadata = service.sync_snapshot()
-        self.assertEqual(projection["equipment"]["avatar"]["hair_style"], "spiky")
+        self.assertEqual(projection["equipment"]["avatar"]["hair_style"], "twists")
         with self.assertRaises(StateCommandError):
             service._validate_sync_projection({"equipment": {"avatar": {"skin": "neon"}}})
 

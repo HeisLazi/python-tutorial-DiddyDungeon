@@ -74,7 +74,7 @@
 .avatar-option-swatches { display: flex; flex-wrap: wrap; gap: 6px; }
 .avatar-swatch { padding: 3px !important; border: 2px solid var(--line) !important; background: var(--panel3) !important; box-shadow: none !important; }
 .avatar-swatch.color i { display: block; width: 24px; height: 24px; }
-.avatar-swatch.text span { display: block; padding: 3px 8px; font-size: 11px; text-transform: capitalize; }
+.avatar-swatch.text span { display: block; padding: 3px 8px; font-size: 11px; }
 .avatar-swatch.active { border-color: var(--gold) !important; }
 .character-gear-slot { display: grid; gap: 6px; }
 .character-gear-list { display: grid; gap: 6px; }

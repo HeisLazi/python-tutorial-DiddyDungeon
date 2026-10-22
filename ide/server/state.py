@@ -134,17 +134,20 @@ EQUIPMENT_BY_ID: dict[str, dict[str, Any]] = {item["id"]: item for item in EQUIP
 # frontend maps to palette colours (avatarSprite.js); anything else is
 # rejected so local and synced saves can only hold known options.
 AVATAR_OPTIONS: dict[str, tuple[str, ...]] = {
-    "skin": ("porcelain", "fair", "tan", "olive", "brown", "deep"),
-    "hair_style": ("short", "long", "spiky", "bun", "mohawk", "hooded"),
+    "skin": ("espresso", "deep", "umber", "brown", "caramel", "tan", "olive", "fair", "porcelain"),
+    "hair_style": (
+        "locs_taper", "freeform", "twists", "barrel_twists", "twist_out", "afro",
+        "bantu_knots", "waves", "brush_cut", "taper", "hooded",
+    ),
     "hair_color": ("black", "brown", "auburn", "blonde", "silver", "crimson", "teal", "violet"),
     "eyes": ("brown", "blue", "green", "grey", "amber"),
     "outfit": ("indigo", "crimson", "forest", "charcoal", "plum", "teal", "gold", "sand"),
     "accent": ("gold", "silver", "crimson", "teal", "violet", "white"),
 }
 DEFAULT_AVATAR: dict[str, str] = {
-    "skin": "tan",
-    "hair_style": "short",
-    "hair_color": "brown",
+    "skin": "umber",
+    "hair_style": "locs_taper",
+    "hair_color": "black",
     "eyes": "brown",
     "outfit": "indigo",
     "accent": "gold",

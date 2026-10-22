@@ -6,7 +6,7 @@ import './settings.css'
 import './dungeonBrief.css'
 import './avatar.css'
 import { merchantPixelSprite } from './campaignMerchant.js'
-import { AVATAR_LABELS, AVATAR_PALETTES, AVATAR_VIEWBOX, DEFAULT_APPEARANCE, avatarRects } from './avatarSprite.js'
+import { AVATAR_LABELS, AVATAR_PALETTES, AVATAR_STYLE_LABELS, AVATAR_VIEWBOX, DEFAULT_APPEARANCE, avatarRects } from './avatarSprite.js'
 
 export const viewItems = [
   { id: 'hub', label: 'Campaign' },
@@ -1777,9 +1777,10 @@ export function AvatarSprite({ appearance, gear = {}, size = 96, className = '',
 function AvatarSwatch({ field, value, active, onPick, disabled }) {
   const palette = AVATAR_PALETTES[field]
   const color = palette ? (Array.isArray(palette[value]) ? palette[value][0] : palette[value]) : null
+  const label = field === 'hair_style' ? (AVATAR_STYLE_LABELS[value] || value) : value
   return (
-    <button type="button" className={`avatar-swatch ${active ? 'active' : ''} ${color ? 'color' : 'text'}`} onClick={() => onPick(field, value)} disabled={disabled} aria-pressed={active} title={`${AVATAR_LABELS[field]}: ${value}`}>
-      {color ? <i style={{ background: color }} /> : <span>{value}</span>}
+    <button type="button" className={`avatar-swatch ${active ? 'active' : ''} ${color ? 'color' : 'text'}`} onClick={() => onPick(field, value)} disabled={disabled} aria-pressed={active} title={`${AVATAR_LABELS[field]}: ${label}`}>
+      {color ? <i style={{ background: color }} /> : <span>{label}</span>}
     </button>
   )
 }
