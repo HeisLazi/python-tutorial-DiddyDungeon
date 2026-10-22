@@ -28,6 +28,7 @@ elif args[:2] == ["auth", "list"]:
 elif args[:1] == ["models"]:
     print("google/fast-model")
     print("opencode-go/big-model")
+    print("opencode-go/claude-haiku-5-5")
 elif args[:1] == ["run"]:
     mode = os.environ.get("STUB_MODE", "json")
     print(json.dumps({{"type": "step_start", "part": {{"type": "step-start"}}}}))
@@ -97,10 +98,19 @@ class AiTutorModuleTests(AiTutorTestCase):
         self.reply({"verdict": "correct", "reason": "Nice."})
         ai_tutor.judge("practice", context=None, answer="print(1)", question="Print one.")
         run = next(call for call in self.calls() if call[:1] == ["run"])
-        self.assertEqual(run[1:5], ["--agent", "plan", "--format", "json"])
+        self.assertEqual(run[1:5], ["--agent", ai_tutor.AGENT_NAME, "--format", "json"])
+        agent = json.loads((ai_tutor.prepare_scratch() / "opencode.json").read_text(encoding="utf-8"))["agent"][ai_tutor.AGENT_NAME]
+        self.assertFalse(any(agent["tools"].values()))
+        self.assertEqual(set(agent["permission"].values()), {"deny"})
         self.assertIn("--model", run)
         self.assertEqual(run[run.index("--model") + 1], "google/fast-model")
         self.assertIn("print(1)", run[-1])
+
+    def test_auto_model_picks_first_signed_in_preference(self):
+        self.reply({"ok": True})
+        self.assertEqual(ai_tutor.test_connection()["model"], "opencode-go/claude-haiku-5-5")
+        run = [call for call in self.calls() if call[:1] == ["run"]][-1]
+        self.assertEqual(run[run.index("--model") + 1], "opencode-go/claude-haiku-5-5")
 
     def test_judge_accepts_only_strict_verdict_json(self):
         self.reply('```json\n{"verdict": "incorrect", "reason": "What happens when the hand is empty?"}\n```')

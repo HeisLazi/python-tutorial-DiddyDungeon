@@ -2498,7 +2498,7 @@ function AiTutorSettings({ ai = {} }) {
       const response = await fetch('/api/ai/test', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ model: settings.model || '' }) })
       const body = await response.json()
       if (!response.ok) throw new Error(body?.detail?.message || body?.detail || response.statusText)
-      setTest({ status: 'ok', text: `Connected · replied in ${body.seconds}s` })
+      setTest({ status: 'ok', text: `Connected · ${body.model} replied in ${body.seconds}s` })
     } catch (error) {
       setTest({ status: 'error', text: error.message })
     }
@@ -2518,9 +2518,9 @@ function AiTutorSettings({ ai = {} }) {
       </section>
       <section className="settings-group">
         <header><h3>Model</h3></header>
-        <SettingRow label="Model" description="OpenCode's default is the safest choice. Some listed models are not enabled on every plan, so test after switching.">
+        <SettingRow label="Model" description="Auto picks a fast model you're signed in to (OpenCode Go first). Some listed models aren't enabled on every plan, so press Test after switching.">
           <select value={settings.model || ''} onFocus={() => { if (models === null) loadModels() }} onChange={(event) => { setTest(null); update({ model: event.target.value }) }} disabled={!opencode.ready || saving}>
-            <option value="">OpenCode default</option>
+            <option value="">Auto (fast, signed-in model)</option>
             {settings.model && !modelOptions.includes(settings.model) && <option value={settings.model}>{settings.model}</option>}
             {models === 'loading' && <option disabled>Loading models…</option>}
             {modelOptions.map((model) => <option key={model} value={model}>{model}</option>)}

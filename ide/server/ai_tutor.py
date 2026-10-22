@@ -2,8 +2,8 @@
 
 The player's own OpenCode install (and the provider accounts already signed in
 there) is the model runtime, so Quest Lab never stores an AI credential. Every
-call runs ``opencode run --agent plan --format json`` from an empty scratch
-directory with all context inside the prompt, and the reply must be one strict
+call runs ``opencode run --agent questlab-pyr --format json`` (a no-tools
+agent defined in the scratch directory) with all context inside the prompt, and the reply must be one strict
 JSON object. Callers decide what a reply is allowed to change: grading verdicts
 still go through the existing PYR verdict gateway, which owns rewards, damage
 and HP.
@@ -14,6 +14,7 @@ AI settings are device-local (``$XDG_STATE_HOME/QuestLab/ai.json``) because
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import re
@@ -34,8 +35,7 @@ MODEL_PATTERN = re.compile(r"^[A-Za-z0-9._:/@#+-]{0,200}$")
 
 DEFAULT_SETTINGS: dict[str, Any] = {
     "provider": "opencode",
-    # Empty means "OpenCode's own default model", which is the one most
-    # likely to work with whatever accounts the player has signed in.
+    # Empty means "Auto": the first signed-in model from AUTO_MODEL_PREFERENCES.
     "model": "",
     "auto_grade": True,
     "generate_dungeon_questions": True,
@@ -134,12 +134,19 @@ def opencode_binary() -> str | None:
 
 
 def _run(argv: list[str], *, timeout: float, cwd: Path | None = None) -> subprocess.CompletedProcess[str]:
+    env = None
+    if cwd:
+        # OpenCode resolves its project directory (and so which opencode.json
+        # agents exist) from $PWD, which `cwd=` alone leaves pointing at the
+        # parent's directory.
+        env = {**os.environ, "PWD": str(cwd)}
     return subprocess.run(
         argv,
         capture_output=True,
         text=True,
         timeout=timeout,
         cwd=str(cwd) if cwd else None,
+        env=env,
         stdin=subprocess.DEVNULL,
         check=False,
     )
@@ -199,6 +206,68 @@ def list_models(*, max_age: float = 300.0) -> list[str]:
 
 # ── Model calls ────────────────────────────────────────────────────────
 
+AGENT_NAME = "questlab-pyr"
+# A dedicated agent, written into the scratch directory's opencode.json. The
+# built-in `plan` agent carries a "Plan mode" system prompt that made models
+# chat and withhold verdicts, and the player's global config may allow every
+# tool; this agent has no tools, denies every permission and answers in JSON.
+# (No maxSteps: forcing a text-only step uses assistant prefill, which some
+# models reject.)
+AGENT_CONFIG = {
+    "$schema": "https://opencode.ai/config.json",
+    "agent": {
+        AGENT_NAME: {
+            "description": "Quest Lab PYR: grades and writes questions as one JSON object; never uses tools",
+            "mode": "primary",
+            "prompt": (
+                "You are PYR, the tutor inside the Quest Lab learning game. You are called by a program, "
+                "not chatting with a person. Read the task, decide, and answer with exactly one JSON object "
+                "in the shape the task asks for. No preamble, no follow-up questions, no markdown outside "
+                "the JSON. Never use tools."
+            ),
+            "tools": {"*": False, "bash": False, "edit": False, "write": False, "read": False, "webfetch": False, "task": False},
+            "permission": {"edit": "deny", "bash": "deny", "webfetch": "deny", "external_directory": "deny"},
+        }
+    },
+}
+
+# Used when the player leaves the model on "Auto". OpenCode's free tier only
+# serves OpenCode's own agents, so Auto picks the first signed-in model from
+# this list of quick, JSON-reliable models.
+AUTO_MODEL_PREFERENCES = (
+    "opencode-go/claude-haiku-5-5",
+    "opencode-go/deepseek-v4.1-flash",
+    "opencode-go/qwen3.8-flash",
+    "github-copilot/gpt-5.4-nano",
+    "google/gemini-3.8-flash",
+    "openai/gpt-5.6-luna-fast",
+)
+
+
+def resolve_model(model: str) -> str:
+    if model:
+        return model
+    available = set(list_models())
+    return next((candidate for candidate in AUTO_MODEL_PREFERENCES if candidate in available), "")
+
+
+def prepare_scratch() -> Path:
+    """Return the empty working directory that holds the agent config.
+
+    OpenCode's background service caches each directory's config the first
+    time it sees it, so the directory is named after the config's hash: any
+    change to the agent lands in a fresh directory the service reads anew.
+    """
+
+    rendered = json.dumps(AGENT_CONFIG, indent=2) + "\n"
+    digest = hashlib.sha256(rendered.encode("utf-8")).hexdigest()[:10]
+    scratch = state_dir() / f"pyr-agent-{digest}"
+    scratch.mkdir(parents=True, exist_ok=True)
+    config = scratch / "opencode.json"
+    if not config.is_file() or config.read_text(encoding="utf-8") != rendered:
+        config.write_text(rendered, encoding="utf-8")
+    return scratch
+
 
 def run_prompt(prompt: str, *, title: str, model: str | None = None, timeout: float = DEFAULT_TIMEOUT_SECONDS) -> str:
     """Run one prompt through OpenCode and return the final assistant text."""
@@ -209,13 +278,13 @@ def run_prompt(prompt: str, *, title: str, model: str | None = None, timeout: fl
     model = (model if model is not None else load_settings()["model"]).strip()
     if not MODEL_PATTERN.match(model):
         raise AiTutorError("Model must look like provider/model", kind="invalid", status_code=422)
-    argv = [binary, "run", "--agent", "plan", "--format", "json", "--title", title]
+    model = resolve_model(model)
+    argv = [binary, "run", "--agent", AGENT_NAME, "--format", "json", "--title", title]
     if model:
         argv += ["--model", model]
     argv.append(prompt)
 
-    scratch = state_dir() / "scratch"
-    scratch.mkdir(parents=True, exist_ok=True)
+    scratch = prepare_scratch()
     if not _CALL_LOCK.acquire(blocking=False):
         raise AiTutorError("PYR is already thinking about another request", kind="busy", status_code=409)
     try:
@@ -444,10 +513,11 @@ def ask(*, question: str, concept: str = "", code: str = "", context: Any = None
 
 
 def test_connection(model: str | None = None) -> dict[str, Any]:
+    chosen = resolve_model((model if model is not None else load_settings()["model"]).strip())
     started = time.monotonic()
     reply = extract_json_object(
         run_prompt('Reply with ONLY this JSON object: {"ok": true}', title="Quest Lab · connection test", model=model, timeout=90)
     )
     if reply.get("ok") is not True:
         raise AiTutorError("The model answered, but not with the expected test reply", kind="unparseable")
-    return {"ok": True, "seconds": round(time.monotonic() - started, 1)}
+    return {"ok": True, "seconds": round(time.monotonic() - started, 1), "model": chosen or "OpenCode default"}
