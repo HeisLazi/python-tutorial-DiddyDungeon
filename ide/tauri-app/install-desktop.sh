@@ -24,15 +24,16 @@ install -m 644 "$src_tauri/icons/128x128@2x.png" "$icon_dir/quest-lab.png"
 cat > "$apps_dir/quest-lab.desktop" <<EOF
 [Desktop Entry]
 Type=Application
-Name=Quest Lab
+Name=Diddy Dungeon
 GenericName=Python Quest Lab
 Comment=Build games, learn to code, level up your character
+Keywords=Quest Lab;Python;Coding;Learn;Dungeon;RPG;Forge;
 Exec=env QUESTLAB_HOME=$repo_root $bin_dir/quest-lab
-Icon=quest-lab
+Icon=$icon_dir/quest-lab.png
 Terminal=false
-Categories=Game;Education;Development;
+Categories=Game;
 StartupWMClass=app
 EOF
 
 command -v update-desktop-database >/dev/null && update-desktop-database "$apps_dir" >/dev/null 2>&1 || true
-echo "Installed: $bin_dir/quest-lab  (launcher entry: Quest Lab → $repo_root)"
+echo "Installed: $bin_dir/quest-lab  (launcher entry: Diddy Dungeon → $repo_root)"
