@@ -2116,6 +2116,16 @@ function AppV2() {
     }
   }
 
+  // Paper-doll appearance (equipment.avatar); cosmetic only.
+  const setAvatar = async (update) => {
+    try {
+      await api('/api/avatar', { method: 'POST', body: JSON.stringify(update) })
+      await refreshCampaign({ silent: true })
+    } catch (error) {
+      setNotice(`Appearance change failed: ${error.message}`)
+    }
+  }
+
   const equipCampaignItem = async (itemId) => {
     try {
       setBusy(true)
@@ -2613,6 +2623,7 @@ function AppV2() {
               performHomesteadAction={performHomesteadAction}
               saveCodexNote={saveCodexNote}
               pyr={pyrTools}
+              setAvatar={setAvatar}
               settingsAi={{ aiTutor, refreshAiTutor, saveAiSettings }}
               runtime={runtime}
               busy={busy || Boolean(pyrThinking)}

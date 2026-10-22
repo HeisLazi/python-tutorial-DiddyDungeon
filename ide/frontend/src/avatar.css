@@ -1,0 +1,101 @@
+/* Player paper-doll (AvatarSprite) in Home, the Character screen and the
+   Dungeon. Token-based so it follows every theme. */
+
+.avatar-sprite { display: block; image-rendering: pixelated; }
+
+/* Home room: the player stands on the rug; click opens the Character screen. */
+.homestead-v2 .home-interior-layout[hidden] { display: none !important; }
+.homestead-v2 .room-player {
+  position: absolute;
+  /* Open floor in the middle of the room, clear of PYR's perch, the hearth
+     and the study desk. */
+  left: 44%;
+  top: 30%;
+  z-index: 6;
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  padding: 4px 6px 2px !important;
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  cursor: pointer;
+}
+.homestead-v2 .room-player .avatar-sprite {
+  filter: drop-shadow(3px 3px 0 rgb(0 0 0 / 0.45));
+  animation: avatar-idle 1.6s steps(2) infinite;
+}
+.homestead-v2 .room-player small {
+  padding: 2px 6px;
+  border: 1px solid var(--gold);
+  background: rgb(0 0 0 / 0.55);
+  color: var(--gold);
+  font-size: 10px;
+  white-space: nowrap;
+}
+.homestead-v2 .room-player:hover small,
+.homestead-v2 .room-player:focus-visible small { background: var(--gold); color: #1d1240; }
+@keyframes avatar-idle { 50% { transform: translateY(-2px); } }
+.no-animations .room-player .avatar-sprite { animation: none; }
+
+/* Character screen */
+.character-screen { display: grid; gap: 14px; }
+.character-screen-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+.character-screen-head h2 { margin: 4px 0; }
+.character-screen-head p { margin: 0; color: var(--muted); }
+.character-screen-layout { display: grid; grid-template-columns: minmax(260px, 340px) minmax(0, 1fr); gap: 14px; align-items: start; }
+.character-stage { display: grid; gap: 10px; padding: 14px; border: 1px solid var(--line2); background: var(--panel2); }
+.character-stage-frame {
+  display: grid;
+  place-items: center;
+  min-height: 290px;
+  border: 1px solid var(--line);
+  background:
+    linear-gradient(rgb(255 255 255 / 0.03) 1px, transparent 1px) 0 0 / 100% 8px,
+    radial-gradient(circle at 50% 85%, rgb(255 204 51 / 0.12), transparent 60%),
+    var(--panel3);
+}
+.character-stage-sprite { filter: drop-shadow(4px 4px 0 rgb(0 0 0 / 0.5)); }
+.character-stage-gear { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.character-stage-gear span { display: grid; padding: 6px 8px; border: 1px solid var(--line); background: var(--panel3); }
+.character-stage-gear small { color: var(--muted); font-size: 10px; }
+.character-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin: 0; }
+.character-stats div { display: flex; justify-content: space-between; padding: 5px 8px; border: 1px solid var(--line); }
+.character-stats dt { color: var(--muted); }
+.character-stats dd { margin: 0; color: var(--text); }
+.character-controls { display: grid; gap: 14px; min-width: 0; }
+.character-panel { display: grid; gap: 10px; padding: 14px; border: 1px solid var(--line2); background: var(--panel); }
+.character-panel header { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.character-panel header h3 { margin: 0; color: var(--gold); }
+.character-panel header small { color: var(--muted); }
+.avatar-option-row { display: grid; grid-template-columns: 110px minmax(0, 1fr); gap: 10px; align-items: center; }
+.avatar-option-row > span { color: var(--muted); }
+.avatar-option-swatches { display: flex; flex-wrap: wrap; gap: 6px; }
+.avatar-swatch { padding: 3px !important; border: 2px solid var(--line) !important; background: var(--panel3) !important; box-shadow: none !important; }
+.avatar-swatch.color i { display: block; width: 24px; height: 24px; }
+.avatar-swatch.text span { display: block; padding: 3px 8px; font-size: 11px; text-transform: capitalize; }
+.avatar-swatch.active { border-color: var(--gold) !important; }
+.character-gear-slot { display: grid; gap: 6px; }
+.character-gear-list { display: grid; gap: 6px; }
+.character-gear-item {
+  display: grid !important;
+  grid-template-columns: 48px minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  width: 100%;
+  padding: 6px 10px !important;
+  text-align: left;
+}
+.character-gear-item strong { display: block; color: var(--text); }
+.character-gear-item small { color: var(--muted); }
+.character-gear-item b { color: var(--gold); font-size: 10px; }
+.character-gear-item.equipped { border-color: var(--green) !important; }
+.character-gear-item.equipped b { color: var(--green); }
+
+@media (max-width: 900px) {
+  .character-screen-layout { grid-template-columns: 1fr; }
+}
+
+/* Dungeon "You" card */
+.dungeon-brief-you { display: grid; grid-template-columns: auto minmax(0, 1fr); column-gap: 12px; align-items: center; }
+.dungeon-brief-you > .dungeon-brief-avatar { grid-row: span 4; filter: drop-shadow(3px 3px 0 rgb(0 0 0 / 0.45)); }
