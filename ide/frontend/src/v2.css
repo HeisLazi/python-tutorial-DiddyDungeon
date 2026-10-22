@@ -1322,6 +1322,17 @@
 .app-shell.zen-mode .workspace-grid {
   grid-template-columns: minmax(0, 1fr) !important;
 }
+/* The editor and terminal keep their normal column numbers (3/4); in the
+   one-column Zen grid that created implicit columns and squeezed the editor
+   into a strip on the right. Span the whole row instead. */
+.app-shell.zen-mode .workspace-grid > * {
+  grid-column: 1 / -1 !important;
+}
+/* The quest banner is hidden in Zen; collapse its row instead of leaving an
+   empty 40px band (rows: HUD, banner, nav, workspace, status bar). */
+.app-shell.forge-v2.zen-mode {
+  grid-template-rows: 70px 0 48px minmax(0, 1fr) 28px;
+}
 
 /* CRT toggle (persisted as questlab.gameMode): scanlines over any theme. */
 .app-shell.game-mode::after {
