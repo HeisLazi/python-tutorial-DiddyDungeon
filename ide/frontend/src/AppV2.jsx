@@ -18,7 +18,7 @@ const api = async (url, options = {}) => {
     let message = body || `${response.status} ${response.statusText}`
     try {
       const parsed = JSON.parse(body)
-      if (parsed?.detail) message = parsed.detail
+      if (parsed?.detail) message = typeof parsed.detail === 'object' && parsed.detail.message ? parsed.detail.message : parsed.detail
     } catch {
       // Raw text is still useful when the backend is not returning JSON.
     }
@@ -456,6 +456,10 @@ function AppV2() {
   const [zenMode, setZenMode] = usePersistentState('questlab.zenMode', false)
   const [gameMode, setGameMode] = usePersistentState('questlab.gameMode', false)
   const [bossIntroSeen, setBossIntroSeen] = usePersistentState('questlab.bossIntroSeen', '')
+  // OpenCode-backed PYR (ide/server/ai_tutor.py). `pyrThinking` is the label
+  // shown while a model call runs; state writes pause until it clears.
+  const [aiTutor, setAiTutor] = useState({ loaded: false, settings: null, opencode: null })
+  const [pyrThinking, setPyrThinking] = useState('')
   const [themeChoice, setThemeChoice] = usePersistentState('questlab.themeChoice', '')
   const [fontFamily, setFontFamily] = usePersistentState('questlab.fontFamily', 'inter')
   const [initialLaunch] = useState(() => launchContext())
@@ -1024,6 +1028,64 @@ function AppV2() {
     return request
   }
 
+  const refreshAiTutor = async () => {
+    try {
+      const next = await api('/api/ai/status')
+      setAiTutor({ loaded: true, settings: next.settings, opencode: next.opencode })
+      return next
+    } catch (error) {
+      setAiTutor({ loaded: true, settings: null, opencode: { ready: false, detail: error.message } })
+      return null
+    }
+  }
+
+  const saveAiSettings = async (update) => {
+    const next = await api('/api/ai/settings', { method: 'POST', body: JSON.stringify(update) })
+    setAiTutor((current) => ({ ...current, settings: next.settings }))
+    return next.settings
+  }
+
+  const openCodeReady = Boolean(aiTutor.opencode?.ready)
+  const autoGrade = openCodeReady && aiTutor.settings?.auto_grade !== false
+
+  // Run one OpenCode call with the shared "PYR is thinking" lock. Concurrent
+  // requests are refused so a second click cannot double-submit.
+  const withPyr = async (label, task) => {
+    if (pyrThinking) throw new Error('PYR is still thinking about the last request.')
+    setPyrThinking(label)
+    try {
+      return await task()
+    } finally {
+      setPyrThinking('')
+    }
+  }
+
+  // Grade an already-bound submission. A judge failure leaves the challenge
+  // pending (no HP, no Resolve) so the player can simply submit again.
+  const judgeWithPyr = (kind, submission, answer, question = '') => withPyr('PYR is judging your submission…', async () => {
+    const result = await api('/api/ai/judge', {
+      method: 'POST',
+      body: JSON.stringify({ kind, submission, answer, question, client_id: pyrClientId() }),
+    })
+    setNotice(`PYR ${result.verdict === 'correct' ? '✔ correct' : '✘ not yet'} — ${result.reason}`)
+    await refreshCampaign({ silent: true })
+    return result
+  })
+
+  // Tutor Notebook tools: a real Ask PYR channel and AI-chosen question lenses.
+  const pyrTools = {
+    ready: openCodeReady,
+    chooseLensEnabled: openCodeReady && aiTutor.settings?.choose_practice_lens !== false,
+    ask: ({ question, concept, code }) => withPyr('PYR is thinking…', async () => {
+      const result = await api('/api/ai/ask', { method: 'POST', body: JSON.stringify({ question, concept, code }) })
+      return result.reply
+    }),
+    chooseLens: ({ concept, lenses }) => withPyr('PYR is picking a practice lens…', () => api('/api/ai/practice-lens', {
+      method: 'POST',
+      body: JSON.stringify({ concept, lenses }),
+    })),
+  }
+
   const refreshRuntime = async () => {
     try {
       const next = await api('/api/runtime')
@@ -1128,7 +1190,7 @@ function AppV2() {
 
   const submitBattle = async ({ objectiveId }) => {
     const provider = sessionStorage.getItem('questlab.aiProvider')
-    if (!provider) throw new Error('Launch Codex, Claude, AGY, or Copilot first, then submit the Battle answer.')
+    if (!autoGrade && !provider) throw new Error('Set up OpenCode in Settings → AI Tutor, or launch a CLI in the PYR panel, then submit the Battle answer.')
     const forge = forgeSubmission()
 
     const context = await publishPyrContext({ terminalTail: shellTerminalRef.current?.getText?.() || '' })
@@ -1140,6 +1202,10 @@ function AppV2() {
     })
     const submission = result.submission
     const objective = (context.encounter?.available_objectives || []).find((item) => item.id === objectiveId) || {}
+    if (autoGrade) {
+      await judgeWithPyr('battle', submission, forge.answer, objective.quest || objective.brief || objective.label || '')
+      return submission
+    }
     const prompt = [
       'Quest Lab Battle submission — provider adjudication required.',
       `Provider: ${provider}`,
@@ -1188,7 +1254,7 @@ function AppV2() {
 
   const submitBoss = async () => {
     const provider = sessionStorage.getItem('questlab.aiProvider')
-    if (!provider) throw new Error('Launch Codex, Claude, AGY, or Copilot first, then submit the boss evidence.')
+    if (!autoGrade && !provider) throw new Error('Set up OpenCode in Settings → AI Tutor, or launch a CLI in the PYR panel, then submit the boss evidence.')
     const forge = forgeSubmission()
 
     const context = await publishPyrContext({ terminalTail: shellTerminalRef.current?.getText?.() || '' })
@@ -1202,6 +1268,10 @@ function AppV2() {
       body: JSON.stringify({ nonce, requirement_id: requirementId, answer: forge.answer, answer_source: 'forge_active_file', source_path: forge.path, file_digest: context?.active_file?.digest || null }),
     })
     const submission = result.submission
+    if (autoGrade) {
+      await judgeWithPyr('boss', submission, forge.answer, currentGoal?.quest || currentGoal?.label || requirementId)
+      return submission
+    }
     const prompt = [
       'Quest Lab boss gate — provider adjudication required.',
       `Provider: ${provider}`,
@@ -1260,7 +1330,7 @@ function AppV2() {
 
   const submitDungeon = async ({ runId, questionId, answer }) => {
     const provider = sessionStorage.getItem('questlab.aiProvider')
-    if (!provider) throw new Error('Launch Codex, Claude, AGY, or Copilot first, then submit the Dungeon answer.')
+    if (!autoGrade && !provider) throw new Error('Set up OpenCode in Settings → AI Tutor, or launch a CLI in the PYR panel, then submit the Dungeon answer.')
     if (typeof answer !== 'string' || !answer.trim()) throw new Error('Write an answer in dungeon.py before submitting it.')
 
     const context = await publishPyrContext({ terminalTail: shellTerminalRef.current?.getText?.() || '' })
@@ -1273,6 +1343,10 @@ function AppV2() {
       body: JSON.stringify({ nonce: challenge.nonce, run_id: runId, question_id: questionId, answer }),
     })
     const submission = result.submission
+    if (autoGrade) {
+      await judgeWithPyr('dungeon', submission, answer, context.dungeon?.question?.prompt || '')
+      return submission
+    }
     const prompt = [
       'Quest Lab Infinite Dungeon — provider adjudication required.',
       `Provider: ${provider}`,
@@ -1357,6 +1431,9 @@ function AppV2() {
       if (cancelled) return
       syncEngine.initialize()
       await Promise.all([refreshCampaign(), refreshFiles()])
+      // OpenCode discovery shells out a couple of times; keep it off the
+      // critical path so the campaign renders first.
+      void refreshAiTutor()
     }
     void boot()
     return () => {
@@ -1759,9 +1836,10 @@ function AppV2() {
     }
   }
 
-  const requestPracticePrompt = async ({ concept, questionType, difficulty, answer }) => {
+  const requestPracticePrompt = async ({ concept, questionType, difficulty, answer, question = '' }) => {
     const provider = sessionStorage.getItem('questlab.aiProvider')
-    if (!provider) throw new Error('Launch Codex, Claude, AGY, or Copilot first, then ask for practice help.')
+    const hasPracticeAnswer = typeof answer === 'string' && answer.trim()
+    if (!(autoGrade && hasPracticeAnswer) && !provider) throw new Error('Set up OpenCode in Settings → AI Tutor, or launch a CLI in the PYR panel, then ask for practice help.')
     const sessionResult = await api('/api/practice/session', {
       method: 'POST',
       body: JSON.stringify({ concept, question_type: questionType, difficulty }),
@@ -1778,6 +1856,7 @@ function AppV2() {
         body: JSON.stringify({ session_id: sessionId, answer }),
       })
       submission = bound.submission
+      if (autoGrade) return judgeWithPyr('practice', submission, answer, question || `${questionType} question about ${concept}`)
     }
     const prompt = [
       'Quest Lab Tutor / Practice mode — provider teaching request.',
@@ -1818,12 +1897,27 @@ function AppV2() {
   }
 
   useEffect(() => {
-    if (activeView !== 'dungeon' || !dungeon.active || !dungeonDirty || dungeonSaving) return undefined
+    if (activeView !== 'dungeon' || !dungeon.active || !dungeonDirty || dungeonSaving || pyrThinking) return undefined
     const timer = window.setTimeout(() => {
       void saveDungeon()
     }, 1000)
     return () => window.clearTimeout(timer)
-  }, [activeView, dungeon.active, dungeon.run_id, dungeon.question?.id, dungeonCode, dungeonDirty, dungeonSaving])
+  }, [activeView, dungeon.active, dungeon.run_id, dungeon.question?.id, dungeonCode, dungeonDirty, dungeonSaving, pyrThinking])
+
+  // Let PYR write each new combat room's question once. Only while the room
+  // buffer is empty, so a rewrite (which resets dungeon.py) never wipes work.
+  const pyrWrittenRoomsRef = useRef(new Set())
+  useEffect(() => {
+    const question = dungeon.question
+    if (!openCodeReady || aiTutor.settings?.generate_dungeon_questions === false || pyrThinking) return
+    if (activeView !== 'dungeon' || !dungeon.active || !question?.id || !['encounter', 'elite', 'boss'].includes(dungeon.room_type)) return
+    if (pyrWrittenRoomsRef.current.has(question.id) || String(dungeonCode || '').trim()) return
+    pyrWrittenRoomsRef.current.add(question.id)
+    withPyr('PYR is writing this room…', async () => {
+      await api('/api/ai/dungeon-question', { method: 'POST', body: JSON.stringify({ run_id: dungeon.run_id }) })
+      await refreshCampaign({ silent: true })
+    }).catch((error) => setNotice(`PYR could not write this room (${error.message}); using the built-in question.`))
+  }, [openCodeReady, aiTutor.settings?.generate_dungeon_questions, activeView, dungeon.active, dungeon.run_id, dungeon.room_type, dungeon.question?.id, dungeonCode, pyrThinking])
 
   const formatCurrent = async () => {
     if (!activePath || editorMode === 'quest') return
@@ -2297,6 +2391,7 @@ function AppV2() {
           >
             {cloudState.label}
           </button>
+          {pyrThinking && <span className="pyr-thinking-pill" role="status">{pyrThinking}</span>}
           <span className="rank-stat">RANK {campaignReady ? (player.rank || 'F') : '—'}</span>
           {showAiTerminal && aiRouteHidden && (
             <button className="ai-popout-toggle" type="button" onClick={() => setAiPopoverOpen((open) => !open)} aria-expanded={aiPopoverOpen} aria-controls="questlab-ai-panel">
@@ -2335,7 +2430,7 @@ function AppV2() {
             setActiveView={setActiveView}
             submitBattle={submitBattle}
             submitBoss={submitBoss}
-            busy={busy}
+            busy={busy || Boolean(pyrThinking)}
           />
         </aside>}
 
@@ -2377,7 +2472,7 @@ function AppV2() {
             </div>
           )}
           {tutorSurface && (
-            <TutorPracticeBar progress={progress} practiceProjection={campaign?.practice_projection} onPracticePrompt={requestPracticePrompt} busy={busy} />
+            <TutorPracticeBar progress={progress} practiceProjection={campaign?.practice_projection} onPracticePrompt={requestPracticePrompt} busy={busy || Boolean(pyrThinking)} />
           )}
           {tutorSurface && tutorExternalChange && (
             <div className="tutor-conflict-banner" role="alert">
@@ -2491,7 +2586,10 @@ function AppV2() {
               buildRoomUpgrade={buildRoomUpgrade}
               performHomesteadAction={performHomesteadAction}
               saveCodexNote={saveCodexNote}
-              busy={busy}
+              pyr={pyrTools}
+              settingsAi={{ aiTutor, refreshAiTutor, saveAiSettings }}
+              runtime={runtime}
+              busy={busy || Boolean(pyrThinking)}
               preferences={preferences}
               setters={setters}
               resetLayout={resetLayout}
@@ -2576,7 +2674,9 @@ function AppV2() {
               : `CHECKOUT ${runtimeBranch}`}
         </span>
         <span>
-          {busy
+          {pyrThinking
+            ? pyrThinking
+            : busy
             ? 'working…'
           : tutorSurface
               ? 'tutor.py · Ctrl+S save · Ctrl+Enter run · Shift+Alt+F format'

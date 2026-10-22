@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import Editor from '@monaco-editor/react'
 import './homestead.css'
 import './campaign.css'
+import './settings.css'
 import { merchantPixelSprite } from './campaignMerchant.js'
 
 export const viewItems = [
@@ -153,6 +154,9 @@ function DungeonEditorSurface({ value, onChange, onSave, onSubmit, busy, saving 
             smoothScrolling: true,
             tabSize: 4,
             suggestOnTriggerCharacters: true,
+            // Locked while PYR grades or writes the room, so no checkpoint
+            // save can change the state revision mid-call.
+            readOnly: Boolean(busy),
           }}
         />
       </div>
@@ -1517,7 +1521,7 @@ function ResourceCodexMistakes({ page, entries }) {
   )
 }
 
-function ResourceTutorScreen({ activeView, progress, revision, codexProjection, encounter, tutorCode, tutorDirty, tutorExternalChange, editorFontSize = 14, busy, onTutorChange, onTutorSave, onTutorFormat, onTutorRun, onPracticePrompt, onTutorReloadExternal, onTutorKeepEdits, onNavigate }) {
+function ResourceTutorScreen({ pyr, activeView, progress, revision, codexProjection, encounter, tutorCode, tutorDirty, tutorExternalChange, editorFontSize = 14, busy, onTutorChange, onTutorSave, onTutorFormat, onTutorRun, onPracticePrompt, onTutorReloadExternal, onTutorKeepEdits, onNavigate }) {
   const pages = Array.isArray(codexProjection?.pages) && codexProjection.pages.length ? codexProjection.pages : resourceFallbackPages(encounter)
   const entries = Array.isArray(codexProjection?.entries) ? codexProjection.entries : []
   const [surface, setSurface] = useState('codex')
@@ -1527,6 +1531,8 @@ function ResourceTutorScreen({ activeView, progress, revision, codexProjection, 
   const [terminal, setTerminal] = useState({ status: 'ready', output: ['Tutor shell ready.', 'Run is a safe local self-check; Submit is the feedback boundary.'] })
   const [aiPrompt, setAiPrompt] = useState('')
   const [aiMessages, setAiMessages] = useState([{ role: 'pyr', text: 'PYR channel ready. Ask for a hint when you need a nudge, not a finished answer.' }])
+  // A practice question PYR wrote for the chosen lens (null = use the lens's generic prompt).
+  const [practiceQuestion, setPracticeQuestion] = useState(null)
   const [query, setQuery] = useState('')
   const selectedPage = pages.find((page) => page.id === selectedId) || pages[0]
   const selectedEntries = entries.filter((entry) => entry.page_id === selectedPage?.id)
@@ -1561,22 +1567,48 @@ function ResourceTutorScreen({ activeView, progress, revision, codexProjection, 
   }
   const submit = async () => {
     setTerminal({ status: 'submitted', output: ['[SUBMIT] tutor.py sent for bounded Tutor feedback.', 'No campaign reward, Resolve, HP or project mutation occurs here.'] })
-    try { await onPracticePrompt?.({ concept: conceptLabel, questionType: practiceMode, difficulty: 1, answer: tutorCode }) } catch (error) { setTerminal({ status: 'failed', output: [`Tutor feedback unavailable: ${error.message}`] }) }
+    try {
+      const result = await onPracticePrompt?.({ concept: conceptLabel, questionType: practiceMode, difficulty: 1, answer: tutorCode, question: practiceQuestion?.text || '' })
+      if (result?.verdict) {
+        setTerminal({ status: result.verdict === 'correct' ? 'passed' : 'failed', output: [`[PYR] ${result.verdict === 'correct' ? 'Correct' : 'Not yet'}`, result.reason, 'Practice never changes campaign rewards, HP or Resolve.'] })
+      }
+    } catch (error) {
+      setTerminal({ status: 'failed', output: [`Tutor feedback unavailable: ${error.message}`] })
+    }
   }
   const askPyr = async () => {
     const prompt = aiPrompt.trim()
     if (!prompt) return
-    setAiMessages((current) => [...current, { role: 'learner', text: prompt }, { role: 'pyr', text: 'I will point to the next concept boundary. Keep your attempt in tutor.py; I will not paste a project answer.' }].slice(-8))
     setAiPrompt('')
-    try { await onPracticePrompt?.({ concept: conceptLabel, questionType: practiceMode, difficulty: 1 }) } catch { /* the message remains useful when no provider is selected */ }
+    if (!pyr?.ready) {
+      setAiMessages((current) => [...current, { role: 'learner', text: prompt }, { role: 'pyr', text: 'Connect OpenCode in Settings → AI Tutor so I can answer here. Until then, launch a CLI in the Forge PYR panel.' }].slice(-8))
+      return
+    }
+    setAiMessages((current) => [...current, { role: 'learner', text: prompt }, { role: 'pyr', text: '…thinking', pending: true }].slice(-8))
+    let reply
+    try {
+      reply = await pyr.ask({ question: prompt, concept: conceptLabel, code: String(tutorCode || '') })
+    } catch (error) {
+      reply = `I couldn't answer that just now (${error.message}). Try again in a moment.`
+    }
+    setAiMessages((current) => current.map((message) => (message.pending ? { role: 'pyr', text: reply } : message)))
   }
   const practiceModes = RESOURCE_PRACTICE_MODES
+  const choosePyrLens = async () => {
+    try {
+      const choice = await pyr.chooseLens({ concept: conceptLabel, lenses: practiceModes })
+      setPracticeMode(choice.lens_id)
+      setPracticeQuestion({ text: choice.question, why: choice.why })
+    } catch (error) {
+      setTerminal({ status: 'failed', output: [`PYR could not pick a lens: ${error.message}`] })
+    }
+  }
   return (
     <div className="resource-tutor-screen" data-testid="resource-tutor" data-campaign-revision={revision}>
       <header className="resource-tutor-header"><div><span className="screen-kicker">TUTOR NOTEBOOK</span><h2>Learn it, then make it yours.</h2><p>Reference pages, a writable tutor.py and bounded PYR guidance share one calm workspace.</p></div><div className="resource-tutor-header-actions"><button type="button" onClick={() => onNavigate?.('forge')}>Resume Forge</button><span>REV {revision ?? 0}</span></div></header>
       <nav className="resource-tutor-tabs" aria-label="Tutor sections"><button type="button" className={surface === 'codex' ? 'active' : ''} onClick={() => setSurface('codex')}>▣ Codex</button><button type="button" className={surface !== 'codex' ? 'active' : ''} onClick={() => setSurface('ide')}>↗ IDE practice</button></nav>
       {surface === 'codex' && <section className="resource-codex-layout"><aside className="resource-codex-index"><div className="resource-index-heading"><span className="screen-kicker">FIELD LIBRARY</span><strong>{pages.length} concepts</strong></div><label className="resource-search"><span>SEARCH</span><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Find a concept" /></label><div className="resource-page-list">{filteredPages.map((page) => <button key={page.id} type="button" className={page.id === selectedPage?.id ? 'active' : ''} onClick={() => { setSelectedId(page.id); setReadPage(0) }}><span>{page.title.slice(0, 1).toUpperCase()}</span><div><strong>{page.title}</strong><small>{page.encounter_ids?.length || 0} encounter records</small></div></button>)}</div><div className="resource-review-queue"><span className="screen-kicker">REVIEW QUEUE</span><strong>{entries.filter((entry) => entry.weaknesses?.length).length || 0} signals</strong><p>PYR can suggest concepts here when your attempts show a pattern.</p></div></aside><article className="resource-codex-reader"><div className="resource-breadcrumb"><span>CODEX</span><span>/</span><strong>{selectedPage?.title?.toUpperCase() || 'REFERENCE'}</strong></div><header className="resource-reader-heading"><div><span className="screen-kicker">REFERENCE ENTRY</span><h3>{selectedPage?.title || 'Concept page'}</h3><p>{selectedPage?.definition || 'A canonical learning reference.'}</p></div><button type="button" className="primary" onClick={() => setSurface('ide')}>Practice this →</button></header><div className="resource-folio-controls"><button type="button" className={readPage === 0 ? 'active' : ''} onClick={() => setReadPage(0)}>01 · Definition</button><button type="button" className={readPage === 1 ? 'active' : ''} onClick={() => setReadPage(1)}>02 · Examples</button><button type="button" className={readPage === 2 ? 'active' : ''} onClick={() => setReadPage(2)}>03 · Mistakes &amp; signals</button><span>PAGE {readPage + 1} / 3</span></div>{readPage === 0 && <div className="resource-folio-copy"><section className="resource-definition"><span className="screen-kicker">THE IDEA</span><p>{selectedPage?.definition}</p></section><ResourceEncounterRecords entries={selectedEntries} /></div>}{readPage === 1 && <ResourceCodexExamples page={selectedPage} />}{readPage === 2 && <ResourceCodexMistakes page={selectedPage} entries={selectedEntries} />}</article></section>}
-      {surface === 'ide' && <section className="resource-ide-layout"><aside className="resource-ide-rail"><button type="button" className="resource-rail-file active" onClick={() => setSurface('ide')}><ForgeFileGlyph kind="python" /><small>tutor.py</small></button><button type="button" className="resource-rail-file" onClick={() => setSurface('notes')}><ForgeFileGlyph kind="markdown" /><small>notes.md</small></button><div className="resource-ide-context"><span className="screen-kicker">CONCEPT</span><strong>{conceptLabel}</strong><small>tutor.py is writable</small></div></aside><main className="resource-ide-main"><div className="resource-breadcrumb"><span>TUTOR</span><span>/</span><strong>IDE PRACTICE</strong></div><header className="resource-ide-heading"><div><span className="screen-kicker">{practiceModes.find((mode) => mode.id === practiceMode)?.label.toUpperCase()}</span><h3>{conceptLabel}</h3><p>{practiceModes.find((mode) => mode.id === practiceMode)?.prompt} PYR can point at your reasoning without writing the finished response.</p></div><label><span>QUESTION LENS</span><select value={practiceMode} onChange={(event) => setPracticeMode(event.target.value)}>{practiceModes.map((mode) => <option key={mode.id} value={mode.id}>{mode.label}</option>)}</select></label></header><div className="resource-mode-strip">{practiceModes.map((mode, index) => <button type="button" key={mode.id} className={practiceMode === mode.id ? 'active' : ''} onClick={() => setPracticeMode(mode.id)}><span>0{index + 1}</span>{mode.label}</button>)}</div><div className="resource-editor-card"><div className="resource-editor-toolbar"><span><b className="safe-badge">PYR WRITABLE</b> tutor.py{tutorDirty ? ' · unsaved' : ''}</span><span>MONACO · PYTHON · LOCAL COMPLETION</span></div><div className="resource-monaco"><Editor height="430px" path="tutor.py" language="python" value={tutorCode || ''} onChange={(value) => onTutorChange?.(value ?? '')} onMount={(editor, monaco) => { const provider = monaco.languages.registerCompletionItemProvider('python', { triggerCharacters: ['.', '_'], provideCompletionItems: (model) => ({ suggestions: resourceIdentifierSuggestions(model.getValue()).map((label) => ({ label, kind: monaco.languages.CompletionItemKind.Keyword, insertText: label })) }) }); editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter, runSelfCheck); editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => onTutorSave?.()); editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyMod.Shift | monaco.KeyCode.Enter, submit); editor.onDidDispose(() => provider.dispose()) }} theme="vs-dark" options={{ minimap: { enabled: false }, fontSize: editorFontSize, fontFamily: 'JetBrains Mono, ui-monospace, monospace', lineHeight: Math.round(editorFontSize * 1.55), padding: { top: 14, bottom: 14 }, automaticLayout: true, smoothScrolling: true, tabSize: 4, suggestOnTriggerCharacters: true }} /></div><div className="resource-editor-actions"><span>Ctrl/Cmd ↵ run · Ctrl/Cmd S save · Ctrl/Cmd ⇧ ↵ submit</span><div><button type="button" onClick={onTutorSave} disabled={busy}>Save Tutor</button><button type="button" onClick={onTutorFormat} disabled={busy}>Pretty</button><button type="button" onClick={() => { runSelfCheck(); onTutorRun?.() }} disabled={busy}>▶ Run Tutor</button><button type="button" className="primary" onClick={submit} disabled={busy || !String(tutorCode || '').trim()}>Submit for feedback</button></div></div></div><section className={`resource-ide-terminal ${terminal.status}`} aria-live="polite"><div><span>LOCAL TERMINAL · SELF-CHECK</span><b>{terminal.status.toUpperCase()}</b></div><pre>{terminal.output.join('\n')}</pre></section>{tutorExternalChange && <div className="tutor-conflict-banner" role="alert"><strong>External tutor.py change detected.</strong><span>Your unsaved edits are preserved.</span><button type="button" onClick={onTutorReloadExternal}>Reload external version</button><button type="button" onClick={onTutorKeepEdits}>Keep my edits</button></div>}</main><aside className="resource-ai-panel"><div className="resource-ai-heading"><div><span className="screen-kicker">PYR / AI</span><strong>Tutor channel</strong></div><span className="connection-pill">READY</span></div><p>Bounded guidance only. PYR will not paste a campaign answer or project-specific snippet.</p><div className="resource-ai-messages">{aiMessages.map((message, index) => <div key={`${message.role}-${index}`} className={`resource-ai-message ${message.role}`}><span>{message.role === 'learner' ? 'YOU' : 'PYR'}</span><p>{message.text}</p></div>)}</div><textarea value={aiPrompt} onChange={(event) => setAiPrompt(event.target.value)} rows={3} placeholder="Ask for a hint, not a finished answer…" /><div><button type="button" onClick={() => setAiMessages([])}>Clear</button><button type="button" className="primary" onClick={askPyr}>Ask PYR</button></div></aside></section>}
+      {surface === 'ide' && <section className="resource-ide-layout"><aside className="resource-ide-rail"><button type="button" className="resource-rail-file active" onClick={() => setSurface('ide')}><ForgeFileGlyph kind="python" /><small>tutor.py</small></button><button type="button" className="resource-rail-file" onClick={() => setSurface('notes')}><ForgeFileGlyph kind="markdown" /><small>notes.md</small></button><div className="resource-ide-context"><span className="screen-kicker">CONCEPT</span><strong>{conceptLabel}</strong><small>tutor.py is writable</small></div></aside><main className="resource-ide-main"><div className="resource-breadcrumb"><span>TUTOR</span><span>/</span><strong>IDE PRACTICE</strong></div><header className="resource-ide-heading"><div><span className="screen-kicker">{practiceModes.find((mode) => mode.id === practiceMode)?.label.toUpperCase()}</span><h3>{conceptLabel}</h3>{practiceQuestion ? <div className="pyr-practice-question"><span className="screen-kicker">PYR'S QUESTION</span><p>{practiceQuestion.text}</p>{practiceQuestion.why && <small>{practiceQuestion.why}</small>}</div> : <p>{practiceModes.find((mode) => mode.id === practiceMode)?.prompt} PYR can point at your reasoning without writing the finished response.</p>}</div><label><span>QUESTION LENS</span>{pyr?.chooseLensEnabled && <button type="button" className="pyr-choose-lens" onClick={choosePyrLens} disabled={busy}>✦ Let PYR choose</button>}<select value={practiceMode} onChange={(event) => { setPracticeMode(event.target.value); setPracticeQuestion(null) }}>{practiceModes.map((mode) => <option key={mode.id} value={mode.id}>{mode.label}</option>)}</select></label></header><div className="resource-mode-strip">{practiceModes.map((mode, index) => <button type="button" key={mode.id} className={practiceMode === mode.id ? 'active' : ''} onClick={() => { setPracticeMode(mode.id); setPracticeQuestion(null) }}><span>0{index + 1}</span>{mode.label}</button>)}</div><div className="resource-editor-card"><div className="resource-editor-toolbar"><span><b className="safe-badge">PYR WRITABLE</b> tutor.py{tutorDirty ? ' · unsaved' : ''}</span><span>MONACO · PYTHON · LOCAL COMPLETION</span></div><div className="resource-monaco"><Editor height="430px" path="tutor.py" language="python" value={tutorCode || ''} onChange={(value) => onTutorChange?.(value ?? '')} onMount={(editor, monaco) => { const provider = monaco.languages.registerCompletionItemProvider('python', { triggerCharacters: ['.', '_'], provideCompletionItems: (model) => ({ suggestions: resourceIdentifierSuggestions(model.getValue()).map((label) => ({ label, kind: monaco.languages.CompletionItemKind.Keyword, insertText: label })) }) }); editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter, runSelfCheck); editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => onTutorSave?.()); editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyMod.Shift | monaco.KeyCode.Enter, submit); editor.onDidDispose(() => provider.dispose()) }} theme="vs-dark" options={{ minimap: { enabled: false }, fontSize: editorFontSize, fontFamily: 'JetBrains Mono, ui-monospace, monospace', lineHeight: Math.round(editorFontSize * 1.55), padding: { top: 14, bottom: 14 }, automaticLayout: true, smoothScrolling: true, tabSize: 4, suggestOnTriggerCharacters: true }} /></div><div className="resource-editor-actions"><span>Ctrl/Cmd ↵ run · Ctrl/Cmd S save · Ctrl/Cmd ⇧ ↵ submit</span><div><button type="button" onClick={onTutorSave} disabled={busy}>Save Tutor</button><button type="button" onClick={onTutorFormat} disabled={busy}>Pretty</button><button type="button" onClick={() => { runSelfCheck(); onTutorRun?.() }} disabled={busy}>▶ Run Tutor</button><button type="button" className="primary" onClick={submit} disabled={busy || !String(tutorCode || '').trim()}>Submit for feedback</button></div></div></div><section className={`resource-ide-terminal ${terminal.status}`} aria-live="polite"><div><span>LOCAL TERMINAL · SELF-CHECK</span><b>{terminal.status.toUpperCase()}</b></div><pre>{terminal.output.join('\n')}</pre></section>{tutorExternalChange && <div className="tutor-conflict-banner" role="alert"><strong>External tutor.py change detected.</strong><span>Your unsaved edits are preserved.</span><button type="button" onClick={onTutorReloadExternal}>Reload external version</button><button type="button" onClick={onTutorKeepEdits}>Keep my edits</button></div>}</main><aside className="resource-ai-panel"><div className="resource-ai-heading"><div><span className="screen-kicker">PYR / AI</span><strong>Tutor channel</strong></div><span className="connection-pill">{pyr?.ready ? 'OPENCODE' : 'OFFLINE'}</span></div><p>Bounded guidance only. PYR will not paste a campaign answer or project-specific snippet.</p><div className="resource-ai-messages">{aiMessages.map((message, index) => <div key={`${message.role}-${index}`} className={`resource-ai-message ${message.role}`}><span>{message.role === 'learner' ? 'YOU' : 'PYR'}</span><p>{message.text}</p></div>)}</div><textarea value={aiPrompt} onChange={(event) => setAiPrompt(event.target.value)} rows={3} placeholder="Ask for a hint, not a finished answer…" /><div><button type="button" onClick={() => setAiMessages([])}>Clear</button><button type="button" className="primary" onClick={askPyr} disabled={busy}>Ask PYR</button></div></aside></section>}
       {surface === 'notes' && <section className="resource-notes-layout"><aside className="resource-ide-rail resource-notes-rail"><button type="button" className="resource-rail-file" onClick={() => setSurface('ide')}><ForgeFileGlyph kind="python" /><small>tutor.py</small></button><button type="button" className="resource-rail-file active" onClick={() => setSurface('notes')}><ForgeFileGlyph kind="markdown" /><small>notes.md</small></button><div className="resource-ide-context"><span className="screen-kicker">CONCEPT</span><strong>{conceptLabel}</strong><small>notes.md · learner workspace</small></div></aside><main className="resource-notes-main"><ResourceNotebook pages={pages} selectedPage={selectedPage} entries={entries} onSelectPage={setSelectedId} /></main></section>}
     </div>
   )
@@ -2401,35 +2433,196 @@ function WorkspaceTransferPanel({ transfer, busy, notice, onRefresh, onPush, onP
   )
 }
 
-function SettingsScreen({ preferences, setters, resetLayout, account, accountBusy, accountNotice, onSignIn, onSignUp, onSignOut, onDeviceLabelSave, onResolveConflict, revision, workspaceTransfer, workspaceTransferBusy, workspaceTransferNotice, onWorkspaceTransferRefresh, onWorkspaceTransferPush, onWorkspaceTransferPreviewPull, onWorkspaceTransferApplyPull }) {
-  const { editorFontSize, terminalFontSize, hudDensity, animations, showAiTerminal, themeChoice, fontFamily } = preferences
+const SETTINGS_SECTIONS = [
+  { id: 'appearance', label: 'Appearance', hint: 'Theme, fonts, effects' },
+  { id: 'editor', label: 'Editor & Terminal', hint: 'Sizes and panels' },
+  { id: 'ai', label: 'AI Tutor', hint: 'OpenCode · PYR' },
+  { id: 'account', label: 'Account & Sync', hint: 'Sign in, devices' },
+  { id: 'files', label: 'Project Files', hint: 'Move work between devices' },
+  { id: 'about', label: 'About', hint: 'Save location, version' },
+]
+
+const THEME_OPTIONS = [
+  ['', 'Arcade (default)'],
+  ['homestead', 'Homestead equipped theme'],
+  ['gruvbox-dark', 'Gruvbox Dark'],
+  ['gruvbox-light', 'Gruvbox Light'],
+  ['github-dark', 'GitHub Dark'],
+  ['github-light', 'GitHub Light'],
+  ['deep-forest', 'Deep Forest'],
+  ['void-scholar', 'Void Scholar'],
+  ['ancient-archive', 'Ancient Archive'],
+]
+
+function SettingRow({ label, description, children }) {
   return (
-    <div className="game-screen-scroll settings-screen" data-campaign-revision={revision}>
-      <div className="screen-hero">
+    <div className="settings-row">
+      <div className="settings-row-copy"><strong>{label}</strong>{description && <p>{description}</p>}</div>
+      <div className="settings-row-control">{children}</div>
+    </div>
+  )
+}
+
+function SettingToggle({ checked, onChange, label, disabled = false }) {
+  return (
+    <button type="button" role="switch" aria-checked={Boolean(checked)} aria-label={label} className={`settings-switch ${checked ? 'on' : ''}`} onClick={() => onChange(!checked)} disabled={disabled}>
+      <span>{checked ? 'ON' : 'OFF'}</span>
+    </button>
+  )
+}
+
+function AiTutorSettings({ ai = {} }) {
+  const { aiTutor = {}, refreshAiTutor, saveAiSettings } = ai
+  const opencode = aiTutor.opencode || {}
+  const settings = aiTutor.settings || {}
+  const [models, setModels] = useState(null)
+  const [test, setTest] = useState(null)
+  const [saving, setSaving] = useState(false)
+  const loadModels = async () => {
+    setModels('loading')
+    try {
+      const response = await fetch('/api/ai/models')
+      const body = await response.json()
+      setModels(Array.isArray(body.models) ? body.models : [])
+    } catch {
+      setModels([])
+    }
+  }
+  const update = async (patch) => {
+    setSaving(true)
+    try { await saveAiSettings?.(patch) } finally { setSaving(false) }
+  }
+  const runTest = async () => {
+    setTest({ status: 'running', text: 'Asking the model for a test reply…' })
+    try {
+      const response = await fetch('/api/ai/test', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ model: settings.model || '' }) })
+      const body = await response.json()
+      if (!response.ok) throw new Error(body?.detail?.message || body?.detail || response.statusText)
+      setTest({ status: 'ok', text: `Connected · replied in ${body.seconds}s` })
+    } catch (error) {
+      setTest({ status: 'error', text: error.message })
+    }
+  }
+  const modelOptions = Array.isArray(models) ? models : []
+  const statusLabel = !aiTutor.loaded ? 'CHECKING' : opencode.ready ? 'READY' : opencode.installed ? 'NO PROVIDERS' : 'NOT INSTALLED'
+  return (
+    <>
+      <section className="settings-group">
+        <header><h3>PYR, your AI tutor</h3><p>PYR runs on your own <b>OpenCode</b> install and whichever providers you have signed in there. Quest Lab never stores an AI key, and grades still go through the game's rules for XP, HP and rewards.</p></header>
+        <div className={`settings-status-card ${opencode.ready ? 'ready' : 'warn'}`}>
+          <div><span className="screen-kicker">OPENCODE</span><strong>{statusLabel}</strong><p>{opencode.detail || 'Looking for OpenCode…'}</p>{opencode.version && <small>{opencode.version} · {opencode.path}</small>}</div>
+          <button type="button" onClick={() => refreshAiTutor?.()}>Re-check</button>
+        </div>
+        {opencode.integrations?.length > 0 && <div className="settings-chips">{opencode.integrations.map((name) => <span key={name}>{name}</span>)}</div>}
+        <p className="settings-note">Add a provider or API key: open the Forge terminal and run <code>opencode auth login</code>, then press Re-check.</p>
+      </section>
+      <section className="settings-group">
+        <header><h3>Model</h3></header>
+        <SettingRow label="Model" description="OpenCode's default is the safest choice. Some listed models are not enabled on every plan, so test after switching.">
+          <select value={settings.model || ''} onFocus={() => { if (models === null) loadModels() }} onChange={(event) => { setTest(null); update({ model: event.target.value }) }} disabled={!opencode.ready || saving}>
+            <option value="">OpenCode default</option>
+            {settings.model && !modelOptions.includes(settings.model) && <option value={settings.model}>{settings.model}</option>}
+            {models === 'loading' && <option disabled>Loading models…</option>}
+            {modelOptions.map((model) => <option key={model} value={model}>{model}</option>)}
+          </select>
+        </SettingRow>
+        <SettingRow label="Test connection" description="Sends one tiny request to the selected model.">
+          <div className="settings-inline"><button type="button" onClick={runTest} disabled={!opencode.ready || test?.status === 'running'}>{test?.status === 'running' ? 'Testing…' : 'Test'}</button>{test && <span className={`settings-test ${test.status}`}>{test.text}</span>}</div>
+        </SettingRow>
+      </section>
+      <section className="settings-group">
+        <header><h3>What PYR does</h3></header>
+        <SettingRow label="Grade my submissions" description="Submit run, boss goals, Dungeon answers and Tutor feedback are judged by PYR automatically. Off = paste into a CLI in the PYR panel instead.">
+          <SettingToggle label="Grade my submissions" checked={settings.auto_grade !== false} onChange={(value) => update({ auto_grade: value })} disabled={!opencode.ready || saving} />
+        </SettingRow>
+        <SettingRow label="Write Infinite Dungeon questions" description="Each new combat room gets a fresh question written for its concept, type and difficulty.">
+          <SettingToggle label="Write Infinite Dungeon questions" checked={settings.generate_dungeon_questions !== false} onChange={(value) => update({ generate_dungeon_questions: value })} disabled={!opencode.ready || saving} />
+        </SettingRow>
+        <SettingRow label="Choose Tutor question lenses" description="Shows “Let PYR choose” in Tutor practice: PYR picks the lens you need and writes a question for it.">
+          <SettingToggle label="Choose Tutor question lenses" checked={settings.choose_practice_lens !== false} onChange={(value) => update({ choose_practice_lens: value })} disabled={!opencode.ready || saving} />
+        </SettingRow>
+      </section>
+    </>
+  )
+}
+
+function SettingsScreen({ preferences, setters, resetLayout, account, accountBusy, accountNotice, onSignIn, onSignUp, onSignOut, onDeviceLabelSave, onResolveConflict, revision, workspaceTransfer, workspaceTransferBusy, workspaceTransferNotice, onWorkspaceTransferRefresh, onWorkspaceTransferPush, onWorkspaceTransferPreviewPull, onWorkspaceTransferApplyPull, ai, runtime }) {
+  const { editorFontSize, terminalFontSize, hudDensity, animations, showAiTerminal, themeChoice, fontFamily, zenMode, crtMode } = preferences
+  const [section, setSection] = useState(() => {
+    try { return window.localStorage.getItem('questlab.settingsSection') || 'appearance' } catch { return 'appearance' }
+  })
+  const openSection = (id) => {
+    setSection(id)
+    try { window.localStorage.setItem('questlab.settingsSection', id) } catch { /* storage unavailable */ }
+  }
+  const active = SETTINGS_SECTIONS.find((item) => item.id === section) || SETTINGS_SECTIONS[0]
+  return (
+    <div className="game-screen-scroll settings-screen settings-v2" data-campaign-revision={revision}>
+      <div className="screen-hero settings-hero">
         <div><span className="screen-kicker">SETTINGS</span><h2>Make the Forge fit you.</h2><p>Usability and accessibility settings are free forever. Homestead coins only unlock cosmetic presentation.</p></div>
       </div>
-
-      <div className="screen-grid two">
-        <AccountPanel account={account} busy={accountBusy} notice={accountNotice} onSignIn={onSignIn} onSignUp={onSignUp} onSignOut={onSignOut} onDeviceLabelSave={onDeviceLabelSave} onResolveConflict={onResolveConflict} revision={revision} />
-        <WorkspaceTransferPanel transfer={workspaceTransfer} busy={workspaceTransferBusy} notice={workspaceTransferNotice} onRefresh={onWorkspaceTransferRefresh} onPush={onWorkspaceTransferPush} onPreviewPull={onWorkspaceTransferPreviewPull} onApplyPull={onWorkspaceTransferApplyPull} />
-        <section className="game-card settings-card">
-          <div className="card-heading"><span>EDITOR</span></div>
-          <label><span>Editor font size</span><b>{editorFontSize}px</b><input type="range" min="11" max="22" value={editorFontSize} onChange={(event) => setters.setEditorFontSize(Number(event.target.value))} /></label>
-          <label><span>Terminal font size</span><b>{terminalFontSize}px</b><input type="range" min="10" max="20" value={terminalFontSize} onChange={(event) => setters.setTerminalFontSize(Number(event.target.value))} /></label>
-          <label><span>HUD density</span><select value={hudDensity} onChange={(event) => setters.setHudDensity(event.target.value)}><option value="full">Full</option><option value="compact">Compact</option></select></label>
-          <label className="toggle-row"><span>Animations</span><input type="checkbox" checked={animations} onChange={(event) => setters.setAnimations(event.target.checked)} /></label>
-          <label><span>Theme</span><select value={themeChoice || ''} onChange={(event) => setters.setThemeChoice(event.target.value)}><option value="">Arcade (default)</option><option value="homestead">Homestead equipped theme</option><option value="gruvbox-dark">Gruvbox Dark</option><option value="gruvbox-light">Gruvbox Light</option><option value="github-dark">GitHub Dark</option><option value="github-light">GitHub Light</option><option value="deep-forest">Deep Forest</option><option value="void-scholar">Void Scholar</option><option value="ancient-archive">Ancient Archive</option></select></label>
-          <label><span>Interface font</span><select value={fontFamily || 'inter'} onChange={(event) => setters.setFontFamily(event.target.value)}><option value="inter">Inter · neutral</option><option value="ibm-plex">IBM Plex Sans · readable</option><option value="atkinson">Atkinson Hyperlegible · high clarity</option><option value="system">System UI</option></select></label>
-          <label className="toggle-row"><span>AI terminal visible</span><input type="checkbox" checked={showAiTerminal !== false} onChange={(event) => setters.setShowAiTerminal(event.target.checked)} /></label>
-          <p className="settings-note">AI stays hidden on Codex, Homestead and Settings so those pages can breathe. The PTY remains mounted and reconnect-free.</p>
-          <div className="settings-layout-actions"><span>Panel layout</span><button type="button" onClick={resetLayout}>Reset panel layout</button></div>
-        </section>
+      <div className="settings-layout">
+        <nav className="settings-nav" aria-label="Settings sections">
+          {SETTINGS_SECTIONS.map((item) => (
+            <button key={item.id} type="button" className={item.id === active.id ? 'active' : ''} aria-current={item.id === active.id ? 'page' : undefined} onClick={() => openSection(item.id)}>
+              <strong>{item.label}</strong><small>{item.hint}</small>
+            </button>
+          ))}
+        </nav>
+        <div className="settings-content">
+          {active.id === 'appearance' && <section className="settings-group">
+            <header><h3>Appearance</h3></header>
+            <SettingRow label="Theme" description="Arcade is the pixel default. Homestead themes are cosmetics you buy with coins.">
+              <select value={themeChoice || ''} onChange={(event) => setters.setThemeChoice(event.target.value)}>{THEME_OPTIONS.map(([value, label]) => <option key={value || 'arcade'} value={value}>{label}</option>)}</select>
+            </SettingRow>
+            <SettingRow label="Interface font" description="Used by the non-Arcade themes; Arcade always uses its pixel fonts.">
+              <select value={fontFamily || 'inter'} onChange={(event) => setters.setFontFamily(event.target.value)}><option value="inter">Inter · neutral</option><option value="ibm-plex">IBM Plex Sans · readable</option><option value="atkinson">Atkinson Hyperlegible · high clarity</option><option value="system">System UI</option></select>
+            </SettingRow>
+            <SettingRow label="HUD density" description="Compact trims the top bar to the essentials.">
+              <select value={hudDensity} onChange={(event) => setters.setHudDensity(event.target.value)}><option value="full">Full</option><option value="compact">Compact</option></select>
+            </SettingRow>
+            <SettingRow label="Animations" description="Level-up effects, confetti and transitions.">
+              <SettingToggle label="Animations" checked={animations} onChange={setters.setAnimations} />
+            </SettingRow>
+            <SettingRow label="CRT scanlines" description="A subtle scanline overlay across the whole app.">
+              <SettingToggle label="CRT scanlines" checked={crtMode} onChange={setters.setCrtMode} />
+            </SettingRow>
+            <SettingRow label="Zen mode" description="Hide side panels and maximise the editor and terminal. Shortcut: Ctrl+Shift+Z.">
+              <SettingToggle label="Zen mode" checked={zenMode} onChange={setters.setZenMode} />
+            </SettingRow>
+          </section>}
+          {active.id === 'editor' && <section className="settings-group">
+            <header><h3>Editor & Terminal</h3></header>
+            <SettingRow label="Editor font size" description={`${editorFontSize}px`}>
+              <input type="range" min="11" max="22" value={editorFontSize} onChange={(event) => setters.setEditorFontSize(Number(event.target.value))} aria-label="Editor font size" />
+            </SettingRow>
+            <SettingRow label="Terminal font size" description={`${terminalFontSize}px`}>
+              <input type="range" min="10" max="20" value={terminalFontSize} onChange={(event) => setters.setTerminalFontSize(Number(event.target.value))} aria-label="Terminal font size" />
+            </SettingRow>
+            <SettingRow label="PYR terminal panel" description="The raw CLI terminal beside the Forge editor. Not needed when OpenCode grades for you. Hidden on Codex, Home and Settings either way.">
+              <SettingToggle label="PYR terminal panel" checked={showAiTerminal !== false} onChange={setters.setShowAiTerminal} />
+            </SettingRow>
+            <SettingRow label="Panel layout" description="Restore the default Forge panel sizes.">
+              <button type="button" onClick={resetLayout}>Reset panel layout</button>
+            </SettingRow>
+          </section>}
+          {active.id === 'ai' && <AiTutorSettings ai={ai} />}
+          {active.id === 'account' && <AccountPanel account={account} busy={accountBusy} notice={accountNotice} onSignIn={onSignIn} onSignUp={onSignUp} onSignOut={onSignOut} onDeviceLabelSave={onDeviceLabelSave} onResolveConflict={onResolveConflict} revision={revision} />}
+          {active.id === 'files' && <WorkspaceTransferPanel transfer={workspaceTransfer} busy={workspaceTransferBusy} notice={workspaceTransferNotice} onRefresh={onWorkspaceTransferRefresh} onPush={onWorkspaceTransferPush} onPreviewPull={onWorkspaceTransferPreviewPull} onApplyPull={onWorkspaceTransferApplyPull} />}
+          {active.id === 'about' && <section className="settings-group">
+            <header><h3>About Quest Lab</h3></header>
+            <SettingRow label="Save file" description="Your character, campaign and Dungeon state."><code className="settings-path">{runtime?.canonical_state_path || '…'}</code></SettingRow>
+            <SettingRow label="Workspace" description="Where your game files live and the Forge terminal starts."><code className="settings-path">{runtime?.workspace || '…'}</code></SettingRow>
+            <SettingRow label="Checkout" description="The Quest Lab code this app is running."><code className="settings-path">{runtime?.repo_git?.branch || '…'} · {(runtime?.repo_git?.head_sha || '').slice(0, 8)}</code></SettingRow>
+            <SettingRow label="Docs" description="How the desktop app, AI tutor and campaign fit together."><code className="settings-path">docs/DESKTOP_APP.md · docs/AI_TUTOR.md</code></SettingRow>
+          </section>}
+        </div>
       </div>
     </div>
   )
 }
 
-export function GameScreen({ activeView, progress, revision, avatarDataUrl = '', encounter, codexProjection, practiceProjection, equipmentProjection, dungeon, dungeonEditorContent, onDungeonEditorChange, onSaveDungeon, onDungeonChoose, onDungeonRest, onDungeonCampAction, onDungeonRevealRisk, onDungeonEnterRisk, onDungeonMarketPurchase, onDungeonEquip, onDungeonLeave, onDungeonFinish, onDungeonReset, purchaseCosmetic, purchaseMarketItem, equipCosmetic, equipCampaignItem, buildRoomUpgrade, performHomesteadAction, saveCodexNote, busy, dungeonSaving, submitBattle, submitBoss, submitDungeon, onStartDungeon, onPracticePrompt, preferences, setters, resetLayout, account, accountBusy, accountNotice, onSignIn, onSignUp, onSignOut, onDeviceLabelSave, onResolveConflict, workspaceTransfer, workspaceTransferBusy, workspaceTransferNotice, onWorkspaceTransferRefresh, onWorkspaceTransferPush, onWorkspaceTransferPreviewPull, onWorkspaceTransferApplyPull, onNavigate, tutorCode, tutorDirty, tutorExternalChange, editorFontSize = 14, onTutorChange, onTutorSave, onTutorFormat, onTutorRun, onTutorReloadExternal, onTutorKeepEdits, campaignReady = true, showNavigation = true }) {
+export function GameScreen({ pyr, settingsAi, runtime, activeView, progress, revision, avatarDataUrl = '', encounter, codexProjection, practiceProjection, equipmentProjection, dungeon, dungeonEditorContent, onDungeonEditorChange, onSaveDungeon, onDungeonChoose, onDungeonRest, onDungeonCampAction, onDungeonRevealRisk, onDungeonEnterRisk, onDungeonMarketPurchase, onDungeonEquip, onDungeonLeave, onDungeonFinish, onDungeonReset, purchaseCosmetic, purchaseMarketItem, equipCosmetic, equipCampaignItem, buildRoomUpgrade, performHomesteadAction, saveCodexNote, busy, dungeonSaving, submitBattle, submitBoss, submitDungeon, onStartDungeon, onPracticePrompt, preferences, setters, resetLayout, account, accountBusy, accountNotice, onSignIn, onSignUp, onSignOut, onDeviceLabelSave, onResolveConflict, workspaceTransfer, workspaceTransferBusy, workspaceTransferNotice, onWorkspaceTransferRefresh, onWorkspaceTransferPush, onWorkspaceTransferPreviewPull, onWorkspaceTransferApplyPull, onNavigate, tutorCode, tutorDirty, tutorExternalChange, editorFontSize = 14, onTutorChange, onTutorSave, onTutorFormat, onTutorRun, onTutorReloadExternal, onTutorKeepEdits, campaignReady = true, showNavigation = true }) {
   const wideRoute = ['hub', 'character', 'homestead', 'codex', 'tutor', 'settings'].includes(activeView)
   // Historical contract marker: const wideRoute = ['hub', 'character', 'homestead', 'codex', 'settings']
   const withWideNavigation = (screen) => wideRoute && showNavigation
@@ -2446,7 +2639,7 @@ export function GameScreen({ activeView, progress, revision, avatarDataUrl = '',
     )
   }
   if (activeView === 'hub') return withWideNavigation(<CampaignSurface progress={progress} revision={revision} equipmentProjection={equipmentProjection} purchaseCosmetic={purchaseCosmetic} purchaseMarketItem={purchaseMarketItem} equipCosmetic={equipCosmetic} equipCampaignItem={equipCampaignItem} buildRoomUpgrade={buildRoomUpgrade} performHomesteadAction={performHomesteadAction} busy={busy} onNavigate={onNavigate} />)
-  if (activeView === 'quests' || activeView === 'codex' || activeView === 'tutor') return withWideNavigation(<ResourceTutorScreen activeView={activeView} progress={progress} revision={revision} codexProjection={codexProjection} encounter={encounter} tutorCode={tutorCode} tutorDirty={tutorDirty} tutorExternalChange={tutorExternalChange} editorFontSize={editorFontSize} busy={busy} onTutorChange={onTutorChange} onTutorSave={onTutorSave} onTutorFormat={onTutorFormat} onTutorRun={onTutorRun} onPracticePrompt={onPracticePrompt} onTutorReloadExternal={onTutorReloadExternal} onTutorKeepEdits={onTutorKeepEdits} onNavigate={onNavigate} />)
+  if (activeView === 'quests' || activeView === 'codex' || activeView === 'tutor') return withWideNavigation(<ResourceTutorScreen pyr={pyr} activeView={activeView} progress={progress} revision={revision} codexProjection={codexProjection} encounter={encounter} tutorCode={tutorCode} tutorDirty={tutorDirty} tutorExternalChange={tutorExternalChange} editorFontSize={editorFontSize} busy={busy} onTutorChange={onTutorChange} onTutorSave={onTutorSave} onTutorFormat={onTutorFormat} onTutorRun={onTutorRun} onPracticePrompt={onPracticePrompt} onTutorReloadExternal={onTutorReloadExternal} onTutorKeepEdits={onTutorKeepEdits} onNavigate={onNavigate} />)
   // Legacy render contract retained in source comments for downstream static
   // checks; the live route above owns the replacement surface.
   // withWideNavigation(<Codex progress={progress} revision={revision} codexProjection={codexProjection} showNavigation={false} />)
@@ -2454,6 +2647,6 @@ export function GameScreen({ activeView, progress, revision, avatarDataUrl = '',
   if (activeView === 'homestead') return withWideNavigation(<Homestead progress={progress} revision={revision} equipmentProjection={equipmentProjection} purchaseCosmetic={purchaseCosmetic} equipCosmetic={equipCosmetic} equipCampaignItem={equipCampaignItem} buildRoomUpgrade={buildRoomUpgrade} performHomesteadAction={performHomesteadAction} busy={busy} onNavigate={onNavigate} />)
   if (activeView === 'dungeon') return <DungeonScreen dungeon={dungeon} revision={revision} onStart={onStartDungeon} onChoose={onDungeonChoose} onRest={onDungeonRest} onCampAction={onDungeonCampAction} onRevealRisk={onDungeonRevealRisk} onEnterRisk={onDungeonEnterRisk} onMarketPurchase={onDungeonMarketPurchase} onEquip={onDungeonEquip} onLeave={onDungeonLeave} onFinish={onDungeonFinish} onReset={onDungeonReset} submitDungeon={submitDungeon} busy={busy} saving={dungeonSaving} editorContent={dungeonEditorContent} onEditorChange={onDungeonEditorChange} onSave={onSaveDungeon} />
   if (activeView === 'practice') return <PracticeScreen progress={progress} revision={revision} practiceProjection={practiceProjection} onPracticePrompt={onPracticePrompt} busy={busy} />
-  if (activeView === 'settings') return <SettingsScreen preferences={preferences} setters={setters} resetLayout={resetLayout} account={account} accountBusy={accountBusy} accountNotice={accountNotice} onSignIn={onSignIn} onSignUp={onSignUp} onSignOut={onSignOut} onDeviceLabelSave={onDeviceLabelSave} onResolveConflict={onResolveConflict} workspaceTransfer={workspaceTransfer} workspaceTransferBusy={workspaceTransferBusy} workspaceTransferNotice={workspaceTransferNotice} onWorkspaceTransferRefresh={onWorkspaceTransferRefresh} onWorkspaceTransferPush={onWorkspaceTransferPush} onWorkspaceTransferPreviewPull={onWorkspaceTransferPreviewPull} onWorkspaceTransferApplyPull={onWorkspaceTransferApplyPull} revision={revision} />
+  if (activeView === 'settings') return <SettingsScreen ai={settingsAi} runtime={runtime} preferences={preferences} setters={setters} resetLayout={resetLayout} account={account} accountBusy={accountBusy} accountNotice={accountNotice} onSignIn={onSignIn} onSignUp={onSignUp} onSignOut={onSignOut} onDeviceLabelSave={onDeviceLabelSave} onResolveConflict={onResolveConflict} workspaceTransfer={workspaceTransfer} workspaceTransferBusy={workspaceTransferBusy} workspaceTransferNotice={workspaceTransferNotice} onWorkspaceTransferRefresh={onWorkspaceTransferRefresh} onWorkspaceTransferPush={onWorkspaceTransferPush} onWorkspaceTransferPreviewPull={onWorkspaceTransferPreviewPull} onWorkspaceTransferApplyPull={onWorkspaceTransferApplyPull} revision={revision} />
   return null
 }

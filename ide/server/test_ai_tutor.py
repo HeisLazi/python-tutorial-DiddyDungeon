@@ -221,6 +221,18 @@ class AiTutorEndpointTests(AiTutorTestCase):
         again = self.client.post("/api/ai/dungeon-question", headers=self.headers, json={"run_id": run["run_id"]})
         self.assertFalse(again.json()["changed"])
 
+    def test_dungeon_question_never_rewrites_a_started_answer(self):
+        run = self.enter_room()
+        saved = self.client.put(
+            "/api/dungeon/editor",
+            headers=self.headers,
+            json={"run_id": run["run_id"], "question_id": run["question"]["id"], "content": "colours = ['red']"},
+        )
+        self.assertEqual(saved.status_code, 200, saved.text)
+        result = self.client.post("/api/ai/dungeon-question", headers=self.headers, json={"run_id": run["run_id"]})
+        self.assertFalse(result.json()["changed"])
+        self.assertFalse(any(call[:1] == ["run"] for call in self.calls()))
+
 
 if __name__ == "__main__":
     unittest.main()

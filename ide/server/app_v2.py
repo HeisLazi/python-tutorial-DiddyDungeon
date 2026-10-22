@@ -2897,7 +2897,10 @@ def ai_dungeon_question(payload: AiDungeonQuestionRequest):
         raise HTTPException(status_code=409, detail="No current Dungeon question for this run")
     if projection.get("room_type") not in DUNGEON_COMBAT_ROOM_TYPES:
         raise HTTPException(status_code=409, detail="This room has no question")
-    if question["id"] in AI_ISSUED_DUNGEON_QUESTIONS:
+    run_state = progress.get("dungeon_run") if isinstance(progress.get("dungeon_run"), dict) else {}
+    # Issuing a question resets dungeon.py, so never rewrite a room the player
+    # has already started answering (e.g. after an app restart).
+    if question["id"] in AI_ISSUED_DUNGEON_QUESTIONS or str(run_state.get("editor_content") or "").strip():
         return {"ok": True, "changed": False, "dungeon": projection}
     written = _ai_call(
         ai_tutor.write_dungeon_question,
