@@ -900,6 +900,24 @@ function HubScreen({ progress, revision, onOpen }) {
         <div className="card-heading"><span>ENCOUNTER PATH</span><b>{mobs.filter((mob) => isMobDefeated(mob.status)).length}/{mobs.length} cleared</b></div>
         <div className="encounter-silhouette-grid">{mobs.map((mob, index) => { const locked = mob.status === 'locked'; return <article key={mob.name || index} className={`encounter-silhouette ${locked ? 'locked' : mob.status}`}><span aria-hidden="true"><RouteIcon id={locked ? 'lock' : isMobDefeated(mob.status) ? 'shield' : 'flame'} /></span><div><strong>{locked ? 'Unknown encounter' : mob.name || `Encounter ${index + 1}`}</strong><small>{locked ? 'Hidden until previous clear' : mob.category || mob.concept || 'Encounter'}</small></div></article> })}</div>
       </section>
+      <section className="game-card hub-quest-map">
+        <div className="card-heading"><span>QUEST MAP</span><b>{projects.filter((p) => p.completed).length}/{projects.length} cleared</b></div>
+        <svg viewBox="0 0 400 120" className="quest-map-svg" aria-label="Quest map">
+          {projects.map((project, index) => {
+            const x = 40 + index * (320 / Math.max(1, projects.length - 1 || 1))
+            const y = 60 + (index % 2 === 0 ? -20 : 20)
+            const locked = project.status === 'locked' || (project.status !== 'active' && !project.completed)
+            const color = locked ? '#555' : project.completed ? '#00ff99' : '#ff00ff'
+            return (
+              <g key={project.id || index}>
+                {index > 0 && <line x1={40 + (index - 1) * (320 / Math.max(1, projects.length - 1 || 1))} y1={60 + ((index - 1) % 2 === 0 ? -20 : 20)} x2={x} y2={y} stroke="#333" strokeWidth="2" />}
+                <circle cx={x} cy={y} r="12" fill={color} stroke="#fff" strokeWidth="2" style={{ cursor: 'pointer' }} onClick={() => onOpen?.('codex')} />
+                <text x={x} y={y + 28} textAnchor="middle" fontSize="10" fill="#e0e0ff">{locked ? '?' : (project.name || '').slice(0, 10)}</text>
+              </g>
+            )
+          })}
+        </svg>
+      </section>
     </div>
   )
 }

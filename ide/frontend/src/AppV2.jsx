@@ -453,15 +453,68 @@ function AppV2() {
   const [hudDensity, setHudDensity] = usePersistentState('questlab.hudDensity', 'full')
   const [animations, setAnimations] = usePersistentState('questlab.animations', true)
   const [showAiTerminal, setShowAiTerminal] = usePersistentState('questlab.showAiTerminal', true)
+  const [zenMode, setZenMode] = usePersistentState('questlab.zenMode', false)
+  const [gameMode, setGameMode] = usePersistentState('questlab.gameMode', false)
   const [themeChoice, setThemeChoice] = usePersistentState('questlab.themeChoice', '')
   const [fontFamily, setFontFamily] = usePersistentState('questlab.fontFamily', 'inter')
   const [initialLaunch] = useState(() => launchContext())
   const [showSplash, setShowSplash] = useState(() => initialLaunch.show)
   const [splashClosing, setSplashClosing] = useState(false)
-  const [aiPopoverOpen, setAiPopoverOpen] = useState(false)
 
+  useEffect(() => {
+    if (!showSplash) return
+    const timer = setTimeout(() => dismissSplash(), 2500)
+    return () => clearTimeout(timer)
+  }, [showSplash])
+  const [aiPopoverOpen, setAiPopoverOpen] = useState(false)
+  const [levelUp, setLevelUp] = useState(false)
+  const [confetti, setConfetti] = useState([])
+  const [celebration, setCelebration] = useState(null)
+  const prevBossGateRef = useRef(false)
+  const prevLevelRef = useRef(null)
+
+  const playSound = (freq, duration = 0.15) => {
+    try {
+      const Ctx = window.AudioContext || window.webkitAudioContext
+      if (!Ctx) return
+      const ctx = new Ctx()
+      const osc = ctx.createOscillator()
+      const gain = ctx.createGain()
+      osc.connect(gain)
+      gain.connect(ctx.destination)
+      osc.frequency.value = freq
+      osc.type = 'square'
+      gain.gain.setValueAtTime(0.08, ctx.currentTime)
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration)
+      osc.start()
+      osc.stop(ctx.currentTime + duration)
+    } catch {}
+  }
+
+  const spawnConfetti = () => {
+    const pieces = Array.from({ length: 40 }, (_, i) => ({
+      id: i + Date.now(),
+      left: Math.random() * 100,
+      delay: Math.random() * 0.3,
+      color: ['#00ff99', '#ff00ff', '#ffff00', '#00ffff'][i % 4],
+    }))
+    setConfetti(pieces)
+    setTimeout(() => setConfetti([]), 1200)
+  }
+
+  useEffect(() => {
+    const handler = (e) => {
+      if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'z') {
+        e.preventDefault()
+        setZenMode((z) => !z)
+      }
+    }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [])
   const progress = campaign?.progress || {}
   const player = progress.player || {}
+  if (prevLevelRef.current === null) prevLevelRef.current = player.level ?? 1
   const stats = progress.stats || {}
   const streak = progress.streak || {}
   const companion = progress.companion || {}
@@ -492,7 +545,7 @@ function AppV2() {
   // Tutor is intentionally included now because it owns the full resource
   // reader/IDE surface rather than the legacy Forge editor grid.
   const dungeonSurface = activeView === 'dungeon'
-  const aiGridVisible = showAiTerminal && !aiRouteHidden
+  const aiGridVisible = showAiTerminal && !aiRouteHidden && !zenMode
   const aiVisible = showAiTerminal && (!aiRouteHidden || aiPopoverOpen)
   const bossGateActive = activeView === 'forge' && (
     campaign?.encounter?.status === 'boss_available'
@@ -2113,7 +2166,12 @@ function AppV2() {
   // Keep the grid's separator column in compact mode so the editor remains
   // column-four even while the visible resize affordance is hidden.
   const leftPanelColumns = leftPanelCollapsed ? '76px 5px' : `${effectiveLeftWidth}px 5px`
-  const gridStyle = wideSurface
+  const gridStyle = zenMode
+    ? {
+        gridTemplateColumns: 'minmax(0, 1fr)',
+        gridTemplateRows: `minmax(220px, 1fr) 5px ${terminalHeight}px`,
+      }
+    : wideSurface
     ? {
         gridTemplateColumns: 'minmax(0, 1fr)',
         gridTemplateRows: 'minmax(220px, 1fr)',
@@ -2132,11 +2190,34 @@ function AppV2() {
   const preferences = { editorFontSize, terminalFontSize, hudDensity, animations, showAiTerminal, themeChoice, fontFamily }
   const setters = { setEditorFontSize, setTerminalFontSize, setHudDensity, setAnimations, setShowAiTerminal, setThemeChoice, setFontFamily }
   const xpPercent = campaignReady ? clamp(((player.xp ?? 0) / Math.max(1, player.xp_next ?? 100)) * 100, 0, 100) : 0
+
+  useEffect(() => {
+    if (!campaignReady) return
+    const currentLevel = player.level ?? 1
+    if (prevLevelRef.current !== undefined && currentLevel > prevLevelRef.current) {
+      setLevelUp(true)
+      playSound(880, 0.12)
+      setTimeout(() => playSound(1320, 0.15), 120)
+      spawnConfetti()
+      setCelebration({ title: `Level ${currentLevel}!`, subtitle: 'You leveled up!' })
+      setTimeout(() => setCelebration(null), 2500)
+      setTimeout(() => setLevelUp(false), 600)
+    }
+    prevLevelRef.current = currentLevel
+  }, [player.level, campaignReady])
+
+  useEffect(() => {
+    if (bossGateActive && !prevBossGateRef.current) {
+      playSound(220, 0.3)
+      setTimeout(() => playSound(165, 0.4), 300)
+    }
+    prevBossGateRef.current = bossGateActive
+  }, [bossGateActive])
   const commands = runtime?.commands || {}
 
   return (
     <div
-      className={`app-shell forge-v2 ${hubMode ? 'hub-mode' : ''} ${wideSurface ? 'wide-mode' : ''} ${['tutor', 'codex'].includes(activeView) ? 'resource-mode' : ''} ${dungeonSurface ? 'dungeon-mode' : ''} ${hudDensity === 'compact' ? 'hud-compact' : ''} ${animations ? '' : 'no-animations'}`}
+      className={`app-shell forge-v2 ${hubMode ? 'hub-mode' : ''} ${wideSurface ? 'wide-mode' : ''} ${['tutor', 'codex'].includes(activeView) ? 'resource-mode' : ''} ${dungeonSurface ? 'dungeon-mode' : ''} ${hudDensity === 'compact' ? 'hud-compact' : ''} ${animations ? '' : 'no-animations'} ${zenMode ? 'zen-mode' : ''} ${gameMode ? 'game-mode' : ''}`}
       data-theme={theme}
       data-font={fontFamily}
       data-cursor={equipped.cursor || 'cursor-basic'}
@@ -2158,14 +2239,37 @@ function AppV2() {
         </div>
       )}
       <RewardQueue items={rewardQueue} />
-      <header className="topbar">
+      {confetti.length > 0 && (
+        <div className="confetti-layer" aria-hidden="true">
+          {confetti.map((p) => (
+            <span key={p.id} className="confetti-piece" style={{ left: `${p.left}%`, background: p.color, animationDelay: `${p.delay}s` }} />
+          ))}
+        </div>
+      )}
+      {bossGateActive && (
+        <div className="boss-overlay" role="dialog" aria-modal="true">
+          <div className="boss-card">
+            <h2>⚔ Boss Gate Active</h2>
+            <p>A boss encounter is available. Complete the required objectives to proceed.</p>
+            <button className="primary" type="button" onClick={() => setActiveView('forge')}>Enter Boss Fight</button>
+          </div>
+        </div>
+      )}
+      {celebration && (
+        <div className="celebration-overlay" role="dialog" aria-modal="true">
+          <div className="celebration-card">
+            <h2>{celebration.title}</h2>
+            <p>{celebration.subtitle}</p>
+          </div>
+        </div>
+      )}      <header className="topbar">
         <div className="brand-lockup">
           <div className="eyebrow">PYTHON QUEST LAB</div>
           <h1>Forge</h1>
         </div>
         <div className="hud-xp">
           <div><strong>{campaignReady ? `LV ${player.level ?? 1}` : 'SYNCING'}</strong><span>{campaignReady ? (player.title || 'Apprentice Coder') : 'Campaign state'}</span></div>
-          <div className="hud-xp-track"><span style={{ width: `${xpPercent}%` }} /></div>
+          <div className="hud-xp-track"><span className={levelUp ? 'level-up' : ''} style={{ width: `${xpPercent}%` }} /></div>
           <small>{campaignReady ? `${player.xp ?? 0}/${player.xp_next ?? 100} XP` : 'waiting for revision…'}</small>
         </div>
         <div className="top-stats">
@@ -2187,6 +2291,12 @@ function AppV2() {
               {aiPopoverOpen ? 'Hide AI' : 'Open AI'}
             </button>
           )}
+          <button className="zen-toggle" type="button" onClick={() => setZenMode((z) => !z)} title="Toggle Zen mode (maximize editor + terminal)">
+            {zenMode ? 'Exit Zen' : 'Zen Mode'}
+          </button>
+          <button className="game-toggle" type="button" onClick={() => setGameMode((g) => !g)} title="Toggle game-like theme">
+            {gameMode ? 'Classic' : 'Game Mode'}
+          </button>
         </div>
       </header>
 
@@ -2199,7 +2309,7 @@ function AppV2() {
       <SurfaceNavigation activeView={activeView} onNavigate={setActiveView} />
 
       <main className="workspace-grid" style={gridStyle}>
-        {!wideSurface && !dungeonSurface && <aside className={`left-panel panel ${leftPanelCollapsed ? 'left-panel-compact' : ''}`}>
+        {!wideSurface && !dungeonSurface && !zenMode && <aside className={`left-panel panel ${leftPanelCollapsed ? 'left-panel-compact' : ''}`}>
           <ContextPanel
             activeView={activeView}
             campaign={campaign}
@@ -2218,8 +2328,7 @@ function AppV2() {
           />
         </aside>}
 
-        {!wideSurface && !dungeonSurface && !leftPanelCollapsed && <div className="resize-handle vertical left-resizer" role="separator" aria-orientation="vertical" aria-label="Resize encounter panel" onPointerDown={(event) => startResize('left', event)} />}
-
+        {!wideSurface && !dungeonSurface && !leftPanelCollapsed && !zenMode && <div className="resize-handle vertical left-resizer" role="separator" aria-orientation="vertical" aria-label="Resize encounter panel" onPointerDown={(event) => startResize('left', event)} />}
         <section className={`editor-panel panel ${showEditor ? '' : 'surface-hidden'} ${tutorSurface ? 'tutor-editor-panel' : ''}`}>
             <div className="editor-toolbar">
               <div className="active-file">

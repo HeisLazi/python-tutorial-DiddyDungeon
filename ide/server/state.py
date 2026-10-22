@@ -2488,7 +2488,7 @@ class LocalStateService:
             }
             items = [starter]
             if loadout.get("weapon"):
-                items.insert(0, {
+                items.append({
                     "id": "dungeon-starter-weapon",
                     "name": str(loadout.get("weapon")),
                     "kind": "weapon",
@@ -3146,7 +3146,7 @@ class LocalStateService:
         inventory = self._dungeon_inventory_entries(run)
         inventory = [dict(item) for item in inventory]
         if not any(item.get("kind") == "weapon" for item in inventory):
-            inventory.insert(0, {
+            inventory.append({
                 "id": starter_defaults.get("starter_weapon_id", "dungeon-lint-lantern"),
                 "name": starter_defaults.get("starter_weapon", "Lint Lantern"),
                 "kind": "weapon",
@@ -3341,18 +3341,18 @@ class LocalStateService:
             },
             "inventory": [
                 {
-                    "id": starter_class["starter_weapon_id"],
-                    "name": starter_class["starter_weapon"],
-                    "kind": "weapon",
-                    "weapon": starter_class["starter_weapon"],
-                    "description": f"Starter weapon for the {starter_class['name']} class.",
-                },
-                {
                     "id": "dungeon-starter-armor",
                     "name": "Apprentice Coat",
                     "kind": "armor",
                     "armor": "Apprentice Coat",
                     "description": "Starter armor for this Dungeon run.",
+                },
+                {
+                    "id": starter_class["starter_weapon_id"],
+                    "name": starter_class["starter_weapon"],
+                    "kind": "weapon",
+                    "weapon": starter_class["starter_weapon"],
+                    "description": f"Starter weapon for the {starter_class['name']} class.",
                 },
             ],
             "question": None,

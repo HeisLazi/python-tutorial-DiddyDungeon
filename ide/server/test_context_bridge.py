@@ -116,7 +116,7 @@ class PyrContextBridgeTests(unittest.TestCase):
                 chosen = client.post(
                     "/api/dungeon/choose",
                     headers={"host": "127.0.0.1"},
-                    json={"run_id": run["run_id"], "choice_id": run["room_choices"][0]["id"]},
+                    json={"run_id": run["run_id"], "choice_id": next(c["id"] for c in run["room_choices"] if c["kind"] in {"encounter", "elite"})},
                 )
                 self.assertEqual(chosen.status_code, 200, chosen.text)
                 run = chosen.json()["dungeon"]
@@ -236,7 +236,7 @@ class PyrContextBridgeTests(unittest.TestCase):
                 started = client.post("/api/dungeon/start", headers={"host": "127.0.0.1"}, json={"concept_id": "lists", "seed": "bridge"})
                 self.assertEqual(started.status_code, 200)
                 run = started.json()["dungeon"]
-                chosen = client.post("/api/dungeon/choose", headers={"host": "127.0.0.1"}, json={"run_id": run["run_id"], "choice_id": run["room_choices"][0]["id"]})
+                chosen = client.post("/api/dungeon/choose", headers={"host": "127.0.0.1"}, json={"run_id": run["run_id"], "choice_id": next(c["id"] for c in run["room_choices"] if c["kind"] in {"encounter", "elite"})})
                 self.assertEqual(chosen.status_code, 200, chosen.text)
                 run = chosen.json()["dungeon"]
                 context = client.post("/api/pyr/context", headers={"host": "127.0.0.1"}, json={"active_path": "dungeon.py"})
@@ -614,7 +614,7 @@ class PyrContextBridgeTests(unittest.TestCase):
                 chosen = client.post(
                     "/api/dungeon/choose",
                     headers={"host": "127.0.0.1"},
-                    json={"run_id": run["run_id"], "choice_id": run["room_choices"][0]["id"]},
+                    json={"run_id": run["run_id"], "choice_id": next(c["id"] for c in run["room_choices"] if c["kind"] in {"encounter", "elite"})},
                 )
                 self.assertEqual(chosen.status_code, 200, chosen.text)
                 run = chosen.json()["dungeon"]
