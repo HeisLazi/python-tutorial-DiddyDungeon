@@ -13,9 +13,12 @@ export const AVATAR_PALETTES = {
     olive: ['#b98a5a', '#8f6640'], fair: ['#f1c9a5', '#cf9f7c'], porcelain: ['#f6dccb', '#d9b39d'],
   },
   hair_color: {
-    black: ['#141218', '#2c2830'], brown: ['#5b3a29', '#8a5a3d'], auburn: ['#8c3b22', '#c2603a'],
-    blonde: ['#c9a23a', '#f2d77e'], silver: ['#9aa1ae', '#e6eaf2'], crimson: ['#a3263b', '#d94a60'],
-    teal: ['#1f7a78', '#3fb3ad'], violet: ['#5b3a99', '#8f6bd6'],
+    black: ['#141218', '#2c2830'], dark_brown: ['#2e1d14', '#4a3022'], brown: ['#5b3a29', '#8a5a3d'],
+    auburn: ['#8c3b22', '#c2603a'], copper: ['#b5562a', '#e07a45'], honey: ['#a8742a', '#d9a24e'],
+    blonde: ['#c9a23a', '#f2d77e'], platinum: ['#d9d4c3', '#f5f2e6'], silver: ['#9aa1ae', '#e6eaf2'],
+    white: ['#e2e2e2', '#ffffff'], burgundy: ['#5e1a2a', '#8a2a40'], crimson: ['#a3263b', '#d94a60'],
+    pink: ['#d9568a', '#f28ab0'], violet: ['#5b3a99', '#8f6bd6'], blue: ['#2a4fb5', '#4f7ae0'],
+    teal: ['#1f7a78', '#3fb3ad'], green: ['#2f7a3a', '#4fae5a'],
   },
   eyes: { brown: '#4a2c1a', blue: '#3a7bd5', green: '#3a9a5b', grey: '#7a8290', amber: '#c98a2a' },
   outfit: {
@@ -27,16 +30,18 @@ export const AVATAR_PALETTES = {
 }
 
 export const AVATAR_LABELS = {
-  skin: 'Skin', hair_style: 'Hair', hair_color: 'Hair colour', eyes: 'Eyes', outfit: 'Outfit', accent: 'Trim',
+  skin: 'Skin', hair_style: 'Hair', hair_color: 'Hair colour', facial_hair: 'Facial hair', eyes: 'Eyes', outfit: 'Outfit', accent: 'Trim',
 }
 
-export const DEFAULT_APPEARANCE = { skin: 'umber', hair_style: 'locs_taper', hair_color: 'black', eyes: 'brown', outfit: 'indigo', accent: 'gold' }
+export const DEFAULT_APPEARANCE = { skin: 'umber', hair_style: 'locs_taper', hair_color: 'black', facial_hair: 'none', eyes: 'brown', outfit: 'indigo', accent: 'gold' }
 
 // Button labels for the hair styles (option values are state identifiers).
 export const AVATAR_STYLE_LABELS = {
   locs_taper: 'Locs + taper', freeform: 'Freeform locs', twists: 'Two-strand twists', barrel_twists: 'Barrel twists',
   twist_out: 'Twist-out', afro: 'Afro', bantu_knots: 'Bantu knots', waves: '360 waves', brush_cut: 'Brush cut',
   taper: 'Taper fade', hooded: 'Hood',
+  none: 'Clean shaven', stubble: 'Stubble', mustache: 'Mustache', goatee: 'Goatee', circle_beard: 'Circle beard',
+  chin_strap: 'Chin strap', full_beard: 'Full beard',
 }
 
 // Armor colours by equipped armor name (campaign catalogue + Dungeon starter).
@@ -225,6 +230,41 @@ const HAIR = {
   },
 }
 
+// Facial hair, drawn in the hair colour (stubble in the fade colour). The
+// mouth sits on row 9 (x11-12) and the chin on row 10 (x9-14).
+const FACIAL_HAIR = {
+  none: {},
+  stubble: {
+    8: row([8, 'f'], [15, 'f']),
+    9: row([8, 'f'], [10, 'f'], [13, 'f'], [15, 'f']),
+    10: row([9, 'ffffff']),
+  },
+  mustache: {
+    8: row([10, 'hhhh']),
+  },
+  goatee: {
+    9: row([10, 'h'], [13, 'h']),
+    10: row([10, 'hhhh']),
+  },
+  circle_beard: {
+    8: row([10, 'hhhh']),
+    9: row([10, 'h'], [13, 'h']),
+    10: row([10, 'hhhh']),
+  },
+  chin_strap: {
+    8: row([8, 'h'], [15, 'h']),
+    9: row([8, 'h'], [15, 'h']),
+    10: row([9, 'hhhhhh']),
+  },
+  full_beard: {
+    7: row([8, 'h'], [15, 'h']),
+    8: row([8, 'h'], [10, 'hHhh'], [15, 'h']),
+    9: row([8, 'hhh'], [13, 'hhh']),
+    10: row([8, 'ohhHhhho']),
+    11: row([9, 'ohhhho']),
+  },
+}
+
 const ARMOR_LAYER = {
   12: row([5, 'oAAo'], [15, 'oAAo']),
   13: row([4, 'oAAAo'], [15, 'oAAAo']),
@@ -262,6 +302,7 @@ export function buildAvatarGrid(appearance = {}, gear = {}) {
   const grid = blank()
   paint(grid, BODY)
   paint(grid, HAIR[look.hair_style] || HAIR.locs_taper)
+  paint(grid, FACIAL_HAIR[look.facial_hair] || FACIAL_HAIR.none)
   if (ARMOR_COLORS[gear.armor]) paint(grid, ARMOR_LAYER)
   if (TRINKET_COLORS[gear.trinket]) paint(grid, TRINKET_LAYER)
   if (gear.weapon) paint(grid, weaponLayer(gear.weapon))

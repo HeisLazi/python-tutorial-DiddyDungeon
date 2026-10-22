@@ -1777,7 +1777,7 @@ export function AvatarSprite({ appearance, gear = {}, size = 96, className = '',
 function AvatarSwatch({ field, value, active, onPick, disabled }) {
   const palette = AVATAR_PALETTES[field]
   const color = palette ? (Array.isArray(palette[value]) ? palette[value][0] : palette[value]) : null
-  const label = field === 'hair_style' ? (AVATAR_STYLE_LABELS[value] || value) : value
+  const label = field === 'hair_style' || field === 'facial_hair' ? (AVATAR_STYLE_LABELS[value] || value) : value.replaceAll('_', ' ')
   return (
     <button type="button" className={`avatar-swatch ${active ? 'active' : ''} ${color ? 'color' : 'text'}`} onClick={() => onPick(field, value)} disabled={disabled} aria-pressed={active} title={`${AVATAR_LABELS[field]}: ${label}`}>
       {color ? <i style={{ background: color }} /> : <span>{label}</span>}

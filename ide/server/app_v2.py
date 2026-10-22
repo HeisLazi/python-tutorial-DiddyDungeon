@@ -2603,6 +2603,7 @@ class AvatarUpdate(BaseModel):
     skin: str | None = Field(default=None, max_length=40)
     hair_style: str | None = Field(default=None, max_length=40)
     hair_color: str | None = Field(default=None, max_length=40)
+    facial_hair: str | None = Field(default=None, max_length=40)
     eyes: str | None = Field(default=None, max_length=40)
     outfit: str | None = Field(default=None, max_length=40)
     accent: str | None = Field(default=None, max_length=40)
