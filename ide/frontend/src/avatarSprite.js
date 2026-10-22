@@ -30,10 +30,10 @@ export const AVATAR_PALETTES = {
 }
 
 export const AVATAR_LABELS = {
-  skin: 'Skin', hair_style: 'Hair', hair_color: 'Hair colour', facial_hair: 'Facial hair', beard_color: 'Beard colour', eyes: 'Eyes', outfit: 'Outfit', accent: 'Trim',
+  skin: 'Skin', hair_style: 'Hair', hair_length: 'Length', hair_color: 'Hair colour', facial_hair: 'Facial hair', beard_color: 'Beard colour', eyes: 'Eyes', outfit: 'Outfit', accent: 'Trim',
 }
 
-export const DEFAULT_APPEARANCE = { skin: 'umber', hair_style: 'locs_taper', hair_color: 'black', facial_hair: 'none', beard_color: 'match', eyes: 'brown', outfit: 'indigo', accent: 'gold' }
+export const DEFAULT_APPEARANCE = { skin: 'umber', hair_style: 'locs_taper', hair_length: 'cheek', hair_color: 'black', facial_hair: 'none', beard_color: 'match', eyes: 'brown', outfit: 'indigo', accent: 'gold' }
 
 // Button labels for the hair styles (option values are state identifiers).
 export const AVATAR_STYLE_LABELS = {
@@ -42,6 +42,7 @@ export const AVATAR_STYLE_LABELS = {
   taper: 'Taper fade', hooded: 'Hood',
   none: 'Clean shaven', stubble: 'Stubble', mustache: 'Mustache', goatee: 'Goatee', circle_beard: 'Circle beard',
   chin_strap: 'Chin strap', full_beard: 'Full beard', match: 'Match hair',
+  cheek: 'Cheek length', shoulder: 'Shoulder length',
 }
 
 // Armor colours by equipped armor name (campaign catalogue + Dungeon starter).
@@ -120,43 +121,91 @@ const BODY = {
 }
 
 // Hair styles. Face cells are x8..15 on rows 4-10, the head outline sits on
-// x7/x16; 'f' is the fade (hair blended into skin) used by tapers.
+// x7/x16; 'f' is the fade (hair blended into skin) used by tapers. Styles
+// with `lengths` have one drawing per hair length (cheek, shoulder).
 const HAIR = {
   locs_taper: {
-    1: row([8, 'oooooooo']),
-    2: row([7, 'ohHhHhHhHo']),
-    3: row([7, 'ohHhHhHhHo']),
-    4: row([7, 'o'], [8, 'f'], [9, 'H'], [11, 'h'], [13, 'H'], [15, 'f'], [16, 'o']),
-    5: row([7, 'o'], [8, 'f'], [10, 'h'], [12, 'H'], [15, 'f'], [16, 'o']),
+    lengths: {
+      cheek: {
+        0: '.......oooo..oooo.......',
+        1: '......oHdHdoodHdHo......',
+        2: '.....oHdHdHddHdHdHo.....',
+        3: '.....oHdHdHddHdHdHo.....',
+        4: '.....oHdHd....dHdHo.....',
+        5: '.....oHdH......HdHo.....',
+        6: '.....oHdH......HdHo.....',
+        7: '.....oHdH......HdHo.....',
+        8: '.....oHdH......HdHo.....',
+        9: '.....oH.H......H.Ho.....',
+        10: '......o.o......o.o......',
+      },
+      shoulder: {
+        0: '.......oooo..oooo.......',
+        1: '......oHdHdoodHdHo......',
+        2: '.....oHdHdHddHdHdHo.....',
+        3: '.....oHdHdHddHdHdHo.....',
+        4: '.....oHdHd....dHdHo.....',
+        5: '.....oHdH......HdHo.....',
+        6: '.....oHdH......HdHo.....',
+        7: '.....oHdH......HdHo.....',
+        8: '.....oHdH......HdHo.....',
+        9: '.....oHdH......HdHo.....',
+        10: '.....oHdH......HdHo.....',
+        11: '.....oHdH......HdHo.....',
+        12: '.....oHdH......HdHo.....',
+        13: '.....oHdH......HdHo.....',
+        14: '.....oHdH......HdHo.....',
+        15: '.....oH.H......H.Ho.....',
+        16: '......o.o......o.o......',
+      },
+    },
   },
   freeform: {
-    0: '........oo.ooo.oo.......',
-    1: '.......oHhohhHohho......',
-    2: '......ohHhdhHhdhhhdo....',
-    3: '.....ohHhdhHhdhHhdhdo...',
-    4: '....oHoh.h...h..hodo....',
-    5: '....oHoh.h......hodo....',
-    6: '....oHoh........hodo....',
-    7: '....oHoh........hodo....',
-    8: '....oHoh........hodo....',
-    9: '....oHoh........hodo....',
-    10: '....oHoh........hodo....',
-    11: '....oHoh........hodo....',
-    12: '....oHoh........hodo....',
-    13: '....oHoh........hodo....',
-    14: '....oHoo........hodo....',
-    15: '....oHo.........oodo....',
-    16: '....oHo..........odo....',
-    17: '.....o...........odo....',
-    18: '..................o.....',
+    lengths: {
+      cheek: {
+        0: '.......oHhooHoohHo......',
+        1: '.....oHhdHhdHhdHhdo.....',
+        2: '....oHhdHhdHhhdHhdHo....',
+        3: '....oHhdHhdHhhdHhdHo....',
+        4: '....oHhdH......dHhdo....',
+        5: '....oHhd........Hhdo....',
+        6: '....oHhd........Hhdo....',
+        7: '....oHhd........Hhdo....',
+        8: '....oHhd........Hhdo....',
+        9: '....oHho........Hhdo....',
+        10: '.....oo.........Hho.....',
+        11: '................oo......',
+      },
+      shoulder: {
+        0: '.......oHhooHoohHo......',
+        1: '.....oHhdHhdHhdHhdo.....',
+        2: '....oHhdHhdHhhdHhdHo....',
+        3: '....oHhdHhdHhhdHhdHo....',
+        4: '....oHhdH......dHhdo....',
+        5: '....oHhd........Hhdo....',
+        6: '....oHhd........Hhdo....',
+        7: '....oHhd........Hhdo....',
+        8: '....oHhd........Hhdo....',
+        9: '....oHhd........Hhdo....',
+        10: '....oHhd........Hhdo....',
+        11: '....oHhd........Hhdo....',
+        12: '....oHhd........Hhdo....',
+        13: '....oHhd........Hhdo....',
+        14: '....oHho........Hhdo....',
+        15: '....oHho........Hho.....',
+        16: '.....oo.........Hho.....',
+        17: '................oo......',
+      },
+    },
   },
   twists: {
-    0: '........o.o.o.o.........',
-    1: '.......oHoHoHoHo........',
-    2: '.......ohdhdhdhdo.......',
-    3: '.......odHdHdHdHo.......',
-    4: '.......ofh.H.h.fo.......',
-    5: '.......of......fo.......',
+    0: '.......o.o.oo.o.o.......',
+    1: '......oHoHdHHdHoHo......',
+    2: '.....oHdHdHdHdHdHdo.....',
+    3: '....oHdHdHdHdHdHdHdo....',
+    4: '....oHd.H.d..d.H.dHo....',
+    5: '....oHo..........oHo....',
+    6: '.....o............o.....',
   },
   barrel_twists: {
     1: '........oo.oo.oo........',
@@ -166,14 +215,11 @@ const HAIR = {
     5: '.......of......fo.......',
   },
   twist_out: {
-    1: row([7, 'oooooooooo']),
-    2: row([6, 'ohHhhHhhHhho']),
-    3: row([5, 'ohhHhhHhhHhhHo']),
-    4: row([5, 'oHh'], [16, 'hHo']),
-    5: row([5, 'ohH'], [16, 'Hho']),
-    6: row([5, 'oHh'], [16, 'hHo']),
-    7: row([5, 'ohH'], [16, 'Hho']),
-    8: row([6, 'oo'], [16, 'oo']),
+    0: '........o.oo.oo.o.......',
+    1: '.......oHdHhdHdHo.......',
+    2: '......oHhdHdHhdHdo......',
+    3: '......odHhdHhdHhdo......',
+    4: '.......of......fo.......',
   },
   afro: {
     0: row([8, 'oooooooo']),
@@ -301,7 +347,8 @@ export function buildAvatarGrid(appearance = {}, gear = {}) {
   const look = { ...DEFAULT_APPEARANCE, ...appearance }
   const grid = blank()
   paint(grid, BODY)
-  paint(grid, HAIR[look.hair_style] || HAIR.locs_taper)
+  const hair = HAIR[look.hair_style] || HAIR.taper
+  paint(grid, hair.lengths ? hair.lengths[look.hair_length] || Object.values(hair.lengths)[0] : hair)
   paint(grid, FACIAL_HAIR[look.facial_hair] || FACIAL_HAIR.none)
   if (ARMOR_COLORS[gear.armor]) paint(grid, ARMOR_LAYER)
   if (TRINKET_COLORS[gear.trinket]) paint(grid, TRINKET_LAYER)
