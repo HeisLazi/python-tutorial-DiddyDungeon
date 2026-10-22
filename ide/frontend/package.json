@@ -12,6 +12,8 @@
     "test": "node --test src/cloud/*.test.js"
   },
   "dependencies": {
+    "@fontsource/press-start-2p": "^5.3.0",
+    "@fontsource/vt323": "^5.3.0",
     "@monaco-editor/react": "^4.7.0",
     "@supabase/supabase-js": "^2.116.0",
     "@xterm/addon-fit": "^0.10.0",

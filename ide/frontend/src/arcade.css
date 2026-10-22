@@ -1,0 +1,475 @@
+/* Arcade — the default Quest Lab theme (data-theme="arcade").
+   Loaded last so it re-skins the existing surfaces through their tokens plus a
+   small set of geometry/typography overrides. The Merchant (the Market place,
+   [data-place="market"]) is deliberately excluded and keeps its original look:
+   every broad rule below carries the market exclusion, and the campaign
+   tokens are restored inside it at the end of this file. */
+
+/* Pixel fonts, bundled for offline play. size-adjust normalises their very
+   different natural sizes so the existing px font sizes stay readable. */
+@font-face {
+  font-family: "Arcade Body";
+  src: url("../node_modules/@fontsource/vt323/files/vt323-latin-400-normal.woff2") format("woff2");
+  font-display: swap;
+  size-adjust: 135%;
+}
+@font-face {
+  font-family: "Arcade Display";
+  src: url("../node_modules/@fontsource/press-start-2p/files/press-start-2p-latin-400-normal.woff2") format("woff2");
+  font-display: swap;
+  size-adjust: 80%;
+}
+
+/* ── Tokens ─────────────────────────────────────────────────────────── */
+.app-shell[data-theme="arcade"] {
+  --bg: #0d0b1e;
+  --panel: #17142e;
+  --panel2: #211c42;
+  --panel3: #110e24;
+  --line: #3b3373;
+  --line2: #5d51b3;
+  --text: #f4ecd8;
+  --muted: #b1aad8;
+  --dim: #7a73ad;
+  --gold: #ffcc33;
+  --gold2: #ffe27a;
+  --gold-soft: #ffe27a;
+  --ember: #ff7a3d;
+  --green: #3ee08f;
+  --blue: #4cc9f0;
+  --violet: #b48cff;
+  --danger: #ff4d6d;
+  --px-ink: #05040c;
+  --px-shadow: 4px 4px 0 var(--px-ink);
+  --px-shadow-sm: 3px 3px 0 var(--px-ink);
+  --font-body: "Arcade Body", ui-monospace, monospace;
+  --font-display: "Arcade Display", ui-monospace, monospace;
+  background:
+    linear-gradient(rgb(93 81 179 / 0.07) 1px, transparent 1px) 0 0 / 100% 8px,
+    linear-gradient(90deg, rgb(93 81 179 / 0.07) 1px, transparent 1px) 0 0 / 8px 100%,
+    radial-gradient(circle at 50% -10%, #2a1f5c 0, var(--bg) 55%);
+  color: var(--text);
+  font-family: var(--font-body);
+}
+
+.app-shell[data-theme="arcade"] .campaign-v1 {
+  --campaign-bg: transparent;
+  --campaign-panel: var(--panel);
+  --campaign-panel-soft: var(--panel2);
+  --campaign-line: var(--line);
+  --campaign-line-strong: var(--line2);
+  --campaign-text: var(--text);
+  --campaign-muted: var(--muted);
+  --campaign-dim: var(--dim);
+  --campaign-gold: var(--gold);
+  --campaign-gold-soft: var(--gold2);
+  --campaign-green: var(--green);
+  --campaign-blue: var(--blue);
+  --campaign-violet: var(--violet);
+  background: transparent;
+}
+
+.app-shell[data-theme="arcade"] .dungeon-screen-shell {
+  --dungeon-bg: transparent;
+  --dungeon-panel: var(--panel);
+  --dungeon-panel-2: var(--panel2);
+  --dungeon-panel-3: var(--panel3);
+  --dungeon-line: var(--line);
+  --dungeon-line-bright: var(--line2);
+  --dungeon-text: var(--text);
+  --dungeon-muted: var(--muted);
+  --dungeon-dim: var(--dim);
+  --dungeon-gold: var(--gold);
+  --dungeon-gold-soft: var(--gold2);
+  --dungeon-ember: var(--ember);
+  --dungeon-green: var(--green);
+  --dungeon-blue: var(--blue);
+  --dungeon-danger: var(--danger);
+}
+
+/* ── Typography ─────────────────────────────────────────────────────── */
+/* Body: everything except code surfaces and the Merchant. */
+.app-shell[data-theme="arcade"] :not(.monaco-editor, .monaco-editor *, .xterm, .xterm *, pre, pre *, code, kbd, [data-place="market"], [data-place="market"] *) {
+  font-family: var(--font-body) !important;
+}
+
+/* Display: headings, kickers, buttons and HUD numbers. */
+.app-shell[data-theme="arcade"] :is(h1, h2, h3, button, .eyebrow, .rank-stat, .hud-xp strong, [class*="eyebrow"], [class*="kicker"], .panel-title, .surface-nav-link):not([data-place="market"], [data-place="market"] *, .monaco-editor *, .xterm *) {
+  font-family: var(--font-display) !important;
+  font-weight: 400 !important;
+  letter-spacing: 0.02em !important;
+  -webkit-font-smoothing: none;
+}
+.app-shell[data-theme="arcade"] :is(h1, h2, h3):not([data-place="market"] *) {
+  line-height: 1.35 !important;
+  text-shadow: 3px 3px 0 var(--px-ink);
+}
+.app-shell[data-theme="arcade"] :is([class*="eyebrow"], [class*="kicker"]):not([data-place="market"] *) {
+  color: var(--gold);
+}
+
+/* ── Geometry: square corners, hard pixel shadows ──────────────────── */
+.app-shell[data-theme="arcade"] :not(.monaco-editor *, .xterm *, [data-place="market"], [data-place="market"] *) {
+  border-radius: 0 !important;
+}
+.app-shell[data-theme="arcade"] :is(.panel, .campaign-panel, .poi-card, .office-board, [class*="-card"]:not([class*="-card-"]), [class*="-panel"]:not([class*="-panel-"])):not([data-place="market"], [data-place="market"] *, .monaco-editor *, .xterm *) {
+  border: 3px solid var(--line2) !important;
+  box-shadow: var(--px-shadow) !important;
+}
+.app-shell[data-theme="arcade"] .campaign-place-panel:not([data-place="market"]) {
+  border: 0 !important;
+  box-shadow: none !important;
+}
+
+/* ── Controls ───────────────────────────────────────────────────────── */
+/* Low specificity on purpose: plain buttons get the arcade look, component
+   buttons keep their geometry and only pick up colours/corners. */
+:where(.app-shell[data-theme="arcade"]) button:where(:not([data-place="market"] *)) {
+  padding: 8px 12px;
+  border: 3px solid var(--line2);
+  background: var(--panel2);
+  color: var(--text);
+  font-size: 12px;
+  line-height: 1.2;
+  box-shadow: var(--px-shadow-sm);
+  transition: transform 60ms steps(1), box-shadow 60ms steps(1);
+}
+:where(.app-shell[data-theme="arcade"]) button:where(:not([data-place="market"] *, :disabled)):hover {
+  border-color: var(--gold);
+  background: var(--panel2);
+  transform: translate(-1px, -1px);
+  box-shadow: 4px 4px 0 var(--px-ink);
+}
+:where(.app-shell[data-theme="arcade"]) button:where(:not([data-place="market"] *, :disabled)):active {
+  transform: translate(2px, 2px);
+  box-shadow: 1px 1px 0 var(--px-ink);
+}
+.app-shell[data-theme="arcade"] button.primary:not([data-place="market"] *) {
+  border-color: #fff1b8;
+  background: var(--gold);
+  color: #1d1240;
+}
+.app-shell[data-theme="arcade"] button.primary:not([data-place="market"] *, :disabled):hover {
+  background: var(--gold2);
+  border-color: #fff;
+}
+.app-shell[data-theme="arcade"] button:focus-visible:not([data-place="market"] *) {
+  outline: 3px solid var(--blue);
+  outline-offset: 2px;
+}
+.app-shell[data-theme="arcade"] :is(input, select, textarea):not([data-place="market"] *, .monaco-editor *, .xterm *) {
+  border: 3px solid var(--line) !important;
+  background: var(--panel3) !important;
+  color: var(--text) !important;
+  font-size: 15px;
+}
+.app-shell[data-theme="arcade"] :is(input, select, textarea):focus:not([data-place="market"] *, .monaco-editor *, .xterm *) {
+  border-color: var(--gold) !important;
+  outline: none;
+}
+.app-shell[data-theme="arcade"] input[type="range"] {
+  accent-color: var(--gold);
+  border: 0 !important;
+  background: transparent !important;
+}
+
+/* ── Shell: top HUD ─────────────────────────────────────────────────── */
+.app-shell[data-theme="arcade"] .topbar {
+  background: var(--panel3);
+  border-bottom: 3px solid var(--line2);
+  box-shadow: 0 4px 0 var(--px-ink);
+  position: relative;
+  z-index: 3;
+}
+.app-shell[data-theme="arcade"] .brand-lockup .eyebrow {
+  color: var(--blue);
+  font-size: 9px;
+}
+.app-shell[data-theme="arcade"] .brand-lockup h1 {
+  margin-top: 4px;
+  color: var(--gold);
+  font-size: 22px;
+  text-shadow: 3px 3px 0 #7a2e00, 6px 6px 0 var(--px-ink);
+}
+.app-shell[data-theme="arcade"] .hud-xp strong {
+  color: var(--green);
+  font-size: 12px;
+}
+.app-shell[data-theme="arcade"] .hud-xp span,
+.app-shell[data-theme="arcade"] .hud-xp small {
+  color: var(--muted);
+  font-size: 13px;
+}
+.app-shell[data-theme="arcade"] .hud-xp-track {
+  height: 14px;
+  padding: 2px;
+  border: 3px solid var(--text);
+  background: var(--px-ink);
+  box-shadow: var(--px-shadow-sm);
+}
+.app-shell[data-theme="arcade"] .hud-xp-track span {
+  height: 100%;
+  background: repeating-linear-gradient(90deg, var(--green) 0 8px, #25b56e 8px 10px);
+  box-shadow: none;
+}
+.app-shell[data-theme="arcade"] .top-stats > span {
+  border: 2px solid var(--line2);
+  background: var(--panel2);
+  box-shadow: 2px 2px 0 var(--px-ink);
+  font-size: 15px;
+}
+.app-shell[data-theme="arcade"] .top-stats .hp-stat { color: var(--danger); border-color: #7d2a3d; }
+.app-shell[data-theme="arcade"] .rank-stat {
+  color: #1d1240 !important;
+  background: var(--gold) !important;
+  border-color: #fff1b8 !important;
+  font-size: 10px !important;
+}
+.app-shell[data-theme="arcade"] .cloud-pill.local { display: none; }
+.app-shell[data-theme="arcade"] .cloud-pill {
+  max-width: 150px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.app-shell[data-theme="arcade"] :is(.zen-toggle, .game-toggle, .ai-popout-toggle) {
+  padding: 6px 9px;
+  font-size: 9px;
+  box-shadow: 2px 2px 0 var(--px-ink);
+}
+.app-shell[data-theme="arcade"] .game-toggle[aria-pressed="true"] {
+  border-color: var(--green);
+  color: var(--green);
+}
+
+/* Quest banner: an arcade marquee. */
+.app-shell[data-theme="arcade"] .quest-banner {
+  background: var(--px-ink);
+  border-bottom: 3px solid var(--line);
+  color: var(--muted);
+  font-size: 16px;
+}
+.app-shell[data-theme="arcade"] .quest-banner strong { color: var(--violet); }
+.app-shell[data-theme="arcade"] .quest-banner .quest-text { color: var(--gold2); }
+.app-shell[data-theme="arcade"] .git-pill {
+  border: 2px solid var(--line);
+  background: var(--panel3);
+  font-size: 14px;
+}
+
+/* Route navigation: chunky cabinet buttons. */
+.app-shell[data-theme="arcade"] .surface-nav {
+  background: var(--panel3);
+  border-bottom: 3px solid var(--line);
+}
+.app-shell[data-theme="arcade"] .surface-nav-link,
+.app-shell[data-theme="arcade"] .surface-nav-brand {
+  border: 3px solid var(--line) !important;
+  background: var(--panel) !important;
+  color: var(--muted) !important;
+  box-shadow: var(--px-shadow-sm) !important;
+  font-size: 10px !important;
+}
+.app-shell[data-theme="arcade"] .surface-nav-link:hover,
+.app-shell[data-theme="arcade"] .surface-nav-brand:hover {
+  border-color: var(--gold) !important;
+  color: var(--text) !important;
+}
+.app-shell[data-theme="arcade"] .surface-nav-link.active,
+.app-shell[data-theme="arcade"][data-view="hub"] .surface-nav-brand {
+  border-color: #fff1b8 !important;
+  background: var(--gold) !important;
+  color: #1d1240 !important;
+}
+
+.app-shell[data-theme="arcade"] .surface-nav-link.active > span:first-child { color: #1d1240; }
+
+/* Status bar: cabinet footer. */
+.app-shell[data-theme="arcade"] .statusbar {
+  background: var(--px-ink);
+  border-top: 3px solid var(--line);
+  color: var(--dim);
+  font-size: 14px;
+}
+.app-shell[data-theme="arcade"] .runtime-identity { color: var(--green); }
+.app-shell[data-theme="arcade"] .runtime-identity.warning { color: var(--danger); }
+
+/* ── Panels & workspace ─────────────────────────────────────────────── */
+.app-shell[data-theme="arcade"] .panel { background: var(--panel); }
+.app-shell[data-theme="arcade"] :is(.panel-title, .terminal-title-v2) {
+  background: var(--panel2);
+  border-bottom: 3px solid var(--line);
+  color: var(--gold);
+  font-size: 10px;
+}
+.app-shell[data-theme="arcade"] .resize-handle { background: var(--line); }
+.app-shell[data-theme="arcade"] .resize-handle:hover { background: var(--gold); }
+.app-shell[data-theme="arcade"] :is(.connection-pill, .campaign-tag) {
+  border: 2px solid var(--green);
+  background: transparent;
+  color: var(--green);
+  font-size: 13px;
+}
+
+/* ── Campaign: map rail, Bounty Office, Home ───────────────────────── */
+.app-shell[data-theme="arcade"] .campaign-v1 .panel-heading h2,
+.app-shell[data-theme="arcade"] .campaign-v1 .campaign-place-heading h2:not([data-place="market"] *) {
+  color: var(--text);
+  font-size: clamp(18px, 1.8vw, 26px);
+}
+.app-shell[data-theme="arcade"] .poi-rail .panel-heading { padding-right: 34px; }
+.app-shell[data-theme="arcade"] .map-rail-toggle {
+  padding: 2px 6px;
+  font-size: 10px;
+}
+.app-shell[data-theme="arcade"] .poi-card {
+  background: var(--panel2) !important;
+  box-shadow: var(--px-shadow-sm) !important;
+}
+.app-shell[data-theme="arcade"] .poi-card strong { font-size: 18px; color: var(--text); }
+.app-shell[data-theme="arcade"] .poi-card em { font-style: normal; font-size: 15px; }
+.app-shell[data-theme="arcade"] .poi-card.active {
+  border-color: var(--gold) !important;
+  background: #2b2350 !important;
+}
+.app-shell[data-theme="arcade"] .poi-card:hover { border-color: var(--gold2) !important; }
+.app-shell[data-theme="arcade"] .poi-icon {
+  border: 2px solid currentColor;
+  background: var(--panel3);
+}
+.app-shell[data-theme="arcade"] .campaign-progress-track {
+  height: 14px;
+  padding: 2px;
+  border: 3px solid var(--text);
+  background: var(--px-ink);
+}
+.app-shell[data-theme="arcade"] .campaign-progress-track i {
+  display: block;
+  height: 100%;
+  background: repeating-linear-gradient(90deg, var(--gold) 0 8px, #d9a514 8px 10px);
+}
+.app-shell[data-theme="arcade"] .campaign-panel-copy,
+.app-shell[data-theme="arcade"] .campaign-place-heading:not([data-place="market"] *) p { font-size: 17px; }
+
+.app-shell[data-theme="arcade"] .office-toolbar,
+.app-shell[data-theme="arcade"] .office-board-header {
+  border: 3px solid var(--line) !important;
+  background: var(--panel3) !important;
+}
+.app-shell[data-theme="arcade"] .office-board {
+  background: var(--panel3) !important;
+}
+.app-shell[data-theme="arcade"] .office-board-header strong,
+.app-shell[data-theme="arcade"] .office-board-header h3 {
+  font-family: var(--font-display) !important;
+  font-size: 12px;
+  color: var(--gold);
+}
+.app-shell[data-theme="arcade"] :is(.office-tab, .board-switch) { font-size: 9px; }
+.app-shell[data-theme="arcade"] .office-tab.active {
+  border-color: var(--gold);
+  background: var(--gold);
+  color: #1d1240;
+}
+
+/* Bounty posters become arcade cards: cleared = green, open = gold, locked = dark. */
+.app-shell[data-theme="arcade"] .bounty-poster {
+  border: 3px solid var(--line2) !important;
+  background: var(--panel2) !important;
+  color: var(--text) !important;
+  box-shadow: var(--px-shadow) !important;
+  transform: none !important;
+}
+.app-shell[data-theme="arcade"] .bounty-poster:not(.locked):hover {
+  border-color: var(--gold) !important;
+  transform: translate(-2px, -2px) !important;
+  box-shadow: 6px 6px 0 var(--px-ink) !important;
+}
+.app-shell[data-theme="arcade"] .bounty-poster.locked { opacity: 0.55; filter: grayscale(0.6); }
+.app-shell[data-theme="arcade"] .bounty-poster :is(strong, h3, h4) {
+  color: var(--text) !important;
+  font-family: var(--font-display) !important;
+  font-size: 12px !important;
+  line-height: 1.5 !important;
+}
+.app-shell[data-theme="arcade"] .bounty-poster :is(p, small, em, span) { color: var(--muted) !important; }
+.app-shell[data-theme="arcade"] .poster-art {
+  border: 3px solid var(--line) !important;
+  background:
+    linear-gradient(45deg, rgb(255 255 255 / 0.03) 25%, transparent 25% 75%, rgb(255 255 255 / 0.03) 75%) 0 0 / 8px 8px,
+    var(--panel3) !important;
+  color: var(--gold) !important;
+}
+.app-shell[data-theme="arcade"] .poster-pin { background: var(--danger) !important; box-shadow: 2px 2px 0 var(--px-ink); }
+.app-shell[data-theme="arcade"] .poster-rank { color: var(--blue) !important; }
+.app-shell[data-theme="arcade"] .poster-size-elite { border-color: var(--violet) !important; }
+.app-shell[data-theme="arcade"] .office-detail {
+  border: 3px solid var(--gold) !important;
+  background: var(--panel2) !important;
+}
+
+.app-shell[data-theme="arcade"] .campaign-button:not([data-place="market"] *) {
+  border: 3px solid var(--line2) !important;
+  background: var(--panel2) !important;
+  color: var(--text) !important;
+  box-shadow: var(--px-shadow-sm) !important;
+}
+.app-shell[data-theme="arcade"] .campaign-button:not(.ghost):not([data-place="market"] *) {
+  border-color: #fff1b8 !important;
+  background: var(--gold) !important;
+  color: #1d1240 !important;
+}
+.app-shell[data-theme="arcade"] .campaign-stat-row:not([data-place="market"] *) > span {
+  border: 3px solid var(--line) !important;
+  background: var(--panel3) !important;
+}
+.app-shell[data-theme="arcade"] .campaign-stat-row:not([data-place="market"] *) strong {
+  color: var(--gold);
+  font-family: var(--font-display) !important;
+}
+
+/* ── Overlays ───────────────────────────────────────────────────────── */
+.app-shell[data-theme="arcade"] .boss-overlay { background: rgb(5 4 12 / 0.82); }
+.app-shell[data-theme="arcade"] .boss-card,
+.app-shell[data-theme="arcade"] .celebration-card,
+.app-shell[data-theme="arcade"] .launch-splash {
+  max-width: 520px;
+  padding: 28px;
+  border: 4px solid var(--danger);
+  background: var(--panel);
+  color: var(--text);
+  box-shadow: 8px 8px 0 var(--px-ink);
+}
+.app-shell[data-theme="arcade"] .boss-card h2 { color: var(--danger); font-size: 18px; }
+.app-shell[data-theme="arcade"] .boss-card p { font-size: 18px; color: var(--muted); }
+.app-shell[data-theme="arcade"] .celebration-card { border-color: var(--gold); }
+.app-shell[data-theme="arcade"] .celebration-card h2 { color: var(--gold); }
+.app-shell[data-theme="arcade"] .launch-splash { border-color: var(--gold); }
+
+/* Scrollbars as pixel rails. */
+.app-shell[data-theme="arcade"] ::-webkit-scrollbar { width: 12px; height: 12px; }
+.app-shell[data-theme="arcade"] ::-webkit-scrollbar-track { background: var(--panel3); }
+.app-shell[data-theme="arcade"] ::-webkit-scrollbar-thumb { background: var(--line2); border: 3px solid var(--panel3); }
+.app-shell[data-theme="arcade"] ::-webkit-scrollbar-thumb:hover { background: var(--gold); }
+
+/* ── Merchant: keep the original Market look ───────────────────────── */
+.app-shell[data-theme="arcade"] .campaign-v1 [data-place="market"] {
+  --campaign-panel: #101510;
+  --campaign-panel-soft: #151b16;
+  --campaign-line: #344234;
+  --campaign-line-strong: #4b5c4a;
+  --campaign-text: #e8eadf;
+  --campaign-muted: #aab7a5;
+  --campaign-dim: #71816d;
+  --campaign-gold: #e8b94e;
+  --campaign-gold-soft: #f3d889;
+  --campaign-green: #78b68d;
+  --campaign-blue: #8bc5cf;
+  --campaign-violet: #bd8fd7;
+  color: var(--campaign-text);
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-shell[data-theme="arcade"] * { transition: none !important; }
+}

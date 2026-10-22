@@ -13,6 +13,7 @@ import './uiPolish.js'
 import './commandPalette.js'
 import './combatShell.js'
 import '@xterm/xterm/css/xterm.css'
+import './arcade.css'
 
 // Load Monaco's prebuilt AMD build from the same origin (copied into
 // public/monaco by scripts/copy-monaco.mjs) so Forge stays usable offline and

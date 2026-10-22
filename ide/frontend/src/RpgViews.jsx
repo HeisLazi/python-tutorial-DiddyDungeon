@@ -742,7 +742,10 @@ export function SurfaceNavigation({ activeView, onNavigate }) {
   // Codex is now a folio inside Tutor Notebook. Keep the legacy route
   // addressable for saved links, but do not present a duplicate top-level
   // destination in the shared navigation.
-  const destinationItems = viewItems.filter((item) => item.id !== 'hub' && item.id !== 'codex')
+  const destinationItems = [
+    { id: 'forge', label: 'Forge' },
+    ...viewItems.filter((item) => item.id !== 'hub' && item.id !== 'codex'),
+  ]
   return (
     <nav className="surface-nav" data-testid="wide-route-nav" aria-label="Wide route navigation">
       <button className="surface-nav-brand" type="button" onClick={() => onNavigate?.('hub')} aria-label="Open Campaign">
@@ -1818,6 +1821,7 @@ function CampaignMapRail({ place, onSelect, collapsed, onToggle, progress }) {
   const activeProject = (progress?.projects || []).find((project) => project.status === 'active') || {}
   const completed = (activeProject.mobs || []).filter((mob) => isMobDefeated(mob.status)).length
   const total = (activeProject.mobs || []).length
+  const chapter = Math.max(1, (progress?.projects || []).indexOf(activeProject) + 1)
   return (
     <aside className={`campaign-panel poi-rail ${collapsed ? 'map-rail-collapsed' : ''}`} aria-label="Campaign map">
       <div className="panel-heading">
@@ -1830,7 +1834,7 @@ function CampaignMapRail({ place, onSelect, collapsed, onToggle, progress }) {
         <div className="poi-list">
           {CAMPAIGN_POIS.map((poi) => <button key={poi.id} className={`poi-card ${place === poi.id ? 'active' : ''}`} type="button" onClick={() => onSelect(poi.id)}><span className={`poi-icon poi-${poi.id}`}>{poi.icon}</span><span className="poi-copy"><strong>{poi.label}</strong><small>{poi.kicker}</small><em>{poi.summary}</em></span><span className="poi-arrow"><RouteIcon id="arrow" /></span></button>)}
         </div>
-        <div className="project-progress"><div><span>PROJECT PROGRESS</span><strong>Chapter 01</strong></div><div className="campaign-progress-track"><i style={{ width: `${Math.min(100, completed * 24)}%` }} /></div><p>{total ? `${completed}/${total} ${completed === 1 ? 'bounty' : 'bounties'} cleared.` : 'Boss remains locked until the project bounties are cleared.'}</p></div>
+        <div className="project-progress"><div><span>PROJECT PROGRESS</span><strong>Chapter {String(chapter).padStart(2, '0')}</strong></div><div className="campaign-progress-track"><i style={{ width: `${total ? Math.round((completed / total) * 100) : 0}%` }} /></div><p>{total ? `${completed}/${total} ${completed === 1 ? 'bounty' : 'bounties'} cleared.` : 'Boss remains locked until the project bounties are cleared.'}</p></div>
       </>}
       {collapsed && <div className="map-rail-collapsed-summary"><span>✦</span><strong>MAP</strong><small>OPEN</small></div>}
     </aside>
@@ -1936,7 +1940,7 @@ function CampaignSurface({ progress, revision, equipmentProjection, purchaseCosm
     <div className="campaign-v1 game-screen-scroll" data-testid="campaign-surface" data-campaign-revision={revision}>
       <div className={`campaign-layout ${mapCollapsed ? 'map-rail-is-collapsed' : ''}`}>
         <CampaignMapRail progress={progress} place={place} onSelect={selectPlace} collapsed={mapCollapsed} onToggle={() => setMapCollapsed((value) => !value)} />
-        <main className="campaign-place-panel">
+        <main className="campaign-place-panel" data-place={place}>
           {place === 'home' && <Homestead progress={progress} revision={revision} equipmentProjection={equipmentProjection} purchaseCosmetic={purchaseCosmetic} equipCosmetic={equipCosmetic} equipCampaignItem={equipCampaignItem} buildRoomUpgrade={buildRoomUpgrade} performHomesteadAction={performHomesteadAction} busy={busy} onNavigate={homeNavigate} />}
           {place === 'market' && <CampaignMarket progress={progress} purchaseMarketItem={purchaseMarketItem} busy={busy} onBackHome={() => setPlace('home')} />}
           {place === 'office' && <CampaignOffice progress={progress} onEnter={openForge} />}
@@ -2392,7 +2396,7 @@ function SettingsScreen({ preferences, setters, resetLayout, account, accountBus
           <label><span>Terminal font size</span><b>{terminalFontSize}px</b><input type="range" min="10" max="20" value={terminalFontSize} onChange={(event) => setters.setTerminalFontSize(Number(event.target.value))} /></label>
           <label><span>HUD density</span><select value={hudDensity} onChange={(event) => setters.setHudDensity(event.target.value)}><option value="full">Full</option><option value="compact">Compact</option></select></label>
           <label className="toggle-row"><span>Animations</span><input type="checkbox" checked={animations} onChange={(event) => setters.setAnimations(event.target.checked)} /></label>
-          <label><span>Theme</span><select value={themeChoice || ''} onChange={(event) => setters.setThemeChoice(event.target.value)}><option value="">Homestead equipped theme</option><option value="gruvbox-dark">Gruvbox Dark</option><option value="gruvbox-light">Gruvbox Light</option><option value="github-dark">GitHub Dark</option><option value="github-light">GitHub Light</option><option value="deep-forest">Deep Forest</option><option value="void-scholar">Void Scholar</option><option value="ancient-archive">Ancient Archive</option></select></label>
+          <label><span>Theme</span><select value={themeChoice || ''} onChange={(event) => setters.setThemeChoice(event.target.value)}><option value="">Arcade (default)</option><option value="homestead">Homestead equipped theme</option><option value="gruvbox-dark">Gruvbox Dark</option><option value="gruvbox-light">Gruvbox Light</option><option value="github-dark">GitHub Dark</option><option value="github-light">GitHub Light</option><option value="deep-forest">Deep Forest</option><option value="void-scholar">Void Scholar</option><option value="ancient-archive">Ancient Archive</option></select></label>
           <label><span>Interface font</span><select value={fontFamily || 'inter'} onChange={(event) => setters.setFontFamily(event.target.value)}><option value="inter">Inter · neutral</option><option value="ibm-plex">IBM Plex Sans · readable</option><option value="atkinson">Atkinson Hyperlegible · high clarity</option><option value="system">System UI</option></select></label>
           <label className="toggle-row"><span>AI terminal visible</span><input type="checkbox" checked={showAiTerminal !== false} onChange={(event) => setters.setShowAiTerminal(event.target.checked)} /></label>
           <p className="settings-note">AI stays hidden on Codex, Homestead and Settings so those pages can breathe. The PTY remains mounted and reconnect-free.</p>

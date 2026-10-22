@@ -455,6 +455,7 @@ function AppV2() {
   const [showAiTerminal, setShowAiTerminal] = usePersistentState('questlab.showAiTerminal', true)
   const [zenMode, setZenMode] = usePersistentState('questlab.zenMode', false)
   const [gameMode, setGameMode] = usePersistentState('questlab.gameMode', false)
+  const [bossIntroSeen, setBossIntroSeen] = usePersistentState('questlab.bossIntroSeen', '')
   const [themeChoice, setThemeChoice] = usePersistentState('questlab.themeChoice', '')
   const [fontFamily, setFontFamily] = usePersistentState('questlab.fontFamily', 'inter')
   const [initialLaunch] = useState(() => launchContext())
@@ -525,7 +526,11 @@ function AppV2() {
   const equipped = homestead.equipped || {}
   const campaignReady = Boolean(campaign && campaign.progress && typeof campaign.progress === 'object')
   const questDocument = buildQuestDocument(campaign)
-  const theme = (themeChoice || equipped.theme || 'theme-ember-forge').replace('theme-', '')
+  // Arcade is the default look; "homestead" opts back into the theme equipped
+  // through Homestead cosmetics, and the named themes stay selectable.
+  const theme = themeChoice === 'homestead'
+    ? (equipped.theme || 'theme-ember-forge').replace('theme-', '')
+    : (themeChoice || 'arcade')
   const terminalSkin = equipped.terminal || 'terminal-charcoal'
   // Tutor is now a self-contained resource surface (Codex → IDE → notes).
   // Forge remains the only route that owns the outer editor grid; keeping the
@@ -551,6 +556,10 @@ function AppV2() {
     campaign?.encounter?.status === 'boss_available'
     || campaign?.encounter?.boss_status === 'available'
   )
+  // The boss intro is a one-time announcement per boss, not a wall in front
+  // of the editor the player needs to fight it from.
+  const bossIntroKey = `${campaign?.encounter?.project_id || progress.current_project || 'project'}:${campaign?.encounter?.boss || 'boss'}`
+  const showBossIntro = bossGateActive && bossIntroSeen !== bossIntroKey
   const welcomeName = cloudState.profile?.display_name || player.name || cloudState.user?.email?.split('@')?.[0] || 'Adventurer'
   const runtimeBranch = runtime?.repo_git?.branch || 'checking branch…'
   const runtimeMismatch = Boolean(runtime?.expected_branch && runtimeBranch !== runtime.expected_branch)
@@ -2246,12 +2255,13 @@ function AppV2() {
           ))}
         </div>
       )}
-      {bossGateActive && (
-        <div className="boss-overlay" role="dialog" aria-modal="true">
+      {showBossIntro && (
+        <div className="boss-overlay" role="dialog" aria-modal="true" aria-label="Boss gate">
           <div className="boss-card">
-            <h2>⚔ Boss Gate Active</h2>
-            <p>A boss encounter is available. Complete the required objectives to proceed.</p>
-            <button className="primary" type="button" onClick={() => setActiveView('forge')}>Enter Boss Fight</button>
+            <span className="screen-kicker">BOSS GATE OPEN</span>
+            <h2>⚔ {campaign?.encounter?.boss || 'The boss'} awaits</h2>
+            <p>Every bounty on this board is cleared. Build the boss requirements in the Forge, then Submit run to strike.</p>
+            <button className="primary" type="button" onClick={() => setBossIntroSeen(bossIntroKey)} autoFocus>Fight</button>
           </div>
         </div>
       )}
@@ -2294,8 +2304,8 @@ function AppV2() {
           <button className="zen-toggle" type="button" onClick={() => setZenMode((z) => !z)} title="Toggle Zen mode (maximize editor + terminal)">
             {zenMode ? 'Exit Zen' : 'Zen Mode'}
           </button>
-          <button className="game-toggle" type="button" onClick={() => setGameMode((g) => !g)} title="Toggle game-like theme">
-            {gameMode ? 'Classic' : 'Game Mode'}
+          <button className="game-toggle" type="button" onClick={() => setGameMode((g) => !g)} title="Toggle CRT scanlines" aria-pressed={gameMode}>
+            {gameMode ? 'CRT On' : 'CRT Off'}
           </button>
         </div>
       </header>

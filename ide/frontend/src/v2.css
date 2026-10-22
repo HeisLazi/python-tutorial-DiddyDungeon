@@ -1323,36 +1323,7 @@
   grid-template-columns: minmax(0, 1fr) !important;
 }
 
-/* Game mode: retro arcade theme */
-.app-shell.game-mode {
-  --forge-bg: #0a0a1a;
-  --forge-panel: #12122a;
-  --forge-accent: #00ff99;
-  --forge-accent-2: #ff00ff;
-  --forge-text: #e0e0ff;
-  --forge-border: #00ff99;
-  font-family: 'Courier New', monospace;
-}
-.app-shell.game-mode .topbar,
-.app-shell.game-mode .panel {
-  border: 2px solid var(--forge-accent);
-  box-shadow: 0 0 8px var(--forge-accent);
-  background: var(--forge-panel);
-}
-.app-shell.game-mode .primary {
-  background: var(--forge-accent);
-  color: #0a0a1a;
-  border: 2px solid var(--forge-accent-2);
-  box-shadow: 0 0 6px var(--forge-accent-2);
-}
-.app-shell.game-mode .hud-xp-track span {
-  background: linear-gradient(90deg, var(--forge-accent), var(--forge-accent-2));
-  box-shadow: 0 0 8px var(--forge-accent);
-}
-.app-shell.game-mode .quest-banner {
-  border: 2px dashed var(--forge-accent-2);
-  background: #1a0a2a;
-}
+/* CRT toggle (persisted as questlab.gameMode): scanlines over any theme. */
 .app-shell.game-mode::after {
   content: '';
   position: fixed;
@@ -1360,8 +1331,8 @@
   pointer-events: none;
   background: repeating-linear-gradient(
     0deg,
-    rgba(0, 255, 153, 0.03) 0px,
-    rgba(0, 255, 153, 0.03) 1px,
+    rgb(0 0 0 / 0.22) 0px,
+    rgb(0 0 0 / 0.22) 1px,
     transparent 1px,
     transparent 3px
   );
