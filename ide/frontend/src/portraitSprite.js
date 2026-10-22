@@ -1,13 +1,15 @@
 // Character portrait: a 48x48 head-and-shoulders pixel bust where hairstyles
-// have room for real texture (locs, coils, knots, waves, fades). Each style
-// is a small routine that paints a back layer (behind the head) and a front
-// layer (hairline, fringe, sides) with dark/base/highlight shades.
+// have room for real detail (locs, twists, knots, waves, fades). Hand-drawn
+// styles live in portraitHair.js as pixel rows; the rest are small routines.
+// Either way a style paints a back layer (behind the head) and a front layer
+// (hairline, fringe, sides) with dark/base/highlight shades.
 //
 // Tokens: o outline · s skin · S skin shade · L skin light · w eye white ·
 // e iris · m lip · c/C outfit · a trim · h/H/d hair base/highlight/dark ·
 // f/q fade (hair blended into skin, then lighter) · y/Y/z beard.
 
 import { AVATAR_PALETTES, DEFAULT_APPEARANCE } from './avatarSprite.js'
+import { PORTRAIT_HAIR } from './portraitHair.js'
 
 export const PORTRAIT_SIZE = 48
 const SIZE = PORTRAIT_SIZE
@@ -83,8 +85,7 @@ function paintHead(grid) {
       // Light from the upper left: shade the right edge and under the jaw.
       const right = (x + 0.5 - CX) / RX
       const low = (y + 0.5 - CY) / RY
-      const token = right > 0.62 || low > 0.86 ? 'S' : right < -0.6 && low > -0.45 && low < 0.05 ? 'L' : 's'
-      set(grid, x, y, token)
+      set(grid, x, y, right > 0.62 || low > 0.86 ? 'S' : 's')
     }
   }
 }
@@ -123,22 +124,47 @@ function capPixels(grow = 1.2, lift = 0) {
   return pixels
 }
 
-// Tapered sides: from the temples down past the ears, fading into skin.
-function paintFade(grid, top = 13, bottom = 24) {
-  for (let y = top; y <= bottom; y += 1) {
+// Faded sides: hair over the temples thins to the fade colours and is gone
+// before the ear, so the ears and the skin below stay clean. A thin faded
+// sideburn runs down in front of each ear.
+function paintFade(grid) {
+  for (let y = 11; y <= 18; y += 1) {
     for (let x = 0; x < SIZE; x += 1) {
-      const side = x + 0.5 < CX - RX + 3.2 || x + 0.5 > CX + RX - 3.2
-      if (!side || !inHead(x, y, 0.8)) continue
-      const depth = (y - top) / Math.max(1, bottom - top)
-      const roll = hash(x, y, 7) / 1000
-      const token = depth < 0.35 ? (roll < 0.75 ? 'h' : 'f') : depth < 0.7 ? (roll < 0.6 ? 'f' : 'q') : roll < 0.35 ? 'q' : null
+      const left = x + 0.5 < CX - RX + 3.5
+      const right = x + 0.5 > CX + RX - 3.5
+      if ((!left && !right) || !inHead(x, y, 1.2)) continue
+      const token = y <= 12 ? 'h' : y <= 14 ? 'f' : y === 15 ? ((x + y) % 2 ? 'q' : null) : null
       if (token) set(grid, x, y, token)
+      else if (inHead(x, y)) set(grid, x, y, right && (x + 0.5 - CX) / RX > 0.62 ? 'S' : 's')
+      else set(grid, x, y, null)
     }
+  }
+  for (let y = 15; y <= 18; y += 1) {
+    set(grid, 14, y, 'q')
+    set(grid, 33, y, 'q')
   }
 }
 
-function paintCap(grid, { grow = 1.2, lift = 0, texture = () => 'h' } = {}) {
-  for (const [x, y] of capPixels(grow, lift)) set(grid, x, y, texture(x, y))
+// Lineup: a crisp, straight hairline with squared temple corners.
+function lineupAt(x) {
+  const t = Math.abs(x + 0.5 - CX)
+  return t < 7 ? HAIRLINE : t < 8.5 ? HAIRLINE + 1 : HAIRLINE + 3
+}
+
+function paintCap(grid, { grow = 1.2, lift = 0, lineup = false, texture = () => 'h' } = {}) {
+  for (const [x, y] of capPixels(grow, lift)) {
+    if (lineup && y >= lineupAt(x)) continue
+    set(grid, x, y, texture(x, y))
+  }
+}
+
+// Paint a hand-drawn layer from portraitHair.js ('.' is transparent).
+function paintArt(grid, art = '') {
+  for (const line of art.split('\n')) {
+    const match = line.match(/^\s*(\d+) (.*)$/)
+    if (!match) continue
+    ;[...match[2]].forEach((token, x) => { if (token !== '.') set(grid, x, Number(match[1]), token) })
+  }
 }
 
 // A hanging strand (loc or twist) of `width` pixels from (x, y0) to y1.
@@ -154,23 +180,6 @@ const locShade = (salt) => (i, y, end) => {
   return i === 0 ? 'H' : 'h'
 }
 
-const twistShade = (i, y) => {
-  const phase = (y + i) % 3
-  return phase === 0 ? 'd' : phase === 1 ? 'h' : 'H'
-}
-
-function knot(grid, cx, cy, r) {
-  for (let y = Math.floor(cy - r); y <= Math.ceil(cy + r); y += 1) {
-    for (let x = Math.floor(cx - r); x <= Math.ceil(cx + r); x += 1) {
-      if (!inEllipse(x, y, cx, cy, r, r)) continue
-      const angle = Math.atan2(y + 0.5 - cy, x + 0.5 - cx)
-      const dist = Math.hypot(x + 0.5 - cx, y + 0.5 - cy) / r
-      const spiral = Math.floor((angle / (Math.PI * 2) + dist * 1.5) * 3) % 2 === 0
-      const lit = x + 0.5 < cx && y + 0.5 < cy
-      set(grid, x, y, dist > 0.85 ? 'd' : lit && spiral ? 'H' : spiral ? 'h' : 'd')
-    }
-  }
-}
 
 function cloud(grid, cx, cy, r) {
   for (let y = Math.floor(cy - r); y <= Math.ceil(cy + r); y += 1) {
@@ -189,13 +198,13 @@ function cloud(grid, cx, cy, r) {
 const STYLES = {
   taper: {
     front(grid) {
-      paintCap(grid, { grow: 1.1, texture: (x, y) => (hash(x, y) % 6 === 0 ? 'H' : 'h') })
+      paintCap(grid, { grow: 1.1, lineup: true, texture: (x, y) => (hash(x, y) % 6 === 0 ? 'H' : 'h') })
       paintFade(grid)
     },
   },
   brush_cut: {
     front(grid) {
-      paintCap(grid, { grow: 1.6, lift: 1.2, texture: (x, y) => (x % 2 === 0 && y % 3 !== 0 ? 'H' : 'h') })
+      paintCap(grid, { grow: 1.6, lift: 1.2, lineup: true, texture: (x, y) => (x % 2 === 0 && y % 3 !== 0 ? 'H' : 'h') })
       paintFade(grid)
     },
   },
@@ -203,6 +212,7 @@ const STYLES = {
     front(grid) {
       paintCap(grid, {
         grow: 1.0,
+        lineup: true,
         texture: (x, y) => {
           const d = y + 1.4 * Math.sin((x + 0.5) / 1.9) + Math.abs(x + 0.5 - CX) * 0.18
           const band = ((Math.floor(d) % 3) + 3) % 3
@@ -242,21 +252,10 @@ const STYLES = {
       for (const x of [15, 19, 23.5, 28, 32]) cloud(grid, x, 9.5, 3.2)
     },
   },
-  bantu_knots: {
-    front(grid) {
-      paintCap(grid, {
-        grow: 0.9,
-        texture: (x, y) => ((x === 18 || x === 29) && y < 11 ? 'S' : hash(x, y) % 5 === 0 ? 'H' : 'h'),
-      })
-      knot(grid, 23.5, 4.5, 4.4)
-      knot(grid, 13.5, 8.5, 4)
-      knot(grid, 33.5, 8.5, 4)
-    },
-  },
   locs_taper: {
     front(grid) {
       paintCap(grid, { grow: 1.1, texture: (x) => (x % 3 === 0 ? 'd' : 'h') })
-      paintFade(grid, 15, 24)
+      paintFade(grid)
       // Short locs: roots across the top, falling forward over the hairline
       // and a little further down at the temples. A dark gap between locs.
       for (let x = 13; x <= 33; x += 3) {
@@ -265,52 +264,6 @@ const STYLES = {
         const end = Math.round(13 + t * 4 + (hash(x, 1) % 2))
         strand(grid, x, top, end, 2, locShade(x))
         for (let y = top; y <= end; y += 1) if (grid[y][x + 2] === 'h' || grid[y][x + 2] === 's' || grid[y][x + 2] === 'L') set(grid, x + 2, y, y > hairlineAt(x + 2) ? grid[y][x + 2] : 'd')
-      }
-    },
-  },
-  freeform: {
-    back(grid) {
-      // Long locs behind the head down past the shoulders.
-      for (let x = 9; x <= 37; x += 2) {
-        const width = 2 + (hash(x, 4) % 2)
-        const end = 36 + (hash(x, 5) % 7)
-        strand(grid, x, 8, end, width, locShade(x * 3))
-      }
-    },
-    front(grid) {
-      paintCap(grid, { grow: 1.5, lift: 0.6, texture: (x) => (x % 3 === 0 ? 'd' : x % 3 === 1 ? 'h' : 'H') })
-      // Side locs framing the face, in front of the ears.
-      for (const x of [10, 12, 34, 36]) strand(grid, x, 12, 33 + (hash(x, 6) % 5), 2, locShade(x))
-      for (const x of [15, 18, 29, 32]) strand(grid, x, 9, 13 + (hash(x, 7) % 2), 2, locShade(x))
-    },
-  },
-  twists: {
-    back(grid) {
-      for (let x = 8; x <= 37; x += 4) strand(grid, x, 9, 30 + (hash(x, 8) % 4), 3, twistShade)
-    },
-    front(grid) {
-      paintCap(grid, { grow: 1.4, lift: 0.5, texture: (x, y) => (x % 4 === 3 ? 'd' : twistShade(x % 4, y)) })
-      for (const x of [9, 35]) strand(grid, x, 12, 31, 3, twistShade)
-      for (const x of [14, 18, 27, 31]) strand(grid, x, 8, 13 + (hash(x, 3) % 2), 3, twistShade)
-    },
-  },
-  barrel_twists: {
-    front(grid) {
-      paintCap(grid, { grow: 1.0, texture: () => 'h' })
-      paintFade(grid)
-      for (let x = 12; x <= 32; x += 5) {
-        const t = Math.abs(x + 2 - CX) / RX
-        const top = Math.round(1 + t * 4 + (hash(x, 2) % 2))
-        for (let y = top; y <= 13; y += 1) {
-          for (let i = 0; i < 4; i += 1) {
-            const band = (y + i) % 4 === 0
-            set(grid, x + i, y, band ? 'd' : i === 0 ? 'd' : i === 1 ? 'H' : 'h')
-          }
-          set(grid, x + 4, y, 'd')
-        }
-        set(grid, x, top, null)
-        set(grid, x + 3, top, null)
-        set(grid, x + 4, top, null)
       }
     },
   },
@@ -402,7 +355,11 @@ export function portraitPalette(appearance = {}) {
 
 export function buildPortraitGrid(appearance = {}) {
   const look = { ...DEFAULT_APPEARANCE, ...appearance }
-  const style = STYLES[look.hair_style] || STYLES.locs_taper
+  const art = PORTRAIT_HAIR[look.hair_style]
+  const style = art ? {
+    back: (grid) => paintArt(grid, art.back),
+    front: (grid) => { if (art.fade) paintFade(grid); paintArt(grid, art.front) },
+  } : STYLES[look.hair_style] || STYLES.locs_taper
   const grid = makeGrid()
   style.back?.(grid, look)
   paintBody(grid)
@@ -431,4 +388,4 @@ export function portraitRects(appearance = {}) {
   return rects
 }
 
-export const PORTRAIT_STYLES = Object.keys(STYLES)
+export const PORTRAIT_STYLES = [...Object.keys(PORTRAIT_HAIR), ...Object.keys(STYLES)]
