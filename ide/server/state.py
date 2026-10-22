@@ -130,6 +130,25 @@ EQUIPMENT_CATALOG: tuple[dict[str, Any], ...] = (
     {"id": "vision-scroll", "name": "Vision Scroll", "kind": "trinket", "effect": "Reveals one hidden risk-room identity", "description": "A costly scroll that exposes one uncertain route."},
 )
 EQUIPMENT_BY_ID: dict[str, dict[str, Any]] = {item["id"]: item for item in EQUIPMENT_CATALOG}
+# Paper-doll appearance, stored as equipment.avatar. Values are names the
+# frontend maps to palette colours (avatarSprite.js); anything else is
+# rejected so local and synced saves can only hold known options.
+AVATAR_OPTIONS: dict[str, tuple[str, ...]] = {
+    "skin": ("porcelain", "fair", "tan", "olive", "brown", "deep"),
+    "hair_style": ("short", "long", "spiky", "bun", "mohawk", "hooded"),
+    "hair_color": ("black", "brown", "auburn", "blonde", "silver", "crimson", "teal", "violet"),
+    "eyes": ("brown", "blue", "green", "grey", "amber"),
+    "outfit": ("indigo", "crimson", "forest", "charcoal", "plum", "teal", "gold", "sand"),
+    "accent": ("gold", "silver", "crimson", "teal", "violet", "white"),
+}
+DEFAULT_AVATAR: dict[str, str] = {
+    "skin": "tan",
+    "hair_style": "short",
+    "hair_color": "brown",
+    "eyes": "brown",
+    "outfit": "indigo",
+    "accent": "gold",
+}
 EQUIPMENT_ID_BY_NAME: dict[str, str] = {item["name"]: item["id"] for item in EQUIPMENT_CATALOG}
 
 # Campaign Market lots are canonical, single-copy offers.  The browser may
@@ -344,6 +363,7 @@ ACTION_DEFINITIONS: dict[str, ActionDefinition] = {
     "homestead_room_upgrade": ActionDefinition(frozenset({"player"})),
     "homestead_action": ActionDefinition(frozenset({"player"})),
     "equip_equipment": ActionDefinition(frozenset({"player"})),
+    "set_avatar": ActionDefinition(frozenset({"player"})),
     "record_learning_event": ActionDefinition(frozenset({"pyr"})),
     "record_reference_mode": ActionDefinition(frozenset({"pyr"})),
     "award_learning_reward": ActionDefinition(frozenset({SYSTEM_ACTOR}), internal=True),
@@ -663,7 +683,7 @@ SYNC_PLAYER_FIELDS = frozenset(
         "potions",
     }
 )
-SYNC_EQUIPMENT_FIELDS = frozenset({"armor", "trinket", "title", "owned_armor", "owned_trinkets"})
+SYNC_EQUIPMENT_FIELDS = frozenset({"armor", "trinket", "title", "owned_armor", "owned_trinkets", "avatar"})
 SYNC_EQUIPMENT_LIST_FIELDS = frozenset({"owned_armor", "owned_trinkets"})
 SYNC_COMPANION_FIELDS = frozenset({"name", "form", "level", "bond", "next_form", "next_form_requirement", "energy", "max_energy", "fed_count", "training_count"})
 SYNC_HOMESTEAD_FIELDS = frozenset({"name", "owned_cosmetics", "equipped", "room_upgrades", "upgrade_tokens", "upgrade_effects", "market_purchases"})
@@ -1988,6 +2008,8 @@ class LocalStateService:
                     if any(item_id not in EQUIPMENT_BY_ID for item_id in values):
                         raise StateCommandError(f"equipment.{field} contains an unknown item")
                     clean_equipment[field] = values[:MAX_EQUIPMENT_ITEMS]
+            if "avatar" in equipment:
+                clean_equipment["avatar"] = cls._avatar_value(equipment["avatar"], "equipment.avatar")
             validated["equipment"] = clean_equipment
 
         companion = projection.get("companion")
@@ -4270,7 +4292,11 @@ class LocalStateService:
                     "items": items,
                 }
             )
-        return {"slots": slots}
+        try:
+            avatar = cls._avatar_value(equipment.get("avatar", {}), "equipment.avatar")
+        except StateCommandError:
+            avatar = dict(DEFAULT_AVATAR)
+        return {"slots": slots, "avatar": avatar, "avatar_options": {key: list(values) for key, values in AVATAR_OPTIONS.items()}}
 
     def _dispatch(self, action: str, payload: Mapping[str, Any], progress: dict[str, Any]) -> Mutation:
         handlers = {
@@ -4280,6 +4306,7 @@ class LocalStateService:
             "homestead_room_upgrade": self._homestead_room_upgrade,
             "homestead_action": self._homestead_action,
             "equip_equipment": self._equip_equipment,
+            "set_avatar": self._set_avatar,
             "record_learning_event": self._record_learning_event,
             "record_reference_mode": self._record_reference_mode,
             "award_learning_reward": self._award_learning_reward,
@@ -4312,6 +4339,37 @@ class LocalStateService:
             "dungeon_reset_run": self._dungeon_reset_run,
         }
         return handlers[action](payload, progress)
+
+    @staticmethod
+    def _avatar_value(value: object, field: str) -> dict[str, str]:
+        """Validate a (partial) avatar appearance; missing keys use defaults."""
+
+        if not isinstance(value, Mapping):
+            raise StateCommandError(f"{field} must be an object")
+        unknown = sorted(set(value) - set(AVATAR_OPTIONS))
+        if unknown:
+            raise StateCommandError(f"Unsupported {field} field(s): {', '.join(unknown)}")
+        clean = dict(DEFAULT_AVATAR)
+        for key, choice in value.items():
+            if choice not in AVATAR_OPTIONS[key]:
+                raise StateCommandError(f"{field}.{key} is not an available option")
+            clean[key] = choice
+        return clean
+
+    def _set_avatar(self, payload: Mapping[str, Any], progress: dict[str, Any]) -> Mutation:
+        """Change the player's paper-doll appearance (cosmetic only)."""
+
+        data = self._payload(payload, set(AVATAR_OPTIONS), set())
+        equipment = self._dict(progress, "equipment")
+        current = equipment.get("avatar") if isinstance(equipment.get("avatar"), Mapping) else {}
+        try:
+            current = self._avatar_value(current, "equipment.avatar")
+        except StateCommandError:
+            current = dict(DEFAULT_AVATAR)
+        avatar = self._avatar_value({**current, **data}, "avatar")
+        changed = avatar != equipment.get("avatar")
+        equipment["avatar"] = avatar
+        return Mutation(changed, {"avatar": avatar})
 
     def _equip_equipment(self, payload: Mapping[str, Any], progress: dict[str, Any]) -> Mutation:
         """Equip an already-owned campaign armor or trinket item."""

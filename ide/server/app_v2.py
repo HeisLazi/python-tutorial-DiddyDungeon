@@ -2597,6 +2597,31 @@ def perform_homestead_action(payload: HomesteadAction):
     return _flatten_state_result(envelope)
 
 
+class AvatarUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    skin: str | None = Field(default=None, max_length=40)
+    hair_style: str | None = Field(default=None, max_length=40)
+    hair_color: str | None = Field(default=None, max_length=40)
+    eyes: str | None = Field(default=None, max_length=40)
+    outfit: str | None = Field(default=None, max_length=40)
+    accent: str | None = Field(default=None, max_length=40)
+
+
+@app.post("/api/avatar")
+def set_avatar(payload: AvatarUpdate):
+    """Update the player's paper-doll appearance (validated by the state service)."""
+
+    envelope = _apply_state_or_http("set_avatar", payload.model_dump(exclude_none=True), "player")
+    try:
+        progress, metadata = STATE_SERVICE.snapshot_with_metadata()
+    except StateCommandError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
+    result = _flatten_state_result(envelope)
+    result.update({"equipment_projection": STATE_SERVICE.equipment_projection(progress), "revision": metadata["revision"]})
+    return result
+
+
 @app.post("/api/equipment/equip")
 def equip_campaign_equipment(payload: EquipmentEquip):
     envelope = _apply_state_or_http("equip_equipment", payload.model_dump(), "player")

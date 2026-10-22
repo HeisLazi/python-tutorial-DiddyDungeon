@@ -648,6 +648,25 @@ class StateServiceBehaviorTests(unittest.TestCase):
         self.assertEqual(self.read(path)["companion"]["energy"], 1)
         self.assertEqual(self.read(path)["state_events"][-1]["action"], "homestead_action")
 
+    def test_avatar_appearance_is_validated_projected_and_synced(self):
+        service, path = self.make_service()
+        self.assertEqual(service.equipment_projection(self.read(path))["avatar"]["hair_style"], "short")
+
+        changed = service.apply("set_avatar", {"hair_style": "spiky", "outfit": "crimson"}, "player")
+        self.assertTrue(changed["changed"])
+        avatar = self.read(path)["equipment"]["avatar"]
+        self.assertEqual((avatar["hair_style"], avatar["outfit"], avatar["skin"]), ("spiky", "crimson", "tan"))
+        self.assertEqual(service.equipment_projection(self.read(path))["avatar"]["outfit"], "crimson")
+
+        for bad in ({"hair_style": "glowing"}, {"wings": "yes"}):
+            with self.assertRaises(StateCommandError):
+                service.apply("set_avatar", bad, "player")
+
+        projection, _metadata = service.sync_snapshot()
+        self.assertEqual(projection["equipment"]["avatar"]["hair_style"], "spiky")
+        with self.assertRaises(StateCommandError):
+            service._validate_sync_projection({"equipment": {"avatar": {"skin": "neon"}}})
+
     def test_campaign_loadout_only_equips_state_owned_gear(self):
         service, path = self.make_service()
         state = self.read(path)
