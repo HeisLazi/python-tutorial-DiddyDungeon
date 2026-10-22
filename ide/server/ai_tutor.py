@@ -1,0 +1,424 @@
+"""OpenCode-backed PYR: grading, question writing and hints.
+
+The player's own OpenCode install (and the provider accounts already signed in
+there) is the model runtime, so Quest Lab never stores an AI credential. Every
+call runs ``opencode run --agent plan --format json`` from an empty scratch
+directory with all context inside the prompt, and the reply must be one strict
+JSON object. Callers decide what a reply is allowed to change: grading verdicts
+still go through the existing PYR verdict gateway, which owns rewards, damage
+and HP.
+
+AI settings are device-local (``$XDG_STATE_HOME/QuestLab/ai.json``) because
+``progress.json`` is tracked in git and synced.
+"""
+
+from __future__ import annotations
+
+import json
+import os
+import re
+import shutil
+import subprocess
+import threading
+import time
+from pathlib import Path
+from typing import Any
+
+DEFAULT_TIMEOUT_SECONDS = 150
+STATUS_TIMEOUT_SECONDS = 25
+MAX_CONTEXT_CHARS = 24_000
+MAX_ANSWER_CHARS = 20_000
+MAX_REASON_CHARS = 600
+MODEL_PATTERN = re.compile(r"^[A-Za-z0-9._:/@#+-]{0,200}$")
+
+DEFAULT_SETTINGS: dict[str, Any] = {
+    "provider": "opencode",
+    # Empty means "OpenCode's own default model", which is the one most
+    # likely to work with whatever accounts the player has signed in.
+    "model": "",
+    "auto_grade": True,
+    "generate_dungeon_questions": True,
+    "choose_practice_lens": True,
+}
+
+TUTOR_RULES = (
+    "You are PYR, a Socratic Python tutor inside a learning game called Quest Lab. "
+    "The learner writes every line of project code themselves. Never write the solution "
+    "for the current project, never paste a finished function, and never reveal hidden "
+    "future questions or answer keys. Prefer one precise question, a hint, or short "
+    "pseudocode in a different context from the project. Do not use tools, do not read or "
+    "edit files, and do not run commands: everything you need is in this message."
+)
+
+# One model call at a time: each one holds a model request open for tens of
+# seconds and the app targets machines with little spare RAM.
+_CALL_LOCK = threading.Lock()
+_SETTINGS_LOCK = threading.Lock()
+_MODELS_CACHE: dict[str, Any] = {"at": 0.0, "models": []}
+
+
+class AiTutorError(Exception):
+    """A model call failed in a way that must not be treated as a verdict."""
+
+    def __init__(self, message: str, *, kind: str = "error", status_code: int = 502):
+        super().__init__(message)
+        self.kind = kind
+        self.status_code = status_code
+
+
+# ── Device-local settings ──────────────────────────────────────────────
+
+
+def state_dir() -> Path:
+    override = os.getenv("QUESTLAB_AI_STATE_DIR", "").strip()
+    if override:
+        return Path(override).expanduser()
+    base = os.getenv("XDG_STATE_HOME", "").strip() or str(Path.home() / ".local" / "state")
+    return Path(base) / "QuestLab"
+
+
+def settings_path() -> Path:
+    return state_dir() / "ai.json"
+
+
+def load_settings() -> dict[str, Any]:
+    settings = dict(DEFAULT_SETTINGS)
+    try:
+        stored = json.loads(settings_path().read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return settings
+    if isinstance(stored, dict):
+        for key, default in DEFAULT_SETTINGS.items():
+            if isinstance(stored.get(key), type(default)):
+                settings[key] = stored[key]
+    return settings
+
+
+def save_settings(update: dict[str, Any]) -> dict[str, Any]:
+    with _SETTINGS_LOCK:
+        settings = load_settings()
+        for key, value in update.items():
+            if key not in DEFAULT_SETTINGS or value is None:
+                continue
+            if not isinstance(value, type(DEFAULT_SETTINGS[key])):
+                raise AiTutorError(f"Invalid value for {key}", kind="invalid", status_code=422)
+            if key == "model" and not MODEL_PATTERN.match(value):
+                raise AiTutorError("Model must look like provider/model", kind="invalid", status_code=422)
+            settings[key] = value
+        path = settings_path()
+        path.parent.mkdir(parents=True, exist_ok=True)
+        temporary = path.with_suffix(".tmp")
+        temporary.write_text(json.dumps(settings, indent=2) + "\n", encoding="utf-8")
+        os.replace(temporary, path)
+        return settings
+
+
+# ── OpenCode discovery ─────────────────────────────────────────────────
+
+
+def opencode_binary() -> str | None:
+    """Find OpenCode even when the app starts from a desktop launcher, whose
+    environment usually lacks the ~/.opencode/bin entry a login shell adds."""
+
+    override = os.getenv("QUESTLAB_OPENCODE_BIN", "").strip()
+    candidates = [override] if override else []
+    found = shutil.which("opencode")
+    if found:
+        candidates.append(found)
+    candidates.append(str(Path.home() / ".opencode" / "bin" / "opencode"))
+    for candidate in candidates:
+        if candidate and Path(candidate).is_file() and os.access(candidate, os.X_OK):
+            return candidate
+    return None
+
+
+def _run(argv: list[str], *, timeout: float, cwd: Path | None = None) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(
+        argv,
+        capture_output=True,
+        text=True,
+        timeout=timeout,
+        cwd=str(cwd) if cwd else None,
+        stdin=subprocess.DEVNULL,
+        check=False,
+    )
+
+
+def status() -> dict[str, Any]:
+    binary = opencode_binary()
+    report: dict[str, Any] = {
+        "installed": bool(binary),
+        "path": binary,
+        "version": None,
+        "integrations": [],
+        "ready": False,
+        "detail": "",
+    }
+    if not binary:
+        report["detail"] = "OpenCode is not installed. Install it from https://opencode.ai, then run `opencode auth login`."
+        return report
+    try:
+        version = _run([binary, "--version"], timeout=STATUS_TIMEOUT_SECONDS)
+        report["version"] = (version.stdout or version.stderr).strip().splitlines()[0] if (version.stdout or version.stderr).strip() else None
+        # Names only: `auth list` prints integration name, kind and a stored
+        # flag. Credentials are never read (no `auth export`).
+        listing = _run([binary, "auth", "list"], timeout=STATUS_TIMEOUT_SECONDS)
+    except (OSError, subprocess.SubprocessError) as exc:
+        report["detail"] = f"OpenCode did not respond: {exc}"
+        return report
+    integrations = []
+    for line in listing.stdout.splitlines():
+        parts = re.split(r"\s{2,}", line.strip())
+        if len(parts) >= 2 and parts[0]:
+            integrations.append(parts[0])
+    report["integrations"] = integrations
+    report["ready"] = bool(integrations)
+    report["detail"] = (
+        f"Signed in to {len(integrations)} integration(s)."
+        if integrations
+        else "OpenCode has no signed-in providers yet. Run `opencode auth login` in a terminal."
+    )
+    return report
+
+
+def list_models(*, max_age: float = 300.0) -> list[str]:
+    if _MODELS_CACHE["models"] and time.monotonic() - _MODELS_CACHE["at"] < max_age:
+        return list(_MODELS_CACHE["models"])
+    binary = opencode_binary()
+    if not binary:
+        return []
+    try:
+        listing = _run([binary, "models"], timeout=60)
+    except (OSError, subprocess.SubprocessError):
+        return []
+    models = sorted({line.strip() for line in listing.stdout.splitlines() if "/" in line and " " not in line.strip()})
+    _MODELS_CACHE.update({"at": time.monotonic(), "models": models})
+    return models
+
+
+# ── Model calls ────────────────────────────────────────────────────────
+
+
+def run_prompt(prompt: str, *, title: str, model: str | None = None, timeout: float = DEFAULT_TIMEOUT_SECONDS) -> str:
+    """Run one prompt through OpenCode and return the final assistant text."""
+
+    binary = opencode_binary()
+    if not binary:
+        raise AiTutorError("OpenCode is not installed", kind="unavailable", status_code=503)
+    model = (model if model is not None else load_settings()["model"]).strip()
+    if not MODEL_PATTERN.match(model):
+        raise AiTutorError("Model must look like provider/model", kind="invalid", status_code=422)
+    argv = [binary, "run", "--agent", "plan", "--format", "json", "--title", title]
+    if model:
+        argv += ["--model", model]
+    argv.append(prompt)
+
+    scratch = state_dir() / "scratch"
+    scratch.mkdir(parents=True, exist_ok=True)
+    if not _CALL_LOCK.acquire(blocking=False):
+        raise AiTutorError("PYR is already thinking about another request", kind="busy", status_code=409)
+    try:
+        completed = _run(argv, timeout=timeout, cwd=scratch)
+    except subprocess.TimeoutExpired as exc:
+        raise AiTutorError(f"OpenCode took longer than {int(timeout)}s", kind="timeout", status_code=504) from exc
+    except OSError as exc:
+        raise AiTutorError(f"OpenCode could not start: {exc}", kind="unavailable", status_code=503) from exc
+    finally:
+        _CALL_LOCK.release()
+
+    texts: list[str] = []
+    errors: list[str] = []
+    for line in completed.stdout.splitlines():
+        try:
+            event = json.loads(line)
+        except ValueError:
+            continue
+        if not isinstance(event, dict):
+            continue
+        if event.get("type") == "text":
+            text = (event.get("part") or {}).get("text")
+            if isinstance(text, str) and text.strip():
+                texts.append(text)
+        elif event.get("type") == "error":
+            error = event.get("error") or {}
+            errors.append(str(error.get("message") or error.get("type") or "unknown error"))
+    if errors and not texts:
+        raise AiTutorError(f"OpenCode error: {errors[-1]}", kind="provider")
+    if not texts:
+        detail = (completed.stderr or "").strip().splitlines()[-1:] or ["no reply"]
+        raise AiTutorError(f"OpenCode returned no answer ({detail[0][:200]})", kind="empty")
+    return texts[-1].strip()
+
+
+def extract_json_object(text: str) -> dict[str, Any]:
+    """Return the single JSON object a reply must consist of (fences allowed)."""
+
+    candidate = text.strip()
+    fenced = re.fullmatch(r"```(?:json)?\s*(.*?)\s*```", candidate, flags=re.DOTALL)
+    if fenced:
+        candidate = fenced.group(1).strip()
+    try:
+        value = json.loads(candidate)
+    except ValueError as exc:
+        raise AiTutorError("PYR's reply was not valid JSON", kind="unparseable") from exc
+    if not isinstance(value, dict):
+        raise AiTutorError("PYR's reply was not a JSON object", kind="unparseable")
+    return value
+
+
+def _bounded(value: Any, limit: int) -> str:
+    text = value if isinstance(value, str) else json.dumps(value, indent=1, default=str)
+    return text if len(text) <= limit else text[:limit] + "\n…[truncated]"
+
+
+def _reason(value: Any) -> str:
+    if not isinstance(value, str) or not value.strip():
+        raise AiTutorError("PYR's reply had no reason", kind="unparseable")
+    return value.strip()[:MAX_REASON_CHARS]
+
+
+# ── Tasks ──────────────────────────────────────────────────────────────
+
+
+JUDGE_TASKS = {
+    "battle": "a campaign bounty objective, judged against the current encounter objective in the context",
+    "boss": "one boss requirement, judged against the current boss requirement in the context",
+    "dungeon": "the current Infinite Dungeon question in the context",
+    "practice": "a Tutor Notebook practice question",
+}
+
+
+def judge(kind: str, *, context: Any, answer: str, question: str = "") -> dict[str, str]:
+    """Grade one bound answer. Raises AiTutorError rather than guessing."""
+
+    if kind not in JUDGE_TASKS:
+        raise AiTutorError(f"Unsupported grading kind: {kind}", kind="invalid", status_code=422)
+    prompt = "\n\n".join(
+        part
+        for part in (
+            TUTOR_RULES,
+            (
+                f"Task: decide whether the learner's submission satisfies {JUDGE_TASKS[kind]}. "
+                "Be fair to beginners: correct-but-unpolished work passes; work that misses the "
+                "objective, does not run, or answers a different question fails."
+            ),
+            f"Question / objective:\n{_bounded(question, 4_000)}" if question else "",
+            f"Bounded game context (JSON):\n{_bounded(context, MAX_CONTEXT_CHARS)}",
+            f"Learner submission:\n```\n{_bounded(answer, MAX_ANSWER_CHARS)}\n```",
+            (
+                'Reply with ONLY this JSON object and nothing else: '
+                '{"verdict": "correct" or "incorrect", "reason": "one or two sentences addressed to the learner; '
+                'if incorrect, name the gap as a question or hint without giving the fix"}'
+            ),
+        )
+        if part
+    )
+    reply = extract_json_object(run_prompt(prompt, title=f"Quest Lab · grade {kind}"))
+    verdict = reply.get("verdict")
+    if verdict not in {"correct", "incorrect"} or set(reply) - {"verdict", "reason"}:
+        raise AiTutorError("PYR's verdict was not strictly correct/incorrect", kind="unparseable")
+    return {"verdict": verdict, "reason": _reason(reply.get("reason"))}
+
+
+DUNGEON_QUESTION_SHAPES = {
+    "true_false": "a true/false statement; options must be exactly [\"True\", \"False\"]",
+    "multiple_choice": "a multiple-choice question with 3 or 4 short options (one correct)",
+    "code_checkpoint": "a request to write a tiny piece of Python (under 10 lines); options must be []",
+    "bug_hunt": "a short buggy Python snippet (inside the prompt) with a request to find and explain the bug; options must be []",
+    "short_explanation": "a request to explain an idea in two or three sentences; options must be []",
+}
+
+
+def write_dungeon_question(*, concept: str, question_type: str, difficulty: int, room_type: str, floor: int) -> dict[str, Any]:
+    shape = DUNGEON_QUESTION_SHAPES.get(question_type, DUNGEON_QUESTION_SHAPES["short_explanation"])
+    prompt = "\n\n".join(
+        (
+            TUTOR_RULES,
+            "Task: write one fresh Infinite Dungeon question for a beginner Python learner.",
+            (
+                f"Concept: {concept}\nQuestion type: {question_type} ({shape})\n"
+                f"Difficulty: {difficulty} of 5\nRoom: {room_type} on floor {floor} "
+                "(elite and boss rooms should be noticeably harder)"
+            ),
+            "Keep it answerable in the in-game editor in a few minutes. Do not include the answer.",
+            (
+                'Reply with ONLY this JSON object: {"prompt": "the question text (may include a fenced code '
+                'snippet)", "options": ["..."]}'
+            ),
+        )
+    )
+    reply = extract_json_object(run_prompt(prompt, title="Quest Lab · dungeon question"))
+    text = reply.get("prompt")
+    options = reply.get("options", [])
+    if not isinstance(text, str) or not text.strip() or len(text) > 6_000:
+        raise AiTutorError("PYR's question had no usable prompt", kind="unparseable")
+    if not isinstance(options, list) or not all(isinstance(item, str) and item.strip() for item in options):
+        raise AiTutorError("PYR's question options were malformed", kind="unparseable")
+    if question_type == "true_false":
+        options = ["True", "False"]
+    elif question_type != "multiple_choice":
+        options = []
+    elif not 2 <= len(options) <= 5:
+        raise AiTutorError("PYR's multiple-choice question needs 2-5 options", kind="unparseable")
+    return {"prompt": text.strip(), "options": [item.strip()[:200] for item in options]}
+
+
+def choose_practice_lens(*, concept: str, lenses: list[dict[str, str]], learner: Any) -> dict[str, str]:
+    allowed = {lens["id"] for lens in lenses}
+    catalogue = "\n".join(f"- {lens['id']}: {lens['label']} — {lens['prompt']}" for lens in lenses)
+    prompt = "\n\n".join(
+        (
+            TUTOR_RULES,
+            (
+                f"Task: pick the practice lens that will help this learner most with '{concept}' right now, "
+                "then write one practice question in that lens (in a context unrelated to their current project)."
+            ),
+            f"Available lenses:\n{catalogue}",
+            f"What we know about the learner (JSON):\n{_bounded(learner, 6_000)}",
+            (
+                'Reply with ONLY this JSON object: {"lens_id": "one of the ids above", "question": "the practice '
+                'question", "why": "one short sentence on why this lens"}'
+            ),
+        )
+    )
+    reply = extract_json_object(run_prompt(prompt, title="Quest Lab · practice lens"))
+    lens_id = reply.get("lens_id")
+    question = reply.get("question")
+    if lens_id not in allowed or not isinstance(question, str) or not question.strip():
+        raise AiTutorError("PYR's lens choice was not usable", kind="unparseable")
+    why = reply.get("why") if isinstance(reply.get("why"), str) else ""
+    return {"lens_id": lens_id, "question": question.strip()[:3_000], "why": why.strip()[:300]}
+
+
+def ask(*, question: str, concept: str = "", code: str = "", context: Any = None) -> str:
+    prompt = "\n\n".join(
+        part
+        for part in (
+            TUTOR_RULES,
+            (
+                "Task: answer the learner's question with the smallest useful nudge (a question back, a hint, "
+                "or a tiny example in a different context). Keep it under 120 words."
+            ),
+            f"Concept they are studying: {concept}" if concept else "",
+            f"Their scratch file (tutor.py):\n```python\n{_bounded(code, 8_000)}\n```" if code.strip() else "",
+            f"Game context (JSON):\n{_bounded(context, 8_000)}" if context else "",
+            f"Learner's question:\n{_bounded(question, 2_000)}",
+            'Reply with ONLY this JSON object: {"reply": "your answer to the learner"}',
+        )
+        if part
+    )
+    reply = extract_json_object(run_prompt(prompt, title="Quest Lab · ask PYR"))
+    text = reply.get("reply")
+    if not isinstance(text, str) or not text.strip():
+        raise AiTutorError("PYR's reply was empty", kind="unparseable")
+    return text.strip()[:2_000]
+
+
+def test_connection(model: str | None = None) -> dict[str, Any]:
+    started = time.monotonic()
+    reply = extract_json_object(
+        run_prompt('Reply with ONLY this JSON object: {"ok": true}', title="Quest Lab · connection test", model=model, timeout=90)
+    )
+    if reply.get("ok") is not True:
+        raise AiTutorError("The model answered, but not with the expected test reply", kind="unparseable")
+    return {"ok": True, "seconds": round(time.monotonic() - started, 1)}

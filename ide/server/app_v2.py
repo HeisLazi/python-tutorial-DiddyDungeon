@@ -23,9 +23,10 @@ from typing import Literal
 
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, ValidationError
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
+from ide.server import ai_tutor
 from ide.server.context_bridge import (
     ContextValueError,
     bounded_file,
@@ -2761,6 +2762,187 @@ async def terminal(websocket: WebSocket, role: str):
                     await asyncio.wait_for(asyncio.to_thread(os.waitpid, pid, 0), timeout=1.5)
                 except (asyncio.TimeoutError, ChildProcessError):
                     pass
+
+
+# ── OpenCode-backed PYR (ide/server/ai_tutor.py) ─────────────────────────
+# These routes call the player's OpenCode install. They never hold the state
+# or context locks while a model is thinking; a grade is applied afterwards
+# through the same verdict functions an external provider would call, so the
+# state service still owns rewards, damage, HP and replay protection.
+
+
+class AiSettingsRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    model: str | None = Field(default=None, max_length=200)
+    auto_grade: bool | None = None
+    generate_dungeon_questions: bool | None = None
+    choose_practice_lens: bool | None = None
+
+
+class AiTestRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    model: str | None = Field(default=None, max_length=200)
+
+
+class AiJudgeRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    kind: Literal["battle", "boss", "dungeon", "practice"]
+    submission: dict
+    answer: str = Field(min_length=1, max_length=MAX_DUNGEON_EDITOR_BYTES)
+    question: str = Field(default="", max_length=8_000)
+    client_id: str = Field(default="default", min_length=1, max_length=128, pattern=r"^[A-Za-z0-9._:-]+$")
+
+
+class AiDungeonQuestionRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    run_id: str = Field(min_length=1, max_length=MAX_IDENTIFIER_LENGTH)
+
+
+class AiPracticeLensRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    concept: str = Field(min_length=1, max_length=200)
+    lenses: list[dict[str, str]] = Field(min_length=1, max_length=12)
+
+
+class AiAskRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    question: str = Field(min_length=1, max_length=2_000)
+    concept: str = Field(default="", max_length=200)
+    code: str = Field(default="", max_length=20_000)
+
+
+def _ai_call(func, *args, **kwargs):
+    try:
+        return func(*args, **kwargs)
+    except ai_tutor.AiTutorError as exc:
+        raise HTTPException(status_code=exc.status_code, detail={"message": str(exc), "kind": exc.kind}) from exc
+
+
+# Question ids PYR has already rewritten this session, so a re-render or a
+# second tab cannot rotate the same room's question (and wipe the editor) twice.
+AI_ISSUED_DUNGEON_QUESTIONS: set[str] = set()
+
+
+@app.get("/api/ai/status")
+def ai_status():
+    return {"ok": True, "settings": ai_tutor.load_settings(), "opencode": ai_tutor.status()}
+
+
+@app.get("/api/ai/models")
+def ai_models():
+    return {"ok": True, "models": ai_tutor.list_models()}
+
+
+@app.post("/api/ai/settings")
+def ai_save_settings(payload: AiSettingsRequest):
+    return {"ok": True, "settings": _ai_call(ai_tutor.save_settings, payload.model_dump(exclude_none=True))}
+
+
+@app.post("/api/ai/test")
+def ai_test(payload: AiTestRequest):
+    return _ai_call(ai_tutor.test_connection, payload.model)
+
+
+@app.post("/api/ai/judge")
+def ai_judge(payload: AiJudgeRequest):
+    """Grade a submission that was already bound by a PYR submission endpoint,
+    then apply the verdict through the matching verdict gateway."""
+
+    submission = payload.submission
+    if hashlib.sha256(payload.answer.encode("utf-8")).hexdigest() != submission.get("answer_digest"):
+        raise HTTPException(status_code=409, detail="The answer does not match the bound submission")
+    context = None if payload.kind == "practice" else read_pyr_context(payload.client_id)["context"]
+    graded = _ai_call(ai_tutor.judge, payload.kind, context=context, answer=payload.answer, question=payload.question)
+    common = {
+        "nonce": submission.get("nonce"),
+        "submission_id": submission.get("submission_id"),
+        "answer_digest": submission.get("answer_digest"),
+        "evidence_id": submission.get("evidence_id"),
+        "verdict": graded["verdict"],
+        "reason": graded["reason"],
+    }
+    try:
+        if payload.kind == "battle":
+            applied = apply_pyr_verdict(PyrVerdictRequest(**common, objective_id=submission.get("objective_id")))
+        elif payload.kind == "boss":
+            applied = apply_pyr_boss_verdict(PyrBossVerdictRequest(**common, requirement_id=submission.get("requirement_id")))
+        elif payload.kind == "dungeon":
+            applied = apply_pyr_dungeon_verdict(
+                PyrDungeonVerdictRequest(**common, run_id=submission.get("run_id"), question_id=submission.get("question_id"))
+            )
+        else:
+            applied = apply_pyr_practice_verdict(PyrPracticeVerdictRequest(**common, session_id=submission.get("session_id")))
+    except ValidationError as exc:
+        raise HTTPException(status_code=422, detail="The bound submission is missing fields for this verdict") from exc
+    return {"ok": True, "verdict": graded["verdict"], "reason": graded["reason"], "applied": applied}
+
+
+@app.post("/api/ai/dungeon-question")
+def ai_dungeon_question(payload: AiDungeonQuestionRequest):
+    """Have PYR write the current room's question (same id, type and concept)."""
+
+    try:
+        progress, _metadata = STATE_SERVICE.snapshot_with_metadata()
+        projection = STATE_SERVICE.dungeon_projection(progress)
+    except StateCommandError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
+    question = projection.get("question") if isinstance(projection.get("question"), dict) else None
+    if not projection.get("active") or projection.get("run_id") != payload.run_id or not question:
+        raise HTTPException(status_code=409, detail="No current Dungeon question for this run")
+    if projection.get("room_type") not in DUNGEON_COMBAT_ROOM_TYPES:
+        raise HTTPException(status_code=409, detail="This room has no question")
+    if question["id"] in AI_ISSUED_DUNGEON_QUESTIONS:
+        return {"ok": True, "changed": False, "dungeon": projection}
+    written = _ai_call(
+        ai_tutor.write_dungeon_question,
+        concept=str(question.get("concept_id") or "python-basics"),
+        question_type=str(question.get("question_type") or "short_explanation"),
+        difficulty=int(question.get("difficulty") or 1),
+        room_type=str(projection.get("room_type")),
+        floor=int(projection.get("floor") or 1),
+    )
+    replacement = {key: question[key] for key in ("id", "question_type", "concept_id", "difficulty")}
+    replacement.update(written)
+    with PROGRESS_LOCK:
+        try:
+            mutation = STATE_SERVICE.apply_internal("dungeon_issue_question", {"run_id": payload.run_id, "question": replacement})
+            progress, _metadata = STATE_SERVICE.snapshot_with_metadata()
+            projection = STATE_SERVICE.dungeon_projection(progress)
+        except StateCommandError as exc:
+            raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
+    AI_ISSUED_DUNGEON_QUESTIONS.add(question["id"])
+    return {"ok": True, "changed": True, "revision": mutation.get("revision"), "dungeon": projection}
+
+
+@app.post("/api/ai/practice-lens")
+def ai_practice_lens(payload: AiPracticeLensRequest):
+    lenses = [
+        {"id": str(item.get("id", ""))[:40], "label": str(item.get("label", ""))[:80], "prompt": str(item.get("prompt", ""))[:300]}
+        for item in payload.lenses
+        if item.get("id")
+    ]
+    try:
+        progress, _metadata = STATE_SERVICE.snapshot_with_metadata()
+        learner = {
+            "practice": STATE_SERVICE.practice_projection(progress),
+            "skills": progress.get("skills", [])[:20],
+            "learning_state": progress.get("learning_state"),
+        }
+    except StateCommandError:
+        learner = {}
+    return {"ok": True, **_ai_call(ai_tutor.choose_practice_lens, concept=payload.concept, lenses=lenses, learner=learner)}
+
+
+@app.post("/api/ai/ask")
+def ai_ask(payload: AiAskRequest):
+    reply = _ai_call(ai_tutor.ask, question=payload.question, concept=payload.concept, code=payload.code)
+    return {"ok": True, "reply": reply}
 
 
 # App mode (`ide/quest.py --app`, used by the desktop shell) serves the built
