@@ -857,6 +857,37 @@ class StateServiceBehaviorTests(unittest.TestCase):
             )
         self.assertEqual(out_of_order.exception.status_code, 409)
 
+    def test_cleared_board_without_stored_boss_status_accepts_boss_verdicts(self):
+        # A cloud-synced save can drop boss_status even though every mob is
+        # cleared; the projection already reports the boss as available, so
+        # the verdict gate must agree instead of answering 409.
+        service, path = self.make_service()
+        state = self.read(path)
+        project = state["projects"][0]
+        project.update({"boss": "The House", "progress": 100})
+        project.pop("boss_status", None)
+        project["mobs"] = [{"name": "The Count Keeper", "status": "defeated", "concept": "Loops"}]
+        path.write_text(json.dumps(state), encoding="utf-8")
+        self.assertEqual(service.encounter_projection(self.read(path))["status"], "boss_available")
+
+        phase = service.apply_internal(
+            "record_boss_requirement",
+            {"requirement_id": "required_behavior", "evidence_id": "boss-phase-1", "reason": "Verified behaviour"},
+        )
+        self.assertTrue(phase["changed"])
+        self.assertEqual(self.read(path)["projects"][0]["boss_status"], "available")
+
+        locked = self.read(path)
+        locked["projects"][0]["mobs"][0]["status"] = "available"
+        locked["projects"][0].pop("boss_status", None)
+        path.write_text(json.dumps(locked), encoding="utf-8")
+        with self.assertRaises(StateCommandError) as unresolved:
+            service.apply_internal(
+                "record_boss_requirement",
+                {"requirement_id": "explanation", "evidence_id": "boss-phase-2", "reason": "Too early"},
+            )
+        self.assertEqual(unresolved.exception.status_code, 409)
+
     def test_final_mob_opens_boss_gate_and_verified_boss_clear_awards_canonical_progression(self):
         service, path = self.make_service()
         state = self.read(path)

@@ -5523,6 +5523,15 @@ class LocalStateService:
             },
         )
 
+    @staticmethod
+    def _unlock_boss_if_cleared(project: dict[str, Any]) -> None:
+        """Match the encounter projection: a cleared board with no stored boss
+        status (for example after a cloud sync dropped it) means the boss is
+        available. Callers have already checked every mob is resolved."""
+
+        if not project.get("boss_status") and project.get("completed") is not True:
+            project["boss_status"] = "available"
+
     def _record_boss_requirement(self, payload: Mapping[str, Any], progress: dict[str, Any]) -> Mutation:
         """Persist one provider-validated boss phase before the final clear."""
 
@@ -5544,6 +5553,7 @@ class LocalStateService:
             raise StateCommandError("Existing active project mobs are invalid", status_code=500)
         if any(item.get("status") not in {"defeated", "cleared"} for item in mobs):
             raise StateCommandError("The active project still has unresolved mobs", status_code=409)
+        self._unlock_boss_if_cleared(project)
         if project.get("boss_status") not in {"available", "defeated"}:
             raise StateCommandError("The project boss is not unlocked yet", status_code=409)
 
@@ -5665,6 +5675,7 @@ class LocalStateService:
                     "project_name": project_name,
                 },
             )
+        self._unlock_boss_if_cleared(project)
         if project.get("boss_status") != "available":
             raise StateCommandError("The project boss is not unlocked yet", status_code=409)
 
