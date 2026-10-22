@@ -3,6 +3,7 @@ import Editor from '@monaco-editor/react'
 import './homestead.css'
 import './campaign.css'
 import './settings.css'
+import './dungeonBrief.css'
 import { merchantPixelSprite } from './campaignMerchant.js'
 
 export const viewItems = [
@@ -2190,6 +2191,126 @@ function DungeonGuidePanel({ encounter, editorContent, floor }) {
   })}</div><p className="dungeon-guide-note">The editor watches for concepts, not an answer key. Preview progress is committed only by a clean submission.</p></section>
 }
 
+const DUNGEON_QUESTION_TYPES = {
+  multiple_choice: {
+    label: 'Multiple choice',
+    how: 'Pick one option. Write its letter, then one sentence on why it is right.',
+    sample: '# Answer: B\n# Because <one sentence in your own words>',
+  },
+  true_false: {
+    label: 'True or false',
+    how: 'Decide True or False, then explain the deciding detail.',
+    sample: '# Answer: True\n# Because <the detail that decides it>',
+  },
+  code_checkpoint: {
+    label: 'Write code',
+    how: 'Write a small, runnable Python program that does what the question asks. Run it with Ctrl+Enter before you submit.',
+    sample: '# Name what you need to track first\nvalue = ...\n\n# then build the behaviour the question asks for\nprint(...)',
+  },
+  bug_hunt: {
+    label: 'Bug hunt',
+    how: 'Find the bug, then explain the fix in words. Describe the change instead of pasting corrected code.',
+    sample: '# The bug: <which line and what goes wrong>\n# Why: <what Python actually does there>\n# Fix: <the change, in words>',
+  },
+  short_explanation: {
+    label: 'Explain it',
+    how: 'Answer in two or three sentences of your own words (comments or plain text are fine).',
+    sample: '# <the idea in one sentence>\n# <a tiny example of it>\n# <why it matters here>',
+  },
+}
+
+// Renders PYR's question text: paragraphs plus ``` fenced code blocks.
+function DungeonPromptText({ text }) {
+  const parts = []
+  const fence = /```[a-zA-Z0-9_-]*\n?([\s\S]*?)```/g
+  let cursor = 0
+  let match
+  const source = String(text || '')
+  while ((match = fence.exec(source))) {
+    if (match.index > cursor) parts.push({ kind: 'text', value: source.slice(cursor, match.index) })
+    parts.push({ kind: 'code', value: match[1].replace(/\n$/, '') })
+    cursor = fence.lastIndex
+  }
+  if (cursor < source.length) parts.push({ kind: 'text', value: source.slice(cursor) })
+  return <div className="dungeon-prompt-text">{parts.flatMap((part, index) => part.kind === 'code'
+    ? [<pre key={`c${index}`}><code>{part.value}</code></pre>]
+    : part.value.split(/\n\s*\n/).map((paragraph) => paragraph.trim()).filter(Boolean).map((paragraph, inner) => <p key={`t${index}-${inner}`}>{paragraph}</p>))}</div>
+}
+
+function DungeonDifficulty({ value, max = 5 }) {
+  const level = Math.max(1, Math.min(max, Number(value) || 1))
+  return <span className="dungeon-difficulty" title={`Difficulty ${level} of ${max}`} aria-label={`Difficulty ${level} of ${max}`}>{Array.from({ length: max }, (_, index) => <i key={index} className={index < level ? 'on' : ''} aria-hidden="true">★</i>)}<b>{level}/{max}</b></span>
+}
+
+function DungeonResolveBar({ resolve, max, tone = 'enemy' }) {
+  const total = Math.max(1, Number(max) || 1)
+  const current = Math.max(0, Math.min(total, Number(resolve) || 0))
+  return <span className={`dungeon-resolve-bar ${tone}`} aria-hidden="true">{Array.from({ length: total }, (_, index) => <i key={index} className={index < current ? 'on' : ''} />)}</span>
+}
+
+// Boot.dev-style brief for the current room: what the question wants, how
+// to lay out an answer, how hard it is, and who you are fighting.
+function DungeonQuestionBrief({ run, question, loadout, editorContent }) {
+  const encounter = run.encounter || {}
+  const mechanic = encounter.mechanic || {}
+  const reward = encounter.reward_envelope || {}
+  const type = DUNGEON_QUESTION_TYPES[question.question_type] || DUNGEON_QUESTION_TYPES.short_explanation
+  const options = Array.isArray(question.options) ? question.options : []
+  const roomKind = run.room_type === 'boss' ? 'FLOOR BOSS' : run.room_type === 'elite' ? 'ELITE GATE' : 'ENCOUNTER'
+  const hpMax = Number(loadout.max_hp) || 0
+  const hp = Number(loadout.hp) || 0
+  const hpPercent = hpMax ? Math.round((hp / hpMax) * 100) : 0
+  return (
+    <aside className={`dungeon-challenge-brief dungeon-brief-v2 room-${run.room_type || 'encounter'}`} aria-label="Room question">
+      <div className="dungeon-brief-strip">
+        <span className="dungeon-brief-kind">{roomKind}</span>
+        <span>Floor {run.floor ?? 1} · Room {run.room ?? 1}</span>
+        <span>{type.label}</span>
+        <DungeonDifficulty value={question.difficulty} />
+      </div>
+
+      <section className="dungeon-brief-question">
+        <span className="dungeon-eyebrow">THE QUESTION · {String(question.concept_id || encounter.concept_id || 'python').replaceAll('-', ' ').toUpperCase()}</span>
+        {question.prompt ? <DungeonPromptText text={question.prompt} /> : <p className="dungeon-brief-empty">PYR is preparing this room's question…</p>}
+        {options.length > 0 && <ol className="dungeon-brief-options" type="A">{options.map((option, index) => <li key={`${index}-${option}`}><b>{String.fromCharCode(65 + index)}</b><span>{option}</span></li>)}</ol>}
+      </section>
+
+      <section className="dungeon-brief-how">
+        <span className="dungeon-eyebrow">HOW TO ANSWER</span>
+        <p>{type.how} Write it in <code>dungeon.py</code>, then Submit.</p>
+        <pre className="dungeon-brief-sample" aria-label="Answer layout sample"><code>{type.sample}</code></pre>
+        <small>Sample layout only, not the answer.</small>
+      </section>
+
+      <section className="dungeon-brief-enemy">
+        <div className="dungeon-brief-enemy-head">
+          <div><span className="dungeon-eyebrow">{run.room_type === 'boss' ? 'BOSS' : run.room_type === 'elite' ? 'ELITE' : 'MOB'}{encounter.phase ? ` · PHASE ${encounter.phase}` : ''}</span><strong>{encounter.name || 'Room guardian'}</strong><small>{encounter.category || mechanic.label || 'learning mob'}</small></div>
+          <div className="dungeon-brief-resolve"><small>RESOLVE</small><strong>{encounter.resolve ?? '—'} / {encounter.max_resolve ?? '—'}</strong></div>
+        </div>
+        <DungeonResolveBar resolve={encounter.resolve} max={encounter.max_resolve} />
+        <ul className="dungeon-brief-facts">
+          <li><span>Clean hit</span><b>−{encounter.resolve_damage ?? 0} Resolve</b></li>
+          {mechanic.on_failure && <li><span>Wrong answer</span><b>{mechanic.on_failure}</b></li>}
+          {mechanic.passive && <li><span>Passive</span><b>{mechanic.passive}</b></li>}
+          <li><span>Rewards</span><b>+{reward.score ?? 0} score · +{reward.coins ?? 0} coins{Array.isArray(reward.authorized_items) && reward.authorized_items.length ? ` · ${reward.authorized_items.join(', ')}` : ''}</b></li>
+        </ul>
+      </section>
+
+      <section className="dungeon-brief-you">
+        <div className="dungeon-brief-hp"><span>YOUR HP</span><strong>{hp} / {hpMax}</strong></div>
+        <span className="dungeon-hp-bar" aria-hidden="true"><i style={{ width: `${hpPercent}%` }} /></span>
+        <small>{[run.class?.name, loadout.weapon, loadout.armor, loadout.trinket].filter(Boolean).join(' · ')}</small>
+        {run.class?.passive && <small className="dungeon-brief-passive">{run.class.passive}</small>}
+      </section>
+
+      <details className="dungeon-brief-guide">
+        <summary>Step guide · Resolve preview</summary>
+        <DungeonGuidePanel encounter={encounter} editorContent={editorContent} floor={run.floor ?? 1} />
+      </details>
+    </aside>
+  )
+}
+
 function DungeonMechanicProfile({ encounter }) {
   const mechanic = encounter?.mechanic || {}
   const reward = encounter?.reward_envelope || {}
@@ -2255,7 +2376,7 @@ function DungeonScreen({ dungeon, revision, onStart, onChoose, onRest, onCampAct
   return (
     <div className="dungeon-screen-shell" data-testid="dungeon" data-campaign-revision={revision}>
       <header className="dungeon-local-header"><div className="dungeon-local-brand"><span className="dungeon-brand-mark"><RouteIcon id="spark" /></span><div><span className="dungeon-eyebrow">INFINITE DUNGEON</span><h1>{run.active ? `Floor ${run.floor} · Room ${run.room}` : 'Design Lab'}</h1></div></div><span className="dungeon-local-badge"><i /> CANONICAL RUN · STATE GATEWAY</span>{run.active ? <div className="dungeon-run-stats" aria-label="Run stats"><div><small>FLOOR</small><strong>{run.floor ?? 1}</strong></div><div><small>HP</small><strong>{loadout.hp ?? 0}/{loadout.max_hp ?? 0}</strong></div><div><small>SCORE</small><strong>{run.score ?? 0}</strong></div><div><small>COINS</small><strong>{run.run_coins ?? 0}</strong></div><button className="dungeon-reset-header" type="button" onClick={() => onReset?.(run.run_id)} disabled={busy || !onReset}>Reset run</button></div> : <div className="dungeon-header-note"><span className="dungeon-eyebrow">BEFORE THE DESCENT</span><strong>CHOOSE YOUR CLASS</strong></div>}</header>
-      {!run.active ? <main className="dungeon-class-select" aria-label="Choose a dungeon class"><section className="dungeon-class-hero"><span className="dungeon-eyebrow">RUN SETUP · FLOOR 1</span><h2>So how you wanna play it.</h2><p>Pick a class</p></section><section className="dungeon-class-grid" role="radiogroup" aria-label="Dungeon classes">{DUNGEON_CLASSES.map((starterClass) => <button key={starterClass.id} type="button" role="radio" aria-checked={selectedClassId === starterClass.id} className={`dungeon-class-card ${selectedClassId === starterClass.id ? 'selected' : ''}`} onClick={() => setSelectedClassId(starterClass.id)} disabled={busy}><span className="dungeon-class-card-top"><span className="dungeon-class-icon" aria-hidden="true"><RouteIcon id={starterClass.iconId} /></span><span><span className="dungeon-eyebrow">{starterClass.role}</span><strong>{starterClass.name}</strong></span>{selectedClassId === starterClass.id && <small className="dungeon-class-picked">READY</small>}</span><span className="dungeon-class-weapon"><span className="dungeon-class-label">STARTER WEAPON</span><strong>{starterClass.weapon}</strong><small>{starterClass.weaponDetail || 'A bounded run weapon for this playstyle.'}</small></span><span className="dungeon-class-passive"><span className="dungeon-class-label">PASSIVE</span><p>{starterClass.passive}</p></span></button>)}</section>{selectedClassId && <div className="dungeon-class-cta" aria-live="polite"><button className="dungeon-primary-button" type="button" onClick={start} disabled={busy}>{busy ? 'Starting…' : 'Enter the dungeon'} <span>→</span></button></div>}</main> : roomTab === 'code' ? <section className="dungeon-ide-screen" aria-label="Challenge IDE"><div className="dungeon-ide-topline"><button type="button" className="dungeon-ghost-button" onClick={() => setRoomTab('room')}>← Map locked</button><span className="dungeon-eyebrow">{run.room_type === 'boss' ? 'FLOOR BOSS · FINAL DESTINATION' : run.room_type === 'elite' ? 'ELITE GATE · TRINKET DROP' : 'QUESTION ROOM · NO ROUTE CONTROLS'}</span><span className="dungeon-ide-risk">FAILURE COSTS HP</span></div><div className="dungeon-ide-layout"><aside className="dungeon-challenge-brief"><span className="dungeon-eyebrow">{run.room_type === 'boss' ? 'THE COUNT KEEPER · BOSS CHECK' : run.room_type === 'elite' ? 'ELITE CHECK' : 'CONCEPT CHECK'}</span><h2>{run.room_type === 'boss' ? 'Defeat The Count Keeper to ascend.' : run.room_type === 'elite' ? 'Break the elite gate for its trinket.' : 'Write the answer in dungeon.py.'}</h2><p>{run.encounter?.lore || statusText}</p><div className="dungeon-resolve-preview"><div><small>{run.room_type === 'boss' ? 'BOSS RESOLVE' : run.room_type === 'elite' ? 'ELITE RESOLVE' : 'ROOM RESOLVE'}</small><strong>{run.encounter?.resolve ?? '—'} / {run.encounter?.max_resolve ?? '—'}</strong></div><span>clean submission · +{run.encounter?.resolve_damage ?? 0} Resolve impact</span></div><div className="dungeon-run-health"><span>RUN HP</span><strong>{loadout.hp ?? 0} / {loadout.max_hp ?? 0}</strong><small>an incorrect verdict costs bounded HP</small></div><DungeonGuidePanel encounter={run.encounter} editorContent={editorContent} floor={run.floor ?? 1} /><DungeonMechanicProfile encounter={run.encounter} /><DungeonFileBridgeStatus /></aside><div className="dungeon-code-workbench"><div className="dungeon-editor-toolbar"><span>dungeon.py · current room buffer</span><span>PYTHON · MONACO · LOCAL COMPLETION</span></div><DungeonEditorSurface value={editorContent || ''} onChange={onEditorChange} onSave={onSave} onSubmit={submit} busy={busy} saving={saving} />{submitStatus && <small className="battle-submit-status" role="status">{submitStatus}</small>}</div></div></section> : <><div className="dungeon-workspace-tabs" role="tablist" aria-label="Dungeon workspace"><button type="button" role="tab" aria-selected={roomTab === 'map'} className={roomTab === 'map' ? 'active' : ''} onClick={() => setRoomTab('map')}>Map &amp; route</button><button type="button" role="tab" aria-selected={roomTab === 'room'} className={roomTab === 'room' ? 'active' : ''} onClick={() => setRoomTab('room')}>Room screen</button><button type="button" role="tab" aria-selected={roomTab === 'code'} className={roomTab === 'code' ? 'active' : ''} onClick={openCode} disabled={!['encounter', 'elite', 'boss'].includes(run.room_type)}>Code editor</button></div><div className="dungeon-prototype-grid" data-testid="dungeon-tab-panel"><DungeonMap run={run} onChoose={chooseRoom} busy={busy} /><DungeonRoomPanel run={run} question={question} loadout={loadout} onRest={onRest} onCampAction={onCampAction} onRevealRisk={onRevealRisk} onEnterRisk={onEnterRisk} onMarketPurchase={onMarketPurchase} onLeave={onLeave} onOpenCode={openCode} busy={busy} /><DungeonCharacterPanel run={run} tab={characterTab} setTab={setCharacterTab} onEquip={onEquip} busy={busy} onFinish={onFinish} onReset={onReset} /></div><p className="dungeon-checkpoint-note">{statusText} Run <code>{run.run_id}</code> will resume after a Forge or workstation restart; death is the only reset.</p></>}
+      {!run.active ? <main className="dungeon-class-select" aria-label="Choose a dungeon class"><section className="dungeon-class-hero"><span className="dungeon-eyebrow">RUN SETUP · FLOOR 1</span><h2>So how you wanna play it.</h2><p>Pick a class</p></section><section className="dungeon-class-grid" role="radiogroup" aria-label="Dungeon classes">{DUNGEON_CLASSES.map((starterClass) => <button key={starterClass.id} type="button" role="radio" aria-checked={selectedClassId === starterClass.id} className={`dungeon-class-card ${selectedClassId === starterClass.id ? 'selected' : ''}`} onClick={() => setSelectedClassId(starterClass.id)} disabled={busy}><span className="dungeon-class-card-top"><span className="dungeon-class-icon" aria-hidden="true"><RouteIcon id={starterClass.iconId} /></span><span><span className="dungeon-eyebrow">{starterClass.role}</span><strong>{starterClass.name}</strong></span>{selectedClassId === starterClass.id && <small className="dungeon-class-picked">READY</small>}</span><span className="dungeon-class-weapon"><span className="dungeon-class-label">STARTER WEAPON</span><strong>{starterClass.weapon}</strong><small>{starterClass.weaponDetail || 'A bounded run weapon for this playstyle.'}</small></span><span className="dungeon-class-passive"><span className="dungeon-class-label">PASSIVE</span><p>{starterClass.passive}</p></span></button>)}</section>{selectedClassId && <div className="dungeon-class-cta" aria-live="polite"><button className="dungeon-primary-button" type="button" onClick={start} disabled={busy}>{busy ? 'Starting…' : 'Enter the dungeon'} <span>→</span></button></div>}</main> : roomTab === 'code' ? <section className="dungeon-ide-screen" aria-label="Challenge IDE"><div className="dungeon-ide-topline"><button type="button" className="dungeon-ghost-button" onClick={() => setRoomTab('room')}>← Map locked</button><span className="dungeon-eyebrow">{run.room_type === 'boss' ? 'FLOOR BOSS · FINAL DESTINATION' : run.room_type === 'elite' ? 'ELITE GATE · TRINKET DROP' : 'QUESTION ROOM · NO ROUTE CONTROLS'}</span><span className="dungeon-ide-risk">FAILURE COSTS HP</span></div><div className="dungeon-ide-layout"><DungeonQuestionBrief run={run} question={question} loadout={loadout} editorContent={editorContent} /><div className="dungeon-code-workbench"><div className="dungeon-editor-toolbar"><span>dungeon.py · current room buffer</span><span>PYTHON · MONACO · LOCAL COMPLETION</span></div><DungeonEditorSurface value={editorContent || ''} onChange={onEditorChange} onSave={onSave} onSubmit={submit} busy={busy} saving={saving} />{submitStatus && <small className="battle-submit-status" role="status">{submitStatus}</small>}</div></div></section> : <><div className="dungeon-workspace-tabs" role="tablist" aria-label="Dungeon workspace"><button type="button" role="tab" aria-selected={roomTab === 'map'} className={roomTab === 'map' ? 'active' : ''} onClick={() => setRoomTab('map')}>Map &amp; route</button><button type="button" role="tab" aria-selected={roomTab === 'room'} className={roomTab === 'room' ? 'active' : ''} onClick={() => setRoomTab('room')}>Room screen</button><button type="button" role="tab" aria-selected={roomTab === 'code'} className={roomTab === 'code' ? 'active' : ''} onClick={openCode} disabled={!['encounter', 'elite', 'boss'].includes(run.room_type)}>Code editor</button></div><div className="dungeon-prototype-grid" data-testid="dungeon-tab-panel"><DungeonMap run={run} onChoose={chooseRoom} busy={busy} /><DungeonRoomPanel run={run} question={question} loadout={loadout} onRest={onRest} onCampAction={onCampAction} onRevealRisk={onRevealRisk} onEnterRisk={onEnterRisk} onMarketPurchase={onMarketPurchase} onLeave={onLeave} onOpenCode={openCode} busy={busy} /><DungeonCharacterPanel run={run} tab={characterTab} setTab={setCharacterTab} onEquip={onEquip} busy={busy} onFinish={onFinish} onReset={onReset} /></div><p className="dungeon-checkpoint-note">{statusText} Run <code>{run.run_id}</code> will resume after a Forge or workstation restart; death is the only reset.</p></>}
     </div>
   )
 }

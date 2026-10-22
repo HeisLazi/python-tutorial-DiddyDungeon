@@ -435,7 +435,7 @@ def judge(kind: str, *, context: Any, answer: str, question: str = "") -> dict[s
 
 DUNGEON_QUESTION_SHAPES = {
     "true_false": "a true/false statement; options must be exactly [\"True\", \"False\"]",
-    "multiple_choice": "a multiple-choice question with 3 or 4 short options (one correct)",
+    "multiple_choice": "a multiple-choice question with 3 or 4 short SINGLE-LINE options (one correct); put any code the options refer to in the prompt",
     "code_checkpoint": "a request to write a tiny piece of Python (under 10 lines); options must be []",
     "bug_hunt": "a short buggy Python snippet (inside the prompt) with a request to find and explain the bug; options must be []",
     "short_explanation": "a request to explain an idea in two or three sentences; options must be []",
@@ -473,7 +473,9 @@ def write_dungeon_question(*, concept: str, question_type: str, difficulty: int,
         options = []
     elif not 2 <= len(options) <= 5:
         raise AiTutorError("PYR's multiple-choice question needs 2-5 options", kind="unparseable")
-    return {"prompt": text.strip(), "options": [item.strip()[:200] for item in options]}
+    # Options are single-line text in the game state; collapse any line breaks
+    # (models sometimes put a two-line code snippet in an option).
+    return {"prompt": text.strip(), "options": [" ".join(item.split())[:200] for item in options]}
 
 
 def choose_practice_lens(*, concept: str, lenses: list[dict[str, str]], learner: Any) -> dict[str, str]:

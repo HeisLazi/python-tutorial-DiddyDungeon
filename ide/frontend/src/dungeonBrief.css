@@ -1,0 +1,85 @@
+/* Infinite Dungeon room brief (DungeonQuestionBrief): boot.dev-style lesson
+   column — question first, an answer-layout sample, then the fight. Uses the
+   dungeon tokens so it follows every theme. */
+
+.dungeon-screen-shell .dungeon-ide-layout { grid-template-columns: minmax(380px, 1fr) minmax(480px, 1.25fr); }
+@media (max-width: 1100px) { .dungeon-screen-shell .dungeon-ide-layout { grid-template-columns: 1fr; } }
+
+.dungeon-brief-v2 {
+  gap: 12px;
+  font-size: 16px;
+  line-height: 1.5;
+  color: var(--dungeon-text);
+}
+.dungeon-brief-v2 > section,
+.dungeon-brief-v2 > details {
+  padding: 12px 14px;
+  border: 1px solid var(--dungeon-line);
+  background: var(--dungeon-panel-2);
+}
+
+.dungeon-brief-strip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  color: var(--dungeon-muted);
+  font-size: 13px;
+}
+.dungeon-brief-strip > span { padding: 3px 8px; border: 1px solid var(--dungeon-line); }
+.dungeon-brief-kind { color: var(--dungeon-gold); border-color: var(--dungeon-gold) !important; }
+.room-elite .dungeon-brief-kind { color: var(--dungeon-blue); border-color: var(--dungeon-blue) !important; }
+.room-boss .dungeon-brief-kind { color: var(--dungeon-danger); border-color: var(--dungeon-danger) !important; }
+.dungeon-difficulty { display: inline-flex; align-items: center; gap: 2px; border: 0 !important; padding: 0 !important; }
+.dungeon-difficulty i { color: var(--dungeon-line-bright); font-style: normal; }
+.dungeon-difficulty i.on { color: var(--dungeon-gold); }
+.dungeon-difficulty b { margin-left: 6px; color: var(--dungeon-muted); font-weight: 400; }
+
+.dungeon-brief-question { border-color: var(--dungeon-gold) !important; }
+.dungeon-prompt-text p { margin: 8px 0 0; font-size: 18px; line-height: 1.5; color: var(--dungeon-text); white-space: pre-wrap; }
+.dungeon-prompt-text pre,
+.dungeon-brief-sample {
+  margin: 10px 0 0;
+  padding: 10px 12px;
+  overflow-x: auto;
+  border: 1px solid var(--dungeon-line);
+  background: var(--dungeon-panel-3);
+  color: var(--dungeon-gold-soft);
+  font: 14px/1.5 "JetBrains Mono", ui-monospace, monospace;
+}
+.dungeon-prompt-text pre code,
+.dungeon-brief-sample code { font: inherit; white-space: pre; }
+.dungeon-brief-empty { color: var(--dungeon-muted); }
+.dungeon-brief-options { display: grid; gap: 6px; margin: 12px 0 0; padding: 0; list-style: none; }
+.dungeon-brief-options li { display: grid; grid-template-columns: 28px 1fr; gap: 8px; align-items: start; padding: 7px 9px; border: 1px solid var(--dungeon-line); background: var(--dungeon-panel); }
+.dungeon-brief-options b { color: var(--dungeon-gold); text-align: center; }
+.dungeon-brief-options span { font-family: "JetBrains Mono", ui-monospace, monospace; font-size: 14px; overflow-wrap: anywhere; }
+
+.dungeon-brief-how p { margin: 6px 0 0; color: var(--dungeon-muted); }
+.dungeon-brief-how code { color: var(--dungeon-gold-soft); }
+.dungeon-brief-how small { display: block; margin-top: 6px; color: var(--dungeon-dim); font-size: 12px; }
+
+.dungeon-brief-enemy-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+.dungeon-brief-enemy-head strong { display: block; color: var(--dungeon-text); font-size: 18px; }
+.dungeon-brief-enemy-head small { color: var(--dungeon-muted); }
+.dungeon-brief-resolve { text-align: right; }
+.dungeon-brief-resolve small { display: block; color: var(--dungeon-muted); font-size: 11px; }
+.dungeon-brief-resolve strong { color: var(--dungeon-danger); font-size: 20px; }
+.dungeon-resolve-bar { display: flex; gap: 3px; margin: 10px 0 8px; }
+.dungeon-resolve-bar i { flex: 1; height: 10px; border: 1px solid var(--dungeon-line); background: var(--dungeon-panel-3); }
+.dungeon-resolve-bar i.on { border-color: var(--dungeon-danger); background: var(--dungeon-danger); }
+.dungeon-brief-facts { display: grid; gap: 4px; margin: 0; padding: 0; list-style: none; font-size: 14px; }
+.dungeon-brief-facts li { display: grid; grid-template-columns: 110px 1fr; gap: 8px; }
+.dungeon-brief-facts span { color: var(--dungeon-muted); }
+.dungeon-brief-facts b { font-weight: 400; color: var(--dungeon-text); }
+
+.dungeon-brief-hp { display: flex; justify-content: space-between; color: var(--dungeon-muted); font-size: 13px; }
+.dungeon-brief-hp strong { color: var(--dungeon-green); font-size: 16px; }
+.dungeon-hp-bar { display: block; height: 10px; margin: 6px 0; border: 1px solid var(--dungeon-line); background: var(--dungeon-panel-3); }
+.dungeon-hp-bar i { display: block; height: 100%; background: var(--dungeon-green); }
+.dungeon-brief-you small { display: block; color: var(--dungeon-muted); font-size: 13px; }
+.dungeon-brief-passive { margin-top: 2px; color: var(--dungeon-dim) !important; }
+
+.dungeon-brief-guide summary { cursor: pointer; color: var(--dungeon-gold); font-size: 13px; }
+.dungeon-brief-guide[open] summary { margin-bottom: 8px; }
+.dungeon-brief-guide .dungeon-guide-panel { border: 0; padding: 0; background: transparent; }

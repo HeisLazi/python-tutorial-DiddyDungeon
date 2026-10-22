@@ -153,6 +153,11 @@ class AiTutorModuleTests(AiTutorTestCase):
         question = ai_tutor.write_dungeon_question(concept="loops", question_type="true_false", difficulty=1, room_type="encounter", floor=1)
         self.assertEqual(question["options"], ["True", "False"])
 
+        # Real models put two-line code in options; game state needs single-line text.
+        self.reply({"prompt": "Which loop prints 0, 1, 2?", "options": ["for i in range(3):\n    print(i)", "while True: pass", "print(3)"]})
+        question = ai_tutor.write_dungeon_question(concept="loops", question_type="multiple_choice", difficulty=1, room_type="encounter", floor=1)
+        self.assertEqual(question["options"][0], "for i in range(3): print(i)")
+
         self.reply({"lens_id": "trace", "question": "Trace total in this loop…", "why": "Totals are shaky."})
         lens = ai_tutor.choose_practice_lens(concept="loops", lenses=[{"id": "trace", "label": "Trace", "prompt": "Trace it"}], learner={})
         self.assertEqual(lens["lens_id"], "trace")
