@@ -1,0 +1,63 @@
+# PYR on OpenCode
+
+PYR, the in-game tutor, runs on your own [OpenCode](https://opencode.ai)
+install and whichever providers you have signed in there (OpenCode Go,
+GitHub Copilot, OpenAI, Google...). Quest Lab never asks for or stores an API
+key.
+
+## Set up
+
+1. Install OpenCode and sign in to at least one provider: `opencode auth login`.
+2. Open **Settings → AI Tutor**. It should say **READY** and list your
+   integrations.
+3. Leave **Model** on **Auto** (picks a fast model you are signed in to,
+   OpenCode Go first) or choose one, then press **Test**.
+
+Some models in the list aren't enabled on every plan; Test tells you
+straight away. OpenCode's free tier cannot be used (it only serves
+OpenCode's own agents), which is why Auto prefers your paid providers.
+
+## What PYR does
+
+Each one can be switched off in Settings → AI Tutor.
+
+| Feature | Where | What it changes |
+|---|---|---|
+| **Grade submissions** | Submit run (Forge), boss goals, Dungeon answers, Tutor "Submit for feedback" | PYR decides `correct` / `incorrect` and writes one short reason. The game applies the verdict through its normal gateway, so XP, coins, HP, Resolve and damage come from the game's rules, never from the model. |
+| **Write Dungeon questions** | Each new combat room in the Infinite Dungeon | Rewrites the room's question for its concept, type and difficulty. Only while `dungeon.py` is empty, so it can never wipe an answer. |
+| **Choose question lenses** | Tutor → IDE practice → "✦ Let PYR choose" | Picks the lens you need (predict, trace, bug, explain, transfer) and writes a question for it. |
+| **Ask PYR** | Tutor → PYR channel | A short Socratic nudge. PYR won't write your project for you. |
+
+When OpenCode isn't ready (or grading is off), the old flow still works:
+launch a CLI (Codex, Claude, AGY, Copilot) in the Forge PYR panel and the
+submission prompt is pasted into it.
+
+## Safety rails
+
+- PYR runs as a dedicated `questlab-pyr` OpenCode agent with **every tool
+  disabled and every permission denied**, from an empty scratch directory
+  (`~/.local/state/QuestLab/pyr-agent-<hash>/`). It can't read your files or
+  run commands, even though your global OpenCode config may allow that for
+  other agents.
+- Replies must be one JSON object of an exact shape. Anything else is an
+  error, not a verdict: **a failed or slow grade never costs HP** and the
+  submission stays pending so you can just submit again.
+- The answer graded is the one bound to the challenge (checked by its
+  SHA-256), so it can't be swapped after binding.
+- One model call at a time. While PYR thinks, the Dungeon editor is
+  read-only and autosave pauses, so the save can't change under the grade.
+- Quest Lab never runs `opencode auth export`; Settings shows integration
+  names only.
+
+## Where things live
+
+| What | Path |
+|---|---|
+| AI settings (device-local, not synced) | `~/.local/state/QuestLab/ai.json` |
+| Last reply PYR couldn't parse (debugging) | `~/.local/state/QuestLab/last-unparseable-reply.txt` |
+| Backend module | `ide/server/ai_tutor.py` |
+| HTTP routes | `/api/ai/{status,models,settings,test,judge,dungeon-question,practice-lens,ask}` in `ide/server/app_v2.py` |
+| Tests (stub OpenCode, no real model calls) | `ide/server/test_ai_tutor.py` |
+
+OpenCode keeps a background service running (`opencode serve --service`,
+~200 MB) that every PYR call reuses.

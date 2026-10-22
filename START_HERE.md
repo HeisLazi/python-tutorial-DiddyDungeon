@@ -4,6 +4,14 @@ You are not here to speedrun Python. You are here to make the basics feel automa
 
 ## Start Quest Lab
 
+**Linux desktop app (recommended):** open **Diddy Dungeon** from your app
+launcher, or run `quest-lab`. First time on a machine:
+`bash ide/tauri-app/install-desktop.sh`. Details: [`docs/DESKTOP_APP.md`](docs/DESKTOP_APP.md).
+
+**AI tutor:** PYR grades, writes Dungeon questions and answers questions
+through your OpenCode install. Set it up in Settings → AI Tutor; see
+[`docs/AI_TUTOR.md`](docs/AI_TUTOR.md).
+
 From the repository root on Windows, run or double-click:
 
 ```powershell

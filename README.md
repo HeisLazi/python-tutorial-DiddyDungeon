@@ -173,6 +173,16 @@ When a friend joins, their entry in `rivals.json` looks like:
 }
 ```
 
+## Play it
+
+Quest Lab is a desktop app with a retro pixel arcade look: open **Diddy
+Dungeon** from the app launcher (or run `quest-lab`). PYR, the tutor, runs on
+your own OpenCode install to grade work, write Infinite Dungeon questions
+and give hints.
+
+- [`docs/DESKTOP_APP.md`](docs/DESKTOP_APP.md): launch, install, how the app works, troubleshooting
+- [`docs/AI_TUTOR.md`](docs/AI_TUTOR.md): setting up PYR on OpenCode and its safety rails
+
 ## Enter the current quest
 
 ```bash

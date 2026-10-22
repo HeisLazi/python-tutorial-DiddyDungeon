@@ -1,50 +1,50 @@
-# Handoff — Python Quest Lab (Diddy Dungeon) Work Session
+# Handoff — Python Quest Lab (Diddy Dungeon)
 
-Date: 2026-10-22
+Updated: 2026-10-22 · branch `feature/tauri-arcade` (fast-forwarded into
+`feature/cloud-sync-desktop`).
 
-## Summary
-Fixed the backend test suite, added game-like UI polish, and created standalone launchers.
+## Where things stand
 
-## Backend changes
-- `ide/server/state.py`
-  - Dungeon inventory ordering: armor before weapon (new runs + legacy migration).
-  - Projection missing-weapon fallback: append instead of prepend.
-- `ide/server/test_context_bridge.py`
-  - Updated room selection to choose encounter/elite rooms (consistent with other tests).
+- **Desktop app:** Tauri window that runs its own backend
+  (`ide/quest.py --app`, one port serving `dist/` + API + PTY websockets).
+  Launcher entry "Diddy Dungeon" / `quest-lab`. See `docs/DESKTOP_APP.md`.
+- **UI:** retro pixel arcade theme (`ide/frontend/src/arcade.css`) is the
+  default; other themes stay in Settings. Merchant keeps its scene, sprite
+  and layout, with surfaces that follow the theme.
+- **Settings:** sectioned (`SettingsScreen` in `RpgViews.jsx`,
+  `settings.css`): Appearance, Editor & Terminal, AI Tutor, Account & Sync,
+  Project Files, About.
+- **PYR on OpenCode:** `ide/server/ai_tutor.py` + `/api/ai/*`. Grades
+  battle/boss/dungeon/practice submissions through the existing verdict
+  gateway, writes Dungeon questions, picks Tutor lenses, answers Ask PYR.
+  See `docs/AI_TUTOR.md`.
+- **Gameplay fixes:** The House accepts verdicts when a synced save lost
+  `boss_status`; Dungeon elite/boss rooms can be submitted; multiline
+  (AI-written) Dungeon questions pass cloud-sync validation.
 
-## Frontend changes (`ide/frontend/src/`)
-- `AppV2.jsx`
-  - Added Zen Mode (`Ctrl+Shift+Z`): hides side panels, maximizes editor + terminal.
-  - Added Game Mode toggle: retro arcade theme + scanlines.
-  - Added XP level-up pulse, sound (Web Audio), and confetti.
-  - Added boss fight overlay + sound.
-  - Added celebration overlay on level up.
-  - Added auto-dismiss splash screen (2.5s).
-  - Fixed `player` initialization crash.
-- `RpgViews.jsx`
-  - Added clickable quest map (SVG nodes) in hub.
-- `v2.css`
-  - Game Mode styles, confetti, celebration, zen mode CSS.
+## Gotchas
 
-## New tooling
-- `ide/vscode-extension/` — minimal VS Code extension scaffold.
-- `ide/tauri-app/` — Tauri desktop app scaffold (built: .deb/.rpm/.AppImage).
-- `diddy-dungeon` — shortcut to launch Quest Lab.
-- `diddy-standalone` — Chrome app-mode launcher.
-- `diddy-tauri` — Tauri app launcher (X11 backend).
+- The machine has ~7 GB RAM: build with the capped scripts
+  (`NODE_OPTIONS=--max-old-space-size=1536`, `CARGO_BUILD_JOBS=2`), one
+  browser at a time.
+- OpenCode resolves its project dir from `$PWD`; subprocesses must set it
+  (see `ai_tutor._run`). The background service caches per-directory
+  config, hence the hashed `pyr-agent-<hash>` scratch directory.
+- OpenCode's free tier rejects custom agents; "Auto" model picks a paid
+  signed-in model (OpenCode Go first).
+- 9 frontend source-regex tests (`npm test`) were already failing before
+  this work (they predate it, from commit ccdac84); they are not fixed.
 
-## Verification
-- Backend tests: 123 passed (`.venv/bin/python -m pytest -q`).
-- Frontend build: passes (`npm run build`).
+## Next steps
 
-## Known issues / next steps
-- Tauri on Hyprland/Wayland may need XWayland; Chrome app mode is more reliable.
-- `progress.json` has local player-state changes (not committed).
-- User game files (`blackjack.py`, `dungeon.py`, `tutor.py`) are untracked and owned by the user.
-- Tauri CLI installed via npm; cargo install failed due to disk space.
+- Campaign progression: clearing a boss marks the project complete but
+  nothing unlocks the next project, and only Blackjack has bounties.
+- Sign-in: the HUD pill now opens Settings; if the Supabase form itself
+  fails, capture the message it shows.
+- VS Code companion (sidebar HUD + full game in an editor tab).
 
-## How to continue
-- Run: `bash ./start-questlab.sh` (normal browser) or `diddy-standalone`.
-- Tests: `.venv/bin/python -m pytest -q`
-- Frontend dev: `cd ide/frontend && npm run dev`
-- Build frontend: `cd ide/frontend && npm run build`
+## Verify
+
+- Backend: `.venv/bin/python -m pytest -q`
+- Frontend: `cd ide/frontend && npm test && npm run build`
+- App: `quest-lab`, then Settings → AI Tutor → Test
