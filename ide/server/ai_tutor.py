@@ -28,7 +28,8 @@ DEFAULT_TIMEOUT_SECONDS = 150
 STATUS_TIMEOUT_SECONDS = 25
 MAX_CONTEXT_CHARS = 24_000
 MAX_ANSWER_CHARS = 20_000
-MAX_REASON_CHARS = 600
+# Must fit the verdict gateway (state.MAX_REASON_LENGTH); longer reasons fail validation.
+MAX_REASON_CHARS = 240
 MODEL_PATTERN = re.compile(r"^[A-Za-z0-9._:/@#+-]{0,200}$")
 
 DEFAULT_SETTINGS: dict[str, Any] = {
@@ -247,11 +248,27 @@ def run_prompt(prompt: str, *, title: str, model: str | None = None, timeout: fl
     if not texts:
         detail = (completed.stderr or "").strip().splitlines()[-1:] or ["no reply"]
         raise AiTutorError(f"OpenCode returned no answer ({detail[0][:200]})", kind="empty")
-    return texts[-1].strip()
+    # A reply can arrive as several text parts (a short preamble, then the
+    # JSON); keep all of them so the object can be found wherever it landed.
+    return "\n".join(texts).strip()
+
+
+def _remember_unparseable(text: str) -> None:
+    try:
+        path = state_dir() / "last-unparseable-reply.txt"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(text[-20_000:], encoding="utf-8")
+    except OSError:
+        pass
 
 
 def extract_json_object(text: str) -> dict[str, Any]:
-    """Return the single JSON object a reply must consist of (fences allowed)."""
+    """Return the JSON object in a reply.
+
+    Models are asked for a bare object, but some wrap it in a fence or add a
+    sentence around it. Take the last decodable top-level object; callers
+    then validate its exact shape, so tolerance here never loosens grading.
+    """
 
     candidate = text.strip()
     fenced = re.fullmatch(r"```(?:json)?\s*(.*?)\s*```", candidate, flags=re.DOTALL)
@@ -259,10 +276,22 @@ def extract_json_object(text: str) -> dict[str, Any]:
         candidate = fenced.group(1).strip()
     try:
         value = json.loads(candidate)
-    except ValueError as exc:
-        raise AiTutorError("PYR's reply was not valid JSON", kind="unparseable") from exc
+    except ValueError:
+        value = None
+        decoder = json.JSONDecoder()
+        position = candidate.find("{")
+        while position != -1:
+            try:
+                decoded, end = decoder.raw_decode(candidate, position)
+            except ValueError:
+                position = candidate.find("{", position + 1)
+                continue
+            if isinstance(decoded, dict):
+                value = decoded
+            position = candidate.find("{", end)
     if not isinstance(value, dict):
-        raise AiTutorError("PYR's reply was not a JSON object", kind="unparseable")
+        _remember_unparseable(text)
+        raise AiTutorError("PYR's reply was not valid JSON", kind="unparseable")
     return value
 
 
@@ -307,7 +336,7 @@ def judge(kind: str, *, context: Any, answer: str, question: str = "") -> dict[s
             f"Learner submission:\n```\n{_bounded(answer, MAX_ANSWER_CHARS)}\n```",
             (
                 'Reply with ONLY this JSON object and nothing else: '
-                '{"verdict": "correct" or "incorrect", "reason": "one or two sentences addressed to the learner; '
+                '{"verdict": "correct" or "incorrect", "reason": "ONE short sentence (under 200 characters) addressed to the learner; '
                 'if incorrect, name the gap as a question or hint without giving the fix"}'
             ),
         )

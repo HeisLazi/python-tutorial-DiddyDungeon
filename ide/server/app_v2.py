@@ -2824,6 +2824,26 @@ def _ai_call(func, *args, **kwargs):
         raise HTTPException(status_code=exc.status_code, detail={"message": str(exc), "kind": exc.kind}) from exc
 
 
+def _grading_context(kind: str, context: dict) -> dict:
+    """Keep only what a grader needs. The full bounded context runs to ~20k
+    characters, which made real grades take minutes; the submitted answer
+    already carries the active file for battle and boss grades."""
+
+    if kind == "dungeon":
+        dungeon = context.get("dungeon") if isinstance(context.get("dungeon"), dict) else {}
+        return {"dungeon": {key: dungeon[key] for key in ("room_type", "floor", "room", "question", "mob") if key in dungeon}}
+    encounter = context.get("encounter") if isinstance(context.get("encounter"), dict) else {}
+    encounter_keys = ("mob_name", "mob", "boss", "status", "concept", "current_quest", "boss_current_requirement", "available_objectives")
+    terminal = context.get("terminal") if isinstance(context.get("terminal"), dict) else {}
+    active = context.get("active_file") if isinstance(context.get("active_file"), dict) else {}
+    return {
+        "quest": context.get("quest"),
+        "encounter": {key: encounter[key] for key in encounter_keys if key in encounter},
+        "submitted_file": active.get("path"),
+        "recent_terminal_output": str(terminal.get("tail") or "")[-2_000:],
+    }
+
+
 # Question ids PYR has already rewritten this session, so a re-render or a
 # second tab cannot rotate the same room's question (and wipe the editor) twice.
 AI_ISSUED_DUNGEON_QUESTIONS: set[str] = set()
@@ -2857,7 +2877,7 @@ def ai_judge(payload: AiJudgeRequest):
     submission = payload.submission
     if hashlib.sha256(payload.answer.encode("utf-8")).hexdigest() != submission.get("answer_digest"):
         raise HTTPException(status_code=409, detail="The answer does not match the bound submission")
-    context = None if payload.kind == "practice" else read_pyr_context(payload.client_id)["context"]
+    context = None if payload.kind == "practice" else _grading_context(payload.kind, read_pyr_context(payload.client_id)["context"])
     graded = _ai_call(ai_tutor.judge, payload.kind, context=context, answer=payload.answer, question=payload.question)
     common = {
         "nonce": submission.get("nonce"),

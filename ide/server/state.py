@@ -1622,7 +1622,12 @@ class LocalStateService:
                 if "difficulty" in question:
                     clean_question["difficulty"] = cls._campaign_int(question["difficulty"], "campaign.dungeon_run.question.difficulty", maximum=MAX_DUNGEON_DIFFICULTY)
                 if "prompt" in question:
-                    clean_question["prompt"] = cls._campaign_text(question["prompt"], "campaign.dungeon_run.question.prompt", max_length=2_000)
+                    # Same rule as dungeon_issue_question: AI-written questions
+                    # carry line breaks and fenced code snippets.
+                    prompt = cls._multiline_text(question["prompt"], "campaign.dungeon_run.question.prompt", max_bytes=8_000).strip()
+                    if not prompt:
+                        raise StateCommandError("campaign.dungeon_run.question.prompt must not be empty")
+                    clean_question["prompt"] = prompt
                 if "options" in question:
                     clean_question["options"] = cls._campaign_text_list(question["options"], "campaign.dungeon_run.question.options", maximum=MAX_DUNGEON_OPTIONS, max_length=500)
                 item["question"] = clean_question

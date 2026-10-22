@@ -106,6 +106,10 @@ class AiTutorModuleTests(AiTutorTestCase):
         self.reply('```json\n{"verdict": "incorrect", "reason": "What happens when the hand is empty?"}\n```')
         self.assertEqual(ai_tutor.judge("battle", context={}, answer="x")["verdict"], "incorrect")
 
+        # Prose around the object is tolerated; the object's shape is still strict.
+        self.reply('Looking at the code now.\n{"verdict": "correct", "reason": "Totals add up."}\nHope that helps!')
+        self.assertEqual(ai_tutor.judge("battle", context={}, answer="x")["verdict"], "correct")
+
         for bad in ({"verdict": "maybe", "reason": "?"}, {"verdict": "correct"}, {"verdict": "correct", "reason": "ok", "xp": 500}):
             self.reply(bad)
             with self.assertRaises(ai_tutor.AiTutorError):
@@ -179,7 +183,8 @@ class AiTutorEndpointTests(AiTutorTestCase):
     def test_judge_applies_dungeon_verdict_through_gateway(self):
         run = self.enter_room()
         submission = self.bind(run, "items = ['red']")
-        self.reply({"verdict": "correct", "reason": "You built the list the question asked for."})
+        # Real models ran past the gateway's 240-char reason limit (422); it must be clamped.
+        self.reply({"verdict": "correct", "reason": "You built the list the question asked for. " * 12})
         judged = self.client.post(
             "/api/ai/judge",
             headers=self.headers,
@@ -212,7 +217,7 @@ class AiTutorEndpointTests(AiTutorTestCase):
 
     def test_dungeon_question_is_rewritten_once_per_room(self):
         run = self.enter_room()
-        self.reply({"prompt": "Write a list holding two colours, then print its length.", "options": ["len(x)", "x.size", "count(x)"]})
+        self.reply({"prompt": "Write a list holding two colours, then print its length.\n```python\ncolours = []\n```", "options": ["len(x)", "x.size", "count(x)"]})
         first = self.client.post("/api/ai/dungeon-question", headers=self.headers, json={"run_id": run["run_id"]})
         self.assertEqual(first.status_code, 200, first.text)
         self.assertTrue(first.json()["changed"])
@@ -220,6 +225,9 @@ class AiTutorEndpointTests(AiTutorTestCase):
         self.assertIn("two colours", first.json()["dungeon"]["question"]["prompt"])
         again = self.client.post("/api/ai/dungeon-question", headers=self.headers, json={"run_id": run["run_id"]})
         self.assertFalse(again.json()["changed"])
+        # Multiline AI questions must survive the cloud-sync projection too.
+        snapshot, _metadata = app_v2.STATE_SERVICE.sync_snapshot()
+        self.assertIn("```python", snapshot["campaign"]["dungeon_run"]["question"]["prompt"])
 
     def test_dungeon_question_never_rewrites_a_started_answer(self):
         run = self.enter_room()
