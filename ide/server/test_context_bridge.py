@@ -289,6 +289,50 @@ class PyrContextBridgeTests(unittest.TestCase):
                 app_v2.DUNGEON_PATH = original_dungeon
                 app_v2.PYR_DUNGEON_CHALLENGE = original_challenge
 
+    def test_dungeon_elite_rooms_accept_provider_submissions(self):
+        # The state service adjudicates encounter, elite and boss rooms; the
+        # gateway used to accept only "encounter", stranding elite gates.
+        original_workspace = app_v2.WORKSPACE
+        original_progress = app_v2.PROGRESS_PATH
+        original_dungeon = app_v2.DUNGEON_PATH
+        original_challenge = app_v2.PYR_DUNGEON_CHALLENGE
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            workspace = root / "quest"
+            workspace.mkdir()
+            canonical = root / "platform" / "progress.json"
+            canonical.parent.mkdir()
+            canonical.write_text(json.dumps(context_progress()), encoding="utf-8")
+            app_v2.WORKSPACE = workspace
+            app_v2.PROGRESS_PATH = canonical
+            app_v2.DUNGEON_PATH = workspace / "dungeon.py"
+            app_v2.PYR_DUNGEON_CHALLENGE = None
+            try:
+                client = TestClient(app_v2.app, base_url="http://127.0.0.1")
+                headers = {"host": "127.0.0.1"}
+                run = client.post("/api/dungeon/start", headers=headers, json={"concept_id": "lists", "seed": "bridge"}).json()["dungeon"]
+                choice = next(c["id"] for c in run["room_choices"] if c["kind"] in {"encounter", "elite"})
+                run = client.post("/api/dungeon/choose", headers=headers, json={"run_id": run["run_id"], "choice_id": choice}).json()["dungeon"]
+                state = json.loads(canonical.read_text(encoding="utf-8"))
+                state["dungeon_run"]["room_type"] = "elite"
+                canonical.write_text(json.dumps(state), encoding="utf-8")
+
+                context = client.post("/api/pyr/context", headers=headers, json={"active_path": "dungeon.py"})
+                self.assertEqual(context.status_code, 200, context.text)
+                challenge = context.json()["context"]["dungeon_verdict"]
+                self.assertIsNotNone(challenge)
+                bound = client.post(
+                    "/api/pyr/dungeon-submission",
+                    headers=headers,
+                    json={"nonce": challenge["nonce"], "run_id": run["run_id"], "question_id": run["question"]["id"], "answer": "items = ['red']"},
+                )
+                self.assertEqual(bound.status_code, 200, bound.text)
+            finally:
+                app_v2.WORKSPACE = original_workspace
+                app_v2.PROGRESS_PATH = original_progress
+                app_v2.DUNGEON_PATH = original_dungeon
+                app_v2.PYR_DUNGEON_CHALLENGE = original_challenge
+
     def test_forge_submission_is_bound_to_the_active_campaign_file(self):
         original_workspace = app_v2.WORKSPACE
         original_progress = app_v2.PROGRESS_PATH

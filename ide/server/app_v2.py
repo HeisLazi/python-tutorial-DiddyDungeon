@@ -148,6 +148,9 @@ current project.
 '''
 
 ALLOWED_ORIGINS = allowed_origins()
+# Rooms whose question is answered and adjudicated; must match the state
+# service's dungeon_record_verdict room check.
+DUNGEON_COMBAT_ROOM_TYPES = frozenset({"encounter", "elite", "boss"})
 PROGRESS_LOCK = threading.RLock()
 STATE_SERVICE = LocalStateService(lambda: PROGRESS_PATH, PROGRESS_LOCK)
 WORKSPACE_NOTES_LOCK = threading.RLock()
@@ -1408,7 +1411,7 @@ def _attach_pyr_dungeon_challenge(
 
     global PYR_DUNGEON_CHALLENGE
     client_key = _pyr_client_id(client_id)
-    if not isinstance(dungeon, dict) or not dungeon.get("active") or dungeon.get("room_type") != "encounter":
+    if not isinstance(dungeon, dict) or not dungeon.get("active") or dungeon.get("room_type") not in DUNGEON_COMBAT_ROOM_TYPES:
         with PYR_CONTEXT_LOCK:
             _clear_challenge(PYR_DUNGEON_CHALLENGES, client_key)
             if client_key == "default":
@@ -1807,7 +1810,7 @@ def create_pyr_dungeon_submission(payload: PyrDungeonSubmissionRequest):
                 progress, metadata = STATE_SERVICE.snapshot_with_metadata()
                 projection = STATE_SERVICE.dungeon_projection(progress)
                 question = projection.get("question") if isinstance(projection.get("question"), dict) else {}
-                if metadata["revision"] != challenge.get("revision") or not projection.get("active") or projection.get("room_type") != "encounter":
+                if metadata["revision"] != challenge.get("revision") or not projection.get("active") or projection.get("room_type") not in DUNGEON_COMBAT_ROOM_TYPES:
                     _clear_challenge(PYR_DUNGEON_CHALLENGES, client_id)
                     if client_id == "default":
                         PYR_DUNGEON_CHALLENGE = None
