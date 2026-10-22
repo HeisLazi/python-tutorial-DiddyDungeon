@@ -1775,9 +1775,10 @@ export function AvatarSprite({ appearance, gear = {}, size = 96, className = '',
 }
 
 function AvatarSwatch({ field, value, active, onPick, disabled }) {
-  const palette = AVATAR_PALETTES[field]
+  // Beard colours share the hair palette; 'match' (no swatch) follows the hair.
+  const palette = AVATAR_PALETTES[field === 'beard_color' ? 'hair_color' : field]
   const color = palette ? (Array.isArray(palette[value]) ? palette[value][0] : palette[value]) : null
-  const label = field === 'hair_style' || field === 'facial_hair' ? (AVATAR_STYLE_LABELS[value] || value) : value.replaceAll('_', ' ')
+  const label = AVATAR_STYLE_LABELS[value] && (color === null || value === 'match') ? AVATAR_STYLE_LABELS[value] : value.replaceAll('_', ' ')
   return (
     <button type="button" className={`avatar-swatch ${active ? 'active' : ''} ${color ? 'color' : 'text'}`} onClick={() => onPick(field, value)} disabled={disabled} aria-pressed={active} title={`${AVATAR_LABELS[field]}: ${label}`}>
       {color ? <i style={{ background: color }} /> : <span>{label}</span>}
@@ -1831,7 +1832,7 @@ function CharacterScreen({ progress, equipmentProjection, setAvatar, equipCampai
         <div className="character-controls">
           <section className="character-panel">
             <header><h3>Appearance</h3>{saving && <small>saving…</small>}</header>
-            {Object.keys(AVATAR_LABELS).map((field) => (
+            {Object.keys(AVATAR_LABELS).filter((field) => field !== 'beard_color' || look.facial_hair !== 'none').map((field) => (
               <div className="avatar-option-row" key={field}>
                 <span>{AVATAR_LABELS[field]}</span>
                 <div className="avatar-option-swatches">

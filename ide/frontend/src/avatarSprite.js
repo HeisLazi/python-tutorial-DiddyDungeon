@@ -30,10 +30,10 @@ export const AVATAR_PALETTES = {
 }
 
 export const AVATAR_LABELS = {
-  skin: 'Skin', hair_style: 'Hair', hair_color: 'Hair colour', facial_hair: 'Facial hair', eyes: 'Eyes', outfit: 'Outfit', accent: 'Trim',
+  skin: 'Skin', hair_style: 'Hair', hair_color: 'Hair colour', facial_hair: 'Facial hair', beard_color: 'Beard colour', eyes: 'Eyes', outfit: 'Outfit', accent: 'Trim',
 }
 
-export const DEFAULT_APPEARANCE = { skin: 'umber', hair_style: 'locs_taper', hair_color: 'black', facial_hair: 'none', eyes: 'brown', outfit: 'indigo', accent: 'gold' }
+export const DEFAULT_APPEARANCE = { skin: 'umber', hair_style: 'locs_taper', hair_color: 'black', facial_hair: 'none', beard_color: 'match', eyes: 'brown', outfit: 'indigo', accent: 'gold' }
 
 // Button labels for the hair styles (option values are state identifiers).
 export const AVATAR_STYLE_LABELS = {
@@ -41,7 +41,7 @@ export const AVATAR_STYLE_LABELS = {
   twist_out: 'Twist-out', afro: 'Afro', bantu_knots: 'Bantu knots', waves: '360 waves', brush_cut: 'Brush cut',
   taper: 'Taper fade', hooded: 'Hood',
   none: 'Clean shaven', stubble: 'Stubble', mustache: 'Mustache', goatee: 'Goatee', circle_beard: 'Circle beard',
-  chin_strap: 'Chin strap', full_beard: 'Full beard',
+  chin_strap: 'Chin strap', full_beard: 'Full beard', match: 'Match hair',
 }
 
 // Armor colours by equipped armor name (campaign catalogue + Dungeon starter).
@@ -235,33 +235,33 @@ const HAIR = {
 const FACIAL_HAIR = {
   none: {},
   stubble: {
-    8: row([8, 'f'], [15, 'f']),
-    9: row([8, 'f'], [10, 'f'], [13, 'f'], [15, 'f']),
-    10: row([9, 'ffffff']),
+    8: row([8, 'z'], [15, 'z']),
+    9: row([8, 'z'], [10, 'z'], [13, 'z'], [15, 'z']),
+    10: row([9, 'zzzzzz']),
   },
   mustache: {
-    8: row([10, 'hhhh']),
+    8: row([10, 'yyyy']),
   },
   goatee: {
-    9: row([10, 'h'], [13, 'h']),
-    10: row([10, 'hhhh']),
+    9: row([10, 'y'], [13, 'y']),
+    10: row([10, 'yyyy']),
   },
   circle_beard: {
-    8: row([10, 'hhhh']),
-    9: row([10, 'h'], [13, 'h']),
-    10: row([10, 'hhhh']),
+    8: row([10, 'yyyy']),
+    9: row([10, 'y'], [13, 'y']),
+    10: row([10, 'yyyy']),
   },
   chin_strap: {
-    8: row([8, 'h'], [15, 'h']),
-    9: row([8, 'h'], [15, 'h']),
-    10: row([9, 'hhhhhh']),
+    8: row([8, 'y'], [15, 'y']),
+    9: row([8, 'y'], [15, 'y']),
+    10: row([9, 'yyyyyy']),
   },
   full_beard: {
-    7: row([8, 'h'], [15, 'h']),
-    8: row([8, 'h'], [10, 'hHhh'], [15, 'h']),
-    9: row([8, 'hhh'], [13, 'hhh']),
-    10: row([8, 'ohhHhhho']),
-    11: row([9, 'ohhhho']),
+    7: row([8, 'y'], [15, 'y']),
+    8: row([8, 'y'], [10, 'yYyy'], [15, 'y']),
+    9: row([8, 'yyy'], [13, 'yyy']),
+    10: row([8, 'oyyYyyyo']),
+    11: row([9, 'oyyyyo']),
   },
 }
 
@@ -313,13 +313,14 @@ export function avatarPalette(appearance = {}, gear = {}) {
   const look = { ...DEFAULT_APPEARANCE, ...appearance }
   const [skin, skinShade] = AVATAR_PALETTES.skin[look.skin] || AVATAR_PALETTES.skin.umber
   const [hair, hairLight] = AVATAR_PALETTES.hair_color[look.hair_color] || AVATAR_PALETTES.hair_color.black
+  const [beard, beardLight] = AVATAR_PALETTES.hair_color[look.beard_color] || [hair, hairLight]
   const [outfit, outfitShade] = AVATAR_PALETTES.outfit[look.outfit] || AVATAR_PALETTES.outfit.indigo
   const [armor, armorShade] = ARMOR_COLORS[gear.armor] || ['#888', '#666']
   const weaponKind = /lantern/i.test(gear.weapon || '') ? 'lantern' : /compass/i.test(gear.weapon || '') ? 'compass' : 'blade'
   return {
     o: '#0b0a14', s: skin, S: skinShade, M: skinShade, w: '#f4ecd8',
     e: AVATAR_PALETTES.eyes[look.eyes] || AVATAR_PALETTES.eyes.brown,
-    h: hair, H: hairLight, f: mix(hair, skinShade), c: outfit, C: outfitShade,
+    h: hair, H: hairLight, f: mix(hair, skinShade), y: beard, Y: beardLight, z: mix(beard, skinShade), c: outfit, C: outfitShade,
     a: AVATAR_PALETTES.accent[look.accent] || AVATAR_PALETTES.accent.gold,
     p: '#2b2a3d', b: '#4a2c1a', A: armor, B: armorShade,
     T: TRINKET_COLORS[gear.trinket] || '#ffcc33', W: WEAPON_COLORS[weaponKind],

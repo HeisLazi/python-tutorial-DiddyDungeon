@@ -652,13 +652,13 @@ class StateServiceBehaviorTests(unittest.TestCase):
         service, path = self.make_service()
         self.assertEqual(service.equipment_projection(self.read(path))["avatar"]["hair_style"], "locs_taper")
 
-        changed = service.apply("set_avatar", {"hair_style": "twists", "outfit": "crimson", "facial_hair": "full_beard", "hair_color": "honey"}, "player")
+        changed = service.apply("set_avatar", {"hair_style": "twists", "outfit": "crimson", "facial_hair": "full_beard", "hair_color": "honey", "beard_color": "silver"}, "player")
         self.assertTrue(changed["changed"])
         avatar = self.read(path)["equipment"]["avatar"]
         self.assertEqual((avatar["hair_style"], avatar["outfit"], avatar["skin"]), ("twists", "crimson", "umber"))
         self.assertEqual(service.equipment_projection(self.read(path))["avatar"]["outfit"], "crimson")
 
-        self.assertEqual((avatar["facial_hair"], avatar["hair_color"]), ("full_beard", "honey"))
+        self.assertEqual((avatar["facial_hair"], avatar["hair_color"], avatar["beard_color"]), ("full_beard", "honey", "silver"))
         for bad in ({"hair_style": "glowing"}, {"wings": "yes"}, {"facial_hair": "lumberjack"}):
             with self.assertRaises(StateCommandError):
                 service.apply("set_avatar", bad, "player")

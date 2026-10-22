@@ -144,6 +144,11 @@ AVATAR_OPTIONS: dict[str, tuple[str, ...]] = {
         "silver", "white", "burgundy", "crimson", "pink", "violet", "blue", "teal", "green",
     ),
     "facial_hair": ("none", "stubble", "mustache", "goatee", "circle_beard", "chin_strap", "full_beard"),
+    # "match" follows hair_color; otherwise any hair colour.
+    "beard_color": (
+        "match", "black", "dark_brown", "brown", "auburn", "copper", "honey", "blonde", "platinum",
+        "silver", "white", "burgundy", "crimson", "pink", "violet", "blue", "teal", "green",
+    ),
     "eyes": ("brown", "blue", "green", "grey", "amber"),
     "outfit": ("indigo", "crimson", "forest", "charcoal", "plum", "teal", "gold", "sand"),
     "accent": ("gold", "silver", "crimson", "teal", "violet", "white"),
@@ -153,6 +158,7 @@ DEFAULT_AVATAR: dict[str, str] = {
     "hair_style": "locs_taper",
     "hair_color": "black",
     "facial_hair": "none",
+    "beard_color": "match",
     "eyes": "brown",
     "outfit": "indigo",
     "accent": "gold",
