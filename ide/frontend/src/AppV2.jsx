@@ -2,7 +2,7 @@ import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState }
 import Editor from '@monaco-editor/react'
 import { Terminal } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
-import { buildQuestDocument, ContextPanel, GameScreen, RewardQueue, SurfaceNavigation, TutorPracticeBar } from './RpgViews.jsx?homePortParity20260921'
+import { buildQuestDocument, ContextPanel, GameScreen, PyrChatPanel, RewardQueue, SurfaceNavigation, TutorPracticeBar } from './RpgViews.jsx?homePortParity20260921'
 import { syncEngine } from './cloud/syncEngine.js'
 import { pyrClientId } from './cloud/pyrClient.js'
 
@@ -460,6 +460,9 @@ function AppV2() {
   // shown while a model call runs; state writes pause until it clears.
   const [aiTutor, setAiTutor] = useState({ loaded: false, settings: null, opencode: null })
   const [pyrThinking, setPyrThinking] = useState('')
+  // Forge PYR panel log (OpenCode mode): questions, replies and verdicts.
+  const [pyrLog, setPyrLog] = useState([])
+  const pushPyrLog = (entry) => setPyrLog((current) => [...current, { id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`, ...entry }].slice(-40))
   const [themeChoice, setThemeChoice] = usePersistentState('questlab.themeChoice', '')
   const [fontFamily, setFontFamily] = usePersistentState('questlab.fontFamily', 'inter')
   const [initialLaunch] = useState(() => launchContext())
@@ -1064,7 +1067,11 @@ function AppV2() {
   }
 
   const openCodeReady = Boolean(aiTutor.opencode?.ready)
-  const autoGrade = openCodeReady && aiTutor.settings?.auto_grade !== false
+  // OpenCode mode is the default; Classic brings back the CLI terminal.
+  // Without a ready OpenCode the panel falls back to Classic on its own.
+  const pyrMode = aiTutor.settings?.mode === 'classic' ? 'classic' : 'opencode'
+  const builtInPyr = pyrMode === 'opencode' && openCodeReady
+  const autoGrade = builtInPyr && aiTutor.settings?.auto_grade !== false
 
   // Run one OpenCode call with the shared "PYR is thinking" lock. Concurrent
   // requests are refused so a second click cannot double-submit.
@@ -1086,6 +1093,7 @@ function AppV2() {
       body: JSON.stringify({ kind, submission, answer, question, client_id: pyrClientId() }),
     })
     setNotice(`PYR ${result.verdict === 'correct' ? '✔ correct' : '✘ not yet'} — ${result.reason}`)
+    pushPyrLog({ role: 'verdict', verdict: result.verdict, text: result.reason })
     await refreshCampaign({ silent: true })
     return result
   })
@@ -2649,6 +2657,22 @@ function AppV2() {
         {aiGridVisible && <div className="resize-handle vertical right-resizer" onPointerDown={(event) => startResize('right', event)} />}
 
         <aside id="questlab-ai-panel" className={`ai-panel panel ${aiGridVisible ? '' : aiPopoverOpen && showAiTerminal ? 'ai-popout' : 'ai-panel-parked'} ${aiVisible ? '' : 'surface-hidden'}`} aria-hidden={!aiVisible}>
+          {builtInPyr && (
+            <PyrChatPanel
+              log={pyrLog}
+              ready={openCodeReady}
+              thinking={pyrThinking}
+              model={aiTutor.settings?.model || 'Auto'}
+              onOpenSettings={() => setActiveView('settings')}
+              onAsk={(question) => {
+                pushPyrLog({ role: 'you', text: question })
+                pyrTools.ask({ question, concept: campaign?.encounter?.concept || campaign?.encounter?.mob?.concept || '', code: String(code || '') })
+                  .then((reply) => pushPyrLog({ role: 'pyr', text: reply }))
+                  .catch((error) => pushPyrLog({ role: 'pyr', text: `I couldn't answer that just now (${error.message}).` }))
+              }}
+            />
+          )}
+          <div className="ai-classic" hidden={builtInPyr}>
           <div className="ai-toolbar">
             <div>
               <span className="panel-title-inline">PYR / AI</span>
@@ -2675,6 +2699,7 @@ function AppV2() {
             skin={terminalSkin}
             onStateChange={setAiState}
           />
+          </div>
         </aside>
       </main>
 

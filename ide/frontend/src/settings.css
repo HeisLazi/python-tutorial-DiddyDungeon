@@ -117,3 +117,32 @@
 .pyr-practice-question p { margin: 4px 0; color: var(--text); white-space: pre-wrap; }
 .pyr-practice-question small { color: var(--muted); }
 .pyr-choose-lens { margin-bottom: 6px; border-color: var(--violet, var(--gold)); color: var(--violet, var(--gold)); }
+
+/* PYR mode switch (Settings → AI Tutor) */
+.settings-v2 .settings-segmented { display: inline-flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+.settings-v2 .settings-segmented button { padding: 7px 12px; border: 1px solid var(--line2); background: var(--panel3); color: var(--muted); }
+.settings-v2 .settings-segmented button.active { border-color: var(--gold); background: var(--gold); color: #1d1240; }
+
+/* Forge PYR panel: classic terminal wrapper keeps the panel's flex layout. */
+.ai-classic:not([hidden]) { display: contents; }
+.ai-classic[hidden] { display: none; }
+
+/* Built-in PYR chat (OpenCode mode) */
+.pyr-chat { display: flex; flex-direction: column; flex: 1; min-height: 0; gap: 8px; padding: 10px; }
+.pyr-chat-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.pyr-chat-head strong { display: block; color: var(--green); }
+.pyr-chat-head button { max-width: 55%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 9px; }
+.pyr-chat-log { flex: 1; min-height: 0; overflow-y: auto; display: grid; align-content: start; gap: 8px; padding-right: 4px; }
+.pyr-chat-empty { margin: 0; color: var(--muted); }
+.pyr-chat-entry { padding: 8px 10px; border: 1px solid var(--line); background: var(--panel2); }
+.pyr-chat-entry span { display: block; margin-bottom: 3px; color: var(--violet, var(--gold)); font-size: 10px; }
+.pyr-chat-entry p { margin: 0; color: var(--text); white-space: pre-wrap; overflow-wrap: anywhere; }
+.pyr-chat-entry.you { border-color: var(--line2); background: var(--panel3); }
+.pyr-chat-entry.you span { color: var(--blue); }
+.pyr-chat-entry.verdict.correct { border-color: var(--green); }
+.pyr-chat-entry.verdict.correct span { color: var(--green); }
+.pyr-chat-entry.verdict.incorrect { border-color: var(--ember); }
+.pyr-chat-entry.verdict.incorrect span { color: var(--ember); }
+.pyr-chat-entry.pending p { color: var(--muted); animation: pyr-thinking 1.2s steps(2) infinite; }
+.pyr-chat-compose { display: grid; gap: 6px; }
+.pyr-chat-compose textarea { width: 100%; resize: vertical; min-height: 60px; }

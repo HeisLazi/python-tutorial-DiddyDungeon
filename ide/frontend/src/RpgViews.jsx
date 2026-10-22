@@ -764,6 +764,44 @@ function ProgressBar({ value, max, label, className = '' }) {
   )
 }
 
+// Built-in PYR (OpenCode mode): replaces the raw CLI terminal in the Forge.
+// Verdicts from Submit run land here too, so the panel is the PYR log.
+export function PyrChatPanel({ log = [], ready, thinking, model, onAsk, onOpenSettings }) {
+  const [draft, setDraft] = useState('')
+  const listRef = useRef(null)
+  useEffect(() => {
+    if (listRef.current) listRef.current.scrollTop = listRef.current.scrollHeight
+  }, [log.length, thinking])
+  const send = () => {
+    const question = draft.trim()
+    if (!question || thinking) return
+    setDraft('')
+    onAsk?.(question)
+  }
+  return (
+    <div className="pyr-chat" data-testid="pyr-chat">
+      <div className="pyr-chat-head">
+        <div><span className="screen-kicker">PYR · OPENCODE</span><strong>{ready ? 'Ready' : 'Offline'}</strong></div>
+        <button type="button" onClick={onOpenSettings} title="AI Tutor settings">{model || 'Auto'}</button>
+      </div>
+      <div className="pyr-chat-log" ref={listRef} aria-live="polite">
+        {log.length === 0 && <p className="pyr-chat-empty">Submit run and PYR grades it here. Ask for a hint any time; PYR nudges, it won't write your project.</p>}
+        {log.map((entry) => (
+          <div key={entry.id} className={`pyr-chat-entry ${entry.role}${entry.verdict ? ` ${entry.verdict}` : ''}`}>
+            <span>{entry.role === 'you' ? 'YOU' : entry.role === 'verdict' ? (entry.verdict === 'correct' ? '✔ VERDICT' : '✘ VERDICT') : 'PYR'}</span>
+            <p>{entry.text}</p>
+          </div>
+        ))}
+        {thinking && <div className="pyr-chat-entry pyr pending"><span>PYR</span><p>{thinking}</p></div>}
+      </div>
+      <div className="pyr-chat-compose">
+        <textarea value={draft} rows={3} placeholder="Ask for a hint, not a finished answer…" onChange={(event) => setDraft(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); send() } }} disabled={!ready} />
+        <button type="button" className="primary" onClick={send} disabled={!ready || Boolean(thinking) || !draft.trim()}>Ask PYR</button>
+      </div>
+    </div>
+  )
+}
+
 export function SurfaceNavigation({ activeView, onNavigate }) {
   // Codex is now a folio inside Tutor Notebook. Keep the legacy route
   // addressable for saved links, but do not present a duplicate top-level
@@ -2515,6 +2553,15 @@ function AiTutorSettings({ ai = {} }) {
         </div>
         {opencode.integrations?.length > 0 && <div className="settings-chips">{opencode.integrations.map((name) => <span key={name}>{name}</span>)}</div>}
         <p className="settings-note">Add a provider or API key: open the Forge terminal and run <code>opencode auth login</code>, then press Re-check.</p>
+      </section>
+      <section className="settings-group">
+        <header><h3>PYR mode</h3></header>
+        <SettingRow label="How PYR runs" description={settings.mode === 'classic' ? 'Classic: the Forge PYR panel is a raw terminal; launch Claude, AGY, Codex or Copilot there and submissions are pasted into it.' : 'OpenCode: PYR is built in and already loaded. It grades your submissions and chats in the Forge panel. Falls back to Classic when OpenCode is not ready.'}>
+          <div className="settings-segmented" role="radiogroup" aria-label="PYR mode">
+            <button type="button" role="radio" aria-checked={settings.mode !== 'classic'} className={settings.mode !== 'classic' ? 'active' : ''} onClick={() => update({ mode: 'opencode' })} disabled={saving}>OpenCode</button>
+            <button type="button" role="radio" aria-checked={settings.mode === 'classic'} className={settings.mode === 'classic' ? 'active' : ''} onClick={() => update({ mode: 'classic' })} disabled={saving}>Classic terminal</button>
+          </div>
+        </SettingRow>
       </section>
       <section className="settings-group">
         <header><h3>Model</h3></header>
