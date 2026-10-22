@@ -24,6 +24,13 @@ Updated: 2026-10-22 · branch `feature/tauri-arcade` (fast-forwarded into
   HANDOFF.md) and its `entry_file`.
 - **PYR mode:** OpenCode (default, built-in Forge chat panel) or Classic
   (raw terminal + CLI harnesses). Auto model = `opencode-go/beam-free` first.
+- **Avatar:** pixel paper-doll (`ide/frontend/src/avatarSprite.js`, layers:
+  body/hair/outfit/armor/trinket/weapon). Appearance lives in
+  `equipment.avatar` (options in `state.AVATAR_OPTIONS`, `POST /api/avatar`,
+  synced). Shown in Home (click → Character screen) and the Dungeon "You"
+  card. New armor/trinkets need a colour in `ARMOR_COLORS`/`TRINKET_COLORS`.
+- **Dungeon room brief:** `DungeonQuestionBrief` (question, answer-layout
+  sample, difficulty, enemy Resolve, you). Zen mode spans the editor full width.
 - **Gameplay fixes:** The House accepts verdicts when a synced save lost
   `boss_status`; Dungeon elite/boss rooms can be submitted; multiline
   (AI-written) Dungeon questions pass cloud-sync validation.

@@ -60,9 +60,10 @@
 .character-stage-gear span { display: grid; padding: 6px 8px; border: 1px solid var(--line); background: var(--panel3); }
 .character-stage-gear small { color: var(--muted); font-size: 10px; }
 .character-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin: 0; }
-.character-stats div { display: flex; justify-content: space-between; padding: 5px 8px; border: 1px solid var(--line); }
+.character-stats div { display: flex; justify-content: space-between; gap: 10px; padding: 5px 8px; border: 1px solid var(--line); }
+.character-stats div:last-child { grid-column: 1 / -1; }
 .character-stats dt { color: var(--muted); }
-.character-stats dd { margin: 0; color: var(--text); }
+.character-stats dd { margin: 0; color: var(--text); text-align: right; }
 .character-controls { display: grid; gap: 14px; min-width: 0; }
 .character-panel { display: grid; gap: 10px; padding: 14px; border: 1px solid var(--line2); background: var(--panel); }
 .character-panel header { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
