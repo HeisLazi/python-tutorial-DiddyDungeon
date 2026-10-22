@@ -2775,6 +2775,7 @@ class AiSettingsRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     model: str | None = Field(default=None, max_length=200)
+    mode: Literal["opencode", "classic"] | None = None
     auto_grade: bool | None = None
     generate_dungeon_questions: bool | None = None
     choose_practice_lens: bool | None = None

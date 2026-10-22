@@ -29,6 +29,8 @@ elif args[:1] == ["models"]:
     print("google/fast-model")
     print("opencode-go/big-model")
     print("opencode-go/claude-haiku-5-5")
+    print("opencode-go/beam-free")
+    print("opencode/beam-free")
 elif args[:1] == ["run"]:
     mode = os.environ.get("STUB_MODE", "json")
     print(json.dumps({{"type": "step_start", "part": {{"type": "step-start"}}}}))
@@ -108,9 +110,20 @@ class AiTutorModuleTests(AiTutorTestCase):
 
     def test_auto_model_picks_first_signed_in_preference(self):
         self.reply({"ok": True})
-        self.assertEqual(ai_tutor.test_connection()["model"], "opencode-go/claude-haiku-5-5")
+        self.assertEqual(ai_tutor.test_connection()["model"], "opencode-go/beam-free")
         run = [call for call in self.calls() if call[:1] == ["run"]][-1]
-        self.assertEqual(run[run.index("--model") + 1], "opencode-go/claude-haiku-5-5")
+        self.assertEqual(run[run.index("--model") + 1], "opencode-go/beam-free")
+
+    def test_free_tier_models_are_hidden_because_they_reject_custom_agents(self):
+        models = ai_tutor.list_models()
+        self.assertIn("opencode-go/beam-free", models)
+        self.assertNotIn("opencode/beam-free", models)
+
+    def test_mode_defaults_to_opencode_and_is_validated(self):
+        self.assertEqual(ai_tutor.load_settings()["mode"], "opencode")
+        self.assertEqual(ai_tutor.save_settings({"mode": "classic"})["mode"], "classic")
+        with self.assertRaises(ai_tutor.AiTutorError):
+            ai_tutor.save_settings({"mode": "telepathy"})
 
     def test_judge_accepts_only_strict_verdict_json(self):
         self.reply('```json\n{"verdict": "incorrect", "reason": "What happens when the hand is empty?"}\n```')

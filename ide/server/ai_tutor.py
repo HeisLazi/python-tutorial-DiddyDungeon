@@ -35,6 +35,10 @@ MODEL_PATTERN = re.compile(r"^[A-Za-z0-9._:/@#+-]{0,200}$")
 
 DEFAULT_SETTINGS: dict[str, Any] = {
     "provider": "opencode",
+    # "opencode": PYR is built in and grades automatically (default).
+    # "classic": the Forge PYR terminal, where the player launches a CLI
+    # harness (Claude, AGY, Codex, Copilot) that receives pasted prompts.
+    "mode": "opencode",
     # Empty means "Auto": the first signed-in model from AUTO_MODEL_PREFERENCES.
     "model": "",
     "auto_grade": True,
@@ -105,6 +109,8 @@ def save_settings(update: dict[str, Any]) -> dict[str, Any]:
                 raise AiTutorError(f"Invalid value for {key}", kind="invalid", status_code=422)
             if key == "model" and not MODEL_PATTERN.match(value):
                 raise AiTutorError("Model must look like provider/model", kind="invalid", status_code=422)
+            if key == "mode" and value not in {"opencode", "classic"}:
+                raise AiTutorError("Mode must be opencode or classic", kind="invalid", status_code=422)
             settings[key] = value
         path = settings_path()
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -199,7 +205,15 @@ def list_models(*, max_age: float = 300.0) -> list[str]:
         listing = _run([binary, "models"], timeout=60)
     except (OSError, subprocess.SubprocessError):
         return []
-    models = sorted({line.strip() for line in listing.stdout.splitlines() if "/" in line and " " not in line.strip()})
+    # The `opencode/` provider is OpenCode's own free tier, which refuses any
+    # agent but OpenCode's built-in ones, so it can never run PYR; hide it.
+    models = sorted(
+        {
+            line.strip()
+            for line in listing.stdout.splitlines()
+            if "/" in line and " " not in line.strip() and not line.strip().startswith("opencode/")
+        }
+    )
     _MODELS_CACHE.update({"at": time.monotonic(), "models": models})
     return models
 
@@ -235,6 +249,7 @@ AGENT_CONFIG = {
 # serves OpenCode's own agents, so Auto picks the first signed-in model from
 # this list of quick, JSON-reliable models.
 AUTO_MODEL_PREFERENCES = (
+    "opencode-go/beam-free",
     "opencode-go/claude-haiku-5-5",
     "opencode-go/deepseek-v4.1-flash",
     "opencode-go/qwen3.8-flash",
