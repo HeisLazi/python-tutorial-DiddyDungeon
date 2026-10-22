@@ -38,6 +38,11 @@ def parse_args():
     parser.add_argument("--backend-port", type=int, default=7331, help="Preferred backend port (auto-falls forward if busy)")
     parser.add_argument("--frontend-port", type=int, default=5173, help="Preferred frontend port (auto-falls forward if busy)")
     parser.add_argument(
+        "--app",
+        action="store_true",
+        help="App mode: build the frontend once and serve it from the backend on a single port (used by the desktop app).",
+    )
+    parser.add_argument(
         "--reload-backend",
         action="store_true",
         help="Development only: enable uvicorn reload. This intentionally restarts PTY terminals when backend files change.",
@@ -77,6 +82,41 @@ def choose_port(preferred: int, *, avoid: set[int] | None = None) -> int:
         if port not in avoid and port_available(port):
             return port
     raise SystemExit(f"Could not find a free localhost port near {preferred}")
+
+
+DIST_MARKER = ".questlab-build-sha"
+
+
+def ensure_frontend_dist(build_sha: str, env: dict[str, str]) -> Path:
+    """Build ide/frontend/dist unless it already matches this checkout.
+
+    The marker records the revision baked into the bundle, so the stale-frontend
+    banner stays quiet and a launch after `git pull` picks up the new UI.
+    """
+
+    dist = FRONTEND / "dist"
+    marker = dist / DIST_MARKER
+    current = marker.read_text(encoding="utf-8").strip() if marker.is_file() else None
+    if (dist / "index.html").is_file() and build_sha and current == build_sha:
+        return dist
+    print("   building:  frontend bundle (first launch after an update takes a few seconds)…", flush=True)
+    subprocess.run(["npm", "run", "build"], cwd=FRONTEND, env=env, check=True, stdout=subprocess.DEVNULL)
+    marker.write_text(build_sha, encoding="utf-8")
+    return dist
+
+
+def current_branch(root: Path) -> str:
+    try:
+        result = subprocess.run(
+            ["git", "-C", str(root), "branch", "--show-current"],
+            check=True,
+            capture_output=True,
+            text=True,
+            timeout=2,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return ""
+    return result.stdout.strip()
 
 
 def wait_for_port(port: int, timeout: float = 8.0) -> bool:
@@ -260,7 +300,9 @@ def main():
         raise SystemExit("npm is not on PATH")
 
     backend_port = choose_port(args.backend_port)
-    frontend_port = choose_port(args.frontend_port, avoid={backend_port})
+    # In app mode the backend serves the bundle itself, so the browser origin
+    # is the backend origin and the CORS/WebSocket allow-list must match it.
+    frontend_port = backend_port if args.app else choose_port(args.frontend_port, avoid={backend_port})
 
     env = os.environ.copy()
     env["QUESTLAB_REPO_ROOT"] = str(REPO_ROOT)
@@ -270,7 +312,9 @@ def main():
     env["QUESTLAB_WORKSPACE"] = str(workspace)
     env["QUESTLAB_BACKEND_PORT"] = str(backend_port)
     env["QUESTLAB_FRONTEND_PORT"] = str(frontend_port)
-    env["QUESTLAB_EXPECTED_BRANCH"] = "feature/cloud-sync-desktop"
+    env["QUESTLAB_EXPECTED_BRANCH"] = os.environ.get("QUESTLAB_EXPECTED_BRANCH") or (
+        current_branch(REPO_ROOT) if args.app else ""
+    ) or "feature/cloud-sync-desktop"
     # Vite embeds this marker into the frontend bundle so a stale frontend
     # paired with a newer backend can identify itself instead of silently
     # presenting an older UI. Manual `npm run dev` remains supported but has
@@ -296,6 +340,8 @@ def main():
     ]
     if args.reload_backend:
         backend_cmd.append("--reload")
+    if args.app:
+        env["QUESTLAB_SERVE_DIST"] = str(ensure_frontend_dist(env["QUESTLAB_BUILD_SHA"], env))
 
     frontend_cmd = [
         "npm",
@@ -323,8 +369,9 @@ def main():
     print("   terminals: stable PTY mode (backend reload off)\n")
 
     backend = subprocess.Popen(backend_cmd, cwd=REPO_ROOT, env=env)
-    frontend = subprocess.Popen(frontend_cmd, cwd=FRONTEND, env=env)
-    processes = [backend, frontend]
+    processes = [backend]
+    if not args.app:
+        processes.append(subprocess.Popen(frontend_cmd, cwd=FRONTEND, env=env))
 
     stopping = False
 
@@ -345,6 +392,13 @@ def main():
 
     signal.signal(signal.SIGINT, stop)
     signal.signal(signal.SIGTERM, stop)
+
+    if args.app:
+        # The desktop shell waits for this exact line before showing the game.
+        if wait_for_port(backend_port, timeout=30):
+            print(f"QUESTLAB_READY {url}", flush=True)
+        else:
+            print("QUESTLAB_FAILED backend did not start", flush=True)
 
     if not args.no_browser:
         if wait_for_port(frontend_port):

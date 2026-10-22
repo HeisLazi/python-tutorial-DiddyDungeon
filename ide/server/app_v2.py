@@ -2758,3 +2758,13 @@ async def terminal(websocket: WebSocket, role: str):
                     await asyncio.wait_for(asyncio.to_thread(os.waitpid, pid, 0), timeout=1.5)
                 except (asyncio.TimeoutError, ChildProcessError):
                     pass
+
+
+# App mode (`ide/quest.py --app`, used by the desktop shell) serves the built
+# frontend from this same origin. Mounted last so every /api and /ws route
+# above keeps priority over the static catch-all.
+_SERVE_DIST = os.getenv("QUESTLAB_SERVE_DIST", "").strip()
+if _SERVE_DIST and (Path(_SERVE_DIST) / "index.html").is_file():
+    from starlette.staticfiles import StaticFiles
+
+    app.mount("/", StaticFiles(directory=_SERVE_DIST, html=True), name="frontend")
