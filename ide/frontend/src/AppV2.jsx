@@ -1370,8 +1370,8 @@ function AppV2() {
     })
     const submission = result.submission
     if (autoGrade) {
-      await judgeWithPyr('dungeon', submission, answer, context.dungeon?.question?.prompt || '')
-      return submission
+      const judged = await judgeWithPyr('dungeon', submission, answer, context.dungeon?.question?.prompt || '')
+      return { ...submission, judged }
     }
     const prompt = [
       'Quest Lab Infinite Dungeon — provider adjudication required.',

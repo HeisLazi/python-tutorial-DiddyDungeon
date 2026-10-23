@@ -3590,8 +3590,12 @@ class LocalStateService:
         }
         run["last_result"] = result_record
         self._dungeon_append_history(run, {"room": run.get("room", 1), "floor": run.get("floor", 1), **result_record})
-        run["editor_content"] = ""
         died = verdict == "incorrect" and self._counter(run.get("loadout") or {}, "hp") <= 0
+        # A miss keeps the attempt in dungeon.py so the player can fix it;
+        # a clear (next room) or a death starts from a blank buffer.
+        editor_reset = verdict == "correct" or died
+        if editor_reset:
+            run["editor_content"] = ""
         if died:
             ended = _utc_now()
             run.update({"status": "dead", "ended_at": ended, "updated_at": ended, "question": None})
@@ -3615,7 +3619,7 @@ class LocalStateService:
             "coins_delta": coins_delta,
             "damage": damage,
             "evidence_id": evidence_id,
-            "editor_reset": True,
+            "editor_reset": editor_reset,
             "reason": reason,
         }
         if died:

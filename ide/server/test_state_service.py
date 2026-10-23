@@ -478,6 +478,21 @@ class StateServiceBehaviorTests(unittest.TestCase):
         self.assertEqual(result["result"]["run"]["editor_content"], "")
         self.assertIsNone(result["result"]["run"]["question"])
 
+    def test_dungeon_miss_keeps_the_attempt_in_the_editor(self):
+        service, path = self.make_service()
+        run = service.apply("dungeon_start_run", {"concept_id": "loops", "seed": "loop-seed"}, "player")["result"]["run"]
+        run = service.apply("dungeon_choose_room", {"run_id": run["run_id"], "choice_id": next(choice["id"] for choice in run["room_choices"] if choice["kind"] in {"encounter", "elite"})}, "player")["result"]["run"]
+        attempt = "# Answer: B\n# Because it looks right\n"
+        service.apply("dungeon_save_editor", {"run_id": run["run_id"], "question_id": run["question"]["id"], "content": attempt}, "player")
+        result = service.apply_internal(
+            "dungeon_record_verdict",
+            {"run_id": run["run_id"], "question_id": run["question"]["id"], "verdict": "incorrect", "evidence_id": "dungeon-miss-keep", "reason": "Close, but pop needs an index"},
+        )
+        self.assertFalse(result["result"]["run_died"])
+        self.assertFalse(result["event"]["editor_reset"])
+        self.assertEqual(result["result"]["run"]["editor_content"], attempt)
+        self.assertEqual(result["result"]["run"]["question"]["id"], run["question"]["id"])
+
     def test_practice_history_is_independent_and_provider_validated(self):
         service, path = self.make_service()
         before = self.read(path)

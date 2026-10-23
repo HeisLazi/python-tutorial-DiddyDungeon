@@ -222,6 +222,21 @@ class AiTutorEndpointTests(AiTutorTestCase):
         self.assertEqual(judged.json()["verdict"], "correct")
         self.assertEqual(judged.json()["applied"]["mutation"]["result"]["run"]["room"], 2)
 
+    def test_judge_reason_with_code_characters_still_applies(self):
+        run = self.enter_room()
+        submission = self.bind(run, "items = ['red']")
+        # Real reasons quote code ("Correct: a/b") and span lines; the gateway
+        # rejects / \\ : and control characters, so the verdict was lost (422).
+        self.reply({"verdict": "correct", "reason": "Correct: items[0] / len(items)\nworks on C:\\\\ too."})
+        judged = self.client.post(
+            "/api/ai/judge",
+            headers=self.headers,
+            json={"kind": "dungeon", "submission": submission, "answer": "items = ['red']"},
+        )
+        self.assertEqual(judged.status_code, 200, judged.text)
+        self.assertEqual(judged.json()["applied"]["mutation"]["result"]["run"]["room"], 2)
+        self.assertNotRegex(judged.json()["reason"], r"[/\\:\n]")
+
     def test_judge_failure_leaves_challenge_pending_and_costs_nothing(self):
         run = self.enter_room()
         hp_before = json.loads(self.canonical.read_text(encoding="utf-8"))["dungeon_run"].get("hp")

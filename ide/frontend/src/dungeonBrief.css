@@ -83,3 +83,43 @@
 .dungeon-brief-guide summary { cursor: pointer; color: var(--dungeon-gold); font-size: 13px; }
 .dungeon-brief-guide[open] summary { margin-bottom: 8px; }
 .dungeon-brief-guide .dungeon-guide-panel { border: 0; padding: 0; background: transparent; }
+
+/* Verdict card: pops over the Dungeon after every graded submission. */
+.dungeon-verdict-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: rgb(5 4 12 / 0.72);
+}
+.dungeon-verdict-card {
+  display: grid;
+  gap: 10px;
+  width: min(520px, 100%);
+  padding: 20px 22px;
+  border: 3px solid var(--dungeon-line-bright);
+  background: var(--dungeon-panel);
+  color: var(--dungeon-text);
+  box-shadow: 6px 6px 0 rgb(0 0 0 / 0.6);
+}
+.dungeon-screen-shell .dungeon-verdict-card.correct { border-color: var(--dungeon-green); }
+.dungeon-screen-shell .dungeon-verdict-card.incorrect,
+.dungeon-screen-shell .dungeon-verdict-card.error { border-color: var(--dungeon-danger); }
+.dungeon-verdict-card h2 { margin: 0; font-size: 20px; line-height: 1.4; }
+.dungeon-verdict-card.correct h2 { color: var(--dungeon-green); }
+.dungeon-verdict-card.incorrect h2,
+.dungeon-verdict-card.error h2 { color: var(--dungeon-danger); }
+.dungeon-verdict-reason {
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--dungeon-line);
+  background: var(--dungeon-panel-2);
+  font-size: 18px;
+  line-height: 1.45;
+}
+.dungeon-verdict-stats { display: flex; flex-wrap: wrap; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.dungeon-verdict-stats li { padding: 3px 8px; border: 1px solid var(--dungeon-line); background: var(--dungeon-panel-3); font-size: 15px; }
+.dungeon-verdict-hint { margin: 0; color: var(--dungeon-muted); font-size: 16px; }
+.dungeon-verdict-actions { display: flex; justify-content: flex-end; }

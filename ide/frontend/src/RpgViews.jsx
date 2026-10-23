@@ -2443,15 +2443,63 @@ function DungeonFileBridgeStatus() {
   return <section className="dungeon-file-bridge" aria-label="Dungeon file connection"><div><span className="dungeon-eyebrow">PROJECT FILE</span><strong>CANONICAL · dungeon.py</strong><small>The gateway-owned challenge buffer is the only file submitted for this room. Run stays local; Submit asks PYR for a verdict.</small></div><span className="dungeon-file-bridge-status">CONNECTED</span></section>
 }
 
+// Result of a graded Dungeon answer: what PYR said and what it cost or paid.
+function DungeonVerdictCard({ card, onClose, onContinue }) {
+  const correct = card.outcome === 'correct'
+  const error = card.outcome === 'error'
+  const title = error ? 'Could not grade that' : card.died ? 'Run over' : correct ? 'Room cleared' : 'Not yet'
+  const kicker = error ? 'SUBMISSION' : correct ? 'PYR · CORRECT' : 'PYR · INCORRECT'
+  useEffect(() => {
+    const onKey = (event) => { if (event.key === 'Escape') onClose() }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [onClose])
+  return (
+    <div className="dungeon-verdict-backdrop" role="presentation" onClick={onClose}>
+      <section className={`dungeon-verdict-card ${error ? 'error' : correct ? 'correct' : 'incorrect'}`} role="alertdialog" aria-modal="true" aria-labelledby="dungeon-verdict-title" onClick={(event) => event.stopPropagation()}>
+        <span className="dungeon-eyebrow">{kicker}</span>
+        <h2 id="dungeon-verdict-title">{correct ? '✔ ' : '✘ '}{title}</h2>
+        {card.reason && <p className="dungeon-verdict-reason">{card.reason}</p>}
+        {!error && (
+          <ul className="dungeon-verdict-stats">
+            {correct ? <><li>+{card.score_delta ?? 0} score</li><li>+{card.coins_delta ?? 0} coins</li></> : <li>−{card.damage ?? 0} HP{card.hp != null ? ` · ${card.hp} / ${card.maxHp ?? 100} left` : ''}</li>}
+            {card.mob_name && <li>{card.mob_name}</li>}
+          </ul>
+        )}
+        <p className="dungeon-verdict-hint">{error ? 'Nothing was spent. Fix the problem above and submit again.' : card.died ? `Your run ended with ${card.score ?? 0} score. Pick a class to start a new one.` : correct ? 'Pick your next room on the map.' : 'Your answer is still in dungeon.py. Fix it and submit again.'}</p>
+        <div className="dungeon-verdict-actions">
+          {correct && !card.died ? <button type="button" className="dungeon-primary-button" onClick={onContinue} autoFocus>Choose next room <span>→</span></button> : <button type="button" className="dungeon-primary-button" onClick={onClose} autoFocus>{card.died ? 'Back to setup' : 'Try again'}</button>}
+        </div>
+      </section>
+    </div>
+  )
+}
+
 function DungeonScreen({ avatar, dungeon, revision, onStart, onChoose, onRest, onCampAction, onRevealRisk, onEnterRisk, onMarketPurchase, onEquip, onLeave, onFinish, onReset, submitDungeon, busy, saving, editorContent, onEditorChange, onSave }) {
   const [selectedClassId, setSelectedClassId] = useState('')
   const [submitStatus, setSubmitStatus] = useState('')
   const [roomTab, setRoomTab] = useState('room')
   const [characterTab, setCharacterTab] = useState('LOADOUT')
+  const [verdictCard, setVerdictCard] = useState(null)
   const autoOpenedQuestionRef = useRef('')
   const run = dungeon || { active: false, status: 'idle' }
   const question = run.question || {}
   const loadout = run.loadout || {}
+
+  // Pop a verdict card whenever a new graded result lands (auto-graded or
+  // posted later by a CLI provider). The first render only records the
+  // current result so a reload never replays an old verdict.
+  const lastResult = run.last_result || null
+  const seenEvidenceRef = useRef(undefined)
+  useEffect(() => {
+    const evidence = lastResult?.evidence_id || ''
+    if (seenEvidenceRef.current === undefined) { seenEvidenceRef.current = evidence; return }
+    if (!evidence || evidence === seenEvidenceRef.current) return
+    seenEvidenceRef.current = evidence
+    if (!['correct', 'incorrect'].includes(lastResult.outcome)) return
+    setSubmitStatus('')
+    setVerdictCard({ ...lastResult, died: run.status === 'dead', hp: loadout.hp, maxHp: loadout.max_hp, score: run.score })
+  }, [lastResult?.evidence_id])
 
   useEffect(() => {
     if (!run.active) {
@@ -2466,7 +2514,11 @@ function DungeonScreen({ avatar, dungeon, revision, onStart, onChoose, onRest, o
       autoOpenedQuestionRef.current = questionId
       setRoomTab('code')
     }
-    if (!combatRoom) autoOpenedQuestionRef.current = ''
+    if (!combatRoom) {
+      autoOpenedQuestionRef.current = ''
+      // Room cleared: the next step is picking a route, not the code editor.
+      setRoomTab((current) => (current === 'code' ? 'map' : current))
+    }
   }, [run.active, run.room_type, run.question?.id])
 
   const start = async () => {
@@ -2476,12 +2528,14 @@ function DungeonScreen({ avatar, dungeon, revision, onStart, onChoose, onRest, o
 
   const submit = async () => {
     if (!submitDungeon || !question.id || !editorContent?.trim() || busy) return
-    setSubmitStatus('Binding this answer for PYR…')
+    setSubmitStatus('PYR is judging your answer…')
     try {
-      await submitDungeon({ runId: run.run_id, questionId: question.id, answer: editorContent })
-      setSubmitStatus('Sent to PYR. The room changes only after a validated verdict.')
+      const sent = await submitDungeon({ runId: run.run_id, questionId: question.id, answer: editorContent })
+      setSubmitStatus(sent?.judged ? '' : 'Sent to PYR. The room changes once it posts a verdict.')
     } catch (error) {
-      setSubmitStatus(error?.message || 'Dungeon submission failed.')
+      const message = error?.message || 'Dungeon submission failed.'
+      setSubmitStatus(message)
+      setVerdictCard({ outcome: 'error', reason: message })
     }
   }
 
@@ -2496,6 +2550,7 @@ function DungeonScreen({ avatar, dungeon, revision, onStart, onChoose, onRest, o
 
   return (
     <div className="dungeon-screen-shell" data-testid="dungeon" data-campaign-revision={revision}>
+      {verdictCard && <DungeonVerdictCard card={verdictCard} onClose={() => setVerdictCard(null)} onContinue={() => { setVerdictCard(null); setRoomTab('map') }} />}
       <header className="dungeon-local-header"><div className="dungeon-local-brand"><span className="dungeon-brand-mark"><RouteIcon id="spark" /></span><div><span className="dungeon-eyebrow">INFINITE DUNGEON</span><h1>{run.active ? `Floor ${run.floor} · Room ${run.room}` : 'Design Lab'}</h1></div></div><span className="dungeon-local-badge"><i /> CANONICAL RUN · STATE GATEWAY</span>{run.active ? <div className="dungeon-run-stats" aria-label="Run stats"><div><small>FLOOR</small><strong>{run.floor ?? 1}</strong></div><div><small>HP</small><strong>{loadout.hp ?? 0}/{loadout.max_hp ?? 0}</strong></div><div><small>SCORE</small><strong>{run.score ?? 0}</strong></div><div><small>COINS</small><strong>{run.run_coins ?? 0}</strong></div><button className="dungeon-reset-header" type="button" onClick={() => onReset?.(run.run_id)} disabled={busy || !onReset}>Reset run</button></div> : <div className="dungeon-header-note"><span className="dungeon-eyebrow">BEFORE THE DESCENT</span><strong>CHOOSE YOUR CLASS</strong></div>}</header>
       {!run.active ? <main className="dungeon-class-select" aria-label="Choose a dungeon class"><section className="dungeon-class-hero"><span className="dungeon-eyebrow">RUN SETUP · FLOOR 1</span><h2>So how you wanna play it.</h2><p>Pick a class</p></section><section className="dungeon-class-grid" role="radiogroup" aria-label="Dungeon classes">{DUNGEON_CLASSES.map((starterClass) => <button key={starterClass.id} type="button" role="radio" aria-checked={selectedClassId === starterClass.id} className={`dungeon-class-card ${selectedClassId === starterClass.id ? 'selected' : ''}`} onClick={() => setSelectedClassId(starterClass.id)} disabled={busy}><span className="dungeon-class-card-top"><span className="dungeon-class-icon" aria-hidden="true"><RouteIcon id={starterClass.iconId} /></span><span><span className="dungeon-eyebrow">{starterClass.role}</span><strong>{starterClass.name}</strong></span>{selectedClassId === starterClass.id && <small className="dungeon-class-picked">READY</small>}</span><span className="dungeon-class-weapon"><span className="dungeon-class-label">STARTER WEAPON</span><strong>{starterClass.weapon}</strong><small>{starterClass.weaponDetail || 'A bounded run weapon for this playstyle.'}</small></span><span className="dungeon-class-passive"><span className="dungeon-class-label">PASSIVE</span><p>{starterClass.passive}</p></span></button>)}</section>{selectedClassId && <div className="dungeon-class-cta" aria-live="polite"><button className="dungeon-primary-button" type="button" onClick={start} disabled={busy}>{busy ? 'Starting…' : 'Enter the dungeon'} <span>→</span></button></div>}</main> : roomTab === 'code' ? <section className="dungeon-ide-screen" aria-label="Challenge IDE"><div className="dungeon-ide-topline"><button type="button" className="dungeon-ghost-button" onClick={() => setRoomTab('room')}>← Map locked</button><span className="dungeon-eyebrow">{run.room_type === 'boss' ? 'FLOOR BOSS · FINAL DESTINATION' : run.room_type === 'elite' ? 'ELITE GATE · TRINKET DROP' : 'QUESTION ROOM · NO ROUTE CONTROLS'}</span><span className="dungeon-ide-risk">FAILURE COSTS HP</span></div><div className="dungeon-ide-layout"><DungeonQuestionBrief run={run} question={question} loadout={loadout} editorContent={editorContent} avatar={avatar} /><div className="dungeon-code-workbench"><div className="dungeon-editor-toolbar"><span>dungeon.py · current room buffer</span><span>PYTHON · MONACO · LOCAL COMPLETION</span></div><DungeonEditorSurface value={editorContent || ''} onChange={onEditorChange} onSave={onSave} onSubmit={submit} busy={busy} saving={saving} />{submitStatus && <small className="battle-submit-status" role="status">{submitStatus}</small>}</div></div></section> : <><div className="dungeon-workspace-tabs" role="tablist" aria-label="Dungeon workspace"><button type="button" role="tab" aria-selected={roomTab === 'map'} className={roomTab === 'map' ? 'active' : ''} onClick={() => setRoomTab('map')}>Map &amp; route</button><button type="button" role="tab" aria-selected={roomTab === 'room'} className={roomTab === 'room' ? 'active' : ''} onClick={() => setRoomTab('room')}>Room screen</button><button type="button" role="tab" aria-selected={roomTab === 'code'} className={roomTab === 'code' ? 'active' : ''} onClick={openCode} disabled={!['encounter', 'elite', 'boss'].includes(run.room_type)}>Code editor</button></div><div className="dungeon-prototype-grid" data-testid="dungeon-tab-panel"><DungeonMap run={run} onChoose={chooseRoom} busy={busy} /><DungeonRoomPanel run={run} question={question} loadout={loadout} onRest={onRest} onCampAction={onCampAction} onRevealRisk={onRevealRisk} onEnterRisk={onEnterRisk} onMarketPurchase={onMarketPurchase} onLeave={onLeave} onOpenCode={openCode} busy={busy} /><DungeonCharacterPanel run={run} tab={characterTab} setTab={setCharacterTab} onEquip={onEquip} busy={busy} onFinish={onFinish} onReset={onReset} /></div><p className="dungeon-checkpoint-note">{statusText} Run <code>{run.run_id}</code> will resume after a Forge or workstation restart; death is the only reset.</p></>}
     </div>

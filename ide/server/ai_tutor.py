@@ -384,10 +384,17 @@ def _bounded(value: Any, limit: int) -> str:
     return text if len(text) <= limit else text[:limit] + "\n…[truncated]"
 
 
+# The verdict gateway rejects control characters and path-like characters
+# (/ \ :) in a reason, and PYR's explanations often quote code ("Correct: ..."),
+# so swap them for look-alike text instead of losing the verdict.
+_REASON_SWAPS = str.maketrans({":": " —", "/": "∕", "\\": "∖"})
+
+
 def _reason(value: Any) -> str:
     if not isinstance(value, str) or not value.strip():
         raise AiTutorError("PYR's reply had no reason", kind="unparseable")
-    return value.strip()[:MAX_REASON_CHARS]
+    text = " ".join(value.split()).translate(_REASON_SWAPS)
+    return text.replace("  —", " —")[:MAX_REASON_CHARS].strip()
 
 
 # ── Tasks ──────────────────────────────────────────────────────────────
