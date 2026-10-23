@@ -49,14 +49,17 @@ Updated: 2026-10-22 · branch `feature/tauri-arcade` (fast-forwarded into
 - **Nav:** Home · Forge · Tutor Notebook · Infinite Dungeon in the centre
   (`SurfaceNavigation`); Settings is the `.hud-settings` gear at the end of
   the top-right HUD.
-- **Tutor Library:** Tutor Notebook opens on `TutorLibrary` (RpgViews.jsx,
-  `tutorLibrary.css`). Language wings (Python open; HTML & CSS, JavaScript,
-  SQL, React, Rust locked), Basics / Collections / Flow bookcases of codex
-  pages, and floor stations: reading desk (up next from the encounter
-  concept, else least-practised book), practice table (book, question type,
-  difficulty → IDE practice), journal (practice history, notes) and PYR's
-  lectern (`pyr.ask`). Book mastery pips (0-4) come only from existing
-  evidence: correct practice answers, cleared encounters, skill evidence.
+- **Hunter's Codex (Tutor):** Tutor Notebook opens on `HunterCodex`
+  (RpgViews.jsx, `hunterCodex.css`): Contracts (notice board), Bestiary and
+  Signs tabs beside Codex and IDE practice. Bugs are beasts and concepts are
+  signs (`HUNT_BEASTS`, one per codex page; regions Basics Village /
+  Collection Caves / Flow Keep). Status and sign charge come only from saved
+  evidence (`huntEvidence`: correct practice, cleared encounters, skill
+  evidence); "hunting" = the bounty's concept. A contract's hunt: study
+  (opens the Codex page, remembered per device in localStorage), prepare
+  (a correct warm-up drill), hunt (a correct bug drill at difficulty 2+).
+  No campaign rewards are promised or granted here. Design canvas:
+  https://claude.ai/artifact/XY3oVEpdnkS5FvtyHJaQ8n (boards D, E, F).
 - **Pop-ups:** render through `ShellPortal` (into `.app-shell`, wrapper is
   `display: contents` and carries the surface's theme class) so panel
   stacking contexts can't hide them under the nav.

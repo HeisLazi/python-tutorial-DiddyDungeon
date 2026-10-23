@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom'
 import Editor from '@monaco-editor/react'
 import './homestead.css'
 import './campaign.css'
-import './tutorLibrary.css'
+import './hunterCodex.css'
 import './settings.css'
 import './dungeonBrief.css'
 import './avatar.css'
@@ -1564,233 +1564,278 @@ function ResourceCodexMistakes({ page, entries }) {
   )
 }
 
-// ── Tutor Library: the room Tutor Notebook opens on ─────────────────────
-// Language wings (Python open, the rest coming later), bookcases of concept
-// books, and floor stations: reading desk (up next), practice table,
-// journal and PYR's lectern. Books link into the existing Codex reader and
-// IDE practice; nothing here grants campaign rewards.
+// ── Hunter's Codex: Tutor's contracts, bestiary and signs ───────────────
+// Bugs are the beasts; Python concepts are the signs that beat them. Every
+// status comes from evidence the save already holds (correct practice
+// answers, cleared encounters, skill evidence); nothing here grants
+// campaign rewards. Contracts lead into the Codex reader and IDE practice.
 
-// Off while the Library is redesigned; flip to true to bring it back.
-const SHOW_TUTOR_LIBRARY = false
-
-const LIBRARY_WINGS = [
-  { id: 'python', label: 'Python', open: true },
-  { id: 'html', label: 'HTML & CSS' },
-  { id: 'javascript', label: 'JavaScript' },
-  { id: 'sql', label: 'SQL' },
-  { id: 'react', label: 'React' },
-  { id: 'rust', label: 'Rust' },
+const HUNT_REGIONS = [
+  { id: 'basics', label: 'Basics Village', danger: 1, pages: ['variables', 'input-output', 'conditionals'] },
+  { id: 'collections', label: 'Collection Caves', danger: 2, pages: ['lists', 'dictionaries', 'random-selection'] },
+  { id: 'flow', label: 'Flow Keep', danger: 3, pages: ['loops', 'functions', 'control-flow'] },
 ]
 
-const LIBRARY_SHELVES = [
-  { id: 'basics', label: 'Basics', pages: ['variables', 'input-output', 'conditionals'] },
-  { id: 'collections', label: 'Collections', pages: ['lists', 'dictionaries', 'random-selection'] },
-  { id: 'flow', label: 'Flow', pages: ['loops', 'functions', 'control-flow'] },
+// One beast (a bug) and one sign (the concept that beats it) per page.
+const HUNT_BEASTS = {
+  variables: { beast: 'The Nameless Wraith', sign: 'Vessel', lore: 'Haunts names that were never given a value. Call it before it is assigned and it answers with NameError.', symptoms: ["NameError: name 'score' is not defined", 'A typo in a name (scroe instead of score)', 'A value read before it is set'], rule: 'Assign before you read, and spell the name the same way every time.', code: "print(score)   # the Wraith answers here\nscore = 0" },
+  'input-output': { beast: 'The String Mimic', sign: 'Echo', lore: 'Wears the face of a number but is text underneath: input() always hands you a string.', symptoms: ['TypeError: can only concatenate str (not "int") to str', "'2' + '2' gives '22'", 'A comparison that never matches'], rule: 'Convert with int() or float() the moment the input arrives.', code: "bet = input('Bet: ')\ntotal = bet + 10   # the Mimic strikes" },
+  conditionals: { beast: 'The Forked Path', sign: 'Fork', lore: 'Leads hunters down the wrong branch: a wide check placed before a narrow one, or = where == belongs.', symptoms: ['SyntaxError at a single =', 'A branch that never runs', 'A 21 counted as a bust'], rule: 'Check the most specific case first, and compare with ==.', code: "if total > 17:\n    print('stand')\nelif total == 21:   # never reached\n    print('blackjack')" },
+  lists: { beast: 'The IndexError Drowner', sign: 'Chain', lore: 'Drags careless hunters under by reaching one step past the end of a list.', symptoms: ['IndexError: list index out of range', 'A loop that runs one time too many', 'The last card in the hand vanishes'], rule: 'Valid indexes run 0 to len(items) - 1. Loop over the items, not the count.', code: "hand = ['A', 'K', '7']\nfor i in range(len(hand) + 1):   # the Drowner waits here\n    print(hand[i])" },
+  dictionaries: { beast: 'The KeyError Ghoul', sign: 'Key', lore: 'Asks for names that were never written in the ledger, and the whole program collapses.', symptoms: ["KeyError: 'A'", 'A lookup that worked once fails on new input', 'Values quietly overwritten'], rule: 'Check with in, or use .get(key, default).', code: "values = {'K': 10, 'Q': 10}\nprint(values['A'])   # the Ghoul feeds" },
+  'random-selection': { beast: 'The Loaded Die', sign: 'Dice', lore: 'Makes every roll a little wrong: randint includes both ends, randrange stops before the last.', symptoms: ['An index one too large', 'One card that is never drawn', 'An IndexError on rare rolls'], rule: 'randint(a, b) includes b. For a list, use random.choice or randrange(len(items)).', code: "i = random.randint(0, len(deck))   # the Die is loaded\ncard = deck[i]" },
+  loops: { beast: 'The Off-by-One Wraith', sign: 'Ouroboros', lore: 'Lives in the last pass of a loop: one pass too many or one too few.', symptoms: ['The first or last item skipped', 'An extra blank line', 'A total that is one short'], rule: 'range(n) stops before n. Loop over the items directly when you can.', code: "for i in range(1, len(hand)):   # skips hand[0]\n    total += values[hand[i]]" },
+  functions: { beast: 'The Hollow Return', sign: 'Binding', lore: 'A function that does all the work, then hands back nothing. Its gift is always None.', symptoms: ["TypeError: unsupported operand type(s) for +: 'NoneType'", 'None printed where a value should be', 'A result that vanishes'], rule: 'return the value. Printing is not returning.', code: "def hand_total(hand):\n    total = sum(hand)   # no return\nscore = hand_total([10, 7]) + 1" },
+  'control-flow': { beast: 'The Endless Leshen', sign: 'Gate', lore: 'Roots a loop forever: a while condition that nothing inside the loop ever changes.', symptoms: ['The program freezes', 'The same line prints forever', 'The fan spins up'], rule: 'Change something the condition checks on every pass, or break out.', code: "while total < 17:\n    print('hit')   # total never changes" },
+}
+
+// Rituals combine signs into project patterns; they light up once every sign is charged.
+const HUNT_RITUALS = [
+  { name: 'Ritual of the Dealt Hand', pages: ['lists', 'loops', 'conditionals'], use: 'total a Blackjack hand' },
+  { name: 'Ritual of the Shuffled Deck', pages: ['lists', 'random-selection'], use: 'draw a random card' },
+  { name: 'Ritual of the Ledger', pages: ['dictionaries', 'functions'], use: 'look up card values inside a function' },
+  { name: 'Ritual of the Table', pages: ['input-output', 'control-flow'], use: 'keep asking hit or stand until the player stops' },
 ]
 
-// Short spine labels (a spine fits about ten characters).
-const LIBRARY_SPINES = { 'input-output': 'In & Out', conditionals: 'If / Else', dictionaries: 'Dicts', 'random-selection': 'Random', 'control-flow': 'Control' }
-const librarySpine = (page) => LIBRARY_SPINES[page.id] || page.title.split(/[&,]/)[0].trim()
+// Sigils for the signs (inline stroke SVG).
+const HUNT_SIGILS = {
+  variables: <><path d="M7 4h10v4l-3 3v7a2 2 0 0 1-4 0v-7L7 8z" /><path d="M9 8h6" /></>,
+  'input-output': <><circle cx="12" cy="12" r="3" /><path d="M5 12a7 7 0 0 1 14 0M3 12a9 9 0 0 1 18 0" /></>,
+  conditionals: <><path d="M12 21v-8M12 13 6 5M12 13l6-8" /><circle cx="6" cy="4" r="1.5" /><circle cx="18" cy="4" r="1.5" /></>,
+  lists: <><rect x="3" y="9" width="6" height="6" rx="3" /><rect x="9" y="9" width="6" height="6" rx="3" /><rect x="15" y="9" width="6" height="6" rx="3" /></>,
+  dictionaries: <><circle cx="8" cy="12" r="4" /><path d="M12 12h9M18 12v3M21 12v2" /></>,
+  'random-selection': <><rect x="4" y="4" width="16" height="16" rx="2" /><circle cx="9" cy="9" r="1" /><circle cx="15" cy="15" r="1" /><circle cx="12" cy="12" r="1" /></>,
+  loops: <><path d="M20 12a8 8 0 1 1-3-6.2" /><path d="M17 3v3h3" /></>,
+  functions: <><path d="M14 4c-3 0-3 3-3 6v4c0 3 0 6-3 6" /><path d="M8 11h7" /></>,
+  'control-flow': <><path d="M5 21V9l7-5 7 5v12" /><path d="M9 21v-6h6v6M3 9h18" /></>,
+}
 
-// "input-output" -> "input": the word practice sessions and skills use.
-const libraryConceptKey = (page) => String(page?.id || '').split('-')[0].toLowerCase()
+const huntKey = (page) => String(page?.id || '').split('-')[0].toLowerCase()
 
-// 0-4 pips from evidence the save already holds: correct practice answers
-// (up to two), a cleared campaign encounter on this page, and the matching
-// PYR skill having any evidence.
-function libraryMastery(page, progress, entries) {
-  const key = libraryConceptKey(page)
+// 0-4 evidence pips: correct practice answers (up to two), a cleared
+// campaign encounter on this page, and the matching PYR skill's evidence.
+function huntEvidence(page, progress, entries) {
+  const key = huntKey(page)
   const matches = (text) => Boolean(key) && String(text || '').toLowerCase().includes(key)
-  const correct = (progress?.practice_sessions || []).filter((session) => matches(session.concept)).reduce((sum, session) => sum + (Number(session.correct) || 0), 0)
+  const sessions = (progress?.practice_sessions || []).filter((session) => matches(session.concept))
+  const correct = sessions.reduce((sum, session) => sum + (Number(session.correct) || 0), 0)
+  const hardCorrect = sessions.some((session) => (Number(session.difficulty) || 1) >= 2 && (Number(session.correct) || 0) > 0)
   const cleared = entries.some((entry) => entry.page_id === page.id && isMobDefeated(entry.status))
   const skill = (progress?.skills || []).find((item) => matches(item.concept))
   const skillProof = Boolean(skill && ((Number(skill.evidence) || 0) > 0 || (skill.shield?.tier && skill.shield.tier !== 'none')))
-  return { pips: Math.min(2, correct) + (cleared ? 1 : 0) + (skillProof ? 1 : 0), correct, cleared, skill: skill?.name || '' }
+  const pips = Math.min(2, correct) + (cleared ? 1 : 0) + (skillProof ? 1 : 0)
+  return { pips, charge: Math.min(3, pips), correct, hardCorrect, cleared }
 }
 
-function libraryUpNext(pages, mastery, encounter, progress) {
+function huntUpNext(pages, evidence, encounter, progress) {
   const hints = [encounter?.concept, encounter?.current_quest?.concept, progress?.learning_state?.concept].filter(Boolean)
   for (const hint of hints) {
-    const page = pages.find((item) => String(hint).toLowerCase().includes(libraryConceptKey(item)))
-    if (page) return { page, why: `Your current bounty leans on ${hint}.` }
+    const page = pages.find((item) => String(hint).toLowerCase().includes(huntKey(item)))
+    if (page) return page
   }
-  const weakest = [...pages].sort((a, b) => (mastery[a.id]?.pips ?? 0) - (mastery[b.id]?.pips ?? 0))[0]
-  return weakest ? { page: weakest, why: 'Your least-practised book so far.' } : null
+  return [...pages].sort((a, b) => (evidence[a.id]?.pips ?? 0) - (evidence[b.id]?.pips ?? 0))[0] || null
 }
 
-function LibraryPips({ count, label }) {
-  return <span className="library-pips" aria-label={`${label}: ${count} of 4`}>{[0, 1, 2, 3].map((index) => <i key={index} className={index < count ? 'on' : ''} />)}</span>
+// Which pages the player has studied for a hunt (a per-device convenience).
+const HUNT_STUDIED_KEY = 'questlab.hunter.studied'
+function readStudied() {
+  try { return new Set(JSON.parse(window.localStorage.getItem(HUNT_STUDIED_KEY) || '[]')) } catch { return new Set() }
+}
+function saveStudied(set) {
+  try { window.localStorage.setItem(HUNT_STUDIED_KEY, JSON.stringify([...set])) } catch { /* storage unavailable */ }
 }
 
-function TutorLibrary({ pages, entries, progress, encounter, pyr, busy, avatar, onRead, onPractice, onOpenNotes, onOpenEditor }) {
-  const [wing, setWing] = useState('python')
-  const [focus, setFocus] = useState({ kind: 'desk' })
-  const [practicePageId, setPracticePageId] = useState('')
-  const [practiceMode, setPracticeMode] = useState(RESOURCE_PRACTICE_MODES[0].id)
-  const [practiceDifficulty, setPracticeDifficulty] = useState(1)
+function HuntSigil({ pageId, size = 28 }) {
+  return <svg className="hunt-sigil" viewBox="0 0 24 24" width={size} height={size} aria-hidden="true">{HUNT_SIGILS[pageId] || <circle cx="12" cy="12" r="6" />}</svg>
+}
+
+function HunterCodex({ view, pages, entries, progress, encounter, pyr, busy, selectedId, onSelect, onView, onRead, onPractice }) {
+  const [studied, setStudied] = useState(() => readStudied())
+  const [region, setRegion] = useState('all')
   const [askText, setAskText] = useState('')
-  const [askLog, setAskLog] = useState([{ role: 'pyr', text: 'Ask me about any book on these shelves. I explain and nudge; I will not write your project for you.' }])
+  const [askLog, setAskLog] = useState([])
   const byId = Object.fromEntries(pages.map((page) => [page.id, page]))
-  const mastery = Object.fromEntries(pages.map((page) => [page.id, libraryMastery(page, progress, entries)]))
-  const upNext = libraryUpNext(pages, mastery, encounter, progress)
-  const shelved = new Set(LIBRARY_SHELVES.flatMap((shelf) => shelf.pages))
-  const shelves = [
-    ...LIBRARY_SHELVES.map((shelf) => ({ ...shelf, books: shelf.pages.map((id) => byId[id]).filter(Boolean) })),
-    { id: 'more', label: 'More', books: pages.filter((page) => !shelved.has(page.id)) },
-  ].filter((shelf) => shelf.books.length)
-  const focusPage = focus.kind === 'book' ? byId[focus.pageId] : null
-  const contextPage = focusPage || byId[practicePageId] || upNext?.page || pages[0]
-  const sessions = [...(progress?.practice_sessions || [])].reverse().slice(0, 6)
-  const openWing = LIBRARY_WINGS.find((item) => item.id === wing) || LIBRARY_WINGS[0]
-
-  const choosePractice = (pageId) => {
-    setPracticePageId(pageId)
-    setFocus({ kind: 'practice' })
+  const huntPages = HUNT_REGIONS.flatMap((item) => item.pages).map((id) => byId[id]).filter(Boolean)
+  const evidence = Object.fromEntries(huntPages.map((page) => [page.id, huntEvidence(page, progress, entries)]))
+  const upNext = huntUpNext(huntPages, evidence, encounter, progress)
+  const regionOf = (id) => HUNT_REGIONS.find((item) => item.pages.includes(id)) || HUNT_REGIONS[0]
+  const statusOf = (id) => {
+    const pips = evidence[id]?.pips ?? 0
+    if (pips >= 3) return 'slain'
+    if (upNext?.id === id) return 'hunting'
+    return pips > 0 ? 'tracked' : 'unseen'
+  }
+  const statusLabel = { slain: 'Slain', hunting: 'Hunting', tracked: 'Tracked', unseen: 'Unseen' }
+  const current = byId[selectedId] && HUNT_BEASTS[selectedId] ? byId[selectedId] : upNext || huntPages[0]
+  if (!current) return <section className="hunter-codex"><p>No beasts recorded yet.</p></section>
+  const info = HUNT_BEASTS[current.id]
+  const ev = evidence[current.id] || { pips: 0, charge: 0 }
+  const slain = huntPages.filter((page) => statusOf(page.id) === 'slain').length
+  const steps = [
+    { id: 'study', label: `Study the beast · read ${current.title}`, done: studied.has(current.id) },
+    { id: 'prepare', label: `Prepare the Sign of the ${info.sign} · a warm-up drill`, done: ev.correct > 0 },
+    { id: 'hunt', label: 'The hunt · a bug hunt PYR writes', done: ev.hardCorrect },
+  ]
+  const nextStep = steps.find((step) => !step.done)
+  const study = () => {
+    const next = new Set(studied)
+    next.add(current.id)
+    setStudied(next)
+    saveStudied(next)
+    onRead?.(current.id)
+  }
+  const runStep = (step) => {
+    if (step.id === 'study') study()
+    else if (step.id === 'prepare') onPractice?.(current.id, 'predict', 1)
+    else onPractice?.(current.id, 'bug', 3)
   }
   const ask = async () => {
     const question = askText.trim()
     if (!question) return
     setAskText('')
     if (!pyr?.ready) {
-      setAskLog((log) => [...log, { role: 'you', text: question }, { role: 'pyr', text: 'Connect OpenCode in Settings → AI Tutor so I can answer here.' }].slice(-8))
+      setAskLog((log) => [...log, { role: 'you', text: question }, { role: 'pyr', text: 'Connect OpenCode in Settings → AI Tutor so I can answer here.' }].slice(-6))
       return
     }
-    setAskLog((log) => [...log, { role: 'you', text: question }, { role: 'pyr', text: '…thinking', pending: true }].slice(-8))
+    setAskLog((log) => [...log, { role: 'you', text: question }, { role: 'pyr', text: '…thinking', pending: true }].slice(-6))
     let reply
     try {
-      reply = await pyr.ask({ question, concept: contextPage?.title || 'Python', code: '' })
+      reply = await pyr.ask({ question, concept: `${current.title} (${info.beast})`, code: info.code })
     } catch (error) {
       reply = `I couldn't answer that just now (${error.message}).`
     }
     setAskLog((log) => log.map((entry) => (entry.pending ? { role: 'pyr', text: reply } : entry)))
   }
-
-  const station = (kind, label, kicker, icon) => (
-    <button type="button" className={`library-station ${kind} ${focus.kind === kind ? 'active' : ''}`} onClick={() => setFocus({ kind })} disabled={!openWing.open}>
-      <span className="library-station-art" aria-hidden="true"><RouteIcon id={icon} /></span>
-      <strong>{label}</strong>
-      <small>{kicker}</small>
-    </button>
+  const askBox = (
+    <div className="hunt-ask">
+      {askLog.map((entry, index) => <p key={index} className={entry.role}><b>{entry.role === 'you' ? 'YOU' : 'PYR'}</b>{entry.text}</p>)}
+      <label><span>Ask PYR about this beast</span><textarea rows={2} value={askText} onChange={(event) => setAskText(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) ask() }} /></label>
+      <button type="button" onClick={ask} disabled={busy || !askText.trim()}>Ask PYR</button>
+    </div>
   )
 
   return (
-    <section className="tutor-library" data-testid="tutor-library" aria-label="Tutor library">
-      <header className="library-header">
-        <span className="screen-kicker">THE LIBRARY · WINGS</span>
-        <nav className="library-wings" aria-label="Library wings">
-          {LIBRARY_WINGS.map((item) => (
-            <button key={item.id} type="button" className={`${wing === item.id ? 'active' : ''} ${item.open ? '' : 'locked'}`} onClick={() => { setWing(item.id); setFocus(item.open ? { kind: 'desk' } : { kind: 'wing' }) }} aria-pressed={wing === item.id}>
-              {!item.open && <span aria-hidden="true"><RouteIcon id="lock" /></span>}{item.label}
-            </button>
-          ))}
-        </nav>
+    <section className="hunter-codex" data-testid="hunter-codex" aria-label="Hunter's codex">
+      <header className="hunt-header">
+        <div><span className="hunt-kicker">TATE BUTI · HUNTER'S CODEX</span><h3>{view === 'bestiary' ? 'Know the beast before the hunt.' : view === 'signs' ? 'Every sign you master is a weapon.' : 'Contracts posted. Take one.'}</h3></div>
+        <span className="hunt-tally">{slain} of {huntPages.length} beasts slain</span>
       </header>
-      <div className="library-body">
-        <div className={`library-room ${openWing.open ? '' : 'closed'}`}>
-          <div className="library-room-sign"><span>{openWing.label.toUpperCase()} WING</span><small>{openWing.open ? `${pages.length} books` : 'Coming soon'}</small></div>
-          {openWing.open ? (
-            <>
-              <div className="library-cases">
-                {shelves.map((shelf) => (
-                  <section key={shelf.id} className={`library-case ${shelf.id}`} aria-label={`${shelf.label} shelf`}>
-                    <div className="library-case-books">
-                      {shelf.books.map((page) => (
-                        <button key={page.id} type="button" className={`library-book ${focusPage?.id === page.id ? 'active' : ''} ${upNext?.page?.id === page.id ? 'next' : ''}`} onClick={() => setFocus({ kind: 'book', pageId: page.id })} title={page.title}>
-                          <span className="library-book-title">{librarySpine(page)}</span>
-                          <LibraryPips count={mastery[page.id]?.pips ?? 0} label={`${page.title} mastery`} />
-                        </button>
-                      ))}
-                    </div>
-                    <span className="library-case-plaque">{shelf.label.toUpperCase()}</span>
-                  </section>
-                ))}
-              </div>
-              <div className="library-floor">
-                {station('desk', 'Reading desk', upNext ? `Up next · ${upNext.page.title.split(/[&,]/)[0].trim()}` : 'Up next', 'scroll')}
-                {station('practice', 'Practice table', 'Pick a drill', 'target')}
-                <div className="library-reader" aria-hidden="true"><AvatarSprite appearance={avatar} size={72} /></div>
-                {station('journal', 'Journal', `${(progress?.practice_sessions || []).length} sessions · notes`, 'codex')}
-                {station('lectern', "PYR's lectern", 'Ask anything', 'question')}
-              </div>
-            </>
-          ) : (
-            <div className="library-closed"><RouteIcon id="lock" /><p>The {openWing.label} wing is still being built. Python is open now.</p></div>
-          )}
+
+      {view === 'contracts' && (
+        <div className="hunt-layout">
+          <section className="hunt-board" aria-label="Contract board">
+            {huntPages.map((page) => {
+              const status = statusOf(page.id)
+              return (
+                <button key={page.id} type="button" className={`hunt-contract ${status} ${current.id === page.id ? 'active' : ''}`} onClick={() => onSelect(page.id)}>
+                  <span className="hunt-pin" aria-hidden="true" />
+                  <small>{regionOf(page.id).label.toUpperCase()}</small>
+                  <strong>{HUNT_BEASTS[page.id].beast}</strong>
+                  <span>Danger {'☠'.repeat(regionOf(page.id).danger)}</span>
+                  <span>Charges the Sign of the {HUNT_BEASTS[page.id].sign}</span>
+                  {status !== 'unseen' && status !== 'tracked' && <em className={`hunt-stamp ${status}`}>{status === 'slain' ? 'SLAIN' : 'HUNTING'}</em>}
+                </button>
+              )
+            })}
+          </section>
+          <aside className="hunt-parchment" aria-label="Selected contract">
+            <small className={`hunt-status ${statusOf(current.id)}`}>CONTRACT · {statusLabel[statusOf(current.id)].toUpperCase()}</small>
+            <h4>{info.beast}</h4>
+            <p className="hunt-quote">“{info.lore}”</p>
+            <div className="hunt-chips"><span className="danger">Danger {'☠'.repeat(regionOf(current.id).danger)}</span><span>{regionOf(current.id).label}</span><span>Sign · The {info.sign}</span></div>
+            <h5>THE HUNT</h5>
+            <ol className="hunt-steps">
+              {steps.map((step, index) => (
+                <li key={step.id} className={`${step.done ? 'done' : ''} ${nextStep?.id === step.id ? 'next' : ''}`}>
+                  <span>{['I', 'II', 'III'][index]}</span>
+                  <span>{step.label}</span>
+                  <button type="button" onClick={() => runStep(step)} disabled={busy}>{step.done ? 'Again' : 'Go'}</button>
+                </li>
+              ))}
+            </ol>
+            <p className="hunt-reward">On completion · the Sign of the {info.sign} charges ({ev.charge} / 3 now)</p>
+            <div className="hunt-actions">
+              <button type="button" className="primary" onClick={() => runStep(nextStep || steps[2])} disabled={busy}>{nextStep ? 'Begin the hunt' : 'Hunt again'}</button>
+              <button type="button" onClick={() => onView('bestiary')}>Bestiary entry</button>
+            </div>
+          </aside>
         </div>
-        <aside className="library-detail" aria-live="polite">
-          {focus.kind === 'wing' && <div className="library-detail-block"><span className="screen-kicker">{openWing.label.toUpperCase()} WING</span><h4>Coming soon</h4><p>This wing will hold its own shelves and books, just like Python. For now every book lives in the Python wing.</p><button type="button" onClick={() => { setWing('python'); setFocus({ kind: 'desk' }) }}>Back to Python</button></div>}
-          {focus.kind === 'book' && focusPage && (
-            <div className="library-detail-block">
-              <span className="screen-kicker">BOOK · {(shelves.find((shelf) => shelf.books.includes(focusPage))?.label || 'Python').toUpperCase()}</span>
-              <h4>{focusPage.title}</h4>
-              <p>{focusPage.definition}</p>
-              <div className="library-mastery">
-                <LibraryPips count={mastery[focusPage.id].pips} label="Mastery" />
-                <small>{mastery[focusPage.id].correct} correct practice answer{mastery[focusPage.id].correct === 1 ? '' : 's'}{mastery[focusPage.id].cleared ? ' · campaign encounter cleared' : ''}{mastery[focusPage.id].skill ? ` · skill ${mastery[focusPage.id].skill}` : ''}</small>
-              </div>
-              {Array.isArray(focusPage.common_mistakes) && focusPage.common_mistakes[0] && <p className="library-tip"><b>Watch for</b> {focusPage.common_mistakes[0]}</p>}
-              <div className="library-actions">
-                <button type="button" className="primary" onClick={() => onRead?.(focusPage.id)}>Read</button>
-                <button type="button" onClick={() => choosePractice(focusPage.id)}>Practice this</button>
-                <button type="button" onClick={() => setFocus({ kind: 'lectern' })}>Ask PYR</button>
-              </div>
+      )}
+
+      {view === 'bestiary' && (
+        <div className="hunt-layout bestiary">
+          <section className="hunt-list" aria-label="Known beasts">
+            <div className="hunt-regions" role="group" aria-label="Lairs">
+              {[{ id: 'all', label: 'All lairs' }, ...HUNT_REGIONS].map((item) => <button key={item.id} type="button" className={region === item.id ? 'active' : ''} onClick={() => setRegion(item.id)} aria-pressed={region === item.id}>{item.label}</button>)}
             </div>
-          )}
-          {focus.kind === 'desk' && (
-            <div className="library-detail-block">
-              <span className="screen-kicker">READING DESK · UP NEXT</span>
-              {upNext ? <>
-                <h4>{upNext.page.title}</h4>
-                <p className="library-why">{upNext.why}</p>
-                <p>{upNext.page.definition}</p>
-                <div className="library-actions">
-                  <button type="button" className="primary" onClick={() => onRead?.(upNext.page.id)}>Read it</button>
-                  <button type="button" onClick={() => choosePractice(upNext.page.id)}>Practice it</button>
-                </div>
-              </> : <p>No books yet.</p>}
+            {huntPages.filter((page) => region === 'all' || regionOf(page.id).id === region).map((page) => {
+              const status = statusOf(page.id)
+              return (
+                <button key={page.id} type="button" className={`hunt-beast ${status} ${current.id === page.id ? 'active' : ''}`} onClick={() => onSelect(page.id)}>
+                  <i aria-hidden="true" />
+                  <span><strong>{status === 'unseen' ? `${HUNT_BEASTS[page.id].beast}` : HUNT_BEASTS[page.id].beast}</strong><small>{regionOf(page.id).label} · {page.title.split(/[&,]/)[0].trim()}</small></span>
+                  <em>{statusLabel[status]}</em>
+                </button>
+              )
+            })}
+          </section>
+          <article className="hunt-parchment hunt-entry" aria-label="Bestiary entry">
+            <small className={`hunt-status ${statusOf(current.id)}`}>LURKS IN {regionOf(current.id).label.toUpperCase()} · DANGER {'☠'.repeat(regionOf(current.id).danger)} · {statusLabel[statusOf(current.id)].toUpperCase()}</small>
+            <div className="hunt-entry-head">
+              <span className="hunt-portrait" aria-hidden="true"><svg viewBox="0 0 24 24" width="84" height="84"><path d="M5 20c0-6 2-12 7-12s7 6 7 12" /><path d="M8 13l1.5 1.5M16 13l-1.5 1.5" /><path d="M9.5 17.5c1.5 1 3.5 1 5 0" /><path d="M3 20h18M7 8 5 4M17 8l2-4" /></svg></span>
+              <div><h4>{info.beast}</h4><p>{info.lore}</p></div>
             </div>
-          )}
-          {focus.kind === 'practice' && (
-            <div className="library-detail-block">
-              <span className="screen-kicker">PRACTICE TABLE</span>
-              <h4>Set up a drill</h4>
-              <label className="library-field"><span>Book</span>
-                <select value={contextPage?.id || ''} onChange={(event) => setPracticePageId(event.target.value)}>
-                  {pages.map((page) => <option key={page.id} value={page.id}>{page.title}</option>)}
-                </select>
-              </label>
-              <div className="library-field"><span>Question type</span>
-                <div className="library-chips">{RESOURCE_PRACTICE_MODES.map((mode) => <button key={mode.id} type="button" className={practiceMode === mode.id ? 'active' : ''} onClick={() => setPracticeMode(mode.id)} aria-pressed={practiceMode === mode.id}>{mode.label}</button>)}</div>
-              </div>
-              <div className="library-field"><span>Difficulty</span>
-                <div className="library-chips">{[1, 2, 3].map((level) => <button key={level} type="button" className={practiceDifficulty === level ? 'active' : ''} onClick={() => setPracticeDifficulty(level)} aria-pressed={practiceDifficulty === level}>{['Warm-up', 'Steady', 'Stretch'][level - 1]}</button>)}</div>
-              </div>
-              <p className="library-why">{RESOURCE_PRACTICE_MODES.find((mode) => mode.id === practiceMode)?.prompt}</p>
-              <div className="library-actions"><button type="button" className="primary" onClick={() => onPractice?.(contextPage?.id, practiceMode, practiceDifficulty)} disabled={!contextPage}>Start practice</button></div>
+            <div className="hunt-entry-grid">
+              <section><h5>SIGNS IT IS NEAR</h5><ul>{info.symptoms.map((item) => <li key={item}>{item}</li>)}</ul></section>
+              <section><h5>WEAKNESS · CAST THIS SIGN</h5><p className="hunt-sign-name"><HuntSigil pageId={current.id} size={22} /> Sign of the {info.sign} ({current.title})</p><p>{info.rule}</p></section>
             </div>
-          )}
-          {focus.kind === 'journal' && (
-            <div className="library-detail-block">
-              <span className="screen-kicker">JOURNAL</span>
-              <h4>Your notes and practice</h4>
-              <div className="library-actions"><button type="button" className="primary" onClick={onOpenNotes}>Open my notes</button><button type="button" onClick={onOpenEditor}>Open tutor.py</button></div>
-              <ol className="library-history">
-                {sessions.length ? sessions.map((session) => (
-                  <li key={session.session_id}><strong>{session.concept}</strong><small>{String(session.question_type || '').replaceAll('_', ' ')} · {session.correct ?? 0}/{session.attempts ?? 0} correct · {session.status}</small></li>
-                )) : <li><small>No practice yet. The practice table is a good place to start.</small></li>}
-              </ol>
+            <pre className="hunt-code">{info.code}</pre>
+            <div className="hunt-actions">
+              <button type="button" className="primary" onClick={() => onView('contracts')}>Take the contract</button>
+              <button type="button" onClick={() => onView('signs')}>Study the sign</button>
             </div>
-          )}
-          {focus.kind === 'lectern' && (
-            <div className="library-detail-block library-lectern">
-              <span className="screen-kicker">PYR'S LECTERN · {String(contextPage?.title || 'PYTHON').toUpperCase()}</span>
-              <div className="library-ask-log">{askLog.map((entry, index) => <p key={index} className={entry.role}><b>{entry.role === 'you' ? 'YOU' : 'PYR'}</b>{entry.text}</p>)}</div>
-              <textarea rows={3} value={askText} onChange={(event) => setAskText(event.target.value)} placeholder="Ask about this book…" onKeyDown={(event) => { if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) ask() }} />
-              <div className="library-actions"><button type="button" className="primary" onClick={ask} disabled={busy || !askText.trim()}>Ask PYR</button></div>
+            {askBox}
+          </article>
+        </div>
+      )}
+
+      {view === 'signs' && (
+        <div className="hunt-layout signs">
+          <section className="hunt-signs" aria-label="Your signs">
+            <small className="hunt-kicker">YOUR SIGNS · CHARGE THEM BY SLAYING THE BEASTS THEY BEAT</small>
+            <div className="hunt-sign-grid">
+              {huntPages.map((page) => {
+                const charge = evidence[page.id]?.charge ?? 0
+                return (
+                  <button key={page.id} type="button" className={`hunt-sign ${charge ? 'lit' : 'dark'} ${charge >= 3 ? 'mastered' : ''} ${current.id === page.id ? 'active' : ''}`} onClick={() => onSelect(page.id)} aria-label={`Sign of the ${HUNT_BEASTS[page.id].sign}, ${page.title}, charge ${charge} of 3`}>
+                    <span className="hunt-sigil-box"><HuntSigil pageId={page.id} /></span>
+                    <strong>Sign of the {HUNT_BEASTS[page.id].sign}</strong>
+                    <small>{page.title}</small>
+                    <span className="hunt-charge" aria-hidden="true">{[0, 1, 2].map((index) => <i key={index} className={index < charge ? 'on' : ''} />)}</span>
+                  </button>
+                )
+              })}
             </div>
-          )}
-        </aside>
-      </div>
+          </section>
+          <aside className="hunt-steel" aria-label="Selected sign">
+            <small className="hunt-kicker">SIGN · {ev.charge >= 3 ? 'MASTERED' : ev.charge ? `CHARGE ${ev.charge} / 3` : 'UNINSCRIBED'} · BEATS {info.beast.toUpperCase()}</small>
+            <div className="hunt-sign-head"><span className="hunt-sigil-box large"><HuntSigil pageId={current.id} size={44} /></span><h4>Sign of the {info.sign}</h4></div>
+            <p>{current.definition}</p>
+            {Array.isArray(current.examples) && current.examples[0] && <pre className="hunt-code dark">{current.examples[0]}</pre>}
+            <h5>TRAIN THE SIGN</h5>
+            <div className="hunt-drills">{RESOURCE_PRACTICE_MODES.slice(0, 4).map((mode) => <button key={mode.id} type="button" onClick={() => onPractice?.(current.id, mode.id, 1)} disabled={busy}>{mode.label}</button>)}</div>
+            <h5>RITUALS THAT NEED IT</h5>
+            {HUNT_RITUALS.filter((ritual) => ritual.pages.includes(current.id)).map((ritual) => {
+              const ready = ritual.pages.every((id) => (evidence[id]?.charge ?? 0) > 0)
+              return <div key={ritual.name} className={`hunt-ritual ${ready ? 'ready' : ''}`}><strong>{ritual.name}</strong><small>{ritual.pages.map((id) => `Sign of the ${HUNT_BEASTS[id].sign}`).join(' + ')} · {ritual.use}</small></div>
+            })}
+            <div className="hunt-actions">
+              <button type="button" className="primary" onClick={study}>Read the full page</button>
+              <button type="button" onClick={() => onView('bestiary')}>The beast it beats</button>
+            </div>
+          </aside>
+        </div>
+      )}
     </section>
   )
 }
@@ -1798,9 +1843,12 @@ function TutorLibrary({ pages, entries, progress, encounter, pyr, busy, avatar, 
 function ResourceTutorScreen({ pyr, avatar, activeView, progress, revision, codexProjection, encounter, tutorCode, tutorDirty, tutorExternalChange, editorFontSize = 14, busy, onTutorChange, onTutorSave, onTutorFormat, onTutorRun, onPracticePrompt, onTutorReloadExternal, onTutorKeepEdits, onNavigate }) {
   const pages = Array.isArray(codexProjection?.pages) && codexProjection.pages.length ? codexProjection.pages : resourceFallbackPages(encounter)
   const entries = Array.isArray(codexProjection?.entries) ? codexProjection.entries : []
-  // The Library is parked while it is redesigned (SHOW_TUTOR_LIBRARY); Tutor
-  // opens on the Codex until then.
-  const [surface, setSurface] = useState(SHOW_TUTOR_LIBRARY ? 'library' : 'codex')
+  // Tutor opens on the Hunter's Codex contract board; Bestiary and Signs sit
+  // beside it, and all three lead into the Codex reader and IDE practice.
+  const [surface, setSurface] = useState('contracts')
+  const huntView = ['contracts', 'bestiary', 'signs'].includes(surface)
+  // The beast picked in the codex; empty means "the current hunt".
+  const [huntPick, setHuntPick] = useState('')
   const [selectedId, setSelectedId] = useState(pages[0]?.id || '')
   const [readPage, setReadPage] = useState(0)
   const [practiceMode, setPracticeMode] = useState('predict')
@@ -1882,12 +1930,12 @@ function ResourceTutorScreen({ pyr, avatar, activeView, progress, revision, code
   }
   return (
     <div className="resource-tutor-screen" data-testid="resource-tutor" data-campaign-revision={revision}>
-      <header className="resource-tutor-header"><div><span className="screen-kicker">TUTOR NOTEBOOK</span><h2>Learn it, then make it yours.</h2><p>Reference pages, a writable tutor.py and bounded PYR guidance share one calm workspace.</p></div><div className="resource-tutor-header-actions"><button type="button" onClick={() => onNavigate?.('forge')}>Resume Forge</button><span>REV {revision ?? 0}</span></div></header>
-      <nav className="resource-tutor-tabs" aria-label="Tutor sections">{SHOW_TUTOR_LIBRARY && <button type="button" className={surface === 'library' ? 'active' : ''} onClick={() => setSurface('library')}>Library</button>}<button type="button" className={surface === 'codex' ? 'active' : ''} onClick={() => setSurface('codex')}>▣ Codex</button><button type="button" className={surface === 'ide' || surface === 'notes' ? 'active' : ''} onClick={() => setSurface('ide')}>↗ IDE practice</button></nav>
-      {SHOW_TUTOR_LIBRARY && surface === 'library' && <TutorLibrary pages={pages} entries={entries} progress={progress} encounter={encounter} pyr={pyr} busy={busy} avatar={avatar}
-        onRead={(pageId) => { setSelectedId(pageId); setReadPage(0); setSurface('codex') }}
-        onPractice={(pageId, mode, difficulty) => { if (pageId) setSelectedId(pageId); setPracticeMode(mode); setPracticeDifficulty(difficulty || 1); setPracticeQuestion(null); setSurface('ide') }}
-        onOpenNotes={() => setSurface('notes')} onOpenEditor={() => setSurface('ide')} />}
+      <header className="resource-tutor-header"><div><span className="screen-kicker">TUTOR NOTEBOOK</span><h2>{huntView ? 'Study the beast. Train the sign. Hunt.' : 'Learn it, then make it yours.'}</h2><p>{huntView ? 'Every bug is a beast and every concept a sign that beats it. Contracts lead you from reading to a drill to the hunt.' : 'Reference pages, a writable tutor.py and bounded PYR guidance share one calm workspace.'}</p></div><div className="resource-tutor-header-actions"><button type="button" onClick={() => onNavigate?.('forge')}>Resume Forge</button><span>REV {revision ?? 0}</span></div></header>
+      <nav className="resource-tutor-tabs" aria-label="Tutor sections"><button type="button" className={surface === 'contracts' ? 'active' : ''} onClick={() => setSurface('contracts')}>Contracts</button><button type="button" className={surface === 'bestiary' ? 'active' : ''} onClick={() => setSurface('bestiary')}>Bestiary</button><button type="button" className={surface === 'signs' ? 'active' : ''} onClick={() => setSurface('signs')}>Signs</button><button type="button" className={surface === 'codex' ? 'active' : ''} onClick={() => setSurface('codex')}>▣ Codex</button><button type="button" className={surface === 'ide' || surface === 'notes' ? 'active' : ''} onClick={() => setSurface('ide')}>↗ IDE practice</button></nav>
+      {huntView && <HunterCodex view={surface} pages={pages} entries={entries} progress={progress} encounter={encounter} pyr={pyr} busy={busy}
+        selectedId={huntPick} onSelect={(pageId) => { setHuntPick(pageId); setSelectedId(pageId) }} onView={setSurface}
+        onRead={(pageId) => { setHuntPick(pageId); setSelectedId(pageId); setReadPage(0); setSurface('codex') }}
+        onPractice={(pageId, mode, difficulty) => { if (pageId) { setHuntPick(pageId); setSelectedId(pageId) } setPracticeMode(mode); setPracticeDifficulty(difficulty || 1); setPracticeQuestion(null); setSurface('ide') }} />}
       {surface === 'codex' && <section className="resource-codex-layout"><aside className="resource-codex-index"><div className="resource-index-heading"><span className="screen-kicker">FIELD LIBRARY</span><strong>{pages.length} concepts</strong></div><label className="resource-search"><span>SEARCH</span><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Find a concept" /></label><div className="resource-page-list">{filteredPages.map((page) => <button key={page.id} type="button" className={page.id === selectedPage?.id ? 'active' : ''} onClick={() => { setSelectedId(page.id); setReadPage(0) }}><span>{page.title.slice(0, 1).toUpperCase()}</span><div><strong>{page.title}</strong><small>{page.encounter_ids?.length || 0} encounter records</small></div></button>)}</div><div className="resource-review-queue"><span className="screen-kicker">REVIEW QUEUE</span><strong>{entries.filter((entry) => entry.weaknesses?.length).length || 0} signals</strong><p>PYR can suggest concepts here when your attempts show a pattern.</p></div></aside><article className="resource-codex-reader"><div className="resource-breadcrumb"><span>CODEX</span><span>/</span><strong>{selectedPage?.title?.toUpperCase() || 'REFERENCE'}</strong></div><header className="resource-reader-heading"><div><span className="screen-kicker">REFERENCE ENTRY</span><h3>{selectedPage?.title || 'Concept page'}</h3><p>{selectedPage?.definition || 'A canonical learning reference.'}</p></div><button type="button" className="primary" onClick={() => setSurface('ide')}>Practice this →</button></header><div className="resource-folio-controls"><button type="button" className={readPage === 0 ? 'active' : ''} onClick={() => setReadPage(0)}>01 · Definition</button><button type="button" className={readPage === 1 ? 'active' : ''} onClick={() => setReadPage(1)}>02 · Examples</button><button type="button" className={readPage === 2 ? 'active' : ''} onClick={() => setReadPage(2)}>03 · Mistakes &amp; signals</button><span>PAGE {readPage + 1} / 3</span></div>{readPage === 0 && <div className="resource-folio-copy"><section className="resource-definition"><span className="screen-kicker">THE IDEA</span><p>{selectedPage?.definition}</p></section><ResourceEncounterRecords entries={selectedEntries} /></div>}{readPage === 1 && <ResourceCodexExamples page={selectedPage} />}{readPage === 2 && <ResourceCodexMistakes page={selectedPage} entries={selectedEntries} />}</article></section>}
       {surface === 'ide' && <section className="resource-ide-layout"><aside className="resource-ide-rail"><button type="button" className="resource-rail-file active" onClick={() => setSurface('ide')}><ForgeFileGlyph kind="python" /><small>tutor.py</small></button><button type="button" className="resource-rail-file" onClick={() => setSurface('notes')}><ForgeFileGlyph kind="markdown" /><small>notes.md</small></button><div className="resource-ide-context"><span className="screen-kicker">CONCEPT</span><strong>{conceptLabel}</strong><small>tutor.py is writable</small></div></aside><main className="resource-ide-main"><div className="resource-breadcrumb"><span>TUTOR</span><span>/</span><strong>IDE PRACTICE</strong></div><header className="resource-ide-heading"><div><span className="screen-kicker">{practiceModes.find((mode) => mode.id === practiceMode)?.label.toUpperCase()}</span><h3>{conceptLabel}</h3>{practiceQuestion ? <div className="pyr-practice-question"><span className="screen-kicker">PYR'S QUESTION</span><p>{practiceQuestion.text}</p>{practiceQuestion.why && <small>{practiceQuestion.why}</small>}</div> : <p>{practiceModes.find((mode) => mode.id === practiceMode)?.prompt} PYR can point at your reasoning without writing the finished response.</p>}</div><label><span>QUESTION LENS</span>{pyr?.chooseLensEnabled && <button type="button" className="pyr-choose-lens" onClick={choosePyrLens} disabled={busy}>✦ Let PYR choose</button>}<select value={practiceMode} onChange={(event) => { setPracticeMode(event.target.value); setPracticeQuestion(null) }}>{practiceModes.map((mode) => <option key={mode.id} value={mode.id}>{mode.label}</option>)}</select></label></header><div className="resource-mode-strip">{practiceModes.map((mode, index) => <button type="button" key={mode.id} className={practiceMode === mode.id ? 'active' : ''} onClick={() => { setPracticeMode(mode.id); setPracticeQuestion(null) }}><span>0{index + 1}</span>{mode.label}</button>)}</div><div className="resource-editor-card"><div className="resource-editor-toolbar"><span><b className="safe-badge">PYR WRITABLE</b> tutor.py{tutorDirty ? ' · unsaved' : ''}</span><span>MONACO · PYTHON · LOCAL COMPLETION</span></div><div className="resource-monaco"><Editor height="430px" path="tutor.py" language="python" value={tutorCode || ''} onChange={(value) => onTutorChange?.(value ?? '')} onMount={(editor, monaco) => { const provider = monaco.languages.registerCompletionItemProvider('python', { triggerCharacters: ['.', '_'], provideCompletionItems: (model) => ({ suggestions: resourceIdentifierSuggestions(model.getValue()).map((label) => ({ label, kind: monaco.languages.CompletionItemKind.Keyword, insertText: label })) }) }); editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter, runSelfCheck); editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => onTutorSave?.()); editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyMod.Shift | monaco.KeyCode.Enter, submit); editor.onDidDispose(() => provider.dispose()) }} theme="vs-dark" options={{ minimap: { enabled: false }, fontSize: editorFontSize, fontFamily: 'JetBrains Mono, ui-monospace, monospace', lineHeight: Math.round(editorFontSize * 1.55), padding: { top: 14, bottom: 14 }, automaticLayout: true, smoothScrolling: true, tabSize: 4, suggestOnTriggerCharacters: true }} /></div><div className="resource-editor-actions"><span>Ctrl/Cmd ↵ run · Ctrl/Cmd S save · Ctrl/Cmd ⇧ ↵ submit</span><div><button type="button" onClick={onTutorSave} disabled={busy}>Save Tutor</button><button type="button" onClick={onTutorFormat} disabled={busy}>Pretty</button><button type="button" onClick={() => { runSelfCheck(); onTutorRun?.() }} disabled={busy}>▶ Run Tutor</button><button type="button" className="primary" onClick={submit} disabled={busy || !String(tutorCode || '').trim()}>Submit for feedback</button></div></div></div><section className={`resource-ide-terminal ${terminal.status}`} aria-live="polite"><div><span>LOCAL TERMINAL · SELF-CHECK</span><b>{terminal.status.toUpperCase()}</b></div><pre>{terminal.output.join('\n')}</pre></section>{tutorExternalChange && <div className="tutor-conflict-banner" role="alert"><strong>External tutor.py change detected.</strong><span>Your unsaved edits are preserved.</span><button type="button" onClick={onTutorReloadExternal}>Reload external version</button><button type="button" onClick={onTutorKeepEdits}>Keep my edits</button></div>}</main><aside className="resource-ai-panel"><div className="resource-ai-heading"><div><span className="screen-kicker">PYR / AI</span><strong>Tutor channel</strong></div><span className="connection-pill">{pyr?.ready ? 'OPENCODE' : 'OFFLINE'}</span></div><p>Bounded guidance only. PYR will not paste a campaign answer or project-specific snippet.</p><div className="resource-ai-messages">{aiMessages.map((message, index) => <div key={`${message.role}-${index}`} className={`resource-ai-message ${message.role}`}><span>{message.role === 'learner' ? 'YOU' : 'PYR'}</span><p>{message.text}</p></div>)}</div><textarea value={aiPrompt} onChange={(event) => setAiPrompt(event.target.value)} rows={3} placeholder="Ask for a hint, not a finished answer…" /><div><button type="button" onClick={() => setAiMessages([])}>Clear</button><button type="button" className="primary" onClick={askPyr} disabled={busy}>Ask PYR</button></div></aside></section>}
       {surface === 'notes' && <section className="resource-notes-layout"><aside className="resource-ide-rail resource-notes-rail"><button type="button" className="resource-rail-file" onClick={() => setSurface('ide')}><ForgeFileGlyph kind="python" /><small>tutor.py</small></button><button type="button" className="resource-rail-file active" onClick={() => setSurface('notes')}><ForgeFileGlyph kind="markdown" /><small>notes.md</small></button><div className="resource-ide-context"><span className="screen-kicker">CONCEPT</span><strong>{conceptLabel}</strong><small>notes.md · learner workspace</small></div></aside><main className="resource-notes-main"><ResourceNotebook pages={pages} selectedPage={selectedPage} entries={entries} onSelectPage={setSelectedId} /></main></section>}
