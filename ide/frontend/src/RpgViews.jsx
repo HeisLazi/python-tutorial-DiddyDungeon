@@ -1570,6 +1570,9 @@ function ResourceCodexMistakes({ page, entries }) {
 // journal and PYR's lectern. Books link into the existing Codex reader and
 // IDE practice; nothing here grants campaign rewards.
 
+// Off while the Library is redesigned; flip to true to bring it back.
+const SHOW_TUTOR_LIBRARY = false
+
 const LIBRARY_WINGS = [
   { id: 'python', label: 'Python', open: true },
   { id: 'html', label: 'HTML & CSS' },
@@ -1795,8 +1798,9 @@ function TutorLibrary({ pages, entries, progress, encounter, pyr, busy, avatar, 
 function ResourceTutorScreen({ pyr, avatar, activeView, progress, revision, codexProjection, encounter, tutorCode, tutorDirty, tutorExternalChange, editorFontSize = 14, busy, onTutorChange, onTutorSave, onTutorFormat, onTutorRun, onPracticePrompt, onTutorReloadExternal, onTutorKeepEdits, onNavigate }) {
   const pages = Array.isArray(codexProjection?.pages) && codexProjection.pages.length ? codexProjection.pages : resourceFallbackPages(encounter)
   const entries = Array.isArray(codexProjection?.entries) ? codexProjection.entries : []
-  // Tutor opens on the Library; its books lead into the Codex reader and IDE practice.
-  const [surface, setSurface] = useState('library')
+  // The Library is parked while it is redesigned (SHOW_TUTOR_LIBRARY); Tutor
+  // opens on the Codex until then.
+  const [surface, setSurface] = useState(SHOW_TUTOR_LIBRARY ? 'library' : 'codex')
   const [selectedId, setSelectedId] = useState(pages[0]?.id || '')
   const [readPage, setReadPage] = useState(0)
   const [practiceMode, setPracticeMode] = useState('predict')
@@ -1879,8 +1883,8 @@ function ResourceTutorScreen({ pyr, avatar, activeView, progress, revision, code
   return (
     <div className="resource-tutor-screen" data-testid="resource-tutor" data-campaign-revision={revision}>
       <header className="resource-tutor-header"><div><span className="screen-kicker">TUTOR NOTEBOOK</span><h2>Learn it, then make it yours.</h2><p>Reference pages, a writable tutor.py and bounded PYR guidance share one calm workspace.</p></div><div className="resource-tutor-header-actions"><button type="button" onClick={() => onNavigate?.('forge')}>Resume Forge</button><span>REV {revision ?? 0}</span></div></header>
-      <nav className="resource-tutor-tabs" aria-label="Tutor sections"><button type="button" className={surface === 'library' ? 'active' : ''} onClick={() => setSurface('library')}>Library</button><button type="button" className={surface === 'codex' ? 'active' : ''} onClick={() => setSurface('codex')}>▣ Codex</button><button type="button" className={surface === 'ide' || surface === 'notes' ? 'active' : ''} onClick={() => setSurface('ide')}>↗ IDE practice</button></nav>
-      {surface === 'library' && <TutorLibrary pages={pages} entries={entries} progress={progress} encounter={encounter} pyr={pyr} busy={busy} avatar={avatar}
+      <nav className="resource-tutor-tabs" aria-label="Tutor sections">{SHOW_TUTOR_LIBRARY && <button type="button" className={surface === 'library' ? 'active' : ''} onClick={() => setSurface('library')}>Library</button>}<button type="button" className={surface === 'codex' ? 'active' : ''} onClick={() => setSurface('codex')}>▣ Codex</button><button type="button" className={surface === 'ide' || surface === 'notes' ? 'active' : ''} onClick={() => setSurface('ide')}>↗ IDE practice</button></nav>
+      {SHOW_TUTOR_LIBRARY && surface === 'library' && <TutorLibrary pages={pages} entries={entries} progress={progress} encounter={encounter} pyr={pyr} busy={busy} avatar={avatar}
         onRead={(pageId) => { setSelectedId(pageId); setReadPage(0); setSurface('codex') }}
         onPractice={(pageId, mode, difficulty) => { if (pageId) setSelectedId(pageId); setPracticeMode(mode); setPracticeDifficulty(difficulty || 1); setPracticeQuestion(null); setSurface('ide') }}
         onOpenNotes={() => setSurface('notes')} onOpenEditor={() => setSurface('ide')} />}
