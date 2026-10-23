@@ -37,6 +37,18 @@ Updated: 2026-10-22 · branch `feature/tauri-arcade` (fast-forwarded into
   hairstyle art (`portraitHair.js`, cheek/shoulder lengths) is kept but unused.
 - **Dungeon room brief:** `DungeonQuestionBrief` (question, answer-layout
   sample, difficulty, enemy Resolve, you). Zen mode spans the editor full width.
+- **Dungeon verdicts:** every graded answer pops `DungeonVerdictCard` (keyed
+  on `last_result.evidence_id`, so CLI-posted verdicts show too). A miss keeps
+  the attempt in dungeon.py; a clear sends you to the route map. PYR reasons
+  are cleaned in `ai_tutor._reason` because the verdict gateway rejects
+  `/ \ :` and control characters (that 422 used to swallow correct answers).
+- **Campaign selector:** Project Map → "Switch ▾" opens `CampaignSelector`;
+  `POST /api/campaign/select` → `select_campaign` makes any unfinished,
+  unlocked project active and leaves the old one `available` with its board
+  intact (`_open_project` is shared with the boss-clear advance).
+- **Pop-ups:** render through `ShellPortal` (into `.app-shell`, wrapper is
+  `display: contents` and carries the surface's theme class) so panel
+  stacking contexts can't hide them under the nav.
 - **Gameplay fixes:** The House accepts verdicts when a synced save lost
   `boss_status`; Dungeon elite/boss rooms can be submitted; multiline
   (AI-written) Dungeon questions pass cloud-sync validation.

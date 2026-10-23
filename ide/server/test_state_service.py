@@ -1036,6 +1036,41 @@ class StateServiceBehaviorTests(unittest.TestCase):
         )
         self.assertEqual(wrapped["result"]["next_project"]["name"], "Rock Paper Scissors Tournament")
 
+    def test_select_campaign_switches_project_and_keeps_the_old_board(self):
+        service, path = self.make_service()
+        state = self.read(path)
+        first = state["projects"][0]
+        first.update({"order": 1, "branch": "01-blackjack", "name": "Blackjack", "boss": "The House", "progress": 40})
+        first["mobs"] = [{"name": "The Empty Table", "status": "defeated", "concept": "Variables"}, {"name": "Bust", "status": "available", "concept": "Conditionals"}]
+        detective = {"order": 2, "branch": "02-detective-game", "name": "Guess Who / Detective Game", "status": "available", "boss": "The False Alibi", "progress": 0}
+        cleared = {"order": 0, "branch": "00-rps-tournament", "name": "Rock Paper Scissors Tournament", "status": "completed", "boss": "The Pattern Warden"}
+        state["projects"] = [cleared, first, detective]
+        path.write_text(json.dumps(state), encoding="utf-8")
+
+        switched = service.apply("select_campaign", {"branch": "02-detective-game"}, "player")
+        self.assertEqual(switched["result"]["project"]["name"], "Guess Who / Detective Game")
+        self.assertEqual(switched["event"]["previous_project_id"], "01-blackjack")
+        after = {item["branch"]: item for item in self.read(path)["projects"]}
+        self.assertEqual(after["02-detective-game"]["status"], "active")
+        self.assertEqual(after["02-detective-game"]["entry_file"], "detective.py")
+        self.assertEqual([mob["status"] for mob in after["02-detective-game"]["mobs"]], ["available"] + ["locked"] * 7)
+        # The project left behind keeps its board and progress.
+        self.assertEqual(after["01-blackjack"]["status"], "available")
+        self.assertEqual(after["01-blackjack"]["progress"], 40)
+        self.assertEqual([mob["status"] for mob in after["01-blackjack"]["mobs"]], ["defeated", "available"])
+        self.assertEqual(service.encounter_projection(self.read(path))["project_name"], "Guess Who / Detective Game")
+
+        # Switching back resumes it; selecting the active one is a no-op.
+        back = service.apply("select_campaign", {"branch": "01-blackjack"}, "player")
+        self.assertEqual([mob["status"] for mob in {i["branch"]: i for i in self.read(path)["projects"]}["01-blackjack"]["mobs"]], ["defeated", "available"])
+        self.assertTrue(back["changed"])
+        self.assertFalse(service.apply("select_campaign", {"branch": "01-blackjack"}, "player")["changed"])
+
+        for branch, status in (("00-rps-tournament", 409), ("99-nope", 404), ("../escape", 422)):
+            with self.assertRaises(StateCommandError) as refused:
+                service.apply("select_campaign", {"branch": branch}, "player")
+            self.assertEqual(refused.exception.status_code, status)
+
     def test_approved_legacy_reconciliation_restores_only_reviewed_fields_and_is_idempotent(self):
         service, path = self.make_service()
         state = self.read(path)

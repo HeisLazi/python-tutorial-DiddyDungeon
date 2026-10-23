@@ -535,7 +535,7 @@ function AppV2() {
     if (lastProjectBranchRef.current && lastProjectBranchRef.current !== branch && activeEntryFile) {
       const exists = files.some((item) => String(item.path || '').toLowerCase() === activeEntryFile.toLowerCase())
       if (exists) void openFile(activeEntryFile, false)
-      else setNotice(`${activeProjectInfo.name || 'New project'} unlocked! Create ${activeEntryFile} in the Forge (＋ New file) to start its first bounty.`)
+      else setNotice(`Now playing ${activeProjectInfo.name || 'a new project'}. Create ${activeEntryFile} in the Forge (＋ New file) to start its first bounty.`)
     }
     lastProjectBranchRef.current = branch
   }, [activeProjectInfo.branch])
@@ -2116,6 +2116,19 @@ function AppV2() {
     }
   }
 
+  // Switch the active campaign project; the one left keeps its board.
+  const selectCampaign = async (branch) => {
+    try {
+      const result = await api('/api/campaign/select', { method: 'POST', body: JSON.stringify({ branch }) })
+      await refreshCampaign({ silent: true })
+      if (result.changed !== false) setNotice(`Now playing ${result.project?.name || branch}.`)
+      return result
+    } catch (error) {
+      setNotice(`Campaign switch failed: ${error.message}`)
+      return null
+    }
+  }
+
   // Paper-doll appearance (equipment.avatar); cosmetic only.
   const setAvatar = async (update) => {
     try {
@@ -2624,6 +2637,7 @@ function AppV2() {
               saveCodexNote={saveCodexNote}
               pyr={pyrTools}
               setAvatar={setAvatar}
+              selectCampaign={selectCampaign}
               settingsAi={{ aiTutor, refreshAiTutor, saveAiSettings }}
               runtime={runtime}
               busy={busy || Boolean(pyrThinking)}

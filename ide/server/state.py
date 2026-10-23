@@ -380,6 +380,7 @@ ACTION_DEFINITIONS: dict[str, ActionDefinition] = {
     "homestead_action": ActionDefinition(frozenset({"player"})),
     "equip_equipment": ActionDefinition(frozenset({"player"})),
     "set_avatar": ActionDefinition(frozenset({"player"})),
+    "select_campaign": ActionDefinition(frozenset({"player"})),
     "record_learning_event": ActionDefinition(frozenset({"pyr"})),
     "record_reference_mode": ActionDefinition(frozenset({"pyr"})),
     "award_learning_reward": ActionDefinition(frozenset({SYSTEM_ACTOR}), internal=True),
@@ -1745,7 +1746,8 @@ class LocalStateService:
             if "risk_status" in raw and raw["risk_status"] is not None:
                 item["risk_status"] = cls._campaign_identifier(raw["risk_status"], "campaign.dungeon_run.risk_status")
             if "editor_content" in raw:
-                item["editor_content"] = cls._campaign_text(raw["editor_content"], "campaign.dungeon_run.editor_content", max_length=8_000) if raw["editor_content"] else ""
+                # Learner code: keep its line breaks, bounded like the editor save.
+                item["editor_content"] = cls._campaign_multiline(raw["editor_content"], "campaign.dungeon_run.editor_content", max_bytes=MAX_DUNGEON_EDITOR_BYTES) if raw["editor_content"] else ""
             for field in ("last_result",):
                 if field in raw and raw[field] is not None:
                     result = cls._campaign_mapping(raw[field], "campaign.dungeon_run.last_result", {"outcome", "question_id", "mob_name", "score_delta", "coins_delta", "damage", "evidence_id", "reason"})
@@ -4327,6 +4329,7 @@ class LocalStateService:
             "homestead_action": self._homestead_action,
             "equip_equipment": self._equip_equipment,
             "set_avatar": self._set_avatar,
+            "select_campaign": self._select_campaign,
             "record_learning_event": self._record_learning_event,
             "record_reference_mode": self._record_reference_mode,
             "award_learning_reward": self._award_learning_reward,
@@ -5650,8 +5653,18 @@ class LocalStateService:
             progress["current_quest"] = "Campaign complete: every project boss is defeated."
             return None
 
-        bounties = load_campaign_bounties().get(str(upcoming.get("branch") or ""), {})
-        mobs = upcoming.get("mobs")
+        upcoming.pop("boss_status", None)
+        self._open_project(progress, upcoming)
+        return upcoming
+
+    @staticmethod
+    def _open_project(progress: dict[str, Any], project: dict[str, Any]) -> None:
+        """Make `project` the active one, seeding its bounty board from
+        campaign_bounties.json if it has none (first bounty open, the rest
+        locked). Existing mobs and progress are kept as they are."""
+
+        bounties = load_campaign_bounties().get(str(project.get("branch") or ""), {})
+        mobs = project.get("mobs")
         if not isinstance(mobs, list) or not mobs:
             seeded = [
                 {"name": item["name"], "concept": item["concept"], "encounter": item["encounter"], "status": "locked"}
@@ -5660,19 +5673,45 @@ class LocalStateService:
             ]
             if seeded:
                 seeded[0]["status"] = "available"
-            upcoming["mobs"] = seeded
+            project["mobs"] = seeded
         if isinstance(bounties.get("entry_file"), str):
-            upcoming.setdefault("entry_file", bounties["entry_file"])
-        upcoming["status"] = "active"
-        upcoming.setdefault("progress", 0)
-        upcoming.setdefault("clean_clear_eligible", True)
-        upcoming.setdefault("creative_discoveries", [])
-        upcoming.pop("boss_status", None)
+            project.setdefault("entry_file", bounties["entry_file"])
+        project["status"] = "active"
+        project.setdefault("progress", 0)
+        project.setdefault("clean_clear_eligible", True)
+        project.setdefault("creative_discoveries", [])
         progress["current_quest"] = (
-            f"{upcoming.get('name') or upcoming.get('branch')}: clear the bounty board, "
-            f"then face {upcoming.get('boss') or 'the boss'}."
+            f"{project.get('name') or project.get('branch')}: clear the bounty board, "
+            f"then face {project.get('boss') or 'the boss'}."
         )
-        return upcoming
+
+    def _select_campaign(self, payload: Mapping[str, Any], progress: dict[str, Any]) -> Mutation:
+        """Switch the active campaign project. The project being left keeps
+        its board, progress and boss state and can be picked up again later;
+        cleared and locked projects cannot be selected."""
+
+        data = self._payload(payload, {"branch"}, {"branch"})
+        branch = self._text(data["branch"], "branch", max_length=MAX_IDENTIFIER_LENGTH, identifier=True)
+        projects = [item for item in progress.get("projects", []) if isinstance(item, dict)]
+        target = next((item for item in projects if item.get("branch") == branch), None)
+        if target is None:
+            raise StateCommandError("That campaign does not exist", status_code=404)
+        if target.get("status") == "completed" or target.get("completed") is True:
+            raise StateCommandError("That campaign is already cleared", status_code=409)
+        if target.get("status") == "locked":
+            raise StateCommandError("That campaign is still locked", status_code=409)
+        summary = {"project_id": self._project_id(target), "name": target.get("name"), "boss": target.get("boss"), "entry_file": target.get("entry_file")}
+        if target.get("status") == "active":
+            return Mutation(False, {"project": summary})
+        previous = next((item for item in projects if item.get("status") == "active"), None)
+        if previous is not None:
+            previous["status"] = "available"
+        self._open_project(progress, target)
+        summary["entry_file"] = target.get("entry_file")
+        event = {"reason": "campaign_selected", **summary}
+        if previous is not None:
+            event["previous_project_id"] = self._project_id(previous)
+        return Mutation(True, {"project": summary}, event)
 
     @staticmethod
     def _unlock_boss_if_cleared(project: dict[str, Any]) -> None:

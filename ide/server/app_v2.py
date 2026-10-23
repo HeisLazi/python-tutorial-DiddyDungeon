@@ -2610,6 +2610,26 @@ class AvatarUpdate(BaseModel):
     accent: str | None = Field(default=None, max_length=40)
 
 
+class CampaignSelect(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    branch: str = Field(min_length=1, max_length=120)
+
+
+@app.post("/api/campaign/select")
+def select_campaign(payload: CampaignSelect):
+    """Switch the active campaign project (validated by the state service)."""
+
+    envelope = _apply_state_or_http("select_campaign", {"branch": payload.branch}, "player")
+    try:
+        _progress, metadata = STATE_SERVICE.snapshot_with_metadata()
+    except StateCommandError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
+    result = _flatten_state_result(envelope)
+    result["revision"] = metadata["revision"]
+    return result
+
+
 @app.post("/api/avatar")
 def set_avatar(payload: AvatarUpdate):
     """Update the player's paper-doll appearance (validated by the state service)."""

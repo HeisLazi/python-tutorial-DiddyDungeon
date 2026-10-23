@@ -2083,3 +2083,7 @@
 .dungeon-challenge-brief h2 { margin: 6px 0; font-size: 21px; }
 .dungeon-challenge-brief > p { font-size: 11px; line-height: 1.45; }
 .dungeon-resolve-preview { margin: 10px 0; padding: 8px; }
+
+/* ShellPortal wrapper: carries a surface's theme tokens to a pop-up without
+   adding a box of its own. */
+.shell-portal, .shell-portal.campaign-v1, .shell-portal.dungeon-screen-shell { display: contents; }

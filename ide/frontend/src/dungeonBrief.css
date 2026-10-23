@@ -88,7 +88,7 @@
 .dungeon-verdict-backdrop {
   position: fixed;
   inset: 0;
-  z-index: 60;
+  z-index: 1000;
   display: grid;
   place-items: center;
   padding: 16px;
@@ -104,9 +104,11 @@
   color: var(--dungeon-text);
   box-shadow: 6px 6px 0 rgb(0 0 0 / 0.6);
 }
-.dungeon-screen-shell .dungeon-verdict-card.correct { border-color: var(--dungeon-green); }
-.dungeon-screen-shell .dungeon-verdict-card.incorrect,
-.dungeon-screen-shell .dungeon-verdict-card.error { border-color: var(--dungeon-danger); }
+/* The arcade theme gives every "*-card" an !important border; this chain
+   outranks it so the verdict colour shows. */
+.app-shell[data-theme] .dungeon-screen-shell .dungeon-verdict-backdrop .dungeon-verdict-card.correct { border-color: var(--dungeon-green) !important; }
+.app-shell[data-theme] .dungeon-screen-shell .dungeon-verdict-backdrop .dungeon-verdict-card.incorrect,
+.app-shell[data-theme] .dungeon-screen-shell .dungeon-verdict-backdrop .dungeon-verdict-card.error { border-color: var(--dungeon-danger) !important; }
 .dungeon-verdict-card h2 { margin: 0; font-size: 20px; line-height: 1.4; }
 .dungeon-verdict-card.correct h2 { color: var(--dungeon-green); }
 .dungeon-verdict-card.incorrect h2,
