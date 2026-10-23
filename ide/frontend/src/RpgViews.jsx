@@ -808,18 +808,16 @@ export function PyrChatPanel({ log = [], ready, thinking, model, onAsk, onOpenSe
 }
 
 export function SurfaceNavigation({ activeView, onNavigate }) {
-  // Codex is now a folio inside Tutor Notebook. Keep the legacy route
-  // addressable for saved links, but do not present a duplicate top-level
-  // destination in the shared navigation.
+  // Home (the campaign hub) sits with the other destinations. Codex is now a
+  // folio inside Tutor Notebook: its legacy route stays addressable for saved
+  // links but is not a duplicate top-level destination.
   const destinationItems = [
+    { id: 'hub', label: 'Home' },
     { id: 'forge', label: 'Forge' },
     ...viewItems.filter((item) => item.id !== 'hub' && item.id !== 'codex'),
   ]
   return (
     <nav className="surface-nav" data-testid="wide-route-nav" aria-label="Wide route navigation">
-      <button className="surface-nav-brand" type="button" onClick={() => onNavigate?.('hub')} aria-label="Open Campaign">
-        <RouteIcon id="hub" />
-      </button>
       <div className="surface-nav-links">
         {destinationItems.map((item) => (
           <button

@@ -74,16 +74,6 @@
   overflow-y: visible;
   animation: questlab-nav-topbar-in .24s ease-out both;
 }
-.forge-v2 .surface-nav-brand {
-  position: absolute;
-  left: clamp(12px, 2.4vw, 30px);
-  width: 34px;
-  height: 34px;
-  justify-content: center;
-  padding: 7px;
-  border-radius: 9px;
-}
-.forge-v2 .surface-nav-brand svg { width: 18px; height: 18px; }
 .forge-v2 .surface-nav-links { justify-content: center; margin-inline: auto; }
 .forge-v2 .activity-rail { animation: questlab-nav-rail-in .24s ease-out both; }
 .forge-v2 .activity-mark {
@@ -213,8 +203,7 @@
 .forge-v2 .file-tree-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 @media (max-width: 720px) {
-  .forge-v2 .surface-nav { justify-content: flex-start; padding-left: 54px; }
-  .forge-v2 .surface-nav-brand { left: 9px; }
+  .forge-v2 .surface-nav { justify-content: flex-start; }
   .forge-v2 .surface-nav-links { margin-inline: 0; }
 }
 

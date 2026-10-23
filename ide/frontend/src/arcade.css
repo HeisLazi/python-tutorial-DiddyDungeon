@@ -278,21 +278,18 @@
   background: var(--panel3);
   border-bottom: 3px solid var(--line);
 }
-.app-shell[data-theme="arcade"] .surface-nav-link,
-.app-shell[data-theme="arcade"] .surface-nav-brand {
+.app-shell[data-theme="arcade"] .surface-nav-link {
   border: 3px solid var(--line) !important;
   background: var(--panel) !important;
   color: var(--muted) !important;
   box-shadow: var(--px-shadow-sm) !important;
   font-size: 10px !important;
 }
-.app-shell[data-theme="arcade"] .surface-nav-link:hover,
-.app-shell[data-theme="arcade"] .surface-nav-brand:hover {
+.app-shell[data-theme="arcade"] .surface-nav-link:hover {
   border-color: var(--gold) !important;
   color: var(--text) !important;
 }
-.app-shell[data-theme="arcade"] .surface-nav-link.active,
-.app-shell[data-theme="arcade"][data-view="hub"] .surface-nav-brand {
+.app-shell[data-theme="arcade"] .surface-nav-link.active {
   border-color: #fff1b8 !important;
   background: var(--gold) !important;
   color: #1d1240 !important;
