@@ -29,6 +29,12 @@ Updated: 2026-10-22 · branch `feature/tauri-arcade` (fast-forwarded into
   `equipment.avatar` (options in `state.AVATAR_OPTIONS`, `POST /api/avatar`,
   synced). Shown in Home (click → Character screen) and the Dungeon "You"
   card. New armor/trinkets need a colour in `ARMOR_COLORS`/`TRINKET_COLORS`.
+- **Tate Buti:** the one playable character. `CHARACTER_LOOK` in
+  `avatarSprite.js` locks dark skin (`deep`) and the hood on every render, so
+  skin and hair are not offered on the Character screen (old saves still
+  load; their hair is simply hidden). The Character screen shows a 48x48
+  hooded portrait (`portraitSprite.js`) beside the gear sprite. Hand-drawn
+  hairstyle art (`portraitHair.js`, cheek/shoulder lengths) is kept but unused.
 - **Dungeon room brief:** `DungeonQuestionBrief` (question, answer-layout
   sample, difficulty, enemy Resolve, you). Zen mode spans the editor full width.
 - **Gameplay fixes:** The House accepts verdicts when a synced save lost

@@ -6,7 +6,8 @@ import './settings.css'
 import './dungeonBrief.css'
 import './avatar.css'
 import { merchantPixelSprite } from './campaignMerchant.js'
-import { AVATAR_LABELS, AVATAR_PALETTES, AVATAR_STYLE_LABELS, AVATAR_VIEWBOX, DEFAULT_APPEARANCE, avatarRects } from './avatarSprite.js'
+import { AVATAR_LABELS, AVATAR_PALETTES, AVATAR_STYLE_LABELS, AVATAR_VIEWBOX, CHARACTER_NAME, DEFAULT_APPEARANCE, avatarRects } from './avatarSprite.js'
+import { PORTRAIT_SIZE, portraitRects } from './portraitSprite.js'
 
 export const viewItems = [
   { id: 'hub', label: 'Campaign' },
@@ -1774,6 +1775,16 @@ export function AvatarSprite({ appearance, gear = {}, size = 96, className = '',
   )
 }
 
+// 48x48 head-and-shoulders portrait (Character screen).
+function CharacterPortrait({ appearance, size = 192 }) {
+  const rects = portraitRects(appearance || {})
+  return (
+    <svg className="character-portrait" viewBox={`0 0 ${PORTRAIT_SIZE} ${PORTRAIT_SIZE}`} width={size} height={size} style={{ width: size, height: size, flex: 'none' }} shapeRendering="crispEdges" role="img" aria-label={`${CHARACTER_NAME}, portrait`}>
+      {rects.map((rect) => <rect key={`${rect.x}-${rect.y}`} x={rect.x} y={rect.y} width={rect.width} height={1} style={{ fill: rect.fill, stroke: 'none' }} />)}
+    </svg>
+  )
+}
+
 function AvatarSwatch({ field, value, active, onPick, disabled }) {
   // Beard colours share the hair palette; 'match' (no swatch) follows the hair.
   const palette = AVATAR_PALETTES[field === 'beard_color' ? 'hair_color' : field]
@@ -1810,12 +1821,12 @@ function CharacterScreen({ progress, equipmentProjection, setAvatar, equipCampai
   return (
     <section className="character-screen" aria-label="Character">
       <div className="character-screen-head">
-        <div><span className="screen-kicker">CHARACTER</span><h2>{player.name || 'Adventurer'}</h2><p>{player.title || 'Apprentice Coder'} · Rank {player.rank || 'F'} · Level {player.level ?? 1}</p></div>
+        <div><span className="screen-kicker">CHARACTER</span><h2>{CHARACTER_NAME}</h2><p>{player.name ? `${player.name} · ` : ''}{player.title || 'Apprentice Coder'} · Rank {player.rank || 'F'} · Level {player.level ?? 1}</p></div>
         <button type="button" onClick={onClose}>← Back to room</button>
       </div>
       <div className="character-screen-layout">
         <div className="character-stage">
-          <div className="character-stage-frame"><AvatarSprite appearance={look} gear={gear} size={256} className="character-stage-sprite" /></div>
+          <div className="character-stage-frame"><CharacterPortrait appearance={look} size={192} /><AvatarSprite appearance={look} gear={gear} size={176} className="character-stage-sprite" title={`${CHARACTER_NAME} with gear`} /></div>
           <div className="character-stage-gear">
             <span><small>ARMOR</small><strong>{gear.armor || 'Apprentice Coat'}</strong></span>
             <span><small>TRINKET</small><strong>{gear.trinket && gear.trinket !== 'None' ? gear.trinket : 'None'}</strong></span>
@@ -1977,7 +1988,7 @@ function Homestead({ progress, revision, equipmentProjection, purchaseCosmetic, 
           <div className="room-pyr-label"><strong>PYR</strong><small>{pyrStage} · bond {pyrBond}</small></div>
           <button type="button" className="room-player" onClick={() => setCharacterOpen(true)} title="Open your character">
             <AvatarSprite appearance={equipmentProjection?.avatar} gear={{ armor: equipment.armor, trinket: equipment.trinket }} size={88} />
-            <small>YOU · customise</small>
+            <small>{CHARACTER_NAME.toUpperCase()} · customise</small>
           </button>
         </section>
         <section className="home-context-panel"><div className="home-context-mark"><RouteIcon id={focus === 'hearth' ? 'flame' : focus === 'armory' ? 'shield' : focus === 'study' ? 'spark' : focus === 'pyr' ? 'spark' : 'plus'} /></div><span className="screen-kicker">{focusCopy[0]}</span><h3>{focusCopy[1]}</h3><p>{focusCopy[2]}</p>{focusCopy[3]}{focus === 'pyr' && <div className="pyr-bond-meter"><div><span>BOND</span><strong>{pyrBond}{nextPyrStageMeta ? ` / ${nextPyrStageMeta.threshold}` : ' · MAX'}</strong></div><i><b style={{ width: `${pyrBondProgress}%` }} /></i><small>Training energy {pyrEnergy}/{pyrMaxEnergy}. Evolution is a companion milestone, not a hidden answer bonus.</small></div>}<div className="home-resume"><span className="screen-kicker">NEXT STEP</span><strong>{activeProject.name || 'The Count Keeper'}</strong><button type="button" onClick={() => onNavigate?.('forge')}>Return to Bounty Office</button></div></section>

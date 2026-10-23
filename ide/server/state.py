@@ -154,8 +154,10 @@ AVATAR_OPTIONS: dict[str, tuple[str, ...]] = {
     "accent": ("gold", "silver", "crimson", "teal", "violet", "white"),
 }
 DEFAULT_AVATAR: dict[str, str] = {
-    "skin": "umber",
-    "hair_style": "locs_taper",
+    # Tate Buti: dark skin, hood up. Other skins and the hairstyles stay
+    # valid so older saves still load.
+    "skin": "deep",
+    "hair_style": "hooded",
     "hair_color": "black",
     "facial_hair": "none",
     "beard_color": "match",

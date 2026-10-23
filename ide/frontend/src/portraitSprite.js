@@ -5,10 +5,11 @@
 // (hairline, fringe, sides) with dark/base/highlight shades.
 //
 // Tokens: o outline · s skin · S skin shade · L skin light · w eye white ·
-// e iris · m lip · c/C outfit · a trim · h/H/d hair base/highlight/dark ·
+// e iris · m lip · c/C/k outfit base/shade/light · n hood lining · a trim ·
+// h/H/d hair base/highlight/dark ·
 // f/q fade (hair blended into skin, then lighter) · y/Y/z beard.
 
-import { AVATAR_PALETTES, DEFAULT_APPEARANCE } from './avatarSprite.js'
+import { AVATAR_PALETTES, CHARACTER_LOOK, DEFAULT_APPEARANCE } from './avatarSprite.js'
 import { PORTRAIT_HAIR } from './portraitHair.js'
 
 export const PORTRAIT_SIZE = 48
@@ -168,6 +169,31 @@ function paintArt(grid, art = '') {
 }
 
 
+// ── Hood geometry ──────────────────────────────────────────────────────
+
+const HOOD_CY = 19.5
+const HOOD_RX = 15.5
+const HOOD_RY = 18.5
+
+function inHood(x, y) {
+  if (inEllipse(x, y, CX, HOOD_CY, HOOD_RX, HOOD_RY)) return true
+  return y >= HOOD_CY && y <= 41 && Math.abs(x + 0.5 - CX) <= HOOD_RX + (y - HOOD_CY) * 0.12
+}
+
+// The face opening (grow widens it, for the lining ring and the shadow edge).
+function inOpening(x, y, grow = 0) {
+  return inEllipse(x, y, CX, 21.5, 10.3 + grow, 12.9 + grow)
+}
+
+// Lit from the upper left, a fold line down each side, shadowed lower edge.
+function hoodShade(x, y) {
+  const t = (x + 0.5 - CX) / HOOD_RX
+  if (y > 13 && y < 38 && (Math.abs(t + 0.82) < 0.035 || Math.abs(t - 0.84) < 0.035)) return 'C'
+  if (t < -0.42 && y < 26) return 'k'
+  if (t > 0.5 || y > 36) return 'C'
+  return 'c'
+}
+
 // ── Styles: back layer (behind head) and front layer (over head) ────────
 
 const STYLES = {
@@ -215,15 +241,30 @@ const STYLES = {
       paintCap(grid, { grow: 1.6, texture: (x, y) => (hash(x, y, 3) % 7 === 0 ? 'd' : 'h') })
     },
   },
+  // Hood up: a soft shell over the head that falls onto the shoulders, the
+  // face framed by a dark lining with the brim's shadow on the forehead, a
+  // fold down each side and drawstrings in the trim colour.
   hooded: {
     back(grid) {
-      for (let y = 2; y < 40; y += 1) {
-        for (let x = 0; x < SIZE; x += 1) if (inEllipse(x, y, CX, 19, 15, 18)) set(grid, x, y, x > CX + 8 ? 'C' : 'c')
-      }
+      for (let y = 0; y < 42; y += 1) for (let x = 0; x < SIZE; x += 1) if (inHood(x, y)) set(grid, x, y, hoodShade(x, y))
     },
     front(grid) {
-      for (let y = 4; y < 14; y += 1) {
-        for (let x = 0; x < SIZE; x += 1) if (inHead(x, y, 1.5) && y < hairlineAt(x) + 1) set(grid, x, y, 'c')
+      for (let y = 0; y < 38; y += 1) {
+        for (let x = 0; x < SIZE; x += 1) {
+          if (!inHood(x, y)) continue
+          if (inOpening(x, y)) {
+            const edge = !inOpening(x, y, -1.4)
+            if ((y < 16 || edge) && grid[y][x] === 's') set(grid, x, y, 'S')
+            continue
+          }
+          set(grid, x, y, inOpening(x, y, 1.2) ? 'n' : hoodShade(x, y))
+        }
+      }
+      // The drawstrings stand in for the collar trim.
+      for (let y = 38; y <= 39; y += 1) for (let x = 0; x < SIZE; x += 1) if (grid[y][x] === 'a') set(grid, x, y, 'c')
+      for (const x of [20, 27]) {
+        for (let y = 34; y <= 43; y += 1) set(grid, x, y, 'a')
+        set(grid, x, 44, 'o')
       }
     },
   },
@@ -287,7 +328,7 @@ function mix(first, second, weight = 0.5) {
 }
 
 export function portraitPalette(appearance = {}) {
-  const look = { ...DEFAULT_APPEARANCE, ...appearance }
+  const look = { ...DEFAULT_APPEARANCE, ...appearance, ...CHARACTER_LOOK }
   const [skin, skinShade] = AVATAR_PALETTES.skin[look.skin] || AVATAR_PALETTES.skin.umber
   const [hair, hairLight] = AVATAR_PALETTES.hair_color[look.hair_color] || AVATAR_PALETTES.hair_color.black
   const [beard, beardLight] = AVATAR_PALETTES.hair_color[look.beard_color] || [hair, hairLight]
@@ -297,12 +338,12 @@ export function portraitPalette(appearance = {}) {
     e: AVATAR_PALETTES.eyes[look.eyes] || AVATAR_PALETTES.eyes.brown, m: mix(skinShade, '#3a1c1c', 0.4),
     h: hair, H: mix(hairLight, '#ffffff', 0.12), d: mix(hair, '#000000', 0.45), f: mix(hair, skinShade, 0.45), q: mix(hair, skinShade, 0.75),
     y: beard, Y: beardLight, z: mix(beard, skinShade, 0.5),
-    c: outfit, C: outfitShade, a: AVATAR_PALETTES.accent[look.accent] || AVATAR_PALETTES.accent.gold,
+    c: outfit, C: outfitShade, k: mix(outfit, '#ffffff', 0.2), n: mix(outfitShade, '#000000', 0.45), a: AVATAR_PALETTES.accent[look.accent] || AVATAR_PALETTES.accent.gold,
   }
 }
 
 export function buildPortraitGrid(appearance = {}) {
-  const look = { ...DEFAULT_APPEARANCE, ...appearance }
+  const look = { ...DEFAULT_APPEARANCE, ...appearance, ...CHARACTER_LOOK }
   const entry = PORTRAIT_HAIR[look.hair_style]
   const art = entry?.lengths ? entry.lengths[look.hair_length] || Object.values(entry.lengths)[0] : entry
   const style = art ? {

@@ -29,11 +29,17 @@ export const AVATAR_PALETTES = {
   accent: { gold: '#ffcc33', silver: '#d6dbe6', crimson: '#ff4d6d', teal: '#4cc9f0', violet: '#b48cff', white: '#f4ecd8' },
 }
 
+// The one playable character: dark-skinned, hood always up, so skin and hair
+// are not choices (the hair drawings stay for old saves and later use).
+export const CHARACTER_NAME = 'Tate Buti'
+export const CHARACTER_LOOK = { hair_style: 'hooded', skin: 'deep' }
+
+// Appearance choices shown on the Character screen, in order.
 export const AVATAR_LABELS = {
-  skin: 'Skin', hair_style: 'Hair', hair_length: 'Length', hair_color: 'Hair colour', facial_hair: 'Facial hair', beard_color: 'Beard colour', eyes: 'Eyes', outfit: 'Outfit', accent: 'Trim',
+  facial_hair: 'Facial hair', beard_color: 'Beard colour', eyes: 'Eyes', outfit: 'Hoodie', accent: 'Trim',
 }
 
-export const DEFAULT_APPEARANCE = { skin: 'umber', hair_style: 'locs_taper', hair_length: 'cheek', hair_color: 'black', facial_hair: 'none', beard_color: 'match', eyes: 'brown', outfit: 'indigo', accent: 'gold' }
+export const DEFAULT_APPEARANCE = { skin: 'deep', hair_style: 'hooded', hair_length: 'cheek', hair_color: 'black', facial_hair: 'none', beard_color: 'match', eyes: 'brown', outfit: 'indigo', accent: 'gold' }
 
 // Button labels for the hair styles (option values are state identifiers).
 export const AVATAR_STYLE_LABELS = {
@@ -41,7 +47,7 @@ export const AVATAR_STYLE_LABELS = {
   twist_out: 'Twist-out', afro: 'Afro', bantu_knots: 'Bantu knots', waves: '360 waves', brush_cut: 'Brush cut',
   taper: 'Taper fade', hooded: 'Hood',
   none: 'Clean shaven', stubble: 'Stubble', mustache: 'Mustache', goatee: 'Goatee', circle_beard: 'Circle beard',
-  chin_strap: 'Chin strap', full_beard: 'Full beard', match: 'Match hair',
+  chin_strap: 'Chin strap', full_beard: 'Full beard', match: 'Default',
   cheek: 'Cheek length', shoulder: 'Shoulder length',
 }
 
@@ -57,12 +63,12 @@ const TRINKET_COLORS = {
   'Loop Lens': '#b48cff', 'Guard Bell': '#ffe27a', 'Scimitar of Momentum': '#d6dbe6', 'Vision Scroll': '#f4ecd8',
 }
 
-// 50/50 blend of two #rrggbb colours (the taper fade).
-function mix(first, second) {
+// Blend two #rrggbb colours (50/50 by default: the taper fade).
+function mix(first, second, weight = 0.5) {
   const channels = (hex) => [1, 3, 5].map((index) => parseInt(hex.slice(index, index + 2), 16))
   const a = channels(first)
   const b = channels(second)
-  return `#${a.map((value, index) => Math.round((value + b[index]) / 2).toString(16).padStart(2, '0')).join('')}`
+  return `#${a.map((value, index) => Math.round(value * (1 - weight) + b[index] * weight).toString(16).padStart(2, '0')).join('')}`
 }
 
 function row(...runs) {
@@ -261,18 +267,24 @@ const HAIR = {
     4: row([7, 'o'], [8, 'f'], [15, 'f'], [16, 'o']),
     5: row([7, 'o'], [8, 'f'], [15, 'f'], [16, 'o']),
   },
+  // Hood up: peaked crown lit from the left, a shadowed face opening with
+  // a dark lining, sides falling to the shoulders, drawstrings in the trim.
   hooded: {
-    1: row([8, 'oooooooo']),
-    2: row([7, 'occcccccco']),
-    3: row([6, 'occCCCCcco']),
-    4: row([6, 'occ'], [15, 'cco']),
-    5: row([6, 'oc'], [16, 'co']),
-    6: row([6, 'oc'], [16, 'co']),
-    7: row([6, 'oc'], [16, 'co']),
-    8: row([6, 'oc'], [16, 'co']),
-    9: row([6, 'oc'], [16, 'co']),
-    10: row([6, 'occ'], [15, 'cco']),
-    11: row([7, 'oc'], [15, 'co']),
+    0: '.........oooooo.........',
+    1: '.......ookkkcccoo.......',
+    2: '......okkkccccccCo......',
+    3: '.....okkCCCCCCCCcCo.....',
+    4: '.....okcCSSSSSSCcCo.....',
+    5: '.....okcC......CcCo.....',
+    6: '.....okcC......CcCo.....',
+    7: '.....okcC......CcCo.....',
+    8: '.....okcC......CcCo.....',
+    9: '.....okcC......CcCo.....',
+    10: '.....okcC......CcCo.....',
+    11: '.....okccC....CccCo.....',
+    12: '..........a..a..........',
+    13: '..........a..a..........',
+    14: '..........o..o..........',
   },
 }
 
@@ -344,7 +356,7 @@ function weaponLayer(name = '') {
 const WEAPON_COLORS = { lantern: '#ffcc33', compass: '#c9a875', blade: '#d6dbe6' }
 
 export function buildAvatarGrid(appearance = {}, gear = {}) {
-  const look = { ...DEFAULT_APPEARANCE, ...appearance }
+  const look = { ...DEFAULT_APPEARANCE, ...appearance, ...CHARACTER_LOOK }
   const grid = blank()
   paint(grid, BODY)
   const hair = HAIR[look.hair_style] || HAIR.taper
@@ -357,7 +369,7 @@ export function buildAvatarGrid(appearance = {}, gear = {}) {
 }
 
 export function avatarPalette(appearance = {}, gear = {}) {
-  const look = { ...DEFAULT_APPEARANCE, ...appearance }
+  const look = { ...DEFAULT_APPEARANCE, ...appearance, ...CHARACTER_LOOK }
   const [skin, skinShade] = AVATAR_PALETTES.skin[look.skin] || AVATAR_PALETTES.skin.umber
   const [hair, hairLight] = AVATAR_PALETTES.hair_color[look.hair_color] || AVATAR_PALETTES.hair_color.black
   const [beard, beardLight] = AVATAR_PALETTES.hair_color[look.beard_color] || [hair, hairLight]
@@ -367,7 +379,7 @@ export function avatarPalette(appearance = {}, gear = {}) {
   return {
     o: '#0b0a14', s: skin, S: skinShade, M: skinShade, w: '#f4ecd8',
     e: AVATAR_PALETTES.eyes[look.eyes] || AVATAR_PALETTES.eyes.brown,
-    h: hair, H: hairLight, d: mix(hair, '#000000'), f: mix(hair, skinShade), y: beard, Y: beardLight, z: mix(beard, skinShade), c: outfit, C: outfitShade,
+    h: hair, H: hairLight, d: mix(hair, '#000000'), f: mix(hair, skinShade), y: beard, Y: beardLight, z: mix(beard, skinShade), c: outfit, C: outfitShade, k: mix(outfit, '#ffffff', 0.22),
     a: AVATAR_PALETTES.accent[look.accent] || AVATAR_PALETTES.accent.gold,
     p: '#2b2a3d', b: '#4a2c1a', A: armor, B: armorShade,
     T: TRINKET_COLORS[gear.trinket] || '#ffcc33', W: WEAPON_COLORS[weaponKind],
