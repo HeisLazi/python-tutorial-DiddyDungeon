@@ -2452,6 +2452,10 @@ function AppV2() {
               Exit Zen
             </button>
           )}
+          {/* Settings lives here, out of the destination nav. */}
+          <button className={`hud-settings ${activeView === 'settings' ? 'active' : ''}`} type="button" onClick={() => setActiveView('settings')} title="Settings" aria-label="Settings" aria-current={activeView === 'settings' ? 'page' : undefined}>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3" /><path d="M19 12a7 7 0 0 0-.1-1l2-1.5-2-3.5-2.4 1a8 8 0 0 0-1.7-1L14.5 3h-5l-.4 3a8 8 0 0 0-1.7 1L5 6 3 9.5 5.1 11a7 7 0 0 0 0 2L3 14.5 5 18l2.4-1a8 8 0 0 0 1.7 1l.4 3h5l.4-3a8 8 0 0 0 1.7-1l2.4 1 2-3.5-2.1-1.5a7 7 0 0 0 .1-1z" /></svg>
+          </button>
         </div>
       </header>
 

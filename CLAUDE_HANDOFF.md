@@ -46,6 +46,17 @@ Updated: 2026-10-22 · branch `feature/tauri-arcade` (fast-forwarded into
   `POST /api/campaign/select` → `select_campaign` makes any unfinished,
   unlocked project active and leaves the old one `available` with its board
   intact (`_open_project` is shared with the boss-clear advance).
+- **Nav:** Home · Forge · Tutor Notebook · Infinite Dungeon in the centre
+  (`SurfaceNavigation`); Settings is the `.hud-settings` gear at the end of
+  the top-right HUD.
+- **Tutor Library:** Tutor Notebook opens on `TutorLibrary` (RpgViews.jsx,
+  `tutorLibrary.css`). Language wings (Python open; HTML & CSS, JavaScript,
+  SQL, React, Rust locked), Basics / Collections / Flow bookcases of codex
+  pages, and floor stations: reading desk (up next from the encounter
+  concept, else least-practised book), practice table (book, question type,
+  difficulty → IDE practice), journal (practice history, notes) and PYR's
+  lectern (`pyr.ask`). Book mastery pips (0-4) come only from existing
+  evidence: correct practice answers, cleared encounters, skill evidence.
 - **Pop-ups:** render through `ShellPortal` (into `.app-shell`, wrapper is
   `display: contents` and carries the surface's theme class) so panel
   stacking contexts can't hide them under the nav.

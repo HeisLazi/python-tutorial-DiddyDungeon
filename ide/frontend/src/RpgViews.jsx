@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import Editor from '@monaco-editor/react'
 import './homestead.css'
 import './campaign.css'
+import './tutorLibrary.css'
 import './settings.css'
 import './dungeonBrief.css'
 import './avatar.css'
@@ -808,13 +809,14 @@ export function PyrChatPanel({ log = [], ready, thinking, model, onAsk, onOpenSe
 }
 
 export function SurfaceNavigation({ activeView, onNavigate }) {
-  // Home (the campaign hub) sits with the other destinations. Codex is now a
-  // folio inside Tutor Notebook: its legacy route stays addressable for saved
-  // links but is not a duplicate top-level destination.
+  // Home (the campaign hub) sits with the other destinations; Settings is the
+  // gear in the top-right HUD. Codex is now a folio inside Tutor Notebook: its
+  // legacy route stays addressable for saved links but is not a duplicate
+  // top-level destination.
   const destinationItems = [
     { id: 'hub', label: 'Home' },
     { id: 'forge', label: 'Forge' },
-    ...viewItems.filter((item) => item.id !== 'hub' && item.id !== 'codex'),
+    ...viewItems.filter((item) => !['hub', 'codex', 'settings'].includes(item.id)),
   ]
   return (
     <nav className="surface-nav" data-testid="wide-route-nav" aria-label="Wide route navigation">
@@ -1562,13 +1564,243 @@ function ResourceCodexMistakes({ page, entries }) {
   )
 }
 
-function ResourceTutorScreen({ pyr, activeView, progress, revision, codexProjection, encounter, tutorCode, tutorDirty, tutorExternalChange, editorFontSize = 14, busy, onTutorChange, onTutorSave, onTutorFormat, onTutorRun, onPracticePrompt, onTutorReloadExternal, onTutorKeepEdits, onNavigate }) {
+// ── Tutor Library: the room Tutor Notebook opens on ─────────────────────
+// Language wings (Python open, the rest coming later), bookcases of concept
+// books, and floor stations: reading desk (up next), practice table,
+// journal and PYR's lectern. Books link into the existing Codex reader and
+// IDE practice; nothing here grants campaign rewards.
+
+const LIBRARY_WINGS = [
+  { id: 'python', label: 'Python', open: true },
+  { id: 'html', label: 'HTML & CSS' },
+  { id: 'javascript', label: 'JavaScript' },
+  { id: 'sql', label: 'SQL' },
+  { id: 'react', label: 'React' },
+  { id: 'rust', label: 'Rust' },
+]
+
+const LIBRARY_SHELVES = [
+  { id: 'basics', label: 'Basics', pages: ['variables', 'input-output', 'conditionals'] },
+  { id: 'collections', label: 'Collections', pages: ['lists', 'dictionaries', 'random-selection'] },
+  { id: 'flow', label: 'Flow', pages: ['loops', 'functions', 'control-flow'] },
+]
+
+// Short spine labels (a spine fits about ten characters).
+const LIBRARY_SPINES = { 'input-output': 'In & Out', conditionals: 'If / Else', dictionaries: 'Dicts', 'random-selection': 'Random', 'control-flow': 'Control' }
+const librarySpine = (page) => LIBRARY_SPINES[page.id] || page.title.split(/[&,]/)[0].trim()
+
+// "input-output" -> "input": the word practice sessions and skills use.
+const libraryConceptKey = (page) => String(page?.id || '').split('-')[0].toLowerCase()
+
+// 0-4 pips from evidence the save already holds: correct practice answers
+// (up to two), a cleared campaign encounter on this page, and the matching
+// PYR skill having any evidence.
+function libraryMastery(page, progress, entries) {
+  const key = libraryConceptKey(page)
+  const matches = (text) => Boolean(key) && String(text || '').toLowerCase().includes(key)
+  const correct = (progress?.practice_sessions || []).filter((session) => matches(session.concept)).reduce((sum, session) => sum + (Number(session.correct) || 0), 0)
+  const cleared = entries.some((entry) => entry.page_id === page.id && isMobDefeated(entry.status))
+  const skill = (progress?.skills || []).find((item) => matches(item.concept))
+  const skillProof = Boolean(skill && ((Number(skill.evidence) || 0) > 0 || (skill.shield?.tier && skill.shield.tier !== 'none')))
+  return { pips: Math.min(2, correct) + (cleared ? 1 : 0) + (skillProof ? 1 : 0), correct, cleared, skill: skill?.name || '' }
+}
+
+function libraryUpNext(pages, mastery, encounter, progress) {
+  const hints = [encounter?.concept, encounter?.current_quest?.concept, progress?.learning_state?.concept].filter(Boolean)
+  for (const hint of hints) {
+    const page = pages.find((item) => String(hint).toLowerCase().includes(libraryConceptKey(item)))
+    if (page) return { page, why: `Your current bounty leans on ${hint}.` }
+  }
+  const weakest = [...pages].sort((a, b) => (mastery[a.id]?.pips ?? 0) - (mastery[b.id]?.pips ?? 0))[0]
+  return weakest ? { page: weakest, why: 'Your least-practised book so far.' } : null
+}
+
+function LibraryPips({ count, label }) {
+  return <span className="library-pips" aria-label={`${label}: ${count} of 4`}>{[0, 1, 2, 3].map((index) => <i key={index} className={index < count ? 'on' : ''} />)}</span>
+}
+
+function TutorLibrary({ pages, entries, progress, encounter, pyr, busy, avatar, onRead, onPractice, onOpenNotes, onOpenEditor }) {
+  const [wing, setWing] = useState('python')
+  const [focus, setFocus] = useState({ kind: 'desk' })
+  const [practicePageId, setPracticePageId] = useState('')
+  const [practiceMode, setPracticeMode] = useState(RESOURCE_PRACTICE_MODES[0].id)
+  const [practiceDifficulty, setPracticeDifficulty] = useState(1)
+  const [askText, setAskText] = useState('')
+  const [askLog, setAskLog] = useState([{ role: 'pyr', text: 'Ask me about any book on these shelves. I explain and nudge; I will not write your project for you.' }])
+  const byId = Object.fromEntries(pages.map((page) => [page.id, page]))
+  const mastery = Object.fromEntries(pages.map((page) => [page.id, libraryMastery(page, progress, entries)]))
+  const upNext = libraryUpNext(pages, mastery, encounter, progress)
+  const shelved = new Set(LIBRARY_SHELVES.flatMap((shelf) => shelf.pages))
+  const shelves = [
+    ...LIBRARY_SHELVES.map((shelf) => ({ ...shelf, books: shelf.pages.map((id) => byId[id]).filter(Boolean) })),
+    { id: 'more', label: 'More', books: pages.filter((page) => !shelved.has(page.id)) },
+  ].filter((shelf) => shelf.books.length)
+  const focusPage = focus.kind === 'book' ? byId[focus.pageId] : null
+  const contextPage = focusPage || byId[practicePageId] || upNext?.page || pages[0]
+  const sessions = [...(progress?.practice_sessions || [])].reverse().slice(0, 6)
+  const openWing = LIBRARY_WINGS.find((item) => item.id === wing) || LIBRARY_WINGS[0]
+
+  const choosePractice = (pageId) => {
+    setPracticePageId(pageId)
+    setFocus({ kind: 'practice' })
+  }
+  const ask = async () => {
+    const question = askText.trim()
+    if (!question) return
+    setAskText('')
+    if (!pyr?.ready) {
+      setAskLog((log) => [...log, { role: 'you', text: question }, { role: 'pyr', text: 'Connect OpenCode in Settings → AI Tutor so I can answer here.' }].slice(-8))
+      return
+    }
+    setAskLog((log) => [...log, { role: 'you', text: question }, { role: 'pyr', text: '…thinking', pending: true }].slice(-8))
+    let reply
+    try {
+      reply = await pyr.ask({ question, concept: contextPage?.title || 'Python', code: '' })
+    } catch (error) {
+      reply = `I couldn't answer that just now (${error.message}).`
+    }
+    setAskLog((log) => log.map((entry) => (entry.pending ? { role: 'pyr', text: reply } : entry)))
+  }
+
+  const station = (kind, label, kicker, icon) => (
+    <button type="button" className={`library-station ${kind} ${focus.kind === kind ? 'active' : ''}`} onClick={() => setFocus({ kind })} disabled={!openWing.open}>
+      <span className="library-station-art" aria-hidden="true"><RouteIcon id={icon} /></span>
+      <strong>{label}</strong>
+      <small>{kicker}</small>
+    </button>
+  )
+
+  return (
+    <section className="tutor-library" data-testid="tutor-library" aria-label="Tutor library">
+      <header className="library-header">
+        <span className="screen-kicker">THE LIBRARY · WINGS</span>
+        <nav className="library-wings" aria-label="Library wings">
+          {LIBRARY_WINGS.map((item) => (
+            <button key={item.id} type="button" className={`${wing === item.id ? 'active' : ''} ${item.open ? '' : 'locked'}`} onClick={() => { setWing(item.id); setFocus(item.open ? { kind: 'desk' } : { kind: 'wing' }) }} aria-pressed={wing === item.id}>
+              {!item.open && <span aria-hidden="true"><RouteIcon id="lock" /></span>}{item.label}
+            </button>
+          ))}
+        </nav>
+      </header>
+      <div className="library-body">
+        <div className={`library-room ${openWing.open ? '' : 'closed'}`}>
+          <div className="library-room-sign"><span>{openWing.label.toUpperCase()} WING</span><small>{openWing.open ? `${pages.length} books` : 'Coming soon'}</small></div>
+          {openWing.open ? (
+            <>
+              <div className="library-cases">
+                {shelves.map((shelf) => (
+                  <section key={shelf.id} className={`library-case ${shelf.id}`} aria-label={`${shelf.label} shelf`}>
+                    <div className="library-case-books">
+                      {shelf.books.map((page) => (
+                        <button key={page.id} type="button" className={`library-book ${focusPage?.id === page.id ? 'active' : ''} ${upNext?.page?.id === page.id ? 'next' : ''}`} onClick={() => setFocus({ kind: 'book', pageId: page.id })} title={page.title}>
+                          <span className="library-book-title">{librarySpine(page)}</span>
+                          <LibraryPips count={mastery[page.id]?.pips ?? 0} label={`${page.title} mastery`} />
+                        </button>
+                      ))}
+                    </div>
+                    <span className="library-case-plaque">{shelf.label.toUpperCase()}</span>
+                  </section>
+                ))}
+              </div>
+              <div className="library-floor">
+                {station('desk', 'Reading desk', upNext ? `Up next · ${upNext.page.title.split(/[&,]/)[0].trim()}` : 'Up next', 'scroll')}
+                {station('practice', 'Practice table', 'Pick a drill', 'target')}
+                <div className="library-reader" aria-hidden="true"><AvatarSprite appearance={avatar} size={72} /></div>
+                {station('journal', 'Journal', `${(progress?.practice_sessions || []).length} sessions · notes`, 'codex')}
+                {station('lectern', "PYR's lectern", 'Ask anything', 'question')}
+              </div>
+            </>
+          ) : (
+            <div className="library-closed"><RouteIcon id="lock" /><p>The {openWing.label} wing is still being built. Python is open now.</p></div>
+          )}
+        </div>
+        <aside className="library-detail" aria-live="polite">
+          {focus.kind === 'wing' && <div className="library-detail-block"><span className="screen-kicker">{openWing.label.toUpperCase()} WING</span><h4>Coming soon</h4><p>This wing will hold its own shelves and books, just like Python. For now every book lives in the Python wing.</p><button type="button" onClick={() => { setWing('python'); setFocus({ kind: 'desk' }) }}>Back to Python</button></div>}
+          {focus.kind === 'book' && focusPage && (
+            <div className="library-detail-block">
+              <span className="screen-kicker">BOOK · {(shelves.find((shelf) => shelf.books.includes(focusPage))?.label || 'Python').toUpperCase()}</span>
+              <h4>{focusPage.title}</h4>
+              <p>{focusPage.definition}</p>
+              <div className="library-mastery">
+                <LibraryPips count={mastery[focusPage.id].pips} label="Mastery" />
+                <small>{mastery[focusPage.id].correct} correct practice answer{mastery[focusPage.id].correct === 1 ? '' : 's'}{mastery[focusPage.id].cleared ? ' · campaign encounter cleared' : ''}{mastery[focusPage.id].skill ? ` · skill ${mastery[focusPage.id].skill}` : ''}</small>
+              </div>
+              {Array.isArray(focusPage.common_mistakes) && focusPage.common_mistakes[0] && <p className="library-tip"><b>Watch for</b> {focusPage.common_mistakes[0]}</p>}
+              <div className="library-actions">
+                <button type="button" className="primary" onClick={() => onRead?.(focusPage.id)}>Read</button>
+                <button type="button" onClick={() => choosePractice(focusPage.id)}>Practice this</button>
+                <button type="button" onClick={() => setFocus({ kind: 'lectern' })}>Ask PYR</button>
+              </div>
+            </div>
+          )}
+          {focus.kind === 'desk' && (
+            <div className="library-detail-block">
+              <span className="screen-kicker">READING DESK · UP NEXT</span>
+              {upNext ? <>
+                <h4>{upNext.page.title}</h4>
+                <p className="library-why">{upNext.why}</p>
+                <p>{upNext.page.definition}</p>
+                <div className="library-actions">
+                  <button type="button" className="primary" onClick={() => onRead?.(upNext.page.id)}>Read it</button>
+                  <button type="button" onClick={() => choosePractice(upNext.page.id)}>Practice it</button>
+                </div>
+              </> : <p>No books yet.</p>}
+            </div>
+          )}
+          {focus.kind === 'practice' && (
+            <div className="library-detail-block">
+              <span className="screen-kicker">PRACTICE TABLE</span>
+              <h4>Set up a drill</h4>
+              <label className="library-field"><span>Book</span>
+                <select value={contextPage?.id || ''} onChange={(event) => setPracticePageId(event.target.value)}>
+                  {pages.map((page) => <option key={page.id} value={page.id}>{page.title}</option>)}
+                </select>
+              </label>
+              <div className="library-field"><span>Question type</span>
+                <div className="library-chips">{RESOURCE_PRACTICE_MODES.map((mode) => <button key={mode.id} type="button" className={practiceMode === mode.id ? 'active' : ''} onClick={() => setPracticeMode(mode.id)} aria-pressed={practiceMode === mode.id}>{mode.label}</button>)}</div>
+              </div>
+              <div className="library-field"><span>Difficulty</span>
+                <div className="library-chips">{[1, 2, 3].map((level) => <button key={level} type="button" className={practiceDifficulty === level ? 'active' : ''} onClick={() => setPracticeDifficulty(level)} aria-pressed={practiceDifficulty === level}>{['Warm-up', 'Steady', 'Stretch'][level - 1]}</button>)}</div>
+              </div>
+              <p className="library-why">{RESOURCE_PRACTICE_MODES.find((mode) => mode.id === practiceMode)?.prompt}</p>
+              <div className="library-actions"><button type="button" className="primary" onClick={() => onPractice?.(contextPage?.id, practiceMode, practiceDifficulty)} disabled={!contextPage}>Start practice</button></div>
+            </div>
+          )}
+          {focus.kind === 'journal' && (
+            <div className="library-detail-block">
+              <span className="screen-kicker">JOURNAL</span>
+              <h4>Your notes and practice</h4>
+              <div className="library-actions"><button type="button" className="primary" onClick={onOpenNotes}>Open my notes</button><button type="button" onClick={onOpenEditor}>Open tutor.py</button></div>
+              <ol className="library-history">
+                {sessions.length ? sessions.map((session) => (
+                  <li key={session.session_id}><strong>{session.concept}</strong><small>{String(session.question_type || '').replaceAll('_', ' ')} · {session.correct ?? 0}/{session.attempts ?? 0} correct · {session.status}</small></li>
+                )) : <li><small>No practice yet. The practice table is a good place to start.</small></li>}
+              </ol>
+            </div>
+          )}
+          {focus.kind === 'lectern' && (
+            <div className="library-detail-block library-lectern">
+              <span className="screen-kicker">PYR'S LECTERN · {String(contextPage?.title || 'PYTHON').toUpperCase()}</span>
+              <div className="library-ask-log">{askLog.map((entry, index) => <p key={index} className={entry.role}><b>{entry.role === 'you' ? 'YOU' : 'PYR'}</b>{entry.text}</p>)}</div>
+              <textarea rows={3} value={askText} onChange={(event) => setAskText(event.target.value)} placeholder="Ask about this book…" onKeyDown={(event) => { if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) ask() }} />
+              <div className="library-actions"><button type="button" className="primary" onClick={ask} disabled={busy || !askText.trim()}>Ask PYR</button></div>
+            </div>
+          )}
+        </aside>
+      </div>
+    </section>
+  )
+}
+
+function ResourceTutorScreen({ pyr, avatar, activeView, progress, revision, codexProjection, encounter, tutorCode, tutorDirty, tutorExternalChange, editorFontSize = 14, busy, onTutorChange, onTutorSave, onTutorFormat, onTutorRun, onPracticePrompt, onTutorReloadExternal, onTutorKeepEdits, onNavigate }) {
   const pages = Array.isArray(codexProjection?.pages) && codexProjection.pages.length ? codexProjection.pages : resourceFallbackPages(encounter)
   const entries = Array.isArray(codexProjection?.entries) ? codexProjection.entries : []
-  const [surface, setSurface] = useState('codex')
+  // Tutor opens on the Library; its books lead into the Codex reader and IDE practice.
+  const [surface, setSurface] = useState('library')
   const [selectedId, setSelectedId] = useState(pages[0]?.id || '')
   const [readPage, setReadPage] = useState(0)
   const [practiceMode, setPracticeMode] = useState('predict')
+  const [practiceDifficulty, setPracticeDifficulty] = useState(1)
   const [terminal, setTerminal] = useState({ status: 'ready', output: ['Tutor shell ready.', 'Run is a safe local self-check; Submit is the feedback boundary.'] })
   const [aiPrompt, setAiPrompt] = useState('')
   const [aiMessages, setAiMessages] = useState([{ role: 'pyr', text: 'PYR channel ready. Ask for a hint when you need a nudge, not a finished answer.' }])
@@ -1609,7 +1841,7 @@ function ResourceTutorScreen({ pyr, activeView, progress, revision, codexProject
   const submit = async () => {
     setTerminal({ status: 'submitted', output: ['[SUBMIT] tutor.py sent for bounded Tutor feedback.', 'No campaign reward, Resolve, HP or project mutation occurs here.'] })
     try {
-      const result = await onPracticePrompt?.({ concept: conceptLabel, questionType: practiceMode, difficulty: 1, answer: tutorCode, question: practiceQuestion?.text || '' })
+      const result = await onPracticePrompt?.({ concept: conceptLabel, questionType: practiceMode, difficulty: practiceDifficulty, answer: tutorCode, question: practiceQuestion?.text || '' })
       if (result?.verdict) {
         setTerminal({ status: result.verdict === 'correct' ? 'passed' : 'failed', output: [`[PYR] ${result.verdict === 'correct' ? 'Correct' : 'Not yet'}`, result.reason, 'Practice never changes campaign rewards, HP or Resolve.'] })
       }
@@ -1647,7 +1879,11 @@ function ResourceTutorScreen({ pyr, activeView, progress, revision, codexProject
   return (
     <div className="resource-tutor-screen" data-testid="resource-tutor" data-campaign-revision={revision}>
       <header className="resource-tutor-header"><div><span className="screen-kicker">TUTOR NOTEBOOK</span><h2>Learn it, then make it yours.</h2><p>Reference pages, a writable tutor.py and bounded PYR guidance share one calm workspace.</p></div><div className="resource-tutor-header-actions"><button type="button" onClick={() => onNavigate?.('forge')}>Resume Forge</button><span>REV {revision ?? 0}</span></div></header>
-      <nav className="resource-tutor-tabs" aria-label="Tutor sections"><button type="button" className={surface === 'codex' ? 'active' : ''} onClick={() => setSurface('codex')}>▣ Codex</button><button type="button" className={surface !== 'codex' ? 'active' : ''} onClick={() => setSurface('ide')}>↗ IDE practice</button></nav>
+      <nav className="resource-tutor-tabs" aria-label="Tutor sections"><button type="button" className={surface === 'library' ? 'active' : ''} onClick={() => setSurface('library')}>Library</button><button type="button" className={surface === 'codex' ? 'active' : ''} onClick={() => setSurface('codex')}>▣ Codex</button><button type="button" className={surface === 'ide' || surface === 'notes' ? 'active' : ''} onClick={() => setSurface('ide')}>↗ IDE practice</button></nav>
+      {surface === 'library' && <TutorLibrary pages={pages} entries={entries} progress={progress} encounter={encounter} pyr={pyr} busy={busy} avatar={avatar}
+        onRead={(pageId) => { setSelectedId(pageId); setReadPage(0); setSurface('codex') }}
+        onPractice={(pageId, mode, difficulty) => { if (pageId) setSelectedId(pageId); setPracticeMode(mode); setPracticeDifficulty(difficulty || 1); setPracticeQuestion(null); setSurface('ide') }}
+        onOpenNotes={() => setSurface('notes')} onOpenEditor={() => setSurface('ide')} />}
       {surface === 'codex' && <section className="resource-codex-layout"><aside className="resource-codex-index"><div className="resource-index-heading"><span className="screen-kicker">FIELD LIBRARY</span><strong>{pages.length} concepts</strong></div><label className="resource-search"><span>SEARCH</span><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Find a concept" /></label><div className="resource-page-list">{filteredPages.map((page) => <button key={page.id} type="button" className={page.id === selectedPage?.id ? 'active' : ''} onClick={() => { setSelectedId(page.id); setReadPage(0) }}><span>{page.title.slice(0, 1).toUpperCase()}</span><div><strong>{page.title}</strong><small>{page.encounter_ids?.length || 0} encounter records</small></div></button>)}</div><div className="resource-review-queue"><span className="screen-kicker">REVIEW QUEUE</span><strong>{entries.filter((entry) => entry.weaknesses?.length).length || 0} signals</strong><p>PYR can suggest concepts here when your attempts show a pattern.</p></div></aside><article className="resource-codex-reader"><div className="resource-breadcrumb"><span>CODEX</span><span>/</span><strong>{selectedPage?.title?.toUpperCase() || 'REFERENCE'}</strong></div><header className="resource-reader-heading"><div><span className="screen-kicker">REFERENCE ENTRY</span><h3>{selectedPage?.title || 'Concept page'}</h3><p>{selectedPage?.definition || 'A canonical learning reference.'}</p></div><button type="button" className="primary" onClick={() => setSurface('ide')}>Practice this →</button></header><div className="resource-folio-controls"><button type="button" className={readPage === 0 ? 'active' : ''} onClick={() => setReadPage(0)}>01 · Definition</button><button type="button" className={readPage === 1 ? 'active' : ''} onClick={() => setReadPage(1)}>02 · Examples</button><button type="button" className={readPage === 2 ? 'active' : ''} onClick={() => setReadPage(2)}>03 · Mistakes &amp; signals</button><span>PAGE {readPage + 1} / 3</span></div>{readPage === 0 && <div className="resource-folio-copy"><section className="resource-definition"><span className="screen-kicker">THE IDEA</span><p>{selectedPage?.definition}</p></section><ResourceEncounterRecords entries={selectedEntries} /></div>}{readPage === 1 && <ResourceCodexExamples page={selectedPage} />}{readPage === 2 && <ResourceCodexMistakes page={selectedPage} entries={selectedEntries} />}</article></section>}
       {surface === 'ide' && <section className="resource-ide-layout"><aside className="resource-ide-rail"><button type="button" className="resource-rail-file active" onClick={() => setSurface('ide')}><ForgeFileGlyph kind="python" /><small>tutor.py</small></button><button type="button" className="resource-rail-file" onClick={() => setSurface('notes')}><ForgeFileGlyph kind="markdown" /><small>notes.md</small></button><div className="resource-ide-context"><span className="screen-kicker">CONCEPT</span><strong>{conceptLabel}</strong><small>tutor.py is writable</small></div></aside><main className="resource-ide-main"><div className="resource-breadcrumb"><span>TUTOR</span><span>/</span><strong>IDE PRACTICE</strong></div><header className="resource-ide-heading"><div><span className="screen-kicker">{practiceModes.find((mode) => mode.id === practiceMode)?.label.toUpperCase()}</span><h3>{conceptLabel}</h3>{practiceQuestion ? <div className="pyr-practice-question"><span className="screen-kicker">PYR'S QUESTION</span><p>{practiceQuestion.text}</p>{practiceQuestion.why && <small>{practiceQuestion.why}</small>}</div> : <p>{practiceModes.find((mode) => mode.id === practiceMode)?.prompt} PYR can point at your reasoning without writing the finished response.</p>}</div><label><span>QUESTION LENS</span>{pyr?.chooseLensEnabled && <button type="button" className="pyr-choose-lens" onClick={choosePyrLens} disabled={busy}>✦ Let PYR choose</button>}<select value={practiceMode} onChange={(event) => { setPracticeMode(event.target.value); setPracticeQuestion(null) }}>{practiceModes.map((mode) => <option key={mode.id} value={mode.id}>{mode.label}</option>)}</select></label></header><div className="resource-mode-strip">{practiceModes.map((mode, index) => <button type="button" key={mode.id} className={practiceMode === mode.id ? 'active' : ''} onClick={() => { setPracticeMode(mode.id); setPracticeQuestion(null) }}><span>0{index + 1}</span>{mode.label}</button>)}</div><div className="resource-editor-card"><div className="resource-editor-toolbar"><span><b className="safe-badge">PYR WRITABLE</b> tutor.py{tutorDirty ? ' · unsaved' : ''}</span><span>MONACO · PYTHON · LOCAL COMPLETION</span></div><div className="resource-monaco"><Editor height="430px" path="tutor.py" language="python" value={tutorCode || ''} onChange={(value) => onTutorChange?.(value ?? '')} onMount={(editor, monaco) => { const provider = monaco.languages.registerCompletionItemProvider('python', { triggerCharacters: ['.', '_'], provideCompletionItems: (model) => ({ suggestions: resourceIdentifierSuggestions(model.getValue()).map((label) => ({ label, kind: monaco.languages.CompletionItemKind.Keyword, insertText: label })) }) }); editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter, runSelfCheck); editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => onTutorSave?.()); editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyMod.Shift | monaco.KeyCode.Enter, submit); editor.onDidDispose(() => provider.dispose()) }} theme="vs-dark" options={{ minimap: { enabled: false }, fontSize: editorFontSize, fontFamily: 'JetBrains Mono, ui-monospace, monospace', lineHeight: Math.round(editorFontSize * 1.55), padding: { top: 14, bottom: 14 }, automaticLayout: true, smoothScrolling: true, tabSize: 4, suggestOnTriggerCharacters: true }} /></div><div className="resource-editor-actions"><span>Ctrl/Cmd ↵ run · Ctrl/Cmd S save · Ctrl/Cmd ⇧ ↵ submit</span><div><button type="button" onClick={onTutorSave} disabled={busy}>Save Tutor</button><button type="button" onClick={onTutorFormat} disabled={busy}>Pretty</button><button type="button" onClick={() => { runSelfCheck(); onTutorRun?.() }} disabled={busy}>▶ Run Tutor</button><button type="button" className="primary" onClick={submit} disabled={busy || !String(tutorCode || '').trim()}>Submit for feedback</button></div></div></div><section className={`resource-ide-terminal ${terminal.status}`} aria-live="polite"><div><span>LOCAL TERMINAL · SELF-CHECK</span><b>{terminal.status.toUpperCase()}</b></div><pre>{terminal.output.join('\n')}</pre></section>{tutorExternalChange && <div className="tutor-conflict-banner" role="alert"><strong>External tutor.py change detected.</strong><span>Your unsaved edits are preserved.</span><button type="button" onClick={onTutorReloadExternal}>Reload external version</button><button type="button" onClick={onTutorKeepEdits}>Keep my edits</button></div>}</main><aside className="resource-ai-panel"><div className="resource-ai-heading"><div><span className="screen-kicker">PYR / AI</span><strong>Tutor channel</strong></div><span className="connection-pill">{pyr?.ready ? 'OPENCODE' : 'OFFLINE'}</span></div><p>Bounded guidance only. PYR will not paste a campaign answer or project-specific snippet.</p><div className="resource-ai-messages">{aiMessages.map((message, index) => <div key={`${message.role}-${index}`} className={`resource-ai-message ${message.role}`}><span>{message.role === 'learner' ? 'YOU' : 'PYR'}</span><p>{message.text}</p></div>)}</div><textarea value={aiPrompt} onChange={(event) => setAiPrompt(event.target.value)} rows={3} placeholder="Ask for a hint, not a finished answer…" /><div><button type="button" onClick={() => setAiMessages([])}>Clear</button><button type="button" className="primary" onClick={askPyr} disabled={busy}>Ask PYR</button></div></aside></section>}
       {surface === 'notes' && <section className="resource-notes-layout"><aside className="resource-ide-rail resource-notes-rail"><button type="button" className="resource-rail-file" onClick={() => setSurface('ide')}><ForgeFileGlyph kind="python" /><small>tutor.py</small></button><button type="button" className="resource-rail-file active" onClick={() => setSurface('notes')}><ForgeFileGlyph kind="markdown" /><small>notes.md</small></button><div className="resource-ide-context"><span className="screen-kicker">CONCEPT</span><strong>{conceptLabel}</strong><small>notes.md · learner workspace</small></div></aside><main className="resource-notes-main"><ResourceNotebook pages={pages} selectedPage={selectedPage} entries={entries} onSelectPage={setSelectedId} /></main></section>}
@@ -3035,7 +3271,7 @@ export function GameScreen({ pyr, settingsAi, runtime, setAvatar, selectCampaign
     )
   }
   if (activeView === 'hub') return withWideNavigation(<CampaignSurface setAvatar={setAvatar} selectCampaign={selectCampaign} progress={progress} revision={revision} equipmentProjection={equipmentProjection} purchaseCosmetic={purchaseCosmetic} purchaseMarketItem={purchaseMarketItem} equipCosmetic={equipCosmetic} equipCampaignItem={equipCampaignItem} buildRoomUpgrade={buildRoomUpgrade} performHomesteadAction={performHomesteadAction} busy={busy} onNavigate={onNavigate} />)
-  if (activeView === 'quests' || activeView === 'codex' || activeView === 'tutor') return withWideNavigation(<ResourceTutorScreen pyr={pyr} activeView={activeView} progress={progress} revision={revision} codexProjection={codexProjection} encounter={encounter} tutorCode={tutorCode} tutorDirty={tutorDirty} tutorExternalChange={tutorExternalChange} editorFontSize={editorFontSize} busy={busy} onTutorChange={onTutorChange} onTutorSave={onTutorSave} onTutorFormat={onTutorFormat} onTutorRun={onTutorRun} onPracticePrompt={onPracticePrompt} onTutorReloadExternal={onTutorReloadExternal} onTutorKeepEdits={onTutorKeepEdits} onNavigate={onNavigate} />)
+  if (activeView === 'quests' || activeView === 'codex' || activeView === 'tutor') return withWideNavigation(<ResourceTutorScreen pyr={pyr} avatar={equipmentProjection?.avatar} activeView={activeView} progress={progress} revision={revision} codexProjection={codexProjection} encounter={encounter} tutorCode={tutorCode} tutorDirty={tutorDirty} tutorExternalChange={tutorExternalChange} editorFontSize={editorFontSize} busy={busy} onTutorChange={onTutorChange} onTutorSave={onTutorSave} onTutorFormat={onTutorFormat} onTutorRun={onTutorRun} onPracticePrompt={onPracticePrompt} onTutorReloadExternal={onTutorReloadExternal} onTutorKeepEdits={onTutorKeepEdits} onNavigate={onNavigate} />)
   // Legacy render contract retained in source comments for downstream static
   // checks; the live route above owns the replacement surface.
   // withWideNavigation(<Codex progress={progress} revision={revision} codexProjection={codexProjection} showNavigation={false} />)
