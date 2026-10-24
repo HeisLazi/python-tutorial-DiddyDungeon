@@ -145,7 +145,8 @@
 .verdict-arena.hit .verdict-float { animation: verdict-float 1.2s steps(10) forwards; }
 .verdict-arena.player-wins .player .verdict-sprite { animation: verdict-lunge-right 0.35s steps(3); }
 .verdict-arena.mob-wins .mob .verdict-sprite { animation: verdict-lunge-left 0.35s steps(3); }
-.verdict-arena.hit.player-wins .verdict-mob { animation: verdict-shake 0.4s steps(4), verdict-defeat 0.5s 0.6s steps(5) forwards; }
+.verdict-arena.hit.player-wins .verdict-mob { animation: verdict-shake 0.4s steps(4); }
+.verdict-arena.hit.defeated .verdict-mob { animation: verdict-shake 0.4s steps(4), verdict-defeat 0.5s 0.6s steps(5) forwards; }
 .verdict-arena.hit.mob-wins .player .verdict-sprite { animation: verdict-shake 0.4s steps(4); }
 .dungeon-verdict-summary { margin: 0; font-size: 18px; }
 .dungeon-verdict-stats li.reward { border-color: var(--dungeon-gold); color: var(--dungeon-gold); }
@@ -160,3 +161,21 @@
   .verdict-arena.hit .verdict-float { opacity: 1; }
 }
 .dungeon-verdict-stats li.growth { border-color: var(--dungeon-blue); color: var(--dungeon-blue); }
+
+.verdict-float.blast { top: 40px; color: var(--dungeon-ember, var(--dungeon-danger)); }
+.verdict-float.guarded { color: var(--dungeon-blue); }
+.verdict-float.broke { top: 40px; color: var(--dungeon-green); }
+
+/* Fight strip in the room brief: progress, free mistakes, the mechanic. */
+.dungeon-fight-strip { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px; margin: 8px 0; }
+.dungeon-fight-cell { display: grid; gap: 3px; align-content: start; padding: 8px 10px; border: 1px solid var(--dungeon-line); background: var(--dungeon-panel-3); }
+.dungeon-fight-cell strong { font-size: 18px; color: var(--dungeon-text); }
+.dungeon-fight-cell small { color: var(--dungeon-muted); font-size: 14px; line-height: 1.3; }
+.dungeon-fight-cell.mechanic { grid-column: 1 / -1; border-color: var(--dungeon-ember, var(--dungeon-danger)); }
+.dungeon-fight-cell.mechanic.enraged { border-color: var(--dungeon-danger); background: color-mix(in srgb, var(--dungeon-danger) 14%, var(--dungeon-panel-3)); }
+.dungeon-fight-pips { display: flex; gap: 4px; }
+.dungeon-fight-pips i { width: 14px; height: 8px; border: 1px solid var(--dungeon-line); }
+.dungeon-fight-pips i.done { background: var(--dungeon-green); border-color: var(--dungeon-green); }
+.dungeon-fight-pips i.now { border-color: var(--dungeon-gold); }
+.dungeon-brief-fightchip { padding: 2px 8px; border: 1px solid var(--dungeon-gold); color: var(--dungeon-gold); white-space: nowrap; }
+.dungeon-brief-fightchip.enraged { border-color: var(--dungeon-danger); color: var(--dungeon-danger); }

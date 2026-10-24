@@ -782,6 +782,30 @@ HUNTER_TEACHBACK_TYPES = frozenset({"explanation", "short_explanation", "intervi
 HUNTER_STAT_XP_PER_POINT = 10
 HUNTER_SIGN_COUNTERS = ("xp", "clean_casts", "recovered", "tutor_passes", "dungeon_clean", "campaign_uses", "teachbacks")
 
+# ── Dungeon fights (the iron rule) ───────────────────────────────────────
+# A room with N questions always takes N correct answers. Resolve is the
+# enemy's guard, separate from that progress: correct answers chip it and a
+# break only helps (a free mistake, the mechanic interrupted, a few coins).
+DUNGEON_FIGHT_QUESTIONS = {"encounter": 1, "elite": 3, "boss": 5}
+DUNGEON_FIGHT_RESOLVE = {"encounter": 6, "elite": 8, "boss": 12}
+DUNGEON_FIGHT_CHIP = {"encounter": 3, "elite": 4, "boss": 5}
+DUNGEON_BREAK_COINS = 3
+DUNGEON_SELF_DESTRUCT_BLAST = 15
+DUNGEON_MECHANICS = {
+    "elite": {
+        "kind": "enrage",
+        "label": "Enrage",
+        "every": 2,
+        "text": "Every 2 answers it works itself into a rage; while enraged its counterattacks hit twice as hard. A break calms it.",
+    },
+    "boss": {
+        "kind": "self_destruct",
+        "label": "Self-destruct",
+        "every": 3,
+        "text": f"It counts down to a self-destruct that blasts you for {DUNGEON_SELF_DESTRUCT_BLAST} HP, then starts again. A break interrupts the countdown.",
+    },
+}
+
 
 def hunter_signs_for(concept: object) -> list[str]:
     """The signs a concept label (e.g. "Lists and random selection") feeds."""
@@ -2707,6 +2731,46 @@ class LocalStateService:
             }
         )
 
+    def _dungeon_start_fight(self, run: dict[str, Any], progress: Mapping[str, Any]) -> dict[str, Any]:
+        """Open the fight for the current combat room: its fixed question
+        count, a full Resolve bar and the room's mechanic. Insight buys one
+        more answer on every mechanic countdown per 3 points."""
+
+        room_type = str(run.get("room_type") or "encounter")
+        insight = self.hunter_projection(progress)["stats"]["insight"]["value"]
+        mechanic = None
+        definition = DUNGEON_MECHANICS.get(room_type)
+        if definition:
+            span = definition["every"] + max(0, insight - 1) // 3
+            mechanic = {
+                "kind": definition["kind"],
+                "label": definition["label"],
+                "text": definition["text"],
+                "every": span,
+                "countdown": span,
+                "enraged": False,
+                "fired": 0,
+            }
+        resolve = DUNGEON_FIGHT_RESOLVE.get(room_type, 6)
+        fight = {
+            "room_type": room_type,
+            "questions_total": DUNGEON_FIGHT_QUESTIONS.get(room_type, 1),
+            "questions_cleared": 0,
+            "resolve": resolve,
+            "max_resolve": resolve,
+            "guards": 0,
+            "breaks": 0,
+            "mechanic": mechanic,
+        }
+        run["fight"] = fight
+        return fight
+
+    def _dungeon_fight(self, run: dict[str, Any], progress: Mapping[str, Any]) -> dict[str, Any]:
+        fight = run.get("fight")
+        if not isinstance(fight, dict) or fight.get("room_type") != run.get("room_type"):
+            fight = self._dungeon_start_fight(run, progress)
+        return fight
+
     @classmethod
     def _dungeon_mob_spec(cls, run: Mapping[str, Any]) -> dict[str, Any] | None:
         """Return the safe identity for the currently issued learning mob.
@@ -2732,7 +2796,9 @@ class LocalStateService:
             difficulty = 1
         phase_index = min(len(_DUNGEON_MOB_PHASES) - 1, (difficulty - 1) // 3)
         room_type = str(run.get("room_type") or "encounter")
-        max_resolve = {"encounter": 6, "elite": 8, "boss": 12}.get(room_type, 6)
+        fight = run.get("fight") if isinstance(run.get("fight"), Mapping) and run["fight"].get("room_type") == room_type else None
+        max_resolve = int(fight["max_resolve"]) if fight else DUNGEON_FIGHT_RESOLVE.get(room_type, 6)
+        resolve = int(fight["resolve"]) if fight else max_resolve
         score_index = min(difficulty, len(DUNGEON_SCORE_BY_DIFFICULTY) - 1)
         class_data = DUNGEON_CLASSES_BY_ID.get(str(run.get("class_id") or ""), {})
         loadout = run.get("loadout") if isinstance(run.get("loadout"), Mapping) else {}
@@ -2784,8 +2850,18 @@ class LocalStateService:
             "phase": _DUNGEON_MOB_PHASES[phase_index],
             "room_type": room_type,
             "max_resolve": max_resolve,
-            "resolve": max_resolve,
+            "resolve": resolve,
             "resolve_damage": clean_impact,
+            "fight": {
+                "questions_total": int(fight["questions_total"]) if fight else DUNGEON_FIGHT_QUESTIONS.get(room_type, 1),
+                "questions_cleared": int(fight["questions_cleared"]) if fight else 0,
+                "guards": int(fight["guards"]) if fight else 0,
+                "breaks": int(fight["breaks"]) if fight else 0,
+                "mechanic": dict(fight["mechanic"]) if fight and isinstance(fight.get("mechanic"), Mapping) else (
+                    {**DUNGEON_MECHANICS[room_type], "countdown": DUNGEON_MECHANICS[room_type]["every"], "enraged": False, "fired": 0}
+                    if room_type in DUNGEON_MECHANICS else None
+                ),
+            },
             "guide": {"tier": guide_tier, "steps": guide_steps},
             "mechanic": profile,
             "reward_envelope": {
@@ -3113,6 +3189,7 @@ class LocalStateService:
             )
             run["question"] = question
             question_id = question["id"]
+            self._dungeon_start_fight(run, progress)
             mob = self._dungeon_mob_spec(run)
         elif kind == "mystery":
             seed = str(run.get("seed") or run.get("run_id") or "dungeon")
@@ -3353,7 +3430,7 @@ class LocalStateService:
         if isinstance(last_result, Mapping):
             projection["last_result"] = {
                 key: last_result[key]
-                for key in ("outcome", "question_id", "mob_name", "score_delta", "coins_delta", "damage", "evidence_id", "reason", "hunter_gain")
+                for key in ("outcome", "question_id", "mob_name", "score_delta", "coins_delta", "damage", "evidence_id", "reason", "hunter_gain", "fight")
                 if key in last_result
             }
         history = run.get("history")
@@ -3420,7 +3497,8 @@ class LocalStateService:
             raise StateCommandError("Unknown Dungeon class", status_code=422)
         run_id = f"dungeon-{uuid.uuid4().hex}"
         player = self._dict(progress, "player")
-        maximum = self._counter(player, "max_hp") or 100
+        vitality = self.hunter_projection(progress)["stats"]["vitality"]["value"]
+        maximum = (self._counter(player, "max_hp") or 100) + 5 * max(0, vitality - 1)
         now = _utc_now()
         run = {
             "status": "active",
@@ -3598,6 +3676,7 @@ class LocalStateService:
         question = run.get("question") if isinstance(run.get("question"), Mapping) else None
         if question is None or question.get("id") != question_id or run.get("room_type") not in {"encounter", "elite", "boss"}:
             raise StateCommandError("Dungeon question changed; reload the current room", status_code=409)
+        fight = self._dungeon_fight(run, progress)
         mob = self._dungeon_mob_spec(run)
         difficulty = self._integer(question.get("difficulty", 1), "question.difficulty", minimum=1, maximum=MAX_DUNGEON_DIFFICULTY)
         run["attempts"] = self._counter(run, "attempts") + 1
@@ -3605,6 +3684,15 @@ class LocalStateService:
         coins_delta = 0
         damage = 0
         hunter_gain = None
+        hunter = self.hunter_projection(progress)
+        mechanic = fight.get("mechanic") if isinstance(fight.get("mechanic"), dict) else None
+        resolve_before = int(fight["resolve"])
+        chip = 0
+        broke = False
+        guard_used = False
+        mechanic_fired = None
+        blast = 0
+        fight_done = False
         if verdict == "correct":
             clean_cast = not any(
                 isinstance(item, Mapping) and item.get("question_id") == question_id and item.get("outcome") == "incorrect"
@@ -3620,22 +3708,67 @@ class LocalStateService:
                 score_delta += 1
                 loadout["edge_charges"] = self._counter(loadout, "edge_charges") - 1
             run["score"] = self._counter(run, "score") + score_delta
-            run["run_coins"] = self._counter(run, "run_coins") + coins_delta
+            # Progress: exactly one question per correct answer; coins on the clear.
+            fight["questions_cleared"] = int(fight["questions_cleared"]) + 1
+            fight_done = fight["questions_cleared"] >= int(fight["questions_total"])
+            if fight_done:
+                run["run_coins"] = self._counter(run, "run_coins") + coins_delta
+            else:
+                coins_delta = 0
+            # Resolve: Strength and the sign's level make each chip bigger.
+            concept_signs = set(hunter_signs_for(question.get("concept_id") or run.get("concept_id")))
+            sign_level = max((sign["level"] for sign in hunter["signs"] if sign["id"] in concept_signs), default=0)
+            base_chip = DUNGEON_FIGHT_CHIP.get(str(run.get("room_type")), 3)
+            chip = (base_chip if clean_cast else max(1, base_chip // 2)) + (hunter["stats"]["strength"]["value"] - 1) + sign_level // 3
+            fight["resolve"] = max(0, resolve_before - chip)
+            if fight["resolve"] == 0 and not fight_done:
+                # A break only helps: a free mistake, the mechanic stops, a few coins.
+                broke = True
+                fight["breaks"] = int(fight["breaks"]) + 1
+                fight["guards"] = int(fight["guards"]) + 1
+                fight["resolve"] = int(fight["max_resolve"])
+                run["run_coins"] = self._counter(run, "run_coins") + DUNGEON_BREAK_COINS
+                coins_delta += DUNGEON_BREAK_COINS
+                if mechanic:
+                    mechanic["countdown"] = int(mechanic["every"])
+                    mechanic["enraged"] = False
         else:
             raw_damage = min(28, 4 + difficulty * 2)
             loadout = self._dungeon_ensure_loadout_defaults(run)
-            multiplier = max(1, self._counter(run, "next_failure_multiplier") or 1)
-            armor_reduction = 25 if loadout.get("armor") == "Ember Ward" else 0
-            if self._counter(loadout, "armor_guard") > 0:
-                loadout["armor_guard"] = 0
+            if int(fight["guards"]) > 0:
+                # A banked free mistake absorbs this miss entirely.
+                fight["guards"] = int(fight["guards"]) - 1
+                guard_used = True
                 damage = 0
             else:
-                damage = max(1, (raw_damage * multiplier * (100 - armor_reduction) + 99) // 100)
+                multiplier = max(1, self._counter(run, "next_failure_multiplier") or 1)
+                if mechanic and mechanic.get("enraged"):
+                    multiplier *= 2
+                armor_reduction = 25 if loadout.get("armor") == "Ember Ward" else 0
+                if self._counter(loadout, "armor_guard") > 0:
+                    loadout["armor_guard"] = 0
+                    damage = 0
+                else:
+                    damage = max(1, (raw_damage * multiplier * (100 - armor_reduction) + 99) // 100)
+                if loadout["armor"] == "Ember Ward":
+                    loadout["armor"] = "Apprentice Coat"
+                run["next_failure_multiplier"] = 1
             current_hp = self._counter(loadout, "hp")
             loadout["hp"] = max(0, current_hp - damage)
-            if loadout["armor"] == "Ember Ward":
-                loadout["armor"] = "Apprentice Coat"
-            run["next_failure_multiplier"] = 1
+        # The mechanic ticks on every answer, unless this answer broke it or
+        # ended the fight.
+        if mechanic and not broke and not fight_done:
+            mechanic["countdown"] = int(mechanic["countdown"]) - 1
+            if mechanic["countdown"] <= 0:
+                mechanic["countdown"] = int(mechanic["every"])
+                mechanic["fired"] = int(mechanic.get("fired", 0)) + 1
+                mechanic_fired = mechanic["kind"]
+                if mechanic["kind"] == "enrage":
+                    mechanic["enraged"] = True
+                elif mechanic["kind"] == "self_destruct":
+                    blast = DUNGEON_SELF_DESTRUCT_BLAST
+                    loadout = self._dungeon_ensure_loadout_defaults(run)
+                    loadout["hp"] = max(0, self._counter(loadout, "hp") - blast)
 
         result_record = {
             "outcome": verdict,
@@ -3647,11 +3780,31 @@ class LocalStateService:
             "evidence_id": evidence_id,
             "reason": reason,
         }
-        run["last_result"] = {**result_record, "hunter_gain": hunter_gain} if hunter_gain else result_record
+        fight_record = {
+            "room_type": str(run.get("room_type") or "encounter"),
+            "chip": chip,
+            "resolve_before": resolve_before,
+            "resolve_after": max(0, resolve_before - chip) if verdict == "correct" else resolve_before,
+            "max_resolve": int(fight["max_resolve"]),
+            "broke": broke,
+            "guard_used": guard_used,
+            "guards": int(fight["guards"]),
+            "mechanic": mechanic["kind"] if mechanic else None,
+            "mechanic_label": mechanic["label"] if mechanic else None,
+            "mechanic_fired": mechanic_fired,
+            "mechanic_countdown": int(mechanic["countdown"]) if mechanic else None,
+            "enraged": bool(mechanic and mechanic.get("enraged")),
+            "blast": blast,
+            "questions_cleared": int(fight["questions_cleared"]),
+            "questions_total": int(fight["questions_total"]),
+            "fight_done": fight_done,
+        }
+        run["last_result"] = {**result_record, "fight": fight_record, **({"hunter_gain": hunter_gain} if hunter_gain else {})}
         self._dungeon_append_history(run, {"room": run.get("room", 1), "floor": run.get("floor", 1), **result_record})
-        died = verdict == "incorrect" and self._counter(run.get("loadout") or {}, "hp") <= 0
-        # A miss keeps the attempt in dungeon.py so the player can fix it;
-        # a clear (next room) or a death starts from a blank buffer.
+        # A self-destruct blast can end a run on a correct answer too.
+        died = self._counter(run.get("loadout") or {}, "hp") <= 0
+        # A miss keeps the attempt in dungeon.py so the player can fix it; the
+        # next question, a clear or a death starts from a blank buffer.
         editor_reset = verdict == "correct" or died
         if editor_reset:
             run["editor_content"] = ""
@@ -3660,8 +3813,19 @@ class LocalStateService:
             run.update({"status": "dead", "ended_at": ended, "updated_at": ended, "question": None})
             self._dungeon_record_leaderboard(progress, run, "dead")
         else:
-            if verdict == "correct":
+            if verdict == "correct" and fight_done:
+                run.pop("fight", None)
                 self._dungeon_set_next_room(run, progress)
+            elif verdict == "correct":
+                # Same room, next question: the fight (Resolve, free mistakes,
+                # mechanic) carries on.
+                run["question_number"] = self._counter(run, "question_number") + 1
+                run["question"] = self._dungeon_question_for_room(
+                    run,
+                    room=self._integer(run.get("room", 1), "room", minimum=1, maximum=MAX_DUNGEON_ROOM),
+                    floor=self._integer(run.get("floor", 1), "floor", minimum=1, maximum=MAX_DUNGEON_FLOOR),
+                )
+                run["updated_at"] = _utc_now()
             else:
                 run["updated_at"] = _utc_now()
         projection = self.dungeon_projection(progress)
@@ -3685,7 +3849,8 @@ class LocalStateService:
             event.update({"run_died": True, "score": run.get("score", 0)})
         elif verdict == "correct":
             event.update({"next_room": run.get("room"), "next_room_type": run.get("room_type"), "question_type": (run.get("question") or {}).get("question_type") if isinstance(run.get("question"), Mapping) else None, "concept_id": (run.get("question") or {}).get("concept_id") if isinstance(run.get("question"), Mapping) else run.get("concept_id")})
-        return Mutation(True, {"run": projection, **result_record, "run_died": died, "hunter_gain": hunter_gain}, event)
+        event["fight"] = fight_record
+        return Mutation(True, {"run": projection, **result_record, "fight": fight_record, "run_died": died, "hunter_gain": hunter_gain}, event)
 
     def _dungeon_ensure_loadout_defaults(self, run: dict[str, Any]) -> dict[str, Any]:
         loadout = run.get("loadout")
@@ -3842,6 +4007,7 @@ class LocalStateService:
             question = self._dungeon_question_for_room(run, room=self._integer(run.get("room", 1), "room", minimum=1, maximum=MAX_DUNGEON_ROOM), floor=self._integer(run.get("floor", 1), "floor", minimum=1, maximum=MAX_DUNGEON_FLOOR))
             run["question"] = question
             run["editor_content"] = ""
+            self._dungeon_start_fight(run, progress)
             event.update({"room_type": room_type, "question_id": question["id"], "editor_reset": True})
         elif kind in {"discount", "armory"}:
             run["room_type"] = "market"
@@ -5560,6 +5726,9 @@ class LocalStateService:
                 trinket_triggers.append("ember-scythe:first-objective")
                 trinket_trigger = "Ember Scythe"
         after = max(0, before - impact)
+        if after == 0 and any(key not in completed and key != objective_id for key in profile["objectives"]):
+            # The iron rule: bonus impact never ends a battle before its last objective.
+            after = 1
         completed.append(objective_id)
         encounter["completed_objectives"] = completed[-20:]
         encounter["resolve"] = after

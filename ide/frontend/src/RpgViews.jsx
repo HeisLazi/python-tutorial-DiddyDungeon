@@ -2775,6 +2775,35 @@ function DungeonResolveBar({ resolve, max, tone = 'enemy' }) {
 
 // Boot.dev-style brief for the current room: what the question wants, how
 // to lay out an answer, how hard it is, and who you are fighting.
+// The live fight: fixed question count (every one must be answered), banked
+// free mistakes and the room's mechanic counting down.
+function DungeonFightStrip({ fight }) {
+  const total = Number(fight.questions_total) || 1
+  const cleared = Number(fight.questions_cleared) || 0
+  const mechanic = fight.mechanic
+  const plural = (count) => `${count} answer${count === 1 ? '' : 's'}`
+  return (
+    <div className="dungeon-fight-strip">
+      <div className="dungeon-fight-cell">
+        <span className="dungeon-eyebrow">QUESTION</span>
+        <strong>{Math.min(cleared + 1, total)} of {total}</strong>
+        <span className="dungeon-fight-pips" aria-hidden="true">{Array.from({ length: total }, (_, index) => <i key={index} className={index < cleared ? 'done' : index === cleared ? 'now' : ''} />)}</span>
+      </div>
+      <div className="dungeon-fight-cell">
+        <span className="dungeon-eyebrow">FREE MISTAKES</span>
+        <strong>{fight.guards ?? 0}</strong>
+      </div>
+      {mechanic && (
+        <div className={`dungeon-fight-cell mechanic ${mechanic.enraged ? 'enraged' : ''}`}>
+          <span className="dungeon-eyebrow">{String(mechanic.label || '').toUpperCase()}{mechanic.enraged ? ' · ENRAGED' : ''}</span>
+          <strong>{mechanic.kind === 'self_destruct' ? `Blast in ${plural(mechanic.countdown)}` : mechanic.enraged ? 'Counterattacks ×2' : `Rage in ${plural(mechanic.countdown)}`}</strong>
+          <small>{mechanic.text}</small>
+        </div>
+      )}
+    </div>
+  )
+}
+
 function DungeonQuestionBrief({ run, question, loadout, editorContent, avatar }) {
   const encounter = run.encounter || {}
   const mechanic = encounter.mechanic || {}
@@ -2792,6 +2821,12 @@ function DungeonQuestionBrief({ run, question, loadout, editorContent, avatar })
         <span>Floor {run.floor ?? 1} · Room {run.room ?? 1}</span>
         <span>{type.label}</span>
         <DungeonDifficulty value={question.difficulty} />
+        {encounter.fight && encounter.fight.questions_total > 1 && (
+          <span className={`dungeon-brief-fightchip ${encounter.fight.mechanic?.enraged ? 'enraged' : ''}`}>
+            Q {Math.min((encounter.fight.questions_cleared || 0) + 1, encounter.fight.questions_total)}/{encounter.fight.questions_total} · {encounter.fight.guards || 0} free
+            {encounter.fight.mechanic ? ` · ${encounter.fight.mechanic.kind === 'self_destruct' ? `Blast in ${encounter.fight.mechanic.countdown}` : encounter.fight.mechanic.enraged ? 'Enraged ×2' : `Rage in ${encounter.fight.mechanic.countdown}`}` : ''}
+          </span>
+        )}
       </div>
 
       <section className="dungeon-brief-question">
@@ -2813,8 +2848,9 @@ function DungeonQuestionBrief({ run, question, loadout, editorContent, avatar })
           <div className="dungeon-brief-resolve"><small>RESOLVE</small><strong>{encounter.resolve ?? '—'} / {encounter.max_resolve ?? '—'}</strong></div>
         </div>
         <DungeonResolveBar resolve={encounter.resolve} max={encounter.max_resolve} />
+        {encounter.fight && <DungeonFightStrip fight={encounter.fight} />}
         <ul className="dungeon-brief-facts">
-          <li><span>Clean hit</span><b>−{encounter.resolve_damage ?? 0} Resolve</b></li>
+          <li><span>Correct answer</span><b>Chips Resolve; at zero it breaks and you bank a free mistake</b></li>
           {mechanic.on_failure && <li><span>Wrong answer</span><b>{mechanic.on_failure}</b></li>}
           {mechanic.passive && <li><span>Passive</span><b>{mechanic.passive}</b></li>}
           <li><span>Rewards</span><b>+{reward.score ?? 0} score · +{reward.coins ?? 0} coins{Array.isArray(reward.authorized_items) && reward.authorized_items.length ? ` · ${reward.authorized_items.join(', ')}` : ''}</b></li>
@@ -2858,57 +2894,83 @@ function DungeonVerdictCard({ card, avatar, onClose, onContinue }) {
     const timer = setTimeout(() => setHit(true), 350)
     return () => clearTimeout(timer)
   }, [])
-  const fight = card.fight || {}
-  const damage = Number(card.damage) || 0
-  const maxHp = Number(card.maxHp ?? fight.maxHp) || 100
-  const hpAfter = Number(card.hp ?? 0)
-  const hpBefore = Number(fight.hp ?? hpAfter + damage)
-  const mobMax = Number(fight.mobMax) || 6
-  const mobBefore = Number(fight.mobResolve ?? mobMax)
-  const mobNow = hit && correct ? 0 : mobBefore
-  const hpNow = hit && !correct ? hpAfter : hpBefore
-  const pct = (value, max) => `${Math.max(0, Math.min(100, Math.round((value / Math.max(1, max)) * 100)))}%`
-  const title = error ? 'Could not grade that' : card.died ? 'Run over' : correct ? 'Room cleared' : 'Not yet'
-  const kicker = error ? 'SUBMISSION' : correct ? 'PYR · CORRECT' : 'PYR · INCORRECT'
   useEffect(() => {
     const onKey = (event) => { if (event.key === 'Escape') onClose() }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [onClose])
+  const snap = card.snapshot || {}
+  const fight = card.fight || null // the server's record of this exchange
+  const done = !fight || fight.fight_done
+  const damage = Number(card.damage) || 0
+  const blast = Number(fight?.blast) || 0
+  const maxHp = Number(card.maxHp ?? snap.maxHp) || 100
+  const hpAfter = Number(card.hp ?? 0)
+  const hpBefore = Number(snap.hp ?? hpAfter + damage + blast)
+  const mobMax = Number(fight?.max_resolve ?? snap.mobMax) || 6
+  const mobBefore = Number(fight?.resolve_before ?? snap.mobResolve ?? mobMax)
+  const chip = Number(fight?.chip ?? (correct ? mobBefore : 0))
+  const mobAfter = correct ? (done ? 0 : Math.max(0, mobBefore - chip)) : mobBefore
+  const mobNow = hit ? mobAfter : mobBefore
+  const hpNow = hit ? hpAfter : hpBefore
+  const mobName = card.mob_name || snap.mobName || 'The mob'
+  const pct = (value, max) => `${Math.max(0, Math.min(100, Math.round((value / Math.max(1, max)) * 100)))}%`
+  const title = error ? 'Could not grade that'
+    : card.died ? 'Run over'
+    : correct ? (done ? 'Room cleared' : fight?.broke ? 'Resolve broken!' : 'Hit!')
+    : fight?.guard_used ? 'Missed, but your guard held' : 'Not yet'
+  const kicker = error ? 'SUBMISSION' : `${correct ? 'PYR · CORRECT' : 'PYR · INCORRECT'}${fight && fight.questions_total > 1 ? ` · QUESTION ${Math.min(fight.questions_cleared + (correct ? 0 : 1), fight.questions_total)} OF ${fight.questions_total}` : ''}`
+  const lines = []
+  if (!error) {
+    if (correct) lines.push(done ? `You hit for ${chip} Resolve. ${mobName} is defeated.` : `You chip ${chip} Resolve. ${fight.questions_cleared} of ${fight.questions_total} questions answered.`)
+    else lines.push(fight?.guard_used ? 'Your free mistake absorbs it. No HP lost.' : `${mobName} hits back for ${damage} HP${fight?.enraged && damage ? ' (enraged: double damage)' : ''}.`)
+    if (fight?.broke) lines.push(`${mobName} breaks: you bank a free mistake${fight.mechanic_label ? ` and its ${fight.mechanic_label.toLowerCase()} is interrupted` : ''}. Its Resolve refills.`)
+    if (fight?.mechanic_fired === 'self_destruct') lines.push(`Self-destruct! The blast hits you for ${blast} HP. The countdown starts again.`)
+    if (fight?.mechanic_fired === 'enrage') lines.push(`${mobName} is enraged: its counterattacks hit twice as hard until you break it.`)
+  }
   return (
     <div className="dungeon-verdict-backdrop" role="presentation" onClick={onClose}>
       <section className={`dungeon-verdict-card ${error ? 'error' : correct ? 'correct' : 'incorrect'}`} role="alertdialog" aria-modal="true" aria-labelledby="dungeon-verdict-title" onClick={(event) => event.stopPropagation()}>
         <span className="dungeon-eyebrow">{kicker}</span>
         <h2 id="dungeon-verdict-title">{correct ? '✔ ' : '✘ '}{title}</h2>
         {!error && (
-          <div className={`verdict-arena ${hit ? 'hit' : ''} ${correct ? 'player-wins' : 'mob-wins'}`} aria-hidden="true">
+          <div className={`verdict-arena ${hit ? 'hit' : ''} ${correct ? 'player-wins' : 'mob-wins'} ${correct && done ? 'defeated' : ''}`} aria-hidden="true">
             <div className="verdict-fighter player">
               <div className="verdict-sprite"><AvatarSprite appearance={avatar} size={84} /></div>
-              {!correct && <span className="verdict-float taken">−{damage} HP</span>}
+              {!correct && damage > 0 && <span className="verdict-float taken">−{damage} HP</span>}
+              {!correct && fight?.guard_used && <span className="verdict-float guarded">GUARDED</span>}
+              {blast > 0 && <span className="verdict-float blast">−{blast} BLAST</span>}
               <div className="verdict-bar hp"><i style={{ width: pct(hpNow, maxHp) }} /></div>
               <small>YOU · {hpNow} / {maxHp} HP</small>
             </div>
             <span className="verdict-clash"><RouteIcon id="sword" /></span>
             <div className="verdict-fighter mob">
               <div className="verdict-sprite verdict-mob"><RouteIcon id="boss" /></div>
-              {correct && <span className="verdict-float dealt">−{mobBefore} RESOLVE</span>}
+              {correct && <span className="verdict-float dealt">−{chip} RESOLVE</span>}
+              {fight?.broke && <span className="verdict-float broke">BREAK!</span>}
               <div className="verdict-bar resolve"><i style={{ width: pct(mobNow, mobMax) }} /></div>
-              <small>{(card.mob_name || fight.mobName || 'Mob').toUpperCase()} · {mobNow} / {mobMax}</small>
+              <small>{mobName.toUpperCase()} · {mobNow} / {mobMax}</small>
             </div>
           </div>
         )}
-        {!error && <p className="dungeon-verdict-summary">{correct ? `You hit for ${mobBefore} Resolve. ${card.mob_name || fight.mobName || 'The mob'} is defeated.` : `${card.mob_name || fight.mobName || 'The mob'} hits back for ${damage} HP.`}</p>}
+        {lines.map((line) => <p key={line} className="dungeon-verdict-summary">{line}</p>)}
         {card.reason && <p className="dungeon-verdict-reason">{card.reason}</p>}
         {!error && (
           <ul className="dungeon-verdict-stats">
-            {correct ? <><li className="reward">+{card.score_delta ?? 0} score</li><li className="reward">+{card.coins_delta ?? 0} coins</li></> : <li className="penalty">−{damage} HP · {hpAfter} / {maxHp} left</li>}
+            {correct && <li className="reward">+{card.score_delta ?? 0} score</li>}
+            {Number(card.coins_delta) > 0 && <li className="reward">+{card.coins_delta} coins</li>}
+            {(damage > 0 || blast > 0) && <li className="penalty">−{damage + blast} HP · {hpAfter} / {maxHp} left</li>}
+            {fight && fight.guards > 0 && <li className="growth">{fight.guards} free mistake{fight.guards === 1 ? '' : 's'} banked</li>}
+            {fight && !done && fight.mechanic && <li className="penalty">{fight.mechanic === 'self_destruct' ? `Blast in ${fight.mechanic_countdown}` : fight.enraged ? 'Enraged' : `Rage in ${fight.mechanic_countdown}`}</li>}
             {(card.hunter_gain?.signs || []).map((sign) => <li key={sign.id} className="growth">+{sign.xp} Sign of the {HUNT_BEASTS[sign.id]?.sign || sign.id}</li>)}
             {Object.entries(card.hunter_gain?.stats || {}).map(([stat, amount]) => <li key={stat} className="growth">+{amount} {stat}</li>)}
           </ul>
         )}
-        <p className="dungeon-verdict-hint">{error ? 'Nothing was spent. Fix the problem above and submit again.' : card.died ? `Your run ended with ${card.score ?? 0} score. Pick a class to start a new one.` : correct ? 'Pick your next room on the map.' : 'Your answer is still in dungeon.py. Fix it and submit again.'}</p>
+        <p className="dungeon-verdict-hint">{error ? 'Nothing was spent. Fix the problem above and submit again.' : card.died ? `Your run ended with ${card.score ?? 0} score. Pick a class to start a new one.` : correct ? (done ? 'Pick your next room on the map.' : 'The next question is ready in dungeon.py.') : 'Your answer is still in dungeon.py. Fix it and submit again.'}</p>
         <div className="dungeon-verdict-actions">
-          {correct && !card.died ? <button type="button" className="dungeon-primary-button" onClick={onContinue} autoFocus>Choose next room <span>→</span></button> : <button type="button" className="dungeon-primary-button" onClick={onClose} autoFocus>{card.died ? 'Back to setup' : 'Try again'}</button>}
+          {correct && done && !card.died
+            ? <button type="button" className="dungeon-primary-button" onClick={onContinue} autoFocus>Choose next room <span>→</span></button>
+            : <button type="button" className="dungeon-primary-button" onClick={onClose} autoFocus>{card.died ? 'Back to setup' : correct ? 'Next question' : 'Try again'} {correct && !card.died && <span>→</span>}</button>}
         </div>
       </section>
     </div>
@@ -2938,7 +3000,7 @@ function DungeonScreen({ avatar, dungeon, revision, onStart, onChoose, onRest, o
     seenEvidenceRef.current = evidence
     if (!['correct', 'incorrect'].includes(lastResult.outcome)) return
     setSubmitStatus('')
-    setVerdictCard({ ...lastResult, died: run.status === 'dead', hp: loadout.hp, maxHp: loadout.max_hp, score: run.score, fight: fightRef.current })
+    setVerdictCard({ ...lastResult, died: run.status === 'dead', hp: loadout.hp, maxHp: loadout.max_hp, score: run.score, snapshot: fightRef.current })
   }, [lastResult?.evidence_id])
   // Declared after the verdict effect so the card reads the fight as it stood
   // before the verdict changed the room.

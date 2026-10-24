@@ -588,6 +588,112 @@ class StateServiceBehaviorTests(unittest.TestCase):
         self.assertEqual((sign["recovered"], sign["clean_casts"], sign["dungeon_clean"]), (1, 0, 0))
         self.assertEqual(cleared["result"]["run"]["last_result"]["hunter_gain"], gain)
 
+    def enter_dungeon_room(self, service, path, kind, strength=1, insight=1):
+        state = self.read(path)
+        state["hunter"] = {"signs": {}, "stats_xp": {}, "spent": {"strength": strength - 1, "insight": insight - 1}}
+        state["player"]["level"] = max(1, strength + insight - 1)
+        path.write_text(json.dumps(state), encoding="utf-8")
+        run = service.apply("dungeon_start_run", {"concept_id": "loops", "seed": "loop-seed"}, "player")["result"]["run"]
+        state = self.read(path)
+        node = {"id": "f1-r1-test", "kind": kind, "row": 1, "column": 1, "label": kind}
+        state["dungeon_run"]["room_choices"] = [node]
+        state["dungeon_run"]["map"]["nodes"] = list(state["dungeon_run"]["map"].get("nodes", [])) + [node]
+        path.write_text(json.dumps(state), encoding="utf-8")
+        return service.apply("dungeon_choose_room", {"run_id": run["run_id"], "choice_id": node["id"]}, "player")["result"]["run"]
+
+    def answer_room(self, service, path, verdict, tag):
+        run = self.read(path)["dungeon_run"]
+        return service.apply_internal(
+            "dungeon_record_verdict",
+            {"run_id": run["run_id"], "question_id": run["question"]["id"], "verdict": verdict, "evidence_id": f"dg-{tag}", "reason": "graded"},
+        )["result"]
+
+    def test_dungeon_elite_takes_exactly_its_questions_even_with_huge_strength(self):
+        service, path = self.make_service()
+        run = self.enter_dungeon_room(service, path, "elite", strength=20)
+        self.assertEqual(run["encounter"]["fight"]["questions_total"], 3)
+        first_question = run["question"]["id"]
+        one = self.answer_room(service, path, "correct", "1")
+        self.assertFalse(one["fight"]["fight_done"])
+        self.assertEqual(one["fight"]["questions_cleared"], 1)
+        self.assertEqual(one["run"]["room_type"], "elite")
+        self.assertNotEqual(one["run"]["question"]["id"], first_question)
+        self.assertTrue(one["fight"]["broke"])  # a huge chip breaks it, but ends nothing
+        self.assertEqual(one["coins_delta"], 3)  # only the break bonus before the clear
+        two = self.answer_room(service, path, "correct", "2")
+        self.assertFalse(two["fight"]["fight_done"])
+        three = self.answer_room(service, path, "correct", "3")
+        self.assertTrue(three["fight"]["fight_done"])
+        self.assertEqual(three["run"]["room_type"], "selector")
+
+    def test_dungeon_break_banks_a_free_mistake_that_absorbs_a_miss(self):
+        service, path = self.make_service()
+        self.enter_dungeon_room(service, path, "elite", strength=5)
+        hit = self.answer_room(service, path, "correct", "hit")
+        self.assertTrue(hit["fight"]["broke"])
+        self.assertEqual(hit["fight"]["guards"], 1)
+        hp_before = self.read(path)["dungeon_run"]["loadout"]["hp"]
+        miss = self.answer_room(service, path, "incorrect", "miss")
+        self.assertTrue(miss["fight"]["guard_used"])
+        self.assertEqual(miss["damage"], 0)
+        self.assertEqual(self.read(path)["dungeon_run"]["loadout"]["hp"], hp_before)
+        self.assertEqual(miss["fight"]["questions_cleared"], 1)  # a miss never moves progress
+
+    def test_dungeon_boss_self_destruct_fires_on_schedule_and_a_break_interrupts_it(self):
+        service, path = self.make_service()
+        self.enter_dungeon_room(service, path, "boss")
+        # No break: base chip 5 vs 12 Resolve; the countdown of 3 fires on the third answer.
+        self.answer_room(service, path, "correct", "b1")
+        self.answer_room(service, path, "incorrect", "b2")
+        hp_before_third = self.read(path)["dungeon_run"]["loadout"]["hp"]
+        third = self.answer_room(service, path, "incorrect", "b3")
+        self.assertEqual(third["fight"]["mechanic_fired"], "self_destruct")
+        self.assertEqual(third["fight"]["blast"], 15)
+        self.assertEqual(self.read(path)["dungeon_run"]["loadout"]["hp"], hp_before_third - third["damage"] - 15)
+        self.assertEqual(third["fight"]["questions_cleared"], 1)
+        service2, path2 = self.make_service()
+        self.enter_dungeon_room(service2, path2, "boss", strength=10)
+        broke = self.answer_room(service2, path2, "correct", "s1")
+        self.assertTrue(broke["fight"]["broke"])
+        self.assertEqual(broke["fight"]["mechanic_countdown"], 3)
+        self.assertIsNone(broke["fight"]["mechanic_fired"])
+
+    def test_dungeon_enrage_doubles_counterattacks_and_insight_buys_time(self):
+        service, path = self.make_service()
+        run = self.enter_dungeon_room(service, path, "elite")
+        self.assertEqual(run["encounter"]["fight"]["mechanic"]["every"], 2)
+        first = self.answer_room(service, path, "incorrect", "e1")
+        second = self.answer_room(service, path, "incorrect", "e2")
+        self.assertEqual(second["fight"]["mechanic_fired"], "enrage")
+        third = self.answer_room(service, path, "incorrect", "e3")
+        self.assertEqual(third["damage"], first["damage"] * 2)
+        service2, path2 = self.make_service()
+        run = self.enter_dungeon_room(service2, path2, "elite", insight=4)
+        self.assertEqual(run["encounter"]["fight"]["mechanic"]["every"], 3)
+
+    def test_vitality_raises_a_new_runs_max_hp(self):
+        service, path = self.make_service()
+        state = self.read(path)
+        state["hunter"] = {"signs": {}, "stats_xp": {"vitality": 20}, "spent": {}}
+        path.write_text(json.dumps(state), encoding="utf-8")
+        run = service.apply("dungeon_start_run", {"concept_id": "loops", "seed": "loop-seed"}, "player")["result"]["run"]
+        base = self.read(path)["player"].get("max_hp") or 100
+        self.assertEqual(run["loadout"]["max_hp"], base + 10)
+
+    def test_campaign_mob_never_falls_before_its_last_objective(self):
+        service, path = self.make_service()
+        service.apply_internal("record_battle_objective", {"objective_id": "table_setup", "evidence_id": "mob-000-warmup", "reason": "Verified"})
+        state = self.read(path)
+        # As if a bonus impact had landed: Resolve is low but both objectives remain.
+        state["encounter_state"]["completed_objectives"] = []
+        state["encounter_state"]["resolve"] = 2
+        path.write_text(json.dumps(state), encoding="utf-8")
+        first = service.apply_internal("record_battle_objective", {"objective_id": "table_setup", "evidence_id": "mob-000-table", "reason": "Verified"})
+        self.assertEqual(first["result"]["resolve_after"], 1)
+        self.assertFalse(first["result"]["mob_defeated"])
+        last = service.apply_internal("record_battle_objective", {"objective_id": "state_explanation", "evidence_id": "mob-000-state", "reason": "Verified"})
+        self.assertTrue(last["result"]["mob_defeated"])
+
     def test_practice_history_is_independent_and_provider_validated(self):
         service, path = self.make_service()
         before = self.read(path)

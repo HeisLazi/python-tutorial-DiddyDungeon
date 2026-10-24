@@ -72,6 +72,20 @@ Updated: 2026-10-22 · branch `feature/tauri-arcade` (fast-forwarded into
   defeated bounties and correct practice. Shown on the Character screen
   (`HunterSheet`), in the Hunter's Codex and on the Dungeon verdict card. The
   iron rule holds: none of it skips or shortens a question.
+- **Dungeon fights (Phase B):** a combat room keeps `run["fight"]`: fixed
+  question counts (encounter 1, elite 3, boss 5; `DUNGEON_FIGHT_QUESTIONS`),
+  Resolve (6/8/12), banked free mistakes (`guards`) and the room mechanic
+  (elite Enrage: every 2 answers, counterattacks x2 until broken; boss
+  Self-destruct: every 3 answers, 15 HP blast). A correct answer moves
+  progress by one and chips Resolve (base, halved after a miss, + Strength - 1
+  + sign level // 3); at zero it breaks: +1 free mistake, mechanic reset,
+  +3 coins, Resolve refills. Insight adds one answer to mechanic countdowns per
+  3 points; Vitality adds 5 max HP per point to a new run. Coins arrive on the
+  clear. `last_result.fight` carries the exchange for the verdict card. Campaign
+  battles: a mob only falls once every objective is verified.
+- **Submit race fix:** `submitDungeon` waits for any in-flight editor
+  checkpoint and saves unsaved edits before capturing PYR context (an autosave
+  in between changed the revision and the answer was rejected as stale).
 - **Pop-ups:** render through `ShellPortal` (into `.app-shell`, wrapper is
   `display: contents` and carries the surface's theme class) so panel
   stacking contexts can't hide them under the nav.

@@ -833,7 +833,25 @@ function AppV2() {
         detail: 'dungeon.py cleared for this room',
       })
     } else if (action === 'dungeon_record_verdict') {
-      if (event.outcome === 'correct') {
+      const fight = event.fight || null
+      const blastNote = fight?.blast ? ` · self-destruct −${fight.blast} HP` : ''
+      if (event.outcome === 'correct' && fight && !fight.fight_done) {
+        notifications.push({
+          id: `${event.id}:dungeon-hit`,
+          kind: 'objective',
+          title: fight.broke ? 'RESOLVE BROKEN' : 'HIT',
+          body: `${event.mob_name || 'Mob'} · −${Number(fight.chip ?? 0)} Resolve`,
+          detail: `Question ${fight.questions_cleared} of ${fight.questions_total} answered${fight.broke ? ' · free mistake banked' : ''}${blastNote}`,
+        })
+      } else if (event.outcome !== 'correct' && fight?.guard_used) {
+        notifications.push({
+          id: `${event.id}:dungeon-guard`,
+          kind: 'reward',
+          title: 'GUARD HELD',
+          body: 'Free mistake used · no HP lost',
+          detail: `Answer this question again${blastNote}`,
+        })
+      } else if (event.outcome === 'correct') {
         notifications.push({
           id: `${event.id}:dungeon-clear`,
           kind: 'objective',
@@ -848,7 +866,7 @@ function AppV2() {
           id: `${event.id}:dungeon-hit`,
           kind: 'warning',
           title: event.run_died ? 'DUNGEON RUN ENDED' : event.mob_name ? 'MOB COUNTERATTACK' : 'DUNGEON COUNTERATTACK',
-          body: event.run_died ? `Score ${event.score ?? 0}` : event.mob_name ? `${event.mob_name} · −${Number(event.damage ?? 0)} HP` : `−${Number(event.damage ?? 0)} HP`,
+          body: event.run_died ? `Score ${event.score ?? 0}` : event.mob_name ? `${event.mob_name} · −${Number(event.damage ?? 0) + Number(fight?.blast ?? 0)} HP` : `−${Number(event.damage ?? 0) + Number(fight?.blast ?? 0)} HP`,
           detail: event.run_died ? 'Death resets this run; Campaign is untouched' : 'Validated result; the current room remains active',
         })
       }
@@ -1359,6 +1377,12 @@ function AppV2() {
     if (!autoGrade && !provider) throw new Error('Set up OpenCode in Settings → AI Tutor, or launch a CLI in the PYR panel, then submit the Dungeon answer.')
     if (typeof answer !== 'string' || !answer.trim()) throw new Error('Write an answer in dungeon.py before submitting it.')
 
+    // Flush the editor checkpoint first: an autosave landing between the
+    // context capture and the submission changes the revision, and the
+    // gateway then rejects the answer as stale.
+    if (dungeonSavePromiseRef.current) await dungeonSavePromiseRef.current
+    if (dungeonDirtyRef.current) await saveDungeon()
+
     const context = await publishPyrContext({ terminalTail: shellTerminalRef.current?.getText?.() || '' })
     const challenge = context?.dungeon_verdict
     if (!challenge?.nonce || challenge.run_id !== runId || challenge.question_id !== questionId) {
@@ -1771,8 +1795,20 @@ function AppV2() {
     }
   }
 
+  // The in-flight checkpoint save, so a submit can wait for it.
+  const dungeonSavePromiseRef = useRef(null)
   const saveDungeon = async () => {
-    if (!dungeon.active || !dungeon.run_id || dungeonSaving) return false
+    if (dungeonSavePromiseRef.current) return dungeonSavePromiseRef.current
+    const pending = saveDungeonNow()
+    dungeonSavePromiseRef.current = pending
+    try {
+      return await pending
+    } finally {
+      if (dungeonSavePromiseRef.current === pending) dungeonSavePromiseRef.current = null
+    }
+  }
+  const saveDungeonNow = async () => {
+    if (!dungeon.active || !dungeon.run_id) return false
     const contentToSave = dungeonCodeRef.current
     const questionId = dungeon.question?.id || ''
     if (!questionId) {

@@ -142,7 +142,7 @@ book (level, XP bar, rank gates, perks), milestones and the hunt journal.
 2. **Dungeon as a crawler:** region delves, bestiary mobs weighted to weak
    signs, floor goals and named bosses, plus a polish pass.
 3. **Materials and crafting:** drops, banking, Merchant recipes.
-4. **Signs and stats** (tracking, hunter sheet and codex levels shipped 2026-10-24; fight effects come with Resolve breaks): sign XP by use with rank gates, dulling, the four
+4. **Signs and stats** (tracking, hunter sheet and codex levels shipped 2026-10-24; Resolve breaks, mechanics and stat effects in Dungeon fights shipped 2026-10-24 as Phase B; Focus has no fight effect yet): sign XP by use with rank gates, dulling, the four
    stats, Resolve breaks (free mistake, interrupted mechanics) under the iron
    rule, and the hunter sheet. (Sign XP
    and stat tracking in the backend comes first; everything else reads it.)
