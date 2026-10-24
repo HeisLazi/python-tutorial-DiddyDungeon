@@ -806,6 +806,53 @@ DUNGEON_MECHANICS = {
     },
 }
 
+# ── Delves and loot ──────────────────────────────────────────────────────
+# A delve picks a Codex region; its fights draw from that region's signs,
+# weighted to the weakest. Beasts drop parts into the run pack, which is
+# banked at a camp or by ending the run, and lost on death. Loot never
+# shortens a fight (the iron rule).
+HUNTER_SIGN_CONCEPTS = {
+    "variables": "variables",
+    "input-output": "input and output",
+    "conditionals": "conditionals",
+    "lists": "lists",
+    "dictionaries": "dictionaries",
+    "random-selection": "random selection",
+    "loops": "loops",
+    "functions": "functions",
+    "control-flow": "control flow",
+}
+HUNTER_BEASTS = {
+    "variables": {"beast": "The Nameless Wraith", "part": "wraith-ash", "part_name": "Wraith Ash"},
+    "input-output": {"beast": "The String Mimic", "part": "mimic-scale", "part_name": "Mimic Scale"},
+    "conditionals": {"beast": "The Forked Path", "part": "fork-splinter", "part_name": "Fork Splinter"},
+    "lists": {"beast": "The IndexError Drowner", "part": "drowner-link", "part_name": "Drowner Link"},
+    "dictionaries": {"beast": "The KeyError Ghoul", "part": "ghoul-page", "part_name": "Ghoul Page"},
+    "random-selection": {"beast": "The Loaded Die", "part": "loaded-pip", "part_name": "Loaded Pip"},
+    "loops": {"beast": "The Off-by-One Wraith", "part": "ouroboros-scale", "part_name": "Ouroboros Scale"},
+    "functions": {"beast": "The Hollow Return", "part": "hollow-shard", "part_name": "Hollow Shard"},
+    "control-flow": {"beast": "The Endless Leshen", "part": "leshen-root", "part_name": "Leshen Root"},
+}
+DUNGEON_REGIONS = {
+    "basics": {"id": "basics", "label": "Basics Village", "danger": 1, "signs": ("variables", "input-output", "conditionals"), "boss": "The Mimic Matriarch", "essence": "village-essence", "essence_name": "Village Essence"},
+    "collections": {"id": "collections", "label": "Collection Caves", "danger": 2, "signs": ("lists", "dictionaries", "random-selection"), "boss": "The Drowned Hoard", "essence": "cave-essence", "essence_name": "Cave Essence"},
+    "flow": {"id": "flow", "label": "Flow Keep", "danger": 3, "signs": ("loops", "functions", "control-flow"), "boss": "The Endless Warden", "essence": "keep-essence", "essence_name": "Keep Essence"},
+}
+DUNGEON_MATERIAL_NAMES = {
+    **{beast["part"]: beast["part_name"] for beast in HUNTER_BEASTS.values()},
+    **{region["essence"]: region["essence_name"] for region in DUNGEON_REGIONS.values()},
+}
+DUNGEON_LOOT_PARTS = {"encounter": 1, "elite": 2, "boss": 3}
+# A fight cleared without a single miss (a guarded miss still counts) drops one more part.
+DUNGEON_CLEAN_FIGHT_BONUS = 1
+# Elites drop these in order; each one's effect is applied in Dungeon fights.
+DUNGEON_TRINKETS = (
+    {"id": "dungeon-warden-sigil", "name": "Warden Sigil", "kind": "trinket", "trinket": "Warden Sigil", "description": "Every fight starts with one free mistake banked."},
+    {"id": "dungeon-hunting-bell", "name": "Hunting Bell", "kind": "trinket", "trinket": "Hunting Bell", "description": "Mechanic countdowns last one answer longer."},
+    {"id": "dungeon-whetstone-charm", "name": "Whetstone Charm", "kind": "trinket", "trinket": "Whetstone Charm", "description": "Every correct answer chips 1 more Resolve."},
+)
+DUNGEON_TRINKET_FALLBACK_COINS = 10
+
 
 def hunter_signs_for(concept: object) -> list[str]:
     """The signs a concept label (e.g. "Lists and random selection") feeds."""
@@ -2662,6 +2709,87 @@ class LocalStateService:
             run["inventory"] = items
         return items
 
+    def _dungeon_next_concept(self, run: Mapping[str, Any], progress: Mapping[str, Any]) -> str:
+        """The concept for the next fight: a delve draws from its region's
+        signs, weighted to the weakest; an open run follows Codex misses."""
+
+        region = DUNGEON_REGIONS.get(str(run.get("region_id") or ""))
+        if region is None:
+            return self._dungeon_adaptive_concept(progress, str(run.get("concept_id") or "python-basics"))
+        levels = {sign["id"]: sign["level"] for sign in self.hunter_projection(progress)["signs"]}
+        weights = [(sign_id, (11 - levels.get(sign_id, 0)) ** 2) for sign_id in region["signs"]]
+        digest = hashlib.sha256(f"{run.get('seed')}:{run.get('question_number', 0)}:delve".encode("utf-8")).digest()
+        roll = int.from_bytes(digest[:4], "big") % sum(weight for _, weight in weights)
+        for sign_id, weight in weights:
+            if roll < weight:
+                return HUNTER_SIGN_CONCEPTS[sign_id]
+            roll -= weight
+        return HUNTER_SIGN_CONCEPTS[region["signs"][0]]
+
+    @staticmethod
+    def _dungeon_pack_items(pack: object) -> list[dict[str, Any]]:
+        if not isinstance(pack, Mapping):
+            return []
+        items = [
+            {"id": key, "name": DUNGEON_MATERIAL_NAMES.get(key, key), "count": value}
+            for key, value in pack.items()
+            if isinstance(key, str) and isinstance(value, int) and not isinstance(value, bool) and value > 0
+        ]
+        return sorted(items, key=lambda item: item["name"])
+
+    def _dungeon_bank_pack(self, run: dict[str, Any], progress: dict[str, Any]) -> list[dict[str, Any]]:
+        """Move the run pack into the hunter's bank (at a camp or a safe exit)."""
+
+        banked = self._dungeon_pack_items(run.get("pack"))
+        if banked:
+            materials = self._hunter_state(progress)["materials"]
+            for item in banked:
+                materials[item["id"]] = self._counter(materials, item["id"]) + item["count"]
+        run["pack"] = {}
+        run["last_banked"] = banked
+        return banked
+
+    def _dungeon_forfeit_pack(self, run: dict[str, Any]) -> list[dict[str, Any]]:
+        """Death keeps nothing unbanked; the dead run remembers what was lost."""
+
+        lost = self._dungeon_pack_items(run.get("pack"))
+        run["pack_lost"] = {item["id"]: item["count"] for item in lost}
+        run["pack"] = {}
+        return lost
+
+    def _dungeon_award_loot(self, run: dict[str, Any], fight: Mapping[str, Any], concept: object) -> dict[str, Any]:
+        """Drops for a cleared fight: beast parts, a boss essence, an elite trinket."""
+
+        room_type = str(fight.get("room_type") or "encounter")
+        clean = not int(fight.get("misses", 0) or 0)
+        drops: dict[str, int] = {}
+        sign_id = next((sign for sign in hunter_signs_for(concept) if sign in HUNTER_BEASTS), None)
+        if sign_id:
+            drops[HUNTER_BEASTS[sign_id]["part"]] = DUNGEON_LOOT_PARTS.get(room_type, 1) + (DUNGEON_CLEAN_FIGHT_BONUS if clean else 0)
+        region = DUNGEON_REGIONS.get(str(run.get("region_id") or ""))
+        if room_type == "boss" and region:
+            drops[region["essence"]] = 1
+        pack = run.get("pack") if isinstance(run.get("pack"), dict) else {}
+        for key, count in drops.items():
+            pack[key] = self._counter(pack, key) + count
+        run["pack"] = pack
+        loot: dict[str, Any] = {"items": self._dungeon_pack_items(drops), "clean": clean, "trinket": None, "coins": 0}
+        if room_type == "elite":
+            inventory = self._dungeon_inventory_entries(run, mutate=True)
+            owned = {item.get("id") for item in inventory}
+            trinket = next((dict(item) for item in DUNGEON_TRINKETS if item["id"] not in owned), None)
+            if trinket and len(inventory) < MAX_DUNGEON_INVENTORY:
+                inventory.append(trinket)
+                loadout = self._dungeon_ensure_loadout_defaults(run)
+                equipped = not loadout.get("trinket")
+                if equipped:
+                    loadout["trinket"] = trinket["trinket"]
+                loot["trinket"] = {"id": trinket["id"], "name": trinket["name"], "description": trinket["description"], "equipped": equipped}
+            else:
+                run["run_coins"] = self._counter(run, "run_coins") + DUNGEON_TRINKET_FALLBACK_COINS
+                loot["coins"] = DUNGEON_TRINKET_FALLBACK_COINS
+        return loot
+
     @classmethod
     def _dungeon_adaptive_concept(cls, progress: Mapping[str, Any] | None, fallback: str) -> str:
         """Choose a recorded weak concept for the next room when available.
@@ -2738,10 +2866,12 @@ class LocalStateService:
 
         room_type = str(run.get("room_type") or "encounter")
         insight = self.hunter_projection(progress)["stats"]["insight"]["value"]
+        loadout = run.get("loadout") if isinstance(run.get("loadout"), Mapping) else {}
+        trinket = loadout.get("trinket")
         mechanic = None
         definition = DUNGEON_MECHANICS.get(room_type)
         if definition:
-            span = definition["every"] + max(0, insight - 1) // 3
+            span = definition["every"] + max(0, insight - 1) // 3 + (1 if trinket == "Hunting Bell" else 0)
             mechanic = {
                 "kind": definition["kind"],
                 "label": definition["label"],
@@ -2758,8 +2888,9 @@ class LocalStateService:
             "questions_cleared": 0,
             "resolve": resolve,
             "max_resolve": resolve,
-            "guards": 0,
+            "guards": 1 if trinket == "Warden Sigil" else 0,
             "breaks": 0,
+            "misses": 0,
             "mechanic": mechanic,
         }
         run["fight"] = fight
@@ -2840,9 +2971,18 @@ class LocalStateService:
             },
         }
         profile = profile_by_room.get(room_type, profile_by_room["encounter"])
+        name = archetype["name"]
+        region = DUNGEON_REGIONS.get(str(run.get("region_id") or ""))
+        if region and room_type == "boss":
+            name = region["boss"]
+        elif region:
+            sign_id = next((sign for sign in hunter_signs_for(question.get("concept_id") or run.get("concept_id")) if sign in HUNTER_BEASTS), None)
+            if sign_id:
+                beast = HUNTER_BEASTS[sign_id]["beast"]
+                name = beast if room_type == "encounter" else f"Elder {beast.removeprefix('The ')}"
         return {
             "id": f"{question.get('id', 'dungeon-question')}-mob",
-            "name": archetype["name"],
+            "name": name,
             "category": archetype["category"],
             "concept_id": str(question.get("concept_id") or run.get("concept_id") or "python-basics")[:MAX_IDENTIFIER_LENGTH],
             "question_type": question_type,
@@ -3180,7 +3320,7 @@ class LocalStateService:
         question_id = None
         mob = None
         if kind in {"encounter", "elite", "boss"}:
-            run["concept_id"] = self._dungeon_adaptive_concept(progress, str(run.get("concept_id") or "python-basics"))
+            run["concept_id"] = self._dungeon_next_concept(run, progress)
             run["question_number"] = self._counter(run, "question_number") + 1
             question = self._dungeon_question_for_room(
                 run,
@@ -3199,9 +3339,13 @@ class LocalStateService:
             run["risk_status"] = "unrevealed"
         else:
             run["question"] = None
+        # Reaching a camp banks the pack; it costs no camp action.
+        banked = self._dungeon_bank_pack(run, progress) if kind == "rest" else []
+        if kind != "rest":
+            run["last_banked"] = []
         return Mutation(
             True,
-            {"run": self.dungeon_projection(progress), "choice": dict(choice)},
+            {"run": self.dungeon_projection(progress), "choice": dict(choice), "banked": banked},
             {
                 "run_id": run_id,
                 "floor": run.get("floor", 1),
@@ -3212,6 +3356,7 @@ class LocalStateService:
                 "mob_name": mob["name"] if mob else None,
                 "mob_category": mob["category"] if mob else None,
                 "mob_phase": mob["phase"] if mob else None,
+                "banked": banked,
                 "editor_reset": True,
                 "reason": "dungeon_route_selected",
             },
@@ -3358,6 +3503,14 @@ class LocalStateService:
             }
             for item in inventory
         ]
+        region = DUNGEON_REGIONS.get(str(run.get("region_id") or ""))
+        projection["region"] = {
+            "id": region["id"], "label": region["label"], "danger": region["danger"], "signs": list(region["signs"]), "boss": region["boss"],
+        } if region else None
+        projection["pack"] = self._dungeon_pack_items(run.get("pack"))
+        projection["pack_lost"] = self._dungeon_pack_items(run.get("pack_lost"))
+        last_banked = run.get("last_banked")
+        projection["last_banked"] = [dict(item) for item in last_banked if isinstance(item, Mapping)] if isinstance(last_banked, list) else []
         question = run.get("question")
         if isinstance(question, Mapping):
             projection["question"] = {
@@ -3430,7 +3583,7 @@ class LocalStateService:
         if isinstance(last_result, Mapping):
             projection["last_result"] = {
                 key: last_result[key]
-                for key in ("outcome", "question_id", "mob_name", "score_delta", "coins_delta", "damage", "evidence_id", "reason", "hunter_gain", "fight")
+                for key in ("outcome", "question_id", "mob_name", "score_delta", "coins_delta", "damage", "evidence_id", "reason", "hunter_gain", "fight", "loot")
                 if key in last_result
             }
         history = run.get("history")
@@ -3480,14 +3633,22 @@ class LocalStateService:
         progress["dungeon_leaderboard"] = board[:MAX_DUNGEON_LEADERBOARD]
 
     def _dungeon_start_run(self, payload: Mapping[str, Any], progress: dict[str, Any]) -> Mutation:
-        data = self._payload(payload, {"concept_id", "seed", "class_id"}, set())
+        data = self._payload(payload, {"concept_id", "seed", "class_id", "region_id"}, set())
         existing = self._dungeon_run(progress)
         if isinstance(existing, dict) and existing.get("status") == "active":
             raise StateCommandError("An active Dungeon run already exists", status_code=409)
 
+        region_id = None
+        if data.get("region_id"):
+            region_id = self._text(data["region_id"], "region_id", max_length=MAX_IDENTIFIER_LENGTH, identifier=True)
+            if region_id not in DUNGEON_REGIONS:
+                raise StateCommandError("Unknown delve region", status_code=422)
         learning = progress.get("learning_state")
         fallback_concept = learning.get("concept") if isinstance(learning, Mapping) else None
-        concept_id = data.get("concept_id") or self._dungeon_adaptive_concept(progress, str(fallback_concept or "python-basics"))
+        concept_id = data.get("concept_id") or (
+            HUNTER_SIGN_CONCEPTS[DUNGEON_REGIONS[region_id]["signs"][0]] if region_id
+            else self._dungeon_adaptive_concept(progress, str(fallback_concept or "python-basics"))
+        )
         concept_id = self._text(concept_id, "concept_id", max_length=MAX_IDENTIFIER_LENGTH)
         seed = data.get("seed") or uuid.uuid4().hex
         seed = self._text(seed, "seed", max_length=MAX_IDENTIFIER_LENGTH, identifier=True)
@@ -3506,6 +3667,8 @@ class LocalStateService:
             "seed": seed,
             "class_id": class_id,
             "concept_id": concept_id,
+            "region_id": region_id,
+            "pack": {},
             "floor": 1,
             "room": 1,
             "room_type": "selector",
@@ -3574,6 +3737,7 @@ class LocalStateService:
                 "question_type": None,
                 "room_choices": [choice["id"] for choice in run.get("room_choices", [])],
                 "concept_id": concept_id,
+                "region_id": region_id,
                 "editor_reset": True,
                 "reason": "dungeon_run_started",
             },
@@ -3693,6 +3857,8 @@ class LocalStateService:
         mechanic_fired = None
         blast = 0
         fight_done = False
+        loot = None
+        pack_lost: list[dict[str, Any]] = []
         if verdict == "correct":
             clean_cast = not any(
                 isinstance(item, Mapping) and item.get("question_id") == question_id and item.get("outcome") == "incorrect"
@@ -3713,13 +3879,19 @@ class LocalStateService:
             fight_done = fight["questions_cleared"] >= int(fight["questions_total"])
             if fight_done:
                 run["run_coins"] = self._counter(run, "run_coins") + coins_delta
+                loot = self._dungeon_award_loot(run, fight, question.get("concept_id") or run.get("concept_id"))
+                coins_delta += loot["coins"]
             else:
                 coins_delta = 0
-            # Resolve: Strength and the sign's level make each chip bigger.
+            # Resolve: Strength and the sign's level make each chip bigger;
+            # every 3 Focus makes the sign's share hit harder.
             concept_signs = set(hunter_signs_for(question.get("concept_id") or run.get("concept_id")))
             sign_level = max((sign["level"] for sign in hunter["signs"] if sign["id"] in concept_signs), default=0)
+            focus_multiplier = 1 + max(0, hunter["stats"]["focus"]["value"] - 1) // 3
             base_chip = DUNGEON_FIGHT_CHIP.get(str(run.get("room_type")), 3)
-            chip = (base_chip if clean_cast else max(1, base_chip // 2)) + (hunter["stats"]["strength"]["value"] - 1) + sign_level // 3
+            chip = (base_chip if clean_cast else max(1, base_chip // 2)) + (hunter["stats"]["strength"]["value"] - 1) + (sign_level // 3) * focus_multiplier
+            if loadout.get("trinket") == "Whetstone Charm":
+                chip += 1
             fight["resolve"] = max(0, resolve_before - chip)
             if fight["resolve"] == 0 and not fight_done:
                 # A break only helps: a free mistake, the mechanic stops, a few coins.
@@ -3735,6 +3907,7 @@ class LocalStateService:
         else:
             raw_damage = min(28, 4 + difficulty * 2)
             loadout = self._dungeon_ensure_loadout_defaults(run)
+            fight["misses"] = int(fight.get("misses", 0) or 0) + 1
             if int(fight["guards"]) > 0:
                 # A banked free mistake absorbs this miss entirely.
                 fight["guards"] = int(fight["guards"]) - 1
@@ -3799,7 +3972,7 @@ class LocalStateService:
             "questions_total": int(fight["questions_total"]),
             "fight_done": fight_done,
         }
-        run["last_result"] = {**result_record, "fight": fight_record, **({"hunter_gain": hunter_gain} if hunter_gain else {})}
+        run["last_result"] = {**result_record, "fight": fight_record, **({"hunter_gain": hunter_gain} if hunter_gain else {}), **({"loot": loot} if loot else {})}
         self._dungeon_append_history(run, {"room": run.get("room", 1), "floor": run.get("floor", 1), **result_record})
         # A self-destruct blast can end a run on a correct answer too.
         died = self._counter(run.get("loadout") or {}, "hp") <= 0
@@ -3811,6 +3984,7 @@ class LocalStateService:
         if died:
             ended = _utc_now()
             run.update({"status": "dead", "ended_at": ended, "updated_at": ended, "question": None})
+            pack_lost = self._dungeon_forfeit_pack(run)
             self._dungeon_record_leaderboard(progress, run, "dead")
         else:
             if verdict == "correct" and fight_done:
@@ -3846,11 +4020,13 @@ class LocalStateService:
             "reason": reason,
         }
         if died:
-            event.update({"run_died": True, "score": run.get("score", 0)})
+            event.update({"run_died": True, "score": run.get("score", 0), "pack_lost": pack_lost})
         elif verdict == "correct":
             event.update({"next_room": run.get("room"), "next_room_type": run.get("room_type"), "question_type": (run.get("question") or {}).get("question_type") if isinstance(run.get("question"), Mapping) else None, "concept_id": (run.get("question") or {}).get("concept_id") if isinstance(run.get("question"), Mapping) else run.get("concept_id")})
         event["fight"] = fight_record
-        return Mutation(True, {"run": projection, **result_record, "fight": fight_record, "run_died": died, "hunter_gain": hunter_gain}, event)
+        if loot:
+            event["loot"] = loot
+        return Mutation(True, {"run": projection, **result_record, "fight": fight_record, "run_died": died, "hunter_gain": hunter_gain, "loot": loot, "pack_lost": pack_lost}, event)
 
     def _dungeon_ensure_loadout_defaults(self, run: dict[str, Any]) -> dict[str, Any]:
         loadout = run.get("loadout")
@@ -4002,7 +4178,7 @@ class LocalStateService:
             room_type = "elite" if kind == "elite" else "encounter"
             run["room_type"] = room_type
             run["room_choices"] = []
-            run["concept_id"] = self._dungeon_adaptive_concept(progress, str(run.get("concept_id") or "python-basics"))
+            run["concept_id"] = self._dungeon_next_concept(run, progress)
             run["question_number"] = self._counter(run, "question_number") + 1
             question = self._dungeon_question_for_room(run, room=self._integer(run.get("room", 1), "room", minimum=1, maximum=MAX_DUNGEON_ROOM), floor=self._integer(run.get("floor", 1), "floor", minimum=1, maximum=MAX_DUNGEON_FLOOR))
             run["question"] = question
@@ -4133,8 +4309,9 @@ class LocalStateService:
         score = self._counter(run, "score")
         run.update({"status": "complete", "ended_at": ended, "updated_at": ended, "question": None, "editor_content": ""})
         run["last_result"] = {"outcome": "complete", "score_delta": 0, "coins_delta": 0, "damage": 0, "reason": "dungeon_run_finished"}
+        banked = self._dungeon_bank_pack(run, progress)
         self._dungeon_record_leaderboard(progress, run, "complete")
-        return Mutation(True, {"run": self.dungeon_projection(progress), "score": score}, {"run_id": run_id, "score": score, "run_finished": True, "editor_reset": True, "reason": "dungeon_run_finished"})
+        return Mutation(True, {"run": self.dungeon_projection(progress), "score": score, "banked": banked}, {"run_id": run_id, "score": score, "banked": banked, "run_finished": True, "editor_reset": True, "reason": "dungeon_run_finished"})
 
     def _dungeon_reset_run(self, payload: Mapping[str, Any], progress: dict[str, Any]) -> Mutation:
         """Discard only the active Dungeon checkpoint.
@@ -4169,11 +4346,12 @@ class LocalStateService:
         score = self._counter(run, "score")
         floor = self._counter(run, "floor")
         run.update({"status": "dead", "ended_at": ended, "updated_at": ended, "editor_content": "", "question": None})
+        pack_lost = self._dungeon_forfeit_pack(run)
         self._dungeon_record_leaderboard(progress, run, "dead")
         return Mutation(
             True,
-            {"run": self.dungeon_projection(progress)},
-            {"run_id": run_id, "floor": floor, "score": score, "editor_reset": True, "reason": reason},
+            {"run": self.dungeon_projection(progress), "pack_lost": pack_lost},
+            {"run_id": run_id, "floor": floor, "score": score, "pack_lost": pack_lost, "editor_reset": True, "reason": reason},
         )
 
     def _metadata_from_progress(self, progress: Mapping[str, Any]) -> dict[str, Any]:
@@ -4636,7 +4814,7 @@ class LocalStateService:
         if not isinstance(hunter, dict):
             hunter = cls._hunter_seed(progress)
             progress["hunter"] = hunter
-        for key in ("signs", "stats_xp", "spent"):
+        for key in ("signs", "stats_xp", "spent", "materials"):
             if not isinstance(hunter.get(key), dict):
                 hunter[key] = {}
         return hunter
@@ -4777,7 +4955,8 @@ class LocalStateService:
             }
         points = max(0, player_level - 1)
         spent_total = sum(count(spent, name) for name in HUNTER_STATS)
-        return {"signs": signs, "stats": stats, "level": player_level, "free_points": max(0, points - spent_total)}
+        materials = cls._dungeon_pack_items(hunter.get("materials"))
+        return {"signs": signs, "stats": stats, "level": player_level, "free_points": max(0, points - spent_total), "materials": materials}
 
     def _hunter_spend_point(self, payload: Mapping[str, Any], progress: dict[str, Any]) -> Mutation:
         """Spend one free stat point (one is earned per hunter level)."""

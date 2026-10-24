@@ -680,6 +680,63 @@ class StateServiceBehaviorTests(unittest.TestCase):
         base = self.read(path)["player"].get("max_hp") or 100
         self.assertEqual(run["loadout"]["max_hp"], base + 10)
 
+    def enter_delve_room(self, service, path, kind, region="collections", trinket=None):
+        run = service.apply("dungeon_start_run", {"seed": "delve-seed", "region_id": region}, "player")["result"]["run"]
+        state = self.read(path)
+        if trinket:
+            state["dungeon_run"]["loadout"]["trinket"] = trinket
+        node = {"id": "f1-r1-delve", "kind": kind, "row": 1, "column": 1, "label": kind}
+        state["dungeon_run"]["room_choices"] = [node]
+        state["dungeon_run"]["map"]["nodes"] = list(state["dungeon_run"]["map"].get("nodes", [])) + [node]
+        path.write_text(json.dumps(state), encoding="utf-8")
+        return service.apply("dungeon_choose_room", {"run_id": run["run_id"], "choice_id": node["id"]}, "player")["result"]["run"]
+
+    def test_delve_concepts_map_to_exactly_one_sign(self):
+        from ide.server.state import HUNTER_SIGN_CONCEPTS, hunter_signs_for
+        for sign_id, concept in HUNTER_SIGN_CONCEPTS.items():
+            self.assertEqual(hunter_signs_for(concept), [sign_id])
+
+    def test_delve_elite_still_takes_three_answers_and_drops_parts_and_a_trinket(self):
+        service, path = self.make_service()
+        run = self.enter_delve_room(service, path, "elite")
+        self.assertEqual(run["region"]["id"], "collections")
+        self.assertIn(run["question"]["concept_id"], {"lists", "dictionaries", "random selection"})
+        self.assertTrue(run["encounter"]["name"].startswith("Elder "))
+        one = self.answer_room(service, path, "correct", "d1")
+        self.assertIsNone(one["loot"])
+        self.answer_room(service, path, "correct", "d2")
+        three = self.answer_room(service, path, "correct", "d3")
+        self.assertTrue(three["fight"]["fight_done"])
+        self.assertEqual(three["loot"]["items"][0]["count"], 3)  # 2 parts + clean bonus
+        self.assertEqual(three["loot"]["trinket"]["name"], "Warden Sigil")
+        self.assertEqual(three["run"]["loadout"]["trinket"], "Warden Sigil")
+        self.assertEqual(sum(item["count"] for item in three["run"]["pack"]), 3)
+
+    def test_delve_pack_banks_on_finish_survives_and_is_lost_on_death(self):
+        service, path = self.make_service()
+        self.enter_delve_room(service, path, "encounter")
+        self.answer_room(service, path, "correct", "p1")
+        run = self.read(path)["dungeon_run"]
+        finished = service.apply("dungeon_finish_run", {"run_id": run["run_id"]}, "player")["result"]
+        self.assertEqual(sum(item["count"] for item in finished["banked"]), 2)
+        bank = service.hunter_projection(self.read(path))["materials"]
+        self.assertEqual(sum(item["count"] for item in bank), 2)
+        sync = service._campaign_source_projection(self.read(path))
+        self.assertNotIn("pack", json.dumps(sync.get("dungeon_run") or {}))
+        self.assertNotIn("materials", json.dumps(sync))
+        service2, path2 = self.make_service()
+        self.enter_delve_room(service2, path2, "encounter")
+        self.answer_room(service2, path2, "correct", "q1")
+        run2 = self.read(path2)["dungeon_run"]
+        dead = service2.apply_internal("dungeon_record_death", {"run_id": run2["run_id"], "reason": "fell"})["result"]
+        self.assertEqual(sum(item["count"] for item in dead["pack_lost"]), 2)
+        self.assertEqual(service2.hunter_projection(self.read(path2))["materials"], [])
+
+    def test_warden_sigil_starts_each_fight_with_a_free_mistake(self):
+        service, path = self.make_service()
+        run = self.enter_delve_room(service, path, "elite", trinket="Warden Sigil")
+        self.assertEqual(run["encounter"]["fight"]["guards"], 1)
+
     def test_campaign_mob_never_falls_before_its_last_objective(self):
         service, path = self.make_service()
         service.apply_internal("record_battle_objective", {"objective_id": "table_setup", "evidence_id": "mob-000-warmup", "reason": "Verified"})

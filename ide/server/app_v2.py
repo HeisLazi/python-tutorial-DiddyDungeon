@@ -332,6 +332,7 @@ class DungeonStartRequest(BaseModel):
     concept_id: str | None = Field(default=None, max_length=MAX_IDENTIFIER_LENGTH)
     seed: str | None = Field(default=None, max_length=MAX_IDENTIFIER_LENGTH)
     class_id: str | None = Field(default=None, max_length=MAX_IDENTIFIER_LENGTH)
+    region_id: str | None = Field(default=None, max_length=MAX_IDENTIFIER_LENGTH)
 
 
 class DungeonChooseRoomRequest(BaseModel):
