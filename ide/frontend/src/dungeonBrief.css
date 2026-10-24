@@ -159,3 +159,4 @@
   .verdict-arena *, .verdict-arena .verdict-float { animation: none !important; transition: none !important; }
   .verdict-arena.hit .verdict-float { opacity: 1; }
 }
+.dungeon-verdict-stats li.growth { border-color: var(--dungeon-blue); color: var(--dungeon-blue); }

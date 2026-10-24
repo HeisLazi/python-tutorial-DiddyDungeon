@@ -2116,6 +2116,16 @@ function AppV2() {
     }
   }
 
+  // Spend one free stat point on the hunter sheet.
+  const spendStatPoint = async (stat) => {
+    try {
+      await api('/api/hunter/stat', { method: 'POST', body: JSON.stringify({ stat }) })
+      await refreshCampaign({ silent: true })
+    } catch (error) {
+      setNotice(`Stat point not spent: ${error.message}`)
+    }
+  }
+
   // Switch the active campaign project; the one left keeps its board.
   const selectCampaign = async (branch) => {
     try {
@@ -2642,6 +2652,8 @@ function AppV2() {
               pyr={pyrTools}
               setAvatar={setAvatar}
               selectCampaign={selectCampaign}
+              hunter={campaign?.hunter_projection}
+              spendStatPoint={spendStatPoint}
               settingsAi={{ aiTutor, refreshAiTutor, saveAiSettings }}
               runtime={runtime}
               busy={busy || Boolean(pyrThinking)}

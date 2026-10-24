@@ -177,3 +177,5 @@
 .hunt-steel .hunt-actions button.primary { background: var(--hunt-gold); color: #1a140e; border-color: #f0d78a; }
 
 @media (prefers-reduced-motion: reduce) { .hunt-contract { transition: none; } }
+.hunt-level { color: var(--hunt-gold); font-size: 13px; font-style: normal; }
+.hunt-gate { padding: 6px 8px; border: 1px dashed var(--hunt-gold); color: var(--hunt-gold-hi); font-size: 16px; }

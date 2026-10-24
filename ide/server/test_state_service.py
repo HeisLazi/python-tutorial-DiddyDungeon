@@ -493,6 +493,101 @@ class StateServiceBehaviorTests(unittest.TestCase):
         self.assertEqual(result["result"]["run"]["editor_content"], attempt)
         self.assertEqual(result["result"]["run"]["question"]["id"], run["question"]["id"])
 
+    def practice_answer(self, service, concept, question_type, outcomes):
+        started = service.apply("practice_session_started", {"concept": concept, "question_type": question_type, "difficulty": 1}, "player")
+        session_id = started["result"]["session"]["session_id"]
+        result = None
+        for index, outcome in enumerate(outcomes):
+            result = service.apply_internal(
+                "practice_record_attempt",
+                {"session_id": session_id, "outcome": outcome, "evidence_id": f"{session_id}-{index}", "reason": "graded"},
+            )
+        return result
+
+    def test_hunter_signs_and_stats_grow_from_tutor_answers(self):
+        service, path = self.make_service()
+        clean = self.practice_answer(service, "Loops & totals", "code_trace", ["correct"])
+        self.assertEqual(clean["result"]["hunter_gain"]["signs"], [{"id": "loops", "xp": 3}])
+        self.assertEqual(clean["result"]["hunter_gain"]["stats"], {"insight": 2, "vitality": 2})
+        recovered = self.practice_answer(service, "Loops & totals", "short_explanation", ["incorrect", "correct"])
+        # Recovered (+1) plus a teach-back (+2); Focus grows, Vitality only once a day.
+        self.assertEqual(recovered["result"]["hunter_gain"]["signs"], [{"id": "loops", "xp": 3}])
+        self.assertEqual(recovered["result"]["hunter_gain"]["stats"], {"focus": 1})
+        hunter = service.hunter_projection(self.read(path))
+        loops = next(sign for sign in hunter["signs"] if sign["id"] == "loops")
+        self.assertEqual((loops["xp"], loops["clean_casts"], loops["recovered"], loops["tutor_passes"], loops["teachbacks"]), (6, 1, 1, 2, 1))
+        self.assertEqual(hunter["stats"]["insight"]["xp"], 2)
+
+    def test_hunter_sign_ranks_need_their_gates_and_dulling_keeps_rank_one(self):
+        service, path = self.make_service()
+        state = self.read(path)
+        state["hunter"] = {"signs": {"lists": {"xp": 500, "last_used_at": "2099-01-01T00:00:00+00:00"}}}
+        path.write_text(json.dumps(state), encoding="utf-8")
+        lists = lambda: next(sign for sign in service.hunter_projection(self.read(path))["signs"] if sign["id"] == "lists")  # noqa: E731
+        self.assertEqual((lists()["level"], lists()["rank_name"], lists()["held_by_gate"]), (2, "Uninscribed", True))
+        for counters, level, rank in (
+            ({"tutor_passes": 1}, 5, "Inscribed"),
+            ({"tutor_passes": 1, "clean_casts": 10}, 9, "Honed"),
+            ({"tutor_passes": 1, "clean_casts": 10, "campaign_uses": 1, "teachbacks": 1}, 10, "Mastered"),
+        ):
+            state["hunter"]["signs"]["lists"].update(counters)
+            path.write_text(json.dumps(state), encoding="utf-8")
+            self.assertEqual((lists()["level"], lists()["rank_name"]), (level, rank))
+        # Unused for a week: dull one step, never below rank I.
+        state["hunter"]["signs"]["lists"] = {"xp": 15, "tutor_passes": 1, "last_used_at": "2000-01-01T00:00:00+00:00"}
+        path.write_text(json.dumps(state), encoding="utf-8")
+        self.assertEqual((lists()["earned_level"], lists()["level"], lists()["dull"]), (3, 3, True))
+
+    def test_hunter_progress_is_seeded_only_from_existing_evidence(self):
+        service, path = self.make_service()
+        state = self.read(path)
+        state.pop("hunter", None)
+        state["projects"][0]["mobs"] = [
+            {"name": "The Count Keeper", "concept": "Loops and totals", "status": "defeated"},
+            {"name": "The Bust Hound", "concept": "Conditionals", "status": "available"},
+        ]
+        state["practice_sessions"] = [{"session_id": "practice-seed", "concept": "Lists", "question_type": "code_trace", "difficulty": 1, "status": "reviewed", "attempts": 2, "correct": 2, "history": []}]
+        path.write_text(json.dumps(state), encoding="utf-8")
+        signs = {sign["id"]: sign for sign in service.hunter_projection(self.read(path))["signs"]}
+        self.assertEqual((signs["loops"]["xp"], signs["loops"]["campaign_uses"]), (5, 1))
+        self.assertEqual((signs["lists"]["xp"], signs["lists"]["clean_casts"], signs["lists"]["tutor_passes"]), (6, 2, 2))
+        self.assertEqual(signs["conditionals"]["xp"], 0)
+        self.assertNotIn("hunter", self.read(path))  # projecting never writes
+        # The first real answer stores the seed plus the new growth.
+        self.practice_answer(service, "Loops & totals", "code_trace", ["correct"])
+        stored = self.read(path)["hunter"]["signs"]
+        self.assertEqual((stored["loops"]["xp"], stored["lists"]["xp"]), (8, 6))
+
+    def test_hunter_stat_points_come_with_levels(self):
+        service, path = self.make_service()
+        state = self.read(path)
+        state["player"]["level"] = 1
+        path.write_text(json.dumps(state), encoding="utf-8")
+        with self.assertRaises(StateCommandError) as none_yet:
+            service.apply("hunter_spend_point", {"stat": "strength"}, "player")
+        self.assertEqual(none_yet.exception.status_code, 409)
+        state["player"]["level"] = 3
+        path.write_text(json.dumps(state), encoding="utf-8")
+        spent = service.apply("hunter_spend_point", {"stat": "strength"}, "player")
+        self.assertEqual(spent["result"]["hunter"]["stats"]["strength"]["value"], 2)
+        self.assertEqual(spent["result"]["hunter"]["free_points"], 1)
+        with self.assertRaises(StateCommandError):
+            service.apply("hunter_spend_point", {"stat": "luck"}, "player")
+
+    def test_dungeon_clear_after_a_miss_counts_as_recovered(self):
+        service, path = self.make_service()
+        run = service.apply("dungeon_start_run", {"concept_id": "loops", "seed": "loop-seed"}, "player")["result"]["run"]
+        run = service.apply("dungeon_choose_room", {"run_id": run["run_id"], "choice_id": next(choice["id"] for choice in run["room_choices"] if choice["kind"] in {"encounter", "elite"})}, "player")["result"]["run"]
+        verdict = {"run_id": run["run_id"], "question_id": run["question"]["id"], "reason": "graded"}
+        service.apply_internal("dungeon_record_verdict", {**verdict, "verdict": "incorrect", "evidence_id": "dg-miss"})
+        cleared = service.apply_internal("dungeon_record_verdict", {**verdict, "verdict": "correct", "evidence_id": "dg-hit"})
+        gain = cleared["result"]["hunter_gain"]
+        self.assertTrue(gain["signs"])
+        self.assertTrue(all(item["xp"] in {1, 3} for item in gain["signs"]))
+        sign = next(item for item in service.hunter_projection(self.read(path))["signs"] if item["id"] == gain["signs"][0]["id"])
+        self.assertEqual((sign["recovered"], sign["clean_casts"], sign["dungeon_clean"]), (1, 0, 0))
+        self.assertEqual(cleared["result"]["run"]["last_result"]["hunter_gain"], gain)
+
     def test_practice_history_is_independent_and_provider_validated(self):
         service, path = self.make_service()
         before = self.read(path)

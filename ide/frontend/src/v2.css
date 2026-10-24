@@ -1211,7 +1211,7 @@
 .forge-v2 .resource-editor-actions > div { display: flex; flex-wrap: wrap; gap: 6px; }
 .forge-v2 .resource-editor-actions button { min-height: 28px; padding: 5px 9px; border: 1px solid #38454c; border-radius: 5px; background: #1a2227; color: #dfe8e9; font: 800 8px ui-monospace, monospace; }
 .forge-v2 .resource-editor-actions button.primary { border-color: var(--gold); background: var(--gold); color: #111; }
-.forge-v2 .resource-monaco { height: 220px; min-height: 220px; }
+.forge-v2 .resource-monaco { height: 220px; min-height: 220px; overflow: hidden; }
 .forge-v2 .resource-monaco > div { height: 220px !important; min-height: 220px !important; }
 .forge-v2 .resource-ide-terminal { flex: 0 0 auto; min-height: 106px; margin-top: 11px; padding: 12px; border: 1px solid var(--line); border-radius: 9px; background: #101619; }
 .forge-v2 .resource-ide-terminal > div { display: flex; justify-content: space-between; color: var(--muted); font: 800 8px ui-monospace, monospace; letter-spacing: .1em; }

@@ -60,6 +60,18 @@ Updated: 2026-10-22 · branch `feature/tauri-arcade` (fast-forwarded into
   (a correct warm-up drill), hunt (a correct bug drill at difficulty 2+).
   No campaign rewards are promised or granted here. Design canvas:
   https://claude.ai/artifact/XY3oVEpdnkS5FvtyHJaQ8n (boards D, E, F).
+- **Hunter progression (Phase A):** `progress["hunter"]` (local only, not in
+  the cloud projection; syncing it needs a Supabase migration). Signs level by
+  use: `_hunter_record` runs on every verified correct answer (Tutor practice,
+  Dungeon verdict, campaign objective) and on a cleared bounty (campaign use);
+  clean = no earlier miss on that question. Stats grow by question type
+  (`HUNTER_STAT_BY_TYPE`); Vitality from the first correct answer each day.
+  `hunter_projection` gives levels, rank gates (Tutor drill / 10 clean casts /
+  campaign use + teach-back), dulling after 7 days and free stat points (one
+  per player level, `POST /api/hunter/stat`). Old saves are seeded once from
+  defeated bounties and correct practice. Shown on the Character screen
+  (`HunterSheet`), in the Hunter's Codex and on the Dungeon verdict card. The
+  iron rule holds: none of it skips or shortens a question.
 - **Pop-ups:** render through `ShellPortal` (into `.app-shell`, wrapper is
   `display: contents` and carries the surface's theme class) so panel
   stacking contexts can't hide them under the nav.

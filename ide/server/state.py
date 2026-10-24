@@ -381,6 +381,7 @@ ACTION_DEFINITIONS: dict[str, ActionDefinition] = {
     "equip_equipment": ActionDefinition(frozenset({"player"})),
     "set_avatar": ActionDefinition(frozenset({"player"})),
     "select_campaign": ActionDefinition(frozenset({"player"})),
+    "hunter_spend_point": ActionDefinition(frozenset({"player"})),
     "record_learning_event": ActionDefinition(frozenset({"pyr"})),
     "record_reference_mode": ActionDefinition(frozenset({"pyr"})),
     "award_learning_reward": ActionDefinition(frozenset({SYSTEM_ACTOR}), internal=True),
@@ -741,6 +742,56 @@ def opaque_device_id() -> str:
 
 def _utc_now() -> str:
     return datetime.now(timezone.utc).isoformat()
+
+
+# ── Hunter progression: signs (concepts) and stats ──────────────────────
+# Signs level by use: every verified correct answer gives its concept's sign
+# XP (more for a clean first try). A rank also needs an achievement gate, so
+# drills alone can't reach mastery. Stats grow from the kind of question
+# answered. None of this ever skips or shortens a question (docs/
+# GAME_DIRECTION.md, "the iron rule"). Local progression for now: it is not
+# part of the cloud projection, which would need a Supabase migration.
+HUNTER_SIGN_KEYWORDS: dict[str, tuple[str, ...]] = {
+    "variables": ("variable", "variables", "assignment", "assign"),
+    "input-output": ("input", "output", "print"),
+    "conditionals": ("conditional", "conditionals", "if", "elif", "else", "branch", "branches", "boolean"),
+    "lists": ("list", "lists", "collection", "collections", "index", "indexing"),
+    "dictionaries": ("dictionary", "dictionaries", "dict", "dicts", "lookup", "key", "keys"),
+    "random-selection": ("random", "randomness", "probability", "shuffle"),
+    "loops": ("loop", "loops", "iteration", "iterate", "for", "while", "totals"),
+    "functions": ("function", "functions", "return", "def", "parameter", "parameters"),
+    "control-flow": ("control flow", "control", "reset", "break", "continue"),
+}
+HUNTER_SIGN_XP = {"clean": 3, "recovered": 1, "campaign_use": 5, "teachback": 2}
+# Total sign XP needed to reach levels 1..10.
+HUNTER_SIGN_LEVELS = (3, 8, 15, 24, 35, 48, 63, 80, 99, 120)
+HUNTER_RANK_NAMES = ("Uninscribed", "Inscribed", "Honed", "Mastered")
+HUNTER_HONED_CLEAN_CASTS = 10
+HUNTER_DULL_DAYS = 7
+HUNTER_STATS = ("strength", "insight", "focus", "vitality")
+HUNTER_STAT_BY_TYPE = {
+    # Writing and fixing code.
+    "bug_hunt": "strength", "bug_diagnosis": "strength", "code_checkpoint": "strength", "refactoring": "strength",
+    # Reading code.
+    "code_trace": "insight", "prediction": "insight", "output_prediction": "insight",
+    "multiple_choice": "insight", "true_false": "insight",
+    # Explaining.
+    "explanation": "focus", "short_explanation": "focus", "interview": "focus",
+}
+HUNTER_TEACHBACK_TYPES = frozenset({"explanation", "short_explanation", "interview"})
+HUNTER_STAT_XP_PER_POINT = 10
+HUNTER_SIGN_COUNTERS = ("xp", "clean_casts", "recovered", "tutor_passes", "dungeon_clean", "campaign_uses", "teachbacks")
+
+
+def hunter_signs_for(concept: object) -> list[str]:
+    """The signs a concept label (e.g. "Lists and random selection") feeds."""
+
+    text = re.sub(r"[-_/]", " ", str(concept or "").lower())
+    found = []
+    for sign_id, words in HUNTER_SIGN_KEYWORDS.items():
+        if sign_id.replace("-", " ") in text or any(re.search(rf"\b{re.escape(word)}\b", text) for word in words):
+            found.append(sign_id)
+    return found
 
 
 def _read_state_file(path: Path) -> dict[str, Any] | None:
@@ -3302,7 +3353,7 @@ class LocalStateService:
         if isinstance(last_result, Mapping):
             projection["last_result"] = {
                 key: last_result[key]
-                for key in ("outcome", "question_id", "mob_name", "score_delta", "coins_delta", "damage", "evidence_id", "reason")
+                for key in ("outcome", "question_id", "mob_name", "score_delta", "coins_delta", "damage", "evidence_id", "reason", "hunter_gain")
                 if key in last_result
             }
         history = run.get("history")
@@ -3553,7 +3604,13 @@ class LocalStateService:
         score_delta = 0
         coins_delta = 0
         damage = 0
+        hunter_gain = None
         if verdict == "correct":
+            clean_cast = not any(
+                isinstance(item, Mapping) and item.get("question_id") == question_id and item.get("outcome") == "incorrect"
+                for item in (run.get("history") if isinstance(run.get("history"), list) else [])
+            )
+            hunter_gain = self._hunter_record(progress, concept=question.get("concept_id") or run.get("concept_id"), question_type=question.get("question_type"), source="dungeon", clean=clean_cast)
             score_delta = DUNGEON_SCORE_BY_DIFFICULTY[min(difficulty, len(DUNGEON_SCORE_BY_DIFFICULTY) - 1)]
             coins_delta = DUNGEON_COIN_BY_DIFFICULTY[min(difficulty, len(DUNGEON_COIN_BY_DIFFICULTY) - 1)]
             loadout = self._dungeon_ensure_loadout_defaults(run)
@@ -3590,7 +3647,7 @@ class LocalStateService:
             "evidence_id": evidence_id,
             "reason": reason,
         }
-        run["last_result"] = result_record
+        run["last_result"] = {**result_record, "hunter_gain": hunter_gain} if hunter_gain else result_record
         self._dungeon_append_history(run, {"room": run.get("room", 1), "floor": run.get("floor", 1), **result_record})
         died = verdict == "incorrect" and self._counter(run.get("loadout") or {}, "hp") <= 0
         # A miss keeps the attempt in dungeon.py so the player can fix it;
@@ -3628,7 +3685,7 @@ class LocalStateService:
             event.update({"run_died": True, "score": run.get("score", 0)})
         elif verdict == "correct":
             event.update({"next_room": run.get("room"), "next_room_type": run.get("room_type"), "question_type": (run.get("question") or {}).get("question_type") if isinstance(run.get("question"), Mapping) else None, "concept_id": (run.get("question") or {}).get("concept_id") if isinstance(run.get("question"), Mapping) else run.get("concept_id")})
-        return Mutation(True, {"run": projection, **result_record, "run_died": died}, event)
+        return Mutation(True, {"run": projection, **result_record, "run_died": died, "hunter_gain": hunter_gain}, event)
 
     def _dungeon_ensure_loadout_defaults(self, run: dict[str, Any]) -> dict[str, Any]:
         loadout = run.get("loadout")
@@ -4330,6 +4387,7 @@ class LocalStateService:
             "equip_equipment": self._equip_equipment,
             "set_avatar": self._set_avatar,
             "select_campaign": self._select_campaign,
+            "hunter_spend_point": self._hunter_spend_point,
             "record_learning_event": self._record_learning_event,
             "record_reference_mode": self._record_reference_mode,
             "award_learning_reward": self._award_learning_reward,
@@ -4378,6 +4436,195 @@ class LocalStateService:
                 raise StateCommandError(f"{field}.{key} is not an available option")
             clean[key] = choice
         return clean
+
+    @staticmethod
+    def _hunter_seed(progress: Mapping[str, Any]) -> dict[str, Any]:
+        """Starting hunter progress for a save that predates signs, built only
+        from evidence it already holds: each defeated campaign bounty counts as
+        using its sign in a real project, each correct practice answer as a
+        clean Tutor cast."""
+
+        signs: dict[str, dict[str, Any]] = {}
+
+        def bump(concept: object, **counters: int) -> None:
+            for sign_id in hunter_signs_for(concept):
+                sign = signs.setdefault(sign_id, {})
+                for key, amount in counters.items():
+                    sign[key] = sign.get(key, 0) + amount
+
+        for project in progress.get("projects", []) if isinstance(progress.get("projects"), list) else []:
+            if not isinstance(project, Mapping):
+                continue
+            for mob in project.get("mobs", []) if isinstance(project.get("mobs"), list) else []:
+                if isinstance(mob, Mapping) and mob.get("status") in {"defeated", "cleared"}:
+                    bump(mob.get("concept"), campaign_uses=1, xp=HUNTER_SIGN_XP["campaign_use"])
+        for session in progress.get("practice_sessions", []) if isinstance(progress.get("practice_sessions"), list) else []:
+            correct = session.get("correct", 0) if isinstance(session, Mapping) else 0
+            if isinstance(correct, int) and correct > 0:
+                bump(session.get("concept"), clean_casts=correct, tutor_passes=correct, xp=HUNTER_SIGN_XP["clean"] * correct)
+        return {"signs": signs, "stats_xp": {}, "spent": {}, "seeded_from_history": True}
+
+    @classmethod
+    def _hunter_state(cls, progress: dict[str, Any]) -> dict[str, Any]:
+        hunter = progress.get("hunter")
+        if not isinstance(hunter, dict):
+            hunter = cls._hunter_seed(progress)
+            progress["hunter"] = hunter
+        for key in ("signs", "stats_xp", "spent"):
+            if not isinstance(hunter.get(key), dict):
+                hunter[key] = {}
+        return hunter
+
+    def _hunter_record(
+        self,
+        progress: dict[str, Any],
+        *,
+        concept: object,
+        question_type: object,
+        source: str,
+        clean: bool,
+        campaign_use: bool = False,
+    ) -> dict[str, Any]:
+        """Grow signs and stats for one verified correct answer, or for a
+        cleared campaign bounty (campaign_use). Returns what was gained."""
+
+        hunter = self._hunter_state(progress)
+        now = _utc_now()
+        qtype = str(question_type or "")
+        gain: dict[str, Any] = {"signs": [], "stats": {}}
+        for sign_id in hunter_signs_for(concept):
+            sign = hunter["signs"].setdefault(sign_id, {})
+            xp = 0
+            if campaign_use:
+                sign["campaign_uses"] = self._counter(sign, "campaign_uses") + 1
+                xp += HUNTER_SIGN_XP["campaign_use"]
+            else:
+                if clean:
+                    sign["clean_casts"] = self._counter(sign, "clean_casts") + 1
+                    xp += HUNTER_SIGN_XP["clean"]
+                else:
+                    sign["recovered"] = self._counter(sign, "recovered") + 1
+                    xp += HUNTER_SIGN_XP["recovered"]
+                if source == "tutor":
+                    sign["tutor_passes"] = self._counter(sign, "tutor_passes") + 1
+                if source == "dungeon" and clean:
+                    sign["dungeon_clean"] = self._counter(sign, "dungeon_clean") + 1
+                if qtype in HUNTER_TEACHBACK_TYPES:
+                    sign["teachbacks"] = self._counter(sign, "teachbacks") + 1
+                    xp += HUNTER_SIGN_XP["teachback"]
+            sign["xp"] = min(9999, self._counter(sign, "xp") + xp)
+            sign["last_used_at"] = now
+            gain["signs"].append({"id": sign_id, "xp": xp})
+        if not campaign_use:
+            stats_xp = hunter["stats_xp"]
+            stat = HUNTER_STAT_BY_TYPE.get(qtype)
+            if stat:
+                amount = 2 if clean else 1
+                stats_xp[stat] = self._counter(stats_xp, stat) + amount
+                gain["stats"][stat] = amount
+            today = now[:10]
+            if hunter.get("last_active_day") != today:
+                # Vitality grows from showing up: the first correct answer each day.
+                hunter["last_active_day"] = today
+                stats_xp["vitality"] = self._counter(stats_xp, "vitality") + 2
+                gain["stats"]["vitality"] = gain["stats"].get("vitality", 0) + 2
+        return gain
+
+    @classmethod
+    def hunter_projection(cls, progress: Mapping[str, Any]) -> dict[str, Any]:
+        """Signs (level, rank, gates, dulling) and stats for the hunter sheet."""
+
+        hunter = progress.get("hunter") if isinstance(progress.get("hunter"), Mapping) else cls._hunter_seed(progress)
+        raw_signs = hunter.get("signs") if isinstance(hunter.get("signs"), Mapping) else {}
+        now = datetime.now(timezone.utc)
+
+        def count(source: Mapping[str, Any], key: str) -> int:
+            value = source.get(key, 0)
+            return value if isinstance(value, int) and not isinstance(value, bool) and value > 0 else 0
+
+        signs = []
+        for sign_id in HUNTER_SIGN_KEYWORDS:
+            raw = raw_signs.get(sign_id) if isinstance(raw_signs.get(sign_id), Mapping) else {}
+            counters = {key: count(raw, key) for key in HUNTER_SIGN_COUNTERS}
+            xp = counters["xp"]
+            xp_level = sum(1 for need in HUNTER_SIGN_LEVELS if xp >= need)
+            gates = {
+                "inscribed": counters["tutor_passes"] >= 1,
+                "honed": counters["clean_casts"] >= HUNTER_HONED_CLEAN_CASTS,
+                "mastered": counters["campaign_uses"] >= 1 and counters["teachbacks"] >= 1,
+            }
+            cap = 2 if not gates["inscribed"] else 5 if not gates["honed"] else 9 if not gates["mastered"] else 10
+            level = min(xp_level, cap)
+            rank = 3 if level >= 10 else 2 if level >= 6 else 1 if level >= 3 else 0
+            days_unused = None
+            last_used = raw.get("last_used_at")
+            if isinstance(last_used, str):
+                try:
+                    days_unused = (now - datetime.fromisoformat(last_used)).days
+                except ValueError:
+                    days_unused = None
+            dull = bool(level and days_unused is not None and days_unused >= HUNTER_DULL_DAYS)
+            effective = max(level - 1, 3 if rank >= 1 else 0) if dull else level
+            if not gates["inscribed"]:
+                next_gate = "Pass a Tutor drill with this sign"
+            elif not gates["honed"]:
+                next_gate = f"{counters['clean_casts']} / {HUNTER_HONED_CLEAN_CASTS} clean casts"
+            elif not gates["mastered"]:
+                missing = []
+                if counters["campaign_uses"] < 1:
+                    missing.append("use it in a campaign bounty")
+                if counters["teachbacks"] < 1:
+                    missing.append("explain it back to PYR")
+                next_gate = "Then " + " and ".join(missing)
+            else:
+                next_gate = None
+            signs.append({
+                "id": sign_id,
+                "xp": xp,
+                "level": effective,
+                "earned_level": level,
+                "rank": rank,
+                "rank_name": HUNTER_RANK_NAMES[rank],
+                "next_level_xp": HUNTER_SIGN_LEVELS[xp_level] if xp_level < len(HUNTER_SIGN_LEVELS) else None,
+                "held_by_gate": xp_level > level,
+                "gates": gates,
+                "next_gate": next_gate,
+                "dull": dull,
+                "days_unused": days_unused,
+                **{key: counters[key] for key in HUNTER_SIGN_COUNTERS if key != "xp"},
+            })
+
+        stats_xp = hunter.get("stats_xp") if isinstance(hunter.get("stats_xp"), Mapping) else {}
+        spent = hunter.get("spent") if isinstance(hunter.get("spent"), Mapping) else {}
+        player = progress.get("player") if isinstance(progress.get("player"), Mapping) else {}
+        player_level = max(1, count(player, "level") or 1)
+        stats = {}
+        for name in HUNTER_STATS:
+            xp = count(stats_xp, name)
+            trained = xp // HUNTER_STAT_XP_PER_POINT
+            stats[name] = {
+                "value": 1 + trained + count(spent, name),
+                "xp": xp,
+                "trained": trained,
+                "spent": count(spent, name),
+                "next_at": (trained + 1) * HUNTER_STAT_XP_PER_POINT,
+            }
+        points = max(0, player_level - 1)
+        spent_total = sum(count(spent, name) for name in HUNTER_STATS)
+        return {"signs": signs, "stats": stats, "level": player_level, "free_points": max(0, points - spent_total)}
+
+    def _hunter_spend_point(self, payload: Mapping[str, Any], progress: dict[str, Any]) -> Mutation:
+        """Spend one free stat point (one is earned per hunter level)."""
+
+        data = self._payload(payload, {"stat"}, {"stat"})
+        stat = self._text(data["stat"], "stat", max_length=20, identifier=True)
+        if stat not in HUNTER_STATS:
+            raise StateCommandError("That stat does not exist")
+        if self.hunter_projection(progress)["free_points"] <= 0:
+            raise StateCommandError("No free stat points yet; one comes with every hunter level", status_code=409)
+        hunter = self._hunter_state(progress)
+        hunter["spent"][stat] = self._counter(hunter["spent"], stat) + 1
+        return Mutation(True, {"hunter": self.hunter_projection(progress)}, {"stat": stat, "reason": "hunter_stat_point"})
 
     def _set_avatar(self, payload: Mapping[str, Any], progress: dict[str, Any]) -> Mutation:
         """Change the player's paper-doll appearance (cosmetic only)."""
@@ -5215,6 +5462,8 @@ class LocalStateService:
         evidence_id: str,
         reason: str,
     ) -> dict[str, Any]:
+        # Seed hunter progress before this bounty counts as defeated history.
+        self._hunter_state(progress)
         mob["status"] = "defeated"
         mob["resolve"] = 0
         encounter["status"] = "defeated"
@@ -5228,6 +5477,7 @@ class LocalStateService:
 
         stats = self._dict(progress, "stats")
         stats["mobs_defeated"] = self._counter(stats, "mobs_defeated") + 1
+        self._hunter_record(progress, concept=mob.get("concept"), question_type=None, source="campaign", clean=True, campaign_use=True)
         cleared_count = sum(1 for candidate in mobs if candidate.get("status") in {"defeated", "cleared"})
         project["progress"] = round(cleared_count / max(1, len(mobs)) * 100)
         boss_unlocked = next_mob is None
@@ -5324,6 +5574,8 @@ class LocalStateService:
         mob["impact_applied"] = self._counter(mob, "impact_applied") + impact
         mob["objective_attempts"] = self._counter(mob, "objective_attempts") + 1
         self._update_skill_evidence(progress, mob.get("concept"))
+        missed = encounter.get("missed_objectives") if isinstance(encounter.get("missed_objectives"), list) else []
+        hunter_gain = self._hunter_record(progress, concept=mob.get("concept"), question_type=objective["question_type"], source="campaign", clean=objective_id not in missed)
         entry = self._upsert_codex_entry(
             progress,
             project,
@@ -5353,6 +5605,7 @@ class LocalStateService:
                 "resolve_after": after,
                 "mob_defeated": bool(finish),
                 "codex_entry_id": entry["id"],
+                "hunter_gain": hunter_gain,
                 **(finish or {"reward_xp": 0, "reward_coins": 0, "next_mob": None}),
             },
             {
@@ -5603,9 +5856,14 @@ class LocalStateService:
         attempts = self._counter(session, "attempts")
         if attempts >= MAX_PRACTICE_ATTEMPTS_PER_SESSION:
             raise StateCommandError("Practice session attempt limit reached", status_code=409)
+        # Seed hunter progress from history before this answer becomes history.
+        self._hunter_state(progress)
         session["attempts"] = attempts + 1
+        hunter_gain = None
         if outcome == "correct":
             session["correct"] = self._counter(session, "correct") + 1
+            clean = not any(isinstance(item, Mapping) and item.get("outcome") == "incorrect" for item in history)
+            hunter_gain = self._hunter_record(progress, concept=session.get("concept"), question_type=session.get("question_type"), source="tutor", clean=clean)
         session["status"] = "reviewed"
         session["updated_at"] = _utc_now()
         history.append({"outcome": outcome, "evidence_id": evidence_id, "reason": reason, "recorded_at": session["updated_at"]})
@@ -5614,7 +5872,7 @@ class LocalStateService:
         safe_session = next(item for item in projected["sessions"] if item["session_id"] == session_id)
         return Mutation(
             True,
-            {"session": safe_session, "outcome": outcome, "reward_xp": 0, "reward_coins": 0},
+            {"session": safe_session, "outcome": outcome, "reward_xp": 0, "reward_coins": 0, "hunter_gain": hunter_gain},
             {
                 "session_id": session_id,
                 "outcome": outcome,
@@ -6042,6 +6300,11 @@ class LocalStateService:
             encounter["last_objective_id"] = objective_id
             encounter["last_question_type"] = question_type
             encounter["last_outcome"] = "incorrect"
+            # Remembered so a later correct answer counts as recovered, not clean.
+            missed = encounter.setdefault("missed_objectives", [])
+            if isinstance(missed, list) and objective_id not in missed:
+                missed.append(objective_id)
+                encounter["missed_objectives"] = missed[-20:]
             question_types = encounter.setdefault("question_types", [])
             if question_type not in question_types:
                 question_types.append(question_type)

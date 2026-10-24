@@ -106,3 +106,30 @@
 /* Dungeon "You" card */
 .dungeon-brief-you { display: grid; grid-template-columns: auto minmax(0, 1fr); column-gap: 12px; align-items: center; }
 .dungeon-brief-you > .dungeon-brief-avatar { grid-row: span 4; filter: drop-shadow(3px 3px 0 rgb(0 0 0 / 0.45)); }
+
+/* Hunter sheet: stats and the sign book on the Character screen. */
+.hunter-sheet .hunter-free { color: var(--gold); }
+.hunter-stats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+@media (max-width: 760px) { .hunter-stats { grid-template-columns: 1fr; } }
+.hunter-stat { display: grid; gap: 4px; padding: 8px 10px; border: 1px solid var(--line); background: var(--panel3, var(--panel)); }
+.hunter-stat-head { display: flex; align-items: center; gap: 8px; }
+.hunter-stat-head strong { flex: 1; }
+.hunter-stat-head b { color: var(--gold); font-size: 20px; }
+.hunter-stat-head button { min-width: 32px; min-height: 32px; border: 1px solid var(--gold); background: transparent; color: var(--gold); font: inherit; cursor: pointer; }
+.hunter-stat small { color: var(--muted); font-size: 13px; line-height: 1.3; }
+.hunter-stat .hunter-from { color: var(--muted); opacity: 0.8; }
+.hunter-bar { height: 6px; border: 1px solid var(--line); background: var(--bg, #000); }
+.hunter-bar i { display: block; height: 100%; background: var(--gold); }
+.hunter-book-title { margin: 6px 0 0; font-size: 14px; }
+.hunter-signs { display: grid; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.hunter-sign { display: grid; grid-template-columns: 34px minmax(0, 1fr); gap: 8px; align-items: center; padding: 6px 8px; border: 1px solid var(--line); }
+.hunter-sign.rank-1 { border-color: color-mix(in srgb, var(--gold) 40%, var(--line)); }
+.hunter-sign.rank-2, .hunter-sign.rank-3 { border-color: var(--gold); }
+.hunter-sign.dull { opacity: 0.7; }
+.hunter-sigil { display: grid; place-items: center; width: 34px; height: 34px; border: 1px solid var(--line); color: var(--gold); }
+.hunter-sigil svg { fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.hunter-sign-body { display: grid; gap: 3px; min-width: 0; }
+.hunter-sign-head { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px; }
+.hunter-sign-head span { color: var(--muted); font-size: 13px; }
+.hunter-sign small { color: var(--muted); font-size: 12px; }
+.hunter-note { margin: 4px 0 0; color: var(--muted); font-size: 13px; }

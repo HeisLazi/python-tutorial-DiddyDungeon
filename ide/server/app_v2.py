@@ -932,6 +932,7 @@ def campaign():
         "codex_projection": STATE_SERVICE.codex_projection(progress),
         "practice_projection": STATE_SERVICE.practice_projection(progress),
         "dungeon": dungeon_projection,
+        "hunter_projection": STATE_SERVICE.hunter_projection(progress),
         "activity": activity,
         "git": git_info(),
         "repo_git": git_info(REPO_ROOT),
@@ -2614,6 +2615,26 @@ class CampaignSelect(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     branch: str = Field(min_length=1, max_length=120)
+
+
+class HunterStatPoint(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    stat: str = Field(min_length=1, max_length=20)
+
+
+@app.post("/api/hunter/stat")
+def spend_hunter_point(payload: HunterStatPoint):
+    """Spend one free stat point (validated by the state service)."""
+
+    envelope = _apply_state_or_http("hunter_spend_point", {"stat": payload.stat}, "player")
+    try:
+        _progress, metadata = STATE_SERVICE.snapshot_with_metadata()
+    except StateCommandError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
+    result = _flatten_state_result(envelope)
+    result["revision"] = metadata["revision"]
+    return result
 
 
 @app.post("/api/campaign/select")
