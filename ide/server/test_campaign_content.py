@@ -135,7 +135,7 @@ class CampaignExtensionTests(unittest.TestCase):
         self.assertTrue(all(set(mob) <= {"name", "concept", "encounter", "status", "resolve"} for mob in project["mobs"]))
         self.assertFalse(self.service.apply_internal("campaign_extend", {})["changed"])  # idempotent
         finished = next(item for item in self.read()["projects"] if item["branch"] == "00-rps-tournament")
-        self.assertEqual(finished["mobs"], [])
+        self.assertEqual({mob["status"] for mob in finished["mobs"]}, {"defeated"})  # a finished board shows cleared
 
     def test_an_authored_contract_falls_on_its_last_objective(self):
         self.service.apply_internal("campaign_extend", {})
@@ -189,6 +189,44 @@ class CampaignExtensionTests(unittest.TestCase):
         self.assertEqual(len(detective["mobs"]), 14)
         self.assertEqual(detective["entry_file"], "detective.py")
         self.assertEqual([mob["status"] for mob in detective["mobs"]][:2], ["available", "locked"])
+
+    def test_the_synced_campaign_stays_small_and_a_pull_rebuilds_every_board(self):
+        import copy
+        from ide.server.state import MAX_SYNC_CAMPAIGN_BYTES, load_campaign_bounties
+
+        self.service.apply_internal("campaign_extend", {})
+        progress = self.read()
+        content = load_campaign_bounties()
+        for index, project in enumerate(progress["projects"]):
+            # Worst realistic case: every campaign finished except one fully cleared board.
+            project["mobs"] = [{"name": mob["name"], "concept": mob["concept"], "encounter": mob["encounter"], "status": "defeated", "resolve": 0, "max_resolve": 9, "impact_applied": 9, "objective_attempts": 4} for mob in content[project["branch"]]["mobs"]]
+            finished = index != 1
+            project.update({"completed": finished, "status": "completed" if finished else "active", "progress": 100})
+        projection = LocalStateService._sync_projection(progress)
+        LocalStateService._validate_sync_projection(projection)
+        size = len(json.dumps(projection["campaign"], separators=(",", ":")).encode())
+        self.assertLess(size, MAX_SYNC_CAMPAIGN_BYTES)
+        pulled = copy.deepcopy(progress)
+        pulled["projects"] = copy.deepcopy(projection["campaign"]["projects"])
+        self.service._extend_campaign(pulled)
+        for before, after in zip(progress["projects"], pulled["projects"]):
+            self.assertEqual([(mob["name"], mob["status"], mob["concept"]) for mob in after["mobs"]], [(mob["name"], mob["status"], mob["concept"]) for mob in before["mobs"]], before["branch"])
+
+    def test_an_in_progress_board_round_trips_through_sync(self):
+        import copy
+
+        self.service.apply_internal("campaign_extend", {})
+        progress = self.read()
+        projection = LocalStateService._sync_projection(progress)
+        blackjack = next(item for item in projection["campaign"]["projects"] if item["branch"] == "01-blackjack")
+        self.assertEqual(len(blackjack["mobs"]), 9)  # eight cleared + the open contract; locked ones are restored
+        self.assertNotIn("encounter", blackjack["mobs"][0])
+        pulled = copy.deepcopy(progress)
+        pulled["projects"] = copy.deepcopy(projection["campaign"]["projects"])
+        self.service._extend_campaign(pulled)
+        original = next(item for item in progress["projects"] if item["branch"] == "01-blackjack")
+        restored = next(item for item in pulled["projects"] if item["branch"] == "01-blackjack")
+        self.assertEqual([(mob["name"], mob["status"]) for mob in restored["mobs"]], [(mob["name"], mob["status"]) for mob in original["mobs"]])
 
 
 if __name__ == "__main__":

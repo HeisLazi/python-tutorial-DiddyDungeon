@@ -2584,7 +2584,7 @@ class LocalStateService:
                             if isinstance(entry, Mapping)
                         ][-20:]
                 if isinstance(project.get("mobs"), list):
-                    item["mobs"] = [pick(mob, mob_fields) for mob in project["mobs"] if isinstance(mob, Mapping)]
+                    item["mobs"] = cls._compact_sync_mobs(project, [pick(mob, mob_fields) for mob in project["mobs"] if isinstance(mob, Mapping)])
                 campaign["projects"].append(item)
         if "current_quest" in progress:
             campaign["current_quest"] = progress.get("current_quest")
@@ -6594,6 +6594,31 @@ class LocalStateService:
         sign = contract.get("sign") if isinstance(contract, Mapping) else None
         return HUNTER_SIGN_CONCEPTS.get(sign, mob.get("concept")) if isinstance(sign, str) else mob.get("concept")
 
+    @staticmethod
+    def _compact_sync_mobs(project: Mapping[str, Any], mobs: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        """Keep the synced board small: anything the story file can restore is
+        left out (a finished board, trailing locked contracts, contract text,
+        zero counters). _extend_campaign puts it back after a pull."""
+
+        branch = project.get("branch")
+        if not any(campaign_contract(branch, mob.get("name")) for mob in mobs):
+            return mobs
+        if project.get("completed") is True:
+            return []
+        while mobs and mobs[-1].get("status") == "locked" and campaign_contract(branch, mobs[-1].get("name")):
+            mobs.pop()
+        compact = []
+        for mob in mobs:
+            item = dict(mob)
+            if campaign_contract(branch, item.get("name")):
+                item.pop("concept", None)
+                item.pop("encounter", None)
+            for field in ("resolve", "impact_applied", "objective_attempts"):
+                if item.get(field) == 0:
+                    item.pop(field)
+            compact.append(item)
+        return compact
+
     def _extend_campaign(self, progress: dict[str, Any]) -> bool:
         """Bring the save up to the authored campaign: add catalog projects
         that are missing and append new contracts to unfinished boards
@@ -6621,11 +6646,37 @@ class LocalStateService:
             })
             changed = True
         for project in projects:
-            if not isinstance(project, dict) or project.get("completed") is True or project.get("status") == "completed":
+            if not isinstance(project, dict):
                 continue
             entry = content.get(str(project.get("branch") or ""))
             if not isinstance(entry, Mapping):
                 continue
+            authored = [
+                item for item in entry.get("mobs", [])
+                if isinstance(item, Mapping) and all(isinstance(item.get(key), str) for key in ("name", "concept", "encounter"))
+            ][:MAX_SYNC_MOBS_PER_PROJECT]
+            by_name = {item["name"]: item for item in authored}
+            mobs = project.get("mobs")
+            finished = project.get("completed") is True or project.get("status") == "completed"
+            if finished:
+                # A finished board syncs empty; show it as fully cleared again.
+                if (not isinstance(mobs, list) or not mobs) and authored:
+                    project["mobs"] = [{"name": item["name"], "concept": item["concept"], "encounter": item["encounter"], "status": "defeated", "resolve": 0} for item in authored]
+                    changed = True
+                continue
+            if isinstance(mobs, list):
+                for mob in mobs:
+                    contract = by_name.get(mob.get("name")) if isinstance(mob, dict) else None
+                    if contract:
+                        for key in ("concept", "encounter"):
+                            if not isinstance(mob.get(key), str):
+                                mob[key] = contract[key]
+                                changed = True
+            if (not isinstance(mobs, list) or not mobs) and authored and project.get("status") in {"active", "available"}:
+                # An untouched board syncs empty; seed it like opening it would.
+                project["mobs"] = [{"name": item["name"], "concept": item["concept"], "encounter": item["encounter"], "status": "locked"} for item in authored]
+                project["mobs"][0]["status"] = "available"
+                changed = True
             if isinstance(entry.get("entry_file"), str) and not project.get("entry_file"):
                 project["entry_file"] = entry["entry_file"]
                 changed = True

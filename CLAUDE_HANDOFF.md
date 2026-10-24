@@ -174,6 +174,14 @@ Updated: 2026-10-22 · branch `feature/tauri-arcade` (fast-forwarded into
   on word boundaries. Contracts link to the fitting sign. The frontend mirrors
   them in HUNT_BEASTS / HUNT_SIGILS / HUNT_REGIONS / DELVE_BOSSES / HUNT_RITUALS;
   test_codex_bestiary.py fails if the two sides drift.
+- **Sync budget for long boards:** `_compact_sync_mobs` leaves restorable
+  board data out of the cloud projection (finished boards, trailing locked
+  authored contracts, contract text, zero counters) and `_extend_campaign`
+  restores it after a pull (completed boards as all defeated, untouched
+  boards seeded, missing text filled). All ten boards seeded on the player's
+  save sync at ~12.7 KB of the 18 KB campaign cap. Known, pre-existing: the
+  repo SQL (20260917000100) does not allow dungeon_run.map / class_id /
+  risk_profile / risk_status, which the Python projection sends.
 - **Submit race fix:** `submitDungeon` waits for any in-flight editor
   checkpoint and saves unsaved edits before capturing PYR context (an autosave
   in between changed the revision and the answer was rejected as stale).
