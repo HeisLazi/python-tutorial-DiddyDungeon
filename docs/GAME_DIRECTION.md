@@ -146,7 +146,11 @@ book (level, XP bar, rank gates, perks), milestones and the hunt journal.
    linking to the Codex. The Codex grew to 23 signs on 2026-10-25 (strings,
    exceptions, files and JSON, sets, grids, sorting, references, classes,
    testing, callbacks, agents, recursion, search, simulation), each with a
-   beast, five new delve regions, oils and vial readings.
+   beast, five new delve regions, oils and vial readings. Loot to grind for
+   (2026-10-25): every campaign has a 22-item armory (five weapons, armours
+   and trinkets from common to legendary, food, tonics and a boss relic);
+   contracts, Dungeon bosses and elites, the Merchant and campaign bosses
+   drop or sell them, and weapons cause campaign Guard Breaks.
 2. **Dungeon as a crawler** (region delves, region beasts and named bosses
    shipped 2026-10-24 as Phase C1; room-grid floors under fog, walk-back
    travel and stairs between floors shipped 2026-10-24 as C3): region

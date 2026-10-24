@@ -184,5 +184,29 @@
         {"id": "arena_menu", "label": "Open the gates", "question_type": "code_checkpoint", "impact": 3, "brief": "Add a menu: start a run, enter the Games bracket, run the balance oracle, view the hall, or quit."}
       ]
     }
+  ],
+  "armory": [
+    {"id": "gl-wooden-rudis", "name": "Wooden Rudis", "slot": "weapon", "tier": "common", "effect": {"impact": 1, "on": "code_checkpoint"}, "flavour": "A training sword. It still bruises.", "price": 40},
+    {"id": "gl-retiarius-net-spear", "name": "Retiarius Net-Spear", "slot": "weapon", "tier": "uncommon", "effect": {"impact": 1, "on": "any"}, "flavour": "Tangle, then strike.", "price": 90},
+    {"id": "gl-bronze-gladius", "name": "Bronze Gladius", "slot": "weapon", "tier": "rare", "effect": {"impact": 2, "on": "explanation"}, "flavour": "Short, sharp and honest.", "price": 180},
+    {"id": "gl-crowd-pleaser-flail", "name": "Crowd-Pleaser Flail", "slot": "weapon", "tier": "epic", "effect": {"impact": 2, "on": "any", "break_coins": 3}, "flavour": "The stands roar whenever it swings."},
+    {"id": "gl-the-unbound-chain", "name": "The Unbound Chain", "slot": "weapon", "tier": "legendary", "effect": {"impact": 3, "on": "any", "break_coins": 6}, "flavour": "The champion's broken chain, swung as a weapon."},
+    {"id": "gl-linen-subligar", "name": "Linen Subligar", "slot": "armor", "tier": "common", "effect": {"reduction": 10}, "flavour": "Practically nothing. Practically.", "price": 40},
+    {"id": "gl-studded-manica", "name": "Studded Manica", "slot": "armor", "tier": "uncommon", "effect": {"reduction": 18}, "flavour": "An arm guard with bronze studs.", "price": 90},
+    {"id": "gl-murmillo-plate", "name": "Murmillo Plate", "slot": "armor", "tier": "rare", "effect": {"reduction": 26}, "flavour": "A fish-crested helm and a heavy shield.", "price": 180},
+    {"id": "gl-lanista-s-champion-harness", "name": "Lanista's Champion Harness", "slot": "armor", "tier": "epic", "effect": {"reduction": 35}, "flavour": "Corvo saves it for his best."},
+    {"id": "gl-the-unchained-aegis", "name": "The Unchained Aegis", "slot": "armor", "tier": "legendary", "effect": {"reduction": 45, "first_miss_free": true}, "flavour": "Worn by the one who chained the Unbound."},
+    {"id": "gl-laurel-leaf", "name": "Laurel Leaf", "slot": "trinket", "tier": "common", "effect": {"coin_bonus": 10}, "flavour": "A single leaf from a victor's crown.", "price": 40},
+    {"id": "gl-crowd-favour-token", "name": "Crowd Favour Token", "slot": "trinket", "tier": "uncommon", "effect": {"heal_on_objective": 3}, "flavour": "Thrown from the stands by an admirer.", "price": 90},
+    {"id": "gl-bloodsand-vial", "name": "Bloodsand Vial", "slot": "trinket", "tier": "rare", "effect": {"start_guards": 1}, "flavour": "Sand from the arena floor.", "price": 180},
+    {"id": "gl-corvo-s-signet", "name": "Corvo's Signet", "slot": "trinket", "tier": "epic", "effect": {"block_first_miss": true, "xp_bonus": 15}, "flavour": "The lanista's seal. Doors open."},
+    {"id": "gl-the-freedman-s-wooden-sword", "name": "The Freedman's Wooden Sword", "slot": "trinket", "tier": "legendary", "effect": {"start_guards": 1, "revive": true, "loot_luck": 20}, "flavour": "Given to a gladiator who won their freedom."},
+    {"id": "gl-barley-porridge", "name": "Barley Porridge", "slot": "food", "tier": "common", "effect": {"heal": 20}, "flavour": "Gladiator fuel. Bland, filling.", "price": 15},
+    {"id": "gl-arena-figs", "name": "Arena Figs", "slot": "food", "tier": "uncommon", "effect": {"next_battle": {"reduction": 20}}, "flavour": "Sweet, sold in the stands.", "price": 30},
+    {"id": "gl-gladiator-stew", "name": "Gladiator Stew", "slot": "food", "tier": "rare", "effect": {"next_battle": {"guards": 1}}, "flavour": "Beans, barley and bone.", "price": 60},
+    {"id": "gl-victor-s-feast", "name": "Victor's Feast", "slot": "food", "tier": "epic", "effect": {"heal": 30, "next_battle": {"xp_bonus": 30}}, "flavour": "Laid out after the Games.", "price": 100},
+    {"id": "gl-vinegar-posca", "name": "Vinegar Posca", "slot": "tonic", "tier": "uncommon", "effect": {"heal": 45}, "flavour": "Sour, but it revives.", "price": 50},
+    {"id": "gl-healer-s-balm", "name": "Healer's Balm", "slot": "tonic", "tier": "rare", "effect": {"heal": 100}, "flavour": "Rubbed into wounds by the arena medicus.", "price": 90},
+    {"id": "gl-the-unbound-s-broken-shackle", "name": "The Unbound's Broken Shackle", "slot": "relic", "tier": "legendary", "effect": {"xp_bonus": 5, "coin_bonus": 5}, "flavour": "The one chain that could never hold it, until now."}
   ]
 }

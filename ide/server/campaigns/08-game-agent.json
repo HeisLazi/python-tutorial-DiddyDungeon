@@ -213,5 +213,29 @@
         {"id": "main_menu", "label": "Open the menu", "question_type": "code_checkpoint", "impact": 3, "brief": "Add a start menu: play an engine, watch a duel, run a tournament, replay a saved game, or quit."}
       ]
     }
+  ],
+  "armory": [
+    {"id": "ca-gear-tooth-knife", "name": "Gear-Tooth Knife", "slot": "weapon", "tier": "common", "effect": {"impact": 1, "on": "code_checkpoint"}, "flavour": "Cut from a stripped cog.", "price": 40},
+    {"id": "ca-piston-hammer", "name": "Piston Hammer", "slot": "weapon", "tier": "uncommon", "effect": {"impact": 1, "on": "any"}, "flavour": "Strikes, retracts, strikes.", "price": 90},
+    {"id": "ca-counterweight-flail", "name": "Counterweight Flail", "slot": "weapon", "tier": "rare", "effect": {"impact": 2, "on": "prediction"}, "flavour": "Balanced like a perfect evaluation.", "price": 180},
+    {"id": "ca-minimax-lance", "name": "Minimax Lance", "slot": "weapon", "tier": "epic", "effect": {"impact": 2, "on": "any", "break_coins": 3}, "flavour": "Assumes the worst, strikes the best."},
+    {"id": "ca-the-grandmaster-s-pendulum", "name": "The Grandmaster's Pendulum", "slot": "weapon", "tier": "legendary", "effect": {"impact": 3, "on": "any", "break_coins": 6}, "flavour": "It swung for every move the Grandmaster ever made."},
+    {"id": "ca-oil-stained-apron", "name": "Oil-Stained Apron", "slot": "armor", "tier": "common", "effect": {"reduction": 10}, "flavour": "Every engineer's first armour.", "price": 40},
+    {"id": "ca-brass-rivet-vest", "name": "Brass Rivet Vest", "slot": "armor", "tier": "uncommon", "effect": {"reduction": 18}, "flavour": "Rattles when you move.", "price": 90},
+    {"id": "ca-clockwork-breastplate", "name": "Clockwork Breastplate", "slot": "armor", "tier": "rare", "effect": {"reduction": 26}, "flavour": "Ticks softly over your heart.", "price": 180},
+    {"id": "ca-alpha-beta-aegis", "name": "Alpha-Beta Aegis", "slot": "armor", "tier": "epic", "effect": {"reduction": 35}, "flavour": "Blocks every branch that does not matter."},
+    {"id": "ca-the-grandmaster-s-shell", "name": "The Grandmaster's Shell", "slot": "armor", "tier": "legendary", "effect": {"reduction": 45, "first_miss_free": true}, "flavour": "The casing of the engine that never lost."},
+    {"id": "ca-spare-cog", "name": "Spare Cog", "slot": "trinket", "tier": "common", "effect": {"coin_bonus": 10}, "flavour": "Fits nothing. Feels important.", "price": 40},
+    {"id": "ca-tobin-s-monocle", "name": "Tobin's Monocle", "slot": "trinket", "tier": "uncommon", "effect": {"heal_on_objective": 3}, "flavour": "Shows the board three moves deep.", "price": 90},
+    {"id": "ca-evaluation-gauge", "name": "Evaluation Gauge", "slot": "trinket", "tier": "rare", "effect": {"start_guards": 1}, "flavour": "Its needle leans towards whoever is winning.", "price": 180},
+    {"id": "ca-hourglass-charm", "name": "Hourglass Charm", "slot": "trinket", "tier": "epic", "effect": {"block_first_miss": true, "xp_bonus": 15}, "flavour": "Time slows when you need it."},
+    {"id": "ca-the-perfect-move-key", "name": "The Perfect Move Key", "slot": "trinket", "tier": "legendary", "effect": {"start_guards": 1, "revive": true, "loot_luck": 20}, "flavour": "Winds the engine that cannot be beaten."},
+    {"id": "ca-machine-oil-biscuit", "name": "Machine Oil Biscuit", "slot": "food", "tier": "common", "effect": {"heal": 20}, "flavour": "Not actually oil. Mostly.", "price": 15},
+    {"id": "ca-tobin-s-tin-tea", "name": "Tobin's Tin Tea", "slot": "food", "tier": "uncommon", "effect": {"next_battle": {"reduction": 20}}, "flavour": "Brewed on a boiler.", "price": 30},
+    {"id": "ca-arena-meat-pie", "name": "Arena Meat Pie", "slot": "food", "tier": "rare", "effect": {"next_battle": {"guards": 1}}, "flavour": "Sold between matches.", "price": 60},
+    {"id": "ca-grand-champion-dinner", "name": "Grand Champion Dinner", "slot": "food", "tier": "epic", "effect": {"heal": 30, "next_battle": {"xp_bonus": 30}}, "flavour": "Served to the engine's maker.", "price": 100},
+    {"id": "ca-spring-wound-tonic", "name": "Spring-Wound Tonic", "slot": "tonic", "tier": "uncommon", "effect": {"heal": 45}, "flavour": "Winds you back up.", "price": 50},
+    {"id": "ca-overclock-draught", "name": "Overclock Draught", "slot": "tonic", "tier": "rare", "effect": {"heal": 100}, "flavour": "Fast, hot and brief.", "price": 90},
+    {"id": "ca-the-grandmaster-s-stopped-clock", "name": "The Grandmaster's Stopped Clock", "slot": "relic", "tier": "legendary", "effect": {"xp_bonus": 5, "coin_bonus": 5}, "flavour": "Its hands froze on the move that beat it."}
   ]
 }

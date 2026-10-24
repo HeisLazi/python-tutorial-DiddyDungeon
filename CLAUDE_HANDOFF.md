@@ -182,6 +182,26 @@ Updated: 2026-10-22 · branch `feature/tauri-arcade` (fast-forwarded into
   save sync at ~12.7 KB of the 18 KB campaign cap. Known, pre-existing: the
   repo SQL (20260917000100) does not allow dungeon_run.map / class_id /
   risk_profile / risk_status, which the Python projection sends.
+- **Armory (loot):** each story file has an `armory` list (id, name, slot
+  weapon/armor/trinket/food/tonic/relic, tier common..legendary, effect,
+  flavour, price); `armory_catalog()` loads them all. Effects use capped keys
+  only (`ARMORY_EFFECT_CAPS`, flags, `on`, `next_battle`) and their text is
+  generated (`armory_effect_text`). Ownership is local in
+  `progress["hunter"]["armory"]` (owned, stack, weapon, buffs); equipping
+  armour or a trinket writes only its name to the synced equipment.
+  `_gear_effects` feeds battles: weapon impact by objective type, campaign
+  Guard Breaks when Resolve would empty early (free mistake, coins, Resolve =
+  what the remaining objectives remove), free mistakes spent before armour,
+  armour reduction (legacy names still work), first-miss / block / revive /
+  heal / coin / XP / loot-luck trinkets, food buffs taken by the next new
+  encounter, relic bonuses. Drops: every cleared contract
+  (`_armory_contract_drop`, rarer later), boss clear (relic + a legendary),
+  Dungeon floor bosses (rare/epic, legendary deep once that campaign is
+  beaten) and elites (food) into the pack, banked into the armory. Merchant
+  "Armoury lots" (common/uncommon once a campaign is started, rare at half
+  cleared). Actions: armory_equip / unequip / use / buy (`/api/armory/*`);
+  `/api/campaign` serves `armory`. UI: Home ArmoryPanel, Merchant ArmouryLots,
+  loot and Guard Break notifications. Tests: test_armory.py.
 - **Submit race fix:** `submitDungeon` waits for any in-flight editor
   checkpoint and saves unsaved edits before capturing PYR context (an autosave
   in between changed the revision and the answer was rejected as stale).

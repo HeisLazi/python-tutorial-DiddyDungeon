@@ -447,6 +447,10 @@ ACTION_DEFINITIONS: dict[str, ActionDefinition] = {
     "dungeon_travel": ActionDefinition(frozenset({"player"})),
     "hunter_craft_oil": ActionDefinition(frozenset({"player"})),
     "hunter_upgrade_kit": ActionDefinition(frozenset({"player"})),
+    "armory_equip": ActionDefinition(frozenset({"player"})),
+    "armory_unequip": ActionDefinition(frozenset({"player"})),
+    "armory_use": ActionDefinition(frozenset({"player"})),
+    "armory_buy": ActionDefinition(frozenset({"player"})),
     "campaign_extend": ActionDefinition(frozenset({SYSTEM_ACTOR}), internal=True),
     "hunter_identify_start": ActionDefinition(frozenset({"player"})),
     "hunter_identify_answer": ActionDefinition(frozenset({"player"})),
@@ -1139,6 +1143,96 @@ HUNTER_KIT_COAT_HP = 8
 DUNGEON_VIAL = "unmarked-vial"
 DUNGEON_MATERIAL_NAMES[DUNGEON_VIAL] = "Unmarked Vial"
 HUNTER_IDENTIFY_TIER_WEIGHTS = (("ward", 6), ("slowing", 3), ("bane", 1))
+
+
+# ── Armory: campaign gear, food and relics ───────────────────────────────
+# Every campaign story file carries an "armory" of themed items (weapons,
+# armour, trinkets, food, tonics and a boss relic). Ownership lives in the
+# local hunter save (not the cloud projection); equipping armour or a trinket
+# writes only its name into the synced equipment fields. Effects come from a
+# short list of capped keys and never change how many objectives a fight has.
+ARMORY_SLOTS = ("weapon", "armor", "trinket", "food", "tonic", "relic")
+ARMORY_GEAR_SLOTS = ("weapon", "armor", "trinket")
+ARMORY_STACK_SLOTS = ("food", "tonic")
+ARMORY_TIERS = ("common", "uncommon", "rare", "epic", "legendary")
+ARMORY_EFFECT_CAPS = {
+    "impact": 3, "break_coins": 10, "reduction": 60, "start_guards": 1, "heal_on_objective": 6,
+    "coin_bonus": 25, "xp_bonus": 30, "loot_luck": 25, "heal": 100,
+}
+ARMORY_FLAG_EFFECTS = frozenset({"first_miss_free", "block_first_miss", "revive"})
+ARMORY_ON_TYPES = frozenset({"any", *CAMPAIGN_QUESTION_TYPES})
+ARMORY_BUFF_CAPS = {"guards": 1, "reduction": 30, "xp_bonus": 50, "coin_bonus": 50}
+ARMORY_BONUS_CAP = 50
+ARMORY_REDUCTION_CAP = 80
+ARMORY_MAX_STACK = 99
+CAMPAIGN_BREAK_COINS = 3
+LEGACY_ARMOR_REDUCTION = {"Apprentice Coat": 10, "Leather Guard": 20, "Runic Mail": 30, "Emberplate": 40, "Guardian Aegis": 50, "Mythril Archive Plate": 60}
+_ARMORY_CACHE: dict[str, Any] = {"source": None, "by_id": {}, "by_name": {}}
+_OBJECTIVE_WORDS = {"code_checkpoint": "BUILD", "bug_diagnosis": "FIX", "prediction": "PREDICT", "explanation": "EXPLAIN"}
+
+
+def armory_catalog() -> dict[str, dict[str, Any]]:
+    """Every campaign's items by id, each tagged with its campaign branch."""
+
+    data = load_campaign_bounties()
+    if _ARMORY_CACHE["source"] is not data:
+        by_id: dict[str, dict[str, Any]] = {}
+        for branch, entry in data.items():
+            for item in entry.get("armory", []) if isinstance(entry, Mapping) and isinstance(entry.get("armory"), list) else []:
+                if isinstance(item, Mapping) and item.get("slot") in ARMORY_SLOTS and isinstance(item.get("id"), str) and isinstance(item.get("name"), str):
+                    by_id[item["id"]] = {**item, "campaign": branch}
+        _ARMORY_CACHE.update(source=data, by_id=by_id, by_name={item["name"]: item for item in by_id.values()})
+    return _ARMORY_CACHE["by_id"]
+
+
+def armory_by_name() -> dict[str, dict[str, Any]]:
+    armory_catalog()
+    return _ARMORY_CACHE["by_name"]
+
+
+def armory_effect_text(effect: Mapping[str, Any]) -> str:
+    """Plain words for an item's effect, built from the effect itself."""
+
+    parts = []
+    if effect.get("impact"):
+        on = effect.get("on", "any")
+        parts.append(f"+{effect['impact']} impact on {'every objective' if on == 'any' else _OBJECTIVE_WORDS.get(on, on) + ' objectives'}")
+    if effect.get("break_coins"):
+        parts.append(f"+{effect['break_coins']} coins on a Guard Break")
+    if effect.get("reduction"):
+        parts.append(f"{effect['reduction']}% less damage from misses")
+    if effect.get("first_miss_free"):
+        parts.append("your first miss each battle costs nothing")
+    if effect.get("start_guards"):
+        parts.append("start every battle with a free mistake")
+    if effect.get("block_first_miss"):
+        parts.append("blocks the first counterattack each battle")
+    if effect.get("revive"):
+        parts.append("revive at 1 HP once per battle")
+    if effect.get("heal_on_objective"):
+        parts.append(f"heal {effect['heal_on_objective']} HP per verified objective")
+    if effect.get("coin_bonus"):
+        parts.append(f"+{effect['coin_bonus']}% bounty coins")
+    if effect.get("xp_bonus"):
+        parts.append(f"+{effect['xp_bonus']}% bounty XP")
+    if effect.get("loot_luck"):
+        parts.append(f"+{effect['loot_luck']}% chance of rarer loot")
+    if effect.get("heal"):
+        parts.append(f"restores {effect['heal']} HP")
+    buff = effect.get("next_battle") if isinstance(effect.get("next_battle"), Mapping) else {}
+    if buff:
+        words = []
+        if buff.get("guards"):
+            words.append("a free mistake")
+        if buff.get("reduction"):
+            words.append(f"{buff['reduction']}% less damage")
+        if buff.get("xp_bonus"):
+            words.append(f"+{buff['xp_bonus']}% XP")
+        if buff.get("coin_bonus"):
+            words.append(f"+{buff['coin_bonus']}% coins")
+        parts.append("next battle: " + ", ".join(words))
+    text = "; ".join(parts) or "a keepsake"
+    return text[0].upper() + text[1:] + "."
 
 # ── Floor grids and stairs ───────────────────────────────────────────────
 # A floor is a small grid of rooms under fog: you see explored rooms and
@@ -3292,8 +3386,9 @@ class LocalStateService:
     def _dungeon_pack_items(pack: object) -> list[dict[str, Any]]:
         if not isinstance(pack, Mapping):
             return []
+        catalog = armory_catalog()
         items = [
-            {"id": key, "name": DUNGEON_MATERIAL_NAMES.get(key, key), "count": value}
+            {"id": key, "name": DUNGEON_MATERIAL_NAMES.get(key) or catalog.get(key, {}).get("name", key), "count": value, **({"tier": catalog[key]["tier"], "slot": catalog[key]["slot"]} if key in catalog else {})}
             for key, value in pack.items()
             if isinstance(key, str) and isinstance(value, int) and not isinstance(value, bool) and value > 0
         ]
@@ -3304,9 +3399,13 @@ class LocalStateService:
 
         banked = self._dungeon_pack_items(run.get("pack"))
         if banked:
-            materials = self._hunter_state(progress)["materials"]
+            hunter = self._hunter_state(progress)
+            catalog = armory_catalog()
             for item in banked:
-                materials[item["id"]] = self._counter(materials, item["id"]) + item["count"]
+                if item["id"] in catalog:
+                    self._armory_add(hunter, item["id"], item["count"])
+                else:
+                    hunter["materials"][item["id"]] = self._counter(hunter["materials"], item["id"]) + item["count"]
         run["pack"] = {}
         run["last_banked"] = banked
         return banked
@@ -3319,7 +3418,7 @@ class LocalStateService:
         run["pack"] = {}
         return lost
 
-    def _dungeon_award_loot(self, run: dict[str, Any], fight: Mapping[str, Any], concept: object) -> dict[str, Any]:
+    def _dungeon_award_loot(self, run: dict[str, Any], fight: Mapping[str, Any], concept: object, progress: Mapping[str, Any] | None = None) -> dict[str, Any]:
         """Drops for a cleared fight: beast parts, a boss essence, an elite trinket."""
 
         room_type = str(fight.get("room_type") or "encounter")
@@ -3341,6 +3440,10 @@ class LocalStateService:
         for key, count in drops.items():
             pack[key] = self._counter(pack, key) + count
         run["pack"] = pack
+        gear = self._dungeon_gear_drop(run, room_type, progress)
+        if gear:
+            pack[gear] = self._counter(pack, gear) + 1
+            drops[gear] = 1
         loot: dict[str, Any] = {"items": self._dungeon_pack_items(drops), "clean": clean, "trinket": None, "coins": 0}
         if room_type == "elite":
             inventory = self._dungeon_inventory_entries(run, mutate=True)
@@ -4660,7 +4763,7 @@ class LocalStateService:
             fight_done = fight["questions_cleared"] >= int(fight["questions_total"])
             if fight_done:
                 run["run_coins"] = self._counter(run, "run_coins") + coins_delta
-                loot = self._dungeon_award_loot(run, fight, question.get("concept_id") or run.get("concept_id"))
+                loot = self._dungeon_award_loot(run, fight, question.get("concept_id") or run.get("concept_id"), progress)
                 coins_delta += loot["coins"]
             else:
                 coins_delta = 0
@@ -5599,6 +5702,10 @@ class LocalStateService:
             "dungeon_travel": self._dungeon_travel,
             "hunter_craft_oil": self._hunter_craft_oil,
             "hunter_upgrade_kit": self._hunter_upgrade_kit,
+            "armory_equip": self._armory_equip,
+            "armory_unequip": self._armory_unequip,
+            "armory_use": self._armory_use,
+            "armory_buy": self._armory_buy,
             "campaign_extend": self._campaign_extend,
             "hunter_identify_start": self._hunter_identify_start,
             "hunter_identify_answer": self._hunter_identify_answer,
@@ -5657,9 +5764,15 @@ class LocalStateService:
         if not isinstance(hunter, dict):
             hunter = cls._hunter_seed(progress)
             progress["hunter"] = hunter
-        for key in ("signs", "stats_xp", "spent", "materials", "oils", "kit"):
+        for key in ("signs", "stats_xp", "spent", "materials", "oils", "kit", "armory"):
             if not isinstance(hunter.get(key), dict):
                 hunter[key] = {}
+        armory = hunter["armory"]
+        if not isinstance(armory.get("owned"), list):
+            armory["owned"] = []
+        for key in ("stack", "buffs"):
+            if not isinstance(armory.get(key), dict):
+                armory[key] = {}
         return hunter
 
     def _hunter_record(
@@ -5850,6 +5963,270 @@ class LocalStateService:
             "materials": materials, "oil_recipes": recipes, "oils": oils, "kit": kit,
             "vials": count(bank, DUNGEON_VIAL), "identify": identify,
         }
+
+    @staticmethod
+    def _armory_add(hunter: dict[str, Any], item_id: str, count: int = 1) -> None:
+        item = armory_catalog().get(item_id)
+        if item is None:
+            return
+        armory = hunter.setdefault("armory", {})
+        armory.setdefault("owned", [])
+        armory.setdefault("stack", {})
+        if item["slot"] in ARMORY_STACK_SLOTS:
+            armory["stack"][item_id] = min(ARMORY_MAX_STACK, int(armory["stack"].get(item_id, 0) or 0) + max(1, count))
+        elif item_id not in armory["owned"]:
+            armory["owned"].append(item_id)
+
+    @classmethod
+    def _gear_effects(cls, progress: Mapping[str, Any]) -> dict[str, Any]:
+        """What the equipped weapon, armour and trinket and every relic do."""
+
+        catalog = armory_catalog()
+        by_name = armory_by_name()
+        equipment = progress.get("equipment") if isinstance(progress.get("equipment"), Mapping) else {}
+        hunter = progress.get("hunter") if isinstance(progress.get("hunter"), Mapping) else {}
+        armory = hunter.get("armory") if isinstance(hunter.get("armory"), Mapping) else {}
+        owned = [item for item in armory.get("owned", []) if isinstance(item, str)] if isinstance(armory.get("owned"), list) else []
+        weapon = catalog.get(armory.get("weapon")) if isinstance(armory.get("weapon"), str) and armory.get("weapon") in owned else None
+        armor_name = str(equipment.get("armor") or "")
+        armor = by_name.get(armor_name) if by_name.get(armor_name, {}).get("slot") == "armor" else None
+        trinket = by_name.get(str(equipment.get("trinket") or ""))
+        trinket = trinket if trinket and trinket["slot"] == "trinket" else None
+        relics = [catalog[item] for item in owned if item in catalog and catalog[item]["slot"] == "relic"]
+        trinket_effect = trinket["effect"] if trinket else {}
+        armor_effect = armor["effect"] if armor else {}
+
+        def capped(key: str, value: object) -> int:
+            return max(0, min(ARMORY_EFFECT_CAPS[key], int(value or 0)))
+
+        return {
+            "weapon": {key: (capped(key, value) if key in ARMORY_EFFECT_CAPS else value) for key, value in weapon["effect"].items()} if weapon else None,
+            "reduction": min(ARMORY_REDUCTION_CAP, capped("reduction", armor_effect.get("reduction")) if armor else LEGACY_ARMOR_REDUCTION.get(armor_name, 0)),
+            "first_miss_free": bool(armor_effect.get("first_miss_free")),
+            "block_first_miss": bool(trinket_effect.get("block_first_miss")),
+            "first_miss_source": armor["name"] if armor_effect.get("first_miss_free") else trinket["name"] if trinket else None,
+            "revive": bool(trinket_effect.get("revive")),
+            "start_guards": capped("start_guards", trinket_effect.get("start_guards")),
+            "heal_on_objective": capped("heal_on_objective", trinket_effect.get("heal_on_objective")),
+            "loot_luck": capped("loot_luck", trinket_effect.get("loot_luck")),
+            "coin_bonus": min(ARMORY_BONUS_CAP, capped("coin_bonus", trinket_effect.get("coin_bonus")) + sum(capped("coin_bonus", relic["effect"].get("coin_bonus")) for relic in relics)),
+            "xp_bonus": min(ARMORY_BONUS_CAP, capped("xp_bonus", trinket_effect.get("xp_bonus")) + sum(capped("xp_bonus", relic["effect"].get("xp_bonus")) for relic in relics)),
+        }
+
+    def _armory_take_buffs(self, progress: dict[str, Any]) -> dict[str, int]:
+        """Hand over (and clear) the food buffs waiting for the next battle."""
+
+        hunter = progress.get("hunter")
+        armory = hunter.get("armory") if isinstance(hunter, dict) and isinstance(hunter.get("armory"), dict) else None
+        if not armory or not isinstance(armory.get("buffs"), dict) or not armory["buffs"]:
+            return {}
+        buffs = {key: max(0, min(ARMORY_BUFF_CAPS[key], int(value or 0))) for key, value in armory["buffs"].items() if key in ARMORY_BUFF_CAPS}
+        armory["buffs"] = {}
+        return buffs
+
+    def _armory_roll(self, rng: random.Random, pool: list[dict[str, Any]], weights: dict[str, int], owned: set[str]) -> dict[str, Any] | None:
+        """A weighted pick by tier, skipping gear the hunter already owns."""
+
+        available = [item for item in pool if item["slot"] in ARMORY_STACK_SLOTS or item["id"] not in owned]
+        candidates = [(item, weights.get(item["tier"], 0)) for item in available if weights.get(item["tier"], 0) > 0]
+        if not candidates:
+            return None
+        return rng.choices([item for item, _ in candidates], weights=[weight for _, weight in candidates])[0]
+
+    def _armory_contract_drop(self, progress: dict[str, Any], project: Mapping[str, Any], mobs: list[Mapping[str, Any]], index: int, mob: Mapping[str, Any], evidence_id: str) -> dict[str, Any] | None:
+        """Every cleared contract drops something from its campaign's armory,
+        rarer the further into the campaign it is."""
+
+        pool = [item for item in armory_catalog().values() if item["campaign"] == project.get("branch") and item["slot"] not in {"relic"} and item["tier"] != "legendary"]
+        if not pool:
+            return None
+        hunter = self._hunter_state(progress)
+        owned = set(hunter["armory"]["owned"])
+        depth = index / max(1, len(mobs) - 1)
+        luck = self._gear_effects(progress)["loot_luck"]
+        weights = {
+            "common": max(5, round(45 - 35 * depth)),
+            "uncommon": 30,
+            "rare": round(12 + 25 * depth + luck / 2),
+            "epic": round((18 * depth if depth >= 0.5 else 0) + (luck / 3 if depth >= 0.5 else 0)),
+        }
+        rng = random.Random(f"{self.device_id()}:{project.get('branch')}:{mob.get('name')}:{evidence_id}")
+        item = self._armory_roll(rng, pool, weights, owned)
+        if item is None:
+            return None
+        self._armory_add(hunter, item["id"])
+        return {"id": item["id"], "name": item["name"], "slot": item["slot"], "tier": item["tier"], "effect": armory_effect_text(item["effect"])}
+
+    def _armory_boss_loot(self, progress: dict[str, Any], project: Mapping[str, Any]) -> list[dict[str, Any]]:
+        """A campaign boss drops its relic and one legendary piece."""
+
+        catalog = armory_catalog()
+        hunter = self._hunter_state(progress)
+        owned = set(hunter["armory"]["owned"])
+        branch = project.get("branch")
+        loot = []
+        relic = next((item for item in catalog.values() if item["campaign"] == branch and item["slot"] == "relic"), None)
+        legendaries = [item for item in catalog.values() if item["campaign"] == branch and item["tier"] == "legendary" and item["slot"] in ARMORY_GEAR_SLOTS and item["id"] not in owned]
+        rng = random.Random(f"{self.device_id()}:{branch}:boss")
+        for item in ([relic] if relic and relic["id"] not in owned else []) + ([rng.choice(legendaries)] if legendaries else []):
+            self._armory_add(hunter, item["id"])
+            loot.append({"id": item["id"], "name": item["name"], "slot": item["slot"], "tier": item["tier"], "effect": armory_effect_text(item["effect"])})
+        return loot
+
+    def _dungeon_gear_drop(self, run: Mapping[str, Any], room_type: str, progress: Mapping[str, Any] | None) -> str | None:
+        """Floor bosses drop campaign gear (legendaries deep down, once that
+        campaign's boss is beaten); elites sometimes drop food."""
+
+        if room_type not in {"boss", "elite"}:
+            return None
+        if not isinstance(progress, Mapping):
+            return None
+        projects = [item for item in progress.get("projects", []) if isinstance(item, Mapping)] if isinstance(progress.get("projects"), list) else []
+        started = [item for item in projects if item.get("status") == "active" or any(isinstance(mob, Mapping) and mob.get("status") == "defeated" for mob in item.get("mobs", []) or [])]
+        if not started:
+            return None
+        hunter = progress.get("hunter") if isinstance(progress.get("hunter"), Mapping) else {}
+        armory = hunter.get("armory") if isinstance(hunter.get("armory"), Mapping) else {}
+        owned = set(armory.get("owned", []) if isinstance(armory.get("owned"), list) else [])
+        rng = random.Random(f"{run.get('seed')}:{run.get('question_number')}:{room_type}:gear")
+        project = rng.choice(started)
+        pool = [item for item in armory_catalog().values() if item["campaign"] == project.get("branch") and item["slot"] != "relic"]
+        if room_type == "elite":
+            if rng.random() >= 0.5:
+                return None
+            item = self._armory_roll(rng, [item for item in pool if item["slot"] in ARMORY_STACK_SLOTS], {tier: 1 for tier in ARMORY_TIERS}, owned)
+        else:
+            deep = max(1, int(run.get("floor", 1) or 1)) >= 3 and project.get("completed") is True
+            weights = {"rare": 50, "epic": 40, "legendary": 10 if deep else 0}
+            item = self._armory_roll(rng, [item for item in pool if item["slot"] in ARMORY_GEAR_SLOTS], weights, owned)
+        return item["id"] if item else None
+
+    def armory_projection(self, progress: Mapping[str, Any]) -> dict[str, Any]:
+        """The hunter's gear, food, relics, collection and Merchant lots."""
+
+        catalog = armory_catalog()
+        hunter = progress.get("hunter") if isinstance(progress.get("hunter"), Mapping) else {}
+        armory = hunter.get("armory") if isinstance(hunter.get("armory"), Mapping) else {}
+        owned = [item for item in armory.get("owned", []) if isinstance(item, str) and item in catalog] if isinstance(armory.get("owned"), list) else []
+        stack = armory.get("stack") if isinstance(armory.get("stack"), Mapping) else {}
+        equipment = progress.get("equipment") if isinstance(progress.get("equipment"), Mapping) else {}
+        equipped = {"weapon": armory.get("weapon"), "armor": str(equipment.get("armor") or "Apprentice Coat"), "trinket": str(equipment.get("trinket") or "None")}
+
+        def view(item: Mapping[str, Any], **extra: Any) -> dict[str, Any]:
+            return {key: item[key] for key in ("id", "name", "slot", "tier", "flavour", "campaign") if key in item} | {"effect": armory_effect_text(item["effect"])} | extra
+
+        items = [view(catalog[item], equipped=(catalog[item]["slot"] == "weapon" and equipped["weapon"] == item) or catalog[item]["name"] in {equipped["armor"], equipped["trinket"]}) for item in owned]
+        items += [view(catalog[item], count=int(count)) for item, count in stack.items() if item in catalog and isinstance(count, int) and count > 0]
+        projects = {item.get("branch"): item for item in progress.get("projects", []) if isinstance(item, Mapping)} if isinstance(progress.get("projects"), list) else {}
+        collection = []
+        market = []
+        coins = int(((progress.get("player") or {}) if isinstance(progress.get("player"), Mapping) else {}).get("coins", 0) or 0)
+        for branch, project in projects.items():
+            pool = [item for item in catalog.values() if item["campaign"] == branch]
+            if not pool:
+                continue
+            found = sum(1 for item in pool if item["id"] in owned or int(stack.get(item["id"], 0) or 0) > 0)
+            collection.append({"branch": branch, "name": project.get("name"), "found": found, "total": len(pool)})
+            mobs = [mob for mob in project.get("mobs", []) or [] if isinstance(mob, Mapping)]
+            cleared = sum(1 for mob in mobs if mob.get("status") in {"defeated", "cleared"})
+            share = cleared / max(1, len(mobs))
+            started = project.get("status") == "active" or cleared > 0 or project.get("completed") is True
+            for item in pool:
+                if not isinstance(item.get("price"), int):
+                    continue
+                if item["slot"] in ARMORY_GEAR_SLOTS and item["id"] in owned:
+                    continue
+                need = "Start this campaign" if not started else ("Clear half of its contracts" if item["tier"] == "rare" and share < 0.5 and project.get("completed") is not True else None)
+                market.append(view(item, price=item["price"], locked=need, affordable=need is None and coins >= item["price"]))
+        tier_rank = {tier: index for index, tier in enumerate(ARMORY_TIERS)}
+        market.sort(key=lambda item: (item["locked"] is not None, item["campaign"], ARMORY_SLOTS.index(item["slot"]), tier_rank[item["tier"]]))
+        effects = self._gear_effects(progress)
+        return {
+            "items": items,
+            "equipped": equipped,
+            "weapon": view(catalog[equipped["weapon"]]) if equipped["weapon"] in catalog else None,
+            "buffs": {key: value for key, value in (armory.get("buffs") or {}).items() if isinstance(value, int) and value > 0} if isinstance(armory.get("buffs"), Mapping) else {},
+            "collection": collection,
+            "market": market,
+            "summary": {key: effects[key] for key in ("reduction", "start_guards", "heal_on_objective", "coin_bonus", "xp_bonus", "loot_luck")},
+        }
+
+    def _armory_equip(self, payload: Mapping[str, Any], progress: dict[str, Any]) -> Mutation:
+        """Equip an owned weapon, armour or trinket from the armory."""
+
+        data = self._payload(payload, {"item_id"}, {"item_id"})
+        item_id = self._text(data["item_id"], "item_id", max_length=MAX_IDENTIFIER_LENGTH, identifier=True)
+        item = armory_catalog().get(item_id)
+        if item is None or item["slot"] not in ARMORY_GEAR_SLOTS:
+            raise StateCommandError("That is not gear you can equip", status_code=404)
+        hunter = self._hunter_state(progress)
+        if item_id not in hunter["armory"]["owned"]:
+            raise StateCommandError("You do not own that item yet", status_code=409)
+        if item["slot"] == "weapon":
+            hunter["armory"]["weapon"] = item_id
+        else:
+            # Only the name reaches the synced equipment; ownership stays local.
+            self._dict(progress, "equipment")[item["slot"]] = item["name"]
+        return Mutation(True, {"armory": self.armory_projection(progress)}, {"item_id": item_id, "slot": item["slot"], "reason": "armory_equipped"})
+
+    def _armory_unequip(self, payload: Mapping[str, Any], progress: dict[str, Any]) -> Mutation:
+        data = self._payload(payload, {"slot"}, {"slot"})
+        slot = self._text(data["slot"], "slot", max_length=20, identifier=True)
+        if slot not in ARMORY_GEAR_SLOTS:
+            raise StateCommandError("Unknown gear slot", status_code=422)
+        if slot == "weapon":
+            self._hunter_state(progress)["armory"]["weapon"] = None
+        else:
+            self._dict(progress, "equipment")[slot] = "Apprentice Coat" if slot == "armor" else "None"
+        return Mutation(True, {"armory": self.armory_projection(progress)}, {"slot": slot, "reason": "armory_unequipped"})
+
+    def _armory_use(self, payload: Mapping[str, Any], progress: dict[str, Any]) -> Mutation:
+        """Eat or drink something: heal now, and buff the next battle."""
+
+        data = self._payload(payload, {"item_id"}, {"item_id"})
+        item_id = self._text(data["item_id"], "item_id", max_length=MAX_IDENTIFIER_LENGTH, identifier=True)
+        item = armory_catalog().get(item_id)
+        if item is None or item["slot"] not in ARMORY_STACK_SLOTS:
+            raise StateCommandError("That cannot be eaten or drunk", status_code=404)
+        hunter = self._hunter_state(progress)
+        stack = hunter["armory"]["stack"]
+        if self._counter(stack, item_id) <= 0:
+            raise StateCommandError("You have none of that left", status_code=409)
+        effect = item["effect"]
+        player = self._dict(progress, "player")
+        healed = 0
+        if effect.get("heal"):
+            current = self._counter(player, "hp")
+            healed = max(0, min(ARMORY_EFFECT_CAPS["heal"], int(effect["heal"]), self._counter(player, "max_hp") - current))
+            player["hp"] = current + healed
+        buff = effect.get("next_battle") if isinstance(effect.get("next_battle"), Mapping) else {}
+        buffs = hunter["armory"]["buffs"]
+        for key, value in buff.items():
+            if key in ARMORY_BUFF_CAPS:
+                buffs[key] = min(ARMORY_BUFF_CAPS[key], self._counter(buffs, key) + int(value))
+        if not healed and not buff:
+            raise StateCommandError("You are already at full HP", status_code=409)
+        left = self._counter(stack, item_id) - 1
+        if left > 0:
+            stack[item_id] = left
+        else:
+            stack.pop(item_id, None)
+        return Mutation(True, {"armory": self.armory_projection(progress), "healed": healed, "hp": player.get("hp")}, {"item_id": item_id, "healed": healed, "reason": "armory_used"})
+
+    def _armory_buy(self, payload: Mapping[str, Any], progress: dict[str, Any]) -> Mutation:
+        data = self._payload(payload, {"item_id"}, {"item_id"})
+        item_id = self._text(data["item_id"], "item_id", max_length=MAX_IDENTIFIER_LENGTH, identifier=True)
+        lot = next((item for item in self.armory_projection(progress)["market"] if item["id"] == item_id), None)
+        if lot is None:
+            raise StateCommandError("The Merchant does not sell that", status_code=404)
+        if lot["locked"]:
+            raise StateCommandError(lot["locked"] + " to unlock this lot", status_code=409)
+        player = self._dict(progress, "player")
+        if self._counter(player, "coins") < lot["price"]:
+            raise StateCommandError(f"Needs {lot['price']} coins", status_code=409)
+        player["coins"] = self._counter(player, "coins") - lot["price"]
+        self._armory_add(self._hunter_state(progress), item_id)
+        return Mutation(True, {"armory": self.armory_projection(progress), "coins": player["coins"]}, {"item_id": item_id, "coins_spent": lot["price"], "reason": "armory_bought"})
 
     @classmethod
     def _hunter_kit_levels(cls, progress: Mapping[str, Any]) -> dict[str, int]:
@@ -6786,6 +7163,11 @@ class LocalStateService:
                 "question_types": [],
                 "trinket_triggers": [],
             }
+            # Gear and food that act at the start of a battle (a new one only).
+            effects = self._gear_effects(progress)
+            buffs = self._armory_take_buffs(progress)
+            existing["guards"] = min(2, effects["start_guards"] + int(buffs.get("guards", 0)))
+            existing["buffs"] = {key: buffs[key] for key in ("reduction", "xp_bonus", "coin_bonus") if buffs.get(key)}
             progress["encounter_state"] = existing
         else:
             try:
@@ -7059,7 +7441,12 @@ class LocalStateService:
 
         player = self._dict(progress, "player")
         reward_xp, reward_coins = MOB_REWARDS[min(max(index, 0), len(MOB_REWARDS) - 1)]
+        effects = self._gear_effects(progress)
+        buffs = encounter.get("buffs") if isinstance(encounter.get("buffs"), Mapping) else {}
+        reward_xp = min(MAX_REWARD_XP, reward_xp * (100 + min(ARMORY_BONUS_CAP, effects["xp_bonus"] + int(buffs.get("xp_bonus", 0)))) // 100)
+        reward_coins = min(MAX_REWARD_COINS, reward_coins * (100 + min(ARMORY_BONUS_CAP, effects["coin_bonus"] + int(buffs.get("coin_bonus", 0)))) // 100)
         reward = self._grant_reward(player, reward_xp, reward_coins)
+        loot = self._armory_contract_drop(progress, project, mobs, index, mob, evidence_id)
         achievement_unlocked = None
         achievements = progress.get("achievements")
         if isinstance(achievements, list):
@@ -7081,6 +7468,7 @@ class LocalStateService:
             "boss_status": project.get("boss_status") if boss_unlocked else None,
             "reward_xp": reward_xp,
             "reward_coins": reward_coins,
+            "loot": loot,
             "level_before": reward["level_before"],
             "level_after": reward["level_after"],
             "achievement_unlocked": achievement_unlocked,
@@ -7122,10 +7510,31 @@ class LocalStateService:
                 impact = min(MAX_IMPACT, base_impact + bonus_impact)
                 trinket_triggers.append("ember-scythe:first-objective")
                 trinket_trigger = "Ember Scythe"
+        effects = self._gear_effects(progress)
+        weapon = effects["weapon"]
+        if weapon and weapon.get("on") in {"any", objective["question_type"]}:
+            impact = min(MAX_IMPACT + ARMORY_EFFECT_CAPS["impact"], impact + int(weapon.get("impact", 0)))
         after = max(0, before - impact)
-        if after == 0 and any(key not in completed and key != objective_id for key in profile["objectives"]):
-            # The iron rule: bonus impact never ends a battle before its last objective.
-            after = 1
+        remaining = [key for key in profile["objectives"] if key not in completed and key != objective_id]
+        guard_break = None
+        if after == 0 and remaining:
+            # The iron rule: impact never ends a battle before its last
+            # objective. Breaking the guard early only helps: a free mistake
+            # and coins, then Resolve is what the remaining objectives remove.
+            break_coins = CAMPAIGN_BREAK_COINS + (int(weapon.get("break_coins", 0)) if weapon else 0)
+            encounter["guards"] = min(3, self._counter(encounter, "guards") + 1)
+            break_player = self._dict(progress, "player")
+            break_player["coins"] = self._counter(break_player, "coins") + break_coins
+            break_stats = self._dict(progress, "stats")
+            break_stats["guard_breaks"] = self._counter(break_stats, "guard_breaks") + 1
+            after = max(1, sum(int(profile["objectives"][key]["impact"]) for key in remaining))
+            guard_break = {"coins": break_coins, "guards": encounter["guards"]}
+        healed = 0
+        if effects["heal_on_objective"]:
+            heal_player = self._dict(progress, "player")
+            current_hp = self._counter(heal_player, "hp")
+            healed = max(0, min(effects["heal_on_objective"], self._counter(heal_player, "max_hp") - current_hp))
+            heal_player["hp"] = current_hp + healed
         completed.append(objective_id)
         encounter["completed_objectives"] = completed[-20:]
         encounter["resolve"] = after
@@ -7161,6 +7570,9 @@ class LocalStateService:
         return Mutation(
             True,
             {
+                "guard_break": guard_break,
+                "healed": healed,
+                "guards": self._counter(encounter, "guards"),
                 "mob_name": str(mob.get("name") or ""),
                 "objective_id": objective_id,
                 "impact": impact,
@@ -7189,6 +7601,7 @@ class LocalStateService:
                 "resolve_after": after,
                 "mob_defeated": bool(finish),
                 "codex_entry_id": entry["id"],
+                "guard_break": guard_break,
                 **(finish or {"reward_xp": 0, "reward_coins": 0, "level_before": self._counter(progress.get("player") or {}, "level"), "level_after": self._counter(progress.get("player") or {}, "level"), "next_mob": None, "achievement_unlocked": None}),
             },
         )
@@ -7716,6 +8129,7 @@ class LocalStateService:
             project["boss_validation"] = validation
         validation["verified"] = list(BOSS_REQUIREMENTS)
         validation["completed_at"] = completed_at
+        boss_loot = self._armory_boss_loot(progress, project)
 
         clean_clear = bool(project.get("clean_clear_eligible"))
         assist = progress.get("assist")
@@ -7778,6 +8192,7 @@ class LocalStateService:
             {
                 "boss_defeated": True,
                 "project_completed": True,
+                "loot": boss_loot,
                 "boss_name": boss_name,
                 "project_name": project_name,
                 "reward_xp": 100,
@@ -7809,6 +8224,7 @@ class LocalStateService:
                 "boss_name": boss_name,
                 "boss_defeated": True,
                 "project_completed": True,
+                "loot": boss_loot,
                 "next_project_name": next_project["name"] if next_project else None,
                 "reward_xp": 100,
                 "reward_coins": 0,
@@ -7893,21 +8309,32 @@ class LocalStateService:
         else:
             raise StateCommandError("raw_damage or mob_index is required")
         player = self._dict(progress, "player")
-        armor_name = str((progress.get("equipment") or {}).get("armor") or "")
-        armor_reduction = {"Apprentice Coat": 10, "Leather Guard": 20, "Runic Mail": 30, "Emberplate": 40, "Guardian Aegis": 50, "Mythril Archive Plate": 60}.get(armor_name, 0)
+        effects = self._gear_effects(progress)
+        buff_reduction = int(((encounter or {}).get("buffs") or {}).get("reduction", 0)) if isinstance(encounter, dict) else 0
+        armor_reduction = min(ARMORY_REDUCTION_CAP, effects["reduction"] + buff_reduction)
         damage = max(1, (raw_damage * (100 - armor_reduction) + 99) // 100)
         prevented_damage = 0
         trinket_trigger = None
         revived = False
+        guard_used = False
         trinket_name = str((progress.get("equipment") or {}).get("trinket") or "")
         trinket_triggers = encounter.setdefault("trinket_triggers", []) if isinstance(encounter, dict) else []
         if not isinstance(trinket_triggers, list):
             raise StateCommandError("Existing encounter trinket history is invalid", status_code=500)
-        if trinket_name == "Guardian Sigil" and "guardian-sigil:counterattack" not in trinket_triggers:
+        if isinstance(encounter, dict) and self._counter(encounter, "guards") > 0:
+            # A banked free mistake (Guard Break, trinket or food) takes the hit.
+            encounter["guards"] = self._counter(encounter, "guards") - 1
+            prevented_damage, damage, guard_used = damage, 0, True
+        elif trinket_name == "Guardian Sigil" and "guardian-sigil:counterattack" not in trinket_triggers:
             prevented_damage = damage
             damage = 0
             trinket_triggers.append("guardian-sigil:counterattack")
             trinket_trigger = "Guardian Sigil"
+        elif (effects["first_miss_free"] or effects["block_first_miss"]) and "armory:first-miss" not in trinket_triggers:
+            prevented_damage = damage
+            damage = 0
+            trinket_triggers.append("armory:first-miss")
+            trinket_trigger = effects["first_miss_source"]
         maximum = self._counter(player, "max_hp")
         current = self._counter(player, "hp")
         updated = max(0, current - damage)
@@ -7916,6 +8343,11 @@ class LocalStateService:
             trinket_triggers.append("phoenix-ember:revive")
             revived = True
             trinket_trigger = "Phoenix Ember"
+        elif updated == 0 and effects["revive"] and "armory:revive" not in trinket_triggers:
+            updated = 1
+            trinket_triggers.append("armory:revive")
+            revived = True
+            trinket_trigger = trinket_name
         player["hp"] = updated
         return Mutation(
             True,
@@ -7926,6 +8358,8 @@ class LocalStateService:
                 "prevented_damage": prevented_damage,
                 "trinket_trigger": trinket_trigger,
                 "revived": revived,
+                "guard_used": guard_used,
+                "guards": self._counter(encounter, "guards") if isinstance(encounter, dict) else 0,
                 "mob_name": mob_name,
                 "objective_id": objective_id,
                 "question_type": question_type,

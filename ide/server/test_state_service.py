@@ -1028,7 +1028,10 @@ class StateServiceBehaviorTests(unittest.TestCase):
         state["encounter_state"]["resolve"] = 2
         path.write_text(json.dumps(state), encoding="utf-8")
         first = service.apply_internal("record_battle_objective", {"objective_id": "table_setup", "evidence_id": "mob-000-table", "reason": "Verified"})
-        self.assertEqual(first["result"]["resolve_after"], 1)
+        # Emptying the bar early is a Guard Break: a free mistake, and Resolve
+        # becomes what the remaining objective removes.
+        self.assertEqual(first["result"]["guard_break"]["guards"], 1)
+        self.assertEqual(first["result"]["resolve_after"], 2)
         self.assertFalse(first["result"]["mob_defeated"])
         last = service.apply_internal("record_battle_objective", {"objective_id": "state_explanation", "evidence_id": "mob-000-state", "reason": "Verified"})
         self.assertTrue(last["result"]["mob_defeated"])

@@ -1488,3 +1488,30 @@
 .forge-contract b { padding: 1px 5px; border: 1px solid var(--line, #444); font-size: 10px; }
 .forge-contract b.kind-code_checkpoint { border-color: var(--gold, #f5c542); color: var(--gold, #f5c542); }
 .forge-contract b.kind-bug_diagnosis { border-color: #f87171; color: #f87171; }
+
+/* Armory: gear tiers, Home panel and Merchant lots. */
+.armory-panel { display: grid; gap: 10px; }
+.armory-slots { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; }
+.armory-slots > div { display: grid; gap: 2px; padding: 8px; border: 1px solid var(--line, #444); }
+.armory-slots small { color: var(--muted, #999); font-size: 11px; }
+.armory-slots button { justify-self: start; margin-top: 4px; padding: 2px 8px; border: 1px solid var(--line, #444); background: transparent; color: inherit; font: inherit; font-size: 12px; cursor: pointer; }
+.armory-summary { margin: 0; color: var(--muted, #999); font-size: 13px; }
+.armory-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 8px; }
+.armory-item { display: grid; gap: 4px; align-content: start; padding: 10px; border: 1px solid var(--line, #444); border-left-width: 4px; }
+.armory-item-head { display: grid; gap: 2px; }
+.armory-item-head small { font-size: 11px; letter-spacing: 0.04em; }
+.armory-effect { margin: 0; font-size: 14px; }
+.armory-flavour { color: var(--muted, #999); font-style: italic; font-size: 12px; }
+.armory-item.equipped { box-shadow: 0 0 0 2px color-mix(in srgb, var(--gold, #f5c542) 45%, transparent); }
+.armory-item.tier-common { border-left-color: #9ca3af; }
+.armory-item.tier-common small { color: #9ca3af; }
+.armory-item.tier-uncommon { border-left-color: #4ade80; }
+.armory-item.tier-uncommon .armory-item-head small { color: #4ade80; }
+.armory-item.tier-rare { border-left-color: #60a5fa; }
+.armory-item.tier-rare .armory-item-head small { color: #60a5fa; }
+.armory-item.tier-epic { border-left-color: #c084fc; }
+.armory-item.tier-epic .armory-item-head small { color: #c084fc; }
+.armory-item.tier-legendary { border-left-color: var(--gold, #f5c542); }
+.armory-item.tier-legendary .armory-item-head small { color: var(--gold, #f5c542); }
+.armory-collection { display: grid; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.armory-collection li { display: grid; grid-template-columns: minmax(0, 1fr) 120px auto; gap: 8px; align-items: center; font-size: 14px; }

@@ -172,5 +172,29 @@
         {"id": "archive_trace", "label": "Predict the record", "question_type": "prediction", "impact": 2, "brief": "Predict the solve rate and average questions after three cases you play, then check the archive shows the same."}
       ]
     }
+  ],
+  "armory": [
+    {"id": "det-magnifier-shard", "name": "Magnifier Shard", "slot": "weapon", "tier": "common", "effect": {"impact": 1, "on": "bug_diagnosis"}, "flavour": "A broken lens with a cutting edge.", "price": 40},
+    {"id": "det-watchman-s-truncheon", "name": "Watchman's Truncheon", "slot": "weapon", "tier": "uncommon", "effect": {"impact": 1, "on": "any"}, "flavour": "Standard issue, well used.", "price": 90},
+    {"id": "det-lantern-hook", "name": "Lantern Hook", "slot": "weapon", "tier": "rare", "effect": {"impact": 2, "on": "code_checkpoint"}, "flavour": "Lifts lanterns and grudges.", "price": 180},
+    {"id": "det-halloran-s-cane-sword", "name": "Halloran's Cane Sword", "slot": "weapon", "tier": "epic", "effect": {"impact": 2, "on": "any", "break_coins": 3}, "flavour": "The inspector never needed a limp."},
+    {"id": "det-the-final-accusation", "name": "The Final Accusation", "slot": "weapon", "tier": "legendary", "effect": {"impact": 3, "on": "any", "break_coins": 6}, "flavour": "Points at one face and does not miss."},
+    {"id": "det-constable-s-greatcoat", "name": "Constable's Greatcoat", "slot": "armor", "tier": "common", "effect": {"reduction": 10}, "flavour": "Wool, brass buttons, rain stains.", "price": 40},
+    {"id": "det-oilskin-rain-cape", "name": "Oilskin Rain Cape", "slot": "armor", "tier": "uncommon", "effect": {"reduction": 18}, "flavour": "Lantern Street is always wet.", "price": 90},
+    {"id": "det-detective-s-trench", "name": "Detective's Trench", "slot": "armor", "tier": "rare", "effect": {"reduction": 26}, "flavour": "Deep pockets for evidence.", "price": 180},
+    {"id": "det-interrogator-s-vest", "name": "Interrogator's Vest", "slot": "armor", "tier": "epic", "effect": {"reduction": 35}, "flavour": "Nobody lies comfortably to this vest."},
+    {"id": "det-the-watch-commander-s-coat", "name": "The Watch Commander's Coat", "slot": "armor", "tier": "legendary", "effect": {"reduction": 45, "first_miss_free": true}, "flavour": "Worn by every officer who closed the case."},
+    {"id": "det-pocket-notebook", "name": "Pocket Notebook", "slot": "trinket", "tier": "common", "effect": {"xp_bonus": 10}, "flavour": "Every answer, written down.", "price": 40},
+    {"id": "det-lantern-wick-charm", "name": "Lantern Wick Charm", "slot": "trinket", "tier": "uncommon", "effect": {"heal_on_objective": 3}, "flavour": "Burns brighter near a lie.", "price": 90},
+    {"id": "det-witness-whistle", "name": "Witness Whistle", "slot": "trinket", "tier": "rare", "effect": {"start_guards": 1}, "flavour": "Calls the truth out of hiding.", "price": 180},
+    {"id": "det-fingerprint-ring", "name": "Fingerprint Ring", "slot": "trinket", "tier": "epic", "effect": {"block_first_miss": true, "coin_bonus": 15}, "flavour": "It remembers every hand it shook."},
+    {"id": "det-the-truthseer-monocle", "name": "The Truthseer Monocle", "slot": "trinket", "tier": "legendary", "effect": {"start_guards": 1, "revive": true, "loot_luck": 20}, "flavour": "Through it, alibis turn transparent."},
+    {"id": "det-lantern-street-pie", "name": "Lantern Street Pie", "slot": "food", "tier": "common", "effect": {"heal": 20}, "flavour": "Bought from the cart on the corner.", "price": 15},
+    {"id": "det-stakeout-coffee", "name": "Stakeout Coffee", "slot": "food", "tier": "uncommon", "effect": {"next_battle": {"reduction": 20}}, "flavour": "Cold, but it works.", "price": 30},
+    {"id": "det-inspector-s-kidney-stew", "name": "Inspector's Kidney Stew", "slot": "food", "tier": "rare", "effect": {"next_battle": {"guards": 1}}, "flavour": "Halloran swears by it.", "price": 60},
+    {"id": "det-case-closed-roast", "name": "Case-Closed Roast", "slot": "food", "tier": "epic", "effect": {"heal": 30, "next_battle": {"xp_bonus": 30}}, "flavour": "Served the night a culprit is caught.", "price": 100},
+    {"id": "det-smelling-salts", "name": "Smelling Salts", "slot": "tonic", "tier": "uncommon", "effect": {"heal": 45}, "flavour": "For the faint and the foggy.", "price": 50},
+    {"id": "det-halloran-s-flask", "name": "Halloran's Flask", "slot": "tonic", "tier": "rare", "effect": {"heal": 100}, "flavour": "Ask no questions.", "price": 90},
+    {"id": "det-the-false-alibi-s-mask", "name": "The False Alibi's Mask", "slot": "relic", "tier": "legendary", "effect": {"xp_bonus": 5, "coin_bonus": 5}, "flavour": "The stolen face, finally taken off."}
   ]
 }

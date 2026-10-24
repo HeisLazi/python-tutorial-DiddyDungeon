@@ -172,5 +172,29 @@
         {"id": "warden_reason", "label": "Explain the defence", "question_type": "explanation", "impact": 2, "brief": "Explain why truly random play cannot lose in the long run but cannot win either, and when you would still use a predictor."}
       ]
     }
+  ],
+  "armory": [
+    {"id": "rps-pebble-sling", "name": "Pebble Sling", "slot": "weapon", "tier": "common", "effect": {"impact": 1, "on": "code_checkpoint"}, "flavour": "A child's toy. The Warden still flinches at it.", "price": 40},
+    {"id": "rps-folded-paper-knife", "name": "Folded Paper Knife", "slot": "weapon", "tier": "uncommon", "effect": {"impact": 1, "on": "any"}, "flavour": "Paper covers rock, and this edge covers paper.", "price": 90},
+    {"id": "rps-shrine-shears", "name": "Shrine Shears", "slot": "weapon", "tier": "rare", "effect": {"impact": 2, "on": "prediction"}, "flavour": "Sharpened on the shrine steps for a hundred years.", "price": 180},
+    {"id": "rps-warden-s-gauntlet-blade", "name": "Warden's Gauntlet Blade", "slot": "weapon", "tier": "epic", "effect": {"impact": 2, "on": "any", "break_coins": 3}, "flavour": "Pried from a pattern that finally broke."},
+    {"id": "rps-the-three-fold-edge", "name": "The Three-Fold Edge", "slot": "weapon", "tier": "legendary", "effect": {"impact": 3, "on": "any", "break_coins": 6}, "flavour": "Rock, paper and scissors forged into one blade."},
+    {"id": "rps-rice-paper-robe", "name": "Rice-Paper Robe", "slot": "armor", "tier": "common", "effect": {"reduction": 10}, "flavour": "Thin, but it folds around a blow.", "price": 40},
+    {"id": "rps-stonecloth-vest", "name": "Stonecloth Vest", "slot": "armor", "tier": "uncommon", "effect": {"reduction": 18}, "flavour": "Woven from river grit and stubbornness.", "price": 90},
+    {"id": "rps-shrine-keeper-s-mantle", "name": "Shrine Keeper's Mantle", "slot": "armor", "tier": "rare", "effect": {"reduction": 26}, "flavour": "Ilse lent it to you. She wants it back.", "price": 180},
+    {"id": "rps-patternweave-coat", "name": "Patternweave Coat", "slot": "armor", "tier": "epic", "effect": {"reduction": 35}, "flavour": "No two threads repeat. Nothing can read it."},
+    {"id": "rps-warden-s-granite-plate", "name": "Warden's Granite Plate", "slot": "armor", "tier": "legendary", "effect": {"reduction": 45, "first_miss_free": true}, "flavour": "Carved from the crossroads stone itself."},
+    {"id": "rps-lucky-pebble", "name": "Lucky Pebble", "slot": "trinket", "tier": "common", "effect": {"coin_bonus": 10}, "flavour": "Smooth from a thousand nervous thumbs.", "price": 40},
+    {"id": "rps-origami-crane", "name": "Origami Crane", "slot": "trinket", "tier": "uncommon", "effect": {"heal_on_objective": 3}, "flavour": "Folded by a traveller who never lost.", "price": 90},
+    {"id": "rps-prayer-bead-string", "name": "Prayer Bead String", "slot": "trinket", "tier": "rare", "effect": {"start_guards": 1}, "flavour": "Count the beads, steady the hand.", "price": 180},
+    {"id": "rps-tell-reader-s-eye", "name": "Tell-Reader's Eye", "slot": "trinket", "tier": "epic", "effect": {"block_first_miss": true, "xp_bonus": 15}, "flavour": "It sees what your opponent will throw next."},
+    {"id": "rps-the-unreadable-mask", "name": "The Unreadable Mask", "slot": "trinket", "tier": "legendary", "effect": {"start_guards": 1, "revive": true, "loot_luck": 20}, "flavour": "Behind it, even you do not know your next move."},
+    {"id": "rps-crossroads-rice-ball", "name": "Crossroads Rice Ball", "slot": "food", "tier": "common", "effect": {"heal": 20}, "flavour": "Wrapped in a leaf, still warm.", "price": 15},
+    {"id": "rps-shrine-tea", "name": "Shrine Tea", "slot": "food", "tier": "uncommon", "effect": {"next_battle": {"reduction": 20}}, "flavour": "Bitter, clear and calming.", "price": 30},
+    {"id": "rps-three-bean-stew", "name": "Three-Bean Stew", "slot": "food", "tier": "rare", "effect": {"next_battle": {"guards": 1}}, "flavour": "One bean for each throw.", "price": 60},
+    {"id": "rps-warden-s-feast", "name": "Warden's Feast", "slot": "food", "tier": "epic", "effect": {"heal": 30, "next_battle": {"xp_bonus": 30}}, "flavour": "Laid out for the traveller who beat the spirit.", "price": 100},
+    {"id": "rps-plum-wine-tonic", "name": "Plum Wine Tonic", "slot": "tonic", "tier": "uncommon", "effect": {"heal": 45}, "flavour": "Sweet, then sharp.", "price": 50},
+    {"id": "rps-spirit-spring-water", "name": "Spirit Spring Water", "slot": "tonic", "tier": "rare", "effect": {"heal": 100}, "flavour": "Drawn from the well behind the shrine.", "price": 90},
+    {"id": "rps-the-warden-s-last-pattern", "name": "The Warden's Last Pattern", "slot": "relic", "tier": "legendary", "effect": {"xp_bonus": 5, "coin_bonus": 5}, "flavour": "The final sequence it ever played. It never saw you coming."}
   ]
 }

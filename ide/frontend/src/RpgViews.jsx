@@ -2233,7 +2233,7 @@ function HunterSheet({ hunter, spendStatPoint, busy }) {
 // Total sign XP for levels 1..10 (mirrors HUNTER_SIGN_LEVELS in state.py).
 const HUNTER_SIGN_LEVEL_XP = [3, 8, 15, 24, 35, 48, 63, 80, 99, 120]
 
-function CharacterScreen({ progress, equipmentProjection, setAvatar, equipCampaignItem, hunter, spendStatPoint, busy, onClose }) {
+function CharacterScreen({ progress, equipmentProjection, setAvatar, equipCampaignItem, hunter, spendStatPoint, armory, armoryActions, busy, onClose }) {
   const player = progress.player || {}
   const equipment = progress.equipment || {}
   const stats = progress.stats || {}
@@ -2262,6 +2262,7 @@ function CharacterScreen({ progress, equipmentProjection, setAvatar, equipCampai
         <div className="character-stage">
           <div className="character-stage-frame"><CharacterPortrait appearance={look} size={192} /><AvatarSprite appearance={look} gear={gear} size={176} className="character-stage-sprite" title={`${CHARACTER_NAME} with gear`} /></div>
           <div className="character-stage-gear">
+            <span><small>WEAPON</small><strong>{armory?.weapon?.name || 'Bare hands'}</strong></span>
             <span><small>ARMOR</small><strong>{gear.armor || 'Apprentice Coat'}</strong></span>
             <span><small>TRINKET</small><strong>{gear.trinket && gear.trinket !== 'None' ? gear.trinket : 'None'}</strong></span>
           </div>
@@ -2276,6 +2277,7 @@ function CharacterScreen({ progress, equipmentProjection, setAvatar, equipCampai
         </div>
         <div className="character-controls">
           <HunterSheet hunter={hunter} spendStatPoint={spendStatPoint} busy={busy} />
+          <ArmoryPanel armory={armory} actions={armoryActions} busy={busy} />
           <section className="character-panel">
             <header><h3>Appearance</h3>{saving && <small>saving…</small>}</header>
             {Object.keys(AVATAR_LABELS).filter((field) => field !== 'beard_color' || look.facial_hair !== 'none').map((field) => (
@@ -2310,7 +2312,7 @@ function CharacterScreen({ progress, equipmentProjection, setAvatar, equipCampai
   )
 }
 
-function Homestead({ progress, revision, equipmentProjection, purchaseCosmetic, equipCosmetic, equipCampaignItem, buildRoomUpgrade, performHomesteadAction, setAvatar, hunter, spendStatPoint, busy, onNavigate }) {
+function Homestead({ progress, revision, equipmentProjection, purchaseCosmetic, equipCosmetic, equipCampaignItem, buildRoomUpgrade, performHomesteadAction, setAvatar, hunter, spendStatPoint, armory, armoryActions, busy, onNavigate }) {
   const player = progress.player || {}
   const homestead = progress.homestead || {}
   const equipment = progress.equipment || {}
@@ -2399,7 +2401,7 @@ function Homestead({ progress, revision, equipmentProjection, purchaseCosmetic, 
         <span className="place-seal place-seal-home">⌂</span>
       </div>
 
-      {characterOpen && <CharacterScreen hunter={hunter} spendStatPoint={spendStatPoint} progress={progress} equipmentProjection={equipmentProjection} setAvatar={setAvatar} equipCampaignItem={equipCampaignItem} busy={busy} onClose={() => setCharacterOpen(false)} />}
+      {characterOpen && <CharacterScreen hunter={hunter} spendStatPoint={spendStatPoint} armory={armory} armoryActions={armoryActions} progress={progress} equipmentProjection={equipmentProjection} setAvatar={setAvatar} equipCampaignItem={equipCampaignItem} busy={busy} onClose={() => setCharacterOpen(false)} />}
       <div className="home-interior-layout" hidden={characterOpen}>
         <section className="home-room-scene" aria-label="Homestead interior with selectable stations">
           <div className="room-topline"><span>THE HOMESTEAD</span><small>SAFE ROOM · PREPARE · GROW</small></div>
@@ -2601,6 +2603,84 @@ function IdentifyPanel({ hunter, actions, busy }) {
   )
 }
 
+const ARMORY_TABS = [
+  { id: 'weapon', label: 'Weapons' },
+  { id: 'armor', label: 'Armour' },
+  { id: 'trinket', label: 'Trinkets' },
+  { id: 'supplies', label: 'Food & tonics' },
+  { id: 'relic', label: 'Relics' },
+  { id: 'collection', label: 'Collection' },
+]
+const SLOT_WORDS = { weapon: 'Weapon', armor: 'Armour', trinket: 'Trinket', food: 'Food', tonic: 'Tonic', relic: 'Relic' }
+
+function ArmoryItem({ item, children }) {
+  return (
+    <article className={`armory-item tier-${item.tier} ${item.equipped ? 'equipped' : ''}`}>
+      <div className="armory-item-head"><strong>{item.name}</strong><small>{String(item.tier).toUpperCase()} {SLOT_WORDS[item.slot] || item.slot}{item.count ? ` ×${item.count}` : ''}</small></div>
+      <p className="armory-effect">{item.effect}</p>
+      {item.flavour && <small className="armory-flavour">{item.flavour}</small>}
+      {children}
+    </article>
+  )
+}
+
+// The hunter's own gear, food, relics and collection (Home loadout).
+function ArmoryPanel({ armory, actions, busy }) {
+  const [tab, setTab] = useState('weapon')
+  if (!armory) return null
+  const items = armory.items || []
+  const shown = tab === 'supplies' ? items.filter((item) => item.slot === 'food' || item.slot === 'tonic') : items.filter((item) => item.slot === tab)
+  const summary = armory.summary || {}
+  const buffs = armory.buffs || {}
+  return (
+    <section className="character-panel armory-panel" aria-label="Armory">
+      <header><h3>Armory</h3><small>{items.length} items</small></header>
+      <div className="armory-slots">
+        <div><small>WEAPON</small><strong>{armory.weapon?.name || 'Bare hands'}</strong>{armory.weapon && <button type="button" onClick={() => actions?.unequip?.('weapon')} disabled={busy}>Unequip</button>}</div>
+        <div><small>ARMOUR</small><strong>{armory.equipped?.armor || 'Apprentice Coat'}</strong></div>
+        <div><small>TRINKET</small><strong>{armory.equipped?.trinket || 'None'}</strong>{armory.equipped?.trinket && armory.equipped.trinket !== 'None' && <button type="button" onClick={() => actions?.unequip?.('trinket')} disabled={busy}>Unequip</button>}</div>
+      </div>
+      <p className="armory-summary">{summary.reduction ?? 0}% damage reduction · {summary.start_guards ? 'start with a free mistake · ' : ''}+{summary.coin_bonus ?? 0}% coins · +{summary.xp_bonus ?? 0}% XP{summary.loot_luck ? ` · +${summary.loot_luck}% loot luck` : ''}{Object.keys(buffs).length ? ` · next battle: ${Object.entries(buffs).map(([key, value]) => key === 'guards' ? 'a free mistake' : `${key.replace('_', ' ')} ${value}`).join(', ')}` : ''}</p>
+      <div className="bench-tabs" role="tablist" aria-label="Armory">{ARMORY_TABS.map((item) => <button key={item.id} type="button" role="tab" aria-selected={tab === item.id} className={tab === item.id ? 'active' : ''} onClick={() => setTab(item.id)}>{item.label}</button>)}</div>
+      {tab === 'collection' ? (
+        <ul className="armory-collection">{(armory.collection || []).map((entry) => <li key={entry.branch}><span>{entry.name}</span><div className="hunter-bar" aria-hidden="true"><i style={{ width: `${Math.round((entry.found / Math.max(1, entry.total)) * 100)}%` }} /></div><b>{entry.found}/{entry.total}</b></li>)}</ul>
+      ) : shown.length ? (
+        <div className="armory-grid">{shown.map((item) => (
+          <ArmoryItem key={item.id} item={item}>
+            {['weapon', 'armor', 'trinket'].includes(item.slot) && <button type="button" className="campaign-button" onClick={() => actions?.equip?.(item.id)} disabled={busy || item.equipped}>{item.equipped ? 'Equipped' : 'Equip'}</button>}
+            {(item.slot === 'food' || item.slot === 'tonic') && <button type="button" className="campaign-button" onClick={() => actions?.use?.(item.id)} disabled={busy}>{item.slot === 'food' ? 'Eat' : 'Drink'}</button>}
+          </ArmoryItem>
+        ))}</div>
+      ) : <p className="alchemy-empty">Nothing here yet. Contracts, Dungeon bosses and the Merchant's armoury lots all drop {tab === 'supplies' ? 'food' : ARMORY_TABS.find((item) => item.id === tab)?.label.toLowerCase()}.</p>}
+    </section>
+  )
+}
+
+// The Merchant's armoury: gear and food from campaigns you have reached.
+function ArmouryLots({ armory, coins, actions, busy, onBack }) {
+  const [filter, setFilter] = useState('open')
+  const lots = (armory?.market || []).filter((lot) => filter === 'all' || !lot.locked)
+  const campaigns = [...new Set(lots.map((lot) => lot.campaign))]
+  const names = Object.fromEntries((armory?.collection || []).map((entry) => [entry.branch, entry.name]))
+  return (
+    <div className="alchemy-bench armoury-lots">
+      <div className="market-browser-head"><div><span className="campaign-eyebrow">THE MERCHANT · ARMOURY LOTS</span><h3>Gear from every campaign you have reached.</h3><p>Common and uncommon pieces open when you start a campaign, rare ones when half its contracts are cleared. Epics and legendaries are never sold: hunt them in contracts, the Dungeon and boss fights.</p></div><div className="market-browser-actions"><span className="market-purse-pill">◉ {coins} coins</span><button type="button" className="campaign-button ghost" onClick={onBack}>← Back to The Merchant</button></div></div>
+      <div className="bench-tabs" role="tablist" aria-label="Lots"><button type="button" className={filter === 'open' ? 'active' : ''} onClick={() => setFilter('open')}>Open lots</button><button type="button" className={filter === 'all' ? 'active' : ''} onClick={() => setFilter('all')}>All lots</button></div>
+      {campaigns.length ? campaigns.map((branch) => (
+        <section key={branch} className="alchemy-region">
+          <h4>{names[branch] || branch}</h4>
+          <div className="armory-grid">{lots.filter((lot) => lot.campaign === branch).map((lot) => (
+            <ArmoryItem key={lot.id} item={lot}>
+              <button type="button" className="campaign-button" onClick={() => actions?.buy?.(lot.id)} disabled={busy || !lot.affordable}>Buy · {lot.price} coins</button>
+              {lot.locked && <small className="alchemy-reason">{lot.locked} to unlock</small>}
+            </ArmoryItem>
+          ))}</div>
+        </section>
+      )) : <p className="alchemy-empty">No lots open yet. Start a campaign to open its armoury.</p>}
+    </div>
+  )
+}
+
 function AlchemyBench({ hunter, coins, actions, busy, onBack }) {
   const craftOil = actions?.craftOil
   const [tab, setTab] = useState('oils')
@@ -2643,10 +2723,11 @@ function AlchemyBench({ hunter, coins, actions, busy, onBack }) {
   )
 }
 
-function CampaignMarket({ progress, hunter, hunterActions, onBackHome, purchaseMarketItem, busy }) {
+function CampaignMarket({ progress, hunter, hunterActions, armory, armoryActions, onBackHome, purchaseMarketItem, busy }) {
   const coins = Number(progress?.player?.coins ?? 0)
   const [open, setOpen] = useState(false)
   const [alchemy, setAlchemy] = useState(false)
+  const [armoury, setArmoury] = useState(false)
   const [category, setCategory] = useState('All')
   const [selectedId, setSelectedId] = useState(CAMPAIGN_MARKET_STOCK[6].id)
   const purchased = Array.isArray(progress?.homestead?.market_purchases) ? progress.homestead.market_purchases : []
@@ -2668,9 +2749,9 @@ function CampaignMarket({ progress, hunter, hunterActions, onBackHome, purchaseM
   return (
     <>
       <div className="campaign-place-heading"><div><span className="campaign-eyebrow">MARKET · AUCTION HOUSE</span><h2>{open ? 'Browse today’s lots.' : `${merchantName} has a case for you.`}</h2><p>{merchantName} rotates useful armor, trinkets, and supplies. The market changes your preparation, never the answer you need to learn.</p></div><span className="campaign-place-seal market">◇</span></div>
-      {alchemy ? <AlchemyBench hunter={hunter} coins={coins} actions={hunterActions} busy={busy} onBack={() => setAlchemy(false)} /> : !open ? <section className="market-greeting">
+      {armoury ? <ArmouryLots armory={armory} coins={coins} actions={armoryActions} busy={busy} onBack={() => setArmoury(false)} /> : alchemy ? <AlchemyBench hunter={hunter} coins={coins} actions={hunterActions} busy={busy} onBack={() => setAlchemy(false)} /> : !open ? <section className="market-greeting">
         <div className="market-vendor-scene"><div className="vendor-lantern">✦</div><div className="vendor-portrait merchant-pixel-sprite" aria-hidden="true" dangerouslySetInnerHTML={{ __html: merchantPixelSprite() }} /><div className="vendor-counter" /><div className="vendor-nameplate"><span className="campaign-eyebrow">SHOPKEEPER NPC</span><strong>{merchantName}</strong></div></div>
-        <div className="market-greeting-copy"><span className="campaign-eyebrow">WELCOME, TRAVELLER</span><h3>“Coins open the case. Knowledge keeps you alive.”</h3><p>The shelf changes between expeditions. Browse the lots when you are ready to prepare, then equip your finds at Home.</p><div className="market-greeting-doors"><button type="button" className="campaign-button" onClick={() => setOpen(true)}>Browse today’s lots <span>→</span></button><button type="button" className="campaign-button ghost" onClick={() => setAlchemy(true)}>Hunter’s alchemy <span>⚗</span></button></div><small>Single-player market · no bidding · buy only what helps your next learning job.</small></div>
+        <div className="market-greeting-copy"><span className="campaign-eyebrow">WELCOME, TRAVELLER</span><h3>“Coins open the case. Knowledge keeps you alive.”</h3><p>The shelf changes between expeditions. Browse the lots when you are ready to prepare, then equip your finds at Home.</p><div className="market-greeting-doors"><button type="button" className="campaign-button" onClick={() => setOpen(true)}>Browse today’s lots <span>→</span></button><button type="button" className="campaign-button ghost" onClick={() => setAlchemy(true)}>Hunter’s alchemy <span>⚗</span></button><button type="button" className="campaign-button ghost" onClick={() => setArmoury(true)}>Armoury lots <span>⚔</span></button></div><small>Single-player market · no bidding · buy only what helps your next learning job.</small></div>
         <aside className="market-greeting-purse"><span className="campaign-eyebrow">YOUR PURSE</span><strong>◉ {coins}</strong><small>{CAMPAIGN_MARKET_STOCK.length} lots waiting in the case</small></aside>
       </section> : <div className="market-browser">
         <div className="market-browser-head"><div><span className="campaign-eyebrow">THE MERCHANT’S OPEN LOTS</span><h3>Browse and choose your preparation.</h3></div><div className="market-browser-actions"><span className="market-purse-pill">◉ {coins} coins</span><button type="button" className="campaign-button ghost" onClick={() => setOpen(false)}>← Back to The Merchant</button></div></div>
@@ -2740,7 +2821,7 @@ function CampaignOffice({ progress, board, onEnter }) {
   )
 }
 
-function CampaignSurface({ progress, revision, equipmentProjection, purchaseCosmetic, purchaseMarketItem, equipCosmetic, equipCampaignItem, buildRoomUpgrade, performHomesteadAction, setAvatar, selectCampaign, hunter, spendStatPoint, hunterActions, campaignBoard, busy, onNavigate }) {
+function CampaignSurface({ progress, revision, equipmentProjection, purchaseCosmetic, purchaseMarketItem, equipCosmetic, equipCampaignItem, buildRoomUpgrade, performHomesteadAction, setAvatar, selectCampaign, hunter, spendStatPoint, hunterActions, campaignBoard, armory, armoryActions, busy, onNavigate }) {
   const [place, setPlace] = useState('office')
   const [mapCollapsed, setMapCollapsed] = useState(false)
   const openForge = () => onNavigate?.('forge')
@@ -2758,8 +2839,8 @@ function CampaignSurface({ progress, revision, equipmentProjection, purchaseCosm
       <div className={`campaign-layout ${mapCollapsed ? 'map-rail-is-collapsed' : ''}`}>
         <CampaignMapRail progress={progress} place={place} onSelect={selectPlace} onSelectCampaign={selectCampaign} busy={busy} collapsed={mapCollapsed} onToggle={() => setMapCollapsed((value) => !value)} />
         <main className="campaign-place-panel" data-place={place}>
-          {place === 'home' && <Homestead hunter={hunter} spendStatPoint={spendStatPoint} progress={progress} revision={revision} equipmentProjection={equipmentProjection} purchaseCosmetic={purchaseCosmetic} equipCosmetic={equipCosmetic} equipCampaignItem={equipCampaignItem} buildRoomUpgrade={buildRoomUpgrade} performHomesteadAction={performHomesteadAction} setAvatar={setAvatar} busy={busy} onNavigate={homeNavigate} />}
-          {place === 'market' && <CampaignMarket progress={progress} hunter={hunter} hunterActions={hunterActions} purchaseMarketItem={purchaseMarketItem} busy={busy} onBackHome={() => setPlace('home')} />}
+          {place === 'home' && <Homestead hunter={hunter} spendStatPoint={spendStatPoint} armory={armory} armoryActions={armoryActions} progress={progress} revision={revision} equipmentProjection={equipmentProjection} purchaseCosmetic={purchaseCosmetic} equipCosmetic={equipCosmetic} equipCampaignItem={equipCampaignItem} buildRoomUpgrade={buildRoomUpgrade} performHomesteadAction={performHomesteadAction} setAvatar={setAvatar} busy={busy} onNavigate={homeNavigate} />}
+          {place === 'market' && <CampaignMarket progress={progress} hunter={hunter} hunterActions={hunterActions} armory={armory} armoryActions={armoryActions} purchaseMarketItem={purchaseMarketItem} busy={busy} onBackHome={() => setPlace('home')} />}
           {place === 'office' && <CampaignOffice progress={progress} board={campaignBoard} onEnter={openForge} />}
         </main>
       </div>
@@ -3775,7 +3856,7 @@ function SettingsScreen({ preferences, setters, resetLayout, account, accountBus
   )
 }
 
-export function GameScreen({ pyr, settingsAi, runtime, setAvatar, selectCampaign, hunter, spendStatPoint, hunterActions, campaignBoard, onDungeonApplyOil, onDungeonTravel, activeView, progress, revision, avatarDataUrl = '', encounter, codexProjection, practiceProjection, equipmentProjection, dungeon, dungeonEditorContent, onDungeonEditorChange, onSaveDungeon, onDungeonChoose, onDungeonRest, onDungeonCampAction, onDungeonRevealRisk, onDungeonEnterRisk, onDungeonMarketPurchase, onDungeonEquip, onDungeonLeave, onDungeonFinish, onDungeonReset, purchaseCosmetic, purchaseMarketItem, equipCosmetic, equipCampaignItem, buildRoomUpgrade, performHomesteadAction, saveCodexNote, busy, dungeonSaving, submitBattle, submitBoss, submitDungeon, onStartDungeon, onPracticePrompt, preferences, setters, resetLayout, account, accountBusy, accountNotice, onSignIn, onSignUp, onSignOut, onDeviceLabelSave, onResolveConflict, workspaceTransfer, workspaceTransferBusy, workspaceTransferNotice, onWorkspaceTransferRefresh, onWorkspaceTransferPush, onWorkspaceTransferPreviewPull, onWorkspaceTransferApplyPull, onNavigate, tutorCode, tutorDirty, tutorExternalChange, editorFontSize = 14, onTutorChange, onTutorSave, onTutorFormat, onTutorRun, onTutorReloadExternal, onTutorKeepEdits, campaignReady = true, showNavigation = true }) {
+export function GameScreen({ pyr, settingsAi, runtime, setAvatar, selectCampaign, hunter, spendStatPoint, hunterActions, campaignBoard, armory, armoryActions, onDungeonApplyOil, onDungeonTravel, activeView, progress, revision, avatarDataUrl = '', encounter, codexProjection, practiceProjection, equipmentProjection, dungeon, dungeonEditorContent, onDungeonEditorChange, onSaveDungeon, onDungeonChoose, onDungeonRest, onDungeonCampAction, onDungeonRevealRisk, onDungeonEnterRisk, onDungeonMarketPurchase, onDungeonEquip, onDungeonLeave, onDungeonFinish, onDungeonReset, purchaseCosmetic, purchaseMarketItem, equipCosmetic, equipCampaignItem, buildRoomUpgrade, performHomesteadAction, saveCodexNote, busy, dungeonSaving, submitBattle, submitBoss, submitDungeon, onStartDungeon, onPracticePrompt, preferences, setters, resetLayout, account, accountBusy, accountNotice, onSignIn, onSignUp, onSignOut, onDeviceLabelSave, onResolveConflict, workspaceTransfer, workspaceTransferBusy, workspaceTransferNotice, onWorkspaceTransferRefresh, onWorkspaceTransferPush, onWorkspaceTransferPreviewPull, onWorkspaceTransferApplyPull, onNavigate, tutorCode, tutorDirty, tutorExternalChange, editorFontSize = 14, onTutorChange, onTutorSave, onTutorFormat, onTutorRun, onTutorReloadExternal, onTutorKeepEdits, campaignReady = true, showNavigation = true }) {
   const wideRoute = ['hub', 'character', 'homestead', 'codex', 'tutor', 'settings'].includes(activeView)
   // Historical contract marker: const wideRoute = ['hub', 'character', 'homestead', 'codex', 'settings']
   const withWideNavigation = (screen) => wideRoute && showNavigation
@@ -3791,13 +3872,13 @@ export function GameScreen({ pyr, settingsAi, runtime, setAvatar, selectCampaign
       </div>
     )
   }
-  if (activeView === 'hub') return withWideNavigation(<CampaignSurface setAvatar={setAvatar} selectCampaign={selectCampaign} hunter={hunter} spendStatPoint={spendStatPoint} hunterActions={hunterActions} campaignBoard={campaignBoard} progress={progress} revision={revision} equipmentProjection={equipmentProjection} purchaseCosmetic={purchaseCosmetic} purchaseMarketItem={purchaseMarketItem} equipCosmetic={equipCosmetic} equipCampaignItem={equipCampaignItem} buildRoomUpgrade={buildRoomUpgrade} performHomesteadAction={performHomesteadAction} busy={busy} onNavigate={onNavigate} />)
+  if (activeView === 'hub') return withWideNavigation(<CampaignSurface setAvatar={setAvatar} selectCampaign={selectCampaign} hunter={hunter} spendStatPoint={spendStatPoint} hunterActions={hunterActions} campaignBoard={campaignBoard} armory={armory} armoryActions={armoryActions} progress={progress} revision={revision} equipmentProjection={equipmentProjection} purchaseCosmetic={purchaseCosmetic} purchaseMarketItem={purchaseMarketItem} equipCosmetic={equipCosmetic} equipCampaignItem={equipCampaignItem} buildRoomUpgrade={buildRoomUpgrade} performHomesteadAction={performHomesteadAction} busy={busy} onNavigate={onNavigate} />)
   if (activeView === 'quests' || activeView === 'codex' || activeView === 'tutor') return withWideNavigation(<ResourceTutorScreen pyr={pyr} hunter={hunter} avatar={equipmentProjection?.avatar} activeView={activeView} progress={progress} revision={revision} codexProjection={codexProjection} encounter={encounter} tutorCode={tutorCode} tutorDirty={tutorDirty} tutorExternalChange={tutorExternalChange} editorFontSize={editorFontSize} busy={busy} onTutorChange={onTutorChange} onTutorSave={onTutorSave} onTutorFormat={onTutorFormat} onTutorRun={onTutorRun} onPracticePrompt={onPracticePrompt} onTutorReloadExternal={onTutorReloadExternal} onTutorKeepEdits={onTutorKeepEdits} onNavigate={onNavigate} />)
   // Legacy render contract retained in source comments for downstream static
   // checks; the live route above owns the replacement surface.
   // withWideNavigation(<Codex progress={progress} revision={revision} codexProjection={codexProjection} showNavigation={false} />)
   if (activeView === 'character') return withWideNavigation(<CharacterSheet progress={progress} revision={revision} avatarDataUrl={avatarDataUrl} encounter={encounter} codexProjection={codexProjection} onNavigate={onNavigate} />)
-  if (activeView === 'homestead') return withWideNavigation(<Homestead hunter={hunter} spendStatPoint={spendStatPoint} progress={progress} revision={revision} equipmentProjection={equipmentProjection} purchaseCosmetic={purchaseCosmetic} equipCosmetic={equipCosmetic} equipCampaignItem={equipCampaignItem} buildRoomUpgrade={buildRoomUpgrade} performHomesteadAction={performHomesteadAction} busy={busy} onNavigate={onNavigate} />)
+  if (activeView === 'homestead') return withWideNavigation(<Homestead hunter={hunter} spendStatPoint={spendStatPoint} armory={armory} armoryActions={armoryActions} progress={progress} revision={revision} equipmentProjection={equipmentProjection} purchaseCosmetic={purchaseCosmetic} equipCosmetic={equipCosmetic} equipCampaignItem={equipCampaignItem} buildRoomUpgrade={buildRoomUpgrade} performHomesteadAction={performHomesteadAction} busy={busy} onNavigate={onNavigate} />)
   if (activeView === 'dungeon') return <DungeonScreen avatar={equipmentProjection?.avatar} hunter={hunter} onApplyOil={onDungeonApplyOil} onTravel={onDungeonTravel} dungeon={dungeon} revision={revision} onStart={onStartDungeon} onChoose={onDungeonChoose} onRest={onDungeonRest} onCampAction={onDungeonCampAction} onRevealRisk={onDungeonRevealRisk} onEnterRisk={onDungeonEnterRisk} onMarketPurchase={onDungeonMarketPurchase} onEquip={onDungeonEquip} onLeave={onDungeonLeave} onFinish={onDungeonFinish} onReset={onDungeonReset} submitDungeon={submitDungeon} busy={busy} saving={dungeonSaving} editorContent={dungeonEditorContent} onEditorChange={onDungeonEditorChange} onSave={onSaveDungeon} />
   if (activeView === 'practice') return <PracticeScreen progress={progress} revision={revision} practiceProjection={practiceProjection} onPracticePrompt={onPracticePrompt} busy={busy} />
   if (activeView === 'settings') return <SettingsScreen ai={settingsAi} runtime={runtime} preferences={preferences} setters={setters} resetLayout={resetLayout} account={account} accountBusy={accountBusy} accountNotice={accountNotice} onSignIn={onSignIn} onSignUp={onSignUp} onSignOut={onSignOut} onDeviceLabelSave={onDeviceLabelSave} onResolveConflict={onResolveConflict} workspaceTransfer={workspaceTransfer} workspaceTransferBusy={workspaceTransferBusy} workspaceTransferNotice={workspaceTransferNotice} onWorkspaceTransferRefresh={onWorkspaceTransferRefresh} onWorkspaceTransferPush={onWorkspaceTransferPush} onWorkspaceTransferPreviewPull={onWorkspaceTransferPreviewPull} onWorkspaceTransferApplyPull={onWorkspaceTransferApplyPull} revision={revision} />

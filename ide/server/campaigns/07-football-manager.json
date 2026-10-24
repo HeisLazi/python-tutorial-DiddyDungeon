@@ -184,5 +184,29 @@
         {"id": "season_awards", "label": "Hand out awards", "question_type": "code_checkpoint", "impact": 2, "brief": "Announce the champion, top scorer and your club's finish, and keep a list of past champions."}
       ]
     }
+  ],
+  "armory": [
+    {"id": "fm-training-cone-club", "name": "Training Cone Club", "slot": "weapon", "tier": "common", "effect": {"impact": 1, "on": "prediction"}, "flavour": "Bright orange. Surprisingly heavy.", "price": 40},
+    {"id": "fm-referee-s-whistle-dart", "name": "Referee's Whistle Dart", "slot": "weapon", "tier": "uncommon", "effect": {"impact": 1, "on": "any"}, "flavour": "One blast stops everything.", "price": 90},
+    {"id": "fm-captain-s-pennant-spear", "name": "Captain's Pennant Spear", "slot": "weapon", "tier": "rare", "effect": {"impact": 2, "on": "code_checkpoint"}, "flavour": "The club colours on a long pole.", "price": 180},
+    {"id": "fm-the-golden-boot", "name": "The Golden Boot", "slot": "weapon", "tier": "epic", "effect": {"impact": 2, "on": "any", "break_coins": 3}, "flavour": "Kicks like a top scorer."},
+    {"id": "fm-the-cursed-cup-mace", "name": "The Cursed Cup Mace", "slot": "weapon", "tier": "legendary", "effect": {"impact": 3, "on": "any", "break_coins": 6}, "flavour": "The cup itself, swung in anger."},
+    {"id": "fm-ashford-training-bib", "name": "Ashford Training Bib", "slot": "armor", "tier": "common", "effect": {"reduction": 10}, "flavour": "Hi-vis, slightly damp.", "price": 40},
+    {"id": "fm-shin-guard-greaves", "name": "Shin Guard Greaves", "slot": "armor", "tier": "uncommon", "effect": {"reduction": 18}, "flavour": "Saved more legs than any physio.", "price": 90},
+    {"id": "fm-ashford-home-kit", "name": "Ashford Home Kit", "slot": "armor", "tier": "rare", "effect": {"reduction": 26}, "flavour": "Blue and white, eleven seasons of losses.", "price": 180},
+    {"id": "fm-club-legend-s-jersey", "name": "Club Legend's Jersey", "slot": "armor", "tier": "epic", "effect": {"reduction": 35}, "flavour": "Signed by the only Rover ever capped."},
+    {"id": "fm-the-invincibles-armour", "name": "The Invincibles' Armour", "slot": "armor", "tier": "legendary", "effect": {"reduction": 45, "first_miss_free": true}, "flavour": "Their kit. It turns out it was just very well made."},
+    {"id": "fm-lucky-scarf", "name": "Lucky Scarf", "slot": "trinket", "tier": "common", "effect": {"xp_bonus": 10}, "flavour": "Never washed, never lost.", "price": 40},
+    {"id": "fm-tactics-board", "name": "Tactics Board", "slot": "trinket", "tier": "uncommon", "effect": {"heal_on_objective": 3}, "flavour": "Magnets for every player.", "price": 90},
+    {"id": "fm-season-ticket", "name": "Season Ticket", "slot": "trinket", "tier": "rare", "effect": {"start_guards": 1}, "flavour": "Row G, seat 14, every week.", "price": 180},
+    {"id": "fm-odette-s-gavel", "name": "Odette's Gavel", "slot": "trinket", "tier": "epic", "effect": {"block_first_miss": true, "coin_bonus": 15}, "flavour": "Order in the boardroom."},
+    {"id": "fm-the-uncursed-cup-charm", "name": "The Uncursed Cup Charm", "slot": "trinket", "tier": "legendary", "effect": {"start_guards": 1, "revive": true, "loot_luck": 20}, "flavour": "Proof the curse was only bad management."},
+    {"id": "fm-half-time-oranges", "name": "Half-Time Oranges", "slot": "food", "tier": "common", "effect": {"heal": 20}, "flavour": "Quartered, slightly warm.", "price": 15},
+    {"id": "fm-terrace-pie", "name": "Terrace Pie", "slot": "food", "tier": "uncommon", "effect": {"next_battle": {"reduction": 20}}, "flavour": "Steak and gravy, eaten standing.", "price": 30},
+    {"id": "fm-matchday-burger", "name": "Matchday Burger", "slot": "food", "tier": "rare", "effect": {"next_battle": {"guards": 1}}, "flavour": "From the van outside the ground.", "price": 60},
+    {"id": "fm-trophy-night-banquet", "name": "Trophy Night Banquet", "slot": "food", "tier": "epic", "effect": {"heal": 30, "next_battle": {"xp_bonus": 30}}, "flavour": "Promotion party food.", "price": 100},
+    {"id": "fm-isotonic-tonic", "name": "Isotonic Tonic", "slot": "tonic", "tier": "uncommon", "effect": {"heal": 45}, "flavour": "Electric blue.", "price": 50},
+    {"id": "fm-physio-s-liniment", "name": "Physio's Liniment", "slot": "tonic", "tier": "rare", "effect": {"heal": 100}, "flavour": "Smells strongly of menthol.", "price": 90},
+    {"id": "fm-the-cursed-cup-itself", "name": "The Cursed Cup Itself", "slot": "relic", "tier": "legendary", "effect": {"xp_bonus": 5, "coin_bonus": 5}, "flavour": "Ashford lifted it. The curse lifted with it."}
   ]
 }

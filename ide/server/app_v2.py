@@ -962,6 +962,7 @@ def campaign():
     activity = read_json(REPO_ROOT / "activity.json", {})
     return {
         "campaign_board": STATE_SERVICE.campaign_board(progress),
+        "armory": STATE_SERVICE.armory_projection(progress),
         "progress": _without_identify_answer(progress),
         "revision": metadata["revision"],
         "sync_storage_namespace": checkout_storage_namespace(),
@@ -2714,6 +2715,38 @@ def _hunter_action(action: str, payload: dict) -> dict:
     result = _flatten_state_result(envelope)
     result["revision"] = metadata["revision"]
     return result
+
+
+class ArmoryItemRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    item_id: str = Field(min_length=1, max_length=MAX_IDENTIFIER_LENGTH)
+
+
+class ArmorySlotRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    slot: str = Field(min_length=1, max_length=20)
+
+
+@app.post("/api/armory/equip")
+def equip_armory_item(payload: ArmoryItemRequest):
+    return _hunter_action("armory_equip", payload.model_dump())
+
+
+@app.post("/api/armory/unequip")
+def unequip_armory_slot(payload: ArmorySlotRequest):
+    return _hunter_action("armory_unequip", payload.model_dump())
+
+
+@app.post("/api/armory/use")
+def use_armory_item(payload: ArmoryItemRequest):
+    return _hunter_action("armory_use", payload.model_dump())
+
+
+@app.post("/api/armory/buy")
+def buy_armory_item(payload: ArmoryItemRequest):
+    return _hunter_action("armory_buy", payload.model_dump())
 
 
 @app.post("/api/hunter/kit")

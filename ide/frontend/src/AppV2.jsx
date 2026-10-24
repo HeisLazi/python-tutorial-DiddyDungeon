@@ -639,6 +639,24 @@ function AppV2() {
           detail: event.question_type ? `${event.question_type} checkpoint` : 'Validated Battle objective',
         })
       }
+      if (event.guard_break) {
+        notifications.push({
+          id: `${event.id}:guard-break`,
+          kind: 'reward',
+          title: 'GUARD BROKEN',
+          body: `${mobName} · free mistake banked`,
+          detail: `+${Number(event.guard_break.coins || 0)} coins · the fight still needs every objective`,
+        })
+      }
+      if (event.loot) {
+        notifications.push({
+          id: `${event.id}:loot`,
+          kind: 'unlock',
+          title: `LOOT · ${String(event.loot.tier || '').toUpperCase()}`,
+          body: event.loot.name,
+          detail: event.loot.effect || 'Added to your Armory',
+        })
+      }
       if (event.mob_defeated) {
         notifications.push({
           id: `${event.id}:defeated`,
@@ -2185,6 +2203,20 @@ function AppV2() {
       return null
     }
   }
+  const armoryActions = {
+    equip: (itemId) => hunterPost('/api/armory/equip', { item_id: itemId }, 'Could not equip that'),
+    unequip: (slot) => hunterPost('/api/armory/unequip', { slot }, 'Could not take that off'),
+    use: async (itemId) => {
+      const result = await hunterPost('/api/armory/use', { item_id: itemId }, 'Could not use that')
+      if (result) setNotice(result.healed ? `+${result.healed} HP.` : 'Your next battle is buffed.')
+      return result
+    },
+    buy: async (itemId) => {
+      const result = await hunterPost('/api/armory/buy', { item_id: itemId }, 'Purchase failed')
+      if (result) setNotice('Bought. Find it in your Armory at Home.')
+      return result
+    },
+  }
   const hunterActions = {
     craftOil,
     upgradeKit: async (track) => {
@@ -2705,6 +2737,8 @@ function AppV2() {
               onDungeonApplyOil={applyDungeonOil}
               onDungeonTravel={travelDungeon}
               hunterActions={hunterActions}
+              armory={campaign?.armory || null}
+              armoryActions={armoryActions}
               campaignBoard={campaign?.campaign_board || null}
               onDungeonChoose={chooseDungeonRoom}
               onDungeonLeave={leaveDungeonRoom}

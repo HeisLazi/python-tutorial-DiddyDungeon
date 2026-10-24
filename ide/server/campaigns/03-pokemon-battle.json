@@ -184,5 +184,29 @@
         {"id": "league_menu", "label": "Open the league", "question_type": "code_checkpoint", "impact": 3, "brief": "Add a menu: start the gauntlet, battle a random rival, view your team, or quit."}
       ]
     }
+  ],
+  "armory": [
+    {"id": "cb-tamer-s-whip", "name": "Tamer's Whip", "slot": "weapon", "tier": "common", "effect": {"impact": 1, "on": "code_checkpoint"}, "flavour": "Cracks loud enough to stop a charge.", "price": 40},
+    {"id": "cb-slime-etched-sling", "name": "Slime-Etched Sling", "slot": "weapon", "tier": "uncommon", "effect": {"impact": 1, "on": "any"}, "flavour": "Still slightly sticky.", "price": 90},
+    {"id": "cb-fang-spear", "name": "Fang Spear", "slot": "weapon", "tier": "rare", "effect": {"impact": 2, "on": "prediction"}, "flavour": "Tipped with a tooth from the Feral Fang.", "price": 180},
+    {"id": "cb-type-shift-staff", "name": "Type-Shift Staff", "slot": "weapon", "tier": "epic", "effect": {"impact": 2, "on": "any", "break_coins": 3}, "flavour": "Strong against whatever you face."},
+    {"id": "cb-the-champion-s-crest-blade", "name": "The Champion's Crest Blade", "slot": "weapon", "tier": "legendary", "effect": {"impact": 3, "on": "any", "break_coins": 6}, "flavour": "Nine seasons of victories etched along it."},
+    {"id": "cb-leather-tamer-vest", "name": "Leather Tamer Vest", "slot": "armor", "tier": "common", "effect": {"reduction": 10}, "flavour": "Scratched by a hundred claws.", "price": 40},
+    {"id": "cb-scaleplate-jerkin", "name": "Scaleplate Jerkin", "slot": "armor", "tier": "uncommon", "effect": {"reduction": 18}, "flavour": "Shed scales, stitched together.", "price": 90},
+    {"id": "cb-moth-silk-cloak", "name": "Moth-Silk Cloak", "slot": "armor", "tier": "rare", "effect": {"reduction": 26}, "flavour": "Woven from the Venom Moth's cocoon.", "price": 180},
+    {"id": "cb-arena-guard-harness", "name": "Arena Guard Harness", "slot": "armor", "tier": "epic", "effect": {"reduction": 35}, "flavour": "Built to take a full-power charge."},
+    {"id": "cb-the-champion-s-dragonhide", "name": "The Champion's Dragonhide", "slot": "armor", "tier": "legendary", "effect": {"reduction": 45, "first_miss_free": true}, "flavour": "The Champion's own coat. It fits you now."},
+    {"id": "cb-berry-pouch", "name": "Berry Pouch", "slot": "trinket", "tier": "common", "effect": {"xp_bonus": 10}, "flavour": "Snacks for you and your beasts.", "price": 40},
+    {"id": "cb-type-chart-pendant", "name": "Type Chart Pendant", "slot": "trinket", "tier": "uncommon", "effect": {"heal_on_objective": 3}, "flavour": "Every matchup, engraved.", "price": 90},
+    {"id": "cb-evolution-stone", "name": "Evolution Stone", "slot": "trinket", "tier": "rare", "effect": {"start_guards": 1}, "flavour": "Warm to the touch, humming.", "price": 180},
+    {"id": "cb-venom-ward-charm", "name": "Venom Ward Charm", "slot": "trinket", "tier": "epic", "effect": {"block_first_miss": true, "coin_bonus": 15}, "flavour": "Poison slides off whoever wears it."},
+    {"id": "cb-the-nine-season-medal", "name": "The Nine-Season Medal", "slot": "trinket", "tier": "legendary", "effect": {"start_guards": 1, "revive": true, "loot_luck": 20}, "flavour": "Earned by the one who ended the streak."},
+    {"id": "cb-trail-berries", "name": "Trail Berries", "slot": "food", "tier": "common", "effect": {"heal": 20}, "flavour": "Picked from the tall grass.", "price": 15},
+    {"id": "cb-arena-skewers", "name": "Arena Skewers", "slot": "food", "tier": "uncommon", "effect": {"next_battle": {"reduction": 20}}, "flavour": "Sold in the stands between rounds.", "price": 30},
+    {"id": "cb-tamer-s-hotpot", "name": "Tamer's Hotpot", "slot": "food", "tier": "rare", "effect": {"next_battle": {"guards": 1}}, "flavour": "Shared with the whole team.", "price": 60},
+    {"id": "cb-champion-s-banquet", "name": "Champion's Banquet", "slot": "food", "tier": "epic", "effect": {"heal": 30, "next_battle": {"xp_bonus": 30}}, "flavour": "The League's victory feast.", "price": 100},
+    {"id": "cb-potion-of-vigour", "name": "Potion of Vigour", "slot": "tonic", "tier": "uncommon", "effect": {"heal": 45}, "flavour": "Fizzes on the tongue.", "price": 50},
+    {"id": "cb-revive-herb-tonic", "name": "Revive Herb Tonic", "slot": "tonic", "tier": "rare", "effect": {"heal": 100}, "flavour": "Bitter roots, full strength.", "price": 90},
+    {"id": "cb-the-champion-s-fallen-crown", "name": "The Champion's Fallen Crown", "slot": "relic", "tier": "legendary", "effect": {"xp_bonus": 5, "coin_bonus": 5}, "flavour": "Knocked loose in the last battle of the season."}
   ]
 }

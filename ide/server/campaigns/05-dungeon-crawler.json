@@ -184,5 +184,29 @@
         {"id": "victory", "label": "Win the game", "question_type": "code_checkpoint", "impact": 3, "brief": "End the game with a victory screen, the run's stats, and an offer to start a fresh run."}
       ]
     }
+  ],
+  "armory": [
+    {"id": "dc-miner-s-pickaxe", "name": "Miner's Pickaxe", "slot": "weapon", "tier": "common", "effect": {"impact": 1, "on": "code_checkpoint"}, "flavour": "Cuts rock and anything climbing out of it.", "price": 40},
+    {"id": "dc-lantern-lit-shortsword", "name": "Lantern-Lit Shortsword", "slot": "weapon", "tier": "uncommon", "effect": {"impact": 1, "on": "any"}, "flavour": "The blade glows where the lantern cannot reach.", "price": 90},
+    {"id": "dc-deepvein-warhammer", "name": "Deepvein Warhammer", "slot": "weapon", "tier": "rare", "effect": {"impact": 2, "on": "bug_diagnosis"}, "flavour": "Forged from the mine's richest seam.", "price": 180},
+    {"id": "dc-cartographer-s-spear", "name": "Cartographer's Spear", "slot": "weapon", "tier": "epic", "effect": {"impact": 2, "on": "any", "break_coins": 3}, "flavour": "Its shaft is marked with every level's depth."},
+    {"id": "dc-the-core-breaker", "name": "The Core Breaker", "slot": "weapon", "tier": "legendary", "effect": {"impact": 3, "on": "any", "break_coins": 6}, "flavour": "Made for one blow, struck at the heart."},
+    {"id": "dc-canvas-mining-smock", "name": "Canvas Mining Smock", "slot": "armor", "tier": "common", "effect": {"reduction": 10}, "flavour": "Dust-grey and tough.", "price": 40},
+    {"id": "dc-riveted-leather", "name": "Riveted Leather", "slot": "armor", "tier": "uncommon", "effect": {"reduction": 18}, "flavour": "Patched after every cave-in.", "price": 90},
+    {"id": "dc-deepvein-brigandine", "name": "Deepvein Brigandine", "slot": "armor", "tier": "rare", "effect": {"reduction": 26}, "flavour": "Ore plates sewn under the cloth.", "price": 180},
+    {"id": "dc-lamp-lit-lamellar", "name": "Lamp-Lit Lamellar", "slot": "armor", "tier": "epic", "effect": {"reduction": 35}, "flavour": "Each scale reflects your lantern."},
+    {"id": "dc-the-core-forged-plate", "name": "The Core-Forged Plate", "slot": "armor", "tier": "legendary", "effect": {"reduction": 45, "first_miss_free": true}, "flavour": "Hammered from the Core's own stone."},
+    {"id": "dc-canary-feather", "name": "Canary Feather", "slot": "trinket", "tier": "common", "effect": {"xp_bonus": 10}, "flavour": "It warns you before the air goes bad.", "price": 40},
+    {"id": "dc-compass-needle", "name": "Compass Needle", "slot": "trinket", "tier": "uncommon", "effect": {"heal_on_objective": 3}, "flavour": "Always points to the exit.", "price": 90},
+    {"id": "dc-ore-sniffer-charm", "name": "Ore Sniffer Charm", "slot": "trinket", "tier": "rare", "effect": {"start_guards": 1}, "flavour": "Twitches near treasure.", "price": 180},
+    {"id": "dc-brigid-s-hard-hat-badge", "name": "Brigid's Hard Hat Badge", "slot": "trinket", "tier": "epic", "effect": {"block_first_miss": true, "coin_bonus": 15}, "flavour": "Issued to miners who came back."},
+    {"id": "dc-the-heart-of-the-mine", "name": "The Heart of the Mine", "slot": "trinket", "tier": "legendary", "effect": {"start_guards": 1, "revive": true, "loot_luck": 20}, "flavour": "Still beating, faintly."},
+    {"id": "dc-miner-s-pasty", "name": "Miner's Pasty", "slot": "food", "tier": "common", "effect": {"heal": 20}, "flavour": "Crimped crust, meat inside.", "price": 15},
+    {"id": "dc-tin-cup-broth", "name": "Tin Cup Broth", "slot": "food", "tier": "uncommon", "effect": {"next_battle": {"reduction": 20}}, "flavour": "Heated on a lantern.", "price": 30},
+    {"id": "dc-deep-mushroom-stew", "name": "Deep Mushroom Stew", "slot": "food", "tier": "rare", "effect": {"next_battle": {"guards": 1}}, "flavour": "Grown where no sun has been.", "price": 60},
+    {"id": "dc-brigid-s-feast-loaf", "name": "Brigid's Feast Loaf", "slot": "food", "tier": "epic", "effect": {"heal": 30, "next_battle": {"xp_bonus": 30}}, "flavour": "Baked for the crew that reached the bottom.", "price": 100},
+    {"id": "dc-glowcap-tonic", "name": "Glowcap Tonic", "slot": "tonic", "tier": "uncommon", "effect": {"heal": 45}, "flavour": "Faintly luminous.", "price": 50},
+    {"id": "dc-deepvein-draught", "name": "Deepvein Draught", "slot": "tonic", "tier": "rare", "effect": {"heal": 100}, "flavour": "Tastes of iron and courage.", "price": 90},
+    {"id": "dc-the-dungeon-core-fragment", "name": "The Dungeon Core Fragment", "slot": "relic", "tier": "legendary", "effect": {"xp_bonus": 5, "coin_bonus": 5}, "flavour": "A shard of the heart, cold at last."}
   ]
 }

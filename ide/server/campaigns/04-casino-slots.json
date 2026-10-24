@@ -172,5 +172,29 @@
         {"id": "casino_menu", "label": "Open the floor", "question_type": "code_checkpoint", "impact": 3, "brief": "Add a menu: slots, roulette, run an audit simulation, view stats, or leave."}
       ]
     }
+  ],
+  "armory": [
+    {"id": "cas-coin-roll-club", "name": "Coin Roll Club", "slot": "weapon", "tier": "common", "effect": {"impact": 1, "on": "prediction"}, "flavour": "Fifty silver coins in paper. Heavy.", "price": 40},
+    {"id": "cas-lever-arm-mace", "name": "Lever Arm Mace", "slot": "weapon", "tier": "uncommon", "effect": {"impact": 1, "on": "any"}, "flavour": "Torn off a rigged machine.", "price": 90},
+    {"id": "cas-reel-spinner-chakram", "name": "Reel Spinner Chakram", "slot": "weapon", "tier": "rare", "effect": {"impact": 2, "on": "code_checkpoint"}, "flavour": "Spins, lands, pays out pain.", "price": 180},
+    {"id": "cas-jackpot-hammer", "name": "Jackpot Hammer", "slot": "weapon", "tier": "epic", "effect": {"impact": 2, "on": "any", "break_coins": 3}, "flavour": "Rings a bell every time it hits."},
+    {"id": "cas-lady-luck-s-sceptre", "name": "Lady Luck's Sceptre", "slot": "weapon", "tier": "legendary", "effect": {"impact": 3, "on": "any", "break_coins": 6}, "flavour": "Fortune obeys whoever holds it."},
+    {"id": "cas-doorman-s-livery", "name": "Doorman's Livery", "slot": "armor", "tier": "common", "effect": {"reduction": 10}, "flavour": "Red, gold and padded.", "price": 40},
+    {"id": "cas-silver-sequin-vest", "name": "Silver Sequin Vest", "slot": "armor", "tier": "uncommon", "effect": {"reduction": 18}, "flavour": "Dazzles more than it protects. Mostly.", "price": 90},
+    {"id": "cas-auditor-s-waistcoat", "name": "Auditor's Waistcoat", "slot": "armor", "tier": "rare", "effect": {"reduction": 26}, "flavour": "Pell's spare. Buttoned to the top.", "price": 180},
+    {"id": "cas-vault-guard-plate", "name": "Vault Guard Plate", "slot": "armor", "tier": "epic", "effect": {"reduction": 35}, "flavour": "Forged from an old safe door."},
+    {"id": "cas-the-fortune-mail", "name": "The Fortune Mail", "slot": "armor", "tier": "legendary", "effect": {"reduction": 45, "first_miss_free": true}, "flavour": "Every link a lucky coin."},
+    {"id": "cas-silver-dollar", "name": "Silver Dollar", "slot": "trinket", "tier": "common", "effect": {"coin_bonus": 10}, "flavour": "Heads every time. Suspicious.", "price": 40},
+    {"id": "cas-weighted-die", "name": "Weighted Die", "slot": "trinket", "tier": "uncommon", "effect": {"heal_on_objective": 3}, "flavour": "Honest about being dishonest.", "price": 90},
+    {"id": "cas-auditor-s-ledger", "name": "Auditor's Ledger", "slot": "trinket", "tier": "rare", "effect": {"start_guards": 1}, "flavour": "The real numbers, written in red.", "price": 180},
+    {"id": "cas-four-leaf-clip", "name": "Four-Leaf Clip", "slot": "trinket", "tier": "epic", "effect": {"block_first_miss": true, "xp_bonus": 15}, "flavour": "A clover, pressed in brass."},
+    {"id": "cas-the-probability-lens", "name": "The Probability Lens", "slot": "trinket", "tier": "legendary", "effect": {"start_guards": 1, "revive": true, "loot_luck": 20}, "flavour": "Shows the odds behind every spin."},
+    {"id": "cas-buffet-shrimp", "name": "Buffet Shrimp", "slot": "food", "tier": "common", "effect": {"heal": 20}, "flavour": "All you can eat. Questionable.", "price": 15},
+    {"id": "cas-lucky-fortune-cookie", "name": "Lucky Fortune Cookie", "slot": "food", "tier": "uncommon", "effect": {"next_battle": {"reduction": 20}}, "flavour": "Your numbers are inside.", "price": 30},
+    {"id": "cas-all-night-breakfast", "name": "All-Night Breakfast", "slot": "food", "tier": "rare", "effect": {"next_battle": {"guards": 1}}, "flavour": "Served at four in the morning to the brave.", "price": 60},
+    {"id": "cas-jackpot-platter", "name": "Jackpot Platter", "slot": "food", "tier": "epic", "effect": {"heal": 30, "next_battle": {"xp_bonus": 30}}, "flavour": "Delivered when the bells ring.", "price": 100},
+    {"id": "cas-neon-fizz-tonic", "name": "Neon Fizz Tonic", "slot": "tonic", "tier": "uncommon", "effect": {"heal": 45}, "flavour": "Glows faintly in the glass.", "price": 50},
+    {"id": "cas-auditor-s-black-tea", "name": "Auditor's Black Tea", "slot": "tonic", "tier": "rare", "effect": {"heal": 100}, "flavour": "No sugar, no nonsense.", "price": 90},
+    {"id": "cas-lady-luck-s-loaded-coin", "name": "Lady Luck's Loaded Coin", "slot": "relic", "tier": "legendary", "effect": {"xp_bonus": 5, "coin_bonus": 5}, "flavour": "It always landed her way. Now it lands yours."}
   ]
 }

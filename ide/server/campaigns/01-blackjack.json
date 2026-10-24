@@ -210,5 +210,29 @@
         {"id": "main_menu", "label": "Add a menu", "question_type": "code_checkpoint", "impact": 3, "brief": "Add a start menu: play, watch the bot play, run a simulation, or quit."}
       ]
     }
+  ],
+  "armory": [
+    {"id": "bj-card-edge-dagger", "name": "Card-Edge Dagger", "slot": "weapon", "tier": "common", "effect": {"impact": 1, "on": "code_checkpoint"}, "flavour": "A playing card, filed until it cuts.", "price": 40},
+    {"id": "bj-croupier-s-rake", "name": "Croupier's Rake", "slot": "weapon", "tier": "uncommon", "effect": {"impact": 1, "on": "any"}, "flavour": "Gathers chips, and teeth.", "price": 90},
+    {"id": "bj-ace-of-spades-blade", "name": "Ace of Spades Blade", "slot": "weapon", "tier": "rare", "effect": {"impact": 2, "on": "bug_diagnosis"}, "flavour": "Worth eleven when it lands, one when it does not.", "price": 180},
+    {"id": "bj-the-shoe-splitter", "name": "The Shoe Splitter", "slot": "weapon", "tier": "epic", "effect": {"impact": 2, "on": "any", "break_coins": 3}, "flavour": "Cleaves a six-deck shoe in one swing."},
+    {"id": "bj-the-house-cutter", "name": "The House Cutter", "slot": "weapon", "tier": "legendary", "effect": {"impact": 3, "on": "any", "break_coins": 6}, "flavour": "The House's own blade, turned on the House."},
+    {"id": "bj-dealer-s-waistcoat", "name": "Dealer's Waistcoat", "slot": "armor", "tier": "common", "effect": {"reduction": 10}, "flavour": "Pockets for everything but mercy.", "price": 40},
+    {"id": "bj-velvet-felt-jacket", "name": "Velvet Felt Jacket", "slot": "armor", "tier": "uncommon", "effect": {"reduction": 18}, "flavour": "Cut from an old table. Blows slide off it.", "price": 90},
+    {"id": "bj-pit-boss-coat", "name": "Pit Boss Coat", "slot": "armor", "tier": "rare", "effect": {"reduction": 26}, "flavour": "Mara's spare. It smells of cigars and fairness.", "price": 180},
+    {"id": "bj-gilded-lapel-armour", "name": "Gilded Lapel Armour", "slot": "armor", "tier": "epic", "effect": {"reduction": 35}, "flavour": "Gold thread over steel plate."},
+    {"id": "bj-the-high-roller-s-mail", "name": "The High Roller's Mail", "slot": "armor", "tier": "legendary", "effect": {"reduction": 45, "first_miss_free": true}, "flavour": "Every link a chip from a winning night."},
+    {"id": "bj-lucky-chip", "name": "Lucky Chip", "slot": "trinket", "tier": "common", "effect": {"coin_bonus": 10}, "flavour": "A single red chip that always comes back.", "price": 40},
+    {"id": "bj-marked-card", "name": "Marked Card", "slot": "trinket", "tier": "uncommon", "effect": {"heal_on_objective": 3}, "flavour": "You did not mark it. Someone did.", "price": 90},
+    {"id": "bj-counting-abacus", "name": "Counting Abacus", "slot": "trinket", "tier": "rare", "effect": {"start_guards": 1}, "flavour": "Plus one, minus one, never forget.", "price": 180},
+    {"id": "bj-mara-s-pocket-watch", "name": "Mara's Pocket Watch", "slot": "trinket", "tier": "epic", "effect": {"block_first_miss": true, "xp_bonus": 15}, "flavour": "It stops whenever the House cheats."},
+    {"id": "bj-the-gilded-ace", "name": "The Gilded Ace", "slot": "trinket", "tier": "legendary", "effect": {"start_guards": 1, "revive": true, "loot_luck": 20}, "flavour": "The only card the House could never deal."},
+    {"id": "bj-free-bar-peanuts", "name": "Free Bar Peanuts", "slot": "food", "tier": "common", "effect": {"heal": 20}, "flavour": "Salty, endless and free.", "price": 15},
+    {"id": "bj-casino-coffee", "name": "Casino Coffee", "slot": "food", "tier": "uncommon", "effect": {"next_battle": {"reduction": 20}}, "flavour": "Strong enough to count six decks.", "price": 30},
+    {"id": "bj-midnight-club-sandwich", "name": "Midnight Club Sandwich", "slot": "food", "tier": "rare", "effect": {"next_battle": {"guards": 1}}, "flavour": "Three layers, one toothpick.", "price": 60},
+    {"id": "bj-high-roller-steak", "name": "High Roller Steak", "slot": "food", "tier": "epic", "effect": {"heal": 30, "next_battle": {"xp_bonus": 30}}, "flavour": "Comped for the player the House fears.", "price": 100},
+    {"id": "bj-comped-champagne-tonic", "name": "Comped Champagne Tonic", "slot": "tonic", "tier": "uncommon", "effect": {"heal": 45}, "flavour": "On the house, for once.", "price": 50},
+    {"id": "bj-pit-boss-espresso", "name": "Pit Boss Espresso", "slot": "tonic", "tier": "rare", "effect": {"heal": 100}, "flavour": "One shot, very awake.", "price": 90},
+    {"id": "bj-the-house-s-broken-shoe", "name": "The House's Broken Shoe", "slot": "relic", "tier": "legendary", "effect": {"xp_bonus": 5, "coin_bonus": 5}, "flavour": "The dealing shoe that dealt its last crooked hand."}
   ]
 }

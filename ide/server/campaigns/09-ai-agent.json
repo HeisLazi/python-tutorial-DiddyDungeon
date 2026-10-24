@@ -213,5 +213,29 @@
         {"id": "walkthrough", "label": "Walk Wren through it", "question_type": "explanation", "impact": 2, "brief": "Explain, step by step, how a message travels through your familiar: loop, brain, tools, memory, leash and back."}
       ]
     }
+  ],
+  "armory": [
+    {"id": "fam-quill-stylus", "name": "Quill Stylus", "slot": "weapon", "tier": "common", "effect": {"impact": 1, "on": "code_checkpoint"}, "flavour": "Writes commands into the air.", "price": 40},
+    {"id": "fam-familiar-s-talon", "name": "Familiar's Talon", "slot": "weapon", "tier": "uncommon", "effect": {"impact": 1, "on": "any"}, "flavour": "Shed by Wren's own familiar.", "price": 90},
+    {"id": "fam-tool-belt-hammer", "name": "Tool-Belt Hammer", "slot": "weapon", "tier": "rare", "effect": {"impact": 2, "on": "bug_diagnosis"}, "flavour": "Every tool, one swing.", "price": 180},
+    {"id": "fam-planner-s-rod", "name": "Planner's Rod", "slot": "weapon", "tier": "epic", "effect": {"impact": 2, "on": "any", "break_coins": 3}, "flavour": "Each notch is a step of the plan."},
+    {"id": "fam-stormbound-staff", "name": "Stormbound Staff", "slot": "weapon", "tier": "legendary", "effect": {"impact": 3, "on": "any", "break_coins": 6}, "flavour": "Lightning, bottled and pointed."},
+    {"id": "fam-archivist-s-robe", "name": "Archivist's Robe", "slot": "armor", "tier": "common", "effect": {"reduction": 10}, "flavour": "Ink-stained cuffs.", "price": 40},
+    {"id": "fam-warded-cloak", "name": "Warded Cloak", "slot": "armor", "tier": "uncommon", "effect": {"reduction": 18}, "flavour": "Stitched with refusal runes.", "price": 90},
+    {"id": "fam-leash-mail", "name": "Leash-Mail", "slot": "armor", "tier": "rare", "effect": {"reduction": 26}, "flavour": "Every link asks permission first.", "price": 180},
+    {"id": "fam-guildbinder-s-mantle", "name": "Guildbinder's Mantle", "slot": "armor", "tier": "epic", "effect": {"reduction": 35}, "flavour": "Worn by those who bound a familiar well."},
+    {"id": "fam-the-rogue-familiar-s-hide", "name": "The Rogue Familiar's Hide", "slot": "armor", "tier": "legendary", "effect": {"reduction": 45, "first_miss_free": true}, "flavour": "Shed by the familiar that ignored its limits."},
+    {"id": "fam-wren-s-bookmark", "name": "Wren's Bookmark", "slot": "trinket", "tier": "common", "effect": {"xp_bonus": 10}, "flavour": "Always opens to the page you need.", "price": 40},
+    {"id": "fam-memory-shard", "name": "Memory Shard", "slot": "trinket", "tier": "uncommon", "effect": {"heal_on_objective": 3}, "flavour": "Holds one fact forever.", "price": 90},
+    {"id": "fam-step-limit-hourglass", "name": "Step-Limit Hourglass", "slot": "trinket", "tier": "rare", "effect": {"start_guards": 1}, "flavour": "Stops any loop that runs too long.", "price": 180},
+    {"id": "fam-confirmation-bell", "name": "Confirmation Bell", "slot": "trinket", "tier": "epic", "effect": {"block_first_miss": true, "coin_bonus": 15}, "flavour": "Rings before anything dangerous happens."},
+    {"id": "fam-the-binding-sigil", "name": "The Binding Sigil", "slot": "trinket", "tier": "legendary", "effect": {"start_guards": 1, "revive": true, "loot_luck": 20}, "flavour": "The mark that keeps a familiar loyal."},
+    {"id": "fam-guild-library-biscuit", "name": "Guild Library Biscuit", "slot": "food", "tier": "common", "effect": {"heal": 20}, "flavour": "Strictly no crumbs on the books.", "price": 15},
+    {"id": "fam-ink-black-coffee", "name": "Ink-Black Coffee", "slot": "food", "tier": "uncommon", "effect": {"next_battle": {"reduction": 20}}, "flavour": "For late-night binding.", "price": 30},
+    {"id": "fam-archivist-s-soup", "name": "Archivist's Soup", "slot": "food", "tier": "rare", "effect": {"next_battle": {"guards": 1}}, "flavour": "Simmered in a cauldron of notes.", "price": 60},
+    {"id": "fam-binding-night-feast", "name": "Binding Night Feast", "slot": "food", "tier": "epic", "effect": {"heal": 30, "next_battle": {"xp_bonus": 30}}, "flavour": "Served when a familiar first speaks.", "price": 100},
+    {"id": "fam-focus-tonic", "name": "Focus Tonic", "slot": "tonic", "tier": "uncommon", "effect": {"heal": 45}, "flavour": "Clears the noise.", "price": 50},
+    {"id": "fam-clarity-draught", "name": "Clarity Draught", "slot": "tonic", "tier": "rare", "effect": {"heal": 100}, "flavour": "Everything makes sense for a moment.", "price": 90},
+    {"id": "fam-the-rogue-familiar-s-collar", "name": "The Rogue Familiar's Collar", "slot": "relic", "tier": "legendary", "effect": {"xp_bonus": 5, "coin_bonus": 5}, "flavour": "The leash it slipped. You put it back on."}
   ]
 }
