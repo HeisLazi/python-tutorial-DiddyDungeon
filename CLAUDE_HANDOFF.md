@@ -122,6 +122,25 @@ Updated: 2026-10-22 · branch `feature/tauri-arcade` (fast-forwarded into
   `answer`/`answer_text`/`why` from `progress.hunter.identify`
   (`_without_identify_answer`). A test execs every generated snippet to check
   its answer.
+- **Grid floors and stairs (Phase C3):** new runs and every floor after a
+  boss use `_dungeon_generate_grid(seed, floor, modifier, region_id)`: 12
+  rooms carved from a 5x4 grid (seeded growth + 2 loops), start camp on the
+  west edge with a fight beside it, boss in the farthest room with a camp next
+  to it, 1-3 elites, a market, two fates. Same map dict shape as the lane map
+  (bidirectional edges); `run["floor_layout"] = "grid"` and
+  `run["floor_modifier"]` (deep/quiet) are top-level run keys. Projection fog
+  (`_dungeon_grid_visible`): visited rooms + their doors (two out at Insight
+  4) + the boss lair; hidden rooms are not sent. `room_choices` are the
+  unvisited doors of the current room (always <= 3); `dungeon_travel`
+  (`POST /api/dungeon/travel`) walks back to a visited room and is inert (no
+  camp, no banking). Selector on a boss node = boss beaten:
+  `_dungeon_route_choices` / `_dungeon_live_choices` offer stairs (Descend,
+  Deep: +1 difficulty, +1 elite, +1 part per fight; region delves get Path to
+  the next region, open runs a Quiet stair with one more camp). Stairs make
+  floor+1 and start at its camp (banks). This also frees old lane-map saves
+  that were stuck after the first boss. `run["room"]` now counts rooms
+  entered. UI: `DungeonGridMap` (frontier rooms travel-then-enter in one
+  click, stairs cards).
 - **Submit race fix:** `submitDungeon` waits for any in-flight editor
   checkpoint and saves unsaved edits before capturing PYR context (an autosave
   in between changed the revision and the answer was rejected as stale).

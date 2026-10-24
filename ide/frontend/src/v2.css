@@ -1462,3 +1462,5 @@
 .identify-result.right { border-color: var(--green, #4ade80); }
 .identify-result.right strong { color: var(--green, #4ade80); }
 .identify-result.wrong { border-color: var(--gold, #f5c542); }
+
+.forge-v2.dungeon-mode .dungeon-proto-map.grid-floor { min-height: 380px; }

@@ -212,7 +212,7 @@ class StateServiceBehaviorTests(unittest.TestCase):
         self.assertEqual(run["floor"], 1)
         self.assertEqual(run["room"], 1)
         self.assertEqual(run["room_type"], "selector")
-        self.assertEqual(len(run["room_choices"]), 3)
+        self.assertTrue(1 <= len(run["room_choices"]) <= 3)
         self.assertEqual(run["loadout"]["armor"], "Apprentice Coat")
         self.assertIsNone(run["loadout"]["trinket"])
         self.assertEqual(run["loadout"]["heals"], 1)
@@ -348,8 +348,8 @@ class StateServiceBehaviorTests(unittest.TestCase):
 
     def test_dungeon_verdicts_advance_rooms_without_campaign_rewards_and_support_rest_market_finish(self):
         service, path = self.make_service()
-        started = service.apply("dungeon_start_run", {"concept_id": "lists", "seed": "test-34"}, "player")
-        run = started["result"]["run"]
+        service.apply("dungeon_start_run", {"concept_id": "lists", "seed": "test-34"}, "player")
+        run = self.use_lane_map(service, path)
         run = service.apply(
             "dungeon_choose_room",
             {"run_id": run["run_id"], "choice_id": next(choice["id"] for choice in run["room_choices"] if choice["kind"] in {"encounter", "elite"} and choice["id"].endswith("c3"))},
@@ -411,8 +411,8 @@ class StateServiceBehaviorTests(unittest.TestCase):
 
     def test_dungeon_verdicts_support_legacy_rest_endpoint(self):
         service, path = self.make_service()
-        started = service.apply("dungeon_start_run", {"concept_id": "lists", "seed": "loop-seed"}, "player")
-        run = started["result"]["run"]
+        service.apply("dungeon_start_run", {"concept_id": "lists", "seed": "loop-seed"}, "player")
+        run = self.use_lane_map(service, path)
         run = service.apply("dungeon_choose_room", {"run_id": run["run_id"], "choice_id": next(choice["id"] for choice in run["room_choices"] if choice["kind"] == "encounter")}, "player")["result"]["run"]
         result = service.apply_internal(
             "dungeon_record_verdict",
@@ -587,6 +587,17 @@ class StateServiceBehaviorTests(unittest.TestCase):
         sign = next(item for item in service.hunter_projection(self.read(path))["signs"] if item["id"] == gain["signs"][0]["id"])
         self.assertEqual((sign["recovered"], sign["clean_casts"], sign["dungeon_clean"]), (1, 0, 0))
         self.assertEqual(cleared["result"]["run"]["last_result"]["hunter_gain"], gain)
+
+    def use_lane_map(self, service, path):
+        """Pin a run to the legacy three-lane map (tests about room mechanics)."""
+
+        state = self.read(path)
+        run = state["dungeon_run"]
+        run["map"] = service._dungeon_generate_map(run["seed"], floor=1)
+        run.pop("floor_layout", None)
+        run["room_choices"] = service._dungeon_route_choices(run)
+        path.write_text(json.dumps(state), encoding="utf-8")
+        return service.dungeon_projection(self.read(path))
 
     def enter_dungeon_room(self, service, path, kind, strength=1, insight=1):
         state = self.read(path)
@@ -870,6 +881,138 @@ class StateServiceBehaviorTests(unittest.TestCase):
         self.assertIsNone(right["hunter"]["identify"])
         self.assertEqual(right["hunter"]["oils"][0]["id"], right["oil"]["id"])
         self.assertTrue(right["hunter_gain"]["signs"])
+
+    def test_grid_floors_are_connected_and_well_formed(self):
+        from ide.server.state import LocalStateService
+        for seed in range(150):
+            for floor, modifier in ((1, None), (3, "deep"), (2, "quiet")):
+                grid = LocalStateService._dungeon_generate_grid(f"g{seed}", floor, modifier=modifier, region_id="flow")
+                nodes = {node["id"]: node for node in grid["nodes"]}
+                edges = grid["edges"]
+                self.assertLessEqual(len(nodes), 64)
+                self.assertTrue(all(1 <= node["row"] <= 4 and 1 <= node["column"] <= 5 for node in nodes.values()))
+                for key, values in edges.items():
+                    for value in values:
+                        self.assertIn(key, edges[value])  # doors go both ways
+                start = grid["current_node_id"]
+                seen, queue = {start}, [start]
+                while queue:
+                    for other in edges[queue.pop()]:
+                        if other not in seen:
+                            seen.add(other)
+                            queue.append(other)
+                self.assertEqual(seen, set(nodes))
+                kinds = [node["type"] for node in nodes.values()]
+                boss = next(node_id for node_id, node in nodes.items() if node["type"] == "boss")
+                self.assertNotIn(boss, edges[start])
+                self.assertGreaterEqual(kinds.count("encounter"), 3)
+                self.assertGreaterEqual(kinds.count("rest"), 2)
+                self.assertTrue(any(nodes[other]["type"] in {"encounter", "elite"} for other in edges[start]))
+                self.assertEqual(nodes[boss]["label"], "The Endless Warden")
+
+    def walk_floor(self, service, path, rng):
+        """Clear every room to the boss with travel thrown in; return stairs."""
+
+        for _ in range(80):
+            run = service.dungeon_projection(self.read(path))
+            self.assertLessEqual(len(run["room_choices"]), 3)
+            kind = run["room_type"]
+            if kind in {"encounter", "elite", "boss"}:
+                self.answer_room(service, path, "correct", f"w{rng.random()}")
+                continue
+            if kind in {"rest", "market"}:
+                service.apply("dungeon_leave_room", {"run_id": run["run_id"]}, "player")
+                continue
+            if kind == "mystery":
+                state = self.read(path)
+                state["dungeon_run"]["room_type"] = "selector"
+                state["dungeon_run"]["room_choices"] = service._dungeon_route_choices(state["dungeon_run"])
+                path.write_text(json.dumps(state), encoding="utf-8")
+                continue
+            choices = run["room_choices"]
+            if choices and choices[0]["kind"] == "stairs":
+                return choices
+            if rng.random() < 0.3 and len(run["visited_node_ids"]) > 1:
+                service.apply("dungeon_travel", {"run_id": run["run_id"], "node_id": rng.choice(run["visited_node_ids"])}, "player")
+                continue
+            if not choices:
+                # Dead end: walk back to an explored room that still has an unexplored door.
+                state = self.read(path)
+                route = state["dungeon_run"]["map"]
+                visited = set(route["visited_node_ids"])
+                target = next(node for node in route["visited_node_ids"] if any(other not in visited for other in route["edges"][node]))
+                service.apply("dungeon_travel", {"run_id": run["run_id"], "node_id": target}, "player")
+                continue
+            service.apply("dungeon_choose_room", {"run_id": run["run_id"], "choice_id": rng.choice(choices)["id"]}, "player")
+        self.fail("floor was never cleared")
+
+    def test_a_grid_floor_can_be_walked_to_the_boss_and_down_the_stairs(self):
+        import random as _random
+        for seed in ("walk-a", "walk-b", "walk-c"):
+            service, path = self.make_service()
+            state = self.read(path)
+            state["hunter"] = {"signs": {}, "stats_xp": {}, "spent": {"strength": 19}}
+            state["player"]["level"] = 20
+            path.write_text(json.dumps(state), encoding="utf-8")
+            service.apply("dungeon_start_run", {"seed": seed, "region_id": "basics"}, "player")
+            stairs = self.walk_floor(service, path, _random.Random(seed))
+            self.assertEqual([choice["label"] for choice in stairs][:2], ["Descend", "Deep stair"])
+            region_stair = next(choice for choice in stairs if choice["id"].startswith("stairs-region-"))
+            run = self.read(path)["dungeon_run"]
+            room_before = run["room"]
+            down = service.apply("dungeon_choose_room", {"run_id": run["run_id"], "choice_id": region_stair["id"]}, "player")["result"]["run"]
+            self.assertEqual(down["floor"], 2)
+            self.assertEqual(down["room_type"], "rest")
+            self.assertEqual(down["region"]["id"], "collections")
+            self.assertEqual(down["map"]["layout"], "grid")
+            self.assertGreater(down["room"], room_before)
+            self.assertEqual(down["pack"], [])  # the camp at the bottom banks it
+
+    def test_walking_back_to_a_camp_is_inert_and_death_still_takes_the_pack(self):
+        service, path = self.make_service()
+        service.apply("dungeon_start_run", {"seed": "inert", "region_id": "basics"}, "player")
+        run = self.read(path)["dungeon_run"]
+        start = run["map"]["current_node_id"]
+        fight = next(choice for choice in run["room_choices"] if choice["kind"] in {"encounter", "elite"})
+        service.apply("dungeon_choose_room", {"run_id": run["run_id"], "choice_id": fight["id"]}, "player")
+        while self.read(path)["dungeon_run"]["room_type"] in {"encounter", "elite"}:
+            self.answer_room(service, path, "correct", f"i{self.read(path)['dungeon_run']['question_number']}")
+        self.assertTrue(self.read(path)["dungeon_run"]["pack"])
+        back = service.apply("dungeon_travel", {"run_id": run["run_id"], "node_id": start}, "player")["result"]["run"]
+        self.assertEqual(back["room_type"], "selector")
+        self.assertTrue(back["pack"])
+        with self.assertRaises(StateCommandError):
+            service.apply("dungeon_travel", {"run_id": run["run_id"], "node_id": fight["id"].replace("-c", "-x")}, "player")
+        dead = service.apply_internal("dungeon_record_death", {"run_id": run["run_id"], "reason": "fell"})["result"]
+        self.assertTrue(dead["pack_lost"])
+
+    def test_a_legacy_run_stuck_at_its_beaten_boss_is_offered_stairs(self):
+        service, path = self.make_service()
+        service.apply("dungeon_start_run", {"concept_id": "loops", "seed": "legacy"}, "player")
+        state = self.read(path)
+        run = state["dungeon_run"]
+        lanes = service._dungeon_generate_map(run["seed"], floor=1)
+        boss = next(node for node in lanes["nodes"] if node["type"] == "boss")
+        lanes["current_node_id"] = boss["id"]
+        lanes["visited_node_ids"].append(boss["id"])
+        run.update({"map": lanes, "room_type": "selector", "room_choices": []})
+        run.pop("floor_layout", None)
+        path.write_text(json.dumps(state), encoding="utf-8")
+        projected = service.dungeon_projection(self.read(path))
+        self.assertEqual([choice["kind"] for choice in projected["room_choices"]], ["stairs"] * 3)
+        down = service.apply("dungeon_choose_room", {"run_id": run["run_id"], "choice_id": projected["room_choices"][0]["id"]}, "player")["result"]["run"]
+        self.assertEqual((down["floor"], down["map"]["layout"]), (2, "grid"))
+
+    def test_grid_fog_hides_unexplored_rooms(self):
+        service, path = self.make_service()
+        run = service.apply("dungeon_start_run", {"seed": "fog", "region_id": "flow"}, "player")["result"]["run"]
+        full = self.read(path)["dungeon_run"]["map"]
+        shown = {node["id"] for node in run["map"]["nodes"]}
+        start = full["current_node_id"]
+        boss = next(node["id"] for node in full["nodes"] if node["type"] == "boss")
+        self.assertEqual(shown, {start, boss, *full["edges"][start]})
+        self.assertLess(len(shown), len(full["nodes"]))
+        self.assertTrue(all(set(values) <= shown for values in run["map"]["edges"].values()))
 
     def test_warden_sigil_starts_each_fight_with_a_free_mistake(self):
         service, path = self.make_service()

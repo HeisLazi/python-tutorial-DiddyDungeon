@@ -372,6 +372,10 @@ class DungeonOilRequest(DungeonRunRequest):
     oil_id: str = Field(min_length=1, max_length=MAX_IDENTIFIER_LENGTH)
 
 
+class DungeonTravelRequest(DungeonRunRequest):
+    node_id: str = Field(min_length=1, max_length=MAX_IDENTIFIER_LENGTH)
+
+
 class PyrDungeonSubmissionRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -1052,6 +1056,11 @@ def equip_dungeon_item(payload: DungeonEquipRequest):
 @app.post("/api/dungeon/oil")
 def apply_dungeon_oil(payload: DungeonOilRequest):
     return _dungeon_player_action("dungeon_apply_oil", payload.model_dump())
+
+
+@app.post("/api/dungeon/travel")
+def travel_dungeon_map(payload: DungeonTravelRequest):
+    return _dungeon_player_action("dungeon_travel", payload.model_dump())
 
 
 @app.post("/api/dungeon/leave")

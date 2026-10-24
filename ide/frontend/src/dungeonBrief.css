@@ -212,3 +212,25 @@
 .dungeon-oils small { color: var(--dungeon-muted); font-size: 13px; }
 .dungeon-oils button { display: grid; gap: 2px; padding: 6px 10px; border: 1px solid var(--dungeon-green); background: transparent; color: var(--dungeon-green); font: inherit; text-align: left; cursor: pointer; }
 .dungeon-oils button:disabled { opacity: 0.6; cursor: default; }
+
+/* Grid floors (C3). Higher specificity than the lane map's fixed 8 rows. */
+.dungeon-screen-shell .dungeon-proto-map.grid-floor { min-height: 360px; gap: 10px; }
+.dungeon-proto-map.grid-floor .dungeon-map-node { min-height: 70px; }
+.dungeon-proto-map.grid-floor .dungeon-map-node strong { font-size: 11px; text-align: center; }
+.dungeon-proto-map.grid-floor .dungeon-map-node small { font-size: 9px; text-align: center; }
+.dungeon-proto-map.grid-floor .dungeon-map-node.frontier { border-style: dashed; border-color: color-mix(in srgb, var(--dungeon-green) 45%, var(--dungeon-line)); color: var(--dungeon-text); }
+.dungeon-proto-map.grid-floor .dungeon-map-node.lair { border-color: var(--dungeon-danger); color: var(--dungeon-danger); opacity: 0.85; }
+.dungeon-proto-map.grid-floor .dungeon-map-node:not(.visited):not(.reachable):not(.frontier):not(.lair) { opacity: 0.75; }
+.dungeon-stairs { display: grid; gap: 8px; margin-top: 10px; }
+.dungeon-stairs button { display: grid; grid-template-columns: 1fr auto; gap: 2px 10px; padding: 10px 12px; border: 2px solid var(--dungeon-gold); background: transparent; color: var(--dungeon-text); font: inherit; text-align: left; cursor: pointer; }
+.dungeon-stairs button small { grid-column: 1; color: var(--dungeon-muted); }
+.dungeon-stairs button b { grid-column: 2; grid-row: 1 / span 2; align-self: center; color: var(--dungeon-gold); font-size: 20px; }
+
+.dungeon-proto-map.grid-floor .dungeon-map-node { grid-template-columns: 1fr; grid-template-rows: auto auto auto; justify-items: center; align-content: center; gap: 3px; padding: 4px 2px; }
+.dungeon-proto-map.grid-floor .dungeon-map-node > span { grid-row: auto; }
+.dungeon-screen-shell .dungeon-proto-map.grid-floor .dungeon-map-node strong { white-space: normal; overflow: visible; text-overflow: clip; font-size: 10px; }
+.dungeon-proto-map.grid-floor .dungeon-map-node.current:disabled > span, .dungeon-proto-map.grid-floor .dungeon-map-node.current:disabled strong, .dungeon-proto-map.grid-floor .dungeon-map-node.current:disabled small { opacity: 1; }
+.dungeon-proto-map.grid-floor .dungeon-map-node.current { color: var(--dungeon-gold); }
+.dungeon-proto-map.grid-floor .dungeon-map-node.current { background: color-mix(in srgb, var(--dungeon-gold) 16%, #171e17); border-width: 2px; }
+.dungeon-proto-map.grid-floor .dungeon-map-edges line { stroke-width: 4; opacity: 0.6; }
+.dungeon-proto-map.grid-floor .dungeon-map-edges line.active { opacity: 1; }

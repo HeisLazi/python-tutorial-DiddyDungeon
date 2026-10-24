@@ -140,7 +140,8 @@ book (level, XP bar, rank gates, perks), milestones and the hunt journal.
 1. **Campaign story pass:** Blackjack first; a story arc, hunter-voice contract
    briefs, each contract showing its beast and sign and linking to the Codex.
 2. **Dungeon as a crawler** (region delves, region beasts and named bosses
-   shipped 2026-10-24 as Phase C1; the room grid inside a floor is C3): region
+   shipped 2026-10-24 as Phase C1; room-grid floors under fog, walk-back
+   travel and stairs between floors shipped 2026-10-24 as C3): region
    delves, bestiary mobs weighted to weak signs, floor goals and named bosses,
    plus a polish pass.
 3. **Materials and crafting** (drops, banking and elite trinkets shipped

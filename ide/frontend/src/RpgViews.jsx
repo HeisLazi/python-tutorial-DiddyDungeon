@@ -2719,8 +2719,80 @@ const DUNGEON_ROOM_META = {
 
 const dungeonRoomMeta = (type) => DUNGEON_ROOM_META[type] || DUNGEON_ROOM_META.selector
 
-function DungeonMap({ run, onChoose, busy }) {
+const GRID_ROOM_WORDS = { rest: 'Camp', encounter: 'Gate', elite: 'Elite', market: 'Market', mystery: 'Fate', boss: 'Boss' }
+const FLOOR_MODIFIERS = { deep: 'DEEP FLOOR · HARDER, RICHER', quiet: 'QUIET FLOOR · ONE MORE CAMP' }
+
+// A floor as a room grid under fog: explored rooms, their doors, the boss lair.
+function DungeonGridMap({ run, onChoose, onTravel, busy }) {
+  const route = run.map
+  const columns = Number(route.columns) || 5
+  const rows = Number(route.rows) || 4
+  const currentId = route.current_node_id
+  const visited = new Set(run.visited_node_ids || [])
+  const choices = Array.isArray(run.room_choices) ? run.room_choices : []
+  const choiceIds = new Set(choices.map((choice) => choice.id))
+  const stairs = choices.filter((choice) => choice.kind === 'stairs')
+  const nodes = route.nodes || []
+  const byId = Object.fromEntries(nodes.map((node) => [node.id, node]))
+  const edges = route.edges || {}
+  const selector = run.room_type === 'selector'
+  const point = (node) => ({ x: (Number(node.column) - 0.5) * (100 / columns), y: (Number(node.row) - 0.5) * (100 / rows) })
+  const viaFor = (node) => (edges[node.id] || []).find((id) => visited.has(id))
+  const enter = async (node) => {
+    if (choiceIds.has(node.id)) return onChoose?.(run.run_id, node.id)
+    if (visited.has(node.id)) return onTravel?.(run.run_id, node.id)
+    // A door off another explored room: walk there, then go through it.
+    const via = viaFor(node)
+    if (via && onTravel) {
+      const moved = await onTravel(run.run_id, via).catch(() => null)
+      if (moved) return onChoose?.(run.run_id, node.id)
+    }
+    return null
+  }
+  const lines = []
+  Object.entries(edges).forEach(([fromId, toIds]) => (toIds || []).forEach((toId) => {
+    if (fromId < toId && byId[fromId] && byId[toId]) lines.push([byId[fromId], byId[toId]])
+  }))
+  return (
+    <section className="dungeon-proto-panel dungeon-map-panel" data-testid="dungeon-map" aria-label="Map and route">
+      <div className="dungeon-panel-heading"><div><span className="dungeon-eyebrow">LAYER ONE</span><h2>Floor {route.floor || run.floor}</h2></div><span className="dungeon-panel-tag">{FLOOR_MODIFIERS[route.modifier] || (run.region?.label || 'OPEN DUNGEON').toUpperCase()}</span></div>
+      <p className="dungeon-panel-copy">Explore room by room. You see the doors of rooms you have explored, and you can always feel the boss lair. Between fights, walk back through explored rooms to take another door.</p>
+      <div className="dungeon-map-legend"><span><i className="legend-dot rest" />camp</span><span><i className="legend-dot market" />market</span><span><i className="legend-dot encounter" />gate</span><span><i className="legend-dot elite" />elite</span><span><i className="legend-dot mystery" />fate</span><span><i className="legend-dot boss" />boss</span></div>
+      <div className="dungeon-proto-map grid-floor" role="grid" aria-label={`Dungeon floor ${route.floor || run.floor}`} style={{ gridTemplateColumns: `repeat(${columns}, 1fr)`, gridTemplateRows: `repeat(${rows}, minmax(78px, 1fr))` }}>
+        <svg className="dungeon-map-edges" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+          {lines.map(([a, b]) => { const p = point(a); const q = point(b); return <line key={`${a.id}-${b.id}`} className={visited.has(a.id) && visited.has(b.id) ? 'active' : ''} x1={p.x} y1={p.y} x2={q.x} y2={q.y} /> })}
+        </svg>
+        {nodes.map((node) => {
+          const isCurrent = node.id === currentId
+          const isVisited = visited.has(node.id)
+          const isNext = choiceIds.has(node.id)
+          const isFrontier = !isVisited && !isNext && Boolean(viaFor(node))
+          const lair = node.type === 'boss' && !isVisited && !isNext && !isFrontier
+          const meta = dungeonRoomMeta(node.type)
+          const clickable = selector && !isCurrent && (isNext || isVisited || isFrontier)
+          const besideYou = (edges[currentId] || []).includes(node.id)
+          const note = isCurrent ? 'YOU' : isNext ? 'NEXT' : !isVisited && besideYou ? 'DOOR' : isFrontier ? 'VIA EXPLORED' : isVisited ? 'explored' : lair ? 'lair' : ''
+          return (
+            <button key={node.id} type="button" className={`dungeon-map-node ${node.type} ${isCurrent ? 'current' : ''} ${isVisited ? 'visited' : ''} ${isNext ? 'reachable' : ''} ${isFrontier ? 'frontier' : ''} ${lair ? 'lair' : ''}`} style={{ gridColumn: node.column, gridRow: node.row }} disabled={!clickable || busy} onClick={() => enter(node)} title={node.label || meta.label} aria-label={`${node.label || meta.label}${note ? `, ${note}` : ''}`}>
+              <span aria-hidden="true"><RouteIcon id={isCurrent ? 'flame' : meta.iconId} /></span><strong>{GRID_ROOM_WORDS[node.type] || meta.label}</strong>{note && <small>{note}</small>}
+            </button>
+          )
+        })}
+      </div>
+      {stairs.length > 0 && (
+        <div className="dungeon-stairs" aria-label="Choose your stair">
+          <span className="dungeon-eyebrow">THE BOSS HAS FALLEN · CHOOSE YOUR STAIR</span>
+          {stairs.map((choice) => <button key={choice.id} type="button" onClick={() => onChoose?.(run.run_id, choice.id)} disabled={busy || !onChoose}><strong>{choice.label}</strong><small>{choice.description}</small><b>↓</b></button>)}
+        </div>
+      )}
+      <div className="dungeon-route-footer"><span>ROOM {run.room ?? 1} · {run.current_node?.label || 'route'}</span><span>{stairs.length ? 'floor cleared' : selector ? `${choices.length} door${choices.length === 1 ? '' : 's'} from here` : 'room committed · map locked'}</span></div>
+    </section>
+  )
+}
+
+function DungeonMap({ run, onChoose, onTravel, busy }) {
   if (!run?.active) return null
+  if (run.map?.layout === 'grid') return <DungeonGridMap run={run} onChoose={onChoose} onTravel={onTravel} busy={busy} />
   const currentFloor = Number(run.floor || 1)
   const route = run.map && Array.isArray(run.map.nodes) ? run.map : null
   const currentId = route?.current_node_id || run.current_node?.id
@@ -3141,7 +3213,7 @@ function DungeonVerdictCard({ card, avatar, onClose, onContinue }) {
   )
 }
 
-function DungeonScreen({ avatar, hunter, onApplyOil, dungeon, revision, onStart, onChoose, onRest, onCampAction, onRevealRisk, onEnterRisk, onMarketPurchase, onEquip, onLeave, onFinish, onReset, submitDungeon, busy, saving, editorContent, onEditorChange, onSave }) {
+function DungeonScreen({ avatar, hunter, onApplyOil, onTravel, dungeon, revision, onStart, onChoose, onRest, onCampAction, onRevealRisk, onEnterRisk, onMarketPurchase, onEquip, onLeave, onFinish, onReset, submitDungeon, busy, saving, editorContent, onEditorChange, onSave }) {
   const [selectedClassId, setSelectedClassId] = useState('')
   const [submitStatus, setSubmitStatus] = useState('')
   const [roomTab, setRoomTab] = useState('room')
@@ -3229,7 +3301,7 @@ function DungeonScreen({ avatar, hunter, onApplyOil, dungeon, revision, onStart,
     <div className="dungeon-screen-shell" data-testid="dungeon" data-campaign-revision={revision}>
       {verdictCard && <ShellPortal scope="dungeon-screen-shell"><DungeonVerdictCard card={verdictCard} avatar={avatar} onClose={() => setVerdictCard(null)} onContinue={() => { setVerdictCard(null); setRoomTab('map') }} /></ShellPortal>}
       <header className="dungeon-local-header"><div className="dungeon-local-brand"><span className="dungeon-brand-mark"><RouteIcon id="spark" /></span><div><span className="dungeon-eyebrow">INFINITE DUNGEON</span><h1>{run.active ? `Floor ${run.floor} · Room ${run.room}` : 'Design Lab'}</h1></div></div><span className="dungeon-local-badge"><i /> CANONICAL RUN · STATE GATEWAY</span>{run.active ? <div className="dungeon-run-stats" aria-label="Run stats"><div><small>FLOOR</small><strong>{run.floor ?? 1}</strong></div><div><small>HP</small><strong>{loadout.hp ?? 0}/{loadout.max_hp ?? 0}</strong></div><div><small>SCORE</small><strong>{run.score ?? 0}</strong></div><div><small>COINS</small><strong>{run.run_coins ?? 0}</strong></div><button className="dungeon-reset-header" type="button" onClick={() => onReset?.(run.run_id)} disabled={busy || !onReset}>Reset run</button></div> : <div className="dungeon-header-note"><span className="dungeon-eyebrow">BEFORE THE DESCENT</span><strong>CHOOSE YOUR CLASS</strong></div>}</header>
-      {!run.active ? <main className="dungeon-class-select" aria-label="Choose a dungeon class"><section className="dungeon-class-hero"><span className="dungeon-eyebrow">RUN SETUP · FLOOR 1</span><h2>So how you wanna play it.</h2><p>Pick a class</p>{lastRunLoot && <p className="delve-last-run">{lastRunLoot}</p>}</section><section className="dungeon-class-grid" role="radiogroup" aria-label="Dungeon classes">{DUNGEON_CLASSES.map((starterClass) => <button key={starterClass.id} type="button" role="radio" aria-checked={selectedClassId === starterClass.id} className={`dungeon-class-card ${selectedClassId === starterClass.id ? 'selected' : ''}`} onClick={() => setSelectedClassId(starterClass.id)} disabled={busy}><span className="dungeon-class-card-top"><span className="dungeon-class-icon" aria-hidden="true"><RouteIcon id={starterClass.iconId} /></span><span><span className="dungeon-eyebrow">{starterClass.role}</span><strong>{starterClass.name}</strong></span>{selectedClassId === starterClass.id && <small className="dungeon-class-picked">READY</small>}</span><span className="dungeon-class-weapon"><span className="dungeon-class-label">STARTER WEAPON</span><strong>{starterClass.weapon}</strong><small>{starterClass.weaponDetail || 'A bounded run weapon for this playstyle.'}</small></span><span className="dungeon-class-passive"><span className="dungeon-class-label">PASSIVE</span><p>{starterClass.passive}</p></span></button>)}</section><DelvePicker hunter={hunter} selected={selectedRegionId} onSelect={setSelectedRegionId} busy={busy} />{selectedClassId && <div className="dungeon-class-cta" aria-live="polite"><button className="dungeon-primary-button" type="button" onClick={start} disabled={busy}>{busy ? 'Starting…' : 'Enter the dungeon'} <span>→</span></button></div>}</main> : roomTab === 'code' ? <section className="dungeon-ide-screen" aria-label="Challenge IDE"><div className="dungeon-ide-topline"><button type="button" className="dungeon-ghost-button" onClick={() => setRoomTab('room')}>← Map locked</button><span className="dungeon-eyebrow">{run.room_type === 'boss' ? 'FLOOR BOSS · FINAL DESTINATION' : run.room_type === 'elite' ? 'ELITE GATE · TRINKET DROP' : 'QUESTION ROOM · NO ROUTE CONTROLS'}</span><span className="dungeon-ide-risk">FAILURE COSTS HP</span></div><div className="dungeon-ide-layout"><DungeonQuestionBrief run={run} question={question} loadout={loadout} editorContent={editorContent} avatar={avatar} hunter={hunter} onApplyOil={onApplyOil} busy={busy} /><div className="dungeon-code-workbench"><div className="dungeon-editor-toolbar"><span>dungeon.py · current room buffer</span><span>PYTHON · MONACO · LOCAL COMPLETION</span></div><DungeonEditorSurface value={editorContent || ''} onChange={onEditorChange} onSave={onSave} onSubmit={submit} busy={busy} saving={saving} />{submitStatus && <small className="battle-submit-status" role="status">{submitStatus}</small>}</div></div></section> : <><div className="dungeon-workspace-tabs" role="tablist" aria-label="Dungeon workspace"><button type="button" role="tab" aria-selected={roomTab === 'map'} className={roomTab === 'map' ? 'active' : ''} onClick={() => setRoomTab('map')}>Map &amp; route</button><button type="button" role="tab" aria-selected={roomTab === 'room'} className={roomTab === 'room' ? 'active' : ''} onClick={() => setRoomTab('room')}>Room screen</button><button type="button" role="tab" aria-selected={roomTab === 'code'} className={roomTab === 'code' ? 'active' : ''} onClick={openCode} disabled={!['encounter', 'elite', 'boss'].includes(run.room_type)}>Code editor</button></div><div className="dungeon-prototype-grid" data-testid="dungeon-tab-panel"><DungeonMap run={run} onChoose={chooseRoom} busy={busy} /><DungeonRoomPanel run={run} question={question} loadout={loadout} onRest={onRest} onCampAction={onCampAction} onRevealRisk={onRevealRisk} onEnterRisk={onEnterRisk} onMarketPurchase={onMarketPurchase} onLeave={onLeave} onOpenCode={openCode} busy={busy} /><DungeonCharacterPanel run={run} tab={characterTab} setTab={setCharacterTab} onEquip={onEquip} busy={busy} onFinish={onFinish} onReset={onReset} /></div><p className="dungeon-checkpoint-note">{statusText} Run <code>{run.run_id}</code> will resume after a Forge or workstation restart; death is the only reset.</p></>}
+      {!run.active ? <main className="dungeon-class-select" aria-label="Choose a dungeon class"><section className="dungeon-class-hero"><span className="dungeon-eyebrow">RUN SETUP · FLOOR 1</span><h2>So how you wanna play it.</h2><p>Pick a class</p>{lastRunLoot && <p className="delve-last-run">{lastRunLoot}</p>}</section><section className="dungeon-class-grid" role="radiogroup" aria-label="Dungeon classes">{DUNGEON_CLASSES.map((starterClass) => <button key={starterClass.id} type="button" role="radio" aria-checked={selectedClassId === starterClass.id} className={`dungeon-class-card ${selectedClassId === starterClass.id ? 'selected' : ''}`} onClick={() => setSelectedClassId(starterClass.id)} disabled={busy}><span className="dungeon-class-card-top"><span className="dungeon-class-icon" aria-hidden="true"><RouteIcon id={starterClass.iconId} /></span><span><span className="dungeon-eyebrow">{starterClass.role}</span><strong>{starterClass.name}</strong></span>{selectedClassId === starterClass.id && <small className="dungeon-class-picked">READY</small>}</span><span className="dungeon-class-weapon"><span className="dungeon-class-label">STARTER WEAPON</span><strong>{starterClass.weapon}</strong><small>{starterClass.weaponDetail || 'A bounded run weapon for this playstyle.'}</small></span><span className="dungeon-class-passive"><span className="dungeon-class-label">PASSIVE</span><p>{starterClass.passive}</p></span></button>)}</section><DelvePicker hunter={hunter} selected={selectedRegionId} onSelect={setSelectedRegionId} busy={busy} />{selectedClassId && <div className="dungeon-class-cta" aria-live="polite"><button className="dungeon-primary-button" type="button" onClick={start} disabled={busy}>{busy ? 'Starting…' : 'Enter the dungeon'} <span>→</span></button></div>}</main> : roomTab === 'code' ? <section className="dungeon-ide-screen" aria-label="Challenge IDE"><div className="dungeon-ide-topline"><button type="button" className="dungeon-ghost-button" onClick={() => setRoomTab('room')}>← Map locked</button><span className="dungeon-eyebrow">{run.room_type === 'boss' ? 'FLOOR BOSS · FINAL DESTINATION' : run.room_type === 'elite' ? 'ELITE GATE · TRINKET DROP' : 'QUESTION ROOM · NO ROUTE CONTROLS'}</span><span className="dungeon-ide-risk">FAILURE COSTS HP</span></div><div className="dungeon-ide-layout"><DungeonQuestionBrief run={run} question={question} loadout={loadout} editorContent={editorContent} avatar={avatar} hunter={hunter} onApplyOil={onApplyOil} busy={busy} /><div className="dungeon-code-workbench"><div className="dungeon-editor-toolbar"><span>dungeon.py · current room buffer</span><span>PYTHON · MONACO · LOCAL COMPLETION</span></div><DungeonEditorSurface value={editorContent || ''} onChange={onEditorChange} onSave={onSave} onSubmit={submit} busy={busy} saving={saving} />{submitStatus && <small className="battle-submit-status" role="status">{submitStatus}</small>}</div></div></section> : <><div className="dungeon-workspace-tabs" role="tablist" aria-label="Dungeon workspace"><button type="button" role="tab" aria-selected={roomTab === 'map'} className={roomTab === 'map' ? 'active' : ''} onClick={() => setRoomTab('map')}>Map &amp; route</button><button type="button" role="tab" aria-selected={roomTab === 'room'} className={roomTab === 'room' ? 'active' : ''} onClick={() => setRoomTab('room')}>Room screen</button><button type="button" role="tab" aria-selected={roomTab === 'code'} className={roomTab === 'code' ? 'active' : ''} onClick={openCode} disabled={!['encounter', 'elite', 'boss'].includes(run.room_type)}>Code editor</button></div><div className="dungeon-prototype-grid" data-testid="dungeon-tab-panel"><DungeonMap run={run} onChoose={chooseRoom} onTravel={onTravel} busy={busy} /><DungeonRoomPanel run={run} question={question} loadout={loadout} onRest={onRest} onCampAction={onCampAction} onRevealRisk={onRevealRisk} onEnterRisk={onEnterRisk} onMarketPurchase={onMarketPurchase} onLeave={onLeave} onOpenCode={openCode} busy={busy} /><DungeonCharacterPanel run={run} tab={characterTab} setTab={setCharacterTab} onEquip={onEquip} busy={busy} onFinish={onFinish} onReset={onReset} /></div><p className="dungeon-checkpoint-note">{statusText} Run <code>{run.run_id}</code> will resume after a Forge or workstation restart; death is the only reset.</p></>}
     </div>
   )
 }
@@ -3643,7 +3715,7 @@ function SettingsScreen({ preferences, setters, resetLayout, account, accountBus
   )
 }
 
-export function GameScreen({ pyr, settingsAi, runtime, setAvatar, selectCampaign, hunter, spendStatPoint, hunterActions, onDungeonApplyOil, activeView, progress, revision, avatarDataUrl = '', encounter, codexProjection, practiceProjection, equipmentProjection, dungeon, dungeonEditorContent, onDungeonEditorChange, onSaveDungeon, onDungeonChoose, onDungeonRest, onDungeonCampAction, onDungeonRevealRisk, onDungeonEnterRisk, onDungeonMarketPurchase, onDungeonEquip, onDungeonLeave, onDungeonFinish, onDungeonReset, purchaseCosmetic, purchaseMarketItem, equipCosmetic, equipCampaignItem, buildRoomUpgrade, performHomesteadAction, saveCodexNote, busy, dungeonSaving, submitBattle, submitBoss, submitDungeon, onStartDungeon, onPracticePrompt, preferences, setters, resetLayout, account, accountBusy, accountNotice, onSignIn, onSignUp, onSignOut, onDeviceLabelSave, onResolveConflict, workspaceTransfer, workspaceTransferBusy, workspaceTransferNotice, onWorkspaceTransferRefresh, onWorkspaceTransferPush, onWorkspaceTransferPreviewPull, onWorkspaceTransferApplyPull, onNavigate, tutorCode, tutorDirty, tutorExternalChange, editorFontSize = 14, onTutorChange, onTutorSave, onTutorFormat, onTutorRun, onTutorReloadExternal, onTutorKeepEdits, campaignReady = true, showNavigation = true }) {
+export function GameScreen({ pyr, settingsAi, runtime, setAvatar, selectCampaign, hunter, spendStatPoint, hunterActions, onDungeonApplyOil, onDungeonTravel, activeView, progress, revision, avatarDataUrl = '', encounter, codexProjection, practiceProjection, equipmentProjection, dungeon, dungeonEditorContent, onDungeonEditorChange, onSaveDungeon, onDungeonChoose, onDungeonRest, onDungeonCampAction, onDungeonRevealRisk, onDungeonEnterRisk, onDungeonMarketPurchase, onDungeonEquip, onDungeonLeave, onDungeonFinish, onDungeonReset, purchaseCosmetic, purchaseMarketItem, equipCosmetic, equipCampaignItem, buildRoomUpgrade, performHomesteadAction, saveCodexNote, busy, dungeonSaving, submitBattle, submitBoss, submitDungeon, onStartDungeon, onPracticePrompt, preferences, setters, resetLayout, account, accountBusy, accountNotice, onSignIn, onSignUp, onSignOut, onDeviceLabelSave, onResolveConflict, workspaceTransfer, workspaceTransferBusy, workspaceTransferNotice, onWorkspaceTransferRefresh, onWorkspaceTransferPush, onWorkspaceTransferPreviewPull, onWorkspaceTransferApplyPull, onNavigate, tutorCode, tutorDirty, tutorExternalChange, editorFontSize = 14, onTutorChange, onTutorSave, onTutorFormat, onTutorRun, onTutorReloadExternal, onTutorKeepEdits, campaignReady = true, showNavigation = true }) {
   const wideRoute = ['hub', 'character', 'homestead', 'codex', 'tutor', 'settings'].includes(activeView)
   // Historical contract marker: const wideRoute = ['hub', 'character', 'homestead', 'codex', 'settings']
   const withWideNavigation = (screen) => wideRoute && showNavigation
@@ -3666,7 +3738,7 @@ export function GameScreen({ pyr, settingsAi, runtime, setAvatar, selectCampaign
   // withWideNavigation(<Codex progress={progress} revision={revision} codexProjection={codexProjection} showNavigation={false} />)
   if (activeView === 'character') return withWideNavigation(<CharacterSheet progress={progress} revision={revision} avatarDataUrl={avatarDataUrl} encounter={encounter} codexProjection={codexProjection} onNavigate={onNavigate} />)
   if (activeView === 'homestead') return withWideNavigation(<Homestead hunter={hunter} spendStatPoint={spendStatPoint} progress={progress} revision={revision} equipmentProjection={equipmentProjection} purchaseCosmetic={purchaseCosmetic} equipCosmetic={equipCosmetic} equipCampaignItem={equipCampaignItem} buildRoomUpgrade={buildRoomUpgrade} performHomesteadAction={performHomesteadAction} busy={busy} onNavigate={onNavigate} />)
-  if (activeView === 'dungeon') return <DungeonScreen avatar={equipmentProjection?.avatar} hunter={hunter} onApplyOil={onDungeonApplyOil} dungeon={dungeon} revision={revision} onStart={onStartDungeon} onChoose={onDungeonChoose} onRest={onDungeonRest} onCampAction={onDungeonCampAction} onRevealRisk={onDungeonRevealRisk} onEnterRisk={onDungeonEnterRisk} onMarketPurchase={onDungeonMarketPurchase} onEquip={onDungeonEquip} onLeave={onDungeonLeave} onFinish={onDungeonFinish} onReset={onDungeonReset} submitDungeon={submitDungeon} busy={busy} saving={dungeonSaving} editorContent={dungeonEditorContent} onEditorChange={onDungeonEditorChange} onSave={onSaveDungeon} />
+  if (activeView === 'dungeon') return <DungeonScreen avatar={equipmentProjection?.avatar} hunter={hunter} onApplyOil={onDungeonApplyOil} onTravel={onDungeonTravel} dungeon={dungeon} revision={revision} onStart={onStartDungeon} onChoose={onDungeonChoose} onRest={onDungeonRest} onCampAction={onDungeonCampAction} onRevealRisk={onDungeonRevealRisk} onEnterRisk={onDungeonEnterRisk} onMarketPurchase={onDungeonMarketPurchase} onEquip={onDungeonEquip} onLeave={onDungeonLeave} onFinish={onDungeonFinish} onReset={onDungeonReset} submitDungeon={submitDungeon} busy={busy} saving={dungeonSaving} editorContent={dungeonEditorContent} onEditorChange={onDungeonEditorChange} onSave={onSaveDungeon} />
   if (activeView === 'practice') return <PracticeScreen progress={progress} revision={revision} practiceProjection={practiceProjection} onPracticePrompt={onPracticePrompt} busy={busy} />
   if (activeView === 'settings') return <SettingsScreen ai={settingsAi} runtime={runtime} preferences={preferences} setters={setters} resetLayout={resetLayout} account={account} accountBusy={accountBusy} accountNotice={accountNotice} onSignIn={onSignIn} onSignUp={onSignUp} onSignOut={onSignOut} onDeviceLabelSave={onDeviceLabelSave} onResolveConflict={onResolveConflict} workspaceTransfer={workspaceTransfer} workspaceTransferBusy={workspaceTransferBusy} workspaceTransferNotice={workspaceTransferNotice} onWorkspaceTransferRefresh={onWorkspaceTransferRefresh} onWorkspaceTransferPush={onWorkspaceTransferPush} onWorkspaceTransferPreviewPull={onWorkspaceTransferPreviewPull} onWorkspaceTransferApplyPull={onWorkspaceTransferApplyPull} revision={revision} />
   return null

@@ -411,6 +411,7 @@ ACTION_DEFINITIONS: dict[str, ActionDefinition] = {
     "dungeon_market_purchase": ActionDefinition(frozenset({"player"})),
     "dungeon_equip_item": ActionDefinition(frozenset({"player"})),
     "dungeon_apply_oil": ActionDefinition(frozenset({"player"})),
+    "dungeon_travel": ActionDefinition(frozenset({"player"})),
     "hunter_craft_oil": ActionDefinition(frozenset({"player"})),
     "hunter_upgrade_kit": ActionDefinition(frozenset({"player"})),
     "hunter_identify_start": ActionDefinition(frozenset({"player"})),
@@ -889,6 +890,18 @@ HUNTER_KIT_COAT_HP = 8
 DUNGEON_VIAL = "unmarked-vial"
 DUNGEON_MATERIAL_NAMES[DUNGEON_VIAL] = "Unmarked Vial"
 HUNTER_IDENTIFY_TIER_WEIGHTS = (("ward", 6), ("slowing", 3), ("bane", 1))
+
+# ── Floor grids and stairs ───────────────────────────────────────────────
+# A floor is a small grid of rooms under fog: you see explored rooms and
+# their doors (two rooms out with 4 Insight), and the boss lair is always
+# felt. Explored rooms can be walked back through; doing so is inert (no
+# camp, no banking). Beating the boss offers stairs to the next floor.
+DUNGEON_GRID_COLUMNS = 5
+DUNGEON_GRID_ROWS = 4
+DUNGEON_GRID_ROOMS = 12
+DUNGEON_GRID_LOOPS = 2
+DUNGEON_GRID_FAR_SIGHT_INSIGHT = 4
+DUNGEON_DEEP_EXTRA_PARTS = 1
 
 
 def _identify_snippet(sign_id: str, seed: str) -> dict[str, Any]:
@@ -2895,7 +2908,11 @@ class LocalStateService:
         drops: dict[str, int] = {}
         sign_id = next((sign for sign in hunter_signs_for(concept) if sign in HUNTER_BEASTS), None)
         if sign_id:
-            drops[HUNTER_BEASTS[sign_id]["part"]] = DUNGEON_LOOT_PARTS.get(room_type, 1) + (DUNGEON_CLEAN_FIGHT_BONUS if clean else 0)
+            drops[HUNTER_BEASTS[sign_id]["part"]] = (
+                DUNGEON_LOOT_PARTS.get(room_type, 1)
+                + (DUNGEON_CLEAN_FIGHT_BONUS if clean else 0)
+                + (DUNGEON_DEEP_EXTRA_PARTS if run.get("floor_modifier") == "deep" else 0)
+            )
         region = DUNGEON_REGIONS.get(str(run.get("region_id") or ""))
         if room_type == "boss" and region:
             drops[region["essence"]] = 1
@@ -2968,7 +2985,7 @@ class LocalStateService:
         room_type = str(run.get("room_type") or "encounter")
         difficulty = min(
             MAX_DUNGEON_DIFFICULTY,
-            max(1, 1 + (floor - 1) // 2 + (2 if room_type == "elite" else 3 if room_type == "boss" else 0)),
+            max(1, 1 + (floor - 1) // 2 + (2 if room_type == "elite" else 3 if room_type == "boss" else 0) + (1 if run.get("floor_modifier") == "deep" else 0)),
         )
         types = ("true_false", "multiple_choice", "code_checkpoint", "bug_hunt", "short_explanation")
         question_type = types[(room - 1) % len(types)]
@@ -3163,6 +3180,197 @@ class LocalStateService:
         return digest[0]
 
     @classmethod
+    def _dungeon_generate_grid(cls, seed: str, floor: int, *, modifier: str | None = None, region_id: object = None) -> dict[str, Any]:
+        """One floor as a connected room grid: a camp on the west edge, the
+        boss in the farthest room, a camp beside the boss, and a seeded mix
+        of gates, elites, fates and a market in between."""
+
+        floor = max(1, min(MAX_DUNGEON_FLOOR, int(floor)))
+        rng = random.Random(f"{seed}:{floor}:grid")
+
+        def neighbours(cell: tuple[int, int]) -> list[tuple[int, int]]:
+            row, column = cell
+            return [
+                (r, c) for r, c in ((row - 1, column), (row + 1, column), (row, column - 1), (row, column + 1))
+                if 1 <= r <= DUNGEON_GRID_ROWS and 1 <= c <= DUNGEON_GRID_COLUMNS
+            ]
+
+        start = (rng.randint(1, DUNGEON_GRID_ROWS), 1)
+        cells = {start}
+        links: set[frozenset[tuple[int, int]]] = set()
+        while len(cells) < DUNGEON_GRID_ROOMS:
+            frontier = sorted((cell, other) for cell in cells for other in neighbours(cell) if other not in cells)
+            cell, other = rng.choice(frontier)
+            cells.add(other)
+            links.add(frozenset((cell, other)))
+        extra = sorted(
+            {frozenset((cell, other)) for cell in cells for other in neighbours(cell) if other in cells} - links,
+            key=lambda pair: sorted(pair),
+        )
+        links.update(rng.sample(extra, min(DUNGEON_GRID_LOOPS, len(extra))))
+        adjacent: dict[tuple[int, int], list[tuple[int, int]]] = {cell: [] for cell in cells}
+        for pair in links:
+            a, b = sorted(pair)
+            adjacent[a].append(b)
+            adjacent[b].append(a)
+        distance = {start: 0}
+        queue = [start]
+        while queue:
+            cell = queue.pop(0)
+            for other in sorted(adjacent[cell]):
+                if other not in distance:
+                    distance[other] = distance[cell] + 1
+                    queue.append(other)
+        farthest = max(distance.values())
+        boss = rng.choice(sorted(cell for cell, value in distance.items() if value == farthest))
+        kinds: dict[tuple[int, int], str] = {start: "rest", boss: "boss"}
+        prep = rng.choice(sorted(cell for cell in adjacent[boss] if distance[cell] == farthest - 1))
+        kinds[prep] = "rest"
+        rest = [cell for cell in sorted(cells) if cell not in kinds]
+        rng.shuffle(rest)
+        elites = 1 + (1 if floor >= 3 else 0) + (1 if modifier == "deep" else 0)
+        far = [cell for cell in rest if distance[cell] >= 2]
+        for cell in far[:elites]:
+            kinds[cell] = "elite"
+        rest = [cell for cell in rest if cell not in kinds]
+        plan = ["market", "mystery", "mystery"] + (["rest"] if modifier == "quiet" else [])
+        for cell, kind in zip(rest, plan):
+            kinds[cell] = kind
+        for cell in rest:
+            kinds.setdefault(cell, "encounter")
+        # The first door out of camp always leads to a fight.
+        doors = [cell for cell in sorted(adjacent[start]) if kinds[cell] != "boss"]
+        if doors and not any(kinds[cell] in {"encounter", "elite"} for cell in doors):
+            door = next((cell for cell in doors if kinds[cell] in {"market", "mystery"}), doors[0])
+            gate = next(cell for cell in sorted(cells) if kinds[cell] == "encounter")
+            kinds[door], kinds[gate] = "encounter", kinds[door]
+        region = DUNGEON_REGIONS.get(str(region_id or ""))
+        names = ("I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X", "XI", "XII")
+        order = sorted(cells, key=lambda cell: (distance[cell], cell))
+        nodes = []
+        for index, cell in enumerate(order):
+            kind = kinds[cell]
+            numeral = names[min(index, len(names) - 1)]
+            label = (
+                (region["boss"] if region else "The Count Keeper") if kind == "boss" else
+                f"Gate {numeral}" if kind == "encounter" else
+                f"Camp {numeral}" if kind == "rest" else
+                "Elite" if kind == "elite" else
+                "Market" if kind == "market" else
+                "Fate"
+            )
+            nodes.append({
+                "id": cls._dungeon_map_node_id(floor, cell[0], cell[1]),
+                "type": kind,
+                "row": cell[0],
+                "column": cell[1],
+                "label": label,
+                "note": "start" if cell == start else DUNGEON_MAP_ROOM_NOTES.get(kind, "room"),
+            })
+        edges = {
+            cls._dungeon_map_node_id(floor, cell[0], cell[1]): [cls._dungeon_map_node_id(floor, other[0], other[1]) for other in sorted(adjacent[cell])]
+            for cell in sorted(cells)
+        }
+        start_id = cls._dungeon_map_node_id(floor, start[0], start[1])
+        return {"floor": floor, "nodes": nodes, "edges": edges, "current_node_id": start_id, "visited_node_ids": [start_id]}
+
+    @staticmethod
+    def _dungeon_grid_visible(route: Mapping[str, Any], *, far_sight: bool = False) -> set[str]:
+        """Explored rooms, their doors, and the boss lair (always felt)."""
+
+        edges = route.get("edges") if isinstance(route.get("edges"), Mapping) else {}
+        visible = {str(item) for item in route.get("visited_node_ids", []) if isinstance(item, str)}
+        for _ in range(2 if far_sight else 1):
+            visible |= {str(other) for node_id in list(visible) for other in edges.get(node_id, []) if isinstance(other, str)}
+        visible |= {str(node.get("id")) for node in route.get("nodes", []) if isinstance(node, Mapping) and node.get("type") == "boss"}
+        return visible
+
+    @classmethod
+    def _dungeon_stairs_choices(cls, run: Mapping[str, Any]) -> list[dict[str, str]]:
+        floor = max(1, int(run.get("floor", 1) or 1))
+        region = DUNGEON_REGIONS.get(str(run.get("region_id") or ""))
+        where = region["label"] if region else "the dungeon"
+        choices = [
+            {"id": f"stairs-descend-{floor}", "kind": "stairs", "label": "Descend", "description": f"Floor {floor + 1} of {where}. A camp waits at the bottom."},
+            {"id": f"stairs-deep-{floor}", "kind": "stairs", "label": "Deep stair", "description": "Harder questions and one more elite; every cleared fight drops one more part."},
+        ]
+        if region:
+            ids = list(DUNGEON_REGIONS)
+            target = DUNGEON_REGIONS[ids[(ids.index(region["id"]) + 1) % len(ids)]]
+            choices.append({"id": f"stairs-region-{target['id']}-{floor}", "kind": "stairs", "label": f"Path to {target['label']}", "description": f"Change the delve: {target['label']} beasts, {target['boss']} and {target['essence_name']}."})
+        else:
+            choices.append({"id": f"stairs-quiet-{floor}", "kind": "stairs", "label": "Quiet stair", "description": "A gentler floor with one more camp."})
+        return choices
+
+    def _dungeon_live_choices(self, run: Mapping[str, Any]) -> list[dict[str, Any]] | Any:
+        """Stored choices, or stairs for a save left at a cleared boss with
+        none (older runs had no route past the first boss)."""
+
+        stored = run.get("room_choices")
+        if isinstance(stored, list) and stored:
+            return stored
+        if run.get("room_type") == "selector":
+            node = self._dungeon_current_map_node(run)
+            if isinstance(node, Mapping) and node.get("type") == "boss":
+                return self._dungeon_stairs_choices(run)
+        return stored if stored is not None else []
+
+    def _dungeon_take_stairs(self, run: dict[str, Any], progress: dict[str, Any], choice_id: str) -> Mutation:
+        """Go down: a new grid floor, starting at a camp (which banks)."""
+
+        parts = choice_id.split("-")
+        mode = parts[1] if len(parts) > 2 else "descend"
+        if mode == "region":
+            target = parts[2] if len(parts) > 3 else ""
+            if target not in DUNGEON_REGIONS:
+                raise StateCommandError("Unknown delve region", status_code=422)
+            run["region_id"] = target
+        modifier = mode if mode in {"deep", "quiet"} else None
+        next_floor = min(MAX_DUNGEON_FLOOR, max(1, self._counter(run, "floor")) + 1)
+        seed = str(run.get("seed") or run.get("run_id"))
+        run["map"] = self._dungeon_generate_grid(seed, next_floor, modifier=modifier, region_id=run.get("region_id"))
+        run["floor_layout"] = "grid"
+        run["floor_modifier"] = modifier
+        run["floor"] = next_floor
+        run["room"] = min(MAX_DUNGEON_ROOM, max(1, self._counter(run, "room")) + 1)
+        run.pop("fight", None)
+        run.update({
+            "room_type": "rest", "room_choices": [], "question": None, "camp_action_used": False,
+            "risk_profile": None, "risk_status": None, "editor_content": "", "updated_at": _utc_now(),
+        })
+        banked = self._dungeon_bank_pack(run, progress)
+        run["last_result"] = {"outcome": "floor_descended", "score_delta": 0, "coins_delta": 0, "damage": 0, "reason": mode}
+        return Mutation(
+            True,
+            {"run": self.dungeon_projection(progress), "floor": next_floor, "banked": banked},
+            {"run_id": run["run_id"], "floor": next_floor, "stairs": mode, "region_id": run.get("region_id"), "banked": banked, "editor_reset": True, "reason": "dungeon_floor_descended"},
+        )
+
+    def _dungeon_travel(self, payload: Mapping[str, Any], progress: dict[str, Any]) -> Mutation:
+        """Walk back through explored rooms. Inert: no camp, no banking."""
+
+        data = self._payload(payload, {"run_id", "node_id"}, {"run_id", "node_id"})
+        run = self._active_dungeon_run(progress)
+        run_id = self._text(data["run_id"], "run_id", max_length=MAX_IDENTIFIER_LENGTH, identifier=True)
+        node_id = self._text(data["node_id"], "node_id", max_length=MAX_IDENTIFIER_LENGTH, identifier=True)
+        if run.get("run_id") != run_id:
+            raise StateCommandError("Dungeon run changed; reload the current run", status_code=409)
+        if run.get("room_type") != "selector":
+            raise StateCommandError("Finish this room before walking the map", status_code=409)
+        route = self._dungeon_map_for_run(run)
+        if not route or run.get("floor_layout") != "grid":
+            raise StateCommandError("This floor has no explored rooms to walk back to", status_code=409)
+        if node_id not in route.get("visited_node_ids", []):
+            raise StateCommandError("You can only walk back through explored rooms", status_code=409)
+        if node_id == route.get("current_node_id"):
+            return Mutation(False, {"run": self.dungeon_projection(progress)})
+        route["current_node_id"] = node_id
+        run["map"] = route
+        run["room_choices"] = self._dungeon_route_choices(run)
+        run["updated_at"] = _utc_now()
+        return Mutation(True, {"run": self.dungeon_projection(progress)}, {"run_id": run_id, "node_id": node_id, "reason": "dungeon_travelled"})
+
+    @classmethod
     def _dungeon_generate_map(cls, seed: str, *, floor: int = 1) -> dict[str, Any]:
         """Create one deterministic, state-owned branching map.
 
@@ -3343,6 +3551,10 @@ class LocalStateService:
         route = cls._dungeon_map_for_run(run)
         if route:
             current_id = route.get("current_node_id")
+            current = next((item for item in route.get("nodes", []) if item.get("id") == current_id), None)
+            if isinstance(current, Mapping) and current.get("type") == "boss":
+                # Back at the selector on the boss node means the boss fell.
+                return cls._dungeon_stairs_choices(run)
             next_ids = route.get("edges", {}).get(current_id, []) if isinstance(route.get("edges"), Mapping) else []
             visited = set(route.get("visited_node_ids", []))
             choices: list[dict[str, str]] = []
@@ -3426,15 +3638,17 @@ class LocalStateService:
             raise StateCommandError("Dungeon run changed; reload the current run", status_code=409)
         if run.get("room_type") != "selector":
             raise StateCommandError("Choose a route from the current Dungeon map first", status_code=409)
-        raw_choices = run.get("room_choices")
+        raw_choices = self._dungeon_live_choices(run)
         if not isinstance(raw_choices, list):
             raise StateCommandError("The current Dungeon map has no route choices", status_code=409)
         choice = next((item for item in raw_choices if isinstance(item, Mapping) and item.get("id") == choice_id), None)
         if choice is None:
             raise StateCommandError("That Dungeon route is no longer available", status_code=409)
         kind = self._text(choice.get("kind"), "choice.kind", max_length=MAX_IDENTIFIER_LENGTH, identifier=True)
-        if kind not in {"encounter", "elite", "mystery", "rest", "market", "boss"}:
+        if kind not in {"encounter", "elite", "mystery", "rest", "market", "boss", "stairs"}:
             raise StateCommandError("Unsupported Dungeon route", status_code=500)
+        if kind == "stairs":
+            return self._dungeon_take_stairs(run, progress, choice_id)
         route = self._dungeon_map_for_run(run)
         if route:
             node = next((item for item in route["nodes"] if item.get("id") == choice_id), None)
@@ -3446,7 +3660,8 @@ class LocalStateService:
                 visited.append(choice_id)
             route["visited_node_ids"] = visited[-MAX_SYNC_DUNGEON_HISTORY:]
             run["map"] = route
-            run["room"] = max(1, self._integer(node.get("row", run.get("room", 1)), "map.row", minimum=1, maximum=MAX_DUNGEON_ROOM))
+            # Rooms entered so far: the display and the leaderboard depth.
+            run["room"] = min(MAX_DUNGEON_ROOM, max(1, self._counter(run, "room")) + 1)
             run["floor"] = max(1, self._integer(route.get("floor", run.get("floor", 1)), "map.floor", minimum=1, maximum=MAX_DUNGEON_FLOOR))
         run["room_choices"] = []
         run["room_type"] = kind
@@ -3656,7 +3871,7 @@ class LocalStateService:
             projection["encounter"] = self._dungeon_mob_spec(run)
         elif status == "active" and run.get("room_type") not in {"rest", "market", "selector", "mystery", "cache", "shrine", "corridor"}:
             raise StateCommandError("Active Dungeon run has no current question", status_code=500)
-        raw_choices = run.get("room_choices", [])
+        raw_choices = self._dungeon_live_choices(run) if status == "active" else run.get("room_choices", [])
         if raw_choices is None:
             raw_choices = []
         if not isinstance(raw_choices, list) or len(raw_choices) > len(DUNGEON_ROUTE_CHOICES):
@@ -3672,8 +3887,17 @@ class LocalStateService:
         ]
         route = self._dungeon_map_for_run(run)
         if route:
+            layout = "grid" if run.get("floor_layout") == "grid" else "lanes"
+            visible = None
+            if layout == "grid":
+                insight = self.hunter_projection(progress)["stats"]["insight"]["value"]
+                visible = self._dungeon_grid_visible(route, far_sight=insight >= DUNGEON_GRID_FAR_SIGHT_INSIGHT)
             projection["map"] = {
                 "floor": route.get("floor", projection.get("floor", 1)),
+                "layout": layout,
+                "columns": DUNGEON_GRID_COLUMNS if layout == "grid" else 5,
+                "rows": DUNGEON_GRID_ROWS if layout == "grid" else DUNGEON_MAP_ROWS,
+                "modifier": run.get("floor_modifier"),
                 "nodes": [
                     {
                         key: item[key]
@@ -3681,12 +3905,12 @@ class LocalStateService:
                         if key in item
                     }
                     for item in route.get("nodes", [])
-                    if isinstance(item, Mapping)
+                    if isinstance(item, Mapping) and (visible is None or item.get("id") in visible)
                 ],
                 "edges": {
-                    str(key): [str(value) for value in values if isinstance(value, str)]
+                    str(key): [str(value) for value in values if isinstance(value, str) and (visible is None or value in visible)]
                     for key, values in route.get("edges", {}).items()
-                    if isinstance(values, list)
+                    if isinstance(values, list) and (visible is None or key in visible)
                 },
                 "current_node_id": route.get("current_node_id"),
             }
@@ -3847,7 +4071,9 @@ class LocalStateService:
             "question": None,
             "question_number": 0,
             "room_choices": [],
-            "map": self._dungeon_generate_map(seed, floor=1),
+            "map": self._dungeon_generate_grid(seed, 1, region_id=region_id),
+            "floor_layout": "grid",
+            "floor_modifier": None,
             "risk_profile": None,
             "risk_status": None,
             "camp_action_used": False,
@@ -4944,6 +5170,7 @@ class LocalStateService:
             "dungeon_market_purchase": self._dungeon_market_purchase,
             "dungeon_equip_item": self._dungeon_equip_item,
             "dungeon_apply_oil": self._dungeon_apply_oil,
+            "dungeon_travel": self._dungeon_travel,
             "hunter_craft_oil": self._hunter_craft_oil,
             "hunter_upgrade_kit": self._hunter_upgrade_kit,
             "hunter_identify_start": self._hunter_identify_start,
