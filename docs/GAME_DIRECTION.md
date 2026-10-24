@@ -45,8 +45,10 @@ alone can't reach mastery:
 | 6 | II · Honed | e.g. 10 clean casts with the concept in the Dungeon |
 | 10 | III · Mastered | Used in a real campaign bounty, plus a teach-back |
 
-- **Perks:** each rank unlocks a sign perk (e.g. Fork II: wrong-branch bugs
-  show a hint glyph; Chain III: +2 Resolve damage against Drowners).
+- **Perks:** each rank unlocks a sign perk that gives protection or
+  information, never a skipped question (e.g. Fork II: your first
+  wrong-branch mistake in a fight costs no HP; Chain III: bigger Resolve chips
+  against Drowners).
 - **Dulling:** a sign unused for about a week loses a little XP and dulls one
   step (never below rank I); practice restores it. Spaced repetition as
   blade upkeep.
@@ -57,20 +59,45 @@ alone can't reach mastery:
 
 | Stat | Effect | Grows from |
 | --- | --- | --- |
-| Strength | More Resolve damage per correct answer | Writing and fixing code (bug hunts, code tasks) |
+| Strength | Bigger Resolve chips per correct answer, so breaks come sooner | Writing and fixing code (bug hunts, code tasks) |
 | Insight | Reveals weaknesses and traps, identifies unknown items | Reading code (predict output, trace variables) |
 | Focus | Stronger and more PYR hints; sign perks hit harder | Explaining (teach-backs, explain questions) |
 | Vitality | More max HP | Consistency (days practised, delves survived) |
 
 Plus one free stat point per hunter level.
 
-### Resolve and stun
+### The iron rule: questions are the fight
 
-- Elites and bosses become multi-step fights: each correct answer chips their
-  Resolve, each miss costs HP.
-- Damage = base + Strength + that sign's level.
-- **Stun:** a clean first-try answer that breaks at least half the enemy's
-  Resolve stuns it, so its next counterattack is skipped.
+**A fight with N questions always takes N correct answers.** No stat, sign,
+perk, gear or potion skips a question or shortens a fight. A wrong answer
+means that question is answered again. Getting stronger makes fights safer
+and calmer, never shorter.
+
+### Resolve: the enemy's guard, not its health
+
+A fight has two separate bars:
+
+- **Progress:** the questions. Only correct answers move it.
+- **Resolve:** the enemy's guard. Every correct answer chips it; Strength and
+  the matching sign's level make each chip bigger. At zero the enemy is
+  **broken**, then its Resolve refills.
+
+A break only ever **helps**:
+
+- **Free mistake:** your next wrong answer costs no HP.
+- **Mechanic interrupted:** whatever the enemy is charging stops (a
+  self-destruct countdown, an enrage, a heal, "scrambling your code").
+- **A small loot bonus.**
+
+Example: The House (5 questions) starts a Lockdown countdown. Two clean
+answers break its Resolve: the Lockdown stops and a free mistake is banked. A
+wrong third answer is absorbed and re-answered. The fight ends after exactly
+five correct answers.
+
+Stats and sign perks follow the same rule: Strength means faster breaks,
+Insight shows mechanics coming, Focus gives better hints, Vitality gives more
+HP, and perks give protection or information. None changes the question
+count.
 
 ### Where it shows
 
@@ -116,7 +143,8 @@ book (level, XP bar, rank gates, perks), milestones and the hunt journal.
    signs, floor goals and named bosses, plus a polish pass.
 3. **Materials and crafting:** drops, banking, Merchant recipes.
 4. **Signs and stats:** sign XP by use with rank gates, dulling, the four
-   stats, multi-step Resolve fights with stun, and the hunter sheet. (Sign XP
+   stats, Resolve breaks (free mistake, interrupted mechanics) under the iron
+   rule, and the hunter sheet. (Sign XP
    and stat tracking in the backend comes first; everything else reads it.)
 
 No new top-level screens until these land.
