@@ -1,0 +1,214 @@
+{
+  "branch": "01-blackjack",
+  "name": "Blackjack",
+  "boss": "The House",
+  "order": 1,
+  "entry_file": "blackjack.py",
+  "concept_focus": "Game state, rules as code, and finally an agent that plays the game for you",
+  "story": {
+    "title": "The Gilded Table",
+    "client": "Mara Voss, pit boss of the Gilded Table",
+    "hook": "Mara runs the last honest table in a casino the House has cursed. Its games lie: aces miscount, decks repeat, scores linger from rounds long dead. She wants a hunter who can build a game the curse cannot touch, then a machine that plays it better than the House's dealers."
+  },
+  "acts": [
+    {"id": 1, "title": "Act I: The Table", "goal": "Get a playable round of blackjack standing: deal, hit, stand, dealer, winner, rematch."},
+    {"id": 2, "title": "Act II: The Real Game", "goal": "Make it honest blackjack: aces, a real shoe, naturals, a bankroll and doubling down."},
+    {"id": 3, "title": "Act III: The Counting Room", "goal": "Build an agent that plays for you, simulate thousands of hands, count cards and keep a record."}
+  ],
+  "boss_lore": "The House has watched every hand you dealt. It does not cheat; it simply waits for a rule you forgot.",
+  "boss_brief": "Bring a finished blackjack.py: aces worth 1 or 11, a real shoe that reshuffles, naturals paying 3:2, a validated bankroll with doubling, and a menu where your basic-strategy bot can play, simulate thousands of hands and count cards.",
+  "mobs": [
+    {
+      "name": "The Empty Table",
+      "concept": "Variables, input/output and basic program state",
+      "encounter": "Set up the table and explain what information the program must remember.",
+      "act": 1, "sign": "variables", "legacy_profile": true,
+      "contract": "An empty table, chairs still warm. Something here forgets everything the moment you look away. Decide what the game must remember and make it remember."
+    },
+    {
+      "name": "The Dealer's Hand",
+      "concept": "Lists and random selection",
+      "encounter": "Represent hands/decks and reason about selecting cards without revealing project code.",
+      "act": 1, "sign": "lists", "legacy_profile": true,
+      "contract": "The dealer's hand moves faster than the eye. Pin it down: a hand is a list, a card is drawn by chance."
+    },
+    {
+      "name": "The Count Keeper",
+      "concept": "Loops and totals",
+      "encounter": "Trace repeated card values and explain how a running total changes.",
+      "act": 1, "sign": "loops", "legacy_profile": true,
+      "contract": "A keeper of sums who adds a little wrong every time. Follow the running total card by card and catch it lying."
+    },
+    {
+      "name": "The Hitman",
+      "concept": "Input loops and control flow",
+      "encounter": "Reason about repeated player choices such as continuing or stopping.",
+      "act": 1, "sign": "control-flow", "legacy_profile": true,
+      "contract": "Hit, hit, hit: a loop that never knows when to stop. Give the player a real choice and a real way out."
+    },
+    {
+      "name": "The Bust Hound",
+      "concept": "Conditionals",
+      "encounter": "Classify outcomes from changing totals and game conditions.",
+      "act": 1, "sign": "conditionals", "legacy_profile": true,
+      "contract": "The hound smells a total over 21 from across the room. Teach the game to smell it too, and to name every outcome."
+    },
+    {
+      "name": "The House Clerk",
+      "concept": "Functions",
+      "encounter": "Break repeated responsibilities into small named behaviors and explain inputs/returns.",
+      "act": 1, "sign": "functions", "legacy_profile": true,
+      "contract": "The clerk does the same chores a hundred times by hand. Give each chore a name and a return value."
+    },
+    {
+      "name": "The Judge",
+      "concept": "Game-state comparison",
+      "encounter": "Compare final states and justify the winner without relying on copied project logic.",
+      "act": 1, "sign": "conditionals", "legacy_profile": true,
+      "contract": "Two hands, one verdict. The Judge accepts no guesses: compare the final states and justify who wins."
+    },
+    {
+      "name": "The Rematch Shade",
+      "concept": "Program loops and reset state",
+      "encounter": "Explain how a finished round can restart cleanly without leaking old state.",
+      "act": 1, "sign": "control-flow", "legacy_profile": true,
+      "contract": "A shade that lives between rounds, whispering last round's numbers into the next. Run it back clean."
+    },
+    {
+      "name": "The Ace Trickster",
+      "concept": "Aces: card values that depend on the hand",
+      "encounter": "Make aces count as 11 or 1, whichever keeps the hand at 21 or under.",
+      "act": 2, "sign": "conditionals",
+      "contract": "Word from the tables: a trickster rides every ace, counting it eleven when it should be one and busting honest players. Your scorer still counts every ace as 11. Teach it to see through the trick.",
+      "objectives": [
+        {"id": "ace_rule", "label": "Score aces properly", "question_type": "code_checkpoint", "impact": 3, "brief": "Change calculate_score in blackjack.py so each ace counts 11 unless that would bust the hand, in which case it counts 1. A hand of ace, ace and 9 must score 21."},
+        {"id": "multi_ace_trace", "label": "Trace hands with many aces", "question_type": "prediction", "impact": 2, "brief": "Predict the score of ace and 10, of ace, ace and 10, and of three aces and a 9, then check your function gives the same answers."},
+        {"id": "ace_bug", "label": "Name the old bug", "question_type": "bug_diagnosis", "impact": 3, "brief": "Pick a hand your old scorer got wrong (for example ace, 5, then a 10) and explain exactly what it missed and how your fix handles it."}
+      ]
+    },
+    {
+      "name": "The Stale Ledger",
+      "concept": "State that must be recomputed every round",
+      "encounter": "Scores from an earlier round leak into the next one.",
+      "act": 2, "sign": "variables",
+      "contract": "Mara swears the dealer stood on seventeen with three cards showing nine. The ledger is stale: numbers from a dead round are still being read. Find them and burn them.",
+      "objectives": [
+        {"id": "find_stale", "label": "Find the stale scores", "question_type": "bug_diagnosis", "impact": 3, "brief": "In your current blackjack.py, find why the dealer can play or stand on a score left over from a previous round, and name every variable that goes stale between rounds."},
+        {"id": "fresh_round", "label": "Score from the hands", "question_type": "code_checkpoint", "impact": 3, "brief": "Recompute the player and dealer scores from their hands at the moment they are needed, so every round starts from clean state."},
+        {"id": "round_opening", "label": "Show every opening", "question_type": "code_checkpoint", "impact": 2, "brief": "Show the player's two cards, their score and the dealer's up card at the start of every round, not only before the first one."}
+      ]
+    },
+    {
+      "name": "The Shoe Keeper",
+      "concept": "Building a deck and drawing without replacement",
+      "encounter": "Replace random.choice from a list of values with a real 52-card shoe.",
+      "act": 2, "sign": "lists",
+      "contract": "The Keeper deals the same king four times running and smiles. A real table draws from a real shoe: every card once, until the shoe runs thin.",
+      "objectives": [
+        {"id": "build_deck", "label": "Build the deck", "question_type": "code_checkpoint", "impact": 3, "brief": "Build a 52-card deck from ranks and suits with loops, where each card keeps its rank and suit, and add a function that turns a card into its points."},
+        {"id": "draw_cards", "label": "Draw without replacement", "question_type": "code_checkpoint", "impact": 3, "brief": "Shuffle the deck and deal by removing cards from it, so the same card can never appear twice in one shoe."},
+        {"id": "reshuffle", "label": "Reshuffle a thin shoe", "question_type": "code_checkpoint", "impact": 2, "brief": "When fewer than 15 cards remain, start a fresh shuffled shoe before the next round and tell the player it happened."},
+        {"id": "count_cards_left", "label": "Count what is left", "question_type": "prediction", "impact": 2, "brief": "Predict how many cards are left in a fresh shoe after one round where the player hits twice and the dealer draws once, and check it in your program."}
+      ]
+    },
+    {
+      "name": "The Natural",
+      "concept": "Special cases checked before the normal flow",
+      "encounter": "Handle a two-card 21 right after the deal, and keep the dealer's hole card hidden.",
+      "act": 2, "sign": "conditionals",
+      "contract": "Some hands are born perfect. The House pays them badly and hides its own. Catch a natural the moment it is dealt and stop peeking at the dealer's second card.",
+      "objectives": [
+        {"id": "natural_check", "label": "Catch naturals", "question_type": "code_checkpoint", "impact": 3, "brief": "Right after the deal, detect a two-card 21 for the player or the dealer and settle the round before any hit or stand is offered."},
+        {"id": "natural_outcomes", "label": "Settle every natural", "question_type": "prediction", "impact": 2, "brief": "Predict the result when both players, only the player, or only the dealer has a natural, and make sure your program matches each one."},
+        {"id": "hole_card", "label": "Hide the hole card", "question_type": "code_checkpoint", "impact": 3, "brief": "Keep the dealer's second card hidden while the player decides, and reveal it only when the dealer plays or a natural is settled."}
+      ]
+    },
+    {
+      "name": "The Purse Warden",
+      "concept": "Bankroll state, bets and validated input",
+      "encounter": "Add a bankroll and bets that survive bad input.",
+      "act": 2, "sign": "input-output",
+      "contract": "The Warden takes every coin you hand it and some you did not. Give the player a purse, make every bet honest, and never let a typo crash the table.",
+      "objectives": [
+        {"id": "bankroll", "label": "Keep a bankroll", "question_type": "code_checkpoint", "impact": 3, "brief": "Give the player a starting bankroll that carries across rounds and is shown before every bet."},
+        {"id": "bet_input", "label": "Take honest bets", "question_type": "code_checkpoint", "impact": 4, "brief": "Ask for a bet each round and ask again on text, zero, negative numbers or more than the bankroll, without crashing."},
+        {"id": "payouts", "label": "Pay out correctly", "question_type": "code_checkpoint", "impact": 3, "brief": "Pay 1:1 on a win and 3:2 on a natural, return the bet on a push, and take it on a loss."},
+        {"id": "broke_exit", "label": "Leave when broke", "question_type": "bug_diagnosis", "impact": 2, "brief": "Explain what must happen when the bankroll reaches zero, and make sure the game ends cleanly instead of asking for a bet nobody can place."}
+      ]
+    },
+    {
+      "name": "The Double Hex",
+      "concept": "Extending the turn rules safely",
+      "encounter": "Add doubling down on the first decision.",
+      "act": 2, "sign": "control-flow",
+      "contract": "A hex that doubles everything it touches, your losses most of all. Tame it into a real rule: double once, take one card, live with it.",
+      "objectives": [
+        {"id": "double_option", "label": "Offer double down", "question_type": "code_checkpoint", "impact": 4, "brief": "On the player's first decision only, offer double: the bet doubles, the player takes exactly one more card and the turn ends."},
+        {"id": "double_guard", "label": "Guard the double", "question_type": "bug_diagnosis", "impact": 3, "brief": "Make doubling impossible when the bankroll cannot cover the extra bet, and explain where and how you check it."},
+        {"id": "double_trace", "label": "Trace a doubled hand", "question_type": "prediction", "impact": 2, "brief": "Trace one doubled hand: the bet, the card dealt, and the bankroll after a win and after a loss."}
+      ]
+    },
+    {
+      "name": "The Strategy Ghost",
+      "concept": "Decision tables stored in dictionaries",
+      "encounter": "Write a basic-strategy function backed by a lookup table.",
+      "act": 3, "sign": "dictionaries",
+      "contract": "In the counting room a ghost whispers the right move for every hand. Write its whispers down as a table your code can read.",
+      "objectives": [
+        {"id": "strategy_function", "label": "Write basic_strategy", "question_type": "code_checkpoint", "impact": 4, "brief": "Write basic_strategy(player_total, dealer_upcard, soft) that returns 'hit', 'stand' or 'double' from a lookup table rather than a long chain of ifs."},
+        {"id": "table_shape", "label": "Explain the table", "question_type": "explanation", "impact": 2, "brief": "Explain how your table is keyed and why a lookup is easier to read and change than nested conditionals."},
+        {"id": "strategy_checks", "label": "Pin three hands with checks", "question_type": "code_checkpoint", "impact": 2, "brief": "Add assert checks to blackjack.py that pin the move for hard 16 against a 10, soft 18 against a 9, and 11 against a 6, and make them pass."}
+      ]
+    },
+    {
+      "name": "The Autopilot",
+      "concept": "Functions as players",
+      "encounter": "Let a function make the decisions, so a bot can play the game.",
+      "act": 3, "sign": "functions",
+      "contract": "Mara wants a player that never sleeps. Your game asks input() for every move; teach it to ask a function instead, so a human or an agent can sit down.",
+      "objectives": [
+        {"id": "player_interface", "label": "Pass the decision in", "question_type": "code_checkpoint", "impact": 4, "brief": "Refactor a round so the hit, stand or double decision comes from a function passed in: one version reads input() for a human, another calls basic_strategy."},
+        {"id": "bot_round", "label": "Let the bot play", "question_type": "code_checkpoint", "impact": 3, "brief": "Let the bot play a full round with no input() calls and print each decision it makes and why."},
+        {"id": "interface_reason", "label": "Explain the swap", "question_type": "explanation", "impact": 2, "brief": "Explain why passing the decision in as a function lets one game loop serve both a human and an agent."}
+      ]
+    },
+    {
+      "name": "The Simulator",
+      "concept": "Simulation loops and statistics",
+      "encounter": "Run thousands of bot rounds and measure the house edge.",
+      "act": 3, "sign": "loops",
+      "contract": "One hand tells you nothing. Ten thousand tell you everything. Run the bot until the numbers stop lying.",
+      "objectives": [
+        {"id": "simulate", "label": "Run 10,000 hands", "question_type": "code_checkpoint", "impact": 4, "brief": "Run 10,000 bot rounds with printing switched off and count wins, losses, pushes and naturals."},
+        {"id": "rates", "label": "Report the rates", "question_type": "code_checkpoint", "impact": 2, "brief": "Report each result as a percentage and the bot's average gain or loss per hand."},
+        {"id": "edge_reason", "label": "Read the edge", "question_type": "explanation", "impact": 2, "brief": "Explain from your numbers whether the house still has an edge against basic strategy, and why the result changes a little each run."},
+        {"id": "repeatable_run", "label": "Make a run repeatable", "question_type": "bug_diagnosis", "impact": 2, "brief": "Make a simulation repeatable with random.seed and explain when you do and do not want that."}
+      ]
+    },
+    {
+      "name": "The Card Counter",
+      "concept": "Running state across many rounds",
+      "encounter": "Keep a Hi-Lo count and let the bot bet on it.",
+      "act": 3, "sign": "random-selection",
+      "contract": "The House fears one thing: a player who remembers. Count what has left the shoe and bet when the shoe is rich.",
+      "objectives": [
+        {"id": "running_count", "label": "Keep the running count", "question_type": "code_checkpoint", "impact": 3, "brief": "Keep a Hi-Lo running count as cards leave the shoe: 2 to 6 add one, tens and aces subtract one, and the count resets on a reshuffle."},
+        {"id": "true_count", "label": "Find the true count", "question_type": "code_checkpoint", "impact": 3, "brief": "Turn it into a true count by dividing by the decks left in the shoe, and show it to the player."},
+        {"id": "bet_spread", "label": "Bet on the count", "question_type": "code_checkpoint", "impact": 3, "brief": "Let the bot raise its bet when the true count is high, and simulate counting against flat betting over the same number of hands."},
+        {"id": "count_reason", "label": "Judge the count", "question_type": "explanation", "impact": 2, "brief": "Explain from your simulation whether counting changed the result, and why a high count favours the player."}
+      ]
+    },
+    {
+      "name": "The Tally Ghost",
+      "concept": "Saving and loading data with JSON",
+      "encounter": "Keep a record between sessions and add a menu.",
+      "act": 3, "sign": "input-output",
+      "contract": "The last ghost of the table keeps every tally and forgets nothing between nights. Give your game the same memory, and a front door.",
+      "objectives": [
+        {"id": "save_stats", "label": "Save the session", "question_type": "code_checkpoint", "impact": 3, "brief": "When a session ends, save the rounds played, the net result and the biggest win to a JSON file."},
+        {"id": "load_stats", "label": "Load the record", "question_type": "code_checkpoint", "impact": 3, "brief": "On start, load that file if it exists, greet the player with their record, and cope with a missing or broken file."},
+        {"id": "main_menu", "label": "Add a menu", "question_type": "code_checkpoint", "impact": 3, "brief": "Add a start menu: play, watch the bot play, run a simulation, or quit."}
+      ]
+    }
+  ]
+}

@@ -141,6 +141,24 @@ Updated: 2026-10-22 · branch `feature/tauri-arcade` (fast-forwarded into
   that were stuck after the first boss. `run["room"]` now counts rooms
   entered. UI: `DungeonGridMap` (frontier rooms travel-then-enter in one
   click, stairs cards).
+- **Story contracts (Phase D1):** authored campaigns live in
+  `ide/server/campaigns/<branch>.json` (story, acts, boss_lore/brief,
+  entry_file, contracts with act, sign, hunter-voice `contract` and 3-5
+  `objectives`); a file there replaces that branch in campaign_bounties.json.
+  `_encounter_profile(index, project, mob)` uses a contract's own objectives
+  (matched by mob name; max_resolve = total impact) and falls back to the
+  generic profiles (`legacy_profile` contracts, e.g. Blackjack Act I, keep
+  them). `_extend_campaign` appends new contracts to unfinished boards (save
+  keeps only the SQL-allowed mob keys), re-locks an unlocked boss, adds
+  `catalog: true` projects, sets entry_file; it runs in `apply()` (and after
+  any change, for cloud pulls), persists through the internal
+  `campaign_extend` action on server startup, and `/api/campaign` serves
+  `campaign_view` plus `campaign_board`. Tests: ide/server/conftest.py keeps
+  tests off the shipped story files; test_campaign_content.py opts in and
+  checks the schema of every file. UI: the Bounty Office shows the story,
+  pages by act and lists each contract's sign, beast and BUILD / FIX /
+  PREDICT / EXPLAIN objectives; the Forge battle sidebar lists the current
+  contract's objectives.
 - **Submit race fix:** `submitDungeon` waits for any in-flight editor
   checkpoint and saves unsaved edits before capturing PYR context (an autosave
   in between changed the revision and the answer was rejected as stale).

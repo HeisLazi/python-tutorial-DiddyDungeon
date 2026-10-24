@@ -2705,6 +2705,7 @@ function AppV2() {
               onDungeonApplyOil={applyDungeonOil}
               onDungeonTravel={travelDungeon}
               hunterActions={hunterActions}
+              campaignBoard={campaign?.campaign_board || null}
               onDungeonChoose={chooseDungeonRoom}
               onDungeonLeave={leaveDungeonRoom}
               onDungeonFinish={finishDungeonRun}

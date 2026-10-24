@@ -1464,3 +1464,27 @@
 .identify-result.wrong { border-color: var(--gold, #f5c542); }
 
 .forge-v2.dungeon-mode .dungeon-proto-map.grid-floor { min-height: 380px; }
+
+/* Story contracts on the bounty board. */
+.office-entry-file { display: block; margin-top: 6px; color: var(--muted, #999); }
+.office-act-banner { display: grid; gap: 2px; margin: 8px 0; padding: 8px 12px; border-left: 3px solid var(--gold, #f5c542); background: rgba(245, 197, 66, 0.06); }
+.office-act-banner p { margin: 0; }
+.office-detail-task { margin: 6px 0 0; }
+.office-sign { display: inline-flex; align-items: center; gap: 4px; }
+.office-sign svg { fill: none; stroke: currentColor; stroke-width: 1.6; }
+.office-objectives { display: grid; gap: 4px; margin: 8px 0 0; padding: 0; list-style: none; }
+.office-objectives li { display: flex; align-items: center; gap: 8px; font-size: 14px; }
+.office-objectives b { min-width: 64px; padding: 1px 6px; border: 1px solid var(--line, #444); font-size: 11px; text-align: center; }
+.office-objectives b.kind-code_checkpoint { border-color: var(--gold, #f5c542); color: var(--gold, #f5c542); }
+.office-objectives b.kind-bug_diagnosis { border-color: #f87171; color: #f87171; }
+
+/* The current contract in the Forge sidebar. */
+.forge-contract { display: grid; gap: 6px; margin: 8px 10px; }
+.forge-contract p { margin: 0; font-size: 13px; color: var(--muted, #999); }
+.forge-contract ol { display: grid; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.forge-contract li { display: grid; grid-template-columns: auto 1fr; gap: 6px; align-items: start; font-size: 13px; }
+.forge-contract li span { display: grid; gap: 2px; }
+.forge-contract li small { color: var(--muted, #999); font-size: 11px; line-height: 1.35; }
+.forge-contract b { padding: 1px 5px; border: 1px solid var(--line, #444); font-size: 10px; }
+.forge-contract b.kind-code_checkpoint { border-color: var(--gold, #f5c542); color: var(--gold, #f5c542); }
+.forge-contract b.kind-bug_diagnosis { border-color: #f87171; color: #f87171; }

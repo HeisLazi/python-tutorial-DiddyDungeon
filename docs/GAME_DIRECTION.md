@@ -137,8 +137,11 @@ book (level, XP bar, rank gates, perks), milestones and the hunt journal.
 
 ## Build order
 
-1. **Campaign story pass:** Blackjack first; a story arc, hunter-voice contract
-   briefs, each contract showing its beast and sign and linking to the Codex.
+1. **Campaign story pass** (story contracts and longer boards shipped
+   2026-10-24 as Phase D1, Blackjack first: 19 contracts in three acts, Act III
+   builds an agent that plays it; the other projects and two new agent
+   projects follow): a story arc, hunter-voice contract briefs, each contract
+   showing its beast and sign and linking to the Codex.
 2. **Dungeon as a crawler** (region delves, region beasts and named bosses
    shipped 2026-10-24 as Phase C1; room-grid floors under fog, walk-back
    travel and stairs between floors shipped 2026-10-24 as C3): region

@@ -7,6 +7,7 @@ paths, JSON patches and direct snapshots are intentionally unsupported.
 
 from __future__ import annotations
 
+import copy
 import hashlib
 import json
 import os
@@ -27,14 +28,46 @@ MAX_REASON_LENGTH = 240
 # Bounty boards for campaign projects, keyed by project branch. Seeded into a
 # project the first time a boss clear opens it (see _advance_campaign).
 CAMPAIGN_BOUNTIES_PATH = Path(__file__).with_name("campaign_bounties.json")
+# One authored story file per project (ide/server/campaigns/<branch>.json):
+# its story, acts and contracts, each contract with its own objectives. A
+# file here replaces that project's entry in campaign_bounties.json.
+CAMPAIGN_CONTENT_DIR = Path(__file__).with_name("campaigns")
+CAMPAIGN_QUESTION_TYPES = frozenset({"code_checkpoint", "bug_diagnosis", "prediction", "explanation"})
+_CAMPAIGN_CACHE: dict[str, Any] = {"key": None, "data": {}}
 
 
 def load_campaign_bounties() -> dict[str, Any]:
+    paths = [CAMPAIGN_BOUNTIES_PATH, *(sorted(CAMPAIGN_CONTENT_DIR.glob("*.json")) if CAMPAIGN_CONTENT_DIR.is_dir() else [])]
+    try:
+        key = tuple((str(path), path.stat().st_mtime_ns) for path in paths if path.exists())
+    except OSError:
+        key = None
+    if key is not None and key == _CAMPAIGN_CACHE["key"]:
+        return _CAMPAIGN_CACHE["data"]
     try:
         data = json.loads(CAMPAIGN_BOUNTIES_PATH.read_text(encoding="utf-8"))
     except (OSError, ValueError):
-        return {}
-    return data if isinstance(data, dict) else {}
+        data = {}
+    data = dict(data) if isinstance(data, dict) else {}
+    for path in paths[1:]:
+        try:
+            entry = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            continue
+        if isinstance(entry, dict) and isinstance(entry.get("branch"), str):
+            data[entry["branch"]] = entry
+    _CAMPAIGN_CACHE.update(key=key, data=data)
+    return data
+
+
+def campaign_contract(branch: object, mob_name: object) -> dict[str, Any] | None:
+    """The authored contract for one bounty, matched by name (never index)."""
+
+    entry = load_campaign_bounties().get(str(branch or ""))
+    mobs = entry.get("mobs") if isinstance(entry, Mapping) else None
+    if not isinstance(mobs, list):
+        return None
+    return next((item for item in mobs if isinstance(item, dict) and item.get("name") == mob_name), None)
 MAX_IDENTIFIER_LENGTH = 120
 MAX_REWARD_XP = 100
 MAX_REWARD_COINS = 100
@@ -414,6 +447,7 @@ ACTION_DEFINITIONS: dict[str, ActionDefinition] = {
     "dungeon_travel": ActionDefinition(frozenset({"player"})),
     "hunter_craft_oil": ActionDefinition(frozenset({"player"})),
     "hunter_upgrade_kit": ActionDefinition(frozenset({"player"})),
+    "campaign_extend": ActionDefinition(frozenset({SYSTEM_ACTOR}), internal=True),
     "hunter_identify_start": ActionDefinition(frozenset({"player"})),
     "hunter_identify_answer": ActionDefinition(frozenset({"player"})),
     "dungeon_leave_room": ActionDefinition(frozenset({"player"})),
@@ -2522,8 +2556,10 @@ class LocalStateService:
             phase = "ready_to_clear"
         boss_name = str(project.get("boss") or "Campaign boss")[:MAX_IDENTIFIER_LENGTH]
         project_name = str(project.get("name") or project.get("branch") or "this chapter")[:MAX_REASON_LENGTH]
-        configured_lore = project.get("boss_lore")
-        configured_brief = project.get("boss_brief")
+        story_entry = load_campaign_bounties().get(str(project.get("branch") or ""))
+        story_entry = story_entry if isinstance(story_entry, Mapping) else {}
+        configured_lore = project.get("boss_lore") or story_entry.get("boss_lore")
+        configured_brief = project.get("boss_brief") or story_entry.get("boss_brief")
         boss_lore = (
             str(configured_lore).strip()[:MAX_REASON_LENGTH]
             if isinstance(configured_lore, str) and configured_lore.strip()
@@ -2642,7 +2678,7 @@ class LocalStateService:
             }
 
         mob = mobs[index]
-        profile = self._encounter_profile(index)
+        profile = self._encounter_profile(index, project, mob)
         try:
             project_id = self._project_id(project)
             mob_name = self._text(mob.get("name", ""), "mob_name", max_length=MAX_IDENTIFIER_LENGTH)
@@ -2669,11 +2705,14 @@ class LocalStateService:
             mob.get("encounter")
             or f"Reason about {concept.lower()} using your own project evidence."
         )
+        contract = campaign_contract(project.get("branch"), mob.get("name")) or {}
         encounter_lore = str(
             mob.get("lore")
             or mob.get("background")
+            or contract.get("contract")
             or f"A bounded field encounter testing {concept.lower()}."
         )
+        contract_sign = contract.get("sign") if isinstance(contract.get("sign"), str) else None
         available = [
             {
                 "id": objective_id,
@@ -2718,6 +2757,10 @@ class LocalStateService:
                 "concept": concept,
                 "lore": encounter_lore,
                 "brief": encounter_brief,
+                "contract": contract.get("contract") if isinstance(contract.get("contract"), str) else None,
+                "act": contract.get("act") if isinstance(contract.get("act"), int) else None,
+                "sign_id": contract_sign,
+                "beast": HUNTER_BEASTS[contract_sign]["beast"] if contract_sign in HUNTER_BEASTS else None,
             },
             # This is a preview for the currently available mob only.  The
             # mutation event remains the authority for rewards and unlocks.
@@ -4799,7 +4842,14 @@ class LocalStateService:
 
         with self._progress_lock:
             progress = self._load_locked()
+            if normalized_action != "campaign_extend":
+                # Every action sees the authored campaign; campaign_extend
+                # itself does (and persists) the same work.
+                self._extend_campaign(progress)
             mutation = self._dispatch(normalized_action, payload, progress)
+            if mutation.changed:
+                # A cloud pull can bring back a shorter board; re-extend it.
+                self._extend_campaign(progress)
             if not mutation.changed:
                 return {
                     "ok": True,
@@ -5173,6 +5223,7 @@ class LocalStateService:
             "dungeon_travel": self._dungeon_travel,
             "hunter_craft_oil": self._hunter_craft_oil,
             "hunter_upgrade_kit": self._hunter_upgrade_kit,
+            "campaign_extend": self._campaign_extend,
             "hunter_identify_start": self._hunter_identify_start,
             "hunter_identify_answer": self._hunter_identify_answer,
             "dungeon_leave_room": self._dungeon_leave_room,
@@ -6136,8 +6187,149 @@ class LocalStateService:
         return re.sub(r"[^A-Za-z0-9._-]+", "-", value.strip())[:MAX_IDENTIFIER_LENGTH]
 
     @staticmethod
-    def _encounter_profile(index: int) -> dict[str, Any]:
+    def _encounter_profile(index: int, project: Mapping[str, Any] | None = None, mob: Mapping[str, Any] | None = None) -> dict[str, Any]:
+        """A contract's own objectives when it has authored ones (Resolve is
+        their total impact, so the last objective is what fells it), else the
+        generic profile for its position."""
+
+        contract = campaign_contract(project.get("branch"), mob.get("name")) if project and mob else None
+        authored = contract.get("objectives") if isinstance(contract, Mapping) else None
+        if isinstance(authored, list):
+            objectives = {
+                str(item["id"]): {
+                    "impact": max(1, min(MAX_IMPACT, int(item["impact"]))),
+                    "question_type": str(item["question_type"]),
+                    "label": str(item["label"]),
+                    "brief": str(item["brief"]),
+                }
+                for item in authored
+                if isinstance(item, Mapping) and item.get("question_type") in CAMPAIGN_QUESTION_TYPES
+                and all(isinstance(item.get(key), str) for key in ("id", "label", "brief")) and isinstance(item.get("impact"), int)
+            }
+            if objectives:
+                return {"max_resolve": sum(item["impact"] for item in objectives.values()), "objectives": objectives}
         return ENCOUNTER_PROFILES[min(max(index, 0), len(ENCOUNTER_PROFILES) - 1)]
+
+    @staticmethod
+    def _mob_sign_concept(project: Mapping[str, Any] | None, mob: Mapping[str, Any]) -> object:
+        """The concept text a bounty feeds signs with: its contract's sign when authored."""
+
+        contract = campaign_contract(project.get("branch"), mob.get("name")) if project else None
+        sign = contract.get("sign") if isinstance(contract, Mapping) else None
+        return HUNTER_SIGN_CONCEPTS.get(sign, mob.get("concept")) if isinstance(sign, str) else mob.get("concept")
+
+    def _extend_campaign(self, progress: dict[str, Any]) -> bool:
+        """Bring the save up to the authored campaign: add catalog projects
+        that are missing and append new contracts to unfinished boards
+        (matched by name). Idempotent; finished projects are never touched."""
+
+        projects = progress.get("projects")
+        if not isinstance(projects, list):
+            return False
+        content = load_campaign_bounties()
+        changed = False
+        known = {item.get("branch") for item in projects if isinstance(item, dict)}
+        for branch, entry in sorted(content.items(), key=lambda pair: int(pair[1].get("order", 99)) if isinstance(pair[1], Mapping) and isinstance(pair[1].get("order"), int) else 99):
+            if not isinstance(entry, Mapping) or not entry.get("catalog") or branch in known or len(projects) >= MAX_SYNC_PROJECTS:
+                continue
+            if not all(isinstance(entry.get(key), str) for key in ("name", "boss")):
+                continue
+            projects.append({
+                "branch": branch,
+                "name": entry["name"],
+                "status": "available",
+                "boss": entry["boss"],
+                "order": int(entry.get("order", len(projects))),
+                "progress": 0,
+                "mobs": [],
+            })
+            changed = True
+        for project in projects:
+            if not isinstance(project, dict) or project.get("completed") is True or project.get("status") == "completed":
+                continue
+            entry = content.get(str(project.get("branch") or ""))
+            if not isinstance(entry, Mapping):
+                continue
+            if isinstance(entry.get("entry_file"), str) and not project.get("entry_file"):
+                project["entry_file"] = entry["entry_file"]
+                changed = True
+            mobs = project.get("mobs")
+            if not isinstance(mobs, list) or not mobs or not all(isinstance(item, dict) for item in mobs):
+                continue  # an empty board is seeded when the project opens
+            names = {item.get("name") for item in mobs}
+            additions = [
+                {"name": item["name"], "concept": item["concept"], "encounter": item["encounter"], "status": "locked"}
+                for item in entry.get("mobs", [])
+                if isinstance(item, Mapping) and all(isinstance(item.get(key), str) for key in ("name", "concept", "encounter")) and item["name"] not in names
+            ][: max(0, MAX_SYNC_MOBS_PER_PROJECT - len(mobs))]
+            if not additions:
+                continue
+            mobs.extend(additions)
+            if not any(item.get("status") == "available" for item in mobs):
+                upcoming = next((item for item in mobs if item.get("status") == "locked"), None)
+                if upcoming is not None:
+                    upcoming["status"] = "available"
+            if project.get("boss_status") == "available":
+                # New contracts stand between the hunter and the boss again.
+                project.pop("boss_status", None)
+            if project.get("mob_sequence_complete"):
+                project["mob_sequence_complete"] = False
+            cleared = sum(1 for item in mobs if item.get("status") in {"defeated", "cleared"})
+            project["progress"] = round(cleared / max(1, len(mobs)) * 100)
+            changed = True
+        return changed
+
+    def _campaign_extend(self, payload: Mapping[str, Any], progress: dict[str, Any]) -> Mutation:
+        self._payload(payload, set(), set())
+        changed = self._extend_campaign(progress)
+        return Mutation(changed, {"extended": changed}, {"reason": "campaign_extended"} if changed else None)
+
+    def campaign_view(self, progress: Mapping[str, Any]) -> dict[str, Any]:
+        """A copy of the save brought up to the authored campaign, for reads."""
+
+        view = copy.deepcopy(dict(progress))
+        self._extend_campaign(view)
+        return view
+
+    def campaign_board(self, progress: Mapping[str, Any]) -> dict[str, Any] | None:
+        """The active project's story: acts and contracts with beasts and signs."""
+
+        projects = [item for item in progress.get("projects", []) if isinstance(item, Mapping)] if isinstance(progress.get("projects"), list) else []
+        project = next((item for item in projects if item.get("status") == "active"), None)
+        if project is None:
+            return None
+        entry = load_campaign_bounties().get(str(project.get("branch") or ""))
+        entry = entry if isinstance(entry, Mapping) else {}
+        story = entry.get("story") if isinstance(entry.get("story"), Mapping) else {}
+        acts = [dict(item) for item in entry.get("acts", []) if isinstance(item, Mapping)] if isinstance(entry.get("acts"), list) else []
+        contracts = []
+        for index, mob in enumerate(project.get("mobs", []) if isinstance(project.get("mobs"), list) else []):
+            if not isinstance(mob, Mapping):
+                continue
+            contract = campaign_contract(project.get("branch"), mob.get("name")) or {}
+            sign = contract.get("sign") if isinstance(contract.get("sign"), str) else None
+            profile = self._encounter_profile(index, project, mob)
+            contracts.append({
+                "name": mob.get("name"),
+                "status": mob.get("status"),
+                "concept": mob.get("concept"),
+                "encounter": mob.get("encounter"),
+                "act": contract.get("act", 1) if isinstance(contract.get("act"), int) else 1,
+                "contract": contract.get("contract") if isinstance(contract.get("contract"), str) else None,
+                "sign": sign,
+                "beast": HUNTER_BEASTS[sign]["beast"] if sign in HUNTER_BEASTS else None,
+                "objectives": [{"id": key, "label": value["label"], "question_type": value["question_type"]} for key, value in profile["objectives"].items()],
+            })
+        return {
+            "branch": project.get("branch"),
+            "name": project.get("name"),
+            "boss": project.get("boss"),
+            "entry_file": project.get("entry_file") or entry.get("entry_file"),
+            "story": {key: story[key] for key in ("title", "client", "hook") if isinstance(story.get(key), str)},
+            "acts": acts,
+            "boss_brief": entry.get("boss_brief") if isinstance(entry.get("boss_brief"), str) else None,
+            "contracts": contracts,
+        }
 
     def _ensure_encounter_state(
         self,
@@ -6146,7 +6338,7 @@ class LocalStateService:
         mob: dict[str, Any],
         index: int,
     ) -> dict[str, Any]:
-        profile = self._encounter_profile(index)
+        profile = self._encounter_profile(index, project, mob)
         project_id = self._project_id(project)
         mob_name = self._text(mob.get("name", ""), "mob_name", max_length=MAX_IDENTIFIER_LENGTH)
         existing = progress.get("encounter_state")
@@ -6421,7 +6613,7 @@ class LocalStateService:
 
         stats = self._dict(progress, "stats")
         stats["mobs_defeated"] = self._counter(stats, "mobs_defeated") + 1
-        self._hunter_record(progress, concept=mob.get("concept"), question_type=None, source="campaign", clean=True, campaign_use=True)
+        self._hunter_record(progress, concept=self._mob_sign_concept(project, mob), question_type=None, source="campaign", clean=True, campaign_use=True)
         cleared_count = sum(1 for candidate in mobs if candidate.get("status") in {"defeated", "cleared"})
         project["progress"] = round(cleared_count / max(1, len(mobs)) * 100)
         boss_unlocked = next_mob is None
@@ -6478,7 +6670,7 @@ class LocalStateService:
         if data.get("code_snippet"):
             code_snippet = self._multiline_text(data["code_snippet"], "code_snippet", max_bytes=MAX_CODEX_SNIPPET_BYTES).strip()
         project, mobs, index, mob = self._active_project_and_mob(progress)
-        profile = self._encounter_profile(index)
+        profile = self._encounter_profile(index, project, mob)
         objective = profile["objectives"].get(objective_id)
         if objective is None:
             raise StateCommandError("This verified objective is not defined for the active encounter")
@@ -6522,7 +6714,7 @@ class LocalStateService:
         mob["objective_attempts"] = self._counter(mob, "objective_attempts") + 1
         self._update_skill_evidence(progress, mob.get("concept"))
         missed = encounter.get("missed_objectives") if isinstance(encounter.get("missed_objectives"), list) else []
-        hunter_gain = self._hunter_record(progress, concept=mob.get("concept"), question_type=objective["question_type"], source="campaign", clean=objective_id not in missed)
+        hunter_gain = self._hunter_record(progress, concept=self._mob_sign_concept(project, mob), question_type=objective["question_type"], source="campaign", clean=objective_id not in missed)
         entry = self._upsert_codex_entry(
             progress,
             project,
@@ -7232,7 +7424,7 @@ class LocalStateService:
             objective_id = self._text(data["objective_id"], "objective_id", max_length=MAX_IDENTIFIER_LENGTH, identifier=True)
             project, mobs, index, mob = self._active_project_and_mob(progress)
             raw_damage = canonical_battle_raw_damage(index)
-            profile = self._encounter_profile(index)
+            profile = self._encounter_profile(index, project, mob)
             objective = profile["objectives"].get(objective_id)
             if objective is None:
                 raise StateCommandError("This Battle objective is not defined for the active encounter")

@@ -154,6 +154,15 @@ ALLOWED_ORIGINS = allowed_origins()
 DUNGEON_COMBAT_ROOM_TYPES = frozenset({"encounter", "elite", "boss"})
 PROGRESS_LOCK = threading.RLock()
 STATE_SERVICE = LocalStateService(lambda: PROGRESS_PATH, PROGRESS_LOCK)
+
+
+def extend_campaign_on_startup() -> None:
+    """Save new authored contracts and projects into the save once at launch."""
+
+    try:
+        STATE_SERVICE.apply_internal("campaign_extend", {})
+    except Exception:  # a missing or unreadable save is handled by the first real action
+        pass
 WORKSPACE_NOTES_LOCK = threading.RLock()
 PYR_CONTEXT_LOCK = threading.RLock()
 PYR_CONTEXT_INPUT: dict[str, str | None] = {
@@ -177,6 +186,13 @@ PYR_DUNGEON_CHALLENGE: dict[str, object] | None = None
 PYR_PRACTICE_CHALLENGES: dict[str, dict[str, object]] = {}
 
 app = FastAPI(title="Python Quest Lab Local Server", version="0.4.0")
+
+
+@app.on_event("startup")
+def _startup_extend_campaign() -> None:
+    extend_campaign_on_startup()
+
+
 app.add_middleware(TrustedHostMiddleware, allowed_hosts=list(allowed_hosts()))
 app.add_middleware(
     CORSMiddleware,
@@ -939,9 +955,13 @@ def campaign():
         progress, metadata = STATE_SERVICE.snapshot_with_metadata()
     except StateCommandError as exc:
         raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
+    # Reads see the save brought up to the authored campaign (new contracts
+    # and projects); the next state action persists the same extension.
+    progress = STATE_SERVICE.campaign_view(progress)
     dungeon_projection = safe_campaign_dungeon_projection(progress)
     activity = read_json(REPO_ROOT / "activity.json", {})
     return {
+        "campaign_board": STATE_SERVICE.campaign_board(progress),
         "progress": _without_identify_answer(progress),
         "revision": metadata["revision"],
         "sync_storage_namespace": checkout_storage_namespace(),
