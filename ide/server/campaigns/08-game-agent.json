@@ -1,0 +1,217 @@
+{
+  "branch": "08-game-agent",
+  "name": "The Clockwork Arena",
+  "boss": "The Grandmaster",
+  "order": 8,
+  "catalog": true,
+  "entry_file": "connect_four.py",
+  "concept_focus": "A full game engine, then agents that play it: search, evaluation and tournaments",
+  "story": {
+    "title": "The Clockwork Arena",
+    "client": "Old Tobin, keeper of the Clockwork Arena",
+    "hook": "Tobin's arena pits clockwork engines against each other at Connect Four. One engine, the Grandmaster, has never lost, and it has started playing the hunters too. Build the game from nothing, then build engines of your own, smarter each act, until one of them can sit across from the Grandmaster."
+  },
+  "acts": [
+    {"id": 1, "title": "Act I: The Board", "goal": "Build Connect Four itself: the grid, dropping pieces, finding a winner, two players taking turns."},
+    {"id": 2, "title": "Act II: First Engines", "goal": "Give every player one interface, then build a random engine, a rule-following engine and a way to record games."},
+    {"id": 3, "title": "Act III: Thinking Ahead", "goal": "Teach an engine to search: minimax, an evaluation function, alpha-beta pruning and a time budget."},
+    {"id": 4, "title": "Act IV: The Tournament", "goal": "Run tournaments, rate every engine, tune your best one against itself, and open the arena to spectators."}
+  ],
+  "boss_lore": "The Grandmaster does not think faster than you. It simply never forgets to look one move further.",
+  "boss_brief": "Bring a finished connect_four.py: full rules, human, random, greedy and minimax-with-alpha-beta engines behind one interface, a time budget, a round-robin tournament with Elo ratings, and an engine that beats your greedy one almost every game.",
+  "mobs": [
+    {
+      "name": "The Empty Grid",
+      "concept": "Nested lists as a game board",
+      "encounter": "Build a 6 by 7 board and draw it in the terminal.",
+      "act": 1, "sign": "lists",
+      "contract": "The arena floor is bare: six rows, seven columns, nothing in them. Lay out the grid and make it visible.",
+      "objectives": [
+        {"id": "make_board", "label": "Build the board", "question_type": "code_checkpoint", "impact": 3, "brief": "Write a function in connect_four.py that returns a new 6 by 7 board as a list of lists, every cell empty."},
+        {"id": "render_board", "label": "Draw the board", "question_type": "code_checkpoint", "impact": 3, "brief": "Print the board with clear symbols for empty cells and both players, and the column numbers underneath."},
+        {"id": "shared_rows_bug", "label": "Catch the shared-row trap", "question_type": "bug_diagnosis", "impact": 3, "brief": "Explain why building the board with [[' '] * 7] * 6 makes every row change together, and show your board does not."}
+      ]
+    },
+    {
+      "name": "The Falling Stone",
+      "concept": "Searching a column from the bottom up",
+      "encounter": "Drop a piece into a column so it lands on the lowest empty cell.",
+      "act": 1, "sign": "loops",
+      "contract": "Stones fall, they do not float. Make every piece land where gravity puts it, and refuse a column that is already full.",
+      "objectives": [
+        {"id": "drop_piece", "label": "Drop a piece", "question_type": "code_checkpoint", "impact": 4, "brief": "Write drop_piece(board, column, piece) that places the piece in the lowest empty cell of that column."},
+        {"id": "full_column", "label": "Refuse a full column", "question_type": "bug_diagnosis", "impact": 3, "brief": "Make dropping into a full or out-of-range column fail clearly instead of crashing or overwriting a piece, and explain how you detect it."},
+        {"id": "legal_moves", "label": "List legal moves", "question_type": "code_checkpoint", "impact": 3, "brief": "Write legal_moves(board) that returns the columns a piece can still be dropped into."}
+      ]
+    },
+    {
+      "name": "The Four Seers",
+      "concept": "Scanning a grid in four directions",
+      "encounter": "Find four in a row across, down and on both diagonals.",
+      "act": 1, "sign": "loops",
+      "contract": "Four seers watch the board, one for each direction a line can run. Until all four are watching, a winner can walk away unnoticed.",
+      "objectives": [
+        {"id": "check_straight", "label": "Check across and down", "question_type": "code_checkpoint", "impact": 4, "brief": "Write a winner check that finds four of the same piece in a row horizontally and vertically."},
+        {"id": "check_diagonals", "label": "Check both diagonals", "question_type": "code_checkpoint", "impact": 4, "brief": "Extend it to both diagonal directions, rising and falling."},
+        {"id": "edge_bug", "label": "Guard the edges", "question_type": "bug_diagnosis", "impact": 3, "brief": "Explain why a negative index such as board[row][-1] can make your check see a line that wraps around the grid, and show how your loops stay inside the board."}
+      ]
+    },
+    {
+      "name": "The Two-Player Table",
+      "concept": "A turn loop with validation and an end",
+      "encounter": "Let two people play a full game in the terminal.",
+      "act": 1, "sign": "control-flow",
+      "contract": "Two hunters, one board. Make them take turns honestly, stop at four in a row or a full grid, and survive whatever they type.",
+      "objectives": [
+        {"id": "turn_loop", "label": "Alternate the turns", "question_type": "code_checkpoint", "impact": 4, "brief": "Run a full game where two players alternate, the board is shown each turn, and the game stops when someone wins."},
+        {"id": "draw_rule", "label": "Declare a draw", "question_type": "code_checkpoint", "impact": 2, "brief": "End the game as a draw when the board fills with no winner."},
+        {"id": "bad_input", "label": "Survive bad input", "question_type": "code_checkpoint", "impact": 3, "brief": "Ask again on text, out-of-range numbers or a full column, without losing the player's turn or crashing."}
+      ]
+    },
+    {
+      "name": "The Mask Maker",
+      "concept": "One interface for every kind of player",
+      "encounter": "Make every player a function that is given the board and returns a column.",
+      "act": 2, "sign": "functions",
+      "contract": "Behind every mask in the arena is the same face: a function that sees the board and names a column. Carve the mask, and humans and engines can take the same seat.",
+      "objectives": [
+        {"id": "agent_interface", "label": "Define the agent shape", "question_type": "code_checkpoint", "impact": 4, "brief": "Turn players into agents: functions agent(board, piece) that return a column. Wrap the human's input() in one."},
+        {"id": "play_game", "label": "Play agent against agent", "question_type": "code_checkpoint", "impact": 3, "brief": "Write play_game(agent_a, agent_b) that runs a game between any two agents and returns the winner or a draw."},
+        {"id": "interface_reason", "label": "Explain the mask", "question_type": "explanation", "impact": 2, "brief": "Explain why giving every player the same function shape lets you swap humans and engines without touching the game loop."}
+      ]
+    },
+    {
+      "name": "The Drunken Automaton",
+      "concept": "Random agents and many games",
+      "encounter": "Build a random engine and play a thousand games.",
+      "act": 2, "sign": "random-selection",
+      "contract": "The oldest engine in the arena staggers between columns at random. It is useless as a player and priceless as a baseline.",
+      "objectives": [
+        {"id": "random_agent", "label": "Build the random engine", "question_type": "code_checkpoint", "impact": 3, "brief": "Write random_agent, which picks one of the legal moves at random."},
+        {"id": "mass_games", "label": "Play a thousand games", "question_type": "code_checkpoint", "impact": 3, "brief": "Play 1,000 random-against-random games without printing the boards and count wins for each side and draws."},
+        {"id": "first_move_edge", "label": "Read the first-move edge", "question_type": "explanation", "impact": 2, "brief": "Explain from your counts whether moving first is an advantage, and why random play still shows it."}
+      ]
+    },
+    {
+      "name": "The Watchful Guard",
+      "concept": "Looking one move ahead on a copy",
+      "encounter": "Build an engine that wins when it can and blocks when it must.",
+      "act": 2, "sign": "conditionals",
+      "contract": "The Guard is no genius. It just never misses a win in one and never lets you have one. Most players lose to that alone.",
+      "objectives": [
+        {"id": "try_on_copy", "label": "Test moves on a copy", "question_type": "code_checkpoint", "impact": 3, "brief": "Write a helper that tries a move on a copy of the board and reports whether it wins, leaving the real board untouched."},
+        {"id": "win_or_block", "label": "Win, block, else centre", "question_type": "code_checkpoint", "impact": 4, "brief": "Write greedy_agent: take a winning move if there is one, otherwise block the opponent's winning move, otherwise prefer the centre column."},
+        {"id": "mutation_bug", "label": "Find the leaking test", "question_type": "bug_diagnosis", "impact": 3, "brief": "Explain what goes wrong if the engine tries moves on the real board (or a shallow copy of it), and how your copy avoids it."},
+        {"id": "beat_random", "label": "Prove it beats random", "question_type": "code_checkpoint", "impact": 2, "brief": "Play 200 games of greedy_agent against random_agent, swapping who goes first, and report its win rate."}
+      ]
+    },
+    {
+      "name": "The Replay Scribe",
+      "concept": "Recording games as data",
+      "encounter": "Save every game as a list of moves and replay it later.",
+      "act": 2, "sign": "dictionaries",
+      "contract": "Tobin keeps a scribe who writes down every move ever played in the arena. Lose a game and the scribe can show you exactly where.",
+      "objectives": [
+        {"id": "record_moves", "label": "Record the moves", "question_type": "code_checkpoint", "impact": 3, "brief": "Make play_game also return the list of columns played, in order, with which agents played."},
+        {"id": "save_games", "label": "Save games to JSON", "question_type": "code_checkpoint", "impact": 3, "brief": "Save finished games to a JSON file as dictionaries with the players, the moves and the result."},
+        {"id": "replay", "label": "Replay a game", "question_type": "code_checkpoint", "impact": 3, "brief": "Load a saved game and replay it move by move on a fresh board, showing the board after each move."}
+      ]
+    },
+    {
+      "name": "The Branching Oracle",
+      "concept": "Recursion: minimax search",
+      "encounter": "Search the game tree a few moves deep and pick the best move.",
+      "act": 3, "sign": "functions",
+      "contract": "The Oracle sees every future branch a few moves deep: every move you could make, every reply. It picks the branch where its worst case is best.",
+      "objectives": [
+        {"id": "minimax", "label": "Write minimax", "question_type": "code_checkpoint", "impact": 5, "brief": "Write a recursive minimax(board, depth, maximizing) that returns a score, with wins, losses and draws as terminal scores."},
+        {"id": "minimax_agent", "label": "Turn it into an engine", "question_type": "code_checkpoint", "impact": 3, "brief": "Write minimax_agent, which scores every legal move with minimax and plays the best one."},
+        {"id": "tree_size", "label": "Count the branches", "question_type": "prediction", "impact": 2, "brief": "Predict how many positions a depth-2 search visits from an empty board, then count it in your code."}
+      ]
+    },
+    {
+      "name": "The Weigher of Windows",
+      "concept": "An evaluation function from many small windows",
+      "encounter": "Score positions that are not finished yet.",
+      "act": 3, "sign": "dictionaries",
+      "contract": "Search runs out of depth long before the game ends. The Weigher judges an unfinished board by looking through every window of four cells.",
+      "objectives": [
+        {"id": "windows", "label": "Collect every window", "question_type": "code_checkpoint", "impact": 4, "brief": "Collect every line of four cells on the board, in all four directions."},
+        {"id": "weights", "label": "Weigh the windows", "question_type": "code_checkpoint", "impact": 3, "brief": "Score each window from a dictionary of weights (three of yours and an empty, two and two empties, the opponent's threats) plus a centre-column bonus, and use it when the search stops early."},
+        {"id": "eval_reason", "label": "Defend your weights", "question_type": "explanation", "impact": 2, "brief": "Explain why an opponent's three-in-a-window should count against you more than your own two counts for you."}
+      ]
+    },
+    {
+      "name": "The Pruner",
+      "concept": "Alpha-beta pruning",
+      "encounter": "Make the search skip branches that cannot matter.",
+      "act": 3, "sign": "conditionals",
+      "contract": "Half the Oracle's visions are branches no sane player would take. The Pruner cuts them off before they are explored.",
+      "objectives": [
+        {"id": "alpha_beta", "label": "Add alpha-beta", "question_type": "code_checkpoint", "impact": 5, "brief": "Add alpha and beta bounds to your search and stop exploring a branch as soon as it cannot change the result."},
+        {"id": "node_count", "label": "Count what was saved", "question_type": "code_checkpoint", "impact": 3, "brief": "Count the positions visited with and without pruning at the same depth and report both."},
+        {"id": "same_choice", "label": "Prove nothing changed", "question_type": "bug_diagnosis", "impact": 2, "brief": "Check that the pruned search picks a move with the same score as plain minimax on several boards, and explain what a mismatch would mean."}
+      ]
+    },
+    {
+      "name": "The Hourglass",
+      "concept": "Iterative deepening and a time budget",
+      "encounter": "Search as deep as time allows, then move.",
+      "act": 3, "sign": "control-flow",
+      "contract": "In the arena every engine gets one turn of the hourglass. Think too long and you forfeit. Think in rings, deeper each time, and keep your best answer ready.",
+      "objectives": [
+        {"id": "move_ordering", "label": "Order the moves", "question_type": "code_checkpoint", "impact": 3, "brief": "Search centre columns first and show it lets pruning cut more branches."},
+        {"id": "deepening", "label": "Deepen step by step", "question_type": "code_checkpoint", "impact": 4, "brief": "Search depth 1, then 2, then 3 and so on, keeping the best move from the last finished depth."},
+        {"id": "time_budget", "label": "Stop when time runs out", "question_type": "bug_diagnosis", "impact": 3, "brief": "Stop searching when a time limit passes and still return a legal move, and explain what happens if the limit hits in the middle of a depth."}
+      ]
+    },
+    {
+      "name": "The Arena Clerk",
+      "concept": "Round-robin tournaments",
+      "encounter": "Make every engine play every other, both colours.",
+      "act": 4, "sign": "loops",
+      "contract": "The Clerk books every match: each engine against each other, white and black, many times over. No engine ducks a rival.",
+      "objectives": [
+        {"id": "round_robin", "label": "Book every match", "question_type": "code_checkpoint", "impact": 4, "brief": "Run a round-robin where every engine plays every other engine several times as each colour."},
+        {"id": "results_table", "label": "Print the table", "question_type": "code_checkpoint", "impact": 3, "brief": "Print a results table of wins, losses and draws per engine, sorted best first."},
+        {"id": "colour_fairness", "label": "Explain the colours", "question_type": "explanation", "impact": 2, "brief": "Explain why every pairing must play both colours for the table to be fair."}
+      ]
+    },
+    {
+      "name": "The Ratings Keeper",
+      "concept": "Updating ratings from results",
+      "encounter": "Give every engine an Elo rating.",
+      "act": 4, "sign": "variables",
+      "contract": "Wins against weaklings prove little. The Keeper's ratings rise most when you beat someone who should have beaten you.",
+      "objectives": [
+        {"id": "elo_update", "label": "Update Elo", "question_type": "code_checkpoint", "impact": 4, "brief": "After each tournament game, update both engines' Elo ratings from the expected and actual result."},
+        {"id": "rating_board", "label": "Show the ratings", "question_type": "code_checkpoint", "impact": 3, "brief": "Show every engine's rating after the tournament, and save it so the next tournament starts from there."},
+        {"id": "elo_trace", "label": "Trace one update", "question_type": "prediction", "impact": 2, "brief": "Predict whether a 1500 engine gains more points for beating a 1700 engine or a 1300 one, then check your function."}
+      ]
+    },
+    {
+      "name": "The Mirror Match",
+      "concept": "Tuning an engine by self-play",
+      "encounter": "Improve your evaluation weights by playing your engine against itself.",
+      "act": 4, "sign": "random-selection",
+      "contract": "The only opponent who knows your engine's flaws is your engine. Set it against slightly changed copies of itself and keep whichever wins.",
+      "objectives": [
+        {"id": "weight_variants", "label": "Make variants", "question_type": "code_checkpoint", "impact": 4, "brief": "Make engines that share your search but use slightly changed evaluation weights."},
+        {"id": "keep_best", "label": "Keep the winner", "question_type": "code_checkpoint", "impact": 3, "brief": "Play each variant against the current best over many games and keep whichever wins clearly, for several rounds."},
+        {"id": "overfit_reason", "label": "Spot the trap", "question_type": "explanation", "impact": 2, "brief": "Explain how an engine tuned only against itself could still lose to a different style of player."}
+      ]
+    },
+    {
+      "name": "The Spectator's Box",
+      "concept": "Putting the whole program together",
+      "encounter": "Open the arena: a menu to play, watch and run tournaments.",
+      "act": 4, "sign": "input-output",
+      "contract": "Tobin wants the stands full. Let people play your engines at the difficulty they choose, watch engines duel move by move, and run the tournament themselves.",
+      "objectives": [
+        {"id": "watch_mode", "label": "Let people watch", "question_type": "code_checkpoint", "impact": 3, "brief": "Add a watch mode where two engines play with the board shown after every move and a short pause between moves."},
+        {"id": "difficulty", "label": "Choose a difficulty", "question_type": "code_checkpoint", "impact": 3, "brief": "Let a human pick easy, medium or hard, which sets the engine and its search depth or time budget."},
+        {"id": "main_menu", "label": "Open the menu", "question_type": "code_checkpoint", "impact": 3, "brief": "Add a start menu: play an engine, watch a duel, run a tournament, replay a saved game, or quit."}
+      ]
+    }
+  ]
+}

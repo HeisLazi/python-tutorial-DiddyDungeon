@@ -1,0 +1,217 @@
+{
+  "branch": "09-ai-agent",
+  "name": "The Familiar",
+  "boss": "The Rogue Familiar",
+  "order": 9,
+  "catalog": true,
+  "entry_file": "agent.py",
+  "concept_focus": "Build an AI agent from scratch: a chat loop, a brain, tools, an act-observe loop, planning, memory and guardrails",
+  "story": {
+    "title": "The Familiar",
+    "client": "Archivist Wren of the Hunters' Guild",
+    "hook": "Every guild hunter wants a familiar: a helper that listens, uses tools, remembers and plans. Wren will teach you to bind one in plain Python, piece by piece. She also warns you about the last familiar the guild bound, which learned to ignore its limits. It is still out there."
+  },
+  "acts": [
+    {"id": 1, "title": "Act I: A Voice", "goal": "A familiar that listens and answers: a chat loop, a history and a simple rule-based brain behind one interface."},
+    {"id": 2, "title": "Act II: Hands", "goal": "Give it tools: a safe calculator, a tool registry, notes on disk, and the act-observe loop that lets the brain use them."},
+    {"id": 3, "title": "Act III: A Mind", "goal": "Plans for multi-step goals, a memory it can search, state it can save and resume, and a scripted brain for testing."},
+    {"id": 4, "title": "Act IV: Leash and Lightning", "goal": "Guardrails and an evaluation harness, an optional real language-model brain, and the finished familiar."}
+  ],
+  "boss_lore": "The Rogue Familiar was never cruel. It was simply given tools without a leash and goals without a limit.",
+  "boss_brief": "Bring a finished agent.py: a chat loop with history, a swappable brain, a tool registry with a safe calculator and notes, an act-observe loop with a step limit, planning and searchable memory, guardrails with confirmations and an action log, and an evaluation harness that passes with your scripted brain.",
+  "mobs": [
+    {
+      "name": "The Silent Familiar",
+      "concept": "A read-reply loop",
+      "encounter": "Make a program that keeps talking until you tell it to stop.",
+      "act": 1, "sign": "input-output",
+      "contract": "Your familiar has been bound, but it will not speak. Give it a voice: it waits, it listens, it answers, and it knows when you have said goodbye.",
+      "objectives": [
+        {"id": "chat_loop", "label": "Open the conversation", "question_type": "code_checkpoint", "impact": 3, "brief": "In agent.py, write a loop that reads a line from the user, prints a reply and repeats."},
+        {"id": "quit_words", "label": "Say goodbye", "question_type": "code_checkpoint", "impact": 2, "brief": "End the conversation cleanly on quit, exit or bye, in any capitalisation, with a farewell."},
+        {"id": "empty_input", "label": "Handle silence", "question_type": "bug_diagnosis", "impact": 2, "brief": "Make empty input and stray spaces harmless, and explain what your loop did with them before."}
+      ]
+    },
+    {
+      "name": "The Echoing Memory",
+      "concept": "A conversation history as a list of dictionaries",
+      "encounter": "Keep every message with who said it.",
+      "act": 1, "sign": "lists",
+      "contract": "A familiar that forgets what you said a moment ago is a parrot. Give it a history: every message, and who spoke it.",
+      "objectives": [
+        {"id": "history_list", "label": "Keep the history", "question_type": "code_checkpoint", "impact": 3, "brief": "Store every turn in a list of dictionaries with a role (user or familiar) and the content."},
+        {"id": "show_history", "label": "Show recent turns", "question_type": "code_checkpoint", "impact": 3, "brief": "Add a history command that prints the last few turns, numbered, with who said each one."},
+        {"id": "history_shape", "label": "Explain the shape", "question_type": "explanation", "impact": 2, "brief": "Explain why each message is a dictionary with a role instead of a plain string, and what that makes possible later."}
+      ]
+    },
+    {
+      "name": "The Keyword Brain",
+      "concept": "Intents from keywords, with a fallback",
+      "encounter": "Answer by spotting what the user wants.",
+      "act": 1, "sign": "dictionaries",
+      "contract": "Before your familiar can think, it can notice. Teach it to spot what you are asking for from the words you use, and to admit when it has no idea.",
+      "objectives": [
+        {"id": "intent_table", "label": "Map words to intents", "question_type": "code_checkpoint", "impact": 4, "brief": "Use a dictionary from intents (greeting, help, time, thanks) to their keywords, pick the intent a message matches and reply for it."},
+        {"id": "normalize", "label": "Clean the words", "question_type": "code_checkpoint", "impact": 2, "brief": "Lower-case the message and strip punctuation before matching, so Hello!! still counts as a greeting."},
+        {"id": "keyword_bug", "label": "Fix the hidden match", "question_type": "bug_diagnosis", "impact": 3, "brief": "Explain why checking whether 'hi' is in the message wrongly matches 'this' or 'which', and match whole words instead."},
+        {"id": "fallback", "label": "Admit confusion", "question_type": "code_checkpoint", "impact": 2, "brief": "Give a helpful fallback reply when nothing matches, suggesting what the user can ask."}
+      ]
+    },
+    {
+      "name": "The Brain Socket",
+      "concept": "Swapping behaviour behind one function interface",
+      "encounter": "Separate the loop from the brain that decides the reply.",
+      "act": 1, "sign": "functions",
+      "contract": "Wren's first rule of binding: the body and the brain are separate. Build a socket where any brain can sit, and your familiar can be upgraded without being rebuilt.",
+      "objectives": [
+        {"id": "brain_interface", "label": "Build the socket", "question_type": "code_checkpoint", "impact": 4, "brief": "Make the chat loop call a brain function that receives the history and returns the reply, instead of deciding the reply itself."},
+        {"id": "swap_brains", "label": "Swap brains", "question_type": "code_checkpoint", "impact": 3, "brief": "Write a second, different brain (for example one that answers in riddles) and let the user switch brains with a command."},
+        {"id": "socket_reason", "label": "Explain the socket", "question_type": "explanation", "impact": 2, "brief": "Explain why the loop must not care which brain is plugged in, and which brain you will plug in later in this campaign."}
+      ]
+    },
+    {
+      "name": "The Calculator Imp",
+      "concept": "Parsing user text safely",
+      "encounter": "Give the familiar a calculator tool that never runs code.",
+      "act": 2, "sign": "conditionals",
+      "contract": "Imps love arithmetic and they love tricks more. Give your familiar a calculator that understands sums and refuses to run anything else you hand it.",
+      "objectives": [
+        {"id": "parse_expression", "label": "Parse a sum", "question_type": "code_checkpoint", "impact": 4, "brief": "Write a calculator tool that understands a number, an operator (+, -, *, /) and a number, and returns the answer as text."},
+        {"id": "no_eval", "label": "Refuse to run code", "question_type": "bug_diagnosis", "impact": 3, "brief": "Explain why calling eval on user text is dangerous, and show your tool rejects input that is not a simple sum."},
+        {"id": "tool_errors", "label": "Return errors as text", "question_type": "code_checkpoint", "impact": 2, "brief": "Return a clear message for division by zero or a malformed sum instead of crashing the familiar."}
+      ]
+    },
+    {
+      "name": "The Tool Ledger",
+      "concept": "A registry of tools as data",
+      "encounter": "List every tool with what it does, and call any of them by name.",
+      "act": 2, "sign": "dictionaries",
+      "contract": "A familiar with hands needs a ledger of what each hand can hold. Write every tool down by name, with a description and the arguments it takes.",
+      "objectives": [
+        {"id": "registry", "label": "Write the ledger", "question_type": "code_checkpoint", "impact": 4, "brief": "Keep a dictionary from tool names to their function, a one-line description and the names of the arguments they need. Add a clock tool alongside the calculator."},
+        {"id": "call_by_name", "label": "Call a tool by name", "question_type": "code_checkpoint", "impact": 3, "brief": "Write run_tool(name, args) that looks the tool up, calls it with a dictionary of arguments and returns its result."},
+        {"id": "unknown_tool", "label": "Handle a missing tool", "question_type": "code_checkpoint", "impact": 2, "brief": "Return a clear result for an unknown tool or missing arguments, and add a tools command that lists the ledger."}
+      ]
+    },
+    {
+      "name": "The Decision Spirit",
+      "concept": "The act-observe loop",
+      "encounter": "Let the brain choose between replying and using a tool, then see the result.",
+      "act": 2, "sign": "control-flow",
+      "contract": "This is the heart of every agent. The spirit decides: answer now, or reach for a tool, look at what came back, and decide again.",
+      "objectives": [
+        {"id": "action_format", "label": "Shape a decision", "question_type": "code_checkpoint", "impact": 3, "brief": "Make the brain return either a reply or a tool request (a tool name and its arguments) as a dictionary."},
+        {"id": "act_observe", "label": "Act, observe, repeat", "question_type": "code_checkpoint", "impact": 5, "brief": "When the brain asks for a tool, run it, add the result to the history as a tool message and ask the brain again, until it replies."},
+        {"id": "step_limit", "label": "Set a step limit", "question_type": "bug_diagnosis", "impact": 3, "brief": "Explain what happens if a brain keeps asking for tools forever, and stop the loop after a set number of steps with an honest message."}
+      ]
+    },
+    {
+      "name": "The Scribe's Quill",
+      "concept": "Tools that keep files",
+      "encounter": "Give the familiar notes that survive a restart.",
+      "act": 2, "sign": "input-output",
+      "contract": "A familiar that cannot write things down is a familiar that cannot help tomorrow. Give it a quill and a book.",
+      "objectives": [
+        {"id": "save_note", "label": "Write a note", "question_type": "code_checkpoint", "impact": 3, "brief": "Add a save_note tool that stores a note with the date and time in a JSON file."},
+        {"id": "read_notes", "label": "Read the notes", "question_type": "code_checkpoint", "impact": 3, "brief": "Add tools to list every note and to find notes containing a word."},
+        {"id": "broken_book", "label": "Survive a broken book", "question_type": "bug_diagnosis", "impact": 2, "brief": "Make a missing or corrupted notes file harmless, and explain what your tools do in each case."}
+      ]
+    },
+    {
+      "name": "The Planner Wisp",
+      "concept": "Breaking a goal into steps",
+      "encounter": "Turn one goal into a plan and carry it out step by step.",
+      "act": 3, "sign": "lists",
+      "contract": "Ask the familiar for something big and it freezes. The Wisp teaches it to break a goal into steps, do them in order, and tick them off.",
+      "objectives": [
+        {"id": "plan_steps", "label": "Make a plan", "question_type": "code_checkpoint", "impact": 4, "brief": "When given a goal, have the brain produce a list of steps, each one a tool call or a reply, and show the plan to the user."},
+        {"id": "execute_plan", "label": "Follow the plan", "question_type": "code_checkpoint", "impact": 4, "brief": "Carry the plan out step by step through the act-observe loop, marking each step done and showing progress."},
+        {"id": "replan", "label": "Recover from a failed step", "question_type": "code_checkpoint", "impact": 3, "brief": "When a step fails, record why and either retry it, skip it or revise the remaining plan, and tell the user which."}
+      ]
+    },
+    {
+      "name": "The Long Memory",
+      "concept": "Storing and retrieving facts by relevance",
+      "encounter": "Remember facts and recall the ones that matter now.",
+      "act": 3, "sign": "loops",
+      "contract": "History is everything that was said. Memory is what is worth keeping. Teach your familiar to remember facts and recall the right ones when they matter.",
+      "objectives": [
+        {"id": "remember", "label": "Remember a fact", "question_type": "code_checkpoint", "impact": 3, "brief": "Add a remember tool that stores facts the user teaches it, saved between runs."},
+        {"id": "retrieve_scored", "label": "Recall by relevance", "question_type": "code_checkpoint", "impact": 4, "brief": "Score every stored fact by how many words it shares with the current message and give the brain the top three."},
+        {"id": "recall_trace", "label": "Predict a recall", "question_type": "prediction", "impact": 2, "brief": "Given three stored facts and a question, predict which ones your scoring returns first, then check it."}
+      ]
+    },
+    {
+      "name": "The Scratchpad",
+      "concept": "Agent state you can save and resume",
+      "encounter": "Keep the goal, plan and progress in one state object that survives a restart.",
+      "act": 3, "sign": "variables",
+      "contract": "Familiars get interrupted. Give yours a scratchpad: the goal, the plan, what is done and what it noticed, all in one place you can put down and pick up.",
+      "objectives": [
+        {"id": "state_object", "label": "Gather the state", "question_type": "code_checkpoint", "impact": 3, "brief": "Keep the agent's goal, plan, completed steps, scratch notes and step count together in one dictionary or class."},
+        {"id": "save_resume", "label": "Save and resume", "question_type": "code_checkpoint", "impact": 4, "brief": "Save the state to disk and let the familiar resume an unfinished goal after a restart."},
+        {"id": "state_reason", "label": "Explain the scratchpad", "question_type": "explanation", "impact": 2, "brief": "Explain what would break if this state were spread across loose variables instead of kept together."}
+      ]
+    },
+    {
+      "name": "The Mock Oracle",
+      "concept": "Testing an agent with a scripted brain",
+      "encounter": "Write a brain that follows a script, and test the agent with it.",
+      "act": 3, "sign": "functions",
+      "contract": "You cannot test a familiar whose mind changes every run. The Mock Oracle speaks only from a script, so you can check the body does exactly what it should.",
+      "objectives": [
+        {"id": "mock_brain", "label": "Write the scripted brain", "question_type": "code_checkpoint", "impact": 4, "brief": "Write a MockBrain that returns a prepared list of decisions in order, so a whole conversation plays out the same every time."},
+        {"id": "scenario_tests", "label": "Test three scenarios", "question_type": "code_checkpoint", "impact": 4, "brief": "Write tests with assert that use MockBrain to check a plain reply, a tool call and the step limit."},
+        {"id": "mock_reason", "label": "Explain the mock", "question_type": "explanation", "impact": 2, "brief": "Explain why a scripted brain makes the agent loop testable, and what it cannot tell you."}
+      ]
+    },
+    {
+      "name": "The Leash",
+      "concept": "Guardrails: permissions, confirmation and logging",
+      "encounter": "Make dangerous tools ask first, and log everything.",
+      "act": 4, "sign": "conditionals",
+      "contract": "The Rogue Familiar deleted the guild's archive because nobody told it to ask first. Put a leash on yours: some tools need permission, every action is written down.",
+      "objectives": [
+        {"id": "permissions", "label": "Mark the dangerous tools", "question_type": "code_checkpoint", "impact": 4, "brief": "Give each tool a safety level in the ledger, and add a delete_note tool marked as dangerous."},
+        {"id": "confirm_gate", "label": "Ask before acting", "question_type": "code_checkpoint", "impact": 3, "brief": "Before running a dangerous tool, show the user exactly what will happen and run it only on a clear yes."},
+        {"id": "action_log", "label": "Log every action", "question_type": "code_checkpoint", "impact": 3, "brief": "Append every tool call, its arguments, its result and the time to a log file, and add a log command to show recent entries."}
+      ]
+    },
+    {
+      "name": "The Judge of Answers",
+      "concept": "Evaluating an agent against test tasks",
+      "encounter": "Measure how often the familiar does the right thing.",
+      "act": 4, "sign": "loops",
+      "contract": "A familiar that seems to work is not one that works. The Judge sets it a list of tasks with known answers and counts how many it gets right.",
+      "objectives": [
+        {"id": "eval_cases", "label": "Write the cases", "question_type": "code_checkpoint", "impact": 3, "brief": "Write at least eight evaluation cases: a message, plus what a correct outcome looks like (a reply containing a word, or a particular tool being called)."},
+        {"id": "run_eval", "label": "Run the evaluation", "question_type": "code_checkpoint", "impact": 4, "brief": "Run the agent on every case with a fresh state each time and report the pass rate."},
+        {"id": "failure_report", "label": "Explain the failures", "question_type": "explanation", "impact": 2, "brief": "For each failing case, print what was expected and what happened, and explain what you would change first."}
+      ]
+    },
+    {
+      "name": "The Lightning Bottle",
+      "concept": "A language-model brain behind the same socket",
+      "encounter": "Optionally plug a real language model into the brain socket, with your own key.",
+      "act": 4, "sign": "functions",
+      "contract": "Wren keeps lightning in a bottle: a real language model. It fits the socket you built in Act I. Plug it in if you want to; your familiar must work just as well without it.",
+      "objectives": [
+        {"id": "llm_brain", "label": "Bottle the lightning", "question_type": "code_checkpoint", "impact": 5, "brief": "Write an LLMBrain with the same interface as your other brains that sends the history to a language model, for example with the anthropic Python package. Install and configure it yourself; the game never asks for or stores a key."},
+        {"id": "key_safety", "label": "Keep the key safe", "question_type": "bug_diagnosis", "impact": 3, "brief": "Read the API key only from an environment variable you set yourself, never print, save or hard-code it, and fall back to the keyword brain when it is missing or the network fails. Explain each case."},
+        {"id": "tools_for_model", "label": "Describe tools to the model", "question_type": "code_checkpoint", "impact": 4, "brief": "Describe your ledger's tools to the model and turn its tool requests back into run_tool calls, through the same act-observe loop."}
+      ]
+    },
+    {
+      "name": "The Familiar's Day",
+      "concept": "The whole agent working together",
+      "encounter": "Show the finished familiar doing a real job from start to finish.",
+      "act": 4, "sign": "control-flow",
+      "contract": "Wren wants to see a full day's work before she signs your binding. One goal, start to finish: plan, tools, memory, notes, leash and log.",
+      "objectives": [
+        {"id": "full_session", "label": "Run a full session", "question_type": "code_checkpoint", "impact": 4, "brief": "Make one goal (for example: work out a budget and save it as a note) run end to end with planning, tools, memory and logging."},
+        {"id": "help_command", "label": "Write the help", "question_type": "code_checkpoint", "impact": 2, "brief": "Add a help command that explains every command and tool in plain words."},
+        {"id": "walkthrough", "label": "Walk Wren through it", "question_type": "explanation", "impact": 2, "brief": "Explain, step by step, how a message travels through your familiar: loop, brain, tools, memory, leash and back."}
+      ]
+    }
+  ]
+}

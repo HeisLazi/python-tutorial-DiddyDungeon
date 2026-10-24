@@ -151,6 +151,23 @@ class CampaignExtensionTests(unittest.TestCase):
         self.assertEqual(len(trickster["objectives"]), 3)
         self.assertEqual(len(self.blackjack()["mobs"]), 8)  # a read never writes the save
 
+    def test_new_agent_projects_join_the_campaign_and_open_with_their_boards(self):
+        self.service.apply_internal("campaign_extend", {})
+        branches = {project["branch"]: project for project in self.read()["projects"]}
+        self.assertEqual(branches["08-game-agent"]["status"], "available")
+        self.assertEqual(branches["09-ai-agent"]["name"], "The Familiar")
+        self.assertTrue(set(branches["09-ai-agent"]) <= {"branch", "name", "status", "boss", "order", "progress", "mobs", "entry_file"})  # entry_file is never synced
+        selected = self.service.apply("select_campaign", {"branch": "09-ai-agent"}, "player")["result"]["project"]
+        self.assertEqual(selected["entry_file"], "agent.py")
+        project = next(item for item in self.read()["projects"] if item["branch"] == "09-ai-agent")
+        self.assertEqual(len(project["mobs"]), 16)
+        self.assertEqual(project["mobs"][0]["status"], "available")
+        encounter = self.service.encounter_projection(self.read())
+        self.assertEqual(encounter["mob_name"], "The Silent Familiar")
+        self.assertEqual([item["id"] for item in encounter["available_objectives"]], ["chat_loop", "quit_words", "empty_input"])
+        # Blackjack keeps its board while another project is played.
+        self.assertEqual(len(next(item for item in self.read()["projects"] if item["branch"] == "01-blackjack")["mobs"]), 19)
+
 
 if __name__ == "__main__":
     unittest.main()
