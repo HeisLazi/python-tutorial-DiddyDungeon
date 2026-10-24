@@ -409,6 +409,8 @@ ACTION_DEFINITIONS: dict[str, ActionDefinition] = {
     "dungeon_enter_risk": ActionDefinition(frozenset({"player"})),
     "dungeon_market_purchase": ActionDefinition(frozenset({"player"})),
     "dungeon_equip_item": ActionDefinition(frozenset({"player"})),
+    "dungeon_apply_oil": ActionDefinition(frozenset({"player"})),
+    "hunter_craft_oil": ActionDefinition(frozenset({"player"})),
     "dungeon_leave_room": ActionDefinition(frozenset({"player"})),
     "dungeon_finish_run": ActionDefinition(frozenset({"player"})),
     "dungeon_reset_run": ActionDefinition(frozenset({"player"})),
@@ -852,6 +854,20 @@ DUNGEON_TRINKETS = (
     {"id": "dungeon-whetstone-charm", "name": "Whetstone Charm", "kind": "trinket", "trinket": "Whetstone Charm", "description": "Every correct answer chips 1 more Resolve."},
 )
 DUNGEON_TRINKET_FALLBACK_COINS = 10
+
+# ── Beast oils (crafting) ────────────────────────────────────────────────
+# Crafted at the Merchant from banked parts and coins, one sign each; a
+# stronger oil needs a higher sign rank. Applied in a fight against that
+# sign's beast (one per fight), an oil only helps: a free mistake, a slower
+# mechanic or bigger Resolve chips. It never shortens a fight.
+HUNTER_OIL_TIERS = (
+    {"id": "ward", "name": "Ward Oil", "rank": 0, "parts": 2, "essence": 0, "coins": 10, "effect": "One free mistake banked for this fight."},
+    {"id": "slowing", "name": "Slowing Oil", "rank": 1, "parts": 3, "essence": 1, "coins": 25, "effect": "Its mechanic countdown gets 2 more answers."},
+    {"id": "bane", "name": "Bane Oil", "rank": 2, "parts": 5, "essence": 2, "coins": 50, "effect": "Every correct answer chips 3 more Resolve this fight."},
+)
+HUNTER_OIL_TIERS_BY_ID = {tier["id"]: tier for tier in HUNTER_OIL_TIERS}
+HUNTER_OIL_SLOW_ANSWERS = 2
+HUNTER_OIL_BANE_CHIP = 3
 
 
 def hunter_signs_for(concept: object) -> list[str]:
@@ -2971,6 +2987,7 @@ class LocalStateService:
             },
         }
         profile = profile_by_room.get(room_type, profile_by_room["encounter"])
+        beast_sign = next((sign for sign in hunter_signs_for(question.get("concept_id") or run.get("concept_id")) if sign in HUNTER_BEASTS), None)
         name = archetype["name"]
         region = DUNGEON_REGIONS.get(str(run.get("region_id") or ""))
         if region and room_type == "boss":
@@ -2985,6 +3002,7 @@ class LocalStateService:
             "name": name,
             "category": archetype["category"],
             "concept_id": str(question.get("concept_id") or run.get("concept_id") or "python-basics")[:MAX_IDENTIFIER_LENGTH],
+            "sign_id": beast_sign,
             "question_type": question_type,
             "difficulty": difficulty,
             "phase": _DUNGEON_MOB_PHASES[phase_index],
@@ -2997,6 +3015,7 @@ class LocalStateService:
                 "questions_cleared": int(fight["questions_cleared"]) if fight else 0,
                 "guards": int(fight["guards"]) if fight else 0,
                 "breaks": int(fight["breaks"]) if fight else 0,
+                "oil": dict(fight["oil"]) if fight and isinstance(fight.get("oil"), Mapping) else None,
                 "mechanic": dict(fight["mechanic"]) if fight and isinstance(fight.get("mechanic"), Mapping) else (
                     {**DUNGEON_MECHANICS[room_type], "countdown": DUNGEON_MECHANICS[room_type]["every"], "enraged": False, "fired": 0}
                     if room_type in DUNGEON_MECHANICS else None
@@ -3892,6 +3911,7 @@ class LocalStateService:
             chip = (base_chip if clean_cast else max(1, base_chip // 2)) + (hunter["stats"]["strength"]["value"] - 1) + (sign_level // 3) * focus_multiplier
             if loadout.get("trinket") == "Whetstone Charm":
                 chip += 1
+            chip += int(fight.get("bane", 0) or 0)
             fight["resolve"] = max(0, resolve_before - chip)
             if fight["resolve"] == 0 and not fight_done:
                 # A break only helps: a free mistake, the mechanic stops, a few coins.
@@ -4286,6 +4306,53 @@ class LocalStateService:
             True,
             {"run": self.dungeon_projection(progress), "equipped": value, "slot": field},
             {"run_id": run_id, "item_id": item_id, "item_name": item.get("name"), "slot": field, "reason": "dungeon_item_equipped"},
+        )
+
+    def _dungeon_apply_oil(self, payload: Mapping[str, Any], progress: dict[str, Any]) -> Mutation:
+        """Coat your blade for the current fight with an oil for its beast."""
+
+        data = self._payload(payload, {"run_id", "oil_id"}, {"run_id", "oil_id"})
+        run = self._active_dungeon_run(progress)
+        run_id = self._text(data["run_id"], "run_id", max_length=MAX_IDENTIFIER_LENGTH, identifier=True)
+        oil_id = self._text(data["oil_id"], "oil_id", max_length=MAX_IDENTIFIER_LENGTH, identifier=True)
+        if run.get("run_id") != run_id:
+            raise StateCommandError("Dungeon run changed; reload the current run", status_code=409)
+        question = run.get("question")
+        if run.get("room_type") not in {"encounter", "elite", "boss"} or not isinstance(question, Mapping):
+            raise StateCommandError("Oils are applied during a fight", status_code=409)
+        sign_id, _, tier_id = oil_id.rpartition("-")
+        tier = HUNTER_OIL_TIERS_BY_ID.get(tier_id)
+        if tier is None or sign_id not in HUNTER_BEASTS:
+            raise StateCommandError("Unknown oil", status_code=422)
+        hunter = self._hunter_state(progress)
+        if self._counter(hunter["oils"], oil_id) <= 0:
+            raise StateCommandError("You have none of that oil; craft it at the Merchant", status_code=409)
+        if sign_id not in hunter_signs_for(question.get("concept_id") or run.get("concept_id")):
+            raise StateCommandError("That oil is made for a different beast", status_code=409)
+        fight = self._dungeon_fight(run, progress)
+        if isinstance(fight.get("oil"), Mapping):
+            raise StateCommandError("This fight already has an oil applied", status_code=409)
+        mechanic = fight.get("mechanic")
+        if tier_id == "slowing" and not isinstance(mechanic, dict):
+            raise StateCommandError("This fight has no mechanic to slow", status_code=409)
+        if tier_id == "ward":
+            fight["guards"] = int(fight.get("guards", 0) or 0) + 1
+        elif tier_id == "slowing":
+            mechanic["countdown"] = int(mechanic["countdown"]) + HUNTER_OIL_SLOW_ANSWERS
+        else:
+            fight["bane"] = HUNTER_OIL_BANE_CHIP
+        name = f"{HUNTER_BEASTS[sign_id]['beast'].removeprefix('The ')} {tier['name']}"
+        fight["oil"] = {"id": oil_id, "tier": tier_id, "name": name, "effect": tier["effect"]}
+        left = self._counter(hunter["oils"], oil_id) - 1
+        if left > 0:
+            hunter["oils"][oil_id] = left
+        else:
+            hunter["oils"].pop(oil_id, None)
+        run["updated_at"] = _utc_now()
+        return Mutation(
+            True,
+            {"run": self.dungeon_projection(progress), "hunter": self.hunter_projection(progress), "oil": dict(fight["oil"])},
+            {"run_id": run_id, "oil_id": oil_id, "reason": "dungeon_oil_applied"},
         )
 
     def _dungeon_leave_room(self, payload: Mapping[str, Any], progress: dict[str, Any]) -> Mutation:
@@ -4759,6 +4826,8 @@ class LocalStateService:
             "dungeon_enter_risk": self._dungeon_enter_risk,
             "dungeon_market_purchase": self._dungeon_market_purchase,
             "dungeon_equip_item": self._dungeon_equip_item,
+            "dungeon_apply_oil": self._dungeon_apply_oil,
+            "hunter_craft_oil": self._hunter_craft_oil,
             "dungeon_leave_room": self._dungeon_leave_room,
             "dungeon_finish_run": self._dungeon_finish_run,
             "dungeon_reset_run": self._dungeon_reset_run,
@@ -4814,7 +4883,7 @@ class LocalStateService:
         if not isinstance(hunter, dict):
             hunter = cls._hunter_seed(progress)
             progress["hunter"] = hunter
-        for key in ("signs", "stats_xp", "spent", "materials"):
+        for key in ("signs", "stats_xp", "spent", "materials", "oils"):
             if not isinstance(hunter.get(key), dict):
                 hunter[key] = {}
         return hunter
@@ -4956,7 +5025,63 @@ class LocalStateService:
         points = max(0, player_level - 1)
         spent_total = sum(count(spent, name) for name in HUNTER_STATS)
         materials = cls._dungeon_pack_items(hunter.get("materials"))
-        return {"signs": signs, "stats": stats, "level": player_level, "free_points": max(0, points - spent_total), "materials": materials}
+        bank = hunter.get("materials") if isinstance(hunter.get("materials"), Mapping) else {}
+        owned_oils = hunter.get("oils") if isinstance(hunter.get("oils"), Mapping) else {}
+        coins = count(player, "coins")
+        ranks = {sign["id"]: sign["rank"] for sign in signs}
+        recipes = []
+        oils = []
+        for sign_id, beast in HUNTER_BEASTS.items():
+            essence = next(region["essence"] for region in DUNGEON_REGIONS.values() if sign_id in region["signs"])
+            for tier in HUNTER_OIL_TIERS:
+                oil_id = f"{sign_id}-{tier['id']}"
+                needs = {beast["part"]: tier["parts"], **({essence: tier["essence"]} if tier["essence"] else {})}
+                inputs = [{"id": key, "name": DUNGEON_MATERIAL_NAMES[key], "count": need, "have": count(bank, key)} for key, need in needs.items()]
+                recipe = {
+                    "id": oil_id,
+                    "sign": sign_id,
+                    "tier": tier["id"],
+                    "name": f"{beast['beast'].removeprefix('The ')} {tier['name']}",
+                    "effect": tier["effect"],
+                    "rank_needed": tier["rank"],
+                    "unlocked": ranks.get(sign_id, 0) >= tier["rank"],
+                    "coins": tier["coins"],
+                    "materials": inputs,
+                    "affordable": coins >= tier["coins"] and all(item["have"] >= item["count"] for item in inputs),
+                    "owned": count(owned_oils, oil_id),
+                }
+                recipes.append(recipe)
+                if recipe["owned"]:
+                    oils.append({key: recipe[key] for key in ("id", "sign", "tier", "name", "effect")} | {"count": recipe["owned"]})
+        return {"signs": signs, "stats": stats, "level": player_level, "free_points": max(0, points - spent_total), "materials": materials, "oil_recipes": recipes, "oils": oils}
+
+    def _hunter_craft_oil(self, payload: Mapping[str, Any], progress: dict[str, Any]) -> Mutation:
+        """Craft one beast oil at the Merchant from banked parts and coins."""
+
+        data = self._payload(payload, {"oil_id"}, {"oil_id"})
+        oil_id = self._text(data["oil_id"], "oil_id", max_length=MAX_IDENTIFIER_LENGTH, identifier=True)
+        recipe = next((item for item in self.hunter_projection(progress)["oil_recipes"] if item["id"] == oil_id), None)
+        if recipe is None:
+            raise StateCommandError("Unknown oil recipe", status_code=404)
+        if not recipe["unlocked"]:
+            raise StateCommandError(f"This oil needs its sign at rank {recipe['rank_needed']}", status_code=409)
+        if not recipe["affordable"]:
+            raise StateCommandError("Not enough banked materials or coins for this oil", status_code=409)
+        hunter = self._hunter_state(progress)
+        for item in recipe["materials"]:
+            left = self._counter(hunter["materials"], item["id"]) - item["count"]
+            if left > 0:
+                hunter["materials"][item["id"]] = left
+            else:
+                hunter["materials"].pop(item["id"], None)
+        player = self._dict(progress, "player")
+        player["coins"] = self._counter(player, "coins") - recipe["coins"]
+        hunter["oils"][oil_id] = self._counter(hunter["oils"], oil_id) + 1
+        return Mutation(
+            True,
+            {"hunter": self.hunter_projection(progress), "oil_id": oil_id, "coins": player["coins"]},
+            {"oil_id": oil_id, "coins_spent": recipe["coins"], "reason": "hunter_oil_crafted"},
+        )
 
     def _hunter_spend_point(self, payload: Mapping[str, Any], progress: dict[str, Any]) -> Mutation:
         """Spend one free stat point (one is earned per hunter level)."""

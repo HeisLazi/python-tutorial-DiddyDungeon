@@ -204,3 +204,11 @@
 .dungeon-camp-banked { display: grid; gap: 4px; padding: 10px; border: 2px solid var(--dungeon-green); }
 .dungeon-camp-banked strong { color: var(--dungeon-green); }
 .dungeon-camp-banked span:last-child { color: var(--dungeon-muted); font-size: 13px; }
+
+/* Beast oils in a fight. */
+.dungeon-oils { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 4px 0 8px; padding: 8px; border: 1px dashed var(--dungeon-line); }
+.dungeon-oils.applied { border: 1px solid var(--dungeon-green); display: grid; gap: 2px; }
+.dungeon-oils.applied strong { color: var(--dungeon-green); }
+.dungeon-oils small { color: var(--dungeon-muted); font-size: 13px; }
+.dungeon-oils button { display: grid; gap: 2px; padding: 6px 10px; border: 1px solid var(--dungeon-green); background: transparent; color: var(--dungeon-green); font: inherit; text-align: left; cursor: pointer; }
+.dungeon-oils button:disabled { opacity: 0.6; cursor: default; }

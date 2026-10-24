@@ -368,6 +368,10 @@ class DungeonEquipRequest(DungeonRunRequest):
     item_id: str = Field(min_length=1, max_length=MAX_IDENTIFIER_LENGTH)
 
 
+class DungeonOilRequest(DungeonRunRequest):
+    oil_id: str = Field(min_length=1, max_length=MAX_IDENTIFIER_LENGTH)
+
+
 class PyrDungeonSubmissionRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -1033,6 +1037,11 @@ def purchase_dungeon_market(payload: DungeonMarketRequest):
 @app.post("/api/dungeon/equip")
 def equip_dungeon_item(payload: DungeonEquipRequest):
     return _dungeon_player_action("dungeon_equip_item", payload.model_dump())
+
+
+@app.post("/api/dungeon/oil")
+def apply_dungeon_oil(payload: DungeonOilRequest):
+    return _dungeon_player_action("dungeon_apply_oil", payload.model_dump())
 
 
 @app.post("/api/dungeon/leave")
@@ -2622,6 +2631,26 @@ class HunterStatPoint(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     stat: str = Field(min_length=1, max_length=20)
+
+
+class HunterCraftOil(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    oil_id: str = Field(min_length=1, max_length=MAX_IDENTIFIER_LENGTH)
+
+
+@app.post("/api/hunter/craft")
+def craft_hunter_oil(payload: HunterCraftOil):
+    """Craft a beast oil from banked materials (validated by the state service)."""
+
+    envelope = _apply_state_or_http("hunter_craft_oil", {"oil_id": payload.oil_id}, "player")
+    try:
+        _progress, metadata = STATE_SERVICE.snapshot_with_metadata()
+    except StateCommandError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
+    result = _flatten_state_result(envelope)
+    result["revision"] = metadata["revision"]
+    return result
 
 
 @app.post("/api/hunter/stat")

@@ -99,6 +99,16 @@ Updated: 2026-10-22 · branch `feature/tauri-arcade` (fast-forwarded into
   points multiplies the `sign_level // 3` chip term. Pack, bank and region are
   local only (not in the sync projection). UI: `DelvePicker` on run setup,
   PACK tab in the run menu, camp banked note, verdict loot, hunter sheet Stores.
+- **Beast oils (Phase C2):** `HUNTER_OIL_TIERS` (ward / slowing / bane) per
+  sign, ids `<sign>-<tier>`. `hunter_craft_oil` (`POST /api/hunter/craft`)
+  spends banked parts (+ the sign's region essence for slowing/bane) and
+  player coins; tiers need sign rank 0 / 1 / 2. `hunter_projection` carries
+  `oil_recipes` and owned `oils` (`progress["hunter"]["oils"]`, local only).
+  `dungeon_apply_oil` (`POST /api/dungeon/oil`) works once per fight, only on
+  a beast whose sign matches (`encounter.sign_id`): ward +1 free mistake,
+  slowing +2 on the mechanic countdown (not on plain encounters), bane +3
+  chip per correct answer (`fight["bane"]`). UI: Merchant greeting door
+  "Hunter's alchemy" (`AlchemyBench`), `DungeonOils` row under the fight strip.
 - **Submit race fix:** `submitDungeon` waits for any in-flight editor
   checkpoint and saves unsaved edits before capturing PYR context (an autosave
   in between changed the revision and the answer was rejected as stale).

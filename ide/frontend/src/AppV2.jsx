@@ -1859,6 +1859,7 @@ function AppV2() {
   const revealDungeonRisk = (runId) => dungeonAction('/api/dungeon/risk/reveal', { run_id: runId }, () => 'Vision scroll consumed. The risk profile is now visible.')
   const enterDungeonRisk = (runId) => dungeonAction('/api/dungeon/risk/enter', { run_id: runId }, (result) => `Risk entered. ${result.risk_kind || 'The room'} is now state-owned.`)
   const buyDungeonItem = (runId, itemId) => dungeonAction('/api/dungeon/market', { run_id: runId, item_id: itemId }, (result) => `Bought ${result.item?.name || itemId} for run currency.`)
+  const applyDungeonOil = (runId, oilId) => dungeonAction('/api/dungeon/oil', { run_id: runId, oil_id: oilId }, (result) => `${result.oil?.name || 'Oil'} applied: ${result.oil?.effect || ''}`)
   const equipDungeonItem = (runId, itemId) => dungeonAction('/api/dungeon/equip', { run_id: runId, item_id: itemId }, (result) => `${result.equipped || itemId} equipped.`)
   const chooseDungeonRoom = (runId, choiceId) => dungeonAction('/api/dungeon/choose', { run_id: runId, choice_id: choiceId }, (result) => {
     const kind = result.choice?.kind || result.dungeon?.room_type || 'room'
@@ -2160,6 +2161,16 @@ function AppV2() {
       await refreshCampaign({ silent: true })
     } catch (error) {
       setNotice(`Stat point not spent: ${error.message}`)
+    }
+  }
+
+  const craftOil = async (oilId) => {
+    try {
+      await api('/api/hunter/craft', { method: 'POST', body: JSON.stringify({ oil_id: oilId }) })
+      await refreshCampaign({ silent: true })
+      setNotice('Oil crafted. Apply it in a fight against its beast.')
+    } catch (error) {
+      setNotice(`Oil not crafted: ${error.message}`)
     }
   }
 
@@ -2669,6 +2680,8 @@ function AppV2() {
               onDungeonEnterRisk={enterDungeonRisk}
               onDungeonMarketPurchase={buyDungeonItem}
               onDungeonEquip={equipDungeonItem}
+              onDungeonApplyOil={applyDungeonOil}
+              craftOil={craftOil}
               onDungeonChoose={chooseDungeonRoom}
               onDungeonLeave={leaveDungeonRoom}
               onDungeonFinish={finishDungeonRun}

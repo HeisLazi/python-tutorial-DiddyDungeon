@@ -732,6 +732,81 @@ class StateServiceBehaviorTests(unittest.TestCase):
         self.assertEqual(sum(item["count"] for item in dead["pack_lost"]), 2)
         self.assertEqual(service2.hunter_projection(self.read(path2))["materials"], [])
 
+    def stock_hunter(self, path, materials, coins=200, oils=None, sign_ranks=None):
+        state = self.read(path)
+        signs = {}
+        for sign_id, rank in (sign_ranks or {}).items():
+            # rank 1 = level 3 (15 XP, inscribed); rank 2 = level 6 (48 XP, honed)
+            signs[sign_id] = {"xp": 15 if rank == 1 else 48, "tutor_passes": 1, "clean_casts": 10 if rank >= 2 else 0}
+        state["hunter"] = {"signs": signs, "stats_xp": {}, "spent": {}, "materials": dict(materials), "oils": dict(oils or {})}
+        state["player"]["coins"] = coins
+        path.write_text(json.dumps(state), encoding="utf-8")
+
+    def test_crafting_an_oil_spends_parts_and_coins_and_is_rank_gated(self):
+        service, path = self.make_service()
+        self.stock_hunter(path, {"drowner-link": 5, "cave-essence": 1}, coins=40)
+        crafted = service.apply("hunter_craft_oil", {"oil_id": "lists-ward"}, "player")["result"]
+        self.assertEqual(crafted["coins"], 30)
+        hunter = crafted["hunter"]
+        self.assertEqual(hunter["oils"][0]["id"], "lists-ward")
+        self.assertEqual(next(item for item in hunter["materials"] if item["id"] == "drowner-link")["count"], 3)
+        with self.assertRaises(StateCommandError) as locked:
+            service.apply("hunter_craft_oil", {"oil_id": "lists-slowing"}, "player")
+        self.assertEqual(locked.exception.status_code, 409)
+        self.stock_hunter(path, {"drowner-link": 1}, coins=40)
+        with self.assertRaises(StateCommandError):
+            service.apply("hunter_craft_oil", {"oil_id": "lists-ward"}, "player")
+        self.stock_hunter(path, {"drowner-link": 3, "cave-essence": 1}, coins=40, sign_ranks={"lists": 1})
+        slowed = service.apply("hunter_craft_oil", {"oil_id": "lists-slowing"}, "player")["result"]
+        self.assertEqual(slowed["coins"], 15)
+        self.assertEqual(slowed["hunter"]["materials"], [])
+
+    def test_oils_help_only_their_beast_once_per_fight_and_never_shorten_it(self):
+        service, path = self.make_service()
+        self.enter_delve_room(service, path, "elite")
+        state = self.read(path)
+        run = state["dungeon_run"]
+        sign = {"lists": "lists", "dictionaries": "dictionaries", "random selection": "random-selection"}[run["question"]["concept_id"]]
+        other = "loops"
+        state.setdefault("hunter", {"signs": {}, "stats_xp": {}, "spent": {}})["oils"] = {f"{sign}-ward": 1, f"{sign}-slowing": 1, f"{sign}-bane": 1, f"{other}-ward": 1}
+        path.write_text(json.dumps(state), encoding="utf-8")
+        with self.assertRaises(StateCommandError):
+            service.apply("dungeon_apply_oil", {"run_id": run["run_id"], "oil_id": f"{other}-ward"}, "player")
+        applied = service.apply("dungeon_apply_oil", {"run_id": run["run_id"], "oil_id": f"{sign}-bane"}, "player")["result"]
+        self.assertEqual(applied["run"]["encounter"]["fight"]["oil"]["tier"], "bane")
+        self.assertEqual(applied["run"]["encounter"]["sign_id"], sign)
+        with self.assertRaises(StateCommandError):
+            service.apply("dungeon_apply_oil", {"run_id": run["run_id"], "oil_id": f"{sign}-ward"}, "player")
+        one = self.answer_room(service, path, "correct", "o1")
+        self.assertEqual(one["fight"]["chip"], 4 + 3)
+        self.assertFalse(one["fight"]["fight_done"])
+        self.answer_room(service, path, "correct", "o2")
+        three = self.answer_room(service, path, "correct", "o3")
+        self.assertTrue(three["fight"]["fight_done"])
+
+    def test_ward_and_slowing_oils(self):
+        service, path = self.make_service()
+        self.enter_delve_room(service, path, "elite")
+        state = self.read(path)
+        run = state["dungeon_run"]
+        sign = {"lists": "lists", "dictionaries": "dictionaries", "random selection": "random-selection"}[run["question"]["concept_id"]]
+        state.setdefault("hunter", {"signs": {}, "stats_xp": {}, "spent": {}})["oils"] = {f"{sign}-slowing": 1}
+        path.write_text(json.dumps(state), encoding="utf-8")
+        slowed = service.apply("dungeon_apply_oil", {"run_id": run["run_id"], "oil_id": f"{sign}-slowing"}, "player")["result"]
+        self.assertEqual(slowed["run"]["encounter"]["fight"]["mechanic"]["countdown"], 4)
+        service2, path2 = self.make_service()
+        self.enter_delve_room(service2, path2, "encounter")
+        state = self.read(path2)
+        run = state["dungeon_run"]
+        sign = {"lists": "lists", "dictionaries": "dictionaries", "random selection": "random-selection"}[run["question"]["concept_id"]]
+        state.setdefault("hunter", {"signs": {}, "stats_xp": {}, "spent": {}})["oils"] = {f"{sign}-ward": 1, f"{sign}-slowing": 1}
+        path2.write_text(json.dumps(state), encoding="utf-8")
+        with self.assertRaises(StateCommandError):
+            service2.apply("dungeon_apply_oil", {"run_id": run["run_id"], "oil_id": f"{sign}-slowing"}, "player")
+        warded = service2.apply("dungeon_apply_oil", {"run_id": run["run_id"], "oil_id": f"{sign}-ward"}, "player")["result"]
+        self.assertEqual(warded["run"]["encounter"]["fight"]["guards"], 1)
+        self.assertEqual(warded["hunter"]["oils"], [{"id": f"{sign}-slowing", "sign": sign, "tier": "slowing", "name": warded["hunter"]["oils"][0]["name"], "effect": warded["hunter"]["oils"][0]["effect"], "count": 1}])
+
     def test_warden_sigil_starts_each_fight_with_a_free_mistake(self):
         service, path = self.make_service()
         run = self.enter_delve_room(service, path, "elite", trinket="Warden Sigil")

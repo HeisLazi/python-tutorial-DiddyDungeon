@@ -1420,3 +1420,23 @@
 .celebration-card p { margin: 0; font-size: 1.2rem; }
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 @keyframes scaleIn { from { transform: scale(0.5); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+
+/* The Merchant's alchemy bench. */
+.market-greeting-doors { display: flex; flex-wrap: wrap; gap: 8px; }
+.alchemy-bench { display: grid; gap: 14px; }
+.alchemy-stores { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.alchemy-chip { padding: 3px 8px; border: 1px solid var(--line, #444); font-size: 13px; }
+.alchemy-chip.oil { border-color: var(--green, #4ade80); }
+.alchemy-empty, .alchemy-reason { color: var(--muted, #999); font-size: 13px; }
+.alchemy-region h4 { margin: 4px 0 8px; }
+.alchemy-sign { display: grid; gap: 6px; margin-bottom: 10px; }
+.alchemy-sign-head { display: flex; align-items: center; gap: 8px; }
+.alchemy-sign-head svg { fill: none; stroke: currentColor; stroke-width: 1.6; }
+.alchemy-sign-head small { color: var(--muted, #999); }
+.alchemy-recipes { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 8px; }
+.alchemy-recipe { display: grid; gap: 4px; align-content: start; padding: 10px; border: 1px solid var(--line, #444); }
+.alchemy-recipe p { margin: 0; font-size: 14px; }
+.alchemy-recipe small { color: var(--muted, #999); font-size: 12px; }
+.alchemy-recipe.locked { opacity: 0.6; }
+.alchemy-recipe.tier-slowing { border-color: color-mix(in srgb, var(--gold, #f5c542) 50%, var(--line, #444)); }
+.alchemy-recipe.tier-bane { border-color: var(--gold, #f5c542); }
