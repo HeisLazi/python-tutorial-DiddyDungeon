@@ -159,6 +159,14 @@ Updated: 2026-10-22 · branch `feature/tauri-arcade` (fast-forwarded into
   pages by act and lists each contract's sign, beast and BUILD / FIX /
   PREDICT / EXPLAIN objectives; the Forge battle sidebar lists the current
   contract's objectives.
+- **All campaigns authored (Phase D2/D3):** every project has a story file:
+  RPS 14, Blackjack 19, Detective 14, Creature Battles 15, Casino 14,
+  Dungeon Crawler 15, Gladiator 15, Football Manager 15, plus two catalog
+  projects added to existing saves: 08-game-agent "The Clockwork Arena"
+  (connect_four.py, 16) and 09-ai-agent "The Familiar" (agent.py, 16; its
+  optional LLM brain uses the learner's own key from their environment, the
+  game never asks for or stores one). Advanced concepts map to the closest of
+  the nine signs; new Codex pages are a follow-up.
 - **Submit race fix:** `submitDungeon` waits for any in-flight editor
   checkpoint and saves unsaved edits before capturing PYR context (an autosave
   in between changed the revision and the answer was rejected as stale).

@@ -1,0 +1,188 @@
+{
+  "branch": "06-gladiator-arena",
+  "name": "Turn-based Gladiator Game",
+  "boss": "The Unbound",
+  "order": 6,
+  "entry_file": "gladiator.py",
+  "concept_focus": "Reusable functions and combat state, then classes, status effects, a thinking opponent and balance by simulation",
+  "story": {
+    "title": "Sand and Iron",
+    "client": "Lanista Corvo of the Iron Pit",
+    "hook": "Corvo's arena is dying: every fight is the same, and the crowd has stopped coming. He wants a game worth watching, with classes, tactics and opponents that think. And one day, a fighter fit to face the Unbound, the champion who has never been chained."
+  },
+  "acts": [
+    {"id": 1, "title": "Act I: The Pit", "goal": "Rules planned first, then one honest duel with defend and a risky strike."},
+    {"id": 2, "title": "Act II: The Run", "goal": "Rewards and upgrades, opponents with their own style, a difficulty curve and clean new runs."},
+    {"id": 3, "title": "Act III: The Craft of War", "goal": "Classes, status effects, the crowd's favour and an opponent that weighs every move."},
+    {"id": 4, "title": "Act IV: The Games", "goal": "A tournament bracket, a balance simulator and a hall of laurels."}
+  ],
+  "boss_lore": "The Unbound fights like you, because it learned from watching you. Change, or lose the way you always do.",
+  "boss_brief": "Bring a finished gladiator.py: classes built from templates, defend and risky actions, status effects with durations, crowd favour, an opponent that chooses by expected value, upgrades across a run, an eight-fighter bracket, a balance simulation across every class matchup, and a saved hall of laurels.",
+  "mobs": [
+    {
+      "name": "The Rulescribe", "concept": "Planning state and turn order in comments",
+      "encounter": "Sketch the combat rules and turn order before coding, naming every piece of state a fighter needs, including the secondary stat.",
+      "act": 1, "sign": "variables",
+      "contract": "Corvo will not let you near the sand until the rules are written. Plan the fight before you fight it.",
+      "objectives": [
+        {"id": "rules_comment", "label": "Write the rules", "question_type": "code_checkpoint", "impact": 3, "brief": "At the top of gladiator.py, write the rules as comments: the turn order, the actions, and how damage and stamina work."},
+        {"id": "fighter_shape", "label": "Name the state", "question_type": "code_checkpoint", "impact": 3, "brief": "Create a fighter dictionary with every stat your rules mention, including a secondary stat such as stamina."},
+        {"id": "plan_reason", "label": "Defend the plan", "question_type": "explanation", "impact": 2, "brief": "Explain one rule you changed while planning and the problem it would have caused in code."}
+      ]
+    },
+    {
+      "name": "The Arena Recruit", "concept": "Dictionaries and a turn-based loop",
+      "encounter": "Get one full duel working from first strike to a fallen fighter.",
+      "act": 1, "sign": "loops",
+      "contract": "A recruit waits on the sand, shaking. Give the two of you one clean duel, start to finish.",
+      "objectives": [
+        {"id": "duel_loop", "label": "Fight the duel", "question_type": "code_checkpoint", "impact": 4, "brief": "Loop turns between the player and an opponent until one falls, using one attack function for both."},
+        {"id": "duel_log", "label": "Narrate it", "question_type": "code_checkpoint", "impact": 2, "brief": "Print each action and both fighters' HP and stamina after every turn."},
+        {"id": "duel_trace", "label": "Trace two turns", "question_type": "prediction", "impact": 2, "brief": "Predict both fighters' HP after two turns with fixed numbers, then check."}
+      ]
+    },
+    {
+      "name": "The Shield Bearer", "concept": "Conditionals and temporary state",
+      "encounter": "Add a defend or block action and reason about how long its effect should last.",
+      "act": 1, "sign": "conditionals",
+      "contract": "The Bearer raises a shield and waits. A good defend lasts exactly as long as it should, and not a turn longer.",
+      "objectives": [
+        {"id": "defend_action", "label": "Add defend", "question_type": "code_checkpoint", "impact": 3, "brief": "Add a defend action that halves the next hit and restores some stamina."},
+        {"id": "defend_expiry", "label": "Let it wear off", "question_type": "code_checkpoint", "impact": 3, "brief": "Clear the defend effect after it absorbs one hit or at the start of the defender's next turn."},
+        {"id": "sticky_bug", "label": "Unstick the shield", "question_type": "bug_diagnosis", "impact": 2, "brief": "Explain the bug where defending once protects you for the rest of the fight, and show your fix."}
+      ]
+    },
+    {
+      "name": "The Bloodletter", "concept": "Randomness and risk/reward",
+      "encounter": "Add a stronger but riskier attack and argue when a player should gamble on it.",
+      "act": 1, "sign": "random-selection",
+      "contract": "The Bloodletter swings wild: double damage when it lands, nothing when it does not. Make the gamble real and knowable.",
+      "objectives": [
+        {"id": "heavy_strike", "label": "Add a heavy strike", "question_type": "code_checkpoint", "impact": 3, "brief": "Add a heavy strike that costs more stamina, hits harder and can miss."},
+        {"id": "expected_compare", "label": "Compare the strikes", "question_type": "code_checkpoint", "impact": 3, "brief": "Compute and print the expected damage of a normal and a heavy strike."},
+        {"id": "gamble_reason", "label": "Argue the gamble", "question_type": "explanation", "impact": 2, "brief": "Explain when the heavy strike is worth it, using the numbers your program prints."}
+      ]
+    },
+    {
+      "name": "The Bookmaker", "concept": "Rewards and upgrade menus",
+      "encounter": "Award coins or XP after a win and let the player pick an upgrade or item before the next fight.",
+      "act": 2, "sign": "dictionaries",
+      "contract": "The Bookmaker pays winners and sells to them in the same breath. Win, collect, choose how to grow.",
+      "objectives": [
+        {"id": "reward", "label": "Pay the winner", "question_type": "code_checkpoint", "impact": 3, "brief": "Award coins after a win, more for a faster victory."},
+        {"id": "upgrade_menu", "label": "Choose an upgrade", "question_type": "code_checkpoint", "impact": 4, "brief": "Offer upgrades from a dictionary (more HP, more attack, a potion) with prices, applying the chosen one to the fighter."},
+        {"id": "upgrade_bug", "label": "Cap the upgrades", "question_type": "bug_diagnosis", "impact": 2, "brief": "Explain how buying the same upgrade forever could break the game and add a limit."}
+      ]
+    },
+    {
+      "name": "The Veteran", "concept": "Reusable functions and behaviour rules",
+      "encounter": "Give opponents different strengths and a simple rule for choosing actions, and explain why it is more than pure chance.",
+      "act": 2, "sign": "functions",
+      "contract": "The Veteran has a style: it defends when hurt and strikes hard when you are tired. Give every opponent a way of thinking.",
+      "objectives": [
+        {"id": "opponent_styles", "label": "Give them styles", "question_type": "code_checkpoint", "impact": 3, "brief": "Create opponents with different stat spreads and a style name."},
+        {"id": "choose_action", "label": "Write their rules", "question_type": "code_checkpoint", "impact": 4, "brief": "Write choose_action(fighter, enemy) that picks an action from simple rules based on HP and stamina."},
+        {"id": "rules_reason", "label": "Explain the rules", "question_type": "explanation", "impact": 2, "brief": "Explain how a player can learn to read your Veteran, and why that is fairer than pure chance."}
+      ]
+    },
+    {
+      "name": "The Champion's Guard", "concept": "Progression and difficulty scaling",
+      "encounter": "Make each opponent tougher across the run and test whether the curve stays challenging but beatable.",
+      "act": 2, "sign": "loops",
+      "contract": "The Guard stands between you and the champion, one fighter stronger than the last. Make the climb steep but never a wall.",
+      "objectives": [
+        {"id": "scaling", "label": "Scale the opponents", "question_type": "code_checkpoint", "impact": 3, "brief": "Make each fight in a run use a stronger opponent from a formula based on the fight number."},
+        {"id": "curve_test", "label": "Test the curve", "question_type": "code_checkpoint", "impact": 3, "brief": "Simulate runs with a simple automatic player and print how often it survives each fight."},
+        {"id": "curve_reason", "label": "Judge the curve", "question_type": "explanation", "impact": 2, "brief": "Explain from your numbers whether the curve is too steep or too flat, and what you changed."}
+      ]
+    },
+    {
+      "name": "The Fallen Laurel", "concept": "Run loop and reset state",
+      "encounter": "End the run on defeat with a summary and start a new run without carrying over old upgrades or HP.",
+      "act": 2, "sign": "control-flow",
+      "contract": "Every champion falls eventually. When yours does, carve the run into the laurel and start the next one clean.",
+      "objectives": [
+        {"id": "run_summary", "label": "Summarise the run", "question_type": "code_checkpoint", "impact": 3, "brief": "On defeat, show fights won, coins earned, upgrades taken and the opponent that ended the run."},
+        {"id": "new_run", "label": "Start clean", "question_type": "code_checkpoint", "impact": 3, "brief": "Start a new run with a fresh fighter, building it from a starting template rather than resetting fields by hand."},
+        {"id": "carryover_bug", "label": "Catch the carry-over", "question_type": "bug_diagnosis", "impact": 2, "brief": "Explain how old upgrades could leak into a new run and show yours cannot."}
+      ]
+    },
+    {
+      "name": "The Lanista's Ledger", "concept": "Classes as data templates",
+      "encounter": "Offer warrior, rogue and mage classes with their own stats and actions.",
+      "act": 3, "sign": "dictionaries",
+      "contract": "Corvo's ledger lists every kind of fighter he has trained. Each class plays differently, and all of them are written down as data.",
+      "objectives": [
+        {"id": "class_templates", "label": "Write the classes", "question_type": "code_checkpoint", "impact": 3, "brief": "Define at least three classes in a dictionary with base stats and a signature action each."},
+        {"id": "pick_class", "label": "Pick a class", "question_type": "code_checkpoint", "impact": 3, "brief": "Let the player choose a class at the start of a run and build their fighter from it."},
+        {"id": "signature_actions", "label": "Make them different", "question_type": "code_checkpoint", "impact": 3, "brief": "Implement each signature action so the classes really play differently."}
+      ]
+    },
+    {
+      "name": "The Bleeding Edge", "concept": "Status effects with durations",
+      "encounter": "Add bleed and stun that last several turns.",
+      "act": 3, "sign": "control-flow",
+      "contract": "Some wounds keep cutting after the blade is gone. Add effects that last, and make sure something counts them down.",
+      "objectives": [
+        {"id": "effects", "label": "Add bleed and stun", "question_type": "code_checkpoint", "impact": 4, "brief": "Let actions apply bleed (damage each turn) and stun (lose a turn), each with turns remaining, stored on the fighter."},
+        {"id": "effect_tick", "label": "Tick the effects", "question_type": "code_checkpoint", "impact": 3, "brief": "Apply and count down effects at the start of the affected fighter's turn and remove them when they expire."},
+        {"id": "stun_lock_bug", "label": "Prevent stun locks", "question_type": "bug_diagnosis", "impact": 2, "brief": "Explain how repeated stuns could stop a fighter ever acting, and add a rule that prevents it."}
+      ]
+    },
+    {
+      "name": "The Crowd's Roar", "concept": "A meter driven by many events",
+      "encounter": "Track the crowd's favour and let it change rewards.",
+      "act": 3, "sign": "variables",
+      "contract": "The crowd decides who lives and who gets paid. Daring moves make it roar; turtling makes it boo.",
+      "objectives": [
+        {"id": "favour_meter", "label": "Track favour", "question_type": "code_checkpoint", "impact": 3, "brief": "Keep a crowd favour meter from 0 to 100 that rises on heavy strikes and comebacks and falls on repeated defends."},
+        {"id": "favour_rewards", "label": "Pay for favour", "question_type": "code_checkpoint", "impact": 3, "brief": "Multiply rewards by the crowd's favour and show the meter during fights."},
+        {"id": "favour_trace", "label": "Predict the meter", "question_type": "prediction", "impact": 2, "brief": "Predict the meter after a scripted sequence of actions, then check it."}
+      ]
+    },
+    {
+      "name": "The Thinking Blade", "concept": "Choosing by expected value",
+      "encounter": "Make an opponent that scores every action and picks the best.",
+      "act": 3, "sign": "functions",
+      "contract": "The deadliest opponent does not follow rules. It asks, for every action: what do I gain, what do I risk? Then it chooses.",
+      "objectives": [
+        {"id": "score_actions", "label": "Score every action", "question_type": "code_checkpoint", "impact": 4, "brief": "Write a function that scores each available action by expected damage dealt, damage avoided and stamina cost."},
+        {"id": "best_action", "label": "Choose the best", "question_type": "code_checkpoint", "impact": 3, "brief": "Make an opponent that takes the highest-scoring action each turn."},
+        {"id": "blade_test", "label": "Prove it thinks", "question_type": "explanation", "impact": 2, "brief": "Pit it against your rule-based Veteran over 500 fights and explain the result."}
+      ]
+    },
+    {
+      "name": "The Bracket Master", "concept": "Tournament brackets",
+      "encounter": "Run an eight-fighter elimination bracket.",
+      "act": 4, "sign": "lists",
+      "contract": "The Games are coming: eight fighters, three rounds, one laurel. The Bracket Master pairs them and nobody gets a bye they did not earn.",
+      "objectives": [
+        {"id": "seeding", "label": "Seed the bracket", "question_type": "code_checkpoint", "impact": 3, "brief": "Seed eight fighters by strength so the strongest meet last."},
+        {"id": "bracket_rounds", "label": "Run the rounds", "question_type": "code_checkpoint", "impact": 4, "brief": "Pair the winners of each round until one remains, with the player fighting their matches and the others simulated."},
+        {"id": "bracket_view", "label": "Show the bracket", "question_type": "code_checkpoint", "impact": 2, "brief": "Print the bracket after each round showing who advanced."}
+      ]
+    },
+    {
+      "name": "The Balance Oracle", "concept": "Balancing by simulation",
+      "encounter": "Simulate every class matchup to find what is overpowered.",
+      "act": 4, "sign": "loops",
+      "contract": "Corvo hears complaints that rogues always win. The Oracle answers with numbers: every matchup, a thousand times.",
+      "objectives": [
+        {"id": "matchup_sim", "label": "Simulate the matchups", "question_type": "code_checkpoint", "impact": 4, "brief": "Simulate 1,000 fights for every pair of classes using your thinking opponent on both sides."},
+        {"id": "matchup_table", "label": "Show the table", "question_type": "code_checkpoint", "impact": 3, "brief": "Print a win-rate table of every class against every other."},
+        {"id": "balance_change", "label": "Fix the balance", "question_type": "bug_diagnosis", "impact": 3, "brief": "Find the most lopsided matchup, change one number, and show the new table to prove it is closer to fair."}
+      ]
+    },
+    {
+      "name": "The Hall of Laurels", "concept": "Saved records and a menu",
+      "encounter": "Keep the best runs between sessions and give the game a front door.",
+      "act": 4, "sign": "input-output",
+      "contract": "Every champion's name goes on the hall's walls. Save the best runs, and let Corvo's visitors choose how they want to fight.",
+      "objectives": [
+        {"id": "save_laurels", "label": "Save the best runs", "question_type": "code_checkpoint", "impact": 3, "brief": "Save the top ten runs (class, fights won, coins, crowd favour) to a JSON file, sorted best first."},
+        {"id": "show_laurels", "label": "Show the hall", "question_type": "code_checkpoint", "impact": 2, "brief": "Show the hall of laurels on start and highlight a new entry."},
+        {"id": "arena_menu", "label": "Open the gates", "question_type": "code_checkpoint", "impact": 3, "brief": "Add a menu: start a run, enter the Games bracket, run the balance oracle, view the hall, or quit."}
+      ]
+    }
+  ]
+}

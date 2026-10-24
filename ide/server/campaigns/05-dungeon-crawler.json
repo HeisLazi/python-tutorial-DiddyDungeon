@@ -1,0 +1,188 @@
+{
+  "branch": "05-dungeon-crawler",
+  "name": "Dungeon Crawler + RPG Shop",
+  "boss": "The Dungeon Core",
+  "order": 5,
+  "entry_file": "crawler.py",
+  "concept_focus": "Systems on shared state, then a real map: grids, fog, procedural levels, pathfinding and saves",
+  "story": {
+    "title": "Below the Old Mine",
+    "client": "Foreman Brigid of the collapsed Deepvein mine",
+    "hook": "The Deepvein mine broke into something older than the mine, and things keep climbing out. Brigid needs a crawler built: first the fights and the shop, then a real map below, one that changes every time you go down, so her miners can practise before they face the Core."
+  },
+  "acts": [
+    {"id": 1, "title": "Act I: The First Descent", "goal": "Player state, a fight, potions and gold that stays with you."},
+    {"id": 2, "title": "Act II: The Run", "goal": "Varied enemies, a shop, numbered rooms with events and a mini-boss that ends runs."},
+    {"id": 3, "title": "Act III: The Deep Map", "goal": "A grid to walk, fog of war, equipment, generated mazes and a path-finding guide."},
+    {"id": 4, "title": "Act IV: The Core", "goal": "Save and load the whole run, and a boss with phases at the bottom."}
+  ],
+  "boss_lore": "The Core is the dungeon's heart. Every room you walked through was part of it, and it has been learning your path.",
+  "boss_brief": "Bring a finished crawler.py: shared player state, fights, potions, a shop and gold, a generated grid map with fog and a guaranteed exit, equipment that changes stats, path-finding, a full save and load, and a phased boss at the bottom.",
+  "mobs": [
+    {
+      "name": "The Hollow Adventurer", "concept": "Dictionaries for player state",
+      "encounter": "Decide what the player must carry between rooms and how to keep HP, attack, gold and potions together in one place.",
+      "act": 1, "sign": "dictionaries",
+      "contract": "Brigid's first miner went down with a pocketful of numbers and lost half of them by the second room. Keep everything the player is in one place.",
+      "objectives": [
+        {"id": "player_state", "label": "Pack the player", "question_type": "code_checkpoint", "impact": 3, "brief": "In crawler.py, keep the player's name, HP, max HP, attack, gold and potions in one dictionary."},
+        {"id": "status_line", "label": "Show the status", "question_type": "code_checkpoint", "impact": 2, "brief": "Write a function that prints a one-line status from that dictionary."},
+        {"id": "state_reason", "label": "Explain one place", "question_type": "explanation", "impact": 2, "brief": "Explain why one dictionary is safer than six loose variables once functions start changing the player."}
+      ]
+    },
+    {
+      "name": "The Tunnel Rat", "concept": "Combat loop and conditionals",
+      "encounter": "Make one enemy fight work with attack and run choices, and explain when the enemy gets to act.",
+      "act": 1, "sign": "conditionals",
+      "contract": "Something with teeth blocks the tunnel. Fight it, or run, and know who strikes when.",
+      "objectives": [
+        {"id": "fight_loop", "label": "Fight the rat", "question_type": "code_checkpoint", "impact": 4, "brief": "Loop a fight where the player chooses attack or run and the enemy strikes back after the player's turn."},
+        {"id": "run_away", "label": "Run away", "question_type": "code_checkpoint", "impact": 2, "brief": "Let running succeed on a chance, and give the enemy a free hit when it fails."},
+        {"id": "turn_bug", "label": "Order the turns", "question_type": "bug_diagnosis", "impact": 2, "brief": "Explain the bug where a dead enemy still strikes back, and show your loop checks first."}
+      ]
+    },
+    {
+      "name": "The Potion Leech", "concept": "Inventory quantities",
+      "encounter": "Let the player heal from a limited potion supply and reason about what should happen when it runs out.",
+      "act": 1, "sign": "variables",
+      "contract": "The Leech drinks your potions when you are not looking. Count them carefully and never drink one you do not have.",
+      "objectives": [
+        {"id": "use_potion", "label": "Drink a potion", "question_type": "code_checkpoint", "impact": 3, "brief": "Add a potion choice in a fight that heals without passing max HP and uses one potion."},
+        {"id": "empty_flask", "label": "Handle an empty flask", "question_type": "code_checkpoint", "impact": 2, "brief": "Refuse to heal when there are no potions left, without wasting the player's turn."},
+        {"id": "overheal_bug", "label": "Stop the overheal", "question_type": "bug_diagnosis", "impact": 2, "brief": "Explain how a potion could take HP above max HP and show your fix."}
+      ]
+    },
+    {
+      "name": "The Gold Goblin", "concept": "Updating shared state",
+      "encounter": "Award gold after a victory and explain why the reward must land on the same player state that survives into the next room.",
+      "act": 1, "sign": "functions",
+      "contract": "The Goblin pays well, but only if the coins land in the purse you carry out of the room.",
+      "objectives": [
+        {"id": "award_gold", "label": "Pay the reward", "question_type": "code_checkpoint", "impact": 3, "brief": "Write a function that gives the player gold after a win by changing the player dictionary passed in."},
+        {"id": "two_rooms", "label": "Carry it onward", "question_type": "code_checkpoint", "impact": 2, "brief": "Fight two enemies in a row and show the gold and HP carry over between them."},
+        {"id": "local_bug", "label": "Explain the lost coins", "question_type": "bug_diagnosis", "impact": 3, "brief": "Explain why gold = gold + 10 inside a function does not change the player's gold, while player['gold'] += 10 does."}
+      ]
+    },
+    {
+      "name": "The Spawn Pit", "concept": "Randomness and functions that build data",
+      "encounter": "Generate enemies with different stats so fights vary, and explain where randomness enters each one.",
+      "act": 2, "sign": "random-selection",
+      "contract": "The pit spits out something new each time: bigger, faster, nastier. Make enemies from templates plus a little chaos.",
+      "objectives": [
+        {"id": "templates", "label": "Write enemy templates", "question_type": "code_checkpoint", "impact": 3, "brief": "Keep enemy types (name, base HP, attack, gold) in a list of dictionaries."},
+        {"id": "make_enemy", "label": "Spawn an enemy", "question_type": "code_checkpoint", "impact": 3, "brief": "Write make_enemy(depth) that copies a random template and varies its stats, stronger the deeper you are."},
+        {"id": "template_bug", "label": "Keep templates clean", "question_type": "bug_diagnosis", "impact": 2, "brief": "Explain why damaging an enemy made from a template without copying it would weaken every later enemy of that type."}
+      ]
+    },
+    {
+      "name": "The Merchant Shade", "concept": "Shop loop with lists and dictionaries",
+      "encounter": "Build a shop that shows items and prices, checks affordability, updates gold and inventory, and lets the player leave empty-handed.",
+      "act": 2, "sign": "dictionaries",
+      "contract": "A shade sells potions and blades by lantern light. It never gives credit and never lets you leave with what you did not pay for.",
+      "objectives": [
+        {"id": "shop_menu", "label": "Open the shop", "question_type": "code_checkpoint", "impact": 3, "brief": "Show the items and prices as a numbered menu, with the player's gold."},
+        {"id": "buy_item", "label": "Buy an item", "question_type": "code_checkpoint", "impact": 4, "brief": "Buying takes the gold and adds the item or its effect in one step; refuse it if the player cannot afford it."},
+        {"id": "leave_shop", "label": "Leave the shop", "question_type": "code_checkpoint", "impact": 2, "brief": "Let the player buy several things or none and leave when they choose."}
+      ]
+    },
+    {
+      "name": "The Floor Stalker", "concept": "Counters, random rooms and modulo",
+      "encounter": "Advance through numbered rooms with random events and reason about how the game knows a shop is due.",
+      "act": 2, "sign": "loops",
+      "contract": "The Stalker follows you room to room. Count the rooms, roll what is in each, and open a shop every few.",
+      "objectives": [
+        {"id": "room_loop", "label": "Walk the rooms", "question_type": "code_checkpoint", "impact": 3, "brief": "Loop through numbered rooms where each holds a fight, treasure or nothing at random."},
+        {"id": "shop_every_n", "label": "Schedule the shop", "question_type": "code_checkpoint", "impact": 3, "brief": "Open the shop every fifth room using the room number and %."},
+        {"id": "modulo_trace", "label": "Predict the shops", "question_type": "prediction", "impact": 2, "brief": "Predict which rooms from 1 to 20 have a shop, then run it."}
+      ]
+    },
+    {
+      "name": "The Mini-Boss", "concept": "Scheduled events and end-of-run state",
+      "encounter": "Bring a tougher encounter every few rooms and end the run on death with a final score.",
+      "act": 2, "sign": "control-flow",
+      "contract": "Every tenth room something big is waiting. Beat it and go deeper; fall and the run is over, with your score carved on the wall.",
+      "objectives": [
+        {"id": "boss_every_n", "label": "Schedule the mini-boss", "question_type": "code_checkpoint", "impact": 3, "brief": "Make every tenth room a stronger enemy with a bigger reward."},
+        {"id": "death_end", "label": "End the run", "question_type": "code_checkpoint", "impact": 3, "brief": "End the run when the player dies and show rooms cleared, gold and a score."},
+        {"id": "end_reason", "label": "Explain the score", "question_type": "explanation", "impact": 2, "brief": "Explain how your score is calculated and why it rewards going deeper over hoarding gold."}
+      ]
+    },
+    {
+      "name": "The Cartographer", "concept": "A 2D grid map and movement",
+      "encounter": "Replace numbered rooms with a grid the player walks across.",
+      "act": 3, "sign": "lists",
+      "contract": "Brigid's miners need a real map: rooms side by side, walls between them, and a hunter who can walk north, south, east and west.",
+      "objectives": [
+        {"id": "grid_map", "label": "Lay out the grid", "question_type": "code_checkpoint", "impact": 3, "brief": "Store the level as a list of lists of tiles (floor, wall, exit) with the player's position as a row and column."},
+        {"id": "move_commands", "label": "Walk the grid", "question_type": "code_checkpoint", "impact": 4, "brief": "Move the player with n, s, e and w, refusing walls and the edge of the map."},
+        {"id": "draw_map", "label": "Draw the map", "question_type": "code_checkpoint", "impact": 2, "brief": "Print the grid with the player's position marked."}
+      ]
+    },
+    {
+      "name": "The Fog Lantern", "concept": "Fog of war",
+      "encounter": "Show only the tiles the player has seen.",
+      "act": 3, "sign": "conditionals",
+      "contract": "Below the mine there is no light but your lantern. Show what you have seen, and nothing you have not.",
+      "objectives": [
+        {"id": "seen_tiles", "label": "Remember what was seen", "question_type": "code_checkpoint", "impact": 3, "brief": "Keep a set of seen positions and add the player's tile and its neighbours after every move."},
+        {"id": "fogged_draw", "label": "Draw with fog", "question_type": "code_checkpoint", "impact": 3, "brief": "Draw unseen tiles as fog and seen ones as they are."},
+        {"id": "edge_bug", "label": "Light the edges safely", "question_type": "bug_diagnosis", "impact": 2, "brief": "Explain why marking neighbours at the map edge can crash or wrap around, and how you prevent it."}
+      ]
+    },
+    {
+      "name": "The Armourer", "concept": "Equipment slots that change stats",
+      "encounter": "Let the player equip weapons and armour that change their stats.",
+      "act": 3, "sign": "dictionaries",
+      "contract": "The Armourer will fit you out, but only one blade and one coat at a time. Swapping must never leave a stat behind.",
+      "objectives": [
+        {"id": "slots", "label": "Add equipment slots", "question_type": "code_checkpoint", "impact": 3, "brief": "Give the player weapon and armour slots and items with stat bonuses."},
+        {"id": "effective_stats", "label": "Compute the real stats", "question_type": "code_checkpoint", "impact": 4, "brief": "Work out attack and defence from base stats plus equipped items, every time, rather than adding bonuses into the base."},
+        {"id": "swap_bug", "label": "Swap without leftovers", "question_type": "bug_diagnosis", "impact": 2, "brief": "Explain what goes wrong if equipping adds a bonus to the base stat and unequipping forgets to remove it."}
+      ]
+    },
+    {
+      "name": "The Maze Wright", "concept": "Procedural generation with a guarantee",
+      "encounter": "Generate a new maze every level, always with a reachable exit.",
+      "act": 3, "sign": "random-selection",
+      "contract": "The deep changes every time you go down. The Wright carves a new maze each level, and it must always leave a way out.",
+      "objectives": [
+        {"id": "carve_maze", "label": "Carve a maze", "question_type": "code_checkpoint", "impact": 4, "brief": "Generate each level by carving floor through solid rock with a random walk from the start."},
+        {"id": "place_things", "label": "Place the contents", "question_type": "code_checkpoint", "impact": 3, "brief": "Place the exit, enemies, treasure and a shop on floor tiles, never on the start."},
+        {"id": "reachable_check", "label": "Guarantee the exit", "question_type": "bug_diagnosis", "impact": 3, "brief": "Check the exit can be reached from the start (and regenerate if not), and explain how your check works."}
+      ]
+    },
+    {
+      "name": "The Pathfinder", "concept": "Breadth-first search",
+      "encounter": "Find the shortest path to the exit and offer to walk it.",
+      "act": 3, "sign": "loops",
+      "contract": "Brigid's miners get lost. The Pathfinder floods the map from where you stand and always knows the shortest way out.",
+      "objectives": [
+        {"id": "bfs", "label": "Flood the map", "question_type": "code_checkpoint", "impact": 5, "brief": "Write a breadth-first search over floor tiles that returns the shortest path from the player to the exit."},
+        {"id": "guide_command", "label": "Offer a guide", "question_type": "code_checkpoint", "impact": 3, "brief": "Add a guide command that shows the next step, and an auto-walk that stops if an enemy appears."},
+        {"id": "bfs_trace", "label": "Trace the flood", "question_type": "prediction", "impact": 2, "brief": "On a small hand-made map, predict the length of the shortest path, then check your search."}
+      ]
+    },
+    {
+      "name": "The Save Crystal", "concept": "Saving and loading the whole game",
+      "encounter": "Save the run to a file and load it back exactly.",
+      "act": 4, "sign": "input-output",
+      "contract": "The crystal remembers everything: where you stood, what you carried, what you saw. Touch it and you can leave the mine and come back.",
+      "objectives": [
+        {"id": "save_game", "label": "Save the run", "question_type": "code_checkpoint", "impact": 4, "brief": "Save the player, the map, the seen tiles, the depth and the enemies to a JSON file, converting anything JSON cannot store (such as sets)."},
+        {"id": "load_game", "label": "Load the run", "question_type": "code_checkpoint", "impact": 3, "brief": "Load a saved run and carry on exactly where it stopped."},
+        {"id": "save_bug", "label": "Handle a broken save", "question_type": "bug_diagnosis", "impact": 2, "brief": "Make a missing or broken save file harmless and explain what the player sees in each case."}
+      ]
+    },
+    {
+      "name": "The Core Heart", "concept": "A boss with phases",
+      "encounter": "Build the final boss: a fight that changes as it is hurt.",
+      "act": 4, "sign": "control-flow",
+      "contract": "At the bottom of the deepest level, the Core beats. It fights differently when wounded, and differently again when it is dying.",
+      "objectives": [
+        {"id": "phases", "label": "Give it phases", "question_type": "code_checkpoint", "impact": 4, "brief": "Give the boss three phases by HP, each with its own attacks and a message when it changes."},
+        {"id": "phase_mechanic", "label": "Add a mechanic", "question_type": "code_checkpoint", "impact": 3, "brief": "In the last phase, add a mechanic the player can see coming and must react to, such as a charged attack."},
+        {"id": "victory", "label": "Win the game", "question_type": "code_checkpoint", "impact": 3, "brief": "End the game with a victory screen, the run's stats, and an offer to start a fresh run."}
+      ]
+    }
+  ]
+}

@@ -1,0 +1,188 @@
+{
+  "branch": "03-pokemon-battle",
+  "name": "Creature Battle Simulator",
+  "boss": "The Arena Champion",
+  "order": 3,
+  "entry_file": "battle.py",
+  "concept_focus": "Nested dictionaries and turn logic, then types, status, teams, an AI rival and finally classes",
+  "story": {
+    "title": "The Beast-Tamers' League",
+    "client": "Warden Kesh of the Beast-Tamers' League",
+    "hook": "The League's champion has not lost a battle in nine seasons, and Kesh suspects the arena itself favours them. Build an honest battle simulator, rule by rule, then build the rival who can actually beat the champion."
+  },
+  "acts": [
+    {"id": 1, "title": "Act I: First Blood", "goal": "One creature, one attack, misses, and turns that alternate."},
+    {"id": 2, "title": "Act II: The Duel", "goal": "Move menus, an enemy that chooses, a clean end at 0 HP and readable battle text."},
+    {"id": 3, "title": "Act III: The Trainer", "goal": "Types, status effects, a team of three and a rival that thinks about damage."},
+    {"id": 4, "title": "Act IV: The League", "goal": "Levels, a rewrite into classes, and a gauntlet of trainers with saved teams."}
+  ],
+  "boss_lore": "The Champion knows every type matchup by heart. It does not need luck; it needs you to forget one.",
+  "boss_brief": "Bring a finished battle.py: creatures as a class with moves, types and status effects, teams of three with switching, an enemy that picks moves by expected damage, levels and XP, and a gauntlet of trainers with your team saved between runs.",
+  "mobs": [
+    {
+      "name": "The Wild Slime", "concept": "Nested dictionaries",
+      "encounter": "Design one creature with a name, HP, stats and a single move, and explain why each piece of data sits where it does.",
+      "act": 1, "sign": "dictionaries",
+      "contract": "A slime oozes out of the tall grass. Describe it completely as data before it can do anything at all.",
+      "objectives": [
+        {"id": "creature_data", "label": "Describe the creature", "question_type": "code_checkpoint", "impact": 3, "brief": "In battle.py, describe a creature as a dictionary with a name, HP, max HP, attack, defence and a move that is itself a dictionary."},
+        {"id": "second_creature", "label": "Add a rival", "question_type": "code_checkpoint", "impact": 2, "brief": "Add a second creature with the same shape and print both clearly."},
+        {"id": "nesting_reason", "label": "Explain the nesting", "question_type": "explanation", "impact": 2, "brief": "Explain why the move is a dictionary inside the creature and how you reach its power."}
+      ]
+    },
+    {
+      "name": "The Feral Fang", "concept": "Functions that change state",
+      "encounter": "Make one attack land and reason about which creature's data changes and which stays untouched.",
+      "act": 1, "sign": "functions",
+      "contract": "The Fang bites. Somebody's HP goes down. Make sure it is the right somebody.",
+      "objectives": [
+        {"id": "attack_fn", "label": "Write attack", "question_type": "code_checkpoint", "impact": 4, "brief": "Write attack(attacker, defender) that works out damage from the move power, attack and defence and lowers the defender's HP."},
+        {"id": "damage_trace", "label": "Trace the damage", "question_type": "prediction", "impact": 2, "brief": "Predict the defender's HP after one attack with your numbers, then check it."},
+        {"id": "wrong_target_bug", "label": "Hit the right creature", "question_type": "bug_diagnosis", "impact": 2, "brief": "Explain which dictionary your function changes and why the attacker's own data must stay untouched."}
+      ]
+    },
+    {
+      "name": "The Miss Wisp", "concept": "Randomness and probability",
+      "encounter": "Give moves an accuracy so attacks can miss and explain how a random roll becomes a hit or a miss.",
+      "act": 1, "sign": "random-selection",
+      "contract": "The Wisp flickers. Half your attacks pass straight through it. Give every move an accuracy and let fate decide.",
+      "objectives": [
+        {"id": "accuracy", "label": "Add accuracy", "question_type": "code_checkpoint", "impact": 3, "brief": "Give moves an accuracy from 0 to 100 and roll for a hit before dealing damage."},
+        {"id": "hit_rate_check", "label": "Measure the hit rate", "question_type": "code_checkpoint", "impact": 3, "brief": "Roll a 70-accuracy move 1,000 times and show the hit rate is close to 70 percent."},
+        {"id": "roll_bug", "label": "Get the boundary right", "question_type": "bug_diagnosis", "impact": 2, "brief": "Explain whether your roll uses < or <= and how that changes the real hit chance."}
+      ]
+    },
+    {
+      "name": "The Turn Goblin", "concept": "While loops and turn order",
+      "encounter": "Let both sides take repeated turns and trace whose turn it is at every point in the loop.",
+      "act": 1, "sign": "loops",
+      "contract": "The Goblin keeps skipping its turn, then taking two. Make the turns honest: you, then it, until one falls.",
+      "objectives": [
+        {"id": "turn_loop", "label": "Alternate turns", "question_type": "code_checkpoint", "impact": 4, "brief": "Loop the battle so the two creatures attack in turn until one reaches 0 HP."},
+        {"id": "speed_order", "label": "Let speed decide", "question_type": "code_checkpoint", "impact": 2, "brief": "Give creatures a speed stat and let the faster one act first each round."},
+        {"id": "turn_trace", "label": "Trace the turns", "question_type": "prediction", "impact": 2, "brief": "Trace who acts in the first three rounds with your two creatures, then check the battle log."}
+      ]
+    },
+    {
+      "name": "The Move Keeper", "concept": "Lists of dictionaries and menu input",
+      "encounter": "Let the player pick from several moves and reject choices that do not exist.",
+      "act": 2, "sign": "lists",
+      "contract": "Every creature knows four moves. The Keeper makes sure you can choose any of them and none that do not exist.",
+      "objectives": [
+        {"id": "move_list", "label": "Give four moves", "question_type": "code_checkpoint", "impact": 3, "brief": "Give each creature a list of up to four move dictionaries with name, power and accuracy."},
+        {"id": "move_menu", "label": "Choose a move", "question_type": "code_checkpoint", "impact": 3, "brief": "Show the player's moves as a numbered menu and use the chosen one, asking again on bad input."},
+        {"id": "index_bug", "label": "Guard the index", "question_type": "bug_diagnosis", "impact": 2, "brief": "Explain what happens when the player types 0 or 5 for a four-move menu, and handle both."}
+      ]
+    },
+    {
+      "name": "The Mindless Rival", "concept": "Random selection for enemy behaviour",
+      "encounter": "Have the enemy choose its own move each turn and explain how it reaches into the same move data as the player.",
+      "act": 2, "sign": "random-selection",
+      "contract": "Your rival does not think yet. It flails through its own moves at random. That is still better than standing still.",
+      "objectives": [
+        {"id": "enemy_choice", "label": "Let the enemy choose", "question_type": "code_checkpoint", "impact": 3, "brief": "Have the enemy pick one of its own moves at random each turn and use the same attack function."},
+        {"id": "shared_code", "label": "Share the attack code", "question_type": "explanation", "impact": 2, "brief": "Explain why both sides use one attack function and what would go wrong with two copies."},
+        {"id": "no_moves_bug", "label": "Handle an empty move list", "question_type": "bug_diagnosis", "impact": 2, "brief": "Explain what random.choice does with an empty list and make sure a creature without moves cannot crash the battle."}
+      ]
+    },
+    {
+      "name": "The Health Reaper", "concept": "Conditionals and boundary checks",
+      "encounter": "End the battle exactly when a creature hits 0 HP, keeping HP from going negative and stopping a fallen creature from striking back.",
+      "act": 2, "sign": "conditionals",
+      "contract": "The Reaper takes anyone who reaches zero. Make sure the fallen stay fallen and nobody bleeds below nothing.",
+      "objectives": [
+        {"id": "clamp_hp", "label": "Clamp HP at zero", "question_type": "code_checkpoint", "impact": 3, "brief": "Never let HP drop below 0 or rise above max HP."},
+        {"id": "stop_fallen", "label": "Stop the fallen", "question_type": "code_checkpoint", "impact": 3, "brief": "End the round immediately when a creature faints, so it cannot attack after reaching 0."},
+        {"id": "ghost_attack", "label": "Catch the ghost attack", "question_type": "bug_diagnosis", "impact": 2, "brief": "Explain the order bug where a creature at 0 HP still gets its turn, and show your check prevents it."}
+      ]
+    },
+    {
+      "name": "The Battle Bard", "concept": "String formatting and fresh state per battle",
+      "encounter": "Make battle text and remaining HP readable, then explain how a new battle starts at full HP instead of carrying old wounds.",
+      "act": 2, "sign": "variables",
+      "contract": "The Bard sings of every battle, but nobody can follow the verses. Make the text clear and let each new battle start whole.",
+      "objectives": [
+        {"id": "battle_text", "label": "Write the battle text", "question_type": "code_checkpoint", "impact": 3, "brief": "Print each action clearly with damage, misses and an HP bar made of characters for both creatures."},
+        {"id": "fresh_battle", "label": "Heal between battles", "question_type": "code_checkpoint", "impact": 3, "brief": "Start every new battle with both creatures at full HP, copying their starting data instead of reusing it."},
+        {"id": "copy_bug", "label": "Explain the copy", "question_type": "bug_diagnosis", "impact": 2, "brief": "Explain why assigning a creature dictionary to a new name does not copy it, and how you make a real copy."}
+      ]
+    },
+    {
+      "name": "The Type Oracle", "concept": "Lookup tables of multipliers",
+      "encounter": "Add types and a type chart that makes moves strong or weak.",
+      "act": 3, "sign": "dictionaries",
+      "contract": "Fire burns grass, water drowns fire. The Oracle keeps the whole chart. Without it every battle is just a contest of numbers.",
+      "objectives": [
+        {"id": "type_chart", "label": "Write the chart", "question_type": "code_checkpoint", "impact": 4, "brief": "Give creatures and moves a type, and build a dictionary of dictionaries with the damage multiplier for each attacking and defending type."},
+        {"id": "apply_types", "label": "Apply the multiplier", "question_type": "code_checkpoint", "impact": 3, "brief": "Multiply damage by the chart and print super effective or not very effective."},
+        {"id": "type_trace", "label": "Trace a matchup", "question_type": "prediction", "impact": 2, "brief": "Predict the damage of one strong and one weak matchup with your numbers, then check."}
+      ]
+    },
+    {
+      "name": "The Venom Moth", "concept": "Status effects with durations",
+      "encounter": "Add poison and sleep that last a few turns.",
+      "act": 3, "sign": "control-flow",
+      "contract": "The Moth's dust poisons slowly and puts you to sleep. Status lingers between turns, and something has to count it down.",
+      "objectives": [
+        {"id": "status_effects", "label": "Add status effects", "question_type": "code_checkpoint", "impact": 4, "brief": "Let moves inflict poison (damage at the end of each turn) or sleep (skip turns), each with a number of turns left."},
+        {"id": "status_tick", "label": "Count them down", "question_type": "code_checkpoint", "impact": 3, "brief": "Apply and count down every effect at the right point in the turn, and remove it when it runs out."},
+        {"id": "stacking_bug", "label": "Stop the stacking", "question_type": "bug_diagnosis", "impact": 2, "brief": "Explain what should happen when poison lands on an already poisoned creature, and make your code do that."}
+      ]
+    },
+    {
+      "name": "The Pack Leader", "concept": "Teams as lists and switching",
+      "encounter": "Battle with teams of three, switching and sending the next one when one faints.",
+      "act": 3, "sign": "lists",
+      "contract": "Nobody battles the League with one beast. Lead a pack of three, swap them when it helps, and send the next when one falls.",
+      "objectives": [
+        {"id": "teams", "label": "Field a team", "question_type": "code_checkpoint", "impact": 3, "brief": "Give each side a list of three creatures with one active at a time."},
+        {"id": "switching", "label": "Switch creatures", "question_type": "code_checkpoint", "impact": 3, "brief": "Let the player switch the active creature as their turn, and send the next living creature in when one faints."},
+        {"id": "team_end", "label": "End on a wiped team", "question_type": "code_checkpoint", "impact": 2, "brief": "End the battle only when every creature on one side has fainted, and say who won."}
+      ]
+    },
+    {
+      "name": "The Cunning Rival", "concept": "Choosing actions by expected value",
+      "encounter": "Make the enemy pick the move with the highest expected damage.",
+      "act": 3, "sign": "functions",
+      "contract": "Kesh's best rival thinks before it strikes. For every move it asks: how hard would this hit, how likely is it to land?",
+      "objectives": [
+        {"id": "expected_damage", "label": "Estimate each move", "question_type": "code_checkpoint", "impact": 4, "brief": "Write expected_damage(attacker, move, defender) from power, type multiplier and accuracy, without dealing any damage."},
+        {"id": "smart_enemy", "label": "Pick the best move", "question_type": "code_checkpoint", "impact": 3, "brief": "Make the enemy use the move with the highest expected damage, and switch out when it is badly outmatched."},
+        {"id": "rival_test", "label": "Prove it is smarter", "question_type": "explanation", "impact": 2, "brief": "Run 200 battles of the cunning rival against the random one and explain the result."}
+      ]
+    },
+    {
+      "name": "The Growth Spirit", "concept": "Levels and stat growth",
+      "encounter": "Award XP after battles and grow creatures as they level.",
+      "act": 4, "sign": "loops",
+      "contract": "A creature that never grows is a creature that will lose. Feed it victories and watch it rise.",
+      "objectives": [
+        {"id": "award_xp", "label": "Award XP", "question_type": "code_checkpoint", "impact": 3, "brief": "Award XP to the creatures that fought, based on the level of what they beat."},
+        {"id": "level_up", "label": "Level up", "question_type": "code_checkpoint", "impact": 3, "brief": "Level up at XP thresholds, raising stats, and handle gaining several levels at once."},
+        {"id": "threshold_bug", "label": "Check the thresholds", "question_type": "bug_diagnosis", "impact": 2, "brief": "Explain why a big XP reward can skip a level if you only check once, and show your loop handles it."}
+      ]
+    },
+    {
+      "name": "The Shapeshifter", "concept": "Refactoring dictionaries into a class",
+      "encounter": "Turn creature dictionaries into a Creature class with methods.",
+      "act": 4, "sign": "functions",
+      "contract": "Your beasts have outgrown their dictionaries. The Shapeshifter teaches them a new form: a class that carries its own behaviour.",
+      "objectives": [
+        {"id": "creature_class", "label": "Write the class", "question_type": "code_checkpoint", "impact": 4, "brief": "Write a Creature class whose __init__ sets its stats and moves, with methods take_damage, is_fainted and heal."},
+        {"id": "use_class", "label": "Battle with objects", "question_type": "code_checkpoint", "impact": 4, "brief": "Move the battle over to Creature objects and keep every earlier feature working."},
+        {"id": "class_reason", "label": "Explain the change", "question_type": "explanation", "impact": 2, "brief": "Explain what got easier and what got harder when the data and its behaviour moved into a class."}
+      ]
+    },
+    {
+      "name": "The League Clerk", "concept": "A gauntlet and saved teams",
+      "encounter": "Face a series of trainers and keep your team between runs.",
+      "act": 4, "sign": "input-output",
+      "contract": "The League is not one battle; it is a ladder of trainers, each harder than the last. The Clerk keeps your team on file between visits.",
+      "objectives": [
+        {"id": "gauntlet", "label": "Climb the ladder", "question_type": "code_checkpoint", "impact": 3, "brief": "Pit the player against a sequence of trainers with stronger teams, healing between battles."},
+        {"id": "save_team", "label": "Save the team", "question_type": "code_checkpoint", "impact": 3, "brief": "Save the player's team (levels, XP, moves) to a JSON file and load it on start."},
+        {"id": "league_menu", "label": "Open the league", "question_type": "code_checkpoint", "impact": 3, "brief": "Add a menu: start the gauntlet, battle a random rival, view your team, or quit."}
+      ]
+    }
+  ]
+}

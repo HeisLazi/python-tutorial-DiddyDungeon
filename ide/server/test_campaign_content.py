@@ -66,6 +66,18 @@ class CampaignContentSchemaTests(unittest.TestCase):
                     kinds = [item["question_type"] for item in objectives]
                     self.assertGreaterEqual(kinds.count("code_checkpoint") + kinds.count("bug_diagnosis"), len(kinds) / 2, mob["name"])
 
+    def test_the_engine_uses_every_authored_contract_as_written(self):
+        use_real_content()
+        for entry in story_files():
+            project = {"branch": entry["branch"]}
+            for index, mob in enumerate(entry["mobs"]):
+                if mob.get("legacy_profile"):
+                    continue
+                with self.subTest(branch=entry["branch"], contract=mob["name"]):
+                    profile = LocalStateService._encounter_profile(index, project, mob)
+                    self.assertEqual(list(profile["objectives"]), [item["id"] for item in mob["objectives"]])
+                    self.assertEqual(profile["max_resolve"], sum(item["impact"] for item in mob["objectives"]))
+
 
 def user_like_progress() -> dict:
     """A save like the player's: Blackjack's original eight bounties beaten and
@@ -167,6 +179,16 @@ class CampaignExtensionTests(unittest.TestCase):
         self.assertEqual([item["id"] for item in encounter["available_objectives"]], ["chat_loop", "quit_words", "empty_input"])
         # Blackjack keeps its board while another project is played.
         self.assertEqual(len(next(item for item in self.read()["projects"] if item["branch"] == "01-blackjack")["mobs"]), 19)
+
+    def test_an_untouched_project_opens_with_its_whole_story_board(self):
+        state_now = self.read()
+        state_now["projects"].append({"branch": "02-detective-game", "name": "Guess Who / Detective Game", "status": "available", "boss": "The False Alibi", "order": 2, "progress": 0, "mobs": []})
+        self.path.write_text(json.dumps(state_now), encoding="utf-8")
+        self.service.apply("select_campaign", {"branch": "02-detective-game"}, "player")
+        detective = next(item for item in self.read()["projects"] if item["branch"] == "02-detective-game")
+        self.assertEqual(len(detective["mobs"]), 14)
+        self.assertEqual(detective["entry_file"], "detective.py")
+        self.assertEqual([mob["status"] for mob in detective["mobs"]][:2], ["available", "locked"])
 
 
 if __name__ == "__main__":

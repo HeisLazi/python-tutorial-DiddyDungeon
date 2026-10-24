@@ -1,0 +1,176 @@
+{
+  "branch": "00-rps-tournament",
+  "name": "Rock Paper Scissors Tournament",
+  "boss": "The Pattern Warden",
+  "order": 0,
+  "entry_file": "rps.py",
+  "concept_focus": "Loops, conditionals and score state, then bots that read your patterns",
+  "story": {
+    "title": "The Warden's Game",
+    "client": "Sister Ilse, keeper of the crossroads shrine",
+    "hook": "At the crossroads a spirit challenges every traveller to rock, paper, scissors, and it never seems to lose. Ilse thinks it reads people, not luck. Build the game, then build the minds that read patterns, so you can see the trick and beat it."
+  },
+  "acts": [
+    {"id": 1, "title": "Act I: The First Throw", "goal": "One honest round, then many: moves, the winner, a loop and the score."},
+    {"id": 2, "title": "Act II: The Match", "goal": "A real match: safe input, first to N, named functions and clean rematches."},
+    {"id": 3, "title": "Act III: The Mind Readers", "goal": "Rules as data, move history, and bots that predict you, then make yourself unreadable."}
+  ],
+  "boss_lore": "The Pattern Warden never guesses. It remembers what you did last time, and it waits for you to do it again.",
+  "boss_brief": "Bring a finished rps.py: first-to-N matches with safe input and rematches, rules stored as data (with lizard and spock), move history and stats, and at least two pattern-reading bots that you can duel against each other and against yourself.",
+  "mobs": [
+    {
+      "name": "The Mimic", "concept": "Input/output and random choice from a list",
+      "encounter": "Get a single round on the table: take the player's move, let the computer pick its own, and explain where each choice is remembered.",
+      "act": 1, "sign": "random-selection",
+      "contract": "The Mimic copies whatever it sees. Start simple: a player's move, a computer's move, both remembered and shown.",
+      "objectives": [
+        {"id": "player_move", "label": "Take the player's move", "question_type": "code_checkpoint", "impact": 2, "brief": "In rps.py, ask the player for rock, paper or scissors and store it in a variable."},
+        {"id": "computer_move", "label": "Let the computer choose", "question_type": "code_checkpoint", "impact": 3, "brief": "Pick the computer's move at random from a list of the three moves and show both moves."},
+        {"id": "where_stored", "label": "Name where choices live", "question_type": "explanation", "impact": 2, "brief": "Explain which variables hold each move and when each one gets its value."}
+      ]
+    },
+    {
+      "name": "The Rule Sage", "concept": "Conditionals (if / elif / else)",
+      "encounter": "Decide who wins a round by reasoning through ties, wins and losses without blindly writing out every pairing.",
+      "act": 1, "sign": "conditionals",
+      "contract": "The Sage asks one question: who won? Answer it for every pairing without writing nine separate cases.",
+      "objectives": [
+        {"id": "decide_round", "label": "Decide the round", "question_type": "code_checkpoint", "impact": 4, "brief": "Decide whether the player wins, loses or ties, checking the tie first and then the three winning pairs."},
+        {"id": "rule_trace", "label": "Trace three rounds", "question_type": "prediction", "impact": 2, "brief": "Predict the result of rock against scissors, paper against paper and scissors against rock, then run them."},
+        {"id": "missing_case", "label": "Find the missing case", "question_type": "bug_diagnosis", "impact": 2, "brief": "Explain what your program does if the player types something that is not a move, and why the else branch matters."}
+      ]
+    },
+    {
+      "name": "The Loop Imp", "concept": "While loops",
+      "encounter": "Make rounds repeat and explain which condition keeps the loop alive and what would end it.",
+      "act": 1, "sign": "loops",
+      "contract": "One round is a coin toss. The Imp wants to keep playing. Wrap the round in a loop that runs until the player is done.",
+      "objectives": [
+        {"id": "round_loop", "label": "Repeat the rounds", "question_type": "code_checkpoint", "impact": 3, "brief": "Put the round inside a while loop so a new round starts after each result."},
+        {"id": "quit_choice", "label": "Let the player stop", "question_type": "code_checkpoint", "impact": 2, "brief": "Let the player type quit to leave the loop cleanly."},
+        {"id": "loop_condition", "label": "Explain the condition", "question_type": "explanation", "impact": 2, "brief": "Explain exactly what keeps your loop running and what makes it stop."}
+      ]
+    },
+    {
+      "name": "The Score Thief", "concept": "Counters and score variables",
+      "encounter": "Track wins for both sides and pinpoint exactly where in a round each score is allowed to change.",
+      "act": 1, "sign": "variables",
+      "contract": "Points keep going missing. The Thief steals any score that is reset at the wrong moment or added in the wrong place.",
+      "objectives": [
+        {"id": "keep_score", "label": "Keep both scores", "question_type": "code_checkpoint", "impact": 3, "brief": "Count wins for the player and the computer, and ties, and show the score after every round."},
+        {"id": "reset_bug", "label": "Catch the reset", "question_type": "bug_diagnosis", "impact": 3, "brief": "Explain what happens if the score variables are set to 0 inside the loop, and show yours are set once before it."},
+        {"id": "score_trace", "label": "Trace the score", "question_type": "prediction", "impact": 2, "brief": "Predict the score after win, tie, loss, win, then check your program agrees."}
+      ]
+    },
+    {
+      "name": "The Trickster", "concept": "Input validation and string handling",
+      "encounter": "Survive typos, capitals and nonsense so a bad move asks again instead of crashing or counting as a round.",
+      "act": 2, "sign": "input-output",
+      "contract": "The Trickster types ROCK, rck and banana and laughs when your game breaks. Make it unbreakable.",
+      "objectives": [
+        {"id": "clean_input", "label": "Clean the input", "question_type": "code_checkpoint", "impact": 3, "brief": "Strip spaces and lower-case the player's move, and accept r, p and s as short forms."},
+        {"id": "ask_again", "label": "Ask again", "question_type": "code_checkpoint", "impact": 3, "brief": "On anything that is not a move, explain the options and ask again without playing a round."},
+        {"id": "nonsense_bug", "label": "Prove it holds", "question_type": "bug_diagnosis", "impact": 2, "brief": "List the bad inputs you tested and what your game did with each before and after the fix."}
+      ]
+    },
+    {
+      "name": "The Crown Keeper", "concept": "Loop exit conditions and formatted output",
+      "encounter": "End the match when someone reaches the target score, showing the round number and score along the way.",
+      "act": 2, "sign": "control-flow",
+      "contract": "The Keeper hands the crown to the first to three, and not a round later. Make the match know when it is won.",
+      "objectives": [
+        {"id": "first_to_n", "label": "Play first to N", "question_type": "code_checkpoint", "impact": 4, "brief": "Ask for a target score and end the match as soon as either side reaches it."},
+        {"id": "round_banner", "label": "Show the round", "question_type": "code_checkpoint", "impact": 2, "brief": "Show the round number and the score in a tidy line every round, and announce the champion at the end."},
+        {"id": "off_by_one", "label": "Stop on time", "question_type": "bug_diagnosis", "impact": 2, "brief": "Explain why checking the score at the wrong point can play one round too many, and show yours stops exactly on time."}
+      ]
+    },
+    {
+      "name": "The Rule Splitter", "concept": "Functions",
+      "encounter": "Pull repeated jobs like getting a move and judging a round into small named behaviours and explain their inputs and returns.",
+      "act": 2, "sign": "functions",
+      "contract": "The Splitter cuts a tangled program into clean pieces. Each job gets a name, its inputs and its answer.",
+      "objectives": [
+        {"id": "get_move_fn", "label": "Write get_move", "question_type": "code_checkpoint", "impact": 3, "brief": "Move the input and validation into a get_move function that returns a clean move."},
+        {"id": "judge_fn", "label": "Write judge_round", "question_type": "code_checkpoint", "impact": 3, "brief": "Write judge_round(player, computer) that returns 'win', 'lose' or 'tie' without printing anything."},
+        {"id": "return_reason", "label": "Explain the returns", "question_type": "explanation", "impact": 2, "brief": "Explain why judge_round returns a result instead of printing it, and how the caller uses it."}
+      ]
+    },
+    {
+      "name": "The Rematch Wraith", "concept": "Outer game loop and reset state",
+      "encounter": "Offer a rematch after a finished match and explain how scores and round counts start fresh without restarting Python.",
+      "act": 2, "sign": "control-flow",
+      "contract": "The Wraith lingers after every match, whispering the old score into the new one. Let the players run it back clean.",
+      "objectives": [
+        {"id": "rematch_loop", "label": "Offer a rematch", "question_type": "code_checkpoint", "impact": 3, "brief": "Wrap the match in an outer loop that offers a rematch when it ends."},
+        {"id": "fresh_match", "label": "Start fresh", "question_type": "code_checkpoint", "impact": 3, "brief": "Reset the scores and round count for each new match, and keep a count of matches won across the session."},
+        {"id": "two_loops", "label": "Explain the two loops", "question_type": "explanation", "impact": 2, "brief": "Explain which state belongs to the round loop, which to the match loop and which to the whole session."}
+      ]
+    },
+    {
+      "name": "The Rule Tablet", "concept": "Rules stored as data",
+      "encounter": "Store what beats what in a dictionary, then add lizard and spock without new if statements.",
+      "act": 3, "sign": "dictionaries",
+      "contract": "The shrine's stone tablet lists what defeats what. Carve your rules into data and new moves cost one line each.",
+      "objectives": [
+        {"id": "beats_table", "label": "Carve the tablet", "question_type": "code_checkpoint", "impact": 4, "brief": "Replace the winning-pair checks with a dictionary from each move to the moves it beats, and judge rounds from it."},
+        {"id": "lizard_spock", "label": "Add two moves", "question_type": "code_checkpoint", "impact": 3, "brief": "Add lizard and spock by editing only the table and the list of moves, and offer both rule sets at the start."},
+        {"id": "data_reason", "label": "Explain rules as data", "question_type": "explanation", "impact": 2, "brief": "Explain why rules in a table are easier to extend and check than rules in if statements."}
+      ]
+    },
+    {
+      "name": "The Tally Crow", "concept": "Keeping a history and computing stats",
+      "encounter": "Record every move the player makes and report their habits.",
+      "act": 3, "sign": "lists",
+      "contract": "A crow on the shrine roof remembers every throw you have ever made. It is about to tell the Warden your habits.",
+      "objectives": [
+        {"id": "move_history", "label": "Record the history", "question_type": "code_checkpoint", "impact": 3, "brief": "Keep a list of every move the player and computer made, in order, with the result of each round."},
+        {"id": "habit_stats", "label": "Report the habits", "question_type": "code_checkpoint", "impact": 3, "brief": "At the end of a match, show the player's favourite move, how often they repeat their last move, and their longest winning streak."},
+        {"id": "streak_bug", "label": "Count streaks right", "question_type": "bug_diagnosis", "impact": 2, "brief": "Explain the case your streak counter is most likely to get wrong (a streak at the very end) and show it is handled."}
+      ]
+    },
+    {
+      "name": "The Frequency Witch", "concept": "Counting to predict",
+      "encounter": "Build a bot that counters the move you play most.",
+      "act": 3, "sign": "dictionaries",
+      "contract": "The Witch keeps a tally of your throws and plays whatever beats your favourite. It is crude. It is also right more often than chance.",
+      "objectives": [
+        {"id": "count_moves", "label": "Tally the moves", "question_type": "code_checkpoint", "impact": 3, "brief": "Count how many times the player has played each move so far using a dictionary."},
+        {"id": "counter_bot", "label": "Counter the favourite", "question_type": "code_checkpoint", "impact": 4, "brief": "Write a bot that plays the move that beats the player's most common move, and plays randomly before it has any data."},
+        {"id": "witch_reason", "label": "Explain why it works", "question_type": "explanation", "impact": 2, "brief": "Explain why this bot beats most humans and how a player could beat it."}
+      ]
+    },
+    {
+      "name": "The Echo Seer", "concept": "Transition counts: a tiny Markov model",
+      "encounter": "Predict the player's next move from the move they just made.",
+      "act": 3, "sign": "dictionaries",
+      "contract": "The Seer does not care what you play most. It cares what you play next after rock, after paper, after a loss. Most people are painfully regular.",
+      "objectives": [
+        {"id": "transitions", "label": "Count what follows what", "question_type": "code_checkpoint", "impact": 4, "brief": "Keep a dictionary of dictionaries counting which move the player made after each previous move."},
+        {"id": "seer_bot", "label": "Predict and counter", "question_type": "code_checkpoint", "impact": 4, "brief": "Write a bot that predicts the player's next move from their last one and plays its counter, falling back to random when unsure."},
+        {"id": "seer_trace", "label": "Trace a prediction", "question_type": "prediction", "impact": 2, "brief": "Given a short history such as rock, paper, rock, paper, rock, predict what the Seer plays next, then check."}
+      ]
+    },
+    {
+      "name": "The Strategy Duel", "concept": "Bots as functions, duelled over many rounds",
+      "encounter": "Make every bot the same kind of function and let them fight a thousand rounds.",
+      "act": 3, "sign": "functions",
+      "contract": "Ilse wants to know which mind is strongest. Give every bot the same shape and set them on each other for a thousand throws.",
+      "objectives": [
+        {"id": "bot_shape", "label": "Give bots one shape", "question_type": "code_checkpoint", "impact": 3, "brief": "Make each bot a function that receives the opponent's history and returns a move: random, the Witch and the Seer."},
+        {"id": "duel_runner", "label": "Run a duel", "question_type": "code_checkpoint", "impact": 4, "brief": "Write duel(bot_a, bot_b, rounds) that plays them silently and returns each side's wins and the ties."},
+        {"id": "duel_table", "label": "Read the results", "question_type": "explanation", "impact": 2, "brief": "Run every pairing over 1,000 rounds, show the table, and explain why random never loses badly."}
+      ]
+    },
+    {
+      "name": "The Unreadable", "concept": "Measuring predictability",
+      "encounter": "Measure how well a bot predicts you, then play so it cannot.",
+      "act": 3, "sign": "random-selection",
+      "contract": "The last lesson before the Warden: if you can be read, you can be beaten. Measure how readable you are and learn to be noise.",
+      "objectives": [
+        {"id": "prediction_rate", "label": "Measure readability", "question_type": "code_checkpoint", "impact": 3, "brief": "Track how often the Seer would have predicted the player's move correctly and show it as a percentage."},
+        {"id": "mixed_bot", "label": "Build an unreadable bot", "question_type": "code_checkpoint", "impact": 3, "brief": "Write a bot that mixes strategies at random each round, and show the Seer's prediction rate against it falls to about a third."},
+        {"id": "warden_reason", "label": "Explain the defence", "question_type": "explanation", "impact": 2, "brief": "Explain why truly random play cannot lose in the long run but cannot win either, and when you would still use a predictor."}
+      ]
+    }
+  ]
+}

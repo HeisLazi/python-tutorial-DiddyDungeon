@@ -1,0 +1,176 @@
+{
+  "branch": "02-detective-game",
+  "name": "Guess Who / Detective Game",
+  "boss": "The False Alibi",
+  "order": 2,
+  "entry_file": "detective.py",
+  "concept_focus": "Dictionaries, lists of dictionaries and filtering, then a machine detective that solves cases",
+  "story": {
+    "title": "The Lantern Street Murders",
+    "client": "Inspector Halloran of the Lantern Street watch",
+    "hook": "Someone on Lantern Street is wearing a stolen face. Halloran has a lineup, a stack of witness statements and no patience left. Build the game of questions that narrows the lineup, then build a detective machine that asks better questions than any of his officers."
+  },
+  "acts": [
+    {"id": 1, "title": "Act I: The Lineup", "goal": "Suspects as data, a readable board, questions, and a crowd that shrinks with every answer."},
+    {"id": 2, "title": "Act II: The Case", "goal": "Edge cases, named functions, a final accusation and cases that can be lost."},
+    {"id": 3, "title": "Act III: The Case Engine", "goal": "Generated cases, case files, a question advisor, a machine detective and a witness who lies."}
+  ],
+  "boss_lore": "The False Alibi has an answer for every question. The trick is asking the one question its story cannot survive.",
+  "boss_brief": "Bring a finished detective.py: generated or loaded cases with unique suspects, filtering questions with turn limits and accusations, a question advisor, a machine detective that solves cases in few questions, and a case where one witness lies.",
+  "mobs": [
+    {
+      "name": "The Lineup", "concept": "Dictionaries and lists of dictionaries",
+      "encounter": "Build the suspect roster and decide which traits each suspect needs so every one can be told apart.",
+      "act": 1, "sign": "dictionaries",
+      "contract": "Eight faces under the lantern. Write each one down as data, with enough traits that no two can be mistaken for each other.",
+      "objectives": [
+        {"id": "roster", "label": "Build the roster", "question_type": "code_checkpoint", "impact": 3, "brief": "In detective.py, build a list of at least eight suspects, each a dictionary with a name and the same set of traits."},
+        {"id": "unique_check", "label": "Check they differ", "question_type": "code_checkpoint", "impact": 3, "brief": "Write a check that no two suspects have exactly the same traits, and run it at start."},
+        {"id": "trait_choice", "label": "Explain the traits", "question_type": "explanation", "impact": 2, "brief": "Explain how you chose traits so that a few questions can always tell suspects apart."}
+      ]
+    },
+    {
+      "name": "The Witness Board", "concept": "Looping over lists and string output",
+      "encounter": "Display the remaining suspects and their traits readably and explain how the loop visits each one.",
+      "act": 1, "sign": "loops",
+      "contract": "Halloran's officers cannot read your notes. Pin every suspect to the board in a form anyone can scan.",
+      "objectives": [
+        {"id": "show_board", "label": "Show the board", "question_type": "code_checkpoint", "impact": 3, "brief": "Print every remaining suspect on one line each, with their traits lined up in columns."},
+        {"id": "count_line", "label": "Count the suspects", "question_type": "code_checkpoint", "impact": 2, "brief": "Show how many suspects remain above the board."},
+        {"id": "loop_trace", "label": "Trace the loop", "question_type": "prediction", "impact": 2, "brief": "Predict what the board prints for a list of two suspects, then check it."}
+      ]
+    },
+    {
+      "name": "The Interrogator", "concept": "Menus, input and dictionary lookup",
+      "encounter": "Offer a set of questions, take the player's pick and reason about which trait and value that question really checks.",
+      "act": 1, "sign": "input-output",
+      "contract": "Every question is a lantern held up to one trait. Offer the questions, take a choice and know exactly which trait it lights.",
+      "objectives": [
+        {"id": "question_menu", "label": "Offer questions", "question_type": "code_checkpoint", "impact": 3, "brief": "Show a numbered menu of yes-or-no questions, each linked to a trait and a value in a dictionary."},
+        {"id": "pick_question", "label": "Take a pick", "question_type": "code_checkpoint", "impact": 3, "brief": "Read the player's choice, reject anything not on the menu, and answer it truthfully for the hidden culprit."},
+        {"id": "lookup_reason", "label": "Explain the lookup", "question_type": "explanation", "impact": 2, "brief": "Explain how your program turns a menu number into the trait and value it checks."}
+      ]
+    },
+    {
+      "name": "The Vanishing Crowd", "concept": "Filtering lists with conditionals",
+      "encounter": "Narrow the suspects after an answer by comparing what you know before and after the question.",
+      "act": 1, "sign": "conditionals",
+      "contract": "Every answer should send someone home. Keep the suspects who still fit and let the rest vanish from the board.",
+      "objectives": [
+        {"id": "filter_suspects", "label": "Filter the lineup", "question_type": "code_checkpoint", "impact": 4, "brief": "After each answer, keep only the suspects whose trait matches it, building a new list rather than removing items while looping."},
+        {"id": "remove_bug", "label": "Explain the removal trap", "question_type": "bug_diagnosis", "impact": 3, "brief": "Explain why removing items from a list while looping over it skips suspects, and show your version does not."},
+        {"id": "filter_trace", "label": "Predict who is left", "question_type": "prediction", "impact": 2, "brief": "Predict who remains after two answers on your roster, then check it."}
+      ]
+    },
+    {
+      "name": "The False Lead", "concept": "Edge cases and list length",
+      "encounter": "Handle questions that eliminate nobody or everybody and always show how many suspects remain.",
+      "act": 2, "sign": "conditionals",
+      "contract": "Some questions are traps: they clear nobody, or everybody. A good detective notices before wasting a turn.",
+      "objectives": [
+        {"id": "useless_question", "label": "Spot a useless question", "question_type": "code_checkpoint", "impact": 3, "brief": "Warn the player when a question would not eliminate anyone, and hide questions already asked."},
+        {"id": "empty_lineup", "label": "Never empty the board", "question_type": "bug_diagnosis", "impact": 3, "brief": "Explain how the lineup could become empty and make sure an honest answer can never remove the culprit."},
+        {"id": "one_left", "label": "Notice the last suspect", "question_type": "code_checkpoint", "impact": 2, "brief": "When one suspect remains, say so and move straight to the accusation."}
+      ]
+    },
+    {
+      "name": "The Case Clerk", "concept": "Functions",
+      "encounter": "Split asking, answering and filtering into named behaviours and explain what each receives and hands back.",
+      "act": 2, "sign": "functions",
+      "contract": "The Clerk refuses to file a case written as one long ramble. Give every job its own function.",
+      "objectives": [
+        {"id": "ask_fn", "label": "Write ask_question", "question_type": "code_checkpoint", "impact": 3, "brief": "Write a function that shows the menu and returns the chosen question."},
+        {"id": "filter_fn", "label": "Write filter_suspects", "question_type": "code_checkpoint", "impact": 3, "brief": "Write filter_suspects(suspects, trait, value, answer) that returns the new list without printing anything."},
+        {"id": "functions_reason", "label": "Explain the split", "question_type": "explanation", "impact": 2, "brief": "Explain what each function receives and returns, and why filter_suspects should not change the list it was given."}
+      ]
+    },
+    {
+      "name": "The Accuser", "concept": "Comparison and win conditions",
+      "encounter": "Let the player make a final accusation and justify how the program knows whether the case is solved.",
+      "act": 2, "sign": "conditionals",
+      "contract": "Halloran does not arrest on a hunch. When you point at a face, the program must know for certain if you are right.",
+      "objectives": [
+        {"id": "accuse", "label": "Make an accusation", "question_type": "code_checkpoint", "impact": 3, "brief": "Let the player accuse a suspect by name at any time, matching names without caring about capitals or spaces."},
+        {"id": "verdict", "label": "Reveal the truth", "question_type": "code_checkpoint", "impact": 3, "brief": "Compare the accused with the culprit, announce the result and reveal the culprit's traits."},
+        {"id": "name_bug", "label": "Match names safely", "question_type": "bug_diagnosis", "impact": 2, "brief": "Explain what goes wrong when the player types a name that is not in the lineup, and handle it."}
+      ]
+    },
+    {
+      "name": "The Cold Case", "concept": "Turn limits, loop exits and reset state",
+      "encounter": "Cap questions or wrong guesses so the case can be lost, then open a new case without leftovers from the filtered list.",
+      "act": 2, "sign": "control-flow",
+      "contract": "A case that cannot be lost is not a case. Give the player limited questions and guesses, and a clean new case after.",
+      "objectives": [
+        {"id": "turn_limit", "label": "Limit the questions", "question_type": "code_checkpoint", "impact": 3, "brief": "Allow a fixed number of questions and wrong accusations, show what is left, and lose the case when they run out."},
+        {"id": "new_case", "label": "Open a fresh case", "question_type": "code_checkpoint", "impact": 3, "brief": "After a case ends, offer a new one with a new culprit and the full lineup back."},
+        {"id": "leftover_bug", "label": "Catch the leftovers", "question_type": "bug_diagnosis", "impact": 2, "brief": "Explain how a new case could start with last case's filtered list, and show yours copies the full roster instead."}
+      ]
+    },
+    {
+      "name": "The Forger", "concept": "Generating unique data at random",
+      "encounter": "Generate a new lineup for every case from pools of traits.",
+      "act": 3, "sign": "random-selection",
+      "contract": "Halloran is tired of the same eight faces. The Forger can make new ones by the dozen, but every one must still be unique.",
+      "objectives": [
+        {"id": "trait_pools", "label": "Build trait pools", "question_type": "code_checkpoint", "impact": 3, "brief": "Keep a dictionary of trait names to the values each can take, and a pool of names."},
+        {"id": "generate_lineup", "label": "Forge a lineup", "question_type": "code_checkpoint", "impact": 4, "brief": "Generate a lineup of a chosen size with random traits, retrying any suspect who would duplicate another."},
+        {"id": "impossible_size", "label": "Refuse an impossible size", "question_type": "bug_diagnosis", "impact": 2, "brief": "Explain why asking for more suspects than there are trait combinations would loop forever, and stop it."}
+      ]
+    },
+    {
+      "name": "The Clue Weaver", "concept": "Loading cases from JSON files",
+      "encounter": "Store hand-written cases in a file and load them.",
+      "act": 3, "sign": "input-output",
+      "contract": "The watch keeps its best cases in a ledger. Read cases from a file, so new ones can be written without touching the code.",
+      "objectives": [
+        {"id": "case_file", "label": "Write a case file", "question_type": "code_checkpoint", "impact": 3, "brief": "Save a case (its suspects, questions and culprit) to a JSON file."},
+        {"id": "load_case", "label": "Load a case", "question_type": "code_checkpoint", "impact": 3, "brief": "Let the player choose between a generated case and one loaded from the file."},
+        {"id": "bad_file", "label": "Reject a bad case", "question_type": "bug_diagnosis", "impact": 3, "brief": "Check a loaded case is valid (the culprit is in the lineup, every suspect has every trait) and explain each check."}
+      ]
+    },
+    {
+      "name": "The Splitter", "concept": "Scoring questions by how well they split",
+      "encounter": "Recommend the question that cuts the lineup most evenly.",
+      "act": 3, "sign": "loops",
+      "contract": "The best question is not the clever one. It is the one that sends half the suspects home whatever the answer.",
+      "objectives": [
+        {"id": "split_counts", "label": "Count both answers", "question_type": "code_checkpoint", "impact": 3, "brief": "For every unasked question, count how many suspects a yes and a no would leave."},
+        {"id": "best_question", "label": "Recommend the best", "question_type": "code_checkpoint", "impact": 4, "brief": "Add a hint command that recommends the question whose worst case leaves the fewest suspects."},
+        {"id": "halving_reason", "label": "Explain halving", "question_type": "explanation", "impact": 2, "brief": "Explain why a question that splits the lineup in half finds the culprit in about log2(n) questions."}
+      ]
+    },
+    {
+      "name": "The Machine Detective", "concept": "An agent that plays the game itself",
+      "encounter": "Let a bot solve cases on its own and measure how well it does.",
+      "act": 3, "sign": "functions",
+      "contract": "Halloran wants a detective that never sleeps. Your advisor already knows the best question; let it ask, listen and accuse on its own.",
+      "objectives": [
+        {"id": "auto_detective", "label": "Let the bot play", "question_type": "code_checkpoint", "impact": 4, "brief": "Write a function that plays a whole case with no input(): it asks the best question, filters, and accuses when one suspect remains."},
+        {"id": "many_cases", "label": "Solve 200 cases", "question_type": "code_checkpoint", "impact": 3, "brief": "Run it on 200 generated cases and report the average and worst number of questions."},
+        {"id": "versus_you", "label": "Compare with yourself", "question_type": "explanation", "impact": 2, "brief": "Compare its average with your own games and explain where your questions were worse."}
+      ]
+    },
+    {
+      "name": "The Liar's Clause", "concept": "Reasoning with one unreliable answer",
+      "encounter": "One witness may lie once; still find the culprit.",
+      "act": 3, "sign": "conditionals",
+      "contract": "One witness on Lantern Street lies, once, about one thing. Filtering hard on every answer now sends the culprit home. Keep anyone who fits all but one answer.",
+      "objectives": [
+        {"id": "lie_mode", "label": "Add a liar", "question_type": "code_checkpoint", "impact": 3, "brief": "Add a mode where exactly one answer during the case is a lie, chosen at random."},
+        {"id": "tolerant_filter", "label": "Allow one contradiction", "question_type": "code_checkpoint", "impact": 4, "brief": "Track, for each suspect, how many answers they contradict, and keep everyone with at most one."},
+        {"id": "lie_reason", "label": "Explain the cost", "question_type": "explanation", "impact": 2, "brief": "Explain why one possible lie means you need extra questions, and how your machine detective copes with it."}
+      ]
+    },
+    {
+      "name": "The Archive", "concept": "Session records and a front desk",
+      "encounter": "Keep solved-case statistics and give the game a menu.",
+      "act": 3, "sign": "dictionaries",
+      "contract": "Every solved case goes in the archive, with how many questions it took. Give Halloran a front desk to start any kind of case.",
+      "objectives": [
+        {"id": "case_stats", "label": "Archive the results", "question_type": "code_checkpoint", "impact": 3, "brief": "Save each finished case's result and question count to a JSON archive and show the player's record."},
+        {"id": "front_desk", "label": "Open the front desk", "question_type": "code_checkpoint", "impact": 3, "brief": "Add a menu: play a generated case, play a filed case, watch the machine detective, liar mode, or quit."},
+        {"id": "archive_trace", "label": "Predict the record", "question_type": "prediction", "impact": 2, "brief": "Predict the solve rate and average questions after three cases you play, then check the archive shows the same."}
+      ]
+    }
+  ]
+}

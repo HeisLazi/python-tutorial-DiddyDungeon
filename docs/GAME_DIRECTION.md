@@ -139,9 +139,13 @@ book (level, XP bar, rank gates, perks), milestones and the hunt journal.
 
 1. **Campaign story pass** (story contracts and longer boards shipped
    2026-10-24 as Phase D1, Blackjack first: 19 contracts in three acts, Act III
-   builds an agent that plays it; the other projects and two new agent
-   projects follow): a story arc, hunter-voice contract briefs, each contract
-   showing its beast and sign and linking to the Codex.
+   builds an agent that plays it; every project has a story file since D2/D3:
+   ten campaigns, 153 contracts, including The Clockwork Arena (Connect Four
+   engines) and The Familiar (an AI agent from scratch)): a story arc,
+   hunter-voice contract briefs, each contract showing its beast and sign and
+   linking to the Codex. Still open: Codex pages for concepts beyond the nine
+   signs (classes, recursion, search, JSON), which contracts map to the
+   closest sign for now.
 2. **Dungeon as a crawler** (region delves, region beasts and named bosses
    shipped 2026-10-24 as Phase C1; room-grid floors under fog, walk-back
    travel and stairs between floors shipped 2026-10-24 as C3): region

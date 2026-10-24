@@ -1,0 +1,176 @@
+{
+  "branch": "04-casino-slots",
+  "name": "Casino / Slots",
+  "boss": "Lady Luck",
+  "order": 4,
+  "entry_file": "casino.py",
+  "concept_focus": "Randomness, probability and bankroll state, then simulations that measure and tune a game",
+  "story": {
+    "title": "The Silver Reels",
+    "client": "Auditor Pell of the Gaming Guild",
+    "hook": "The Silver Reels casino swears its machines are fair. Pell has been sent to prove otherwise and needs someone who can build a slot machine, then measure one: millions of spins, the real return, and the tricks that hide in the weights."
+  },
+  "acts": [
+    {"id": 1, "title": "Act I: The Machine", "goal": "A bankroll, three reels, a payout table and bets that cannot be faked."},
+    {"id": 2, "title": "Act II: The Session", "goal": "Odds you can reason about, a session loop, named functions and a summary when you walk away."},
+    {"id": 3, "title": "Act III: The Audit", "goal": "Weighted reels, a million-spin simulation, a balanced payout table, a jackpot, a second game and responsible limits."}
+  ],
+  "boss_lore": "Lady Luck never lies about a single spin. She lies about the thousandth one, where nobody is counting.",
+  "boss_brief": "Bring a finished casino.py: weighted reels with a payout table checked from most to least valuable, validated bets, a session summary, a simulation that measures the real return to player, a table tuned to a target return, a progressive jackpot, roulette on the same bankroll, and session limits.",
+  "mobs": [
+    {
+      "name": "The Coin Rat", "concept": "Numeric variables and program state",
+      "encounter": "Track a starting bankroll and explain which actions should make it grow or shrink.",
+      "act": 1, "sign": "variables",
+      "contract": "Something gnaws at the bankroll between spins. Keep the purse in one honest variable and know every reason it changes.",
+      "objectives": [
+        {"id": "bankroll", "label": "Keep the purse", "question_type": "code_checkpoint", "impact": 3, "brief": "In casino.py, start the player with a bankroll and show it before every spin."},
+        {"id": "bet_and_pay", "label": "Take a bet, pay a win", "question_type": "code_checkpoint", "impact": 3, "brief": "Take a fixed bet out of the bankroll for each spin and add any winnings back."},
+        {"id": "money_reason", "label": "List every change", "question_type": "explanation", "impact": 2, "brief": "List every line that changes the bankroll and explain why each one is allowed to."}
+      ]
+    },
+    {
+      "name": "The Spin Imp", "concept": "Lists and random selection",
+      "encounter": "Generate three random symbols per spin and reason about how many different outcomes are possible.",
+      "act": 1, "sign": "random-selection",
+      "contract": "The Imp spins the reels and grins. Three symbols, chosen fresh each time, and you should know how many outcomes there are.",
+      "objectives": [
+        {"id": "reels", "label": "Spin three reels", "question_type": "code_checkpoint", "impact": 3, "brief": "Keep the symbols in a list and pick one at random for each of three reels, then show the line."},
+        {"id": "outcome_count", "label": "Count the outcomes", "question_type": "prediction", "impact": 2, "brief": "Predict how many different three-symbol lines your reels can make, then compute it in code."},
+        {"id": "repeat_bug", "label": "Spin each reel separately", "question_type": "bug_diagnosis", "impact": 2, "brief": "Explain why [random.choice(symbols)] * 3 always shows three of a kind, and show your reels spin independently."}
+      ]
+    },
+    {
+      "name": "The Payout Mimic", "concept": "Dictionaries and conditionals",
+      "encounter": "Reward different combinations correctly and decide what order to check them in so a big win is never paid as a small one.",
+      "act": 1, "sign": "dictionaries",
+      "contract": "The Mimic pays three sevens as a pair of cherries. Check the big wins first and keep the prices in one table.",
+      "objectives": [
+        {"id": "payout_table", "label": "Write the payout table", "question_type": "code_checkpoint", "impact": 3, "brief": "Keep payouts in a dictionary: three of each symbol, any two matching, and special cherry rules."},
+        {"id": "check_order", "label": "Check big wins first", "question_type": "code_checkpoint", "impact": 3, "brief": "Work out the payout for a line, checking the most valuable combinations first."},
+        {"id": "order_bug", "label": "Explain the order", "question_type": "bug_diagnosis", "impact": 2, "brief": "Show a line your program would underpay if it checked pairs before three of a kind, and explain why the order matters."}
+      ]
+    },
+    {
+      "name": "The Debt Ghoul", "concept": "Input validation",
+      "encounter": "Block bets that are negative, zero, not a number or bigger than the bankroll, and ask again instead of crashing.",
+      "act": 1, "sign": "input-output",
+      "contract": "The Ghoul feeds on bets you cannot cover. Refuse every bad bet and every fake number at the door.",
+      "objectives": [
+        {"id": "ask_bet", "label": "Ask for a bet", "question_type": "code_checkpoint", "impact": 3, "brief": "Let the player choose their bet each spin, converting the text to a number."},
+        {"id": "reject_bets", "label": "Refuse bad bets", "question_type": "code_checkpoint", "impact": 3, "brief": "Ask again on text, zero, negative numbers or more than the bankroll, without crashing."},
+        {"id": "crash_bug", "label": "Show what it survives", "question_type": "bug_diagnosis", "impact": 2, "brief": "List the inputs that used to crash or cheat your game and what it does with each now."}
+      ]
+    },
+    {
+      "name": "The House Edge", "concept": "Probability thinking and balancing",
+      "encounter": "Estimate how often each combination should appear and judge whether your payouts let a player win forever.",
+      "act": 2, "sign": "random-selection",
+      "contract": "Pell's first lesson: every machine is a maths problem. Work out how often each line should appear and what the machine pays back on average.",
+      "objectives": [
+        {"id": "combo_odds", "label": "Work out the odds", "question_type": "code_checkpoint", "impact": 3, "brief": "Compute, in code, the probability of three of a kind for each symbol and of any pair."},
+        {"id": "expected_return", "label": "Compute the expected return", "question_type": "code_checkpoint", "impact": 4, "brief": "Combine those odds with your payout table into the expected return per unit bet."},
+        {"id": "edge_reason", "label": "Judge the edge", "question_type": "explanation", "impact": 2, "brief": "Explain whether your machine favours the house or the player, and by how much per hundred spins."}
+      ]
+    },
+    {
+      "name": "The Greed Spirit", "concept": "While loops and exit conditions",
+      "encounter": "Keep the game running across many spins and explain every condition that ends the session.",
+      "act": 2, "sign": "loops",
+      "contract": "Greed whispers one more spin. Give the session a loop, and make sure every way out actually works.",
+      "objectives": [
+        {"id": "session_loop", "label": "Keep spinning", "question_type": "code_checkpoint", "impact": 3, "brief": "Loop spins until the player cashes out or cannot afford the smallest bet."},
+        {"id": "cash_out", "label": "Cash out", "question_type": "code_checkpoint", "impact": 2, "brief": "Let the player cash out at any bet prompt and show what they leave with."},
+        {"id": "exit_reason", "label": "List the exits", "question_type": "bug_diagnosis", "impact": 3, "brief": "List every condition that ends the session and show one that used to keep it running when it should have stopped."}
+      ]
+    },
+    {
+      "name": "The Croupier", "concept": "Functions",
+      "encounter": "Split taking bets, spinning and paying out into named behaviours with clear inputs and returns.",
+      "act": 2, "sign": "functions",
+      "contract": "A good croupier does three jobs, each perfectly, never mixed up. Give your machine the same discipline.",
+      "objectives": [
+        {"id": "spin_fn", "label": "Write spin", "question_type": "code_checkpoint", "impact": 3, "brief": "Write spin() that returns a line of three symbols and nothing else."},
+        {"id": "payout_fn", "label": "Write payout", "question_type": "code_checkpoint", "impact": 3, "brief": "Write payout(line, bet) that returns winnings without touching the bankroll or printing."},
+        {"id": "pure_reason", "label": "Explain the split", "question_type": "explanation", "impact": 2, "brief": "Explain why payout must not change the bankroll itself, and how that helps you test it."}
+      ]
+    },
+    {
+      "name": "The Tally Ghost", "concept": "Session statistics and summary output",
+      "encounter": "Track wins, losses and net change across the session and present a clear summary when the player walks away.",
+      "act": 2, "sign": "dictionaries",
+      "contract": "The Ghost keeps the books nobody else wants to keep. Every spin, every win, and the truth at the end of the night.",
+      "objectives": [
+        {"id": "session_stats", "label": "Keep the books", "question_type": "code_checkpoint", "impact": 3, "brief": "Track spins, wins, the biggest win, total bet and total won in one dictionary."},
+        {"id": "summary", "label": "Print the summary", "question_type": "code_checkpoint", "impact": 3, "brief": "When the session ends, print a clear summary with net change and win rate."},
+        {"id": "summary_trace", "label": "Check the maths", "question_type": "prediction", "impact": 2, "brief": "Predict the summary for a short scripted session (fix the random seed), then check it."}
+      ]
+    },
+    {
+      "name": "The Weighted Reel", "concept": "Weighted random choice",
+      "encounter": "Make some symbols rarer than others with weights.",
+      "act": 3, "sign": "random-selection",
+      "contract": "Pell opened a Silver Reels machine and found the secret: the sevens are painted on fewer slots. Real reels are weighted. Build yours the same way.",
+      "objectives": [
+        {"id": "weights", "label": "Weight the symbols", "question_type": "code_checkpoint", "impact": 3, "brief": "Give each symbol a weight in a dictionary and spin with random.choices using them."},
+        {"id": "recompute_odds", "label": "Recompute the odds", "question_type": "code_checkpoint", "impact": 3, "brief": "Update your probability code to use the weights, and show the new expected return."},
+        {"id": "weight_reason", "label": "Explain the trick", "question_type": "explanation", "impact": 2, "brief": "Explain how weighting lets a machine show sevens often but pay them rarely."}
+      ]
+    },
+    {
+      "name": "The Million Spins", "concept": "Simulation and measurement",
+      "encounter": "Spin a million times and measure the real return to player.",
+      "act": 3, "sign": "loops",
+      "contract": "Maths says one thing. The machine does another. Run it a million times and see who is right.",
+      "objectives": [
+        {"id": "simulate", "label": "Spin a million times", "question_type": "code_checkpoint", "impact": 4, "brief": "Simulate a million spins without printing and measure the return to player as a percentage."},
+        {"id": "compare_theory", "label": "Compare with theory", "question_type": "code_checkpoint", "impact": 3, "brief": "Show the simulated return next to your calculated expected return."},
+        {"id": "gap_reason", "label": "Explain the gap", "question_type": "explanation", "impact": 2, "brief": "Explain why the two numbers are close but not equal, and how the gap changes with fewer spins."}
+      ]
+    },
+    {
+      "name": "The Balancer", "concept": "Tuning a table to a target",
+      "encounter": "Adjust the payout table until the return hits a target.",
+      "act": 3, "sign": "dictionaries",
+      "contract": "The Guild's law: every machine returns between 94 and 96 percent. Tune your table until yours obeys.",
+      "objectives": [
+        {"id": "tune_loop", "label": "Tune automatically", "question_type": "code_checkpoint", "impact": 4, "brief": "Adjust one payout step by step, recomputing the expected return, until it lands between 94 and 96 percent."},
+        {"id": "verify", "label": "Verify by simulation", "question_type": "code_checkpoint", "impact": 3, "brief": "Confirm the tuned table with a simulation and print both numbers."},
+        {"id": "tuning_reason", "label": "Defend your choice", "question_type": "explanation", "impact": 2, "brief": "Explain which payout you tuned and how it changes how the machine feels to play."}
+      ]
+    },
+    {
+      "name": "The Jackpot Hoard", "concept": "Shared growing state",
+      "encounter": "Add a progressive jackpot that grows with every bet.",
+      "act": 3, "sign": "variables",
+      "contract": "Every bet feeds the hoard a little. One lucky line takes it all and it starts again.",
+      "objectives": [
+        {"id": "jackpot_grows", "label": "Grow the hoard", "question_type": "code_checkpoint", "impact": 3, "brief": "Put a percentage of every bet into a jackpot that is shown on screen."},
+        {"id": "jackpot_win", "label": "Pay the hoard", "question_type": "code_checkpoint", "impact": 3, "brief": "Pay the whole jackpot on a special line and reset it to its seed value."},
+        {"id": "jackpot_rtp", "label": "Account for the hoard", "question_type": "bug_diagnosis", "impact": 3, "brief": "Explain how the jackpot changes the return-to-player maths, and fix your simulation so it counts it."}
+      ]
+    },
+    {
+      "name": "The Roulette Wheel", "concept": "A second game on shared functions",
+      "encounter": "Add roulette using the same bankroll and bet handling.",
+      "act": 3, "sign": "functions",
+      "contract": "The Reels has a wheel too. Reuse your bankroll and betting code so a second game costs you only its own rules.",
+      "objectives": [
+        {"id": "wheel", "label": "Spin the wheel", "question_type": "code_checkpoint", "impact": 3, "brief": "Spin a roulette wheel of 0 to 36 with red and black numbers."},
+        {"id": "bet_types", "label": "Take roulette bets", "question_type": "code_checkpoint", "impact": 4, "brief": "Support betting on a number, red or black, and odd or even, with the right payouts."},
+        {"id": "reuse_reason", "label": "Show the reuse", "question_type": "explanation", "impact": 2, "brief": "Explain which of your functions both games share and what you had to change to share them."}
+      ]
+    },
+    {
+      "name": "The Guardian of Limits", "concept": "Guardrails on a session",
+      "encounter": "Add loss limits and a saved bankroll.",
+      "act": 3, "sign": "conditionals",
+      "contract": "Pell's report needs one more page: a machine that protects the player from themselves. Set limits, and remember the purse between visits.",
+      "objectives": [
+        {"id": "loss_limit", "label": "Set a loss limit", "question_type": "code_checkpoint", "impact": 3, "brief": "Let the player set a loss limit at the start and end the session when it is reached."},
+        {"id": "save_bankroll", "label": "Remember the purse", "question_type": "code_checkpoint", "impact": 3, "brief": "Save the bankroll and lifetime stats to a JSON file and load them on start."},
+        {"id": "casino_menu", "label": "Open the floor", "question_type": "code_checkpoint", "impact": 3, "brief": "Add a menu: slots, roulette, run an audit simulation, view stats, or leave."}
+      ]
+    }
+  ]
+}

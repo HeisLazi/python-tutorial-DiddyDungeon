@@ -1,0 +1,188 @@
+{
+  "branch": "07-football-manager",
+  "name": "Mini Football Manager",
+  "boss": "The Invincibles",
+  "order": 7,
+  "entry_file": "football_manager.py",
+  "concept_focus": "Lists of dictionaries and interacting state, then a full season: fixtures, a table, injuries, rival clubs and a manager's assistant",
+  "story": {
+    "title": "The Cursed Cup",
+    "client": "Chairwoman Odette of Ashford Rovers",
+    "hook": "Ashford Rovers have finished last for eleven seasons, and the league says they are cursed. Odette thinks they are just badly run. Build her a manager's desk, from the squad sheet to the whole season, and take the Rovers up against the Invincibles."
+  },
+  "acts": [
+    {"id": 1, "title": "Act I: The Squad", "goal": "Squad data, searching, a budget and transfers that move everything at once."},
+    {"id": 2, "title": "Act II: Match Day", "goal": "A valid line-up, team strength, a believable match engine and a run of results."},
+    {"id": 3, "title": "Act III: The Season", "goal": "A fixture list, a league table, fitness and injuries, and rival clubs that trade."},
+    {"id": 4, "title": "Act IV: The Dynasty", "goal": "An assistant who picks the best side, an academy that grows players, and seasons saved one after another."}
+  ],
+  "boss_lore": "The Invincibles have not lost in three seasons. They are not magic; they are simply managed better than anyone else.",
+  "boss_brief": "Bring a finished football_manager.py: squad and market data, budget-checked transfers, valid line-ups, a match engine from team strength, a round-robin season with a sorted league table, fatigue and injuries, rival clubs trading, an assistant that picks the best eleven, an academy, and seasons saved and continued.",
+  "mobs": [
+    {
+      "name": "The Scout", "concept": "Lists of dictionaries and display",
+      "encounter": "Build squad data with name, position, rating and value and show it in a readable way.",
+      "act": 1, "sign": "lists",
+      "contract": "Odette hands you a crumpled team sheet. Turn it into data you can trust and a squad list anyone can read.",
+      "objectives": [
+        {"id": "squad_data", "label": "Build the squad", "question_type": "code_checkpoint", "impact": 3, "brief": "In football_manager.py, build a squad of at least 16 players as dictionaries with name, position, rating, age and value."},
+        {"id": "squad_table", "label": "Show the squad", "question_type": "code_checkpoint", "impact": 3, "brief": "Print the squad as aligned columns grouped by position."},
+        {"id": "shape_reason", "label": "Explain the shape", "question_type": "explanation", "impact": 2, "brief": "Explain why each player is a dictionary in a list rather than separate lists of names and ratings."}
+      ]
+    },
+    {
+      "name": "The Talent Spotter", "concept": "Filtering and searching",
+      "encounter": "Find players in the squad or market by position or rating and explain how the search decides who matches.",
+      "act": 1, "sign": "conditionals",
+      "contract": "The Spotter only ever asks two things: what position, how good? Answer them for the squad and the market alike.",
+      "objectives": [
+        {"id": "market", "label": "Build the market", "question_type": "code_checkpoint", "impact": 2, "brief": "Build a transfer market as a second list with the same player shape."},
+        {"id": "search", "label": "Search players", "question_type": "code_checkpoint", "impact": 4, "brief": "Write a search that filters either list by position and minimum rating, and sorts the results best first."},
+        {"id": "search_trace", "label": "Predict a search", "question_type": "prediction", "impact": 2, "brief": "Predict who a search for defenders rated 70 or more returns, then check it."}
+      ]
+    },
+    {
+      "name": "The Accountant", "concept": "Numeric state and comparisons",
+      "encounter": "Track a club budget and decide whether a transfer is affordable before anything changes.",
+      "act": 1, "sign": "variables",
+      "contract": "The Accountant has seen clubs go bankrupt over one signing. Every penny is checked before it moves.",
+      "objectives": [
+        {"id": "budget", "label": "Keep the budget", "question_type": "code_checkpoint", "impact": 3, "brief": "Give the club a budget and a wage bill and show both on the main screen."},
+        {"id": "affordable", "label": "Check affordability", "question_type": "code_checkpoint", "impact": 3, "brief": "Write a check that says whether a transfer fits the budget, with the reason when it does not."},
+        {"id": "check_first_bug", "label": "Check before changing", "question_type": "bug_diagnosis", "impact": 2, "brief": "Explain what goes wrong if you take the money first and check afterwards, and show your order."}
+      ]
+    },
+    {
+      "name": "The Negotiator", "concept": "Updating multiple structures together",
+      "encounter": "Buy a player so budget, squad and market all change together, and explain what breaks if only one of them does.",
+      "act": 1, "sign": "functions",
+      "contract": "A signing touches three ledgers: the budget, your squad and the market. The Negotiator never lets one change without the others.",
+      "objectives": [
+        {"id": "buy_player", "label": "Sign a player", "question_type": "code_checkpoint", "impact": 4, "brief": "Write buy_player that moves a player from the market to the squad and takes the fee, all or nothing."},
+        {"id": "sell_player", "label": "Sell a player", "question_type": "code_checkpoint", "impact": 3, "brief": "Write sell_player that does the reverse, refusing to sell below a minimum squad size."},
+        {"id": "half_update_bug", "label": "Explain the half-update", "question_type": "bug_diagnosis", "impact": 2, "brief": "Explain what breaks if a signing adds the player but forgets to remove him from the market."}
+      ]
+    },
+    {
+      "name": "The Gaffer", "concept": "Selection and validation",
+      "encounter": "Pick a simplified starting lineup from the squad and reject selections that are impossible or incomplete.",
+      "act": 2, "sign": "conditionals",
+      "contract": "The Gaffer names eleven on Saturday, and the league checks every one. Pick a side the rules will accept.",
+      "objectives": [
+        {"id": "pick_eleven", "label": "Pick eleven", "question_type": "code_checkpoint", "impact": 3, "brief": "Let the manager pick eleven players by number from the squad."},
+        {"id": "validate_lineup", "label": "Validate the side", "question_type": "code_checkpoint", "impact": 4, "brief": "Reject a line-up with duplicates, the wrong count, no goalkeeper, or a formation that does not fit (for example 4-4-2)."},
+        {"id": "dupe_bug", "label": "Catch the duplicate", "question_type": "bug_diagnosis", "impact": 2, "brief": "Explain how picking the same player twice could slip through, and how your check stops it."}
+      ]
+    },
+    {
+      "name": "The Tactician", "concept": "Loops and aggregation",
+      "encounter": "Reduce a lineup to a single team-strength number and justify why your formula is fair.",
+      "act": 2, "sign": "loops",
+      "contract": "Eleven ratings, one number. The Tactician wants a strength that rewards a balanced side, not just stars.",
+      "objectives": [
+        {"id": "team_strength", "label": "Compute strength", "question_type": "code_checkpoint", "impact": 4, "brief": "Compute team strength from the line-up, weighting each player by how well their position fits the slot they play."},
+        {"id": "strength_checks", "label": "Pin the formula", "question_type": "code_checkpoint", "impact": 2, "brief": "Add assert checks that pin your formula on two small example line-ups, one balanced and one with players out of position."},
+        {"id": "formula_reason", "label": "Defend the formula", "question_type": "explanation", "impact": 2, "brief": "Explain why your formula is fairer than a plain average of ratings."}
+      ]
+    },
+    {
+      "name": "The Match Engine", "concept": "Random simulation",
+      "encounter": "Produce believable results from team strength plus randomness, where the stronger side usually but not always wins.",
+      "act": 2, "sign": "random-selection",
+      "contract": "Odette's board wants results that feel real. The better side usually wins. Usually.",
+      "objectives": [
+        {"id": "simulate_match", "label": "Play a match", "question_type": "code_checkpoint", "impact": 4, "brief": "Simulate a match as goal chances over 90 minutes, where each side's chance to score depends on its strength."},
+        {"id": "upset_rate", "label": "Measure upsets", "question_type": "code_checkpoint", "impact": 3, "brief": "Simulate 1,000 matches between a strong and a weak side and report win, draw and loss rates."},
+        {"id": "realism_reason", "label": "Judge realism", "question_type": "explanation", "impact": 2, "brief": "Explain whether your upset rate feels like real football and what you tuned."}
+      ]
+    },
+    {
+      "name": "The Fixture Keeper", "concept": "Tracking results over time",
+      "encounter": "Run several matches in a row and keep a running record of wins, draws and losses.",
+      "act": 2, "sign": "dictionaries",
+      "contract": "A season is a story told one result at a time. The Keeper writes every one down.",
+      "objectives": [
+        {"id": "results_record", "label": "Record the results", "question_type": "code_checkpoint", "impact": 3, "brief": "Play a run of matches and record each opponent, score and result in a list of dictionaries."},
+        {"id": "form_line", "label": "Show the form", "question_type": "code_checkpoint", "impact": 2, "brief": "Show the club's record and its last five results as form, for example WDLWW."},
+        {"id": "repeat_run", "label": "Repeat a run", "question_type": "explanation", "impact": 2, "brief": "Run the same three matches twice with the same random seed, show the results match, and explain why a seed makes a simulation repeatable."}
+      ]
+    },
+    {
+      "name": "The Fixture Weaver", "concept": "Generating a round-robin schedule",
+      "encounter": "Schedule a full league season where everyone plays everyone home and away.",
+      "act": 3, "sign": "loops",
+      "contract": "The league has eight clubs and one rule: everyone plays everyone, home and away. Weave the calendar so nobody plays twice in a week.",
+      "objectives": [
+        {"id": "league_clubs", "label": "Build the league", "question_type": "code_checkpoint", "impact": 2, "brief": "Create eight clubs with squads generated from a rating range, Ashford Rovers among them."},
+        {"id": "round_robin", "label": "Weave the fixtures", "question_type": "code_checkpoint", "impact": 5, "brief": "Generate a schedule of match weeks where every club plays every other club home and away, and nobody plays twice in a week."},
+        {"id": "fixture_check", "label": "Check the calendar", "question_type": "bug_diagnosis", "impact": 3, "brief": "Write checks that every pairing appears exactly twice and explain the mistake they caught or would catch."}
+      ]
+    },
+    {
+      "name": "The League Table", "concept": "Sorting by several keys",
+      "encounter": "Keep a league table with points and goal difference, sorted properly.",
+      "act": 3, "sign": "dictionaries",
+      "contract": "Three points for a win, one for a draw, and when points tie, goal difference decides. The table is the truth of the season.",
+      "objectives": [
+        {"id": "table_rows", "label": "Keep the table", "question_type": "code_checkpoint", "impact": 3, "brief": "Keep each club's played, won, drawn, lost, goals for, goals against and points, updated after every match."},
+        {"id": "sort_table", "label": "Sort the table", "question_type": "code_checkpoint", "impact": 3, "brief": "Sort by points, then goal difference, then goals scored, using a key that returns a tuple."},
+        {"id": "sort_trace", "label": "Predict a tie-break", "question_type": "prediction", "impact": 2, "brief": "Predict the order of three clubs level on points with different goal differences, then check it."}
+      ]
+    },
+    {
+      "name": "The Physio", "concept": "Fitness, fatigue and injuries",
+      "encounter": "Make players tire and get injured, and keep the unfit out of the side.",
+      "act": 3, "sign": "conditionals",
+      "contract": "Ashford's physio says the squad is held together with tape. Players tire, players get hurt, and a hurt player does not play.",
+      "objectives": [
+        {"id": "fatigue", "label": "Track fatigue", "question_type": "code_checkpoint", "impact": 3, "brief": "Lower fitness for players who play, recover it for those who rest, and let low fitness reduce their rating in matches."},
+        {"id": "injuries", "label": "Add injuries", "question_type": "code_checkpoint", "impact": 3, "brief": "Give tired players a higher chance of injury, with a number of weeks out that counts down."},
+        {"id": "injured_pick_bug", "label": "Bench the injured", "question_type": "bug_diagnosis", "impact": 2, "brief": "Make the line-up check refuse injured players and explain where that check has to live."}
+      ]
+    },
+    {
+      "name": "The Rival Directors", "concept": "AI clubs acting in the market",
+      "encounter": "Let rival clubs buy and sell in a transfer window.",
+      "act": 3, "sign": "random-selection",
+      "contract": "The other seven clubs are not standing still. In the window their directors buy, sell and sometimes steal your targets.",
+      "objectives": [
+        {"id": "transfer_window", "label": "Open the window", "question_type": "code_checkpoint", "impact": 3, "brief": "Hold a transfer window mid-season where rival clubs act in turn."},
+        {"id": "rival_logic", "label": "Give rivals a plan", "question_type": "code_checkpoint", "impact": 4, "brief": "Let each rival buy the best affordable player for its weakest position, using the same buy function you use."},
+        {"id": "window_news", "label": "Report the news", "question_type": "code_checkpoint", "impact": 2, "brief": "Print a transfer news feed of every move made in the window."}
+      ]
+    },
+    {
+      "name": "The Assistant Manager", "concept": "Choosing the best combination",
+      "encounter": "Let an assistant pick the strongest valid eleven for a formation.",
+      "act": 4, "sign": "functions",
+      "contract": "Odette hires you an assistant. Give it a formation and a squad, and it names the strongest eleven the rules allow.",
+      "objectives": [
+        {"id": "best_eleven", "label": "Pick the best eleven", "question_type": "code_checkpoint", "impact": 4, "brief": "Write a function that fills each position in a formation with the best fit, fit and available player."},
+        {"id": "formation_choice", "label": "Pick the formation", "question_type": "code_checkpoint", "impact": 3, "brief": "Try several formations and recommend the one with the highest team strength."},
+        {"id": "greedy_reason", "label": "Explain the shortcut", "question_type": "explanation", "impact": 2, "brief": "Explain why filling positions one at a time might not always find the very best side, and when it is good enough."}
+      ]
+    },
+    {
+      "name": "The Academy", "concept": "Players that develop over time",
+      "encounter": "Grow young players and age old ones across seasons.",
+      "act": 4, "sign": "variables",
+      "contract": "Ashford cannot buy stars, so it must grow them. Young players improve with minutes; old ones fade.",
+      "objectives": [
+        {"id": "development", "label": "Develop players", "question_type": "code_checkpoint", "impact": 3, "brief": "At the end of a season, raise young players' ratings by their minutes played and lower ratings for players past their peak."},
+        {"id": "youth_intake", "label": "Bring in youth", "question_type": "code_checkpoint", "impact": 3, "brief": "Add a youth intake of new young players each season and retire the oldest."},
+        {"id": "development_trace", "label": "Predict a development", "question_type": "prediction", "impact": 2, "brief": "Predict a 19-year-old's rating after a season of regular football with your formula, then check."}
+      ]
+    },
+    {
+      "name": "The Season Archive", "concept": "Saving and continuing seasons",
+      "encounter": "Save the whole club and league, and start the next season from it.",
+      "act": 4, "sign": "input-output",
+      "contract": "A dynasty is built season on season. Archive everything at the final whistle and carry it into the next year.",
+      "objectives": [
+        {"id": "save_season", "label": "Archive the season", "question_type": "code_checkpoint", "impact": 3, "brief": "Save the clubs, squads, budget, table and results to a JSON file at the end of a season."},
+        {"id": "next_season", "label": "Start the next season", "question_type": "code_checkpoint", "impact": 4, "brief": "Load the archive, run development and a youth intake, reset the table and generate new fixtures."},
+        {"id": "season_awards", "label": "Hand out awards", "question_type": "code_checkpoint", "impact": 2, "brief": "Announce the champion, top scorer and your club's finish, and keep a list of past champions."}
+      ]
+    }
+  ]
+}
