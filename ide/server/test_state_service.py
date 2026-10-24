@@ -707,10 +707,11 @@ class StateServiceBehaviorTests(unittest.TestCase):
         self.answer_room(service, path, "correct", "d2")
         three = self.answer_room(service, path, "correct", "d3")
         self.assertTrue(three["fight"]["fight_done"])
-        self.assertEqual(three["loot"]["items"][0]["count"], 3)  # 2 parts + clean bonus
+        parts = next(item for item in three["loot"]["items"] if item["id"] != "unmarked-vial")
+        self.assertEqual(parts["count"], 3)  # 2 parts + clean bonus
         self.assertEqual(three["loot"]["trinket"]["name"], "Warden Sigil")
         self.assertEqual(three["run"]["loadout"]["trinket"], "Warden Sigil")
-        self.assertEqual(sum(item["count"] for item in three["run"]["pack"]), 3)
+        self.assertEqual({item["id"]: item["count"] for item in three["run"]["pack"]}, {parts["id"]: 3, "unmarked-vial": 1})
 
     def test_delve_pack_banks_on_finish_survives_and_is_lost_on_death(self):
         service, path = self.make_service()
@@ -806,6 +807,69 @@ class StateServiceBehaviorTests(unittest.TestCase):
         warded = service2.apply("dungeon_apply_oil", {"run_id": run["run_id"], "oil_id": f"{sign}-ward"}, "player")["result"]
         self.assertEqual(warded["run"]["encounter"]["fight"]["guards"], 1)
         self.assertEqual(warded["hunter"]["oils"], [{"id": f"{sign}-slowing", "sign": sign, "tier": "slowing", "name": warded["hunter"]["oils"][0]["name"], "effect": warded["hunter"]["oils"][0]["effect"], "count": 1}])
+
+    def test_identify_snippets_print_what_their_answer_says(self):
+        import contextlib
+        import io
+        from ide.server.state import HUNTER_BEASTS, _identify_snippet
+        for sign_id in HUNTER_BEASTS:
+            for seed in range(40):
+                puzzle = _identify_snippet(sign_id, f"seed-{seed}")
+                self.assertEqual(len(set(puzzle["options"])), 4, (sign_id, puzzle["options"]))
+                self.assertEqual(puzzle["options"][puzzle["answer"]], puzzle["answer_text"])
+                if sign_id == "random-selection":
+                    continue
+                code = puzzle["prompt"].split("```python\n", 1)[1].rsplit("\n```", 1)[0]
+                out = io.StringIO()
+                with contextlib.redirect_stdout(out):
+                    exec(code, {})
+                self.assertEqual(out.getvalue().strip(), puzzle["answer_text"], (sign_id, code))
+
+    def test_kit_upgrades_spend_essence_and_carry_into_every_delve(self):
+        service, path = self.make_service()
+        self.stock_hunter(path, {"village-essence": 1, "cave-essence": 1, "keep-essence": 1}, coins=200)
+        coat = service.apply("hunter_upgrade_kit", {"track": "coat"}, "player")["result"]
+        self.assertEqual(coat["coins"], 160)
+        service.apply("hunter_upgrade_kit", {"track": "satchel"}, "player")
+        service.apply("hunter_upgrade_kit", {"track": "blade"}, "player")
+        with self.assertRaises(StateCommandError):
+            service.apply("hunter_upgrade_kit", {"track": "coat"}, "player")  # level 2 needs 2 essences
+        run = service.apply("dungeon_start_run", {"concept_id": "loops", "seed": "kit-seed"}, "player")["result"]["run"]
+        base = self.read(path)["player"].get("max_hp") or 100
+        self.assertEqual(run["loadout"]["max_hp"], base + 8)
+        self.assertEqual(run["loadout"]["bandages"], 2)
+        service.apply("dungeon_reset_run", {"run_id": run["run_id"]}, "player")
+        self.enter_delve_room(service, path, "elite")
+        hit = self.answer_room(service, path, "correct", "k1")
+        self.assertEqual(hit["fight"]["chip"], 4 + 1)
+
+    def test_identify_a_vial_by_reading_code(self):
+        from ide.server.app_v2 import _without_identify_answer
+        service, path = self.make_service()
+        self.stock_hunter(path, {})
+        with self.assertRaises(StateCommandError):
+            service.apply("hunter_identify_start", {}, "player")
+        self.stock_hunter(path, {"unmarked-vial": 1})
+        started = service.apply("hunter_identify_start", {}, "player")["result"]["hunter"]
+        puzzle = started["identify"]
+        self.assertNotIn("answer", puzzle)
+        self.assertEqual(started["vials"], 1)
+        stored = self.read(path)["hunter"]["identify"]
+        self.assertNotIn("answer", json.dumps(_without_identify_answer(self.read(path))["hunter"]["identify"]))
+        wrong = (stored["answer"] + 1) % 4
+        missed = service.apply("hunter_identify_answer", {"puzzle_id": puzzle["id"], "choice": wrong}, "player")["result"]
+        self.assertFalse(missed["correct"])
+        self.assertEqual(missed["answer"], stored["answer_text"])
+        self.assertEqual(missed["hunter"]["vials"], 1)  # a miss never costs the vial
+        self.assertNotEqual(missed["hunter"]["identify"]["id"], puzzle["id"])
+        stored = self.read(path)["hunter"]["identify"]
+        right = service.apply("hunter_identify_answer", {"puzzle_id": stored["id"], "choice": stored["answer"]}, "player")["result"]
+        self.assertTrue(right["correct"])
+        self.assertEqual(right["oil"]["id"], f"{stored['sign']}-{stored['tier']}")
+        self.assertEqual(right["hunter"]["vials"], 0)
+        self.assertIsNone(right["hunter"]["identify"])
+        self.assertEqual(right["hunter"]["oils"][0]["id"], right["oil"]["id"])
+        self.assertTrue(right["hunter_gain"]["signs"])
 
     def test_warden_sigil_starts_each_fight_with_a_free_mistake(self):
         service, path = self.make_service()

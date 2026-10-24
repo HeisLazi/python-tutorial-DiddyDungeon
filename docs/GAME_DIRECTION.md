@@ -145,7 +145,8 @@ book (level, XP bar, rank gates, perks), milestones and the hunt journal.
    plus a polish pass.
 3. **Materials and crafting** (drops, banking and elite trinkets shipped
    2026-10-24 as Phase C1; beast oils at the Merchant's alchemy bench shipped
-   2026-10-24 as C2; gear upgrades and identify-by-reading are still open):
+   2026-10-24 as C2, with kit smithing from boss essences and Brogue-style
+   identify-by-reading for unmarked vials):
    drops, banking, Merchant recipes.
 4. **Signs and stats** (tracking, hunter sheet and codex levels shipped 2026-10-24; Resolve breaks, mechanics and stat effects in Dungeon fights shipped 2026-10-24 as Phase B; Focus multiplies the sign share of the chip, C1): sign XP by use with rank gates, dulling, the four
    stats, Resolve breaks (free mistake, interrupted mechanics) under the iron

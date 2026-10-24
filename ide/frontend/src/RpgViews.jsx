@@ -2497,15 +2497,78 @@ function CampaignMapRail({ place, onSelect, collapsed, onToggle, progress, onSel
 }
 
 // The Merchant's alchemy bench: beast oils from banked parts, gated by sign rank.
-function AlchemyBench({ hunter, coins, craftOil, busy, onBack }) {
+const BENCH_TABS = {
+  oils: { label: 'Oils', title: 'Brew oils from what you hunted.', copy: 'An oil coats your blade for one fight against its beast. It only helps: it never answers a question for you.' },
+  smithing: { label: 'Smithing', title: 'Work essences into your kit.', copy: 'Boss essences upgrade the kit you carry into every delve. Upgrades last; they never skip a question.' },
+  identify: { label: 'Identify', title: 'Read the vial to learn what it holds.', copy: 'Elites and bosses drop unmarked vials. Read the code on the label right and the vial reveals its oil. A wrong reading costs nothing.' },
+}
+
+function SmithingPanel({ kit, coins, actions, busy }) {
+  return (
+    <div className="smithing-grid">
+      {(kit || []).map((piece) => (
+        <article key={piece.id} className="smithing-piece">
+          <div className="smithing-head"><strong>{piece.name}</strong><span className="smithing-pips" aria-label={`Level ${piece.level} of ${piece.max_level}`}>{Array.from({ length: piece.max_level }, (_, index) => <i key={index} className={index < piece.level ? 'on' : ''} />)}</span></div>
+          <p>{piece.effect}</p>
+          {piece.next ? <>
+            <small>Next level: {piece.next.count} {piece.next.essence_name} (have {piece.next.have}) · {piece.next.coins} coins</small>
+            <button type="button" className="campaign-button" onClick={() => actions?.upgradeKit?.(piece.id)} disabled={busy || !piece.next.affordable}>Upgrade to level {piece.level + 1}</button>
+            {!piece.next.affordable && <small className="alchemy-reason">{piece.next.have < piece.next.count ? `Needs ${piece.next.count - piece.next.have} more ${piece.next.essence_name}: beat bosses in its region.` : `Needs ${piece.next.coins} coins (you have ${coins}).`}</small>}
+          </> : <small>At its best.</small>}
+        </article>
+      ))}
+    </div>
+  )
+}
+
+function IdentifyPanel({ hunter, actions, busy }) {
+  const [reading, setReading] = useState(null)
+  const puzzle = hunter?.identify
+  const vials = hunter?.vials || 0
+  const answer = async (choice) => {
+    const result = await actions?.identifyAnswer?.(puzzle.id, choice)
+    if (result) setReading(result)
+  }
+  const [question, rest = ''] = String(puzzle?.prompt || '').split('```python\n')
+  const code = rest.replace(/\n```\s*$/, '')
+  return (
+    <div className="identify-panel">
+      <p className="identify-count">Unmarked vials banked: <b>{vials}</b></p>
+      {reading && (
+        <div className={`identify-result ${reading.correct ? 'right' : 'wrong'}`} role="status">
+          {reading.correct
+            ? <><strong>The vial holds {reading.oil?.name}.</strong><span>{reading.oil?.effect} It is in your oils now.</span></>
+            : <><strong>Not quite: it printed {reading.answer}.</strong><span>{reading.why} Your vial is safe; here is a new label to read.</span></>}
+        </div>
+      )}
+      {puzzle ? (
+        <article className="identify-puzzle">
+          <span className="campaign-eyebrow">LABEL · SIGN OF THE {(HUNT_BEASTS[puzzle.sign]?.sign || puzzle.sign).toUpperCase()}</span>
+          <strong>{question.trim()}</strong>
+          <pre><code>{code}</code></pre>
+          <div className="identify-options">{(puzzle.options || []).map((option, index) => <button key={`${puzzle.id}-${index}`} type="button" className="campaign-button ghost" onClick={() => answer(index)} disabled={busy}>{option}</button>)}</div>
+        </article>
+      ) : vials > 0
+        ? <button type="button" className="campaign-button" onClick={() => { setReading(null); actions?.identifyStart?.() }} disabled={busy}>Hold a vial to the light <span>→</span></button>
+        : <p className="alchemy-empty">No vials yet. Elites and bosses drop them; bank them at a camp.</p>}
+    </div>
+  )
+}
+
+function AlchemyBench({ hunter, coins, actions, busy, onBack }) {
+  const craftOil = actions?.craftOil
+  const [tab, setTab] = useState('oils')
   const recipes = hunter?.oil_recipes || []
   const materials = hunter?.materials || []
   const rankNames = ['Uninscribed', 'Inscribed', 'Honed', 'Mastered']
   return (
     <div className="alchemy-bench">
-      <div className="market-browser-head"><div><span className="campaign-eyebrow">THE MERCHANT · ALCHEMY BENCH</span><h3>Brew oils from what you hunted.</h3><p>An oil coats your blade for one fight against its beast. It only helps: it never answers a question for you.</p></div><div className="market-browser-actions"><span className="market-purse-pill">◉ {coins} coins</span><button type="button" className="campaign-button ghost" onClick={onBack}>← Back to The Merchant</button></div></div>
+      <div className="market-browser-head"><div><span className="campaign-eyebrow">THE MERCHANT · ALCHEMY BENCH</span><h3>{BENCH_TABS[tab].title}</h3><p>{BENCH_TABS[tab].copy}</p></div><div className="market-browser-actions"><span className="market-purse-pill">◉ {coins} coins</span><button type="button" className="campaign-button ghost" onClick={onBack}>← Back to The Merchant</button></div></div>
       <div className="alchemy-stores"><span className="campaign-eyebrow">YOUR STORES</span>{materials.length ? materials.map((item) => <span key={item.id} className="alchemy-chip">{item.name} ×{item.count}</span>) : <span className="alchemy-empty">Nothing banked yet. Delve in the Infinite Dungeon and bank parts at a camp.</span>}{(hunter?.oils || []).map((oil) => <span key={oil.id} className="alchemy-chip oil">{oil.name} ×{oil.count}</span>)}</div>
-      {HUNT_REGIONS.map((region) => (
+      <div className="bench-tabs" role="tablist" aria-label="Alchemy bench">{Object.entries(BENCH_TABS).map(([id, info]) => <button key={id} type="button" role="tab" aria-selected={tab === id} className={tab === id ? 'active' : ''} onClick={() => setTab(id)}>{info.label}{id === 'identify' && hunter?.vials ? ` (${hunter.vials})` : ''}</button>)}</div>
+      {tab === 'smithing' && <SmithingPanel kit={hunter?.kit} coins={coins} actions={actions} busy={busy} />}
+      {tab === 'identify' && <IdentifyPanel hunter={hunter} actions={actions} busy={busy} />}
+      {tab === 'oils' && HUNT_REGIONS.map((region) => (
         <section key={region.id} className="alchemy-region">
           <h4>{region.label}</h4>
           {region.pages.map((sign) => (
@@ -2534,7 +2597,7 @@ function AlchemyBench({ hunter, coins, craftOil, busy, onBack }) {
   )
 }
 
-function CampaignMarket({ progress, hunter, craftOil, onBackHome, purchaseMarketItem, busy }) {
+function CampaignMarket({ progress, hunter, hunterActions, onBackHome, purchaseMarketItem, busy }) {
   const coins = Number(progress?.player?.coins ?? 0)
   const [open, setOpen] = useState(false)
   const [alchemy, setAlchemy] = useState(false)
@@ -2559,7 +2622,7 @@ function CampaignMarket({ progress, hunter, craftOil, onBackHome, purchaseMarket
   return (
     <>
       <div className="campaign-place-heading"><div><span className="campaign-eyebrow">MARKET · AUCTION HOUSE</span><h2>{open ? 'Browse today’s lots.' : `${merchantName} has a case for you.`}</h2><p>{merchantName} rotates useful armor, trinkets, and supplies. The market changes your preparation, never the answer you need to learn.</p></div><span className="campaign-place-seal market">◇</span></div>
-      {alchemy ? <AlchemyBench hunter={hunter} coins={coins} craftOil={craftOil} busy={busy} onBack={() => setAlchemy(false)} /> : !open ? <section className="market-greeting">
+      {alchemy ? <AlchemyBench hunter={hunter} coins={coins} actions={hunterActions} busy={busy} onBack={() => setAlchemy(false)} /> : !open ? <section className="market-greeting">
         <div className="market-vendor-scene"><div className="vendor-lantern">✦</div><div className="vendor-portrait merchant-pixel-sprite" aria-hidden="true" dangerouslySetInnerHTML={{ __html: merchantPixelSprite() }} /><div className="vendor-counter" /><div className="vendor-nameplate"><span className="campaign-eyebrow">SHOPKEEPER NPC</span><strong>{merchantName}</strong></div></div>
         <div className="market-greeting-copy"><span className="campaign-eyebrow">WELCOME, TRAVELLER</span><h3>“Coins open the case. Knowledge keeps you alive.”</h3><p>The shelf changes between expeditions. Browse the lots when you are ready to prepare, then equip your finds at Home.</p><div className="market-greeting-doors"><button type="button" className="campaign-button" onClick={() => setOpen(true)}>Browse today’s lots <span>→</span></button><button type="button" className="campaign-button ghost" onClick={() => setAlchemy(true)}>Hunter’s alchemy <span>⚗</span></button></div><small>Single-player market · no bidding · buy only what helps your next learning job.</small></div>
         <aside className="market-greeting-purse"><span className="campaign-eyebrow">YOUR PURSE</span><strong>◉ {coins}</strong><small>{CAMPAIGN_MARKET_STOCK.length} lots waiting in the case</small></aside>
@@ -2617,7 +2680,7 @@ function CampaignOffice({ progress, onEnter }) {
   )
 }
 
-function CampaignSurface({ progress, revision, equipmentProjection, purchaseCosmetic, purchaseMarketItem, equipCosmetic, equipCampaignItem, buildRoomUpgrade, performHomesteadAction, setAvatar, selectCampaign, hunter, spendStatPoint, craftOil, busy, onNavigate }) {
+function CampaignSurface({ progress, revision, equipmentProjection, purchaseCosmetic, purchaseMarketItem, equipCosmetic, equipCampaignItem, buildRoomUpgrade, performHomesteadAction, setAvatar, selectCampaign, hunter, spendStatPoint, hunterActions, busy, onNavigate }) {
   const [place, setPlace] = useState('office')
   const [mapCollapsed, setMapCollapsed] = useState(false)
   const openForge = () => onNavigate?.('forge')
@@ -2636,7 +2699,7 @@ function CampaignSurface({ progress, revision, equipmentProjection, purchaseCosm
         <CampaignMapRail progress={progress} place={place} onSelect={selectPlace} onSelectCampaign={selectCampaign} busy={busy} collapsed={mapCollapsed} onToggle={() => setMapCollapsed((value) => !value)} />
         <main className="campaign-place-panel" data-place={place}>
           {place === 'home' && <Homestead hunter={hunter} spendStatPoint={spendStatPoint} progress={progress} revision={revision} equipmentProjection={equipmentProjection} purchaseCosmetic={purchaseCosmetic} equipCosmetic={equipCosmetic} equipCampaignItem={equipCampaignItem} buildRoomUpgrade={buildRoomUpgrade} performHomesteadAction={performHomesteadAction} setAvatar={setAvatar} busy={busy} onNavigate={homeNavigate} />}
-          {place === 'market' && <CampaignMarket progress={progress} hunter={hunter} craftOil={craftOil} purchaseMarketItem={purchaseMarketItem} busy={busy} onBackHome={() => setPlace('home')} />}
+          {place === 'market' && <CampaignMarket progress={progress} hunter={hunter} hunterActions={hunterActions} purchaseMarketItem={purchaseMarketItem} busy={busy} onBackHome={() => setPlace('home')} />}
           {place === 'office' && <CampaignOffice progress={progress} onEnter={openForge} />}
         </main>
       </div>
@@ -3580,7 +3643,7 @@ function SettingsScreen({ preferences, setters, resetLayout, account, accountBus
   )
 }
 
-export function GameScreen({ pyr, settingsAi, runtime, setAvatar, selectCampaign, hunter, spendStatPoint, craftOil, onDungeonApplyOil, activeView, progress, revision, avatarDataUrl = '', encounter, codexProjection, practiceProjection, equipmentProjection, dungeon, dungeonEditorContent, onDungeonEditorChange, onSaveDungeon, onDungeonChoose, onDungeonRest, onDungeonCampAction, onDungeonRevealRisk, onDungeonEnterRisk, onDungeonMarketPurchase, onDungeonEquip, onDungeonLeave, onDungeonFinish, onDungeonReset, purchaseCosmetic, purchaseMarketItem, equipCosmetic, equipCampaignItem, buildRoomUpgrade, performHomesteadAction, saveCodexNote, busy, dungeonSaving, submitBattle, submitBoss, submitDungeon, onStartDungeon, onPracticePrompt, preferences, setters, resetLayout, account, accountBusy, accountNotice, onSignIn, onSignUp, onSignOut, onDeviceLabelSave, onResolveConflict, workspaceTransfer, workspaceTransferBusy, workspaceTransferNotice, onWorkspaceTransferRefresh, onWorkspaceTransferPush, onWorkspaceTransferPreviewPull, onWorkspaceTransferApplyPull, onNavigate, tutorCode, tutorDirty, tutorExternalChange, editorFontSize = 14, onTutorChange, onTutorSave, onTutorFormat, onTutorRun, onTutorReloadExternal, onTutorKeepEdits, campaignReady = true, showNavigation = true }) {
+export function GameScreen({ pyr, settingsAi, runtime, setAvatar, selectCampaign, hunter, spendStatPoint, hunterActions, onDungeonApplyOil, activeView, progress, revision, avatarDataUrl = '', encounter, codexProjection, practiceProjection, equipmentProjection, dungeon, dungeonEditorContent, onDungeonEditorChange, onSaveDungeon, onDungeonChoose, onDungeonRest, onDungeonCampAction, onDungeonRevealRisk, onDungeonEnterRisk, onDungeonMarketPurchase, onDungeonEquip, onDungeonLeave, onDungeonFinish, onDungeonReset, purchaseCosmetic, purchaseMarketItem, equipCosmetic, equipCampaignItem, buildRoomUpgrade, performHomesteadAction, saveCodexNote, busy, dungeonSaving, submitBattle, submitBoss, submitDungeon, onStartDungeon, onPracticePrompt, preferences, setters, resetLayout, account, accountBusy, accountNotice, onSignIn, onSignUp, onSignOut, onDeviceLabelSave, onResolveConflict, workspaceTransfer, workspaceTransferBusy, workspaceTransferNotice, onWorkspaceTransferRefresh, onWorkspaceTransferPush, onWorkspaceTransferPreviewPull, onWorkspaceTransferApplyPull, onNavigate, tutorCode, tutorDirty, tutorExternalChange, editorFontSize = 14, onTutorChange, onTutorSave, onTutorFormat, onTutorRun, onTutorReloadExternal, onTutorKeepEdits, campaignReady = true, showNavigation = true }) {
   const wideRoute = ['hub', 'character', 'homestead', 'codex', 'tutor', 'settings'].includes(activeView)
   // Historical contract marker: const wideRoute = ['hub', 'character', 'homestead', 'codex', 'settings']
   const withWideNavigation = (screen) => wideRoute && showNavigation
@@ -3596,7 +3659,7 @@ export function GameScreen({ pyr, settingsAi, runtime, setAvatar, selectCampaign
       </div>
     )
   }
-  if (activeView === 'hub') return withWideNavigation(<CampaignSurface setAvatar={setAvatar} selectCampaign={selectCampaign} hunter={hunter} spendStatPoint={spendStatPoint} craftOil={craftOil} progress={progress} revision={revision} equipmentProjection={equipmentProjection} purchaseCosmetic={purchaseCosmetic} purchaseMarketItem={purchaseMarketItem} equipCosmetic={equipCosmetic} equipCampaignItem={equipCampaignItem} buildRoomUpgrade={buildRoomUpgrade} performHomesteadAction={performHomesteadAction} busy={busy} onNavigate={onNavigate} />)
+  if (activeView === 'hub') return withWideNavigation(<CampaignSurface setAvatar={setAvatar} selectCampaign={selectCampaign} hunter={hunter} spendStatPoint={spendStatPoint} hunterActions={hunterActions} progress={progress} revision={revision} equipmentProjection={equipmentProjection} purchaseCosmetic={purchaseCosmetic} purchaseMarketItem={purchaseMarketItem} equipCosmetic={equipCosmetic} equipCampaignItem={equipCampaignItem} buildRoomUpgrade={buildRoomUpgrade} performHomesteadAction={performHomesteadAction} busy={busy} onNavigate={onNavigate} />)
   if (activeView === 'quests' || activeView === 'codex' || activeView === 'tutor') return withWideNavigation(<ResourceTutorScreen pyr={pyr} hunter={hunter} avatar={equipmentProjection?.avatar} activeView={activeView} progress={progress} revision={revision} codexProjection={codexProjection} encounter={encounter} tutorCode={tutorCode} tutorDirty={tutorDirty} tutorExternalChange={tutorExternalChange} editorFontSize={editorFontSize} busy={busy} onTutorChange={onTutorChange} onTutorSave={onTutorSave} onTutorFormat={onTutorFormat} onTutorRun={onTutorRun} onPracticePrompt={onPracticePrompt} onTutorReloadExternal={onTutorReloadExternal} onTutorKeepEdits={onTutorKeepEdits} onNavigate={onNavigate} />)
   // Legacy render contract retained in source comments for downstream static
   // checks; the live route above owns the replacement surface.

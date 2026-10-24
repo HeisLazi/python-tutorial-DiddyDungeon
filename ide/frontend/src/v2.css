@@ -1440,3 +1440,25 @@
 .alchemy-recipe.locked { opacity: 0.6; }
 .alchemy-recipe.tier-slowing { border-color: color-mix(in srgb, var(--gold, #f5c542) 50%, var(--line, #444)); }
 .alchemy-recipe.tier-bane { border-color: var(--gold, #f5c542); }
+
+/* Bench tabs, smithing and identify. */
+.bench-tabs { display: flex; gap: 6px; flex-wrap: wrap; }
+.bench-tabs button { padding: 6px 14px; border: 1px solid var(--line, #444); background: transparent; color: inherit; font: inherit; cursor: pointer; }
+.bench-tabs button.active { border-color: var(--gold, #f5c542); color: var(--gold, #f5c542); }
+.smithing-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; }
+.smithing-piece { display: grid; gap: 6px; align-content: start; padding: 12px; border: 1px solid var(--line, #444); }
+.smithing-piece p { margin: 0; }
+.smithing-piece small { color: var(--muted, #999); font-size: 13px; }
+.smithing-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.smithing-pips { display: flex; gap: 3px; }
+.smithing-pips i { width: 12px; height: 12px; border: 1px solid var(--gold, #f5c542); }
+.smithing-pips i.on { background: var(--gold, #f5c542); }
+.identify-panel { display: grid; gap: 10px; }
+.identify-count { margin: 0; }
+.identify-puzzle { display: grid; gap: 8px; padding: 12px; border: 1px solid var(--gold, #f5c542); }
+.identify-puzzle pre { margin: 0; padding: 10px; overflow-x: auto; background: rgba(0, 0, 0, 0.35); border: 1px solid var(--line, #444); }
+.identify-options { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 6px; }
+.identify-result { display: grid; gap: 4px; padding: 10px; border: 1px solid var(--line, #444); }
+.identify-result.right { border-color: var(--green, #4ade80); }
+.identify-result.right strong { color: var(--green, #4ade80); }
+.identify-result.wrong { border-color: var(--gold, #f5c542); }

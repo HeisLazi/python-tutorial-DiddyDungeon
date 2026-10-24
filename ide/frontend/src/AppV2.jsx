@@ -2174,6 +2174,27 @@ function AppV2() {
     }
   }
 
+  const hunterPost = async (url, body, failure) => {
+    try {
+      const result = await api(url, { method: 'POST', body: JSON.stringify(body) })
+      await refreshCampaign({ silent: true })
+      return result
+    } catch (error) {
+      setNotice(`${failure}: ${error.message}`)
+      return null
+    }
+  }
+  const hunterActions = {
+    craftOil,
+    upgradeKit: async (track) => {
+      const result = await hunterPost('/api/hunter/kit', { track }, 'Kit not upgraded')
+      if (result) setNotice('Kit upgraded. It comes with you into every delve.')
+      return result
+    },
+    identifyStart: () => hunterPost('/api/hunter/identify/start', {}, 'Could not read the vial'),
+    identifyAnswer: (puzzleId, choice) => hunterPost('/api/hunter/identify/answer', { puzzle_id: puzzleId, choice }, 'Reading not checked'),
+  }
+
   // Switch the active campaign project; the one left keeps its board.
   const selectCampaign = async (branch) => {
     try {
@@ -2681,7 +2702,7 @@ function AppV2() {
               onDungeonMarketPurchase={buyDungeonItem}
               onDungeonEquip={equipDungeonItem}
               onDungeonApplyOil={applyDungeonOil}
-              craftOil={craftOil}
+              hunterActions={hunterActions}
               onDungeonChoose={chooseDungeonRoom}
               onDungeonLeave={leaveDungeonRoom}
               onDungeonFinish={finishDungeonRun}

@@ -919,6 +919,16 @@ def runtime():
     }
 
 
+def _without_identify_answer(progress: dict) -> dict:
+    """The browser never sees a vial reading's answer key."""
+
+    hunter = progress.get("hunter")
+    if not isinstance(hunter, dict) or not isinstance(hunter.get("identify"), dict):
+        return progress
+    puzzle = {key: value for key, value in hunter["identify"].items() if key not in {"answer", "answer_text", "why"}}
+    return {**progress, "hunter": {**hunter, "identify": puzzle}}
+
+
 @app.get("/api/campaign")
 def campaign():
     try:
@@ -928,7 +938,7 @@ def campaign():
     dungeon_projection = safe_campaign_dungeon_projection(progress)
     activity = read_json(REPO_ROOT / "activity.json", {})
     return {
-        "progress": progress,
+        "progress": _without_identify_answer(progress),
         "revision": metadata["revision"],
         "sync_storage_namespace": checkout_storage_namespace(),
         "equipment_projection": STATE_SERVICE.equipment_projection(progress),
@@ -2651,6 +2661,45 @@ def craft_hunter_oil(payload: HunterCraftOil):
     result = _flatten_state_result(envelope)
     result["revision"] = metadata["revision"]
     return result
+
+
+class HunterKitUpgrade(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    track: str = Field(min_length=1, max_length=20)
+
+
+class HunterIdentifyAnswer(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    puzzle_id: str = Field(min_length=1, max_length=MAX_IDENTIFIER_LENGTH)
+    choice: int = Field(ge=0, le=3)
+
+
+def _hunter_action(action: str, payload: dict) -> dict:
+    envelope = _apply_state_or_http(action, payload, "player")
+    try:
+        _progress, metadata = STATE_SERVICE.snapshot_with_metadata()
+    except StateCommandError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
+    result = _flatten_state_result(envelope)
+    result["revision"] = metadata["revision"]
+    return result
+
+
+@app.post("/api/hunter/kit")
+def upgrade_hunter_kit(payload: HunterKitUpgrade):
+    return _hunter_action("hunter_upgrade_kit", {"track": payload.track})
+
+
+@app.post("/api/hunter/identify/start")
+def start_hunter_identify():
+    return _hunter_action("hunter_identify_start", {})
+
+
+@app.post("/api/hunter/identify/answer")
+def answer_hunter_identify(payload: HunterIdentifyAnswer):
+    return _hunter_action("hunter_identify_answer", payload.model_dump())
 
 
 @app.post("/api/hunter/stat")

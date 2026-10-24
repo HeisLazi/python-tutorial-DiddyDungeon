@@ -109,6 +109,19 @@ Updated: 2026-10-22 · branch `feature/tauri-arcade` (fast-forwarded into
   slowing +2 on the mechanic countdown (not on plain encounters), bane +3
   chip per correct answer (`fight["bane"]`). UI: Merchant greeting door
   "Hunter's alchemy" (`AlchemyBench`), `DungeonOils` row under the fight strip.
+- **Smithing and identify (Phase C2):** the bench has Oils / Smithing /
+  Identify tabs. `hunter_upgrade_kit` (`POST /api/hunter/kit`): `HUNTER_KIT`
+  coat (+8 max HP per level at run start, Village Essence), blade (+1 chip,
+  Cave Essence), satchel (+1 bandage, Keep Essence); level n costs n essences
+  + 40n coins, max 3; levels in `progress["hunter"]["kit"]`. Elites and bosses
+  drop an `unmarked-vial`. `hunter_identify_start` deals a snippet from
+  `_identify_snippet(sign, seed)` (sign weighted to weak signs, tier 6/3/1
+  ward/slowing/bane) into `hunter["identify"]`; `hunter_identify_answer`
+  checks it server side. Right: vial -> oil, sign XP (`source="identify"`);
+  wrong: answer + why revealed, new snippet, vial kept. `/api/campaign` strips
+  `answer`/`answer_text`/`why` from `progress.hunter.identify`
+  (`_without_identify_answer`). A test execs every generated snippet to check
+  its answer.
 - **Submit race fix:** `submitDungeon` waits for any in-flight editor
   checkpoint and saves unsaved edits before capturing PYR context (an autosave
   in between changed the revision and the answer was rejected as stale).

@@ -10,6 +10,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import random
 import re
 import threading
 import uuid
@@ -411,6 +412,9 @@ ACTION_DEFINITIONS: dict[str, ActionDefinition] = {
     "dungeon_equip_item": ActionDefinition(frozenset({"player"})),
     "dungeon_apply_oil": ActionDefinition(frozenset({"player"})),
     "hunter_craft_oil": ActionDefinition(frozenset({"player"})),
+    "hunter_upgrade_kit": ActionDefinition(frozenset({"player"})),
+    "hunter_identify_start": ActionDefinition(frozenset({"player"})),
+    "hunter_identify_answer": ActionDefinition(frozenset({"player"})),
     "dungeon_leave_room": ActionDefinition(frozenset({"player"})),
     "dungeon_finish_run": ActionDefinition(frozenset({"player"})),
     "dungeon_reset_run": ActionDefinition(frozenset({"player"})),
@@ -868,6 +872,116 @@ HUNTER_OIL_TIERS = (
 HUNTER_OIL_TIERS_BY_ID = {tier["id"]: tier for tier in HUNTER_OIL_TIERS}
 HUNTER_OIL_SLOW_ANSWERS = 2
 HUNTER_OIL_BANE_CHIP = 3
+
+
+# ── Kit smithing and identify-by-reading ─────────────────────────────────
+# Region essences (boss drops) upgrade a kit carried into every delve.
+HUNTER_KIT = {
+    "coat": {"name": "Hunter's Coat", "essence": "village-essence", "effect": "+8 max HP at the start of every delve per level"},
+    "blade": {"name": "Hunter's Blade", "essence": "cave-essence", "effect": "+1 Resolve chip on every correct answer per level"},
+    "satchel": {"name": "Hunter's Satchel", "essence": "keep-essence", "effect": "+1 field bandage at the start of every delve per level"},
+}
+HUNTER_KIT_MAX_LEVEL = 3
+HUNTER_KIT_COINS_PER_LEVEL = 40
+HUNTER_KIT_COAT_HP = 8
+# Elites and bosses drop an unmarked vial; reading a code snippet right
+# identifies it as an oil for the snippet's sign (Brogue-style).
+DUNGEON_VIAL = "unmarked-vial"
+DUNGEON_MATERIAL_NAMES[DUNGEON_VIAL] = "Unmarked Vial"
+HUNTER_IDENTIFY_TIER_WEIGHTS = (("ward", 6), ("slowing", 3), ("bane", 1))
+
+
+def _identify_snippet(sign_id: str, seed: str) -> dict[str, Any]:
+    """A short snippet for one sign with its printed result: the prompt,
+    four options, the answer and why. Deterministic for a seed."""
+
+    rng = random.Random(seed)
+    words = ["sword", "shield", "potion", "torch", "rope", "map", "key", "lamp"]
+    if sign_id == "lists":
+        items = rng.sample(words, 4)
+        index = rng.choice([0, 1, 2, -1])
+        code = f"items = {items!r}\nprint(items[{index}])"
+        answer = items[index]
+        wrong = [word for word in items if word != answer][:2] + ["IndexError"]
+        why = f"Indexes start at 0 and -1 is the last item, so items[{index}] is {answer!r}."
+    elif sign_id == "loops":
+        n = rng.randint(3, 6)
+        code = f"total = 0\nfor i in range({n}):\n    total += i\nprint(total)"
+        answer = str(sum(range(n)))
+        wrong = [str(sum(range(n + 1))), str(n), str(sum(range(n)) + 1)]
+        why = f"range({n}) gives 0 to {n - 1}, and those add up to {answer}."
+    elif sign_id == "dictionaries":
+        a, b, c = rng.sample(range(2, 20), 3)
+        key = rng.choice(["gold", "gems", "ore"])
+        stock = {"gold": a, "gems": b}
+        code = f"stock = {stock!r}\nprint(stock.get({key!r}, {c}))"
+        answer = str(stock.get(key, c))
+        wrong = [str(value) for value in (a, b, c) if str(value) != answer][:2] + ["KeyError"]
+        why = f".get returns the value when the key exists and the default ({c}) when it does not, so it prints {answer}."
+    elif sign_id == "conditionals":
+        hp = rng.choice([15, 35, 50, 51, 80])
+        code = f"hp = {hp}\nif hp > 50:\n    print('steady')\nelif hp > 20:\n    print('wounded')\nelse:\n    print('fleeing')"
+        answer = "steady" if hp > 50 else "wounded" if hp > 20 else "fleeing"
+        wrong = [word for word in ("steady", "wounded", "fleeing") if word != answer] + ["nothing"]
+        why = f"Checks run top to bottom and the first true one wins: hp is {hp}, so it prints {answer}."
+    elif sign_id == "functions":
+        k = rng.randint(2, 9)
+        returns = rng.random() < 0.5
+        body = f"    return n * 2" if returns else f"    n * 2"
+        code = f"def double(n):\n{body}\n\nprint(double({k}))"
+        answer = str(k * 2) if returns else "None"
+        wrong = [value for value in (str(k * 2), "None", str(k), "TypeError") if value != answer][:3]
+        why = "The function returns its result." if returns else "Without return, a function hands back None (the Hollow Return)."
+    elif sign_id == "variables":
+        x, y = rng.randint(2, 9), rng.randint(2, 9)
+        code = f"a = {x}\nb = a\na = a + {y}\nprint(b)"
+        answer = str(x)
+        wrong = [str(x + y), str(y), "NameError"]
+        why = f"b took a's value ({x}) when it was assigned; changing a afterwards does not change b."
+    elif sign_id == "input-output":
+        bet = rng.randint(2, 9)
+        convert = rng.random() < 0.5
+        line = f"print(int(bet) + {bet})" if convert else f"print(bet + '{bet}')"
+        code = f"bet = '{bet}'   # what input() gives you\n{line}"
+        answer = str(bet * 2) if convert else f"{bet}{bet}"
+        wrong = [value for value in (str(bet * 2), f"{bet}{bet}", "TypeError", f"{bet} {bet}") if value != answer][:3]
+        why = "int() turns the text into a number first." if convert else "Both are strings, so + joins them instead of adding."
+    elif sign_id == "random-selection":
+        low = rng.randint(0, 2)
+        high = low + rng.randint(2, 3)
+        use_randint = rng.random() < 0.5
+        call = f"random.randint({low}, {high})" if use_randint else f"random.randrange({low}, {high})"
+        code = f"import random\nroll = {call}\nprint(roll)"
+        top = high if use_randint else high - 1
+        answer = f"{low} to {top}"
+        wrong = [value for value in (f"{low} to {high}", f"{low} to {high - 1}", f"{low + 1} to {high}", f"{low} to {high + 1}") if value != answer][:3]
+        question = "Which values can this print?"
+        why = "randint includes both ends." if use_randint else "randrange stops before the end, like range."
+        return _identify_pack(rng, code, answer, wrong, why, question)
+    else:  # control-flow
+        k = rng.randint(5, 12)
+        step = rng.randint(2, 4)
+        n = 0
+        while n < k:
+            n += step
+        code = f"n = 0\nwhile n < {k}:\n    n += {step}\nprint(n)"
+        answer = str(n)
+        wrong = [str(n - step), str(k), str(n + step)]
+        why = f"The loop stops the first time n is no longer below {k}, which is {n}."
+    return _identify_pack(rng, code, answer, wrong, why)
+
+
+def _identify_pack(rng: random.Random, code: str, answer: str, wrong: list[str], why: str, question: str = "What does this print?") -> dict[str, Any]:
+    options = [answer]
+    for value in wrong:
+        if value not in options:
+            options.append(value)
+    filler = ["Nothing", "SyntaxError", "0", "True"]
+    while len(options) < 4:
+        options.append(next(value for value in filler if value not in options))
+    options = options[:4]
+    rng.shuffle(options)
+    return {"prompt": f"{question}\n```python\n{code}\n```", "options": options, "answer": options.index(answer), "answer_text": answer, "why": why}
 
 
 def hunter_signs_for(concept: object) -> list[str]:
@@ -2785,6 +2899,8 @@ class LocalStateService:
         region = DUNGEON_REGIONS.get(str(run.get("region_id") or ""))
         if room_type == "boss" and region:
             drops[region["essence"]] = 1
+        if room_type in {"elite", "boss"}:
+            drops[DUNGEON_VIAL] = 1
         pack = run.get("pack") if isinstance(run.get("pack"), dict) else {}
         for key, count in drops.items():
             pack[key] = self._counter(pack, key) + count
@@ -3678,7 +3794,8 @@ class LocalStateService:
         run_id = f"dungeon-{uuid.uuid4().hex}"
         player = self._dict(progress, "player")
         vitality = self.hunter_projection(progress)["stats"]["vitality"]["value"]
-        maximum = (self._counter(player, "max_hp") or 100) + 5 * max(0, vitality - 1)
+        kit = self._hunter_kit_levels(progress)
+        maximum = (self._counter(player, "max_hp") or 100) + 5 * max(0, vitality - 1) + HUNTER_KIT_COAT_HP * kit["coat"]
         now = _utc_now()
         run = {
             "status": "active",
@@ -3704,7 +3821,7 @@ class LocalStateService:
                 "max_hp": maximum,
                 "heals": 1 + int(starter_class.get("extra_heals", 0) or 0),
                 "coins": int(starter_class.get("starting_coins", 0) or 0),
-                "bandages": 1,
+                "bandages": 1 + kit["satchel"],
                 "rations": 1,
                 "vision_scrolls": 0,
                 "tonics": 0,
@@ -3911,7 +4028,7 @@ class LocalStateService:
             chip = (base_chip if clean_cast else max(1, base_chip // 2)) + (hunter["stats"]["strength"]["value"] - 1) + (sign_level // 3) * focus_multiplier
             if loadout.get("trinket") == "Whetstone Charm":
                 chip += 1
-            chip += int(fight.get("bane", 0) or 0)
+            chip += int(fight.get("bane", 0) or 0) + self._hunter_kit_levels(progress)["blade"]
             fight["resolve"] = max(0, resolve_before - chip)
             if fight["resolve"] == 0 and not fight_done:
                 # A break only helps: a free mistake, the mechanic stops, a few coins.
@@ -4828,6 +4945,9 @@ class LocalStateService:
             "dungeon_equip_item": self._dungeon_equip_item,
             "dungeon_apply_oil": self._dungeon_apply_oil,
             "hunter_craft_oil": self._hunter_craft_oil,
+            "hunter_upgrade_kit": self._hunter_upgrade_kit,
+            "hunter_identify_start": self._hunter_identify_start,
+            "hunter_identify_answer": self._hunter_identify_answer,
             "dungeon_leave_room": self._dungeon_leave_room,
             "dungeon_finish_run": self._dungeon_finish_run,
             "dungeon_reset_run": self._dungeon_reset_run,
@@ -4883,7 +5003,7 @@ class LocalStateService:
         if not isinstance(hunter, dict):
             hunter = cls._hunter_seed(progress)
             progress["hunter"] = hunter
-        for key in ("signs", "stats_xp", "spent", "materials", "oils"):
+        for key in ("signs", "stats_xp", "spent", "materials", "oils", "kit"):
             if not isinstance(hunter.get(key), dict):
                 hunter[key] = {}
         return hunter
@@ -5053,7 +5173,134 @@ class LocalStateService:
                 recipes.append(recipe)
                 if recipe["owned"]:
                     oils.append({key: recipe[key] for key in ("id", "sign", "tier", "name", "effect")} | {"count": recipe["owned"]})
-        return {"signs": signs, "stats": stats, "level": player_level, "free_points": max(0, points - spent_total), "materials": materials, "oil_recipes": recipes, "oils": oils}
+        raw_kit = hunter.get("kit") if isinstance(hunter.get("kit"), Mapping) else {}
+        kit = []
+        for track, info in HUNTER_KIT.items():
+            level = min(HUNTER_KIT_MAX_LEVEL, count(raw_kit, track))
+            entry = {"id": track, "name": info["name"], "effect": info["effect"], "level": level, "max_level": HUNTER_KIT_MAX_LEVEL, "next": None}
+            if level < HUNTER_KIT_MAX_LEVEL:
+                need = level + 1
+                entry["next"] = {
+                    "essence": info["essence"],
+                    "essence_name": DUNGEON_MATERIAL_NAMES[info["essence"]],
+                    "count": need,
+                    "have": count(bank, info["essence"]),
+                    "coins": HUNTER_KIT_COINS_PER_LEVEL * need,
+                    "affordable": count(bank, info["essence"]) >= need and coins >= HUNTER_KIT_COINS_PER_LEVEL * need,
+                }
+            kit.append(entry)
+        puzzle = hunter.get("identify") if isinstance(hunter.get("identify"), Mapping) else None
+        identify = {key: puzzle[key] for key in ("id", "sign", "prompt", "options") if key in puzzle} if puzzle else None
+        return {
+            "signs": signs, "stats": stats, "level": player_level, "free_points": max(0, points - spent_total),
+            "materials": materials, "oil_recipes": recipes, "oils": oils, "kit": kit,
+            "vials": count(bank, DUNGEON_VIAL), "identify": identify,
+        }
+
+    @classmethod
+    def _hunter_kit_levels(cls, progress: Mapping[str, Any]) -> dict[str, int]:
+        hunter = progress.get("hunter") if isinstance(progress.get("hunter"), Mapping) else {}
+        raw = hunter.get("kit") if isinstance(hunter.get("kit"), Mapping) else {}
+        levels = {}
+        for track in HUNTER_KIT:
+            value = raw.get(track, 0)
+            levels[track] = min(HUNTER_KIT_MAX_LEVEL, value) if isinstance(value, int) and not isinstance(value, bool) and value > 0 else 0
+        return levels
+
+    def _hunter_upgrade_kit(self, payload: Mapping[str, Any], progress: dict[str, Any]) -> Mutation:
+        """Spend region essences and coins on one level of a kit track."""
+
+        data = self._payload(payload, {"track"}, {"track"})
+        track = self._text(data["track"], "track", max_length=20, identifier=True)
+        entry = next((item for item in self.hunter_projection(progress)["kit"] if item["id"] == track), None)
+        if entry is None:
+            raise StateCommandError("Unknown kit piece", status_code=404)
+        cost = entry["next"]
+        if cost is None:
+            raise StateCommandError(f"{entry['name']} is already at its best", status_code=409)
+        if not cost["affordable"]:
+            raise StateCommandError(f"Needs {cost['count']} {cost['essence_name']} and {cost['coins']} coins", status_code=409)
+        hunter = self._hunter_state(progress)
+        left = self._counter(hunter["materials"], cost["essence"]) - cost["count"]
+        if left > 0:
+            hunter["materials"][cost["essence"]] = left
+        else:
+            hunter["materials"].pop(cost["essence"], None)
+        player = self._dict(progress, "player")
+        player["coins"] = self._counter(player, "coins") - cost["coins"]
+        hunter["kit"][track] = entry["level"] + 1
+        return Mutation(
+            True,
+            {"hunter": self.hunter_projection(progress), "track": track, "level": entry["level"] + 1, "coins": player["coins"]},
+            {"track": track, "level": entry["level"] + 1, "coins_spent": cost["coins"], "reason": "hunter_kit_upgraded"},
+        )
+
+    def _hunter_new_identify(self, hunter: dict[str, Any], progress: Mapping[str, Any]) -> dict[str, Any]:
+        """Deal a snippet for the next vial: weak signs come up more often."""
+
+        attempt = self._counter(hunter, "identify_count") + 1
+        hunter["identify_count"] = attempt
+        seed = f"{self.device_id()}:{attempt}"
+        levels = {sign["id"]: sign["level"] for sign in self.hunter_projection(progress)["signs"]}
+        rng = random.Random(seed)
+        signs = list(HUNTER_BEASTS)
+        sign_id = rng.choices(signs, weights=[(11 - levels.get(sign, 0)) ** 2 for sign in signs])[0]
+        tier = rng.choices([name for name, _ in HUNTER_IDENTIFY_TIER_WEIGHTS], weights=[weight for _, weight in HUNTER_IDENTIFY_TIER_WEIGHTS])[0]
+        snippet = _identify_snippet(sign_id, seed)
+        puzzle = {"id": f"vial-{attempt}", "sign": sign_id, "tier": tier, **snippet}
+        hunter["identify"] = puzzle
+        return puzzle
+
+    def _hunter_identify_start(self, payload: Mapping[str, Any], progress: dict[str, Any]) -> Mutation:
+        """Hold an unmarked vial to the light: deal its reading puzzle."""
+
+        self._payload(payload, set(), set())
+        hunter = self._hunter_state(progress)
+        if self._counter(hunter["materials"], DUNGEON_VIAL) <= 0:
+            raise StateCommandError("No unmarked vials banked; elites and bosses drop them", status_code=409)
+        if isinstance(hunter.get("identify"), Mapping):
+            return Mutation(False, {"hunter": self.hunter_projection(progress)})
+        self._hunter_new_identify(hunter, progress)
+        return Mutation(True, {"hunter": self.hunter_projection(progress)}, {"reason": "hunter_identify_started"})
+
+    def _hunter_identify_answer(self, payload: Mapping[str, Any], progress: dict[str, Any]) -> Mutation:
+        """Check a reading. Right: the vial becomes an oil for that sign.
+        Wrong: nothing is lost; the answer is explained and a new snippet dealt."""
+
+        data = self._payload(payload, {"puzzle_id", "choice"}, {"puzzle_id", "choice"})
+        puzzle_id = self._text(data["puzzle_id"], "puzzle_id", max_length=MAX_IDENTIFIER_LENGTH, identifier=True)
+        choice = self._integer(data["choice"], "choice", minimum=0, maximum=3)
+        hunter = self._hunter_state(progress)
+        puzzle = hunter.get("identify")
+        if not isinstance(puzzle, Mapping) or puzzle.get("id") != puzzle_id:
+            raise StateCommandError("That vial reading changed; reload the bench", status_code=409)
+        reveal = {"answer": puzzle["answer_text"], "why": puzzle["why"], "prompt": puzzle["prompt"]}
+        if choice != puzzle["answer"]:
+            hunter["identify_misses"] = self._counter(hunter, "identify_misses") + 1
+            self._hunter_new_identify(hunter, progress)
+            return Mutation(
+                True,
+                {"hunter": self.hunter_projection(progress), "correct": False, **reveal},
+                {"correct": False, "sign": puzzle["sign"], "reason": "hunter_identify_missed"},
+            )
+        clean = not self._counter(hunter, "identify_misses")
+        hunter["identify_misses"] = 0
+        left = self._counter(hunter["materials"], DUNGEON_VIAL) - 1
+        if left > 0:
+            hunter["materials"][DUNGEON_VIAL] = left
+        else:
+            hunter["materials"].pop(DUNGEON_VIAL, None)
+        oil_id = f"{puzzle['sign']}-{puzzle['tier']}"
+        hunter["oils"][oil_id] = self._counter(hunter["oils"], oil_id) + 1
+        hunter.pop("identify", None)
+        gain = self._hunter_record(progress, concept=HUNTER_SIGN_CONCEPTS[puzzle["sign"]], question_type="code_trace", source="identify", clean=clean)
+        tier = HUNTER_OIL_TIERS_BY_ID[puzzle["tier"]]
+        oil = {"id": oil_id, "name": f"{HUNTER_BEASTS[puzzle['sign']]['beast'].removeprefix('The ')} {tier['name']}", "effect": tier["effect"]}
+        return Mutation(
+            True,
+            {"hunter": self.hunter_projection(progress), "correct": True, "oil": oil, "hunter_gain": gain, **reveal},
+            {"correct": True, "oil_id": oil_id, "reason": "hunter_vial_identified"},
+        )
 
     def _hunter_craft_oil(self, payload: Mapping[str, Any], progress: dict[str, Any]) -> Mutation:
         """Craft one beast oil at the Merchant from banked parts and coins."""
