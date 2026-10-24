@@ -83,6 +83,22 @@ Updated: 2026-10-22 · branch `feature/tauri-arcade` (fast-forwarded into
   3 points; Vitality adds 5 max HP per point to a new run. Coins arrive on the
   clear. `last_result.fight` carries the exchange for the verdict card. Campaign
   battles: a mob only falls once every objective is verified.
+- **Delves and loot (Phase C1):** `dungeon_start_run` takes `region_id`
+  (`DUNGEON_REGIONS`: basics / collections / flow, mirroring the Codex
+  `HUNT_REGIONS`). Each fight's concept is then drawn from the region's signs,
+  weighted (11 - effective level)^2 and seeded by run seed + question number
+  (`_dungeon_next_concept`); `HUNTER_SIGN_CONCEPTS` strings each map to exactly
+  one sign. Mobs take the Codex beast name (elite: "Elder ..."; boss: the
+  region boss). A cleared fight drops parts into `run["pack"]`
+  (1/2/3 + 1 for a fight with no misses, boss + region essence); elites drop
+  `DUNGEON_TRINKETS` in order (Warden Sigil: fights start with a free mistake;
+  Hunting Bell: +1 mechanic countdown; Whetstone Charm: +1 chip), 10 coins
+  once all are owned. Reaching a camp (`choose_room` rest) or finishing banks
+  the pack into `progress["hunter"]["materials"]`; death (verdict or
+  `dungeon_record_death`) moves it to `run["pack_lost"]`. Focus: every 3
+  points multiplies the `sign_level // 3` chip term. Pack, bank and region are
+  local only (not in the sync projection). UI: `DelvePicker` on run setup,
+  PACK tab in the run menu, camp banked note, verdict loot, hunter sheet Stores.
 - **Submit race fix:** `submitDungeon` waits for any in-flight editor
   checkpoint and saves unsaved edits before capturing PYR context (an autosave
   in between changed the revision and the answer was rejected as stale).

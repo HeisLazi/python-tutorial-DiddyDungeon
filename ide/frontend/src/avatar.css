@@ -133,3 +133,7 @@
 .hunter-sign-head span { color: var(--muted); font-size: 13px; }
 .hunter-sign small { color: var(--muted); font-size: 12px; }
 .hunter-note { margin: 4px 0 0; color: var(--muted); font-size: 13px; }
+.hunter-materials { display: flex; flex-wrap: wrap; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.hunter-materials li { display: flex; gap: 6px; padding: 4px 8px; border: 1px solid var(--line); }
+.hunter-materials b { color: var(--gold); }
+.hunter-materials-empty { margin: 0; color: var(--muted); font-size: 13px; }

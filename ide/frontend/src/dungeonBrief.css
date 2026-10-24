@@ -179,3 +179,28 @@
 .dungeon-fight-pips i.now { border-color: var(--dungeon-gold); }
 .dungeon-brief-fightchip { padding: 2px 8px; border: 1px solid var(--dungeon-gold); color: var(--dungeon-gold); white-space: nowrap; }
 .dungeon-brief-fightchip.enraged { border-color: var(--dungeon-danger); color: var(--dungeon-danger); }
+
+/* Delves and loot: region picker, pack tab, camp banking, verdict drops. */
+.dungeon-verdict-stats li.loot { border-color: var(--dungeon-green); color: var(--dungeon-green); }
+.dungeon-verdict-lost { margin: 0; color: var(--dungeon-danger); font-weight: 700; }
+.delve-picker { display: grid; gap: 10px; width: min(1100px, 100%); margin: 18px auto 0; }
+.delve-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; }
+.delve-card { display: grid; gap: 8px; align-content: start; padding: 12px; border: 2px solid var(--dungeon-line); background: var(--dungeon-panel); color: var(--dungeon-text); font: inherit; text-align: left; cursor: pointer; }
+.delve-picker .delve-card.selected { border-color: var(--dungeon-gold) !important; background: color-mix(in srgb, var(--dungeon-gold) 10%, var(--dungeon-panel)) !important; box-shadow: 0 0 0 2px color-mix(in srgb, var(--dungeon-gold) 35%, transparent); }
+.delve-card:disabled { cursor: default; opacity: 0.7; }
+.delve-head { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
+.delve-head small { color: var(--dungeon-gold); letter-spacing: 2px; }
+.delve-card ul { display: grid; gap: 4px; margin: 0; padding: 0; list-style: none; }
+.delve-card li { display: flex; justify-content: space-between; align-items: baseline; gap: 6px; font-size: 14px; }
+.delve-card li small { flex: none; white-space: nowrap; }
+.delve-card li small, .delve-card p, .delve-boss { color: var(--dungeon-muted); font-size: 13px; margin: 0; }
+.delve-card li.weak span { color: var(--dungeon-ember, var(--dungeon-gold)); }
+.delve-rule, .delve-last-run { margin: 0; color: var(--dungeon-muted); font-size: 14px; }
+.delve-last-run { color: var(--dungeon-gold); }
+.dungeon-pack-list { display: grid; gap: 6px; }
+.dungeon-pack-list > div { display: flex; justify-content: space-between; padding: 6px 8px; border: 1px solid var(--dungeon-line); }
+.dungeon-pack-list b { color: var(--dungeon-green); }
+.dungeon-pack-list small { color: var(--dungeon-muted); }
+.dungeon-camp-banked { display: grid; gap: 4px; padding: 10px; border: 2px solid var(--dungeon-green); }
+.dungeon-camp-banked strong { color: var(--dungeon-green); }
+.dungeon-camp-banked span:last-child { color: var(--dungeon-muted); font-size: 13px; }

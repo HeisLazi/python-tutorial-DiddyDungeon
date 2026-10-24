@@ -1878,6 +1878,7 @@ function AppV2() {
       const payload = {
         ...(options.conceptId ? { concept_id: options.conceptId } : {}),
         ...(options.classId ? { class_id: options.classId } : {}),
+        ...(options.regionId ? { region_id: options.regionId } : {}),
       }
       const result = await api('/api/dungeon/start', {
         method: 'POST',
