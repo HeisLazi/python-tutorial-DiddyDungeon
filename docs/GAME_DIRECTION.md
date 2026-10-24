@@ -143,9 +143,10 @@ book (level, XP bar, rank gates, perks), milestones and the hunt journal.
    ten campaigns, 153 contracts, including The Clockwork Arena (Connect Four
    engines) and The Familiar (an AI agent from scratch)): a story arc,
    hunter-voice contract briefs, each contract showing its beast and sign and
-   linking to the Codex. Still open: Codex pages for concepts beyond the nine
-   signs (classes, recursion, search, JSON), which contracts map to the
-   closest sign for now.
+   linking to the Codex. The Codex grew to 23 signs on 2026-10-25 (strings,
+   exceptions, files and JSON, sets, grids, sorting, references, classes,
+   testing, callbacks, agents, recursion, search, simulation), each with a
+   beast, five new delve regions, oils and vial readings.
 2. **Dungeon as a crawler** (region delves, region beasts and named bosses
    shipped 2026-10-24 as Phase C1; room-grid floors under fog, walk-back
    travel and stairs between floors shipped 2026-10-24 as C3): region

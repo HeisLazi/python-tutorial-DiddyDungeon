@@ -65,7 +65,7 @@
     {
       "name": "The Trickster", "concept": "Input validation and string handling",
       "encounter": "Survive typos, capitals and nonsense so a bad move asks again instead of crashing or counting as a round.",
-      "act": 2, "sign": "input-output",
+      "act": 2, "sign": "strings",
       "contract": "The Trickster types ROCK, rck and banana and laughs when your game breaks. Make it unbreakable.",
       "objectives": [
         {"id": "clean_input", "label": "Clean the input", "question_type": "code_checkpoint", "impact": 3, "brief": "Strip spaces and lower-case the player's move, and accept r, p and s as short forms."},
@@ -153,7 +153,7 @@
     {
       "name": "The Strategy Duel", "concept": "Bots as functions, duelled over many rounds",
       "encounter": "Make every bot the same kind of function and let them fight a thousand rounds.",
-      "act": 3, "sign": "functions",
+      "act": 3, "sign": "callbacks",
       "contract": "Ilse wants to know which mind is strongest. Give every bot the same shape and set them on each other for a thousand throws.",
       "objectives": [
         {"id": "bot_shape", "label": "Give bots one shape", "question_type": "code_checkpoint", "impact": 3, "brief": "Make each bot a function that receives the opponent's history and returns a move: random, the Witch and the Seer."},
@@ -164,7 +164,7 @@
     {
       "name": "The Unreadable", "concept": "Measuring predictability",
       "encounter": "Measure how well a bot predicts you, then play so it cannot.",
-      "act": 3, "sign": "random-selection",
+      "act": 3, "sign": "simulation",
       "contract": "The last lesson before the Warden: if you can be read, you can be beaten. Measure how readable you are and learn to be noise.",
       "objectives": [
         {"id": "prediction_rate", "label": "Measure readability", "question_type": "code_checkpoint", "impact": 3, "brief": "Track how often the Seer would have predicted the player's move correctly and show it as a percentage."},

@@ -48,7 +48,7 @@
       "name": "The Keyword Brain",
       "concept": "Intents from keywords, with a fallback",
       "encounter": "Answer by spotting what the user wants.",
-      "act": 1, "sign": "dictionaries",
+      "act": 1, "sign": "strings",
       "contract": "Before your familiar can think, it can notice. Teach it to spot what you are asking for from the words you use, and to admit when it has no idea.",
       "objectives": [
         {"id": "intent_table", "label": "Map words to intents", "question_type": "code_checkpoint", "impact": 4, "brief": "Use a dictionary from intents (greeting, help, time, thanks) to their keywords, pick the intent a message matches and reply for it."},
@@ -61,7 +61,7 @@
       "name": "The Brain Socket",
       "concept": "Swapping behaviour behind one function interface",
       "encounter": "Separate the loop from the brain that decides the reply.",
-      "act": 1, "sign": "functions",
+      "act": 1, "sign": "callbacks",
       "contract": "Wren's first rule of binding: the body and the brain are separate. Build a socket where any brain can sit, and your familiar can be upgraded without being rebuilt.",
       "objectives": [
         {"id": "brain_interface", "label": "Build the socket", "question_type": "code_checkpoint", "impact": 4, "brief": "Make the chat loop call a brain function that receives the history and returns the reply, instead of deciding the reply itself."},
@@ -73,7 +73,7 @@
       "name": "The Calculator Imp",
       "concept": "Parsing user text safely",
       "encounter": "Give the familiar a calculator tool that never runs code.",
-      "act": 2, "sign": "conditionals",
+      "act": 2, "sign": "strings",
       "contract": "Imps love arithmetic and they love tricks more. Give your familiar a calculator that understands sums and refuses to run anything else you hand it.",
       "objectives": [
         {"id": "parse_expression", "label": "Parse a sum", "question_type": "code_checkpoint", "impact": 4, "brief": "Write a calculator tool that understands a number, an operator (+, -, *, /) and a number, and returns the answer as text."},
@@ -85,7 +85,7 @@
       "name": "The Tool Ledger",
       "concept": "A registry of tools as data",
       "encounter": "List every tool with what it does, and call any of them by name.",
-      "act": 2, "sign": "dictionaries",
+      "act": 2, "sign": "agents",
       "contract": "A familiar with hands needs a ledger of what each hand can hold. Write every tool down by name, with a description and the arguments it takes.",
       "objectives": [
         {"id": "registry", "label": "Write the ledger", "question_type": "code_checkpoint", "impact": 4, "brief": "Keep a dictionary from tool names to their function, a one-line description and the names of the arguments they need. Add a clock tool alongside the calculator."},
@@ -97,7 +97,7 @@
       "name": "The Decision Spirit",
       "concept": "The act-observe loop",
       "encounter": "Let the brain choose between replying and using a tool, then see the result.",
-      "act": 2, "sign": "control-flow",
+      "act": 2, "sign": "agents",
       "contract": "This is the heart of every agent. The spirit decides: answer now, or reach for a tool, look at what came back, and decide again.",
       "objectives": [
         {"id": "action_format", "label": "Shape a decision", "question_type": "code_checkpoint", "impact": 3, "brief": "Make the brain return either a reply or a tool request (a tool name and its arguments) as a dictionary."},
@@ -109,7 +109,7 @@
       "name": "The Scribe's Quill",
       "concept": "Tools that keep files",
       "encounter": "Give the familiar notes that survive a restart.",
-      "act": 2, "sign": "input-output",
+      "act": 2, "sign": "files-json",
       "contract": "A familiar that cannot write things down is a familiar that cannot help tomorrow. Give it a quill and a book.",
       "objectives": [
         {"id": "save_note", "label": "Write a note", "question_type": "code_checkpoint", "impact": 3, "brief": "Add a save_note tool that stores a note with the date and time in a JSON file."},
@@ -121,7 +121,7 @@
       "name": "The Planner Wisp",
       "concept": "Breaking a goal into steps",
       "encounter": "Turn one goal into a plan and carry it out step by step.",
-      "act": 3, "sign": "lists",
+      "act": 3, "sign": "agents",
       "contract": "Ask the familiar for something big and it freezes. The Wisp teaches it to break a goal into steps, do them in order, and tick them off.",
       "objectives": [
         {"id": "plan_steps", "label": "Make a plan", "question_type": "code_checkpoint", "impact": 4, "brief": "When given a goal, have the brain produce a list of steps, each one a tool call or a reply, and show the plan to the user."},
@@ -133,7 +133,7 @@
       "name": "The Long Memory",
       "concept": "Storing and retrieving facts by relevance",
       "encounter": "Remember facts and recall the ones that matter now.",
-      "act": 3, "sign": "loops",
+      "act": 3, "sign": "sorting",
       "contract": "History is everything that was said. Memory is what is worth keeping. Teach your familiar to remember facts and recall the right ones when they matter.",
       "objectives": [
         {"id": "remember", "label": "Remember a fact", "question_type": "code_checkpoint", "impact": 3, "brief": "Add a remember tool that stores facts the user teaches it, saved between runs."},
@@ -145,7 +145,7 @@
       "name": "The Scratchpad",
       "concept": "Agent state you can save and resume",
       "encounter": "Keep the goal, plan and progress in one state object that survives a restart.",
-      "act": 3, "sign": "variables",
+      "act": 3, "sign": "files-json",
       "contract": "Familiars get interrupted. Give yours a scratchpad: the goal, the plan, what is done and what it noticed, all in one place you can put down and pick up.",
       "objectives": [
         {"id": "state_object", "label": "Gather the state", "question_type": "code_checkpoint", "impact": 3, "brief": "Keep the agent's goal, plan, completed steps, scratch notes and step count together in one dictionary or class."},
@@ -157,7 +157,7 @@
       "name": "The Mock Oracle",
       "concept": "Testing an agent with a scripted brain",
       "encounter": "Write a brain that follows a script, and test the agent with it.",
-      "act": 3, "sign": "functions",
+      "act": 3, "sign": "testing",
       "contract": "You cannot test a familiar whose mind changes every run. The Mock Oracle speaks only from a script, so you can check the body does exactly what it should.",
       "objectives": [
         {"id": "mock_brain", "label": "Write the scripted brain", "question_type": "code_checkpoint", "impact": 4, "brief": "Write a MockBrain that returns a prepared list of decisions in order, so a whole conversation plays out the same every time."},
@@ -169,7 +169,7 @@
       "name": "The Leash",
       "concept": "Guardrails: permissions, confirmation and logging",
       "encounter": "Make dangerous tools ask first, and log everything.",
-      "act": 4, "sign": "conditionals",
+      "act": 4, "sign": "agents",
       "contract": "The Rogue Familiar deleted the guild's archive because nobody told it to ask first. Put a leash on yours: some tools need permission, every action is written down.",
       "objectives": [
         {"id": "permissions", "label": "Mark the dangerous tools", "question_type": "code_checkpoint", "impact": 4, "brief": "Give each tool a safety level in the ledger, and add a delete_note tool marked as dangerous."},
@@ -181,7 +181,7 @@
       "name": "The Judge of Answers",
       "concept": "Evaluating an agent against test tasks",
       "encounter": "Measure how often the familiar does the right thing.",
-      "act": 4, "sign": "loops",
+      "act": 4, "sign": "testing",
       "contract": "A familiar that seems to work is not one that works. The Judge sets it a list of tasks with known answers and counts how many it gets right.",
       "objectives": [
         {"id": "eval_cases", "label": "Write the cases", "question_type": "code_checkpoint", "impact": 3, "brief": "Write at least eight evaluation cases: a message, plus what a correct outcome looks like (a reply containing a word, or a particular tool being called)."},
@@ -193,7 +193,7 @@
       "name": "The Lightning Bottle",
       "concept": "A language-model brain behind the same socket",
       "encounter": "Optionally plug a real language model into the brain socket, with your own key.",
-      "act": 4, "sign": "functions",
+      "act": 4, "sign": "agents",
       "contract": "Wren keeps lightning in a bottle: a real language model. It fits the socket you built in Act I. Plug it in if you want to; your familiar must work just as well without it.",
       "objectives": [
         {"id": "llm_brain", "label": "Bottle the lightning", "question_type": "code_checkpoint", "impact": 5, "brief": "Write an LLMBrain with the same interface as your other brains that sends the history to a language model, for example with the anthropic Python package. Install and configure it yourself; the game never asks for or stores a key."},
@@ -205,7 +205,7 @@
       "name": "The Familiar's Day",
       "concept": "The whole agent working together",
       "encounter": "Show the finished familiar doing a real job from start to finish.",
-      "act": 4, "sign": "control-flow",
+      "act": 4, "sign": "agents",
       "contract": "Wren wants to see a full day's work before she signs your binding. One goal, start to finish: plan, tools, memory, notes, leash and log.",
       "objectives": [
         {"id": "full_session", "label": "Run a full session", "question_type": "code_checkpoint", "impact": 4, "brief": "Make one goal (for example: work out a budget and save it as a note) run end to end with planning, tools, memory and logging."},

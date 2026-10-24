@@ -1584,10 +1584,16 @@ const HUNT_REGIONS = [
   { id: 'basics', label: 'Basics Village', danger: 1, pages: ['variables', 'input-output', 'conditionals'] },
   { id: 'collections', label: 'Collection Caves', danger: 2, pages: ['lists', 'dictionaries', 'random-selection'] },
   { id: 'flow', label: 'Flow Keep', danger: 3, pages: ['loops', 'functions', 'control-flow'] },
+  { id: 'archive', label: 'Sunken Archive', danger: 2, pages: ['strings', 'exceptions', 'files-json'] },
+  { id: 'labyrinth', label: 'The Labyrinth', danger: 3, pages: ['grids', 'sets', 'sorting'] },
+  { id: 'workshop', label: 'Clockwork Workshop', danger: 3, pages: ['classes', 'references'] },
+  { id: 'spire', label: "Seer's Spire", danger: 4, pages: ['recursion', 'search', 'simulation'] },
+  { id: 'hollow', label: "Familiar's Hollow", danger: 4, pages: ['callbacks', 'agents', 'testing'] },
 ]
 
 // Delve bosses, one per region (state.py DUNGEON_REGIONS).
-const DELVE_BOSSES = { basics: 'The Mimic Matriarch', collections: 'The Drowned Hoard', flow: 'The Endless Warden' }
+const DELVE_BOSSES = { basics: 'The Mimic Matriarch', collections: 'The Drowned Hoard', flow: 'The Endless Warden', archive: 'The Archivist Lich', labyrinth: 'The Minotaur of Rows', workshop: 'The Brass Automaton', spire: 'The Recursive Oracle', hollow: 'The Hollow King' }
+const MAX_DANGER = 4
 
 const lootText = (items) => (items || []).map((item) => `${item.count} ${item.name}`).join(', ')
 
@@ -1603,7 +1609,7 @@ function DelvePicker({ hunter, selected, onSelect, busy }) {
           const weakest = (levels[sorted[0]] ?? 0) < (levels[sorted[1]] ?? 0) ? sorted[0] : null
           return (
             <button key={region.id} type="button" role="radio" aria-checked={selected === region.id} className={`delve-card ${selected === region.id ? 'selected' : ''}`} onClick={() => onSelect(region.id)} disabled={busy}>
-              <span className="delve-head"><strong>{region.label}</strong><small>{'◆'.repeat(region.danger)}{'◇'.repeat(3 - region.danger)}</small></span>
+              <span className="delve-head"><strong>{region.label}</strong><small>{'◆'.repeat(region.danger)}{'◇'.repeat(Math.max(0, MAX_DANGER - region.danger))}</small></span>
               <ul>{region.pages.map((page) => <li key={page} className={page === weakest ? 'weak' : ''}><span>{HUNT_BEASTS[page]?.beast}</span><small>{page === weakest ? 'Weakest · ' : ''}Lvl {levels[page] ?? 0}</small></li>)}</ul>
               <small className="delve-boss">Boss: {DELVE_BOSSES[region.id]}</small>
             </button>
@@ -1629,6 +1635,20 @@ const HUNT_BEASTS = {
   'random-selection': { beast: 'The Loaded Die', sign: 'Dice', lore: 'Makes every roll a little wrong: randint includes both ends, randrange stops before the last.', symptoms: ['An index one too large', 'One card that is never drawn', 'An IndexError on rare rolls'], rule: 'randint(a, b) includes b. For a list, use random.choice or randrange(len(items)).', code: "i = random.randint(0, len(deck))   # the Die is loaded\ncard = deck[i]" },
   loops: { beast: 'The Off-by-One Wraith', sign: 'Ouroboros', lore: 'Lives in the last pass of a loop: one pass too many or one too few.', symptoms: ['The first or last item skipped', 'An extra blank line', 'A total that is one short'], rule: 'range(n) stops before n. Loop over the items directly when you can.', code: "for i in range(1, len(hand)):   # skips hand[0]\n    total += values[hand[i]]" },
   functions: { beast: 'The Hollow Return', sign: 'Binding', lore: 'A function that does all the work, then hands back nothing. Its gift is always None.', symptoms: ["TypeError: unsupported operand type(s) for +: 'NoneType'", 'None printed where a value should be', 'A result that vanishes'], rule: 'return the value. Printing is not returning.', code: "def hand_total(hand):\n    total = sum(hand)   # no return\nscore = hand_total([10, 7]) + 1" },
+  strings: { beast: 'The Whitespace Wisp', sign: 'Quill', lore: 'Hides in the spaces at the ends of words and in capital letters, so text that looks the same never matches.', symptoms: ["' Rock' == 'rock' is False", "A command that works only in lower case", "'hi' found inside 'this'"], rule: 'Clean text with strip() and lower() before you compare it, and match whole words.', code: "move = input('Move: ')\nif move == 'rock':   # the Wisp adds a space\n    print('stone')" },
+  exceptions: { beast: 'The Traceback Banshee', sign: 'Ward', lore: 'Screams a traceback the moment something unexpected arrives, and the whole program falls silent.', symptoms: ["ValueError: invalid literal for int()", 'The program dies on one bad input', 'A bare except hides every real bug'], rule: 'Wrap the one line that can fail in try/except and catch the specific error.', code: "bet = int(input('Bet: '))   # the Banshee wails at 'ten'" },
+  'files-json': { beast: 'The Lost Scroll', sign: 'Seal', lore: 'Steals what you meant to keep: saves that never happened, files that are not there, data JSON cannot hold.', symptoms: ['FileNotFoundError on the first run', 'TypeError: Object of type set is not JSON serializable', 'Progress gone after a restart'], rule: 'Save with json.dump inside with open(...), and load with a fallback for a missing or broken file.', code: "data = json.load(open('save.json'))   # the Scroll is lost" },
+  sets: { beast: 'The Twin Doppel', sign: 'Ring', lore: 'Copies itself into your lists until every count is wrong and every check is slow.', symptoms: ['The same item counted twice', 'A visited room explored again', 'Membership checks crawl on big lists'], rule: 'Use a set when only presence matters; it keeps one of each and answers "in" instantly.', code: "seen = []\nseen.append(room)\nseen.append(room)   # the Doppel doubles" },
+  grids: { beast: 'The Row Mimic', sign: 'Lattice', lore: 'Builds every row of your board out of the same row, so one move appears everywhere at once.', symptoms: ['One piece shows up in every row', 'IndexError at the edge of the map', 'Rows and columns swapped'], rule: 'Build rows with a comprehension, read grid[row][column], and stay inside the bounds.', code: "board = [['.'] * 7] * 6\nboard[5][3] = 'X'   # the Mimic copies it upward" },
+  sorting: { beast: 'The Shuffled Herald', sign: 'Scale', lore: 'Announces rankings in the wrong order, or announces None, and nobody notices until the table is wrong.', symptoms: ['A ranking that prints None', 'Ties broken at random', 'The worst team on top'], rule: 'sorted() returns a new list; .sort() returns None. Use a key, and a tuple to break ties.', code: "table = clubs.sort(key=points)\nprint(table)   # the Herald says None" },
+  references: { beast: 'The Alias Shade', sign: 'Mirror', lore: 'Lets two names share one list, so a change in one place quietly changes the other.', symptoms: ['Every new enemy starts already wounded', 'A trial move changes the real board', 'Undo does nothing'], rule: 'Assignment shares; copy() or dict() copies. Copy nested data with care.', code: "enemy = TEMPLATE\nenemy['hp'] -= 5   # the Shade wounds them all" },
+  classes: { beast: 'The Selfless Golem', sign: 'Crest', lore: 'A body of clay that forgets itself: values set without self vanish the moment a method ends.', symptoms: ['A method changes nothing', "AttributeError: object has no attribute", 'Every object shares one list'], rule: 'Store an object\'s data on self, and create lists inside __init__.', code: "def heal(self):\n    hp = self.max_hp   # the Golem forgets itself" },
+  testing: { beast: 'The Silent Saboteur', sign: 'Lens', lore: 'Breaks code without a sound. Nothing crashes; the answer is just wrong, and nobody checks.', symptoms: ['A bug that returns after you fixed it', 'A function that works for 2 and nothing else', 'Random results nobody can repeat'], rule: 'Pin every rule and every fixed bug with an assert, including the edge cases.', code: "def double(n):\n    return n + 2\nassert double(2) == 4   # the Saboteur slips past" },
+  callbacks: { beast: 'The Hasty Caller', sign: 'Mask', lore: 'Calls every function the instant it sees it, so the loop receives an answer instead of a player.', symptoms: ["TypeError: 'int' object is not callable", 'A bot that plays one move forever', 'Two brains that cannot be swapped'], rule: 'Pass a function by name, without brackets, and give swappable functions the same inputs.', code: "play_game(random_agent(), greedy_agent)   # called too soon" },
+  agents: { beast: 'The Unbound Servant', sign: 'Familiar', lore: 'An agent with tools and no leash: it acts, and acts, and acts, and never asks if it should.', symptoms: ['A loop of tool calls that never ends', 'A file deleted without asking', 'No record of what it did'], rule: 'Give the loop a step limit, confirm dangerous tools, and log every action.', code: "while True:\n    act(brain(history))   # the Servant is unbound" },
+  recursion: { beast: 'The Bottomless Well', sign: 'Spiral', lore: 'Calls itself forever, one level deeper each time, until Python gives up.', symptoms: ['RecursionError: maximum recursion depth exceeded', 'A result of None from a recursive function', 'Search that never returns'], rule: 'Every recursive function needs a base case, and every call must move towards it.', code: "def count(n):\n    return count(n - 1)   # no bottom to the Well" },
+  search: { beast: 'The Wandering Lantern', sign: 'Compass', lore: 'Leads searchers in circles, back through rooms they have already seen, forever.', symptoms: ['Pathfinding that never finishes', 'The same node visited twice', 'A path that is not the shortest'], rule: 'Keep a seen set and mark nodes when you queue them; breadth-first finds the shortest path.', code: "while queue:\n    node = queue.pop(0)\n    queue.extend(neighbours(node))   # the Lantern wanders" },
+  simulation: { beast: 'The Lucky Liar', sign: 'Hourglass', lore: 'Wins ten games in a row and convinces you the strategy is perfect. It was luck.', symptoms: ['Big conclusions from a few runs', 'A different answer every run', 'A loop that floods the screen'], rule: 'Run thousands of trials, switch printing off, and fix the seed when you need repeats.', code: "rate = sum(play() for _ in range(10)) / 10   # the Liar's sample" },
   'control-flow': { beast: 'The Endless Leshen', sign: 'Gate', lore: 'Roots a loop forever: a while condition that nothing inside the loop ever changes.', symptoms: ['The program freezes', 'The same line prints forever', 'The fan spins up'], rule: 'Change something the condition checks on every pass, or break out.', code: "while total < 17:\n    print('hit')   # total never changes" },
 }
 
@@ -1638,6 +1658,12 @@ const HUNT_RITUALS = [
   { name: 'Ritual of the Shuffled Deck', pages: ['lists', 'random-selection'], use: 'draw a random card' },
   { name: 'Ritual of the Ledger', pages: ['dictionaries', 'functions'], use: 'look up card values inside a function' },
   { name: 'Ritual of the Table', pages: ['input-output', 'control-flow'], use: 'keep asking hit or stand until the player stops' },
+  { name: 'Ritual of the Archive', pages: ['strings', 'exceptions', 'files-json'], use: 'read a save file, clean what is in it and survive when it is broken' },
+  { name: 'Ritual of the Labyrinth', pages: ['grids', 'sets', 'search'], use: 'find the shortest way out of a maze without walking in circles' },
+  { name: 'Ritual of the Engine', pages: ['recursion', 'search', 'callbacks'], use: 'build a game engine that looks ahead and plays any opponent' },
+  { name: 'Ritual of the Familiar', pages: ['agents', 'callbacks', 'testing'], use: 'bind an agent with a swappable brain and prove it behaves' },
+  { name: 'Ritual of the Ledger Golem', pages: ['classes', 'references', 'sorting'], use: 'model many objects safely and rank them' },
+  { name: 'Ritual of the Oracle', pages: ['simulation', 'random-selection', 'loops'], use: 'measure a game of chance with ten thousand trials' },
 ]
 
 // Sigils for the signs (inline stroke SVG).
@@ -1651,6 +1677,20 @@ const HUNT_SIGILS = {
   loops: <><path d="M20 12a8 8 0 1 1-3-6.2" /><path d="M17 3v3h3" /></>,
   functions: <><path d="M14 4c-3 0-3 3-3 6v4c0 3 0 6-3 6" /><path d="M8 11h7" /></>,
   'control-flow': <><path d="M5 21V9l7-5 7 5v12" /><path d="M9 21v-6h6v6M3 9h18" /></>,
+  strings: <><path d="M19 4c-6 1-10 6-12 14l-2 2" /><path d="M9 14c3 0 6-2 8-5" /></>,
+  exceptions: <><path d="M12 3l7 3v5c0 5-3 8-7 10-4-2-7-5-7-10V6z" /><path d="M12 8v5M12 16v.5" /></>,
+  'files-json': <><path d="M6 4h10a2 2 0 0 1 2 2v12H8a2 2 0 0 1-2-2z" /><path d="M9 9h6M9 12h6" /><circle cx="17" cy="18" r="2" /></>,
+  sets: <><circle cx="9" cy="12" r="5" /><circle cx="15" cy="12" r="5" /></>,
+  grids: <><rect x="4" y="4" width="16" height="16" /><path d="M4 9.3h16M4 14.6h16M9.3 4v16M14.6 4v16" /></>,
+  sorting: <><path d="M5 20v-5M10 20v-9M15 20v-12M20 20V4" /></>,
+  references: <><rect x="6" y="3" width="12" height="15" rx="6" /><path d="M12 18v3M9 21h6" /></>,
+  classes: <><path d="M12 3l8 4-8 4-8-4z" /><path d="M4 12l8 4 8-4M4 17l8 4 8-4" /></>,
+  testing: <><circle cx="10" cy="10" r="6" /><path d="M14.5 14.5L20 20" /><path d="M7.5 10l2 2 3-4" /></>,
+  callbacks: <><path d="M4 7c5-2 11-2 16 0-1 6-4 10-8 10S5 13 4 7z" /><circle cx="9" cy="10" r="1" /><circle cx="15" cy="10" r="1" /></>,
+  agents: <><path d="M6 8l2-4 2 3h4l2-3 2 4v6a6 6 0 0 1-12 0z" /><circle cx="10" cy="12" r="1" /><circle cx="14" cy="12" r="1" /></>,
+  recursion: <><path d="M12 12a2 2 0 1 1 2-2 4 4 0 1 1-4-4 6 6 0 1 1-6 6" /></>,
+  search: <><circle cx="12" cy="12" r="8" /><path d="M15 9l-2 5-4 1 2-5z" /></>,
+  simulation: <><path d="M7 3h10M7 21h10M8 3l8 9-8 9M16 3l-8 9 8 9" /></>,
 }
 
 const huntKey = (page) => String(page?.id || '').split('-')[0].toLowerCase()

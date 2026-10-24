@@ -164,7 +164,7 @@
       "name": "The Autopilot",
       "concept": "Functions as players",
       "encounter": "Let a function make the decisions, so a bot can play the game.",
-      "act": 3, "sign": "functions",
+      "act": 3, "sign": "callbacks",
       "contract": "Mara wants a player that never sleeps. Your game asks input() for every move; teach it to ask a function instead, so a human or an agent can sit down.",
       "objectives": [
         {"id": "player_interface", "label": "Pass the decision in", "question_type": "code_checkpoint", "impact": 4, "brief": "Refactor a round so the hit, stand or double decision comes from a function passed in: one version reads input() for a human, another calls basic_strategy."},
@@ -176,7 +176,7 @@
       "name": "The Simulator",
       "concept": "Simulation loops and statistics",
       "encounter": "Run thousands of bot rounds and measure the house edge.",
-      "act": 3, "sign": "loops",
+      "act": 3, "sign": "simulation",
       "contract": "One hand tells you nothing. Ten thousand tell you everything. Run the bot until the numbers stop lying.",
       "objectives": [
         {"id": "simulate", "label": "Run 10,000 hands", "question_type": "code_checkpoint", "impact": 4, "brief": "Run 10,000 bot rounds with printing switched off and count wins, losses, pushes and naturals."},
@@ -202,7 +202,7 @@
       "name": "The Tally Ghost",
       "concept": "Saving and loading data with JSON",
       "encounter": "Keep a record between sessions and add a menu.",
-      "act": 3, "sign": "input-output",
+      "act": 3, "sign": "files-json",
       "contract": "The last ghost of the table keeps every tally and forgets nothing between nights. Give your game the same memory, and a front door.",
       "objectives": [
         {"id": "save_stats", "label": "Save the session", "question_type": "code_checkpoint", "impact": 3, "brief": "When a session ends, save the rounds played, the net result and the biggest win to a JSON file."},

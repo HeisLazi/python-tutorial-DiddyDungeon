@@ -110,7 +110,7 @@
     {
       "name": "The Cartographer", "concept": "A 2D grid map and movement",
       "encounter": "Replace numbered rooms with a grid the player walks across.",
-      "act": 3, "sign": "lists",
+      "act": 3, "sign": "grids",
       "contract": "Brigid's miners need a real map: rooms side by side, walls between them, and a hunter who can walk north, south, east and west.",
       "objectives": [
         {"id": "grid_map", "label": "Lay out the grid", "question_type": "code_checkpoint", "impact": 3, "brief": "Store the level as a list of lists of tiles (floor, wall, exit) with the player's position as a row and column."},
@@ -121,7 +121,7 @@
     {
       "name": "The Fog Lantern", "concept": "Fog of war",
       "encounter": "Show only the tiles the player has seen.",
-      "act": 3, "sign": "conditionals",
+      "act": 3, "sign": "sets",
       "contract": "Below the mine there is no light but your lantern. Show what you have seen, and nothing you have not.",
       "objectives": [
         {"id": "seen_tiles", "label": "Remember what was seen", "question_type": "code_checkpoint", "impact": 3, "brief": "Keep a set of seen positions and add the player's tile and its neighbours after every move."},
@@ -143,7 +143,7 @@
     {
       "name": "The Maze Wright", "concept": "Procedural generation with a guarantee",
       "encounter": "Generate a new maze every level, always with a reachable exit.",
-      "act": 3, "sign": "random-selection",
+      "act": 3, "sign": "grids",
       "contract": "The deep changes every time you go down. The Wright carves a new maze each level, and it must always leave a way out.",
       "objectives": [
         {"id": "carve_maze", "label": "Carve a maze", "question_type": "code_checkpoint", "impact": 4, "brief": "Generate each level by carving floor through solid rock with a random walk from the start."},
@@ -154,7 +154,7 @@
     {
       "name": "The Pathfinder", "concept": "Breadth-first search",
       "encounter": "Find the shortest path to the exit and offer to walk it.",
-      "act": 3, "sign": "loops",
+      "act": 3, "sign": "search",
       "contract": "Brigid's miners get lost. The Pathfinder floods the map from where you stand and always knows the shortest way out.",
       "objectives": [
         {"id": "bfs", "label": "Flood the map", "question_type": "code_checkpoint", "impact": 5, "brief": "Write a breadth-first search over floor tiles that returns the shortest path from the player to the exit."},
@@ -165,7 +165,7 @@
     {
       "name": "The Save Crystal", "concept": "Saving and loading the whole game",
       "encounter": "Save the run to a file and load it back exactly.",
-      "act": 4, "sign": "input-output",
+      "act": 4, "sign": "files-json",
       "contract": "The crystal remembers everything: where you stood, what you carried, what you saw. Touch it and you can leave the mine and come back.",
       "objectives": [
         {"id": "save_game", "label": "Save the run", "question_type": "code_checkpoint", "impact": 4, "brief": "Save the player, the map, the seen tiles, the depth and the enemies to a JSON file, converting anything JSON cannot store (such as sets)."},

@@ -725,6 +725,174 @@ CODEX_CONCEPT_PAGES: tuple[dict[str, Any], ...] = (
         "mistake_examples": ("import random\n# tests expect the same result without random.seed(1)", "choice = random.choice(['left', 'right'])\n# no print or return means the choice is hidden"),
         "check_prompt": "What values are possible, and how could you make one result observable?",
     },
+    {
+        "id": "strings",
+        "title": "Strings & text",
+        "aliases": ("string handling", "strings", "text processing", "parsing user text", "string formatting"),
+        "definition": "A string is text; methods like strip, lower, split and f-strings clean it, break it apart and build it back up.",
+        "examples": ("raw = '  Rock '\nmove = raw.strip().lower()", "parts = '3 + 4'.split()\nprint(f'{parts[0]} plus {parts[2]}')"),
+        "when_to_use": "Use string methods whenever text comes from a person or a file: clean it before you compare it, and split it before you read pieces of it.",
+        "question_types": ("prediction", "code_checkpoint", "bug_diagnosis"),
+        "common_mistakes": ("Comparing raw input that still has spaces or capitals.", "Checking 'hi' in text and matching words like 'this'."),
+        "mistake_examples": ("move = input('Move: ')\nif move == 'rock':  # ' Rock' never matches", "if 'hi' in 'this one':\n    print('greeting')  # substring, not a word"),
+        "check_prompt": "What exactly is in the string before and after each method?",
+    },
+    {
+        "id": "exceptions",
+        "title": "Errors & exceptions",
+        "aliases": ("error handling", "exceptions", "exception", "try/except"),
+        "definition": "An exception is Python reporting that something went wrong; try and except let the program recover instead of crashing.",
+        "examples": ("try:\n    bet = int(text)\nexcept ValueError:\n    print('Numbers only')",),
+        "when_to_use": "Use try/except around the one line that can fail for reasons outside your control, such as converting input or opening a file, and catch the specific error.",
+        "question_types": ("bug_diagnosis", "prediction", "code_checkpoint"),
+        "common_mistakes": ("Wrapping a whole program in a bare except that hides real bugs.", "Catching the error but carrying on with a value that was never set."),
+        "mistake_examples": ("try:\n    play_game()\nexcept:\n    pass  # every bug disappears silently", "try:\n    bet = int(text)\nexcept ValueError:\n    print('bad')\nprint(bet * 2)  # bet may not exist"),
+        "check_prompt": "Which line can fail, which error does it raise, and what happens next?",
+    },
+    {
+        "id": "files-json",
+        "title": "Files & JSON",
+        "aliases": ("json", "saving and loading", "save and load", "files", "file i/o"),
+        "definition": "Files keep data after the program ends; JSON turns dictionaries and lists into text that can be saved and read back.",
+        "examples": ("import json\nwith open('save.json', 'w') as file:\n    json.dump({'gold': 10}, file)", "with open('save.json') as file:\n    data = json.load(file)"),
+        "when_to_use": "Use files with JSON when something must survive a restart: a save game, settings, a record or a log.",
+        "question_types": ("code_checkpoint", "bug_diagnosis", "explanation"),
+        "common_mistakes": ("Assuming the file always exists or is never corrupted.", "Trying to save data JSON cannot store, such as sets or objects."),
+        "mistake_examples": ("data = json.load(open('save.json'))  # crashes on the first run", "json.dumps({'seen': {1, 2}})  # a set is not JSON"),
+        "check_prompt": "What is written, what is read back, and what if the file is missing?",
+    },
+    {
+        "id": "sets",
+        "title": "Sets & uniqueness",
+        "aliases": ("sets", "unique values", "duplicates", "membership"),
+        "definition": "A set holds unique values with no order, and checks whether something is inside it very quickly.",
+        "examples": ("seen = set()\nseen.add((2, 3))\nprint((2, 3) in seen)",),
+        "when_to_use": "Use a set when you only care whether something is present, such as visited rooms, or when duplicates must disappear.",
+        "question_types": ("prediction", "code_checkpoint", "explanation"),
+        "common_mistakes": ("Expecting a set to keep order or allow indexing.", "Writing {} for an empty set, which makes a dictionary."),
+        "mistake_examples": ("tags = {'b', 'a'}\nprint(tags[0])  # sets have no index", "seen = {}\nseen.add(1)  # {} is an empty dict"),
+        "check_prompt": "Which values are in the set, and which duplicates vanished?",
+    },
+    {
+        "id": "grids",
+        "title": "Grids & nested lists",
+        "aliases": ("nested lists", "grid", "grids", "game board", "2d map"),
+        "definition": "A grid is a list of rows, each row a list; grid[row][column] reaches one cell.",
+        "examples": ("grid = [['.'] * 7 for _ in range(6)]\ngrid[5][3] = 'X'",),
+        "when_to_use": "Use a grid for anything laid out in rows and columns: boards, maps, mazes and tables.",
+        "question_types": ("code_checkpoint", "prediction", "bug_diagnosis"),
+        "common_mistakes": ("Building rows with [[0] * 7] * 6, so every row is the same list.", "Swapping row and column, or walking off the edge."),
+        "mistake_examples": ("grid = [[0] * 3] * 2\ngrid[0][0] = 9  # changes both rows", "print(grid[row][-1])  # -1 wraps to the last column"),
+        "check_prompt": "Which row and which column does each index pick?",
+    },
+    {
+        "id": "sorting",
+        "title": "Sorting & ranking",
+        "aliases": ("sorting", "sorted", "ranking", "league table", "best first"),
+        "definition": "Sorting puts values in order; a key function decides what to compare, and a tuple key breaks ties.",
+        "examples": ("table.sort(key=lambda club: (club['points'], club['gd']), reverse=True)",),
+        "when_to_use": "Use sorted() or .sort() with a key whenever results must be ranked: tables, leaderboards, best moves.",
+        "question_types": ("prediction", "code_checkpoint", "bug_diagnosis"),
+        "common_mistakes": ("Storing the result of .sort(), which is None.", "Sorting by one key when ties need a second."),
+        "mistake_examples": ("ranked = scores.sort()\nprint(ranked)  # None", "clubs.sort(key=lambda c: c['points'])  # ties left to chance"),
+        "check_prompt": "What is compared, in which direction, and who wins a tie?",
+    },
+    {
+        "id": "references",
+        "title": "References & copies",
+        "aliases": ("references", "copies", "aliasing", "copy of the board", "shallow copy"),
+        "definition": "Assigning a list or dictionary to a new name does not copy it; both names point at the same object until you make a copy.",
+        "examples": ("start = {'hp': 30}\nfighter = dict(start)  # a real copy",),
+        "when_to_use": "Make a copy whenever you want to change something without touching the original: templates, trial moves, fresh rounds.",
+        "question_types": ("bug_diagnosis", "prediction", "explanation"),
+        "common_mistakes": ("Changing a 'copy' that is really the original.", "Copying the outer list while the inner lists are still shared."),
+        "mistake_examples": ("enemy = TEMPLATE\nenemy['hp'] -= 5  # every future enemy is hurt", "trial = board.copy()\ntrial[0][0] = 'X'  # rows are still shared"),
+        "check_prompt": "How many objects exist here, and how many names point at each?",
+    },
+    {
+        "id": "classes",
+        "title": "Classes & objects",
+        "aliases": ("classes", "class", "objects", "methods"),
+        "definition": "A class bundles data with the functions that act on it; each object made from it keeps its own data in self.",
+        "examples": ("class Creature:\n    def __init__(self, name, hp):\n        self.name = name\n        self.hp = hp\n\n    def take_damage(self, amount):\n        self.hp = max(0, self.hp - amount)",),
+        "when_to_use": "Use a class when the same kind of thing appears many times and its data and behaviour belong together.",
+        "question_types": ("code_checkpoint", "explanation", "prediction"),
+        "common_mistakes": ("Forgetting self, so a value is lost when the method ends.", "Putting a list at class level, so every object shares it."),
+        "mistake_examples": ("def heal(self):\n    hp = self.max_hp  # sets a local, not self.hp", "class Team:\n    members = []  # shared by every Team"),
+        "check_prompt": "Which object owns each value, and which method changes it?",
+    },
+    {
+        "id": "testing",
+        "title": "Testing & checks",
+        "aliases": ("testing", "tests", "asserts", "assert checks", "evaluation"),
+        "definition": "A test runs your code on a known case and checks the result, so a broken change is caught at once.",
+        "examples": ("assert score_hand([11, 11, 9]) == 21\nassert score_hand([10, 7]) == 17",),
+        "when_to_use": "Write a test for every rule you just made work, and for every bug you just fixed, so it can never come back unnoticed.",
+        "question_types": ("code_checkpoint", "bug_diagnosis", "explanation"),
+        "common_mistakes": ("Testing only the easy case.", "Tests that depend on randomness without fixing the seed."),
+        "mistake_examples": ("def double(n):\n    return n + 2\nassert double(2) == 4  # passes by luck", "assert roll() == 4  # random, so it fails sometimes"),
+        "check_prompt": "Which case would catch this bug, and does a test cover it?",
+    },
+    {
+        "id": "callbacks",
+        "title": "Functions as values",
+        "aliases": ("callbacks", "functions as players", "strategy function", "function interface", "brain socket"),
+        "definition": "A function is a value: you can store it, pass it to another function and call it later, so behaviour can be swapped like data.",
+        "examples": ("def play(agent, board):\n    return agent(board)\n\nplay(random_agent, board)",),
+        "when_to_use": "Pass a function in when the same loop should work with different behaviours: humans and bots, brains, sort keys.",
+        "question_types": ("code_checkpoint", "explanation", "prediction"),
+        "common_mistakes": ("Passing agent() instead of agent, which calls it too early.", "Giving swappable functions different inputs, so they cannot be swapped."),
+        "mistake_examples": ("play_game(random_agent(), greedy_agent)  # passes a column, not a player", "def human(board): ...\ndef bot(board, piece): ...  # different shapes"),
+        "check_prompt": "Is the function being passed, or called and its result passed?",
+    },
+    {
+        "id": "agents",
+        "title": "Agents & tools",
+        "aliases": ("agents", "agent", "tools", "act-observe", "tool registry"),
+        "definition": "An agent is a loop: a brain decides to answer or to use a tool, the program runs the tool, and the result goes back to the brain.",
+        "examples": ("while steps < 5:\n    decision = brain(history)\n    if 'reply' in decision:\n        break\n    result = run_tool(decision['tool'], decision['args'])\n    history.append({'role': 'tool', 'content': result})\n    steps += 1",),
+        "when_to_use": "Use an agent loop when a program must take several actions to reach a goal and decide each next step from what happened.",
+        "question_types": ("code_checkpoint", "explanation", "bug_diagnosis"),
+        "common_mistakes": ("A loop with no step limit, so a confused brain runs forever.", "Letting dangerous tools run without asking first."),
+        "mistake_examples": ("while True:\n    act(brain(history))  # nothing stops it", "run_tool('delete_note', args)  # no confirmation"),
+        "check_prompt": "What does the brain see, what can it do, and what stops it?",
+    },
+    {
+        "id": "recursion",
+        "title": "Recursion",
+        "aliases": ("recursion", "recursive", "minimax", "base case"),
+        "definition": "A recursive function solves a problem by calling itself on a smaller version of it, until a base case answers directly.",
+        "examples": ("def total(n):\n    if n == 0:\n        return 0\n    return n + total(n - 1)",),
+        "when_to_use": "Use recursion when a problem contains smaller copies of itself: game trees, nested data, mazes.",
+        "question_types": ("prediction", "code_checkpoint", "bug_diagnosis"),
+        "common_mistakes": ("No base case, or one that is never reached.", "Forgetting to return the recursive result."),
+        "mistake_examples": ("def count(n):\n    return count(n - 1)  # never stops", "def total(n):\n    if n == 0:\n        return 0\n    n + total(n - 1)  # result thrown away"),
+        "check_prompt": "What is the base case, and does every call move towards it?",
+    },
+    {
+        "id": "search",
+        "title": "Search & pathfinding",
+        "aliases": ("search", "pathfinding", "breadth-first", "game tree", "alpha-beta"),
+        "definition": "Search explores possibilities in an order: breadth-first finds the shortest path, and game-tree search looks ahead at moves and replies.",
+        "examples": ("queue = [start]\nseen = {start}\nwhile queue:\n    node = queue.pop(0)\n    for nxt in neighbours(node):\n        if nxt not in seen:\n            seen.add(nxt)\n            queue.append(nxt)",),
+        "when_to_use": "Use search when the answer is somewhere among many possibilities: a path through a maze, the best move, the right suspect.",
+        "question_types": ("code_checkpoint", "prediction", "explanation"),
+        "common_mistakes": ("Forgetting a seen set, so the search loops forever.", "Marking a node seen only when it is popped, so it is queued twice."),
+        "mistake_examples": ("while queue:\n    node = queue.pop(0)\n    queue.extend(neighbours(node))  # revisits forever", "if node not in seen:\n    seen.add(node)  # too late, already queued twice"),
+        "check_prompt": "In what order are possibilities explored, and what stops repeats?",
+    },
+    {
+        "id": "simulation",
+        "title": "Simulation & statistics",
+        "aliases": ("simulation", "simulate", "statistics", "expected value", "monte carlo"),
+        "definition": "A simulation runs a random process many times and counts what happens, turning chance into measurable rates.",
+        "examples": ("wins = sum(1 for _ in range(10_000) if play_round() == 'win')\nprint(wins / 10_000)",),
+        "when_to_use": "Simulate when the maths is hard or you want to check it: house edges, win rates, balance between classes.",
+        "question_types": ("code_checkpoint", "explanation", "prediction"),
+        "common_mistakes": ("Judging from a handful of runs.", "Leaving printing on inside a ten-thousand-run loop."),
+        "mistake_examples": ("rate = sum(play() for _ in range(10)) / 10  # far too few", "for _ in range(10_000):\n    play_round(verbose=True)  # floods the screen"),
+        "check_prompt": "How many runs, what is counted, and how much would a second run differ?",
+    },
 )
 
 SYNC_PLAYER_FIELDS = frozenset(
@@ -802,6 +970,20 @@ HUNTER_SIGN_KEYWORDS: dict[str, tuple[str, ...]] = {
     "loops": ("loop", "loops", "iteration", "iterate", "for", "while", "totals"),
     "functions": ("function", "functions", "return", "def", "parameter", "parameters"),
     "control-flow": ("control flow", "control", "reset", "break", "continue"),
+    "strings": ("string", "strings", "text", "strip", "split", "parse", "parsing", "formatting"),
+    "exceptions": ("exception", "exceptions", "error handling", "try", "except", "traceback"),
+    "files-json": ("file", "files", "json", "save", "saving", "load", "loading"),
+    "sets": ("sets", "unique", "duplicate", "duplicates", "membership"),
+    "grids": ("grid", "grids", "board", "nested list", "nested lists", "maze", "matrix"),
+    "sorting": ("sort", "sorting", "sorted", "ranking", "ranked"),
+    "references": ("reference", "references", "copy", "copies", "alias", "aliasing", "mutable"),
+    "classes": ("class", "classes", "object", "objects", "method", "methods", "self"),
+    "testing": ("test", "tests", "testing", "assert", "asserts", "mock"),
+    "callbacks": ("callback", "callbacks", "higher-order", "lambda", "first-class", "interface"),
+    "agents": ("agent", "agents", "tool", "tools", "act-observe", "assistant"),
+    "recursion": ("recursion", "recursive", "base case", "minimax"),
+    "search": ("search", "searching", "bfs", "breadth-first", "pathfinding", "alpha-beta", "game tree"),
+    "simulation": ("simulation", "simulate", "simulations", "statistics", "monte carlo", "expected value"),
 }
 HUNTER_SIGN_XP = {"clean": 3, "recovered": 1, "campaign_use": 5, "teachback": 2}
 # Total sign XP needed to reach levels 1..10.
@@ -862,6 +1044,20 @@ HUNTER_SIGN_CONCEPTS = {
     "loops": "loops",
     "functions": "functions",
     "control-flow": "control flow",
+    "strings": "strings",
+    "exceptions": "exceptions",
+    "files-json": "files and json",
+    "sets": "sets",
+    "grids": "grids",
+    "sorting": "sorting",
+    "references": "references and copies",
+    "classes": "classes",
+    "testing": "testing",
+    "callbacks": "callbacks",
+    "agents": "agents",
+    "recursion": "recursion",
+    "search": "search",
+    "simulation": "simulation",
 }
 HUNTER_BEASTS = {
     "variables": {"beast": "The Nameless Wraith", "part": "wraith-ash", "part_name": "Wraith Ash"},
@@ -873,11 +1069,30 @@ HUNTER_BEASTS = {
     "loops": {"beast": "The Off-by-One Wraith", "part": "ouroboros-scale", "part_name": "Ouroboros Scale"},
     "functions": {"beast": "The Hollow Return", "part": "hollow-shard", "part_name": "Hollow Shard"},
     "control-flow": {"beast": "The Endless Leshen", "part": "leshen-root", "part_name": "Leshen Root"},
+    "strings": {"beast": "The Whitespace Wisp", "part": "wisp-thread", "part_name": "Wisp Thread"},
+    "exceptions": {"beast": "The Traceback Banshee", "part": "banshee-veil", "part_name": "Banshee Veil"},
+    "files-json": {"beast": "The Lost Scroll", "part": "scroll-ash", "part_name": "Scroll Ash"},
+    "sets": {"beast": "The Twin Doppel", "part": "doppel-scale", "part_name": "Doppel Scale"},
+    "grids": {"beast": "The Row Mimic", "part": "lattice-shard", "part_name": "Lattice Shard"},
+    "sorting": {"beast": "The Shuffled Herald", "part": "herald-pennant", "part_name": "Herald Pennant"},
+    "references": {"beast": "The Alias Shade", "part": "shade-glass", "part_name": "Shade Glass"},
+    "classes": {"beast": "The Selfless Golem", "part": "golem-clay", "part_name": "Golem Clay"},
+    "testing": {"beast": "The Silent Saboteur", "part": "saboteur-pin", "part_name": "Saboteur Pin"},
+    "callbacks": {"beast": "The Hasty Caller", "part": "caller-bell", "part_name": "Caller Bell"},
+    "agents": {"beast": "The Unbound Servant", "part": "servant-collar", "part_name": "Servant Collar"},
+    "recursion": {"beast": "The Bottomless Well", "part": "well-stone", "part_name": "Well Stone"},
+    "search": {"beast": "The Wandering Lantern", "part": "lantern-wick", "part_name": "Lantern Wick"},
+    "simulation": {"beast": "The Lucky Liar", "part": "liars-coin", "part_name": "Liar's Coin"},
 }
 DUNGEON_REGIONS = {
     "basics": {"id": "basics", "label": "Basics Village", "danger": 1, "signs": ("variables", "input-output", "conditionals"), "boss": "The Mimic Matriarch", "essence": "village-essence", "essence_name": "Village Essence"},
     "collections": {"id": "collections", "label": "Collection Caves", "danger": 2, "signs": ("lists", "dictionaries", "random-selection"), "boss": "The Drowned Hoard", "essence": "cave-essence", "essence_name": "Cave Essence"},
     "flow": {"id": "flow", "label": "Flow Keep", "danger": 3, "signs": ("loops", "functions", "control-flow"), "boss": "The Endless Warden", "essence": "keep-essence", "essence_name": "Keep Essence"},
+    "archive": {"id": "archive", "label": "Sunken Archive", "danger": 2, "signs": ("strings", "exceptions", "files-json"), "boss": "The Archivist Lich", "essence": "archive-essence", "essence_name": "Archive Essence"},
+    "labyrinth": {"id": "labyrinth", "label": "The Labyrinth", "danger": 3, "signs": ("grids", "sets", "sorting"), "boss": "The Minotaur of Rows", "essence": "labyrinth-essence", "essence_name": "Labyrinth Essence"},
+    "workshop": {"id": "workshop", "label": "Clockwork Workshop", "danger": 3, "signs": ("classes", "references"), "boss": "The Brass Automaton", "essence": "workshop-essence", "essence_name": "Workshop Essence"},
+    "spire": {"id": "spire", "label": "Seer's Spire", "danger": 4, "signs": ("recursion", "search", "simulation"), "boss": "The Recursive Oracle", "essence": "spire-essence", "essence_name": "Spire Essence"},
+    "hollow": {"id": "hollow", "label": "Familiar's Hollow", "danger": 4, "signs": ("callbacks", "agents", "testing"), "boss": "The Hollow King", "essence": "hollow-essence", "essence_name": "Hollow Essence"},
 }
 DUNGEON_MATERIAL_NAMES = {
     **{beast["part"]: beast["part_name"] for beast in HUNTER_BEASTS.values()},
@@ -1005,6 +1220,167 @@ def _identify_snippet(sign_id: str, seed: str) -> dict[str, Any]:
         question = "Which values can this print?"
         why = "randint includes both ends." if use_randint else "randrange stops before the end, like range."
         return _identify_pack(rng, code, answer, wrong, why, question)
+    elif sign_id == "strings":
+        if rng.random() < 0.5:
+            raw = rng.choice(["  Ada ", " Brook  ", "Cyr   ", "  Dax"])
+            code = f"name = {raw!r}\nprint(len(name.strip()))"
+            answer = str(len(raw.strip()))
+            wrong = [str(len(raw)), str(len(raw.strip()) + 1), str(len(raw.lstrip()))]
+            why = "strip() removes the spaces at both ends before len counts the letters."
+        else:
+            text = rng.choice(["a,b,,c", "red,,blue", "x,y,z,", ",one,two"])
+            code = f"parts = {text!r}.split(',')\nprint(len(parts))"
+            answer = str(len(text.split(",")))
+            wrong = [str(len([part for part in text.split(",") if part])), str(len(text.split(",")) + 1), str(text.count(","))]
+            why = "split(',') keeps an empty piece between two commas or at an end, so empty pieces still count."
+    elif sign_id == "exceptions":
+        text = rng.choice(["12", "1.5", "abc", "7", " 9 ", "4o"])
+        code = f"try:\n    value = int({text!r})\n    print('number', value)\nexcept ValueError:\n    print('not a number')"
+        try:
+            answer = f"number {int(text)}"
+        except ValueError:
+            answer = "not a number"
+        wrong = ["not a number", f"number {text.strip()}", "ValueError", "number 1"]
+        why = "int() accepts whole-number text (spaces at the ends are fine) and raises ValueError for anything else, which except catches."
+    elif sign_id == "files-json":
+        name = rng.choice(["Ada", "Brook", "Cyr"])
+        alive = rng.random() < 0.5
+        hp = rng.randint(1, 9)
+        record = {"name": name, "alive": alive, "hp": hp}
+        code = f"import json\nprint(json.dumps({{'name': {name!r}, 'alive': {alive}, 'hp': {hp}}}))"
+        answer = json.dumps(record)
+        wrong = [str(record), answer.replace("true", "True").replace("false", "False"), "TypeError"]
+        why = "json.dumps writes JSON text: double quotes around strings and lowercase true and false."
+    elif sign_id == "sets":
+        kinds = rng.sample(["ore", "gem", "bone", "salt", "ash"], 3)
+        loot = kinds + rng.sample(kinds, 2)
+        rng.shuffle(loot)
+        code = f"loot = {loot!r}\nunique = set(loot)\nprint(len(unique))"
+        answer = str(len(set(loot)))
+        wrong = [str(len(loot)), str(len(loot) - 1), "0"]
+        why = "A set keeps one copy of each value, so the duplicates disappear."
+    elif sign_id == "grids":
+        shared = rng.random() < 0.5
+        rows, cols = rng.randint(2, 3), rng.randint(3, 4)
+        row, col = rng.randint(1, rows - 1), rng.randint(0, cols - 1)
+        build = f"[[0] * {cols}] * {rows}" if shared else f"[[0] * {cols} for _ in range({rows})]"
+        code = f"grid = {build}\ngrid[0][{col}] = 5\nprint(grid[{row}][{col}])"
+        answer = "5" if shared else "0"
+        wrong = ["0" if shared else "5", "IndexError", "None"]
+        why = "Multiplying a list of rows repeats the same row, so every row changes together." if shared else "The comprehension builds a separate row each time, so only row 0 changes."
+    elif sign_id == "sorting":
+        names = rng.sample(["ogre", "imp", "wyvern", "troll", "basilisk", "elf"], 4)
+        if rng.random() < 0.5:
+            code = f"names = {names!r}\nresult = names.sort()\nprint(result)"
+            answer = "None"
+            wrong = [str(sorted(names)), str(names), "[]"]
+            why = "list.sort() sorts in place and returns None; sorted() is the one that returns a new list."
+        else:
+            code = f"names = {names!r}\nprint(sorted(names, key=len)[0])"
+            answer = sorted(names, key=len)[0]
+            wrong = [sorted(names)[0], names[0], max(names, key=len)]
+            why = "key=len compares lengths; ties keep their original order, so the first shortest name wins."
+    elif sign_id == "references":
+        items = rng.sample(["torch", "rope", "map", "key"], 2)
+        copied = rng.random() < 0.5
+        code = f"a = {items!r}\nb = {'a.copy()' if copied else 'a'}\nb.append('lamp')\nprint(len(a))"
+        answer = "2" if copied else "3"
+        wrong = ["3" if copied else "2", "1", "4"]
+        why = "a.copy() makes a new list, so a keeps its two items." if copied else "b = a gives the same list a second name, so appending through b changes a too."
+    elif sign_id == "classes":
+        start, step = rng.randint(0, 5), rng.randint(2, 4)
+        code = (
+            f"class Counter:\n    def __init__(self):\n        self.count = {start}\n\n    def add(self):\n        self.count += {step}\n\n\n"
+            "c = Counter()\nc.add()\nc.add()\nprint(c.count)"
+        )
+        answer = str(start + 2 * step)
+        wrong = [str(start + step), str(start), str(2 * step)]
+        why = f"__init__ sets count to {start} once; each add() adds {step} to that object's own count."
+    elif sign_id == "testing":
+        k = rng.choice([2, 3, 4])
+        code = f"def double(n):\n    return n + 2\n\nprint(double({k}) == {2 * k})"
+        answer = str(k + 2 == 2 * k)
+        wrong = ["False" if answer == "True" else "True", "AssertionError", str(k + 2)]
+        why = "n + 2 equals n * 2 only when n is 2, so a test that only checks 2 passes on a broken function."
+    elif sign_id == "callbacks":
+        if rng.random() < 0.5:
+            word = rng.choice(["hi", "run", "ok"])
+            code = f"def shout(text):\n    return text.upper() + '!'\n\ndef apply(action, value):\n    return action(value)\n\nprint(apply(shout, {word!r}))"
+            answer = word.upper() + "!"
+            wrong = [word + "!", word.upper(), "TypeError"]
+            why = "shout is passed without brackets, so apply receives the function itself and calls it."
+        else:
+            k = rng.randint(2, 6)
+            name = rng.choice(["double", "square"])
+            code = f"actions = {{'double': lambda n: n * 2, 'square': lambda n: n * n}}\nprint(actions[{name!r}]({k}))"
+            answer = str(k * 2 if name == "double" else k * k)
+            wrong = [str(k * k if name == "double" else k * 2), str(k), "KeyError"]
+            why = "The dictionary stores functions as values; looking one up and adding brackets calls it."
+    elif sign_id == "agents":
+        x, y = rng.randint(2, 9), rng.randint(2, 9)
+        tool = rng.choice(["add", "mul"])
+        code = (
+            "tools = {'add': lambda a, b: a + b, 'mul': lambda a, b: a * b}\n"
+            f"action = {{'tool': {tool!r}, 'args': [{x}, {y}]}}\n"
+            "result = tools[action['tool']](*action['args'])\nprint(result)"
+        )
+        answer = str(x + y if tool == "add" else x * y)
+        wrong = [str(x * y if tool == "add" else x + y), f"{x}{y}", "KeyError"]
+        why = "The agent looks the tool up by name in its registry and calls it with the arguments the brain chose."
+    elif sign_id == "recursion":
+        k = rng.randint(3, 6)
+        if rng.random() < 0.5:
+            code = f"def total(n):\n    if n == 0:\n        return 0\n    return n + total(n - 1)\n\nprint(total({k}))"
+            answer = str(k * (k + 1) // 2)
+            wrong = [str(k), str(k * (k - 1) // 2), "RecursionError"]
+            why = "Each call adds n and asks for total(n - 1) until the base case returns 0."
+        else:
+            code = f"def depth(items):\n    if not items:\n        return 0\n    return 1 + depth(items[1:])\n\nprint(depth({list(range(k))!r}))"
+            answer = str(k)
+            wrong = [str(k - 1), str(k + 1), "RecursionError"]
+            why = "Each call drops one item and adds 1, and the empty list is the base case."
+    elif sign_id == "search":
+        nodes = ["A", "B", "C", "D", "E"]
+        graph: dict[str, list[str]] = {node: [] for node in nodes}
+        for index, node in enumerate(nodes[1:], start=1):
+            graph[nodes[rng.randint(0, index - 1)]].append(node)
+        first, second = rng.sample(nodes[1:], 2)
+        if second not in graph[first]:
+            graph[first].append(second)
+
+        def breadth_first() -> str:
+            order, queue, seen = [], ["A"], {"A"}
+            while queue:
+                node = queue.pop(0)
+                order.append(node)
+                for nxt in graph[node]:
+                    if nxt not in seen:
+                        seen.add(nxt)
+                        queue.append(nxt)
+            return "".join(order)
+
+        def depth_first(node: str, seen: list[str]) -> list[str]:
+            seen.append(node)
+            for nxt in graph[node]:
+                if nxt not in seen:
+                    depth_first(nxt, seen)
+            return seen
+
+        code = (
+            f"graph = {graph!r}\norder = []\nqueue = ['A']\nseen = {{'A'}}\nwhile queue:\n    node = queue.pop(0)\n    order.append(node)\n"
+            "    for nxt in graph[node]:\n        if nxt not in seen:\n            seen.add(nxt)\n            queue.append(nxt)\nprint(''.join(order))"
+        )
+        answer = breadth_first()
+        wrong = ["".join(depth_first("A", [])), "".join(sorted(answer, reverse=True)), "ABCDE"]
+        why = "Breadth-first search visits nodes in the order they were queued: A's neighbours first, then theirs."
+    elif sign_id == "simulation":
+        rolls = [rng.randint(1, 6) for _ in range(rng.choice([4, 5, 8, 10]))]
+        target = rng.randint(4, 5)
+        wins = sum(1 for roll in rolls if roll >= target)
+        code = f"rolls = {rolls!r}\nwins = 0\nfor roll in rolls:\n    if roll >= {target}:\n        wins += 1\nprint(wins / len(rolls))"
+        answer = str(wins / len(rolls))
+        wrong = [str(wins), str((wins + 1) / len(rolls)), str(sum(1 for roll in rolls if roll > target) / len(rolls))]
+        why = f"The loop counts rolls of {target} or more, then divides by the number of rolls to get a rate."
     else:  # control-flow
         k = rng.randint(5, 12)
         step = rng.randint(2, 4)
@@ -1037,7 +1413,7 @@ def hunter_signs_for(concept: object) -> list[str]:
     text = re.sub(r"[-_/]", " ", str(concept or "").lower())
     found = []
     for sign_id, words in HUNTER_SIGN_KEYWORDS.items():
-        if sign_id.replace("-", " ") in text or any(re.search(rf"\b{re.escape(word)}\b", text) for word in words):
+        if re.search(rf"\b{re.escape(sign_id.replace('-', ' '))}\b", text) or any(re.search(rf"\b{re.escape(word)}\b", text) for word in words):
             found.append(sign_id)
     return found
 

@@ -167,6 +167,13 @@ Updated: 2026-10-22 · branch `feature/tauri-arcade` (fast-forwarded into
   optional LLM brain uses the learner's own key from their environment, the
   game never asks for or stores one). Advanced concepts map to the closest of
   the nine signs; new Codex pages are a follow-up.
+- **23 signs:** `CODEX_CONCEPT_PAGES`, `HUNTER_SIGN_KEYWORDS`,
+  `HUNTER_SIGN_CONCEPTS`, `HUNTER_BEASTS` and `DUNGEON_REGIONS` cover 14 new
+  concepts in five new regions (archive, labyrinth, workshop, spire, hollow,
+  danger up to 4); `_identify_snippet` has a reading per sign; sign ids match
+  on word boundaries. Contracts link to the fitting sign. The frontend mirrors
+  them in HUNT_BEASTS / HUNT_SIGILS / HUNT_REGIONS / DELVE_BOSSES / HUNT_RITUALS;
+  test_codex_bestiary.py fails if the two sides drift.
 - **Submit race fix:** `submitDungeon` waits for any in-flight editor
   checkpoint and saves unsaved edits before capturing PYR context (an autosave
   in between changed the revision and the answer was rejected as stale).

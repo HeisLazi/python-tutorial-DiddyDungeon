@@ -24,7 +24,7 @@
       "name": "The Empty Grid",
       "concept": "Nested lists as a game board",
       "encounter": "Build a 6 by 7 board and draw it in the terminal.",
-      "act": 1, "sign": "lists",
+      "act": 1, "sign": "grids",
       "contract": "The arena floor is bare: six rows, seven columns, nothing in them. Lay out the grid and make it visible.",
       "objectives": [
         {"id": "make_board", "label": "Build the board", "question_type": "code_checkpoint", "impact": 3, "brief": "Write a function in connect_four.py that returns a new 6 by 7 board as a list of lists, every cell empty."},
@@ -48,7 +48,7 @@
       "name": "The Four Seers",
       "concept": "Scanning a grid in four directions",
       "encounter": "Find four in a row across, down and on both diagonals.",
-      "act": 1, "sign": "loops",
+      "act": 1, "sign": "grids",
       "contract": "Four seers watch the board, one for each direction a line can run. Until all four are watching, a winner can walk away unnoticed.",
       "objectives": [
         {"id": "check_straight", "label": "Check across and down", "question_type": "code_checkpoint", "impact": 4, "brief": "Write a winner check that finds four of the same piece in a row horizontally and vertically."},
@@ -72,7 +72,7 @@
       "name": "The Mask Maker",
       "concept": "One interface for every kind of player",
       "encounter": "Make every player a function that is given the board and returns a column.",
-      "act": 2, "sign": "functions",
+      "act": 2, "sign": "callbacks",
       "contract": "Behind every mask in the arena is the same face: a function that sees the board and names a column. Carve the mask, and humans and engines can take the same seat.",
       "objectives": [
         {"id": "agent_interface", "label": "Define the agent shape", "question_type": "code_checkpoint", "impact": 4, "brief": "Turn players into agents: functions agent(board, piece) that return a column. Wrap the human's input() in one."},
@@ -84,7 +84,7 @@
       "name": "The Drunken Automaton",
       "concept": "Random agents and many games",
       "encounter": "Build a random engine and play a thousand games.",
-      "act": 2, "sign": "random-selection",
+      "act": 2, "sign": "simulation",
       "contract": "The oldest engine in the arena staggers between columns at random. It is useless as a player and priceless as a baseline.",
       "objectives": [
         {"id": "random_agent", "label": "Build the random engine", "question_type": "code_checkpoint", "impact": 3, "brief": "Write random_agent, which picks one of the legal moves at random."},
@@ -96,7 +96,7 @@
       "name": "The Watchful Guard",
       "concept": "Looking one move ahead on a copy",
       "encounter": "Build an engine that wins when it can and blocks when it must.",
-      "act": 2, "sign": "conditionals",
+      "act": 2, "sign": "references",
       "contract": "The Guard is no genius. It just never misses a win in one and never lets you have one. Most players lose to that alone.",
       "objectives": [
         {"id": "try_on_copy", "label": "Test moves on a copy", "question_type": "code_checkpoint", "impact": 3, "brief": "Write a helper that tries a move on a copy of the board and reports whether it wins, leaving the real board untouched."},
@@ -109,7 +109,7 @@
       "name": "The Replay Scribe",
       "concept": "Recording games as data",
       "encounter": "Save every game as a list of moves and replay it later.",
-      "act": 2, "sign": "dictionaries",
+      "act": 2, "sign": "files-json",
       "contract": "Tobin keeps a scribe who writes down every move ever played in the arena. Lose a game and the scribe can show you exactly where.",
       "objectives": [
         {"id": "record_moves", "label": "Record the moves", "question_type": "code_checkpoint", "impact": 3, "brief": "Make play_game also return the list of columns played, in order, with which agents played."},
@@ -121,7 +121,7 @@
       "name": "The Branching Oracle",
       "concept": "Recursion: minimax search",
       "encounter": "Search the game tree a few moves deep and pick the best move.",
-      "act": 3, "sign": "functions",
+      "act": 3, "sign": "recursion",
       "contract": "The Oracle sees every future branch a few moves deep: every move you could make, every reply. It picks the branch where its worst case is best.",
       "objectives": [
         {"id": "minimax", "label": "Write minimax", "question_type": "code_checkpoint", "impact": 5, "brief": "Write a recursive minimax(board, depth, maximizing) that returns a score, with wins, losses and draws as terminal scores."},
@@ -145,7 +145,7 @@
       "name": "The Pruner",
       "concept": "Alpha-beta pruning",
       "encounter": "Make the search skip branches that cannot matter.",
-      "act": 3, "sign": "conditionals",
+      "act": 3, "sign": "search",
       "contract": "Half the Oracle's visions are branches no sane player would take. The Pruner cuts them off before they are explored.",
       "objectives": [
         {"id": "alpha_beta", "label": "Add alpha-beta", "question_type": "code_checkpoint", "impact": 5, "brief": "Add alpha and beta bounds to your search and stop exploring a branch as soon as it cannot change the result."},
@@ -157,7 +157,7 @@
       "name": "The Hourglass",
       "concept": "Iterative deepening and a time budget",
       "encounter": "Search as deep as time allows, then move.",
-      "act": 3, "sign": "control-flow",
+      "act": 3, "sign": "search",
       "contract": "In the arena every engine gets one turn of the hourglass. Think too long and you forfeit. Think in rings, deeper each time, and keep your best answer ready.",
       "objectives": [
         {"id": "move_ordering", "label": "Order the moves", "question_type": "code_checkpoint", "impact": 3, "brief": "Search centre columns first and show it lets pruning cut more branches."},
@@ -169,7 +169,7 @@
       "name": "The Arena Clerk",
       "concept": "Round-robin tournaments",
       "encounter": "Make every engine play every other, both colours.",
-      "act": 4, "sign": "loops",
+      "act": 4, "sign": "sorting",
       "contract": "The Clerk books every match: each engine against each other, white and black, many times over. No engine ducks a rival.",
       "objectives": [
         {"id": "round_robin", "label": "Book every match", "question_type": "code_checkpoint", "impact": 4, "brief": "Run a round-robin where every engine plays every other engine several times as each colour."},
@@ -193,7 +193,7 @@
       "name": "The Mirror Match",
       "concept": "Tuning an engine by self-play",
       "encounter": "Improve your evaluation weights by playing your engine against itself.",
-      "act": 4, "sign": "random-selection",
+      "act": 4, "sign": "simulation",
       "contract": "The only opponent who knows your engine's flaws is your engine. Set it against slightly changed copies of itself and keep whichever wins.",
       "objectives": [
         {"id": "weight_variants", "label": "Make variants", "question_type": "code_checkpoint", "impact": 4, "brief": "Make engines that share your search but use slightly changed evaluation weights."},

@@ -109,7 +109,7 @@
     {
       "name": "The Forger", "concept": "Generating unique data at random",
       "encounter": "Generate a new lineup for every case from pools of traits.",
-      "act": 3, "sign": "random-selection",
+      "act": 3, "sign": "sets",
       "contract": "Halloran is tired of the same eight faces. The Forger can make new ones by the dozen, but every one must still be unique.",
       "objectives": [
         {"id": "trait_pools", "label": "Build trait pools", "question_type": "code_checkpoint", "impact": 3, "brief": "Keep a dictionary of trait names to the values each can take, and a pool of names."},
@@ -120,7 +120,7 @@
     {
       "name": "The Clue Weaver", "concept": "Loading cases from JSON files",
       "encounter": "Store hand-written cases in a file and load them.",
-      "act": 3, "sign": "input-output",
+      "act": 3, "sign": "files-json",
       "contract": "The watch keeps its best cases in a ledger. Read cases from a file, so new ones can be written without touching the code.",
       "objectives": [
         {"id": "case_file", "label": "Write a case file", "question_type": "code_checkpoint", "impact": 3, "brief": "Save a case (its suspects, questions and culprit) to a JSON file."},
@@ -142,7 +142,7 @@
     {
       "name": "The Machine Detective", "concept": "An agent that plays the game itself",
       "encounter": "Let a bot solve cases on its own and measure how well it does.",
-      "act": 3, "sign": "functions",
+      "act": 3, "sign": "agents",
       "contract": "Halloran wants a detective that never sleeps. Your advisor already knows the best question; let it ask, listen and accuse on its own.",
       "objectives": [
         {"id": "auto_detective", "label": "Let the bot play", "question_type": "code_checkpoint", "impact": 4, "brief": "Write a function that plays a whole case with no input(): it asks the best question, filters, and accuses when one suspect remains."},
@@ -164,7 +164,7 @@
     {
       "name": "The Archive", "concept": "Session records and a front desk",
       "encounter": "Keep solved-case statistics and give the game a menu.",
-      "act": 3, "sign": "dictionaries",
+      "act": 3, "sign": "files-json",
       "contract": "Every solved case goes in the archive, with how many questions it took. Give Halloran a front desk to start any kind of case.",
       "objectives": [
         {"id": "case_stats", "label": "Archive the results", "question_type": "code_checkpoint", "impact": 3, "brief": "Save each finished case's result and question count to a JSON archive and show the player's record."},

@@ -88,7 +88,7 @@
     {
       "name": "The Match Engine", "concept": "Random simulation",
       "encounter": "Produce believable results from team strength plus randomness, where the stronger side usually but not always wins.",
-      "act": 2, "sign": "random-selection",
+      "act": 2, "sign": "simulation",
       "contract": "Odette's board wants results that feel real. The better side usually wins. Usually.",
       "objectives": [
         {"id": "simulate_match", "label": "Play a match", "question_type": "code_checkpoint", "impact": 4, "brief": "Simulate a match as goal chances over 90 minutes, where each side's chance to score depends on its strength."},
@@ -121,7 +121,7 @@
     {
       "name": "The League Table", "concept": "Sorting by several keys",
       "encounter": "Keep a league table with points and goal difference, sorted properly.",
-      "act": 3, "sign": "dictionaries",
+      "act": 3, "sign": "sorting",
       "contract": "Three points for a win, one for a draw, and when points tie, goal difference decides. The table is the truth of the season.",
       "objectives": [
         {"id": "table_rows", "label": "Keep the table", "question_type": "code_checkpoint", "impact": 3, "brief": "Keep each club's played, won, drawn, lost, goals for, goals against and points, updated after every match."},
@@ -154,7 +154,7 @@
     {
       "name": "The Assistant Manager", "concept": "Choosing the best combination",
       "encounter": "Let an assistant pick the strongest valid eleven for a formation.",
-      "act": 4, "sign": "functions",
+      "act": 4, "sign": "sorting",
       "contract": "Odette hires you an assistant. Give it a formation and a squad, and it names the strongest eleven the rules allow.",
       "objectives": [
         {"id": "best_eleven", "label": "Pick the best eleven", "question_type": "code_checkpoint", "impact": 4, "brief": "Write a function that fills each position in a formation with the best fit, fit and available player."},
@@ -176,7 +176,7 @@
     {
       "name": "The Season Archive", "concept": "Saving and continuing seasons",
       "encounter": "Save the whole club and league, and start the next season from it.",
-      "act": 4, "sign": "input-output",
+      "act": 4, "sign": "files-json",
       "contract": "A dynasty is built season on season. Archive everything at the final whistle and carry it into the next year.",
       "objectives": [
         {"id": "save_season", "label": "Archive the season", "question_type": "code_checkpoint", "impact": 3, "brief": "Save the clubs, squads, budget, table and results to a JSON file at the end of a season."},

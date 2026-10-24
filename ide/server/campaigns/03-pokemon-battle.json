@@ -99,7 +99,7 @@
     {
       "name": "The Battle Bard", "concept": "String formatting and fresh state per battle",
       "encounter": "Make battle text and remaining HP readable, then explain how a new battle starts at full HP instead of carrying old wounds.",
-      "act": 2, "sign": "variables",
+      "act": 2, "sign": "references",
       "contract": "The Bard sings of every battle, but nobody can follow the verses. Make the text clear and let each new battle start whole.",
       "objectives": [
         {"id": "battle_text", "label": "Write the battle text", "question_type": "code_checkpoint", "impact": 3, "brief": "Print each action clearly with damage, misses and an HP bar made of characters for both creatures."},
@@ -165,7 +165,7 @@
     {
       "name": "The Shapeshifter", "concept": "Refactoring dictionaries into a class",
       "encounter": "Turn creature dictionaries into a Creature class with methods.",
-      "act": 4, "sign": "functions",
+      "act": 4, "sign": "classes",
       "contract": "Your beasts have outgrown their dictionaries. The Shapeshifter teaches them a new form: a class that carries its own behaviour.",
       "objectives": [
         {"id": "creature_class", "label": "Write the class", "question_type": "code_checkpoint", "impact": 4, "brief": "Write a Creature class whose __init__ sets its stats and moves, with methods take_damage, is_fainted and heal."},
@@ -176,7 +176,7 @@
     {
       "name": "The League Clerk", "concept": "A gauntlet and saved teams",
       "encounter": "Face a series of trainers and keep your team between runs.",
-      "act": 4, "sign": "input-output",
+      "act": 4, "sign": "files-json",
       "contract": "The League is not one battle; it is a ladder of trainers, each harder than the last. The Clerk keeps your team on file between visits.",
       "objectives": [
         {"id": "gauntlet", "label": "Climb the ladder", "question_type": "code_checkpoint", "impact": 3, "brief": "Pit the player against a sequence of trainers with stronger teams, healing between battles."},

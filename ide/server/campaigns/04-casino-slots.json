@@ -54,7 +54,7 @@
     {
       "name": "The Debt Ghoul", "concept": "Input validation",
       "encounter": "Block bets that are negative, zero, not a number or bigger than the bankroll, and ask again instead of crashing.",
-      "act": 1, "sign": "input-output",
+      "act": 1, "sign": "exceptions",
       "contract": "The Ghoul feeds on bets you cannot cover. Refuse every bad bet and every fake number at the door.",
       "objectives": [
         {"id": "ask_bet", "label": "Ask for a bet", "question_type": "code_checkpoint", "impact": 3, "brief": "Let the player choose their bet each spin, converting the text to a number."},
@@ -65,7 +65,7 @@
     {
       "name": "The House Edge", "concept": "Probability thinking and balancing",
       "encounter": "Estimate how often each combination should appear and judge whether your payouts let a player win forever.",
-      "act": 2, "sign": "random-selection",
+      "act": 2, "sign": "simulation",
       "contract": "Pell's first lesson: every machine is a maths problem. Work out how often each line should appear and what the machine pays back on average.",
       "objectives": [
         {"id": "combo_odds", "label": "Work out the odds", "question_type": "code_checkpoint", "impact": 3, "brief": "Compute, in code, the probability of three of a kind for each symbol and of any pair."},
@@ -120,7 +120,7 @@
     {
       "name": "The Million Spins", "concept": "Simulation and measurement",
       "encounter": "Spin a million times and measure the real return to player.",
-      "act": 3, "sign": "loops",
+      "act": 3, "sign": "simulation",
       "contract": "Maths says one thing. The machine does another. Run it a million times and see who is right.",
       "objectives": [
         {"id": "simulate", "label": "Spin a million times", "question_type": "code_checkpoint", "impact": 4, "brief": "Simulate a million spins without printing and measure the return to player as a percentage."},
@@ -164,7 +164,7 @@
     {
       "name": "The Guardian of Limits", "concept": "Guardrails on a session",
       "encounter": "Add loss limits and a saved bankroll.",
-      "act": 3, "sign": "conditionals",
+      "act": 3, "sign": "files-json",
       "contract": "Pell's report needs one more page: a machine that protects the player from themselves. Set limits, and remember the purse between visits.",
       "objectives": [
         {"id": "loss_limit", "label": "Set a loss limit", "question_type": "code_checkpoint", "impact": 3, "brief": "Let the player set a loss limit at the start and end the session when it is reached."},
