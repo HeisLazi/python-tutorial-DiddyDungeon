@@ -429,7 +429,7 @@ function isGameTreeItem(item) {
   return true
 }
 
-export function ContextPanel({ activeView, campaign, files = [], activePath, compact = false, onToggleCompact, editorMode = 'file', openFile, openQuestDocument, newFile, setActiveView, submitBattle, submitBoss, busy }) {
+export function ContextPanel({ activeView, campaign, files = [], activePath, compact = false, onToggleCompact, editorMode = 'file', openFile, openQuestDocument, newFile, setActiveView, submitBattle, submitBoss, battleQuestions = {}, battleFeedback = null, onAskBattleQuestion, onAnswerBattleOption, busy }) {
   const progress = campaign?.progress || {}
   const player = progress.player || {}
   const activeProject = (progress.projects || []).find((project) => project.status === 'active')
@@ -593,14 +593,9 @@ export function ContextPanel({ activeView, campaign, files = [], activePath, com
             <div className="campaign-battle-sidebar">
             {encounter.mob_name ? <>
               <div className="panel-title"><span>ACTIVE BATTLE</span><b>{encounter.resolve ?? 0}/{encounter.max_resolve ?? 0}</b></div>
-              <div className="campaign-battle-resolve" data-testid="forge-encounter-resolve">
+              <BattleBrief encounter={encounter} board={campaign?.campaign_board} questions={battleQuestions} feedback={battleFeedback} onAsk={onAskBattleQuestion} onAnswer={onAnswerBattleOption} busy={busy} />
+              <div className="campaign-battle-resolve" data-testid="forge-encounter-resolve" hidden>
                 <ProgressBar value={encounter.resolve ?? 0} max={encounter.max_resolve ?? 1} label="Enemy Resolve" className="resolve" />
-              </div>
-              <div className="forge-contract" data-testid="forge-contract">
-                <strong>{encounter.mob_name}</strong>
-                {encounter.mob?.brief && <p>{encounter.mob.brief}</p>}
-                {(encounter.completed_objectives || []).length > 0 && <small>{encounter.completed_objectives.length} objective{encounter.completed_objectives.length === 1 ? '' : 's'} done</small>}
-                <ol>{(encounter.available_objectives || []).map((objective) => <li key={objective.id} title={objective.brief}><b className={`kind-${objective.question_type}`}>{OBJECTIVE_KIND[objective.question_type] || 'TASK'}</b><span>{objective.label}<small>{objective.brief}</small></span></li>)}</ol>
               </div>
               <PyrCompanion />
             </> : <>
@@ -3170,6 +3165,69 @@ function DungeonFightStrip({ fight }) {
           <small>{mechanic.text}</small>
         </div>
       )}
+    </div>
+  )
+}
+
+const BATTLE_CHOICE_KINDS = new Set(['prediction', 'explanation'])
+
+// The campaign battle sidebar, laid out like the Dungeon brief: the question
+// first, then what you are fighting, then every objective.
+function BattleBrief({ encounter, board, questions = {}, feedback, onAsk, onAnswer, busy }) {
+  const open = encounter.available_objectives || []
+  const current = open.find((item) => BATTLE_CHOICE_KINDS.has(item.question_type)) || open[0]
+  const choice = Boolean(current && BATTLE_CHOICE_KINDS.has(current.question_type))
+  const question = current ? questions[current.id] : null
+  const asked = useRef(new Set())
+  useEffect(() => {
+    if (!choice || question || !onAsk || busy) return
+    const key = `${encounter.mob_name}:${current.id}`
+    if (asked.current.has(key)) return
+    asked.current.add(key)
+    onAsk(current.id)
+  }, [choice, current?.id, Boolean(question), encounter.mob_name, busy])
+  const contract = (board?.contracts || []).find((item) => item.name === encounter.mob_name)
+  const done = new Set(encounter.completed_objectives || [])
+  const allObjectives = contract?.objectives?.length ? contract.objectives : [...(encounter.completed_objectives || []).map((id) => ({ id, label: id.replaceAll('_', ' ') })), ...open]
+  const entry = board?.entry_file || 'your project file'
+  const codeLeft = open.filter((item) => !BATTLE_CHOICE_KINDS.has(item.question_type))
+  return (
+    <div className="battle-brief" data-testid="forge-contract">
+      <section className="battle-brief-question">
+        <span className="battle-eyebrow">THE QUESTION{current ? ` · ${OBJECTIVE_KIND[current.question_type] || 'TASK'}` : ''}</span>
+        {!current ? <p>Every objective is done.</p> : choice ? (
+          question ? (
+            <>
+              <DungeonPromptText text={question.prompt} />
+              <ChoicePanel options={question.options || []} onChoose={(index) => onAnswer?.(current.id, index)} busy={busy} label="PICK ONE" />
+            </>
+          ) : <p className="battle-brief-wait">PYR is writing a question about {current.label.toLowerCase()}…{!busy && <button type="button" onClick={() => { asked.current.delete(`${encounter.mob_name}:${current.id}`); onAsk?.(current.id) }}>Ask again</button>}</p>
+        ) : (
+          <>
+            <strong>{current.label}</strong>
+            <p>{current.brief}</p>
+            <small>Build it in <code>{entry}</code>, then press <b>Submit run</b>.</small>
+          </>
+        )}
+        {feedback && <div className={`battle-feedback ${feedback.verdict}`} role="status">{feedback.verdict === 'correct' ? '✔ ' : '✘ '}{feedback.reason}</div>}
+        {choice && codeLeft.length > 0 && <small className="battle-brief-also">Also open: {codeLeft.map((item) => item.label).join(', ')} (Submit run).</small>}
+      </section>
+      <section className="battle-brief-enemy">
+        <span className="battle-eyebrow">WHAT YOU'RE FIGHTING</span>
+        <strong>{encounter.mob_name}</strong>
+        {contract?.sign && <small className="battle-brief-sign"><HuntSigil pageId={contract.sign} size={14} /> {contract.beast || 'Beast'} · Sign of the {HUNT_BEASTS[contract.sign]?.sign || contract.sign}</small>}
+        <ProgressBar value={encounter.resolve ?? 0} max={encounter.max_resolve ?? 1} label="Enemy Resolve" className="resolve" />
+        <small>{encounter.guards ? `${encounter.guards} free mistake${encounter.guards === 1 ? '' : 's'} banked · ` : ''}{done.size} of {allObjectives.length} objectives done</small>
+        {encounter.mob?.lore && <p className="battle-brief-lore">{encounter.mob.lore}</p>}
+      </section>
+      <ol className="battle-brief-objectives">
+        {allObjectives.map((objective) => (
+          <li key={objective.id} className={done.has(objective.id) ? 'done' : current?.id === objective.id ? 'current' : ''}>
+            <b className={`kind-${objective.question_type}`}>{done.has(objective.id) ? '✔' : OBJECTIVE_KIND[objective.question_type] || 'TASK'}</b>
+            <span>{objective.label}</span>
+          </li>
+        ))}
+      </ol>
     </div>
   )
 }

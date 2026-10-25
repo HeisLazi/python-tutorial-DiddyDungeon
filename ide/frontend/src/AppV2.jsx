@@ -381,6 +381,9 @@ const TerminalPane = forwardRef(function TerminalPane(
   )
 })
 
+// Campaign objectives answered by clicking an option rather than submitting a file.
+const BATTLE_CHOICE_TYPES = new Set(['prediction', 'explanation'])
+
 function AppV2() {
   const shellTerminalRef = useRef(null)
   const aiTerminalRef = useRef(null)
@@ -1385,9 +1388,44 @@ function AppV2() {
     const encounter = campaign?.encounter || {}
     const bossMode = encounter.status === 'boss_available' || encounter.boss_status === 'available'
     if (bossMode) return submitBoss()
-    const currentQuest = encounter.current_quest || encounter.available_objectives?.[0]
-    if (!currentQuest?.id) throw new Error('There is no current state-owned quest to submit yet.')
+    // Submit run answers BUILD / FIX objectives with the project file; PREDICT
+    // and EXPLAIN objectives are clickable questions in the battle sidebar.
+    const currentQuest = (encounter.available_objectives || []).find((item) => !BATTLE_CHOICE_TYPES.has(item.question_type))
+    if (!currentQuest?.id) {
+      if ((encounter.available_objectives || []).length) throw new Error('Answer the question in the battle sidebar: this objective is a click, not a file.')
+      throw new Error('There is no current state-owned quest to submit yet.')
+    }
     return submitBattle({ objectiveId: currentQuest.id })
+  }
+
+  // Clickable campaign questions (PREDICT / EXPLAIN objectives).
+  const [battleQuestions, setBattleQuestions] = useState({})
+  const [battleFeedback, setBattleFeedback] = useState(null)
+  const askBattleQuestion = (objectiveId) => withPyr('PYR is writing your question…', async () => {
+    const result = await api('/api/ai/battle-question', { method: 'POST', body: JSON.stringify({ objective_id: objectiveId }) })
+    setBattleQuestions((current) => ({ ...current, [objectiveId]: result.question }))
+  }).catch((error) => setNotice(`PYR could not write the question (${error.message}).`))
+  const answerBattleOption = async (objectiveId, index) => {
+    setBusy(true)
+    try {
+      const result = await api('/api/battle/answer-option', { method: 'POST', body: JSON.stringify({ objective_id: objectiveId, option_index: index }) })
+      setBattleFeedback({ objectiveId, verdict: result.verdict, reason: result.reason })
+      setBattleQuestions((current) => {
+        const next = { ...current }
+        delete next[objectiveId]
+        return next
+      })
+      await refreshCampaign({ silent: true })
+    } catch (error) {
+      setNotice(`Answer not checked: ${error.message}`)
+      setBattleQuestions((current) => {
+        const next = { ...current }
+        delete next[objectiveId]
+        return next
+      })
+    } finally {
+      setBusy(false)
+    }
   }
 
   const submitDungeon = async ({ runId, questionId, answer }) => {
@@ -1726,7 +1764,7 @@ function AppV2() {
     const startTerminal = terminalHeight
 
     const move = (moveEvent) => {
-       if (kind === 'left') setLeftWidth(clamp(startLeft + moveEvent.clientX - startX, 260, 430))
+       if (kind === 'left') setLeftWidth(clamp(startLeft + moveEvent.clientX - startX, 260, 560))
       if (kind === 'right') setRightWidth(clamp(startRight - (moveEvent.clientX - startX), 300, 780))
       if (kind === 'terminal') setTerminalHeight(clamp(startTerminal - (moveEvent.clientY - startY), 140, 580))
     }
@@ -2441,7 +2479,9 @@ function AppV2() {
 
   // The encounter card can compact itself; it must not silently override the
   // learner's resize choice when Boss Gate is active.
-  const effectiveLeftWidth = Math.max(260, Number(leftWidth) || 300)
+  // A campaign battle brief needs room for the question and its code.
+  const battleSidebar = activeView === 'forge' && Boolean(campaign?.encounter?.mob_name)
+  const effectiveLeftWidth = Math.max(battleSidebar ? 380 : 260, Number(leftWidth) || 300)
   // Keep the grid's separator column in compact mode so the editor remains
   // column-four even while the visible resize affordance is hidden.
   const leftPanelColumns = leftPanelCollapsed ? '76px 5px' : `${effectiveLeftWidth}px 5px`
@@ -2610,6 +2650,10 @@ function AppV2() {
             setActiveView={setActiveView}
             submitBattle={submitBattle}
             submitBoss={submitBoss}
+            battleQuestions={battleQuestions}
+            battleFeedback={battleFeedback}
+            onAskBattleQuestion={askBattleQuestion}
+            onAnswerBattleOption={answerBattleOption}
             busy={busy || Boolean(pyrThinking)}
           />
         </aside>}

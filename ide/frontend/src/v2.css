@@ -1515,3 +1515,32 @@
 .armory-item.tier-legendary .armory-item-head small { color: var(--gold, #f5c542); }
 .armory-collection { display: grid; gap: 6px; margin: 0; padding: 0; list-style: none; }
 .armory-collection li { display: grid; grid-template-columns: minmax(0, 1fr) 120px auto; gap: 8px; align-items: center; font-size: 14px; }
+
+/* Campaign battle sidebar (question, enemy, objectives). */
+.battle-brief { display: grid; gap: 10px; padding: 8px 10px 12px; }
+.battle-brief section { display: grid; gap: 6px; padding: 10px; border: 1px solid var(--line, #444); }
+.battle-brief-question { border-color: var(--gold, #f5c542) !important; }
+.battle-eyebrow { color: var(--gold, #f5c542); font-size: 11px; letter-spacing: 0.08em; }
+.battle-brief p { margin: 0; font-size: 14px; line-height: 1.45; }
+.battle-brief small { color: var(--muted, #999); font-size: 12px; }
+.battle-brief .choice-panel { height: auto; padding: 0; }
+.battle-brief .choice-option { min-height: 44px; font-size: 14px; }
+.battle-brief-wait button { margin-left: 6px; padding: 2px 8px; border: 1px solid var(--line, #444); background: transparent; color: inherit; font: inherit; cursor: pointer; }
+.battle-feedback { padding: 8px; border: 1px solid var(--line, #444); font-size: 13px; }
+.battle-feedback.correct { border-color: var(--green, #4ade80); color: var(--green, #4ade80); }
+.battle-feedback.incorrect { border-color: #f87171; color: #fca5a5; }
+.battle-brief-sign { display: inline-flex; align-items: center; gap: 4px; }
+.battle-brief-sign svg { fill: none; stroke: currentColor; stroke-width: 1.6; }
+.battle-brief-lore { color: var(--muted, #999); font-style: italic; }
+.battle-brief-objectives { display: grid; gap: 4px; margin: 0; padding: 0; list-style: none; }
+.battle-brief-objectives li { display: grid; grid-template-columns: auto 1fr; gap: 6px; align-items: center; font-size: 13px; }
+.battle-brief-objectives li.done { opacity: 0.6; }
+.battle-brief-objectives li.current span { color: var(--gold, #f5c542); }
+.battle-brief-objectives b { min-width: 56px; padding: 1px 5px; border: 1px solid var(--line, #444); font-size: 10px; text-align: center; }
+.battle-brief-objectives b.kind-code_checkpoint { border-color: var(--gold, #f5c542); color: var(--gold, #f5c542); }
+.battle-brief-objectives b.kind-bug_diagnosis { border-color: #f87171; color: #f87171; }
+
+/* The battle brief fills the Forge's left column instead of a half-height box. */
+.campaign-battle-sidebar:has(.battle-brief) { flex: 1 1 auto; max-height: none; min-height: 0; }
+.battle-brief .dungeon-prompt-text, .battle-brief pre { max-width: 100%; overflow-x: auto; font-size: 13px; }
+.battle-brief pre { margin: 4px 0; padding: 8px; background: rgba(0, 0, 0, 0.35); border: 1px solid var(--line, #444); }

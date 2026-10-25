@@ -3219,6 +3219,7 @@ class LocalStateService:
             "completed_objectives": completed_ids,
             "available_objectives": available,
             "attempts": attempts,
+            "guards": max(0, int(matching.get("guards", 0) or 0)) if isinstance(matching, Mapping) else 0,
             "question_types": observed_types,
             "current_quest": available[0] if available else None,
             "mechanics": [dict(item) for item in ENCOUNTER_MECHANICS],

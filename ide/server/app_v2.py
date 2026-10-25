@@ -3164,6 +3164,103 @@ def ai_dungeon_question(payload: AiDungeonQuestionRequest):
     return {"ok": True, "changed": True, "revision": mutation.get("revision"), "dungeon": projection}
 
 
+# Campaign choice questions PYR wrote, by 'battle:<project>:<mob>:<objective>'.
+BATTLE_QUESTIONS: dict[str, dict[str, object]] = {}
+BATTLE_CHOICE_TYPES = frozenset({"prediction", "explanation"})
+
+
+class BattleQuestionRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    objective_id: str = Field(min_length=1, max_length=MAX_IDENTIFIER_LENGTH)
+
+
+class BattleOptionRequest(BattleQuestionRequest):
+    option_index: int = Field(ge=0, le=7)
+
+
+def _battle_choice_objective(objective_id: str) -> tuple[dict, dict, dict, str]:
+    """The live encounter, its open choice objective and the cache key."""
+
+    try:
+        progress, _metadata = STATE_SERVICE.snapshot_with_metadata()
+        encounter = STATE_SERVICE.encounter_projection(progress)
+    except StateCommandError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
+    if not isinstance(encounter, dict) or not encounter.get("mob_name"):
+        raise HTTPException(status_code=409, detail="There is no campaign battle right now")
+    objective = next((item for item in encounter.get("available_objectives") or [] if item.get("id") == objective_id), None)
+    if objective is None or objective.get("question_type") not in BATTLE_CHOICE_TYPES:
+        raise HTTPException(status_code=409, detail="That objective is not an open question")
+    key = f"battle:{encounter.get('project_id')}:{encounter.get('mob_name')}:{objective_id}"
+    return progress, encounter, objective, key
+
+
+@app.post("/api/ai/battle-question")
+def ai_battle_question(payload: BattleQuestionRequest):
+    """PYR writes the clickable question for a campaign PREDICT/EXPLAIN
+    objective, about the learner's own project file. Cached until answered."""
+
+    progress, encounter, objective, key = _battle_choice_objective(payload.objective_id)
+    cached = BATTLE_QUESTIONS.get(key)
+    if cached:
+        return {"ok": True, "question": {"objective_id": payload.objective_id, **cached}}
+    project = next((item for item in progress.get("projects", []) if isinstance(item, dict) and item.get("status") == "active"), {})
+    code = ""
+    entry = project.get("entry_file")
+    if isinstance(entry, str) and entry.endswith(".py"):
+        path = (WORKSPACE / entry).resolve()
+        if path.is_file() and WORKSPACE.resolve() in path.parents:
+            code = path.read_text(encoding="utf-8", errors="replace")[:6000]
+    mob = encounter.get("mob") or {}
+    written = _ai_call(
+        ai_tutor.write_battle_question,
+        concept=str(mob.get("concept") or ""),
+        project=str(encounter.get("project_name") or ""),
+        contract=str(mob.get("contract") or mob.get("brief") or ""),
+        objective=str(objective.get("label") or payload.objective_id),
+        brief=str(objective.get("brief") or ""),
+        code=code,
+    )
+    BATTLE_QUESTIONS[key] = {"prompt": written["prompt"], "options": written["options"]}
+    CHOICE_ANSWER_KEYS[key] = {"answer": written["answer"], "why": written.get("why", ""), "options": written["options"]}
+    return {"ok": True, "question": {"objective_id": payload.objective_id, **BATTLE_QUESTIONS[key]}}
+
+
+@app.post("/api/battle/answer-option")
+def answer_battle_option(payload: BattleOptionRequest):
+    """Grade a clicked campaign answer. Right verifies the objective; wrong is
+    a normal miss, and the next question for it is a fresh one."""
+
+    with PROGRESS_LOCK:
+        _progress, encounter, _objective, key = _battle_choice_objective(payload.objective_id)
+        question = BATTLE_QUESTIONS.get(key)
+        answer = CHOICE_ANSWER_KEYS.get(key)
+        if not question or not answer:
+            raise HTTPException(status_code=409, detail="That question is no longer open; ask PYR for it again")
+        options = list(question.get("options") or [])
+        if payload.option_index >= len(options):
+            raise HTTPException(status_code=422, detail="That question has no such option")
+        BATTLE_QUESTIONS.pop(key, None)
+        CHOICE_ANSWER_KEYS.pop(key, None)
+        correct_text = options[int(answer["answer"])]
+        verdict = "correct" if payload.option_index == int(answer["answer"]) else "incorrect"
+        why = str(answer.get("why") or "")
+        reason = ((why or f"Right: {correct_text}.") if verdict == "correct" else f"The answer was {correct_text}. {why}".strip())[:400]
+        evidence_id = f"bt-click-{uuid.uuid4().hex[:16]}"
+        try:
+            if verdict == "correct":
+                applied = STATE_SERVICE.apply_internal("record_battle_objective", {"objective_id": payload.objective_id, "evidence_id": evidence_id, "reason": reason})
+            else:
+                applied = STATE_SERVICE.apply_internal(
+                    "record_battle_miss",
+                    {"objective_id": payload.objective_id, "encounter_id": f"battle-{uuid.uuid4().hex[:12]}", "evidence_id": evidence_id, "reason": reason},
+                )
+        except StateCommandError as exc:
+            raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
+    return {"ok": True, "verdict": verdict, "reason": reason, "correct_index": int(answer["answer"]), "result": applied.get("result")}
+
+
 class DungeonOptionRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 

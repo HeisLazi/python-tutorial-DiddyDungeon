@@ -182,6 +182,7 @@ class AiTutorEndpointTests(AiTutorTestCase):
         app_v2.PYR_DUNGEON_CHALLENGE = None
         app_v2.AI_ISSUED_DUNGEON_QUESTIONS.clear()
         app_v2.CHOICE_ANSWER_KEYS.clear()
+        app_v2.BATTLE_QUESTIONS.clear()
         self.client = TestClient(app_v2.app, base_url="http://127.0.0.1")
         self.headers = {"host": "127.0.0.1"}
 
@@ -333,6 +334,42 @@ class AiTutorEndpointTests(AiTutorTestCase):
         self.reply({"prompt": "True or false?", "options": ["True", "False"], "answer": "False", "why": "Because."})
         question = ai_tutor.write_dungeon_question(concept="loops", question_type="true_false", difficulty=1, room_type="encounter", floor=1)
         self.assertEqual((question["answer"], question["why"]), (1, "Because."))
+
+    def test_campaign_questions_are_clicked_and_graded_against_a_hidden_key(self):
+        state = json.loads(self.canonical.read_text(encoding="utf-8"))
+        mobs = state["projects"][0]["mobs"]
+        mobs[3]["status"], mobs[4]["status"] = "defeated", "available"  # on to a bounty with PREDICT / EXPLAIN objectives
+        state.pop("encounter_state", None)
+        self.canonical.write_text(json.dumps(state), encoding="utf-8")
+        encounter = self.client.get("/api/campaign", headers=self.headers).json()["encounter"]
+        objective = next(item for item in encounter["available_objectives"] if item["question_type"] in {"prediction", "explanation"})
+        self.reply({"prompt": "What does print(sum([10, 7])) show?", "options": ["107", "17", "10", "7"], "answer": 1, "why": "sum adds the numbers."})
+        asked = self.client.post("/api/ai/battle-question", headers=self.headers, json={"objective_id": objective["id"]})
+        self.assertEqual(asked.status_code, 200, asked.text)
+        question = asked.json()["question"]
+        self.assertEqual(question["options"], ["107", "17", "10", "7"])
+        self.assertNotIn("answer", question)
+        again = self.client.post("/api/ai/battle-question", headers=self.headers, json={"objective_id": objective["id"]}).json()["question"]
+        self.assertEqual(again["prompt"], question["prompt"])  # cached until answered
+        hp_before = json.loads(self.canonical.read_text(encoding="utf-8"))["player"]["hp"]
+        wrong = self.client.post("/api/battle/answer-option", headers=self.headers, json={"objective_id": objective["id"], "option_index": 0}).json()
+        self.assertEqual(wrong["verdict"], "incorrect")
+        self.assertIn("The answer was 17", wrong["reason"])
+        self.assertLess(json.loads(self.canonical.read_text(encoding="utf-8"))["player"]["hp"], hp_before)
+        stale = self.client.post("/api/battle/answer-option", headers=self.headers, json={"objective_id": objective["id"], "option_index": 1})
+        self.assertEqual(stale.status_code, 409)  # a missed question is gone; PYR writes a fresh one
+        self.reply({"prompt": "What does len('ace') return?", "options": ["2", "3", "4"], "answer": 1, "why": "Three letters."})
+        self.client.post("/api/ai/battle-question", headers=self.headers, json={"objective_id": objective["id"]})
+        right = self.client.post("/api/battle/answer-option", headers=self.headers, json={"objective_id": objective["id"], "option_index": 1}).json()
+        self.assertEqual(right["verdict"], "correct")
+        after = self.client.get("/api/campaign", headers=self.headers).json()["encounter"]
+        self.assertIn(objective["id"], after["completed_objectives"])
+
+    def test_code_objectives_have_no_clickable_question(self):
+        # The Hitman's objectives are BUILD and FIX: answered with the project file, not a click.
+        for objective_id in ("choice_flow", "stop_condition", "no_such_objective"):
+            result = self.client.post("/api/ai/battle-question", headers=self.headers, json={"objective_id": objective_id})
+            self.assertEqual(result.status_code, 409, objective_id)
 
 
 if __name__ == "__main__":
