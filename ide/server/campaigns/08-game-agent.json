@@ -20,6 +20,8 @@
   "boss_lore": "The Grandmaster does not think faster than you. It simply never forgets to look one move further.",
   "boss_brief": "Bring a finished connect_four.py: full rules, human, random, greedy and minimax-with-alpha-beta engines behind one interface, a time budget, a round-robin tournament with Elo ratings, and an engine that beats your greedy one almost every game.",
   "boss_twist": "The Grandmaster punishes slow engines. Give minimax a move ordering (centre columns first) and a transposition table keyed by board state, and print the nodes searched at the same depth before and after. Write is_winning_move(board, col, player) and make every engine take an immediate win and block an immediate loss before anything else. A full board must end as a draw in every engine and in the tournament.",
+  "boss_gauntlet": ["required_behavior", "edge_cases", "twist_2", "twist_3", "twist_4", "interview"],
+  "boss_phases": {"twist_2": {"label": "Phase 2: The Grandmaster's opening book", "quest": "Build an opening book: a dict from board positions to the best known move, made by searching the first four plies deeply once and saving it to JSON. Engines play from the book while in it and search normally after; print the time saved on the first moves."}, "twist_3": {"label": "Phase 3: The rating ladder", "quest": "Run a tournament of at least five engines (including two minimax depths) where every pairing is played with both colours, update Elo after each game, and print a final table sorted by rating with wins, draws and losses."}, "twist_4": {"label": "Phase 4: Beat the clock", "quest": "Under a 0.2-second-per-move budget, your strongest engine must beat greedy in at least 90 of 100 seeded games. Print the result and the average search depth it reached."}},
   "mobs": [
     {
       "name": "The Empty Grid",
@@ -159,11 +161,13 @@
       "concept": "Iterative deepening and a time budget",
       "encounter": "Search as deep as time allows, then move.",
       "act": 3, "sign": "search",
+      "tier": "elite",
       "contract": "In the arena every engine gets one turn of the hourglass. Think too long and you forfeit. Think in rings, deeper each time, and keep your best answer ready.",
       "objectives": [
         {"id": "move_ordering", "label": "Order the moves", "question_type": "code_checkpoint", "impact": 3, "brief": "Search centre columns first and show it lets pruning cut more branches."},
         {"id": "deepening", "label": "Deepen step by step", "question_type": "code_checkpoint", "impact": 4, "brief": "Search depth 1, then 2, then 3 and so on, keeping the best move from the last finished depth."},
-        {"id": "time_budget", "label": "Stop when time runs out", "question_type": "bug_diagnosis", "impact": 3, "brief": "Stop searching when a time limit passes and still return a legal move, and explain what happens if the limit hits in the middle of a depth."}
+        {"id": "time_budget", "label": "Stop when time runs out", "question_type": "bug_diagnosis", "impact": 3, "brief": "Stop searching when a time limit passes and still return a legal move, and explain what happens if the limit hits in the middle of a depth."},
+        {"id": "anytime_test", "label": "Win against the clock", "question_type": "code_checkpoint", "impact": 3, "brief": "Write a test that gives the engine a tiny time budget on a position with a winning move one ply away and asserts it still plays the win."}
       ]
     },
     {
@@ -207,11 +211,14 @@
       "concept": "Putting the whole program together",
       "encounter": "Open the arena: a menu to play, watch and run tournaments.",
       "act": 4, "sign": "input-output",
+      "tier": "elite",
       "contract": "Tobin wants the stands full. Let people play your engines at the difficulty they choose, watch engines duel move by move, and run the tournament themselves.",
       "objectives": [
         {"id": "watch_mode", "label": "Let people watch", "question_type": "code_checkpoint", "impact": 3, "brief": "Add a watch mode where two engines play with the board shown after every move and a short pause between moves."},
         {"id": "difficulty", "label": "Choose a difficulty", "question_type": "code_checkpoint", "impact": 3, "brief": "Let a human pick easy, medium or hard, which sets the engine and its search depth or time budget."},
-        {"id": "main_menu", "label": "Open the menu", "question_type": "code_checkpoint", "impact": 3, "brief": "Add a start menu: play an engine, watch a duel, run a tournament, replay a saved game, or quit."}
+        {"id": "main_menu", "label": "Open the menu", "question_type": "code_checkpoint", "impact": 3, "brief": "Add a start menu: play an engine, watch a duel, run a tournament, replay a saved game, or quit."},
+        {"id": "save_replay", "label": "Save the replay", "question_type": "code_checkpoint", "impact": 3, "brief": "Save any finished game as a list of moves to a JSON file, and replay it move by move in watch mode."},
+        {"id": "duel_stats", "label": "Show the thinking", "question_type": "code_checkpoint", "impact": 3, "brief": "After a watched duel, print each engine's average thinking time and nodes searched per move."}
       ]
     }
   ],

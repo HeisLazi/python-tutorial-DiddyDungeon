@@ -18,15 +18,17 @@
   "boss_lore": "The Pattern Warden never guesses. It remembers what you did last time, and it waits for you to do it again.",
   "boss_brief": "Bring a finished rps.py: first-to-N matches with safe input and rematches, rules stored as data (with lizard and spock), move history and stats, and at least two pattern-reading bots that you can duel against each other and against yourself.",
   "boss_twist": "The Pattern Warden counters anything predictable. Write warden_duel(bot_a, bot_b, rounds=1000, seed=None) that plays two of your bots against each other with a seeded random.Random, returns a dict with each side's wins, losses and draws plus the longest winning streak, and never crashes on a bot that returns an invalid move (that round is a forfeit for that bot). Then add an anti_pattern bot that tracks the opponent's last three moves and beats your own frequency bot in more than 55% of 1000 rounds; print that rate.",
+  "boss_gauntlet": ["required_behavior", "explanation", "interview"],
   "mobs": [
     {
       "name": "The Mimic", "concept": "Input/output and random choice from a list",
       "encounter": "Get a single round on the table: take the player's move, let the computer pick its own, and explain where each choice is remembered.",
       "act": 1, "sign": "random-selection",
+      "tier": "light",
       "contract": "The Mimic copies whatever it sees. Start simple: a player's move, a computer's move, both remembered and shown.",
       "objectives": [
-        {"id": "player_move", "label": "Take the player's move", "question_type": "code_checkpoint", "impact": 2, "brief": "In rps.py, ask the player for rock, paper or scissors and store it in a variable."},
-        {"id": "computer_move", "label": "Let the computer choose", "question_type": "code_checkpoint", "impact": 3, "brief": "Pick the computer's move at random from a list of the three moves and show both moves."},
+        {"id": "both_moves", "label": "Take both moves", "question_type": "code_checkpoint", "impact": 4, "brief": "In rps.py, ask the player for rock, paper or scissors, pick the computer's move at random from a list of the three, and show both moves."},
+        {"id": "random_pick", "label": "Predict the computer", "question_type": "prediction", "impact": 2, "brief": "Predict which moves random.choice can return from your list, and why two calls in a row can give different moves."},
         {"id": "where_stored", "label": "Name where choices live", "question_type": "explanation", "impact": 2, "brief": "Explain which variables hold each move and when each one gets its value."}
       ]
     },
@@ -45,10 +47,11 @@
       "name": "The Loop Imp", "concept": "While loops",
       "encounter": "Make rounds repeat and explain which condition keeps the loop alive and what would end it.",
       "act": 1, "sign": "loops",
+      "tier": "light",
       "contract": "One round is a coin toss. The Imp wants to keep playing. Wrap the round in a loop that runs until the player is done.",
       "objectives": [
-        {"id": "round_loop", "label": "Repeat the rounds", "question_type": "code_checkpoint", "impact": 3, "brief": "Put the round inside a while loop so a new round starts after each result."},
-        {"id": "quit_choice", "label": "Let the player stop", "question_type": "code_checkpoint", "impact": 2, "brief": "Let the player type quit to leave the loop cleanly."},
+        {"id": "round_loop", "label": "Repeat the rounds", "question_type": "code_checkpoint", "impact": 4, "brief": "Put the round inside a while loop so a new round starts after each result, and let the player type quit to leave the loop cleanly."},
+        {"id": "loop_count", "label": "Count the rounds", "question_type": "prediction", "impact": 2, "brief": "Predict how many rounds run if the player types rock, paper and then quit, and what the loop checks each time."},
         {"id": "loop_condition", "label": "Explain the condition", "question_type": "explanation", "impact": 2, "brief": "Explain exactly what keeps your loop running and what makes it stop."}
       ]
     },
@@ -56,10 +59,11 @@
       "name": "The Score Thief", "concept": "Counters and score variables",
       "encounter": "Track wins for both sides and pinpoint exactly where in a round each score is allowed to change.",
       "act": 1, "sign": "variables",
+      "tier": "light",
       "contract": "Points keep going missing. The Thief steals any score that is reset at the wrong moment or added in the wrong place.",
       "objectives": [
         {"id": "keep_score", "label": "Keep both scores", "question_type": "code_checkpoint", "impact": 3, "brief": "Count wins for the player and the computer, and ties, and show the score after every round."},
-        {"id": "reset_bug", "label": "Catch the reset", "question_type": "bug_diagnosis", "impact": 3, "brief": "Explain what happens if the score variables are set to 0 inside the loop, and show yours are set once before it."},
+        {"id": "reset_bug", "label": "Catch the reset", "question_type": "explanation", "impact": 3, "brief": "Explain what happens if the score variables are set to 0 inside the loop, and show yours are set once before it."},
         {"id": "score_trace", "label": "Trace the score", "question_type": "prediction", "impact": 2, "brief": "Predict the score after win, tie, loss, win, then check your program agrees."}
       ]
     },

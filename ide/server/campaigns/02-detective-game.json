@@ -18,6 +18,7 @@
   "boss_lore": "The False Alibi has an answer for every question. The trick is asking the one question its story cannot survive.",
   "boss_brief": "Bring a finished detective.py: generated or loaded cases with unique suspects, filtering questions with turn limits and accusations, a question advisor, a machine detective that solves cases in few questions, and a case where one witness lies.",
   "boss_twist": "The False Alibi lies once per case. Write inconsistent_witness(case) that cross-checks every witness statement against the case facts and returns the witness whose statements contradict the others, or None when everyone agrees. Your machine detective must still solve cases with one lying witness in at most six questions on average across 200 generated cases; print that average. Accusing with no suspects left, or with two still standing, must be handled without a crash.",
+  "boss_gauntlet": ["required_behavior", "explanation", "edge_cases", "read_2", "interview"],
   "mobs": [
     {
       "name": "The Lineup", "concept": "Dictionaries and lists of dictionaries",
@@ -34,10 +35,10 @@
       "name": "The Witness Board", "concept": "Looping over lists and string output",
       "encounter": "Display the remaining suspects and their traits readably and explain how the loop visits each one.",
       "act": 1, "sign": "loops",
+      "tier": "quick",
       "contract": "Halloran's officers cannot read your notes. Pin every suspect to the board in a form anyone can scan.",
       "objectives": [
-        {"id": "show_board", "label": "Show the board", "question_type": "code_checkpoint", "impact": 3, "brief": "Print every remaining suspect on one line each, with their traits lined up in columns."},
-        {"id": "count_line", "label": "Count the suspects", "question_type": "code_checkpoint", "impact": 2, "brief": "Show how many suspects remain above the board."},
+        {"id": "show_board", "label": "Show the board", "question_type": "code_checkpoint", "impact": 4, "brief": "Print every remaining suspect on one line each with their traits lined up in columns, and show how many suspects remain above the board."},
         {"id": "loop_trace", "label": "Trace the loop", "question_type": "prediction", "impact": 2, "brief": "Predict what the board prints for a list of two suspects, then check it."}
       ]
     },
@@ -56,10 +57,11 @@
       "name": "The Vanishing Crowd", "concept": "Filtering lists with conditionals",
       "encounter": "Narrow the suspects after an answer by comparing what you know before and after the question.",
       "act": 1, "sign": "conditionals",
+      "tier": "light",
       "contract": "Every answer should send someone home. Keep the suspects who still fit and let the rest vanish from the board.",
       "objectives": [
         {"id": "filter_suspects", "label": "Filter the lineup", "question_type": "code_checkpoint", "impact": 4, "brief": "After each answer, keep only the suspects whose trait matches it, building a new list rather than removing items while looping."},
-        {"id": "remove_bug", "label": "Explain the removal trap", "question_type": "bug_diagnosis", "impact": 3, "brief": "Explain why removing items from a list while looping over it skips suspects, and show your version does not."},
+        {"id": "remove_bug", "label": "Explain the removal trap", "question_type": "explanation", "impact": 3, "brief": "Explain why removing items from a list while looping over it skips suspects, and show your version does not."},
         {"id": "filter_trace", "label": "Predict who is left", "question_type": "prediction", "impact": 2, "brief": "Predict who remains after two answers on your roster, then check it."}
       ]
     },

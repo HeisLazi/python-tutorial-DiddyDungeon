@@ -405,7 +405,7 @@ const DUNGEON_RISK_OUTCOMES = {
 
 // Campaign objectives answered by clicking an option rather than submitting a file.
 const BATTLE_CHOICE_TYPES = new Set(['prediction', 'explanation'])
-const BOSS_PHASE_NAMES = { required_behavior: 'Required behaviour', explanation: 'Read your code', edge_cases: 'The boss twist', interview: 'Code interview' }
+const BOSS_PHASE_NAMES = { required_behavior: 'Required behaviour', explanation: 'Read your code', edge_cases: 'The boss twist', twist_2: "The boss's second phase", twist_3: "The boss's third phase", twist_4: "The boss's final phase", read_2: 'Read your code again', interview: 'Code interview' }
 // Boss goals answered by clicking: a question about the player's own file.
 const BOSS_CHOICE_TYPES = new Set(['snippet_check', 'code_interview'])
 
@@ -858,7 +858,7 @@ function AppV2() {
         kind: 'objective',
         title: 'BOSS PHASE VERIFIED',
         // The phase just verified, not the next one (boss_phase_label names the next goal).
-        body: BOSS_PHASE_NAMES[event.requirement_id] || event.requirement_id || 'Boss requirement',
+        body: (event.boss_requirements_projection || []).find((phase) => phase.id === event.requirement_id)?.label || BOSS_PHASE_NAMES[event.requirement_id] || event.requirement_id || 'Boss requirement',
         detail: Array.isArray(event.remaining_boss_requirements) && event.remaining_boss_requirements.length
           ? `${event.remaining_boss_requirements.length} phase${event.remaining_boss_requirements.length === 1 ? '' : 's'} remaining`
           : 'Final gate ready for the integrated clear',
@@ -2636,7 +2636,7 @@ function AppV2() {
           <div className="boss-card">
             <span className="screen-kicker">BOSS GATE OPEN</span>
             <h2>⚔ {campaign?.encounter?.boss || 'The boss'} awaits</h2>
-            <p>Every bounty on this board is cleared. Four goals break the boss: two coding tasks you Submit run in the Forge, and two questions about your own code you answer in the left sidebar.</p>
+            <p>Every bounty on this board is cleared. This boss has its own gauntlet: coding phases you Submit run in the Forge, and questions about your own code you answer in the left sidebar. Watch its phases on the left.</p>
             <button className="primary" type="button" onClick={() => setBossIntroSeen(bossIntroKey)} autoFocus>Fight</button>
           </div>
         </div>

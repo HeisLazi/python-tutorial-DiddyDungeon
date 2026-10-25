@@ -18,6 +18,8 @@
   "boss_lore": "Lady Luck never lies about a single spin. She lies about the thousandth one, where nobody is counting.",
   "boss_brief": "Bring a finished casino.py: weighted reels with a payout table checked from most to least valuable, validated bets, a session summary, a simulation that measures the real return to player, a table tuned to a target return, a progressive jackpot, roulette on the same bankroll, and session limits.",
   "boss_twist": "Lady Luck audits your table. Compute the theoretical return to player exactly from the reel weights and payout table, and make your machine refuse (raise ValueError) any table whose theoretical RTP is above 100%. Write audit(machine, spins=100000, seed=None) that returns measured RTP, hit frequency and the largest drawdown of a 100-coin bankroll, and print measured and theoretical RTP agreeing within 1% at 100,000 spins.",
+  "boss_gauntlet": ["required_behavior", "explanation", "edge_cases", "twist_2", "interview"],
+  "boss_phases": {"twist_2": {"label": "Phase 2: Lady Luck opens a second floor", "quest": "Lady Luck adds a second machine with different reels. Build a Machine class (or a factory) so several machines share one bankroll and one session, each with its own reels, payout table and theoretical RTP. Let the player switch machines between spins and split the session summary per machine."}},
   "mobs": [
     {
       "name": "The Coin Rat", "concept": "Numeric variables and program state",
@@ -34,11 +36,12 @@
       "name": "The Spin Imp", "concept": "Lists and random selection",
       "encounter": "Generate three random symbols per spin and reason about how many different outcomes are possible.",
       "act": 1, "sign": "random-selection",
+      "tier": "light",
       "contract": "The Imp spins the reels and grins. Three symbols, chosen fresh each time, and you should know how many outcomes there are.",
       "objectives": [
         {"id": "reels", "label": "Spin three reels", "question_type": "code_checkpoint", "impact": 3, "brief": "Keep the symbols in a list and pick one at random for each of three reels, then show the line."},
         {"id": "outcome_count", "label": "Count the outcomes", "question_type": "prediction", "impact": 2, "brief": "Predict how many different three-symbol lines your reels can make, then compute it in code."},
-        {"id": "repeat_bug", "label": "Spin each reel separately", "question_type": "bug_diagnosis", "impact": 2, "brief": "Explain why [random.choice(symbols)] * 3 always shows three of a kind, and show your reels spin independently."}
+        {"id": "repeat_bug", "label": "Spin each reel separately", "question_type": "explanation", "impact": 2, "brief": "Explain why [random.choice(symbols)] * 3 always shows three of a kind, and show your reels spin independently."}
       ]
     },
     {
@@ -100,10 +103,10 @@
       "name": "The Tally Ghost", "concept": "Session statistics and summary output",
       "encounter": "Track wins, losses and net change across the session and present a clear summary when the player walks away.",
       "act": 2, "sign": "dictionaries",
+      "tier": "quick",
       "contract": "The Ghost keeps the books nobody else wants to keep. Every spin, every win, and the truth at the end of the night.",
       "objectives": [
-        {"id": "session_stats", "label": "Keep the books", "question_type": "code_checkpoint", "impact": 3, "brief": "Track spins, wins, the biggest win, total bet and total won in one dictionary."},
-        {"id": "summary", "label": "Print the summary", "question_type": "code_checkpoint", "impact": 3, "brief": "When the session ends, print a clear summary with net change and win rate."},
+        {"id": "session_books", "label": "Keep the books", "question_type": "code_checkpoint", "impact": 5, "brief": "Track spins, wins, the biggest win, total bet and total won in one dictionary, and print a clear summary with net change and win rate when the session ends."},
         {"id": "summary_trace", "label": "Check the maths", "question_type": "prediction", "impact": 2, "brief": "Predict the summary for a short scripted session (fix the random seed), then check it."}
       ]
     },
@@ -166,11 +169,14 @@
       "name": "The Guardian of Limits", "concept": "Guardrails on a session",
       "encounter": "Add loss limits and a saved bankroll.",
       "act": 3, "sign": "files-json",
+      "tier": "elite",
       "contract": "Pell's report needs one more page: a machine that protects the player from themselves. Set limits, and remember the purse between visits.",
       "objectives": [
         {"id": "loss_limit", "label": "Set a loss limit", "question_type": "code_checkpoint", "impact": 3, "brief": "Let the player set a loss limit at the start and end the session when it is reached."},
         {"id": "save_bankroll", "label": "Remember the purse", "question_type": "code_checkpoint", "impact": 3, "brief": "Save the bankroll and lifetime stats to a JSON file and load them on start."},
-        {"id": "casino_menu", "label": "Open the floor", "question_type": "code_checkpoint", "impact": 3, "brief": "Add a menu: slots, roulette, run an audit simulation, view stats, or leave."}
+        {"id": "casino_menu", "label": "Open the floor", "question_type": "code_checkpoint", "impact": 3, "brief": "Add a menu: slots, roulette, run an audit simulation, view stats, or leave."},
+        {"id": "cooldown", "label": "Call a time-out", "question_type": "code_checkpoint", "impact": 3, "brief": "After three losses in a row, pause the session for a reality check showing the net loss so far, and let the player continue or leave."},
+        {"id": "limit_tests", "label": "Prove the limit", "question_type": "code_checkpoint", "impact": 3, "brief": "Write assert tests showing the loss limit ends the session exactly at the limit, never one spin later."}
       ]
     }
   ],

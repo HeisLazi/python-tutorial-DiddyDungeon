@@ -19,6 +19,8 @@
   "boss_lore": "The Unbound fights like you, because it learned from watching you. Change, or lose the way you always do.",
   "boss_brief": "Bring a finished gladiator.py: classes built from templates, defend and risky actions, status effects with durations, crowd favour, an opponent that chooses by expected value, upgrades across a run, an eight-fighter bracket, a balance simulation across every class matchup, and a saved hall of laurels.",
   "boss_twist": "The Unbound never fights the same way twice. Write balance_report(classes, fights=200, seed=None) that fights every class against every other class and returns a win-rate matrix, flagging any matchup above 65% as unbalanced. Tune at least one stat so no matchup stays above 65%, and print the report before and after. Applying the same status effect twice must refresh or stack its duration by one clear rule, never duplicate it.",
+  "boss_gauntlet": ["required_behavior", "edge_cases", "twist_2", "explanation", "twist_3", "interview"],
+  "boss_phases": {"twist_2": {"label": "Phase 2: The Unbound steals a style", "quest": "The Unbound ignores class templates. Let a fighter learn one ability from any defeated opponent's class (abilities stored as data), cap abilities at four with a choice of which to forget, and make the opponent AI score learned abilities by expected value like the rest."}, "twist_3": {"label": "Phase 3: The crowd turns", "quest": "Crowd favour now changes the fight: at high favour the crowd throws in a weapon, at low favour it demands a handicap. Implement both as events with clear messages, then rerun balance_report and show no class wins more than 65% with crowd events on."}},
   "mobs": [
     {
       "name": "The Rulescribe", "concept": "Planning state and turn order in comments",
@@ -35,10 +37,10 @@
       "name": "The Arena Recruit", "concept": "Dictionaries and a turn-based loop",
       "encounter": "Get one full duel working from first strike to a fallen fighter.",
       "act": 1, "sign": "loops",
+      "tier": "quick",
       "contract": "A recruit waits on the sand, shaking. Give the two of you one clean duel, start to finish.",
       "objectives": [
-        {"id": "duel_loop", "label": "Fight the duel", "question_type": "code_checkpoint", "impact": 4, "brief": "Loop turns between the player and an opponent until one falls, using one attack function for both."},
-        {"id": "duel_log", "label": "Narrate it", "question_type": "code_checkpoint", "impact": 2, "brief": "Print each action and both fighters' HP and stamina after every turn."},
+        {"id": "duel_loop", "label": "Fight the duel", "question_type": "code_checkpoint", "impact": 5, "brief": "Loop turns between the player and an opponent until one falls, using one attack function for both, and print each action with both fighters' HP and stamina."},
         {"id": "duel_trace", "label": "Trace two turns", "question_type": "prediction", "impact": 2, "brief": "Predict both fighters' HP after two turns with fixed numbers, then check."}
       ]
     },
@@ -101,11 +103,13 @@
       "name": "The Fallen Laurel", "concept": "Run loop and reset state",
       "encounter": "End the run on defeat with a summary and start a new run without carrying over old upgrades or HP.",
       "act": 2, "sign": "references",
+      "tier": "elite",
       "contract": "Every champion falls eventually. When yours does, carve the run into the laurel and start the next one clean.",
       "objectives": [
         {"id": "run_summary", "label": "Summarise the run", "question_type": "code_checkpoint", "impact": 3, "brief": "On defeat, show fights won, coins earned, upgrades taken and the opponent that ended the run."},
         {"id": "new_run", "label": "Start clean", "question_type": "code_checkpoint", "impact": 3, "brief": "Start a new run with a fresh fighter, building it from a starting template rather than resetting fields by hand."},
-        {"id": "carryover_bug", "label": "Catch the carry-over", "question_type": "bug_diagnosis", "impact": 2, "brief": "Explain how old upgrades could leak into a new run and show yours cannot."}
+        {"id": "carryover_bug", "label": "Catch the carry-over", "question_type": "bug_diagnosis", "impact": 2, "brief": "Explain how old upgrades could leak into a new run and show yours cannot."},
+        {"id": "run_seed", "label": "Seed the run", "question_type": "code_checkpoint", "impact": 3, "brief": "Let a run start from a seed so the same seed replays the same opponents and drops, and show two runs with one seed matching."}
       ]
     },
     {
@@ -178,11 +182,14 @@
       "name": "The Hall of Laurels", "concept": "Saved records and a menu",
       "encounter": "Keep the best runs between sessions and give the game a front door.",
       "act": 4, "sign": "files-json",
+      "tier": "elite",
       "contract": "Every champion's name goes on the hall's walls. Save the best runs, and let Corvo's visitors choose how they want to fight.",
       "objectives": [
         {"id": "save_laurels", "label": "Save the best runs", "question_type": "code_checkpoint", "impact": 3, "brief": "Save the top ten runs (class, fights won, coins, crowd favour) to a JSON file, sorted best first."},
         {"id": "show_laurels", "label": "Show the hall", "question_type": "code_checkpoint", "impact": 2, "brief": "Show the hall of laurels on start and highlight a new entry."},
-        {"id": "arena_menu", "label": "Open the gates", "question_type": "code_checkpoint", "impact": 3, "brief": "Add a menu: start a run, enter the Games bracket, run the balance oracle, view the hall, or quit."}
+        {"id": "arena_menu", "label": "Open the gates", "question_type": "code_checkpoint", "impact": 3, "brief": "Add a menu: start a run, enter the Games bracket, run the balance oracle, view the hall, or quit."},
+        {"id": "laurel_merge", "label": "Keep the old names", "question_type": "code_checkpoint", "impact": 3, "brief": "When saving, merge the new run into the existing file without losing older records, keeping only the top ten."},
+        {"id": "broken_hall", "label": "Survive a broken hall", "question_type": "code_checkpoint", "impact": 2, "brief": "If the laurels file is missing or broken, start an empty hall with a warning instead of crashing."}
       ]
     }
   ],

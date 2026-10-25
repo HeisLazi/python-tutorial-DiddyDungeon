@@ -36,6 +36,21 @@ CAMPAIGN_QUESTION_TYPES = frozenset({"code_checkpoint", "bug_diagnosis", "predic
 _CAMPAIGN_CACHE: dict[str, Any] = {"key": None, "data": {}}
 
 
+def boss_gauntlet(project: Mapping[str, Any]) -> tuple[str, ...]:
+    """This boss's phases in fight order: the project's own list, else its
+    campaign story file's boss_gauntlet, else the default four."""
+
+    configured = project.get("boss_gauntlet")
+    if not isinstance(configured, list):
+        story = load_campaign_bounties().get(str(project.get("branch") or ""))
+        configured = story.get("boss_gauntlet") if isinstance(story, Mapping) else None
+    if isinstance(configured, list):
+        phases = tuple(dict.fromkeys(item for item in configured if item in BOSS_REQUIREMENTS))
+        if phases and phases[0] == "required_behavior":
+            return phases
+    return DEFAULT_BOSS_GAUNTLET
+
+
 def load_campaign_bounties() -> dict[str, Any]:
     paths = [CAMPAIGN_BOUNTIES_PATH, *(sorted(CAMPAIGN_CONTENT_DIR.glob("*.json")) if CAMPAIGN_CONTENT_DIR.is_dir() else [])]
     try:
@@ -547,15 +562,22 @@ MOB_REWARDS: tuple[tuple[int, int], ...] = (
     (50, 35),
 )
 
-# Bosses are fought in code: two coding tasks, with a small clickable check
-# about your own file between them and a clickable code interview to finish.
-# The ids "explanation" and "interview" are kept so older saves stay valid.
+# Bosses are fought mostly in code, and each campaign sets its own gauntlet
+# (boss_gauntlet in its story file): an early boss might be one coding task
+# and two questions, a late one five coding phases and an interview. These are
+# every phase a gauntlet may use. The ids "explanation" and "interview" are
+# kept so older saves stay valid.
 BOSS_REQUIREMENTS: tuple[str, ...] = (
     "required_behavior",
     "explanation",
     "edge_cases",
+    "twist_2",
+    "twist_3",
+    "twist_4",
+    "read_2",
     "interview",
 )
+DEFAULT_BOSS_GAUNTLET: tuple[str, ...] = ("required_behavior", "explanation", "edge_cases", "interview")
 # Boss goals answered by clicking an option about the player's own code.
 BOSS_CHOICE_TYPES = frozenset({"snippet_check", "code_interview"})
 
@@ -566,6 +588,10 @@ BOSS_PHASE_LABELS: dict[str, str] = {
     "required_behavior": "Required behaviour",
     "explanation": "Read your code",
     "edge_cases": "The boss twist",
+    "twist_2": "The boss's second phase",
+    "twist_3": "The boss's third phase",
+    "twist_4": "The boss's final phase",
+    "read_2": "Read your code again",
     "interview": "Code interview",
 }
 
@@ -617,6 +643,30 @@ BOSS_REQUIREMENT_SPECS: dict[str, dict[str, Any]] = {
         "question_type": "code_checkpoint",
         "impact": 5,
         "brief": "The boss changes the rules. Extend your program to handle the twist.",
+    },
+    "twist_2": {
+        "label": "The boss's second phase",
+        "question_type": "code_checkpoint",
+        "impact": 5,
+        "brief": "The boss changes again. Extend your program for its next phase.",
+    },
+    "twist_3": {
+        "label": "The boss's third phase",
+        "question_type": "code_checkpoint",
+        "impact": 5,
+        "brief": "The boss changes again. Extend your program for its next phase.",
+    },
+    "twist_4": {
+        "label": "The boss's final phase",
+        "question_type": "code_checkpoint",
+        "impact": 5,
+        "brief": "The boss's last form. Extend your program for its final phase.",
+    },
+    "read_2": {
+        "label": "Read your code again",
+        "question_type": "snippet_check",
+        "impact": 2,
+        "brief": "Another quick question about a different snippet of your own file. Click your answer.",
     },
     "interview": {
         "label": "Code interview",
@@ -3033,15 +3083,15 @@ class LocalStateService:
     def _boss_validation_projection(project: Mapping[str, Any]) -> dict[str, Any]:
         """Return safe boss phases without projecting provider prompts."""
 
+        gauntlet = boss_gauntlet(project)
         raw = project.get("boss_validation")
         verified = raw.get("verified") if isinstance(raw, Mapping) else []
         if not isinstance(verified, list):
             verified = []
-        verified_ids = [item for item in verified if item in BOSS_REQUIREMENTS]
-        # Preserve the canonical requirement order even if an older local
+        # Preserve this boss's gauntlet order even if an older local
         # checkpoint recorded them in a different order.
-        verified_ids = [item for item in BOSS_REQUIREMENTS if item in verified_ids]
-        remaining = [item for item in BOSS_REQUIREMENTS if item not in verified_ids]
+        verified_ids = [item for item in gauntlet if item in verified]
+        remaining = [item for item in gauntlet if item not in verified_ids]
         status = str(project.get("boss_status") or "locked")
         if status == "defeated" or project.get("completed") is True:
             phase = "complete"
@@ -3070,13 +3120,20 @@ class LocalStateService:
             "required_behavior": str(configured_brief).strip() if isinstance(configured_brief, str) and configured_brief.strip() else "",
             "edge_cases": str(configured_twist).strip() if isinstance(configured_twist, str) and configured_twist.strip() else "",
         }
+        authored_phases = project.get("boss_phases") or story_entry.get("boss_phases")
+        authored_phases = authored_phases if isinstance(authored_phases, Mapping) else {}
         requirement_projection: list[dict[str, Any]] = []
         max_resolve = 0
         resolved_damage = 0
-        for requirement_id in BOSS_REQUIREMENTS:
+        for requirement_id in gauntlet:
             spec = dict(BOSS_REQUIREMENT_SPECS.get(requirement_id, {}))
             if authored_quests.get(requirement_id):
                 spec["quest"] = authored_quests[requirement_id]
+            authored = authored_phases.get(requirement_id)
+            if isinstance(authored, Mapping):
+                for field in ("label", "quest"):
+                    if isinstance(authored.get(field), str) and authored[field].strip():
+                        spec[field] = authored[field].strip()
             try:
                 impact = max(1, min(MAX_IMPACT, int(spec.get("impact", 1))))
             except (TypeError, ValueError):
@@ -3113,8 +3170,8 @@ class LocalStateService:
             "boss_brief": boss_brief,
             "boss_max_resolve": boss_max_resolve,
             "boss_resolve": boss_resolve,
-            "boss_current_requirement": current_requirement if phase in BOSS_REQUIREMENTS else None,
-            "current_quest": current_requirement if phase in BOSS_REQUIREMENTS else None,
+            "boss_current_requirement": current_requirement if phase in gauntlet else None,
+            "current_quest": current_requirement if phase in gauntlet else None,
             "boss_requirements_projection": requirement_projection,
             "mechanics": [dict(item) for item in ENCOUNTER_MECHANICS],
             "reward_envelope": reward_envelope,
@@ -3159,7 +3216,7 @@ class LocalStateService:
                 "mob_sequence_complete": True,
                 "boss": str(project.get("boss") or ""),
                 "boss_status": boss_status,
-                "boss_requirements": list(BOSS_REQUIREMENTS),
+                "boss_requirements": list(boss_gauntlet(project)),
                 **boss_validation,
                 "mob_name": None,
                 "mob_index": None,
@@ -7249,6 +7306,8 @@ class LocalStateService:
                 "contract": contract.get("contract") if isinstance(contract.get("contract"), str) else None,
                 "sign": sign,
                 "beast": HUNTER_BEASTS[sign]["beast"] if sign in HUNTER_BEASTS else None,
+                # light (one code task, two questions), quick (two goals) or elite (four or five).
+                "tier": contract.get("tier") if contract.get("tier") in {"light", "quick", "elite"} else None,
                 "objectives": [{"id": key, "label": value["label"], "question_type": value["question_type"]} for key, value in profile["objectives"].items()],
             })
         return {
@@ -8120,7 +8179,10 @@ class LocalStateService:
         history = validation.get("history")
         if not isinstance(verified, list) or not isinstance(history, list):
             raise StateCommandError("Existing boss validation state is invalid", status_code=500)
-        verified = [item for item in verified if item in BOSS_REQUIREMENTS]
+        gauntlet = boss_gauntlet(project)
+        if requirement_id not in gauntlet:
+            raise StateCommandError("That goal is not part of this boss fight", status_code=409)
+        verified = [item for item in verified if item in gauntlet]
         validation["verified"] = verified
         if requirement_id in verified:
             projection = self._boss_validation_projection(project)
@@ -8135,14 +8197,14 @@ class LocalStateService:
 
         before_projection = self._boss_validation_projection(project)
         current_goal = before_projection.get("boss_phase")
-        if current_goal in BOSS_REQUIREMENTS and requirement_id != current_goal:
+        if current_goal in gauntlet and requirement_id != current_goal:
             raise StateCommandError(
                 f"The current boss goal is {current_goal}; verify goals in order",
                 status_code=409,
             )
 
         verified.append(requirement_id)
-        validation["verified"] = [item for item in BOSS_REQUIREMENTS if item in verified]
+        validation["verified"] = [item for item in gauntlet if item in verified]
         history.append(
             {
                 "requirement_id": requirement_id,
@@ -8255,7 +8317,7 @@ class LocalStateService:
         if not isinstance(validation, dict):
             validation = {"verified": [], "history": []}
             project["boss_validation"] = validation
-        validation["verified"] = list(BOSS_REQUIREMENTS)
+        validation["verified"] = list(boss_gauntlet(project))
         validation["completed_at"] = completed_at
         boss_loot = self._armory_boss_loot(progress, project)
 
@@ -8342,7 +8404,7 @@ class LocalStateService:
                 "reason": reason,
                 "boss_phase": "complete",
                 "boss_phase_label": "Boss clear",
-                "verified_boss_requirements": list(BOSS_REQUIREMENTS),
+                "verified_boss_requirements": list(validation["verified"]),
                 "next_project": next_project,
                 "campaign_complete": next_project is None,
             },
@@ -8373,7 +8435,7 @@ class LocalStateService:
                 "reason": reason,
                 "boss_phase": "complete",
                 "boss_phase_label": "Boss clear",
-                "verified_boss_requirements": list(BOSS_REQUIREMENTS),
+                "verified_boss_requirements": list(validation["verified"]),
             },
         )
 

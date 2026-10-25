@@ -19,6 +19,8 @@
   "boss_lore": "The Core is the dungeon's heart. Every room you walked through was part of it, and it has been learning your path.",
   "boss_brief": "Bring a finished crawler.py: shared player state, fights, potions, a shop and gold, a generated grid map with fog and a guaranteed exit, equipment that changes stats, path-finding, a full save and load, and a phased boss at the bottom.",
   "boss_twist": "The Dungeon Core rebuilds the map under you. Write generate_dungeon(width, height, seed) that guarantees a walkable path from the start to the exit, checked with your own path-finding and regenerated when the check fails. Write save_game(state, path) and load_game(path) so a loaded game equals the saved one, equipment and fog included. A missing or corrupted save file must give a clear message instead of a crash.",
+  "boss_gauntlet": ["required_behavior", "edge_cases", "explanation", "twist_2", "twist_3", "interview"],
+  "boss_phases": {"twist_2": {"label": "Phase 2: The Core floods the halls", "quest": "The Core starts flooding rooms. Each turn, water spreads from flooded tiles to open neighbours; flooded tiles cost an extra move and deal damage. Write spread_flood(grid) and make path-finding prefer dry tiles, falling back to wet ones only when no dry path exists."}, "twist_3": {"label": "Phase 3: The Core's last heartbeat", "quest": "Record every move, fight and purchase in a run log, save it with the score, and write replay(log) that prints the run step by step. Two runs from the same seed with the same moves must produce identical logs; prove it with an assert."}},
   "mobs": [
     {
       "name": "The Hollow Adventurer", "concept": "Dictionaries for player state",
@@ -90,10 +92,10 @@
       "name": "The Floor Stalker", "concept": "Counters, random rooms and modulo",
       "encounter": "Advance through numbered rooms with random events and reason about how the game knows a shop is due.",
       "act": 2, "sign": "loops",
+      "tier": "quick",
       "contract": "The Stalker follows you room to room. Count the rooms, roll what is in each, and open a shop every few.",
       "objectives": [
-        {"id": "room_loop", "label": "Walk the rooms", "question_type": "code_checkpoint", "impact": 3, "brief": "Loop through numbered rooms where each holds a fight, treasure or nothing at random."},
-        {"id": "shop_every_n", "label": "Schedule the shop", "question_type": "code_checkpoint", "impact": 3, "brief": "Open the shop every fifth room using the room number and %."},
+        {"id": "room_walk", "label": "Walk the rooms", "question_type": "code_checkpoint", "impact": 5, "brief": "Loop through numbered rooms where each holds a fight, treasure or nothing at random, and open the shop every fifth room using the room number and %."},
         {"id": "modulo_trace", "label": "Predict the shops", "question_type": "prediction", "impact": 2, "brief": "Predict which rooms from 1 to 20 have a shop, then run it."}
       ]
     },
@@ -101,11 +103,13 @@
       "name": "The Mini-Boss", "concept": "Scheduled events and end-of-run state",
       "encounter": "Bring a tougher encounter every few rooms and end the run on death with a final score.",
       "act": 2, "sign": "control-flow",
+      "tier": "elite",
       "contract": "Every tenth room something big is waiting. Beat it and go deeper; fall and the run is over, with your score carved on the wall.",
       "objectives": [
         {"id": "boss_every_n", "label": "Schedule the mini-boss", "question_type": "code_checkpoint", "impact": 3, "brief": "Make every tenth room a stronger enemy with a bigger reward."},
         {"id": "death_end", "label": "End the run", "question_type": "code_checkpoint", "impact": 3, "brief": "End the run when the player dies and show rooms cleared, gold and a score."},
-        {"id": "end_reason", "label": "Explain the score", "question_type": "explanation", "impact": 2, "brief": "Explain how your score is calculated and why it rewards going deeper over hoarding gold."}
+        {"id": "end_reason", "label": "Explain the score", "question_type": "explanation", "impact": 2, "brief": "Explain how your score is calculated and why it rewards going deeper over hoarding gold."},
+        {"id": "telegraph", "label": "Read the wind-up", "question_type": "code_checkpoint", "impact": 3, "brief": "Give the mini-boss one attack it announces a turn early, and let the player defend that turn to halve the damage."}
       ]
     },
     {
@@ -178,11 +182,14 @@
       "name": "The Core Heart", "concept": "A boss with phases",
       "encounter": "Build the final boss: a fight that changes as it is hurt.",
       "act": 4, "sign": "control-flow",
+      "tier": "elite",
       "contract": "At the bottom of the deepest level, the Core beats. It fights differently when wounded, and differently again when it is dying.",
       "objectives": [
         {"id": "phases", "label": "Give it phases", "question_type": "code_checkpoint", "impact": 4, "brief": "Give the boss three phases by HP, each with its own attacks and a message when it changes."},
         {"id": "phase_mechanic", "label": "Add a mechanic", "question_type": "code_checkpoint", "impact": 3, "brief": "In the last phase, add a mechanic the player can see coming and must react to, such as a charged attack."},
-        {"id": "victory", "label": "Win the game", "question_type": "code_checkpoint", "impact": 3, "brief": "End the game with a victory screen, the run's stats, and an offer to start a fresh run."}
+        {"id": "victory", "label": "Win the game", "question_type": "code_checkpoint", "impact": 3, "brief": "End the game with a victory screen, the run's stats, and an offer to start a fresh run."},
+        {"id": "enrage_timer", "label": "Beat the clock", "question_type": "code_checkpoint", "impact": 3, "brief": "If the fight lasts more than 15 turns the Core enrages and its attacks double; show a countdown so the player can see it coming."},
+        {"id": "phase_tests", "label": "Test the phases", "question_type": "code_checkpoint", "impact": 3, "brief": "Write assert tests that each HP threshold switches phase exactly once, even when one hit crosses two thresholds."}
       ]
     }
   ],

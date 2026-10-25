@@ -54,7 +54,6 @@ class CampaignContentSchemaTests(unittest.TestCase):
                         self.assertNotIn("objectives", mob)
                         continue
                     objectives = mob["objectives"]
-                    self.assertTrue(3 <= len(objectives) <= 5, mob["name"])
                     ids = [item["id"] for item in objectives]
                     self.assertEqual(len(ids), len(set(ids)), mob["name"])
                     for item in objectives:
@@ -62,9 +61,45 @@ class CampaignContentSchemaTests(unittest.TestCase):
                         self.assertIn(item["question_type"], CAMPAIGN_QUESTION_TYPES, (mob["name"], item["id"]))
                         self.assertTrue(1 <= item["impact"] <= MAX_IMPACT, (mob["name"], item["id"]))
                         self.assertTrue(item["label"].strip() and item["brief"].strip())
-                    # Most of every contract is building code, not talking about it.
                     kinds = [item["question_type"] for item in objectives]
-                    self.assertGreaterEqual(kinds.count("code_checkpoint") + kinds.count("bug_diagnosis"), len(kinds) / 2, mob["name"])
+                    code = kinds.count("code_checkpoint") + kinds.count("bug_diagnosis")
+                    tier = mob.get("tier")
+                    self.assertIn(tier, {None, "light", "quick", "elite"}, mob["name"])
+                    if tier == "light":
+                        # An early, lighter fight: one coding task and two questions.
+                        self.assertEqual((len(kinds), code), (3, 1), mob["name"])
+                        self.assertLessEqual(mob["act"], 2, mob["name"])
+                    elif tier == "quick":
+                        self.assertEqual((len(kinds), code), (2, 1), mob["name"])
+                    elif tier == "elite":
+                        self.assertTrue(4 <= len(kinds) <= 5 and code >= 3, mob["name"])
+                    else:
+                        # A standard contract: three or four goals, mostly building code.
+                        self.assertTrue(3 <= len(kinds) <= 4, mob["name"])
+                        self.assertGreaterEqual(code, len(kinds) / 2, mob["name"])
+
+    def test_fights_vary_in_length_and_mix(self):
+        files = story_files()
+        tiers = [mob.get("tier") for entry in files for mob in entry["mobs"]]
+        for tier in ("light", "quick", "elite"):
+            self.assertGreaterEqual(tiers.count(tier), 4, tier)
+        gauntlets = [tuple(entry["boss_gauntlet"]) for entry in files]
+        code_phases = {"required_behavior", "edge_cases", "twist_2", "twist_3", "twist_4"}
+        shapes = {(len(g), sum(phase in code_phases for phase in g)) for g in gauntlets}
+        self.assertGreaterEqual(len(shapes), 5, shapes)
+        first, last = gauntlets[0], gauntlets[-1]
+        self.assertEqual(sum(phase in code_phases for phase in first), 1)  # the first boss is light on code
+        self.assertEqual((len(last), sum(phase in code_phases for phase in last)), (6, 5))  # the last is five coding phases and an interview
+        for entry in files:
+            with self.subTest(branch=entry["branch"]):
+                self.assertEqual(entry["boss_gauntlet"][0], "required_behavior")
+                self.assertEqual(len(entry["boss_gauntlet"]), len(set(entry["boss_gauntlet"])))
+                self.assertLessEqual(set(entry["boss_gauntlet"]), set(state.BOSS_REQUIREMENTS))
+                for phase in entry["boss_gauntlet"]:
+                    if phase.startswith("twist_"):
+                        authored = entry["boss_phases"][phase]
+                        self.assertTrue(authored["label"].strip())
+                        self.assertGreater(len(authored["quest"]), 150)
 
     def test_the_engine_uses_every_authored_contract_as_written(self):
         use_real_content()

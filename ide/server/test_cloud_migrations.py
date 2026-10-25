@@ -152,15 +152,17 @@ class CloudMigrationContractTests(unittest.TestCase):
         for phrase in ("create or replace function public.validate_campaign_projection", "dungeon map nodes must be bounded", "revoke all on function public.validate_campaign_projection(jsonb) from public;"):
             self.assertIn(phrase, sql)
 
-    def test_dungeon_grid_migration_allows_every_boss_phase(self):
+    def test_newest_migration_allows_every_boss_phase(self):
         import re
 
         from ide.server.state import BOSS_REQUIREMENTS
 
-        sql = DUNGEON_GRID_MIGRATION.read_text(encoding="utf-8")
+        # The latest migration that (re)defines the boss phase list is the live one.
+        newest = sorted(path for path in (ROOT / "supabase" / "migrations").glob("*.sql") if "unsupported phase" in path.read_text(encoding="utf-8"))[-1]
+        sql = newest.read_text(encoding="utf-8")
         phases = re.search(r"field_name not in \(([^)]*)\)", sql)
         self.assertIsNotNone(phases)
-        self.assertEqual(set(re.findall(r"'([a-z_]+)'", phases.group(1))), set(BOSS_REQUIREMENTS))
+        self.assertEqual(set(re.findall(r"'([a-z0-9_]+)'", phases.group(1))), set(BOSS_REQUIREMENTS))
         self.assertIn(f"-> 'verified') > {len(BOSS_REQUIREMENTS)} then", sql)
 
 

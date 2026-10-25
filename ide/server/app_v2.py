@@ -326,7 +326,7 @@ class PyrBossSubmissionRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     nonce: str = Field(min_length=16, max_length=128)
-    requirement_id: Literal["required_behavior", "explanation", "edge_cases", "interview"]
+    requirement_id: Literal["required_behavior", "explanation", "edge_cases", "twist_2", "twist_3", "twist_4", "read_2", "interview"]
     answer: str = Field(min_length=1, max_length=20_000)
     answer_source: Literal["manual", "forge_active_file"] = "manual"
     source_path: str | None = Field(default=None, max_length=240)
@@ -340,7 +340,7 @@ class PyrBossVerdictRequest(BaseModel):
     submission_id: str = Field(min_length=1, max_length=MAX_IDENTIFIER_LENGTH)
     answer_digest: str = Field(min_length=64, max_length=64, pattern=r"^[0-9a-f]{64}$")
     verdict: Literal["correct", "incorrect"]
-    requirement_id: Literal["required_behavior", "explanation", "edge_cases", "interview"]
+    requirement_id: Literal["required_behavior", "explanation", "edge_cases", "twist_2", "twist_3", "twist_4", "read_2", "interview"]
     evidence_id: str = Field(min_length=1, max_length=MAX_IDENTIFIER_LENGTH)
     reason: str = Field(min_length=1, max_length=MAX_REASON_LENGTH)
 
@@ -1446,7 +1446,7 @@ def _attach_pyr_verdict_challenge(
             context["verdict"]["mob_name"] = existing["mob_name"]
         if existing.get("boss_name"):
             context["verdict"]["boss_name"] = existing["boss_name"]
-            context["verdict"]["requirements"] = list(BOSS_REQUIREMENTS)
+            context["verdict"]["requirements"] = list(encounter.get("boss_requirements") or BOSS_REQUIREMENTS)
             context["verdict"]["verified_requirements"] = sorted(existing.get("boss_verified", {}).keys())
             current_requirement = encounter.get("boss_current_requirement")
             if isinstance(current_requirement, dict):
@@ -2163,13 +2163,14 @@ def _clear_boss_if_ready() -> dict | None:
         return None
     project = next((item for item in progress.get("projects", []) if isinstance(item, dict) and item.get("status") == "active"), {})
     validation = project.get("boss_validation") if isinstance(project.get("boss_validation"), dict) else {}
+    gauntlet = list(encounter.get("boss_requirements") or BOSS_REQUIREMENTS)
     evidence: dict[str, dict] = {}
     for entry in validation.get("history") or []:
-        if isinstance(entry, dict) and entry.get("requirement_id") in BOSS_REQUIREMENTS:
+        if isinstance(entry, dict) and entry.get("requirement_id") in gauntlet:
             evidence[entry["requirement_id"]] = entry
     fallback = next(iter(evidence.values()), {}).get("evidence_id") or f"boss-{secrets.token_hex(12)}"
     reason = "Boss requirements verified; " + "; ".join(
-        str(evidence.get(requirement, {}).get("reason") or "validated") for requirement in BOSS_REQUIREMENTS
+        str(evidence.get(requirement, {}).get("reason") or "validated") for requirement in gauntlet
     )
     return STATE_SERVICE.apply_internal(
         "record_boss_clear",
@@ -3208,7 +3209,7 @@ BOSS_QUESTION_STYLES = {
 class BossOptionRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    requirement_id: Literal["required_behavior", "explanation", "edge_cases", "interview"]
+    requirement_id: Literal["required_behavior", "explanation", "edge_cases", "twist_2", "twist_3", "twist_4", "read_2", "interview"]
     option_index: int = Field(ge=0, le=7)
 
 

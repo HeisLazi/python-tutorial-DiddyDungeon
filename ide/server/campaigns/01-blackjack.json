@@ -18,6 +18,7 @@
   "boss_lore": "The House has watched every hand you dealt. It does not cheat; it simply waits for a rule you forgot.",
   "boss_brief": "Bring a finished blackjack.py: aces worth 1 or 11, a real shoe that reshuffles, naturals paying 3:2, a validated bankroll with doubling, and a menu where your basic-strategy bot can play, simulate thousands of hands and count cards.",
   "boss_twist": "The House changes the rules mid-game. Turn your rules into data: a HouseRules dict or dataclass with decks, dealer_hits_soft_17, blackjack_payout and double_after_split, read by your scoring and dealer play instead of constants. Write simulate(strategy, rules, hands=10000, seed=None) that returns the bankroll change and the house edge as a percentage, and print the edge with dealer_hits_soft_17 off and on. A shoe that runs out mid-hand must reshuffle without losing the cards already on the table.",
+  "boss_gauntlet": ["required_behavior", "explanation", "edge_cases", "interview"],
   "mobs": [
     {
       "name": "The Empty Table",
@@ -80,11 +81,12 @@
       "concept": "Aces: card values that depend on the hand",
       "encounter": "Make aces count as 11 or 1, whichever keeps the hand at 21 or under.",
       "act": 2, "sign": "conditionals",
+      "tier": "light",
       "contract": "Word from the tables: a trickster rides every ace, counting it eleven when it should be one and busting honest players. Your scorer still counts every ace as 11. Teach it to see through the trick.",
       "objectives": [
         {"id": "ace_rule", "label": "Score aces properly", "question_type": "code_checkpoint", "impact": 3, "brief": "Change calculate_score in blackjack.py so each ace counts 11 unless that would bust the hand, in which case it counts 1. A hand of ace, ace and 9 must score 21."},
         {"id": "multi_ace_trace", "label": "Trace hands with many aces", "question_type": "prediction", "impact": 2, "brief": "Predict the score of ace and 10, of ace, ace and 10, and of three aces and a 9, then check your function gives the same answers."},
-        {"id": "ace_bug", "label": "Name the old bug", "question_type": "bug_diagnosis", "impact": 3, "brief": "Pick a hand your old scorer got wrong (for example ace, 5, then a 10) and explain exactly what it missed and how your fix handles it."}
+        {"id": "ace_bug", "label": "Name the old bug", "question_type": "explanation", "impact": 3, "brief": "Pick a hand your old scorer got wrong (for example ace, 5, then a 10) and explain exactly what it missed and how your fix handles it."}
       ]
     },
     {

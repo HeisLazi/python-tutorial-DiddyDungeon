@@ -19,6 +19,8 @@
   "boss_lore": "The Champion knows every type matchup by heart. It does not need luck; it needs you to forget one.",
   "boss_brief": "Bring a finished battle.py: creatures as a class with moves, types and status effects, teams of three with switching, an enemy that picks moves by expected damage, levels and XP, and a gauntlet of trainers with your team saved between runs.",
   "boss_twist": "The Arena Champion brings a type you did not plan for. Keep the type chart as data and add one new type to it without touching the battle logic. Write predict_winner(team_a, team_b, battles=500, seed=None) that runs seeded battles and returns both win rates, and make the enemy switch out when its active creature is at a 2x type disadvantage and below 30% HP. Status effects must expire on the right turn even when a creature switches out and back in.",
+  "boss_gauntlet": ["required_behavior", "edge_cases", "explanation", "twist_2", "interview"],
+  "boss_phases": {"twist_2": {"label": "Phase 2: The Champion's ace evolves", "quest": "The Champion's last creature evolves mid-battle. Write evolve(creature): when a creature reaches its level threshold during a battle it becomes its next form, keeping its HP percentage, current status and learned moves, and gaining the new form's stats and one new move. Show one evolution happening mid-fight in the battle log."}},
   "mobs": [
     {
       "name": "The Wild Slime", "concept": "Nested dictionaries",
@@ -35,11 +37,12 @@
       "name": "The Feral Fang", "concept": "Functions that change state",
       "encounter": "Make one attack land and reason about which creature's data changes and which stays untouched.",
       "act": 1, "sign": "functions",
+      "tier": "light",
       "contract": "The Fang bites. Somebody's HP goes down. Make sure it is the right somebody.",
       "objectives": [
         {"id": "attack_fn", "label": "Write attack", "question_type": "code_checkpoint", "impact": 4, "brief": "Write attack(attacker, defender) that works out damage from the move power, attack and defence and lowers the defender's HP."},
         {"id": "damage_trace", "label": "Trace the damage", "question_type": "prediction", "impact": 2, "brief": "Predict the defender's HP after one attack with your numbers, then check it."},
-        {"id": "wrong_target_bug", "label": "Hit the right creature", "question_type": "bug_diagnosis", "impact": 2, "brief": "Explain which dictionary your function changes and why the attacker's own data must stay untouched."}
+        {"id": "wrong_target_bug", "label": "Hit the right creature", "question_type": "explanation", "impact": 2, "brief": "Explain which dictionary your function changes and why the attacker's own data must stay untouched."}
       ]
     },
     {
@@ -57,10 +60,10 @@
       "name": "The Turn Goblin", "concept": "While loops and turn order",
       "encounter": "Let both sides take repeated turns and trace whose turn it is at every point in the loop.",
       "act": 1, "sign": "loops",
+      "tier": "quick",
       "contract": "The Goblin keeps skipping its turn, then taking two. Make the turns honest: you, then it, until one falls.",
       "objectives": [
-        {"id": "turn_loop", "label": "Alternate turns", "question_type": "code_checkpoint", "impact": 4, "brief": "Loop the battle so the two creatures attack in turn until one reaches 0 HP."},
-        {"id": "speed_order", "label": "Let speed decide", "question_type": "code_checkpoint", "impact": 2, "brief": "Give creatures a speed stat and let the faster one act first each round."},
+        {"id": "turn_loop", "label": "Alternate turns", "question_type": "code_checkpoint", "impact": 5, "brief": "Loop the battle so the two creatures attack in turn until one reaches 0 HP, with a speed stat deciding who acts first each round."},
         {"id": "turn_trace", "label": "Trace the turns", "question_type": "prediction", "impact": 2, "brief": "Trace who acts in the first three rounds with your two creatures, then check the battle log."}
       ]
     },
@@ -145,11 +148,13 @@
       "name": "The Cunning Rival", "concept": "Choosing actions by expected value",
       "encounter": "Make the enemy pick the move with the highest expected damage.",
       "act": 3, "sign": "functions",
+      "tier": "elite",
       "contract": "Kesh's best rival thinks before it strikes. For every move it asks: how hard would this hit, how likely is it to land?",
       "objectives": [
         {"id": "expected_damage", "label": "Estimate each move", "question_type": "code_checkpoint", "impact": 4, "brief": "Write expected_damage(attacker, move, defender) from power, type multiplier and accuracy, without dealing any damage."},
         {"id": "smart_enemy", "label": "Pick the best move", "question_type": "code_checkpoint", "impact": 3, "brief": "Make the enemy use the move with the highest expected damage, and switch out when it is badly outmatched."},
-        {"id": "rival_test", "label": "Prove it is smarter", "question_type": "explanation", "impact": 2, "brief": "Run 200 battles of the cunning rival against the random one and explain the result."}
+        {"id": "rival_test", "label": "Prove it is smarter", "question_type": "explanation", "impact": 2, "brief": "Run 200 battles of the cunning rival against the random one and explain the result."},
+        {"id": "status_aware", "label": "Read the status", "question_type": "code_checkpoint", "impact": 3, "brief": "Make expected_damage account for status effects (an asleep defender cannot dodge, a burned attacker hits softer) and show the rival changing its pick because of one."}
       ]
     },
     {
@@ -178,11 +183,13 @@
       "name": "The League Clerk", "concept": "A gauntlet and saved teams",
       "encounter": "Face a series of trainers and keep your team between runs.",
       "act": 4, "sign": "files-json",
+      "tier": "elite",
       "contract": "The League is not one battle; it is a ladder of trainers, each harder than the last. The Clerk keeps your team on file between visits.",
       "objectives": [
         {"id": "gauntlet", "label": "Climb the ladder", "question_type": "code_checkpoint", "impact": 3, "brief": "Pit the player against a sequence of trainers with stronger teams, healing between battles."},
         {"id": "save_team", "label": "Save the team", "question_type": "code_checkpoint", "impact": 3, "brief": "Save the player's team (levels, XP, moves) to a JSON file and load it on start."},
-        {"id": "league_menu", "label": "Open the league", "question_type": "code_checkpoint", "impact": 3, "brief": "Add a menu: start the gauntlet, battle a random rival, view your team, or quit."}
+        {"id": "league_menu", "label": "Open the league", "question_type": "code_checkpoint", "impact": 3, "brief": "Add a menu: start the gauntlet, battle a random rival, view your team, or quit."},
+        {"id": "type_ladder", "label": "Counter the climber", "question_type": "code_checkpoint", "impact": 3, "brief": "Give each trainer on the ladder a signature type, and make the next trainer counter the type your team has used most so far."}
       ]
     }
   ],

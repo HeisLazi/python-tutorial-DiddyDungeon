@@ -983,7 +983,7 @@ class PyrContextBridgeTests(unittest.TestCase):
                     app_v2.CHOICE_ANSWER_KEYS[key] = {"answer": 0, "why": "deal pops one card.", "options": ["A card", "A list", "None"]}
                     return client.post("/api/boss/answer-option", headers=host, json={"requirement_id": requirement, "option_index": pick})
 
-                self.assertEqual(capture() and app_v2.BOSS_REQUIREMENTS, ("required_behavior", "explanation", "edge_cases", "interview"))
+                self.assertTrue(capture())
                 first = code_goal("required_behavior")
                 self.assertEqual(first.status_code, 200, first.text)
                 self.assertFalse(first.json()["complete"])
@@ -1010,7 +1010,7 @@ class PyrContextBridgeTests(unittest.TestCase):
                 final = json.loads(canonical.read_text(encoding="utf-8"))
                 self.assertTrue(final["projects"][0]["completed"])
                 self.assertEqual(final["projects"][0]["boss_status"], "defeated")
-                self.assertEqual(final["projects"][0]["boss_validation"]["verified"], list(app_v2.BOSS_REQUIREMENTS))
+                self.assertEqual(final["projects"][0]["boss_validation"]["verified"], ["required_behavior", "explanation", "edge_cases", "interview"])
                 self.assertEqual(final["player"]["xp"], 50)
                 self.assertEqual(final["player"]["level"], 3)
                 self.assertEqual(final["player"]["lifetime_xp"], 250)

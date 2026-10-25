@@ -19,6 +19,8 @@
   "boss_lore": "The Invincibles have not lost in three seasons. They are not magic; they are simply managed better than anyone else.",
   "boss_brief": "Bring a finished football_manager.py: squad and market data, budget-checked transfers, valid line-ups, a match engine from team strength, a round-robin season with a sorted league table, fatigue and injuries, rival clubs trading, an assistant that picks the best eleven, an academy, and seasons saved and continued.",
   "boss_twist": "The Invincibles test a whole season. Write play_season(clubs, seed) that plays a full double round-robin and returns the league table sorted by points, then goal difference, then goals scored, and prove the tie-breaks with a small hand-made table where two clubs finish level on points. Transfers that would push a budget below zero or leave fewer than eleven fit players must be refused with a reason the user can read.",
+  "boss_gauntlet": ["required_behavior", "explanation", "edge_cases", "twist_2", "read_2", "twist_3", "interview"],
+  "boss_phases": {"twist_2": {"label": "Phase 2: The injury crisis", "quest": "Half your first eleven are injured in one match. Write pick_best_eleven(squad, formation) that always fields a valid team from fit players (out-of-position players play at a reduced rating), and show it on a squad with six injuries."}, "twist_3": {"label": "Phase 3: The title decider", "quest": "The last day decides the title. Add head-to-head results as the final tie-break after goals scored, and write a test that builds a three-club tie only head-to-head can separate and asserts the correct order."}},
   "mobs": [
     {
       "name": "The Scout", "concept": "Lists of dictionaries and display",
@@ -35,10 +37,10 @@
       "name": "The Talent Spotter", "concept": "Filtering and searching",
       "encounter": "Find players in the squad or market by position or rating and explain how the search decides who matches.",
       "act": 1, "sign": "conditionals",
+      "tier": "quick",
       "contract": "The Spotter only ever asks two things: what position, how good? Answer them for the squad and the market alike.",
       "objectives": [
-        {"id": "market", "label": "Build the market", "question_type": "code_checkpoint", "impact": 2, "brief": "Build a transfer market as a second list with the same player shape."},
-        {"id": "search", "label": "Search players", "question_type": "code_checkpoint", "impact": 4, "brief": "Write a search that filters either list by position and minimum rating, and sorts the results best first."},
+        {"id": "market_search", "label": "Search the market", "question_type": "code_checkpoint", "impact": 5, "brief": "Build a transfer market as a second list with the same player shape, and write a search that filters either list by position and minimum rating, sorted best first."},
         {"id": "search_trace", "label": "Predict a search", "question_type": "prediction", "impact": 2, "brief": "Predict who a search for defenders rated 70 or more returns, then check it."}
       ]
     },
@@ -145,11 +147,13 @@
       "name": "The Rival Directors", "concept": "AI clubs acting in the market",
       "encounter": "Let rival clubs buy and sell in a transfer window.",
       "act": 3, "sign": "random-selection",
+      "tier": "elite",
       "contract": "The other seven clubs are not standing still. In the window their directors buy, sell and sometimes steal your targets.",
       "objectives": [
         {"id": "transfer_window", "label": "Open the window", "question_type": "code_checkpoint", "impact": 3, "brief": "Hold a transfer window mid-season where rival clubs act in turn."},
         {"id": "rival_logic", "label": "Give rivals a plan", "question_type": "code_checkpoint", "impact": 4, "brief": "Let each rival buy the best affordable player for its weakest position, using the same buy function you use."},
-        {"id": "window_news", "label": "Report the news", "question_type": "code_checkpoint", "impact": 2, "brief": "Print a transfer news feed of every move made in the window."}
+        {"id": "window_news", "label": "Report the news", "question_type": "code_checkpoint", "impact": 2, "brief": "Print a transfer news feed of every move made in the window."},
+        {"id": "bidding_war", "label": "Start a bidding war", "question_type": "code_checkpoint", "impact": 4, "brief": "When two clubs want the same player, run a bidding war: each raises within its budget until one drops out, and the player joins the highest bidder."}
       ]
     },
     {
@@ -178,11 +182,13 @@
       "name": "The Season Archive", "concept": "Saving and continuing seasons",
       "encounter": "Save the whole club and league, and start the next season from it.",
       "act": 4, "sign": "files-json",
+      "tier": "elite",
       "contract": "A dynasty is built season on season. Archive everything at the final whistle and carry it into the next year.",
       "objectives": [
         {"id": "save_season", "label": "Archive the season", "question_type": "code_checkpoint", "impact": 3, "brief": "Save the clubs, squads, budget, table and results to a JSON file at the end of a season."},
         {"id": "next_season", "label": "Start the next season", "question_type": "code_checkpoint", "impact": 4, "brief": "Load the archive, run development and a youth intake, reset the table and generate new fixtures."},
-        {"id": "season_awards", "label": "Hand out awards", "question_type": "code_checkpoint", "impact": 2, "brief": "Announce the champion, top scorer and your club's finish, and keep a list of past champions."}
+        {"id": "season_awards", "label": "Hand out awards", "question_type": "code_checkpoint", "impact": 2, "brief": "Announce the champion, top scorer and your club's finish, and keep a list of past champions."},
+        {"id": "three_seasons", "label": "Play a dynasty", "question_type": "code_checkpoint", "impact": 3, "brief": "Play three seasons in a row from the archive and print each champion and your club's finish, proving what should carry over does and nothing else does."}
       ]
     }
   ],

@@ -20,6 +20,8 @@
   "boss_lore": "The Rogue Familiar was never cruel. It was simply given tools without a leash and goals without a limit.",
   "boss_brief": "Bring a finished agent.py: a chat loop with history, a swappable brain, a tool registry with a safe calculator and notes, an act-observe loop with a step limit, planning and searchable memory, guardrails with confirmations and an action log, and an evaluation harness that passes with your scripted brain.",
   "boss_twist": "The Rogue Familiar tries to break your guardrails. Write at least eight scripted evaluation cases, including a tool call with bad arguments, an action that needs confirmation, a loop that would pass the step limit and a memory recall. run_evals(brain) must return pass or fail per case and an overall score, and your scripted brain must pass every case. Any tool that raises must be caught, logged and handed back to the brain as an observation.",
+  "boss_gauntlet": ["required_behavior", "edge_cases", "twist_2", "twist_3", "twist_4", "interview"],
+  "boss_phases": {"twist_2": {"label": "Phase 2: The Familiar forgets", "quest": "Cap memory at a fixed number of entries, and summarise the oldest ones into a single note before dropping them so recall still finds early facts in a long session. Test it with a scripted 40-message conversation."}, "twist_3": {"label": "Phase 3: The leash snaps", "quest": "Give every tool a permission level (safe, confirm or forbidden). A forbidden tool never runs, a confirm tool waits for an explicit yes, and every decision goes in the action log. Prove each level with an assert test using your scripted brain."}, "twist_4": {"label": "Phase 4: Bind the Familiar", "quest": "Make the brain swappable by config: the scripted brain, or a real model brain that reads its key from an environment variable and never stores it in code. The evaluation harness runs against either, and with the scripted brain every case must pass."}},
   "mobs": [
     {
       "name": "The Silent Familiar",
@@ -159,11 +161,13 @@
       "concept": "Testing an agent with a scripted brain",
       "encounter": "Write a brain that follows a script, and test the agent with it.",
       "act": 3, "sign": "testing",
+      "tier": "elite",
       "contract": "You cannot test a familiar whose mind changes every run. The Mock Oracle speaks only from a script, so you can check the body does exactly what it should.",
       "objectives": [
         {"id": "mock_brain", "label": "Write the scripted brain", "question_type": "code_checkpoint", "impact": 4, "brief": "Write a MockBrain that returns a prepared list of decisions in order, so a whole conversation plays out the same every time."},
         {"id": "scenario_tests", "label": "Test three scenarios", "question_type": "code_checkpoint", "impact": 4, "brief": "Write tests with assert that use MockBrain to check a plain reply, a tool call and the step limit."},
-        {"id": "mock_reason", "label": "Explain the mock", "question_type": "explanation", "impact": 2, "brief": "Explain why a scripted brain makes the agent loop testable, and what it cannot tell you."}
+        {"id": "mock_reason", "label": "Explain the mock", "question_type": "explanation", "impact": 2, "brief": "Explain why a scripted brain makes the agent loop testable, and what it cannot tell you."},
+        {"id": "bad_brain", "label": "Survive a bad brain", "question_type": "code_checkpoint", "impact": 3, "brief": "Add two scenarios where the mock brain misbehaves (it asks for an unknown tool, or returns a malformed decision) and assert the agent recovers with a clear message."}
       ]
     },
     {
@@ -207,11 +211,14 @@
       "concept": "The whole agent working together",
       "encounter": "Show the finished familiar doing a real job from start to finish.",
       "act": 4, "sign": "agents",
+      "tier": "elite",
       "contract": "Wren wants to see a full day's work before she signs your binding. One goal, start to finish: plan, tools, memory, notes, leash and log.",
       "objectives": [
         {"id": "full_session", "label": "Run a full session", "question_type": "code_checkpoint", "impact": 4, "brief": "Make one goal (for example: work out a budget and save it as a note) run end to end with planning, tools, memory and logging."},
         {"id": "help_command", "label": "Write the help", "question_type": "code_checkpoint", "impact": 2, "brief": "Add a help command that explains every command and tool in plain words."},
-        {"id": "walkthrough", "label": "Walk Wren through it", "question_type": "explanation", "impact": 2, "brief": "Explain, step by step, how a message travels through your familiar: loop, brain, tools, memory, leash and back."}
+        {"id": "walkthrough", "label": "Walk Wren through it", "question_type": "explanation", "impact": 2, "brief": "Explain, step by step, how a message travels through your familiar: loop, brain, tools, memory, leash and back."},
+        {"id": "replay_log", "label": "Replay the day", "question_type": "code_checkpoint", "impact": 3, "brief": "Write the action log to a file and add a replay command that prints a past session step by step."},
+        {"id": "day_test", "label": "Test the whole day", "question_type": "code_checkpoint", "impact": 4, "brief": "Write one end-to-end test with MockBrain that runs the day's goal and asserts the final note, the log entries, and that the leash was respected."}
       ]
     }
   ],

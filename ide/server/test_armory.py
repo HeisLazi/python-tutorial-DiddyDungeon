@@ -17,6 +17,7 @@ from ide.server.state import (
     DUNGEON_TRINKETS,
     EQUIPMENT_CATALOG,
     LocalStateService,
+    StateCommandError,
     armory_catalog,
 )
 from ide.server.test_campaign_content import story_files, use_real_content, user_like_progress
@@ -234,3 +235,38 @@ class BossGateTests(unittest.TestCase):
             twist = json.loads(path.read_text(encoding="utf-8")).get("boss_twist", "")
             self.assertGreater(len(twist), 250, path.name)
             self.assertRegex(twist, r"[a-z_]+\(", path.name)
+
+    def test_each_boss_runs_its_own_gauntlet(self):
+        gauntlet = ["required_behavior", "edge_cases", "twist_2", "twist_3", "twist_4", "interview"]
+        project = {"branch": "09-ai-agent", "boss": "The Rogue Familiar", "boss_status": "available", "boss_gauntlet": gauntlet,
+                   "boss_phases": {"twist_2": {"label": "Phase 2: The Familiar forgets", "quest": "Cap memory and summarise the oldest entries."}},
+                   "boss_validation": {"verified": ["required_behavior", "edge_cases"], "history": []}}
+        projection = LocalStateService._boss_validation_projection(project)
+        self.assertEqual([item["id"] for item in projection["boss_requirements_projection"]], gauntlet)
+        self.assertEqual(projection["boss_phase"], "twist_2")
+        self.assertEqual(projection["boss_current_requirement"]["label"], "Phase 2: The Familiar forgets")
+        self.assertEqual(projection["boss_max_resolve"], 5 * 5 + 3)
+        light = LocalStateService._boss_validation_projection({"boss_status": "available", "boss_gauntlet": ["required_behavior", "explanation", "interview"]})
+        self.assertEqual(light["boss_max_resolve"], 5 + 2 + 3)
+        broken = LocalStateService._boss_validation_projection({"boss_status": "available", "boss_gauntlet": ["interview", "nonsense"]})
+        self.assertEqual(broken["remaining_boss_requirements"], ["required_behavior", "explanation", "edge_cases", "interview"])
+
+    def test_a_phase_outside_this_gauntlet_is_refused_and_the_clear_records_this_gauntlet(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "progress.json"
+            state = user_like_progress()
+            for item in state["projects"]:
+                item["status"] = "available"
+            project = {"branch": "99-test-gauntlet", "name": "Test gauntlet", "status": "active", "boss": "The Pattern Warden", "boss_status": "available",
+                       "progress": 100, "order": 0, "boss_gauntlet": ["required_behavior", "explanation", "interview"],
+                       "mobs": [{"name": "The Mimic", "status": "defeated", "concept": "Input"}]}
+            state["projects"] = [project] + [item for item in state["projects"] if item.get("branch") != "00-rps-tournament"]
+            path.write_text(json.dumps(state), encoding="utf-8")
+            service = LocalStateService(path, threading.RLock())
+            with self.assertRaises(StateCommandError) as refused:
+                service.apply_internal("record_boss_requirement", {"requirement_id": "edge_cases", "evidence_id": "x-1", "reason": "Not in this fight"})
+            self.assertEqual(refused.exception.status_code, 409)
+            for phase in ("required_behavior", "explanation", "interview"):
+                service.apply_internal("record_boss_requirement", {"requirement_id": phase, "evidence_id": f"ev-{phase}", "reason": "Verified"})
+            cleared = service.apply_internal("record_boss_clear", {"evidence_id": "ev-required_behavior", "explanation_evidence_id": "ev-explanation", "interview_evidence_id": "ev-interview", "reason": "Gauntlet done"})
+            self.assertEqual(cleared["result"]["verified_boss_requirements"], ["required_behavior", "explanation", "interview"])
