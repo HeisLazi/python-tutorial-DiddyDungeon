@@ -2028,7 +2028,7 @@ function ResourceTutorScreen({ pyr, hunter, sparRoster = [], sparActions, avatar
         selectedId={huntPick} onSelect={(pageId) => { setHuntPick(pageId); setSelectedId(pageId) }} onView={setSurface}
         onRead={(pageId) => { setHuntPick(pageId); setSelectedId(pageId); setReadPage(0); setSurface('codex') }}
         onPractice={(pageId, mode, difficulty) => { if (pageId) { setHuntPick(pageId); setSelectedId(pageId) } setPracticeMode(mode); setPracticeDifficulty(difficulty || 1); setPracticeQuestion(null); setSurface('ide') }} />}
-      {surface === 'codex' && <section className="resource-codex-layout"><aside className="resource-codex-index"><div className="resource-index-heading"><span className="screen-kicker">FIELD LIBRARY</span><strong>{pages.length} concepts</strong></div><label className="resource-search"><span>SEARCH</span><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Find a concept" /></label><div className="resource-page-list">{filteredPages.map((page) => <button key={page.id} type="button" className={page.id === selectedPage?.id ? 'active' : ''} onClick={() => { setSelectedId(page.id); setReadPage(0) }}><span>{page.title.slice(0, 1).toUpperCase()}</span><div><strong>{page.title}</strong><small>{page.encounter_ids?.length || 0} encounter records</small></div></button>)}</div><div className="resource-review-queue"><span className="screen-kicker">REVIEW QUEUE</span><strong>{entries.filter((entry) => entry.weaknesses?.length).length || 0} signals</strong><p>PYR can suggest concepts here when your attempts show a pattern.</p></div></aside><article className="resource-codex-reader"><div className="resource-breadcrumb"><span>CODEX</span><span>/</span><strong>{selectedPage?.title?.toUpperCase() || 'REFERENCE'}</strong></div><header className="resource-reader-heading"><div><span className="screen-kicker">REFERENCE ENTRY</span><h3>{selectedPage?.title || 'Concept page'}</h3><p>{selectedPage?.definition || 'A canonical learning reference.'}</p></div><button type="button" className="primary" onClick={() => setSurface('ide')}>Practice this →</button></header><div className="resource-folio-controls"><button type="button" className={readPage === 0 ? 'active' : ''} onClick={() => setReadPage(0)}>01 · Definition</button><button type="button" className={readPage === 1 ? 'active' : ''} onClick={() => setReadPage(1)}>02 · Examples</button><button type="button" className={readPage === 2 ? 'active' : ''} onClick={() => setReadPage(2)}>03 · Mistakes &amp; signals</button><span>PAGE {readPage + 1} / 3</span></div>{readPage === 0 && <div className="resource-folio-copy"><section className="resource-definition"><span className="screen-kicker">THE IDEA</span><p>{selectedPage?.definition}</p></section><ResourceEncounterRecords entries={selectedEntries} /></div>}{readPage === 1 && <ResourceCodexExamples page={selectedPage} />}{readPage === 2 && <ResourceCodexMistakes page={selectedPage} entries={selectedEntries} />}</article></section>}
+      {surface === 'codex' && <section className="resource-codex-layout"><aside className="resource-codex-index"><div className="resource-index-heading"><span className="screen-kicker">FIELD LIBRARY</span><strong>{pages.length} concepts</strong></div><label className="resource-search"><span>SEARCH</span><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Find a concept" /></label><div className="resource-page-list">{filteredPages.map((page) => <button key={page.id} type="button" className={page.id === selectedPage?.id ? 'active' : ''} onClick={() => { setSelectedId(page.id); setReadPage(0) }}><span>{page.title.slice(0, 1).toUpperCase()}</span><div><strong>{page.title}</strong><small>{page.encounter_ids?.length || 0} encounter records</small></div></button>)}</div><div className="resource-review-queue"><span className="screen-kicker">REVIEW QUEUE</span><strong>{entries.filter((entry) => entry.weaknesses?.length).length || 0} signals</strong><p>PYR can suggest concepts here when your attempts show a pattern.</p></div></aside><article className="resource-codex-reader"><div className="resource-breadcrumb"><span>CODEX</span><span>/</span><strong>{selectedPage?.title?.toUpperCase() || 'REFERENCE'}</strong></div><header className="resource-reader-heading"><div><span className="screen-kicker">REFERENCE ENTRY</span><h3>{selectedPage?.title || 'Concept page'}</h3><p>{selectedPage?.definition || 'A canonical learning reference.'}</p></div><span className="resource-reader-actions"><button type="button" className="primary" onClick={() => setSurface('ide')}>Practice this →</button><StudyAtHomeButton topic={selectedPage?.title} context="reading the Codex between bounties" label="Study at home" /></span></header><StudiedAtHome concept={selectedPage?.title} /><div className="resource-folio-controls"><button type="button" className={readPage === 0 ? 'active' : ''} onClick={() => setReadPage(0)}>01 · Definition</button><button type="button" className={readPage === 1 ? 'active' : ''} onClick={() => setReadPage(1)}>02 · Examples</button><button type="button" className={readPage === 2 ? 'active' : ''} onClick={() => setReadPage(2)}>03 · Mistakes &amp; signals</button><span>PAGE {readPage + 1} / 3</span></div>{readPage === 0 && <div className="resource-folio-copy"><section className="resource-definition"><span className="screen-kicker">THE IDEA</span><p>{selectedPage?.definition}</p></section><ResourceEncounterRecords entries={selectedEntries} /></div>}{readPage === 1 && <ResourceCodexExamples page={selectedPage} />}{readPage === 2 && <ResourceCodexMistakes page={selectedPage} entries={selectedEntries} />}</article></section>}
       {surface === 'ide' && <section className="resource-ide-layout"><aside className="resource-ide-rail"><button type="button" className="resource-rail-file active" onClick={() => setSurface('ide')}><ForgeFileGlyph kind="python" /><small>tutor.py</small></button><button type="button" className="resource-rail-file" onClick={() => setSurface('notes')}><ForgeFileGlyph kind="markdown" /><small>notes.md</small></button><div className="resource-ide-context"><span className="screen-kicker">CONCEPT</span><strong>{conceptLabel}</strong><small>tutor.py is writable</small></div></aside><main className="resource-ide-main"><div className="resource-breadcrumb"><span>TUTOR</span><span>/</span><strong>IDE PRACTICE</strong></div><header className="resource-ide-heading"><div><span className="screen-kicker">{practiceModes.find((mode) => mode.id === practiceMode)?.label.toUpperCase()}</span><h3>{conceptLabel}</h3>{practiceQuestion ? <div className="pyr-practice-question"><span className="screen-kicker">PYR'S QUESTION</span><p>{practiceQuestion.text}</p>{practiceQuestion.why && <small>{practiceQuestion.why}</small>}</div> : <p>{practiceModes.find((mode) => mode.id === practiceMode)?.prompt} PYR can point at your reasoning without writing the finished response.</p>}</div><label><span>QUESTION LENS</span>{pyr?.chooseLensEnabled && <button type="button" className="pyr-choose-lens" onClick={choosePyrLens} disabled={busy}>✦ Let PYR choose</button>}<select value={practiceMode} onChange={(event) => { setPracticeMode(event.target.value); setPracticeQuestion(null) }}>{practiceModes.map((mode) => <option key={mode.id} value={mode.id}>{mode.label}</option>)}</select></label></header><div className="resource-mode-strip">{practiceModes.map((mode, index) => <button type="button" key={mode.id} className={practiceMode === mode.id ? 'active' : ''} onClick={() => { setPracticeMode(mode.id); setPracticeQuestion(null) }}><span>0{index + 1}</span>{mode.label}</button>)}</div><div className="resource-editor-card"><div className="resource-editor-toolbar"><span><b className="safe-badge">PYR WRITABLE</b> tutor.py{tutorDirty ? ' · unsaved' : ''}</span><span>MONACO · PYTHON · LOCAL COMPLETION</span></div><div className="resource-monaco"><Editor height="100%" path="tutor.py" language="python" value={tutorCode || ''} onChange={(value) => onTutorChange?.(value ?? '')} onMount={(editor, monaco) => { const provider = monaco.languages.registerCompletionItemProvider('python', { triggerCharacters: ['.', '_'], provideCompletionItems: (model) => ({ suggestions: resourceIdentifierSuggestions(model.getValue()).map((label) => ({ label, kind: monaco.languages.CompletionItemKind.Keyword, insertText: label })) }) }); editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter, runSelfCheck); editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => onTutorSave?.()); editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyMod.Shift | monaco.KeyCode.Enter, submit); editor.onDidDispose(() => provider.dispose()) }} theme="vs-dark" options={{ minimap: { enabled: false }, acceptSuggestionOnEnter: 'off', fontSize: editorFontSize, fontFamily: 'JetBrains Mono, ui-monospace, monospace', lineHeight: Math.round(editorFontSize * 1.55), padding: { top: 14, bottom: 14 }, automaticLayout: true, smoothScrolling: true, tabSize: 4, suggestOnTriggerCharacters: true }} /></div><div className="resource-editor-actions"><span>Ctrl/Cmd ↵ run · Ctrl/Cmd S save · Ctrl/Cmd ⇧ ↵ submit</span><div><button type="button" onClick={onTutorSave} disabled={busy}>Save Tutor</button><button type="button" onClick={onTutorFormat} disabled={busy}>Pretty</button><button type="button" data-tutor-run onClick={() => { runSelfCheck(); onTutorRun?.() }} disabled={busy}>▶ Run Tutor</button><button type="button" className="primary" data-tutor-submit onClick={submit} disabled={busy || !String(tutorCode || '').trim()}>Submit for feedback</button></div></div></div><section className={`resource-ide-terminal ${terminal.status}`} aria-live="polite"><div><span>LOCAL TERMINAL · SELF-CHECK</span><b>{terminal.status.toUpperCase()}</b></div><pre>{terminal.output.join('\n')}</pre></section>{tutorExternalChange && <div className="tutor-conflict-banner" role="alert"><strong>External tutor.py change detected.</strong><span>Your unsaved edits are preserved.</span><button type="button" onClick={onTutorReloadExternal}>Reload external version</button><button type="button" onClick={onTutorKeepEdits}>Keep my edits</button></div>}</main><aside className="resource-ai-panel"><div className="resource-ai-heading"><div><span className="screen-kicker">PYR / AI</span><strong>Tutor channel</strong></div><span className="connection-pill">{pyr?.ready ? 'OPENCODE' : 'OFFLINE'}</span></div><p>Bounded guidance only. PYR will not paste a campaign answer or project-specific snippet.</p><div className="resource-ai-messages">{aiMessages.map((message, index) => <div key={`${message.role}-${index}`} className={`resource-ai-message ${message.role}`}><span>{message.role === 'learner' ? 'YOU' : 'PYR'}</span><p>{message.text}</p></div>)}</div><textarea value={aiPrompt} onChange={(event) => setAiPrompt(event.target.value)} rows={3} placeholder="Ask for a hint, not a finished answer…" /><div><button type="button" onClick={() => setAiMessages([])}>Clear</button><button type="button" className="primary" onClick={askPyr} disabled={busy}>Ask PYR</button></div></aside></section>}
       {surface === 'notes' && <section className="resource-notes-layout"><aside className="resource-ide-rail resource-notes-rail"><button type="button" className="resource-rail-file" onClick={() => setSurface('ide')}><ForgeFileGlyph kind="python" /><small>tutor.py</small></button><button type="button" className="resource-rail-file active" onClick={() => setSurface('notes')}><ForgeFileGlyph kind="markdown" /><small>notes.md</small></button><div className="resource-ide-context"><span className="screen-kicker">CONCEPT</span><strong>{conceptLabel}</strong><small>notes.md · learner workspace</small></div></aside><main className="resource-notes-main"><ResourceNotebook pages={pages} selectedPage={selectedPage} entries={entries} onSelectPage={setSelectedId} /></main></section>}
     </div>
@@ -3354,6 +3354,7 @@ function BattleBrief({ encounter, board, questions = {}, feedback, onAsk, onAnsw
         )}
         {feedback && !String(feedback.objectiveId || '').startsWith('boss:') && <div className={`battle-feedback ${feedback.verdict}`} role="status">{feedback.verdict === 'correct' ? '✔ ' : '✘ '}{feedback.reason}</div>}
         {choice && codeLeft.length > 0 && <small className="battle-brief-also">Also open: {codeLeft.map((item) => item.label).join(', ')} (Submit run).</small>}
+        {current && <StudyAtHomeButton topic={encounter.mob?.concept || contract?.concept || current.label} context={`fighting ${encounter.mob_name}: ${current.label.toLowerCase()} in ${entry}`} />}
       </section>
       <section className="battle-brief-enemy">
         <span className="battle-eyebrow">WHAT YOU'RE FIGHTING</span>
@@ -3372,6 +3373,126 @@ function BattleBrief({ encounter, board, questions = {}, feedback, onAsk, onAnsw
         ))}
       </ol>
     </div>
+  )
+}
+
+// ── LearnHarness: home, where the hunter studies the theory ────────────────
+// The campaign is where you fight; LearnHarness (the learner's own study app)
+// is where the ideas are learned. These pieces send a concept home and show
+// what was studied there. The game never writes LearnHarness data.
+async function learnHarnessCall(path, options = {}) {
+  const response = await fetch(path, { headers: { 'Content-Type': 'application/json' }, ...options })
+  const body = await response.json().catch(() => ({}))
+  if (!response.ok) throw new Error(body.detail || `LearnHarness bridge failed (${response.status})`)
+  return body
+}
+
+function StudyBriefDialog({ brief, copied, launched, onClose }) {
+  useEffect(() => {
+    const onKey = (event) => { if (event.key === 'Escape') onClose() }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [onClose])
+  return (
+    <ShellPortal scope="forge-v2">
+      <div className="study-brief-backdrop" role="presentation" onClick={onClose}>
+        <section className="study-brief-dialog" role="dialog" aria-modal="true" aria-label="Study at home" onClick={(event) => event.stopPropagation()}>
+          <span className="screen-kicker">STUDY AT HOME · LEARNHARNESS</span>
+          <h3>{launched ? 'LearnHarness is opening.' : 'Open LearnHarness.'}</h3>
+          <p>{copied ? 'Your study brief is copied.' : 'Copy this study brief.'} In LearnHarness, start a new session and paste it as what you want to understand.</p>
+          <textarea readOnly value={brief} rows={8} onFocus={(event) => event.target.select()} />
+          <div className="study-brief-actions">
+            <button type="button" className="primary" onClick={() => { navigator.clipboard?.writeText(brief).catch(() => {}) }}>Copy again</button>
+            <button type="button" onClick={onClose} autoFocus>Done</button>
+          </div>
+        </section>
+      </div>
+    </ShellPortal>
+  )
+}
+
+function StudyAtHomeButton({ topic, context, label = 'Study this at home' }) {
+  const [state, setState] = useState({ busy: false, note: '', handoff: null })
+  if (!topic) return null
+  const study = async () => {
+    setState({ busy: true, note: '', handoff: null })
+    try {
+      const result = await learnHarnessCall('/api/learnharness/study', { method: 'POST', body: JSON.stringify({ topic: String(topic).slice(0, 200), context: String(context || '').slice(0, 300) }) })
+      if (result.mode === 'direct') {
+        setState({ busy: false, note: `Ready in LearnHarness: "${result.title}".`, handoff: null })
+        return
+      }
+      let copied = false
+      try {
+        await navigator.clipboard.writeText(result.brief)
+        copied = true
+      } catch {
+        copied = false
+      }
+      setState({ busy: false, note: '', handoff: { brief: result.brief, copied, launched: result.launched } })
+    } catch (error) {
+      setState({ busy: false, note: error.message, handoff: null })
+    }
+  }
+  return (
+    <span className="study-at-home">
+      <button type="button" className="study-at-home-button" onClick={study} disabled={state.busy}><RouteIcon id="codex" />{state.busy ? 'Opening LearnHarness…' : label}</button>
+      {state.note && <small role="status">{state.note}</small>}
+      {state.handoff && <StudyBriefDialog {...state.handoff} onClose={() => setState({ busy: false, note: '', handoff: null })} />}
+    </span>
+  )
+}
+
+function StudiedAtHome({ concept }) {
+  const [ideas, setIdeas] = useState([])
+  useEffect(() => {
+    if (!concept) return undefined
+    const controller = new AbortController()
+    fetch(`/api/learnharness/lore?concept=${encodeURIComponent(String(concept).slice(0, 300))}`, { signal: controller.signal })
+      .then((response) => (response.ok ? response.json() : { ideas: [] }))
+      .then((body) => setIdeas(Array.isArray(body.ideas) ? body.ideas : []))
+      .catch(() => {})
+    return () => controller.abort()
+  }, [concept])
+  if (!ideas.length) return null
+  return (
+    <section className="studied-at-home" aria-label="Studied at home">
+      <span className="screen-kicker">STUDIED AT HOME · LEARNHARNESS</span>
+      <ul>{ideas.map((idea) => <li key={idea.name + idea.statement}><b>{idea.name}</b> {idea.statement}</li>)}</ul>
+    </section>
+  )
+}
+
+function LearnHarnessCard() {
+  const [status, setStatus] = useState(null)
+  const [note, setNote] = useState('')
+  const [busy, setBusy] = useState(false)
+  useEffect(() => {
+    fetch('/api/learnharness/status').then((response) => response.json()).then(setStatus).catch(() => setStatus({ installed: false }))
+  }, [])
+  const sendNotes = async () => {
+    setBusy(true)
+    try {
+      const result = await learnHarnessCall('/api/learnharness/notes', { method: 'POST' })
+      setNote(result.mode === 'direct' ? 'Notes imported into your knowledge graph.' : `Notes saved to ${result.path}. In LearnHarness, import that file from the graph's notes import.`)
+    } catch (error) {
+      setNote(error.message)
+    } finally {
+      setBusy(false)
+    }
+  }
+  if (!status) return null
+  return (
+    <section className="ai-settings-section learnharness-card" aria-label="LearnHarness">
+      <h4>LearnHarness · study at home</h4>
+      {!status.installed ? <p>LearnHarness is not installed. It is a free, open-source study app; once installed, bounties get a Study this at home button.</p> : (
+        <>
+          <p>{status.running ? 'LearnHarness is open.' : 'LearnHarness is installed (closed).'} {status.mode === 'direct' ? 'Its API is open to the game, so sessions and notes go straight in.' : 'Study requests open it with a study brief to paste in.'} {status.ideas ? `${status.ideas} ideas studied so far.` : 'Nothing studied yet.'}</p>
+          <button type="button" onClick={sendNotes} disabled={busy}>{busy ? 'Sending…' : 'Send my campaign notes home'}</button>
+          {note && <small role="status">{note}</small>}
+        </>
+      )}
+    </section>
   )
 }
 
@@ -3414,6 +3535,7 @@ function BossBrief({ encounter, board, questions = {}, feedback, onAsk, onAnswer
           </>
         )}
         {shownFeedback && <div className={`battle-feedback ${shownFeedback.verdict}`} role="status">{shownFeedback.verdict === 'correct' ? '✔ ' : '✘ '}{shownFeedback.reason}</div>}
+        {current && <StudyAtHomeButton topic={current.label} context={`fighting the boss ${encounter.boss || ''}: ${String(current.quest || current.brief || '').slice(0, 200)}`} />}
       </section>
       <section className="battle-brief-enemy">
         <span className="battle-eyebrow">WHAT YOU'RE FIGHTING</span>
@@ -4046,6 +4168,7 @@ function AiTutorSettings({ ai = {} }) {
   return (
     <>
       <section className="settings-group">
+        <LearnHarnessCard />
         <header><h3>PYR, your AI tutor</h3><p>PYR runs on your own <b>OpenCode</b> install and whichever providers you have signed in there. Quest Lab never stores an AI key, and grades still go through the game's rules for XP, HP and rewards.</p></header>
         <div className={`settings-status-card ${opencode.ready ? 'ready' : 'warn'}`}>
           <div><span className="screen-kicker">OPENCODE</span><strong>{statusLabel}</strong><p>{opencode.detail || 'Looking for OpenCode…'}</p>{opencode.version && <small>{opencode.version} · {opencode.path}</small>}</div>

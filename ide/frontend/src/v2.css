@@ -1579,3 +1579,23 @@
 .bounty-poster .poster-kind.kind-memory { color: #c4b5fd; }
 .bounty-poster .poster-kind.kind-creative { color: #fbbf24; }
 .battle-brief-question .dungeon-prompt-text { font-size: inherit; }
+
+/* LearnHarness: study at home. */
+.study-at-home { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 6px; }
+.study-at-home-button { padding: 4px 8px; border: 1px dashed currentColor; background: transparent; color: var(--muted, #aaa); font: inherit; font-size: 12px; cursor: pointer; }
+.study-at-home-button:hover:not(:disabled) { color: var(--gold, #f5c542); }
+.study-at-home small { color: var(--muted, #aaa); }
+.study-brief-backdrop { position: fixed; inset: 0; z-index: 90; display: grid; place-items: center; padding: 16px; background: rgba(0, 0, 0, .6); }
+.study-brief-dialog { display: grid; gap: 10px; width: min(560px, 100%); padding: 18px; border: 2px solid var(--gold, #f5c542); background: var(--panel, #1a1726); color: var(--text, #eee); }
+.study-brief-dialog h3 { margin: 0; }
+.study-brief-dialog textarea { width: 100%; resize: vertical; font: 13px ui-monospace, monospace; background: var(--panel2, #222); color: inherit; border: 1px solid var(--line, #444); padding: 8px; }
+.study-brief-actions { display: flex; gap: 8px; justify-content: flex-end; }
+.studied-at-home { margin: 12px 0; padding: 10px 12px; border-left: 3px solid var(--gold, #f5c542); background: color-mix(in srgb, var(--panel2, #222) 70%, transparent); }
+.studied-at-home ul { margin: 6px 0 0; padding-left: 18px; }
+.studied-at-home li { margin: 4px 0; }
+.resource-reader-actions { display: inline-flex; flex-direction: column; align-items: flex-end; gap: 4px; }
+.learnharness-card { margin-bottom: 14px; padding: 12px; border: 1px solid var(--line, #444); }
+.learnharness-card h4 { margin: 0 0 6px; }
+.learnharness-card small { display: block; margin-top: 6px; color: var(--muted, #aaa); }
+.study-at-home-button { display: inline-flex; align-items: center; gap: 6px; }
+.study-at-home-button svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.6; }

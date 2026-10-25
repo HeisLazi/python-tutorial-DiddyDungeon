@@ -532,7 +532,16 @@ def write_dungeon_question(*, concept: str, question_type: str, difficulty: int,
     return written
 
 
-def write_battle_question(*, concept: str, project: str, contract: str, objective: str, brief: str, code: str = "") -> dict[str, Any]:
+def _studied_part(studied: list[str] | tuple[str, ...]) -> str:
+    """Ideas the learner studied at home in LearnHarness, for a question to build on."""
+
+    ideas = [" ".join(str(item).split())[:300] for item in studied if str(item).strip()][:5]
+    if not ideas:
+        return ""
+    return "The learner has studied these ideas at home; when one fits, build the question on it:\n" + "\n".join(f"- {idea}" for idea in ideas)
+
+
+def write_battle_question(*, concept: str, project: str, contract: str, objective: str, brief: str, code: str = "", studied: list[str] | tuple[str, ...] = ()) -> dict[str, Any]:
     """A clickable campaign question: practical code reading tied to the
     contract (and the learner's own project file when there is one)."""
 
@@ -548,6 +557,7 @@ def write_battle_question(*, concept: str, project: str, contract: str, objectiv
                 "Give 4 short SINGLE-LINE options with exactly one correct."
             ),
             f"The learner's current project file:\n```python\n{code[:6000]}\n```" if code.strip() else "",
+            _studied_part(studied),
             "Never put the answer in the prompt.",
             (
                 'Reply with ONLY this JSON object: {"prompt": "the question text (may include a fenced code snippet)", '
@@ -570,7 +580,7 @@ def write_battle_question(*, concept: str, project: str, contract: str, objectiv
     return {"prompt": text.strip(), "options": options, **key}
 
 
-def write_spar_question(*, concept: str, foe: str, question_type: str, round_number: int, rounds: int) -> dict[str, Any]:
+def write_spar_question(*, concept: str, foe: str, question_type: str, round_number: int, rounds: int, studied: list[str] | tuple[str, ...] = ()) -> dict[str, Any]:
     """A Tutor sparring question: theory and code reading are both fair game
     here (the notebook is where the hunter studies)."""
 
@@ -582,6 +592,7 @@ def write_spar_question(*, concept: str, foe: str, question_type: str, round_num
             "Task: write one question for a sparring round in the Tutor notebook of a Python learning game.",
             f"Foe: {foe}\nConcept: {concept}\nRound {round_number} of {rounds}\nShape: {shape}",
             "Mix ideas and code: a definition, a common mistake, or a short snippet to read. Later rounds are a little harder.",
+            _studied_part(studied),
             "Never put the answer in the prompt.",
             (
                 'Reply with ONLY this JSON object: {"prompt": "the question text (may include a fenced code snippet)", '

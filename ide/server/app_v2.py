@@ -27,7 +27,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
-from ide.server import ai_tutor
+from ide.server import ai_tutor, learnharness
 from ide.server.context_bridge import (
     ContextValueError,
     bounded_file,
@@ -3313,6 +3313,7 @@ def ai_boss_question():
         objective=label,
         brief=style,
         code=code,
+        studied=_studied_ideas(f"{project.get('name') or ''} {encounter.get('boss') or ''} {goal.get('label') or ''}"),
     )
     BOSS_QUESTIONS[key] = {"prompt": written["prompt"], "options": written["options"]}
     CHOICE_ANSWER_KEYS[key] = {"answer": written["answer"], "why": written.get("why", ""), "options": written["options"]}
@@ -3353,6 +3354,91 @@ def answer_boss_option(payload: BossOptionRequest):
             except StateCommandError as exc:
                 raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
     return {"ok": True, "verdict": verdict, "reason": reason, "correct_index": int(answer["answer"]), "complete": cleared is not None}
+
+
+def _studied_ideas(text: str, limit: int = 5) -> list[str]:
+    """Statements from the learner's LearnHarness graph related to ``text``."""
+
+    return [f"{node['name']}: {node['statement']}" for node in learnharness.related(learnharness.read_propositions(), text, limit)]
+
+
+class LearnHarnessStudyRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    topic: str = Field(min_length=1, max_length=200)
+    context: str = Field(default="", max_length=300)
+
+
+@app.get("/api/learnharness/status")
+def learnharness_status():
+    """Is LearnHarness here, open, and how much has been studied at home."""
+
+    url = learnharness.api_url()
+    return {
+        "ok": True,
+        "installed": learnharness.installed(),
+        "running": learnharness.is_running(),
+        "mode": "direct" if url else "handoff",
+        "ideas": len(learnharness.read_propositions()),
+        "notes_dir": str(learnharness.notes_dir()),
+    }
+
+
+@app.get("/api/learnharness/lore")
+def learnharness_lore(concept: str = ""):
+    """Ideas studied at home that relate to a concept (read-only)."""
+
+    if len(concept) > 300:
+        raise HTTPException(status_code=422, detail="concept is too long")
+    ideas = learnharness.related(learnharness.read_propositions(), concept, 8)
+    return {"ok": True, "ideas": [{"name": node["name"], "statement": node["statement"]} for node in ideas]}
+
+
+@app.post("/api/learnharness/study")
+def learnharness_study(payload: LearnHarnessStudyRequest):
+    """Send a concept home to study: a new LearnHarness session when its API
+    is open to the game, otherwise open LearnHarness with a study brief."""
+
+    ideas = learnharness.related(learnharness.read_propositions(), f"{payload.topic} {payload.context}", 6)
+    context = payload.context.strip() or "working on my current campaign"
+    url = learnharness.api_url()
+    if url:
+        title = f"{payload.topic} — {context}"[:120]
+        try:
+            created = learnharness.create_session(url, title, ideas)
+        except (OSError, ValueError) as exc:
+            raise HTTPException(status_code=502, detail=f"LearnHarness did not create the session: {exc}") from exc
+        return {"ok": True, "mode": "direct", "title": created.get("title") or title}
+    if not learnharness.installed():
+        raise HTTPException(status_code=404, detail="LearnHarness is not installed on this machine")
+    return {"ok": True, "mode": "handoff", "launched": learnharness.launch(), "brief": learnharness.study_brief(payload.topic, context, ideas)}
+
+
+@app.post("/api/learnharness/notes")
+def learnharness_notes():
+    """Hand the learner's campaign notes to LearnHarness: imported directly
+    when its API is open to the game, else written as a Markdown file to import."""
+
+    try:
+        progress, _metadata = STATE_SERVICE.snapshot_with_metadata()
+    except StateCommandError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
+    project = next((item for item in progress.get("projects", []) if isinstance(item, dict) and item.get("status") == "active"), {})
+    story = load_campaign_bounties().get(str(project.get("branch") or ""))
+    contracts = {item["name"]: item for item in (story or {}).get("mobs", []) if isinstance(item, dict) and isinstance(item.get("name"), str)}
+    filename, text = learnharness.notes_markdown(progress, contracts)
+    url = learnharness.api_url()
+    if url:
+        try:
+            result = learnharness.import_notes(url, filename, text)
+        except (OSError, ValueError) as exc:
+            raise HTTPException(status_code=502, detail=f"LearnHarness did not import the notes: {exc}") from exc
+        return {"ok": True, "mode": "direct", "result": result}
+    folder = learnharness.notes_dir()
+    folder.mkdir(parents=True, exist_ok=True)
+    target = folder / filename
+    target.write_text(text, encoding="utf-8")
+    return {"ok": True, "mode": "handoff", "path": str(target), "launched": learnharness.launch()}
 
 
 # Campaign choice questions PYR wrote, by 'battle:<project>:<mob>:<objective>'.
@@ -3412,6 +3498,7 @@ def ai_battle_question(payload: BattleQuestionRequest):
         objective=str(objective.get("label") or payload.objective_id),
         brief=str(objective.get("brief") or ""),
         code=code,
+        studied=_studied_ideas(f"{mob.get('concept') or ''} {objective.get('label') or ''} {objective.get('brief') or ''}"),
     )
     BATTLE_QUESTIONS[key] = {"prompt": written["prompt"], "options": written["options"]}
     CHOICE_ANSWER_KEYS[key] = {"answer": written["answer"], "why": written.get("why", ""), "options": written["options"]}
@@ -3495,6 +3582,7 @@ def ai_spar_question(payload: SparQuestionRequest):
         question_type=question_type,
         round_number=payload.round,
         rounds=SPAR_ROUNDS,
+        studied=_studied_ideas(f"{foe['concept']} {foe['name']}"),
     )
     key = f"spar:{payload.target_id}"
     SPAR_QUESTIONS[key] = {"prompt": written["prompt"], "options": written["options"], "question_type": question_type}
