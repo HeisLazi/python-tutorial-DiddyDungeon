@@ -19,6 +19,7 @@
   ],
   "boss_lore": "The Grandmaster does not think faster than you. It simply never forgets to look one move further.",
   "boss_brief": "Bring a finished connect_four.py: full rules, human, random, greedy and minimax-with-alpha-beta engines behind one interface, a time budget, a round-robin tournament with Elo ratings, and an engine that beats your greedy one almost every game.",
+  "boss_twist": "The Grandmaster punishes slow engines. Give minimax a move ordering (centre columns first) and a transposition table keyed by board state, and print the nodes searched at the same depth before and after. Write is_winning_move(board, col, player) and make every engine take an immediate win and block an immediate loss before anything else. A full board must end as a draw in every engine and in the tournament.",
   "mobs": [
     {
       "name": "The Empty Grid",

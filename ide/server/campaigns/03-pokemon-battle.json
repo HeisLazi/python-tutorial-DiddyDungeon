@@ -18,6 +18,7 @@
   ],
   "boss_lore": "The Champion knows every type matchup by heart. It does not need luck; it needs you to forget one.",
   "boss_brief": "Bring a finished battle.py: creatures as a class with moves, types and status effects, teams of three with switching, an enemy that picks moves by expected damage, levels and XP, and a gauntlet of trainers with your team saved between runs.",
+  "boss_twist": "The Arena Champion brings a type you did not plan for. Keep the type chart as data and add one new type to it without touching the battle logic. Write predict_winner(team_a, team_b, battles=500, seed=None) that runs seeded battles and returns both win rates, and make the enemy switch out when its active creature is at a 2x type disadvantage and below 30% HP. Status effects must expire on the right turn even when a creature switches out and back in.",
   "mobs": [
     {
       "name": "The Wild Slime", "concept": "Nested dictionaries",

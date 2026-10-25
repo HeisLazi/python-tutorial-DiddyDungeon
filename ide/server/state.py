@@ -547,19 +547,26 @@ MOB_REWARDS: tuple[tuple[int, int], ...] = (
     (50, 35),
 )
 
+# Bosses are fought in code: two coding tasks, with a small clickable check
+# about your own file between them and a clickable code interview to finish.
+# The ids "explanation" and "interview" are kept so older saves stay valid.
 BOSS_REQUIREMENTS: tuple[str, ...] = (
     "required_behavior",
     "explanation",
+    "edge_cases",
     "interview",
 )
+# Boss goals answered by clicking an option about the player's own code.
+BOSS_CHOICE_TYPES = frozenset({"snippet_check", "code_interview"})
 
 # Boss validation is deliberately presentation-safe: the projection exposes
 # only which bounded gate phases have been verified, never the provider's
 # hidden interview prompt or answer key.
 BOSS_PHASE_LABELS: dict[str, str] = {
     "required_behavior": "Required behaviour",
-    "explanation": "Explanation",
-    "interview": "Interview",
+    "explanation": "Read your code",
+    "edge_cases": "The boss twist",
+    "interview": "Code interview",
 }
 
 # State-owned encounter rules for the small mechanics panel in Forge.  These
@@ -596,20 +603,26 @@ BOSS_REQUIREMENT_SPECS: dict[str, dict[str, Any]] = {
     "required_behavior": {
         "label": "Required behaviour",
         "question_type": "code_checkpoint",
-        "impact": 4,
-        "brief": "Show the required campaign behaviour working in your active Forge file.",
+        "impact": 5,
+        "brief": "Show the finished program working in your active Forge file.",
     },
     "explanation": {
-        "label": "Explain the design",
-        "question_type": "explanation",
-        "impact": 3,
-        "brief": "Explain the important state boundary and why the implementation behaves that way.",
+        "label": "Read your code",
+        "question_type": "snippet_check",
+        "impact": 2,
+        "brief": "A quick question about a snippet from your own file. Click your answer.",
+    },
+    "edge_cases": {
+        "label": "The boss twist",
+        "question_type": "code_checkpoint",
+        "impact": 5,
+        "brief": "The boss changes the rules. Extend your program to handle the twist.",
     },
     "interview": {
-        "label": "Teach it back",
-        "question_type": "interview",
-        "impact": 5,
-        "brief": "Teach the core idea back using your own words and project evidence.",
+        "label": "Code interview",
+        "question_type": "code_interview",
+        "impact": 3,
+        "brief": "Explain code you wrote: what a snippet from your file does, why, and what changes if an input does. Click your answers.",
     },
 }
 BOSS_REWARD_ENVELOPE: dict[str, Any] = {
@@ -3052,11 +3065,18 @@ class LocalStateService:
             if isinstance(configured_brief, str) and configured_brief.strip()
             else "Break the gate one verified goal at a time. The next goal appears only after the current one is validated."
         )
+        configured_twist = project.get("boss_twist") or story_entry.get("boss_twist")
+        authored_quests = {
+            "required_behavior": str(configured_brief).strip() if isinstance(configured_brief, str) and configured_brief.strip() else "",
+            "edge_cases": str(configured_twist).strip() if isinstance(configured_twist, str) and configured_twist.strip() else "",
+        }
         requirement_projection: list[dict[str, Any]] = []
         max_resolve = 0
         resolved_damage = 0
         for requirement_id in BOSS_REQUIREMENTS:
-            spec = BOSS_REQUIREMENT_SPECS.get(requirement_id, {})
+            spec = dict(BOSS_REQUIREMENT_SPECS.get(requirement_id, {}))
+            if authored_quests.get(requirement_id):
+                spec["quest"] = authored_quests[requirement_id]
             try:
                 impact = max(1, min(MAX_IMPACT, int(spec.get("impact", 1))))
             except (TypeError, ValueError):
@@ -3073,7 +3093,7 @@ class LocalStateService:
                     "impact": impact,
                     "damage": impact,
                     "brief": str(spec.get("brief") or "Submit evidence for the current boss goal.")[:MAX_REASON_LENGTH],
-                    "quest": str(spec.get("quest") or spec.get("brief") or "Complete the current boss goal.")[:MAX_REASON_LENGTH],
+                    "quest": str(spec.get("quest") or spec.get("brief") or "Complete the current boss goal.")[:1_000],
                     "status": "verified" if is_verified else ("current" if requirement_id == phase else "locked"),
                 }
             )

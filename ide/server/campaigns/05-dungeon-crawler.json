@@ -18,6 +18,7 @@
   ],
   "boss_lore": "The Core is the dungeon's heart. Every room you walked through was part of it, and it has been learning your path.",
   "boss_brief": "Bring a finished crawler.py: shared player state, fights, potions, a shop and gold, a generated grid map with fog and a guaranteed exit, equipment that changes stats, path-finding, a full save and load, and a phased boss at the bottom.",
+  "boss_twist": "The Dungeon Core rebuilds the map under you. Write generate_dungeon(width, height, seed) that guarantees a walkable path from the start to the exit, checked with your own path-finding and regenerated when the check fails. Write save_game(state, path) and load_game(path) so a loaded game equals the saved one, equipment and fog included. A missing or corrupted save file must give a clear message instead of a crash.",
   "mobs": [
     {
       "name": "The Hollow Adventurer", "concept": "Dictionaries for player state",

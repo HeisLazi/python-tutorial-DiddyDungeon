@@ -387,6 +387,7 @@ function questLine(progress) {
   const mobs = Array.isArray(project?.mobs) ? project.mobs : []
   const next = mobs.find((mob) => mob?.status === 'available')
   if (project && next && project.boss_status !== 'available') return `${project.name || project.branch}: next bounty, ${next.name}. Then face ${project.boss || 'the boss'}.`
+  if (project && !project.completed && mobs.length && mobs.every((mob) => mob?.status === 'defeated' || mob?.status === 'cleared')) return `${project.name || project.branch}: the board is clear. Face ${project.boss || 'the boss'} in the Forge.`
   return progress?.current_quest || 'Choose a quest.'
 }
 
@@ -404,6 +405,9 @@ const DUNGEON_RISK_OUTCOMES = {
 
 // Campaign objectives answered by clicking an option rather than submitting a file.
 const BATTLE_CHOICE_TYPES = new Set(['prediction', 'explanation'])
+const BOSS_PHASE_NAMES = { required_behavior: 'Required behaviour', explanation: 'Read your code', edge_cases: 'The boss twist', interview: 'Code interview' }
+// Boss goals answered by clicking: a question about the player's own file.
+const BOSS_CHOICE_TYPES = new Set(['snippet_check', 'code_interview'])
 
 function AppV2() {
   const shellTerminalRef = useRef(null)
@@ -853,7 +857,8 @@ function AppV2() {
         id: `${event.id}:boss-phase`,
         kind: 'objective',
         title: 'BOSS PHASE VERIFIED',
-        body: event.boss_phase_label || event.requirement_id || 'Boss requirement',
+        // The phase just verified, not the next one (boss_phase_label names the next goal).
+        body: BOSS_PHASE_NAMES[event.requirement_id] || event.requirement_id || 'Boss requirement',
         detail: Array.isArray(event.remaining_boss_requirements) && event.remaining_boss_requirements.length
           ? `${event.remaining_boss_requirements.length} phase${event.remaining_boss_requirements.length === 1 ? '' : 's'} remaining`
           : 'Final gate ready for the integrated clear',
@@ -1341,6 +1346,7 @@ function AppV2() {
     const currentGoal = context?.encounter?.boss_current_requirement
     const requirementId = currentGoal?.id || context?.verdict?.current_requirement
     if (!requirementId) throw new Error('The boss has no current goal. Capture fresh context again.')
+    if (BOSS_CHOICE_TYPES.has(currentGoal?.question_type)) throw new Error('This boss goal is a question about your code: click your answer in the left sidebar.')
     const result = await api('/api/pyr/boss-submission', {
       method: 'POST',
       body: JSON.stringify({ nonce, requirement_id: requirementId, answer: forge.answer, answer_source: 'forge_active_file', source_path: forge.path, file_digest: context?.active_file?.digest || null }),
@@ -1455,6 +1461,29 @@ function AppV2() {
         return next
       })
     } finally {
+      setBusy(false)
+    }
+  }
+
+  // Clickable boss goals (read your code, code interview), about your own file.
+  const askBossQuestion = (requirementId) => withPyr('PYR is reading your code for a question…', async () => {
+    const result = await api('/api/ai/boss-question', { method: 'POST', body: '{}' })
+    setBattleQuestions((current) => ({ ...current, [`boss:${requirementId}`]: result.question }))
+  }).catch((error) => setNotice(`PYR could not write the question (${error.message}).`))
+  const answerBossOption = async (requirementId, index) => {
+    setBusy(true)
+    try {
+      const result = await api('/api/boss/answer-option', { method: 'POST', body: JSON.stringify({ requirement_id: requirementId, option_index: index }) })
+      setBattleFeedback({ objectiveId: `boss:${requirementId}`, verdict: result.verdict, reason: result.complete ? `${result.reason} The boss falls!` : result.reason })
+      await refreshCampaign({ silent: true })
+    } catch (error) {
+      setNotice(`Answer not checked: ${error.message}`)
+    } finally {
+      setBattleQuestions((current) => {
+        const next = { ...current }
+        delete next[`boss:${requirementId}`]
+        return next
+      })
       setBusy(false)
     }
   }
@@ -2517,7 +2546,7 @@ function AppV2() {
   // The encounter card can compact itself; it must not silently override the
   // learner's resize choice when Boss Gate is active.
   // A campaign battle brief needs room for the question and its code.
-  const battleSidebar = activeView === 'forge' && Boolean(campaign?.encounter?.mob_name)
+  const battleSidebar = activeView === 'forge' && Boolean(campaign?.encounter?.mob_name || campaign?.encounter?.status === 'boss_available')
   const effectiveLeftWidth = Math.max(battleSidebar ? 380 : 260, Number(leftWidth) || 300)
   // Keep the grid's separator column in compact mode so the editor remains
   // column-four even while the visible resize affordance is hidden.
@@ -2607,7 +2636,7 @@ function AppV2() {
           <div className="boss-card">
             <span className="screen-kicker">BOSS GATE OPEN</span>
             <h2>⚔ {campaign?.encounter?.boss || 'The boss'} awaits</h2>
-            <p>Every bounty on this board is cleared. Build the boss requirements in the Forge, then Submit run to strike.</p>
+            <p>Every bounty on this board is cleared. Four goals break the boss: two coding tasks you Submit run in the Forge, and two questions about your own code you answer in the left sidebar.</p>
             <button className="primary" type="button" onClick={() => setBossIntroSeen(bossIntroKey)} autoFocus>Fight</button>
           </div>
         </div>
@@ -2691,6 +2720,8 @@ function AppV2() {
             battleFeedback={battleFeedback}
             onAskBattleQuestion={askBattleQuestion}
             onAnswerBattleOption={answerBattleOption}
+            onAskBossQuestion={askBossQuestion}
+            onAnswerBossOption={answerBossOption}
             busy={busy || Boolean(pyrThinking)}
           />
         </aside>}

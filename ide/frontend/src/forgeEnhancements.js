@@ -166,25 +166,27 @@ async function submitRunToAI() {
   }
 
   const provider = sessionStorage.getItem('questlab.aiProvider')
-  if (!provider) {
-    showToast('Launch Codex, Claude, AGY, or Copilot first, then submit the run.', 'warn')
-    focusTerminal('.ai-panel')
-    return
-  }
 
   // React owns the canonical campaign submission. When Forge is active, the
   // single toolbar button binds the current state-owned quest/boss goal and
-  // active .py digest before handing the bounded prompt to the provider. Keep
-  // the older terminal-context fallback for non-campaign surfaces only.
+  // active .py digest, then PYR grades it (OpenCode) or the bounded prompt goes
+  // to the launched CLI. React reports a clear error when neither is set up, so
+  // the provider check below applies to the terminal fallback only.
   const campaignSubmit = window.__questlabSubmitCampaignRun
   const forgeIsActive = document.querySelector('.forge-v2')?.dataset.view === 'forge'
   if (forgeIsActive && typeof campaignSubmit === 'function') {
     try {
       await campaignSubmit()
-      showToast(`Active Forge file sent to ${provider}; waiting for its validated verdict.`, 'success')
+      showToast(provider ? `Active Forge file sent to ${provider}; waiting for its validated verdict.` : 'Submitted. PYR graded your Forge file.', 'success')
     } catch (error) {
       showToast(error?.message || 'Campaign submission failed.', 'warn')
     }
+    return
+  }
+
+  if (!provider) {
+    showToast('Launch Codex, Claude, AGY, or Copilot first, then submit the run.', 'warn')
+    focusTerminal('.ai-panel')
     return
   }
 

@@ -18,6 +18,7 @@
   ],
   "boss_lore": "The Invincibles have not lost in three seasons. They are not magic; they are simply managed better than anyone else.",
   "boss_brief": "Bring a finished football_manager.py: squad and market data, budget-checked transfers, valid line-ups, a match engine from team strength, a round-robin season with a sorted league table, fatigue and injuries, rival clubs trading, an assistant that picks the best eleven, an academy, and seasons saved and continued.",
+  "boss_twist": "The Invincibles test a whole season. Write play_season(clubs, seed) that plays a full double round-robin and returns the league table sorted by points, then goal difference, then goals scored, and prove the tie-breaks with a small hand-made table where two clubs finish level on points. Transfers that would push a budget below zero or leave fewer than eleven fit players must be refused with a reason the user can read.",
   "mobs": [
     {
       "name": "The Scout", "concept": "Lists of dictionaries and display",

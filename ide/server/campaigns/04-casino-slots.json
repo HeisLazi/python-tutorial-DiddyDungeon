@@ -17,6 +17,7 @@
   ],
   "boss_lore": "Lady Luck never lies about a single spin. She lies about the thousandth one, where nobody is counting.",
   "boss_brief": "Bring a finished casino.py: weighted reels with a payout table checked from most to least valuable, validated bets, a session summary, a simulation that measures the real return to player, a table tuned to a target return, a progressive jackpot, roulette on the same bankroll, and session limits.",
+  "boss_twist": "Lady Luck audits your table. Compute the theoretical return to player exactly from the reel weights and payout table, and make your machine refuse (raise ValueError) any table whose theoretical RTP is above 100%. Write audit(machine, spins=100000, seed=None) that returns measured RTP, hit frequency and the largest drawdown of a 100-coin bankroll, and print measured and theoretical RTP agreeing within 1% at 100,000 spins.",
   "mobs": [
     {
       "name": "The Coin Rat", "concept": "Numeric variables and program state",

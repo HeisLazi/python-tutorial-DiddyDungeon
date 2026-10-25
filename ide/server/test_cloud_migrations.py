@@ -18,6 +18,7 @@ IDENTITY_MIGRATION = ROOT / "supabase" / "migrations" / "20260914000100_profiles
 IDENTITY_RLS_TEST = ROOT / "supabase" / "tests" / "profiles_devices_rls.sql"
 BOUNDS_MIGRATION = ROOT / "supabase" / "migrations" / "20260915000300_player_state_value_bounds.sql"
 CAMPAIGN_MIGRATION = ROOT / "supabase" / "migrations" / "20260917000100_player_state_campaign_projection.sql"
+DUNGEON_GRID_MIGRATION = ROOT / "supabase" / "migrations" / "20261025000100_dungeon_grid_and_boss_phases.sql"
 
 
 class CloudMigrationContractTests(unittest.TestCase):
@@ -120,6 +121,47 @@ class CloudMigrationContractTests(unittest.TestCase):
             "revoke all on function public.validate_player_state_projection(jsonb) from public;",
         ):
             self.assertIn(phrase, sql)
+
+    def test_dungeon_grid_migration_accepts_every_field_the_app_syncs(self):
+        import re
+
+        from ide.server.state import LocalStateService
+
+        sql = DUNGEON_GRID_MIGRATION.read_text(encoding="utf-8")
+
+        def allow_list(prefix: str, anchor: str) -> set[str]:
+            lists = [set(re.findall(r"'([a-z_]+)'", body)) for body in re.findall(re.escape(prefix) + r" - array\[([^\]]*)\]", sql)]
+            found = [names for names in lists if anchor in names]
+            self.assertTrue(found, prefix)
+            return found[0]
+
+        run = {
+            "status": "active", "run_id": "dungeon-1", "seed": "s", "class_id": "syntax-warden", "concept_id": "loops",
+            "floor": 1, "room": 2, "room_type": "selector", "score": 5, "run_coins": 3, "started_at": "2026-10-25T00:00:00+00:00",
+            "updated_at": "2026-10-25T00:00:00+00:00", "ended_at": None, "question_number": 1, "editor_content": "", "attempts": 0,
+            "risk_profile": {"kind": "buff", "room_type": "shrine", "title": "Ember", "preview": "Hits harder."}, "risk_status": "entered",
+            "loadout": {"hp": 10}, "inventory": [], "question": None, "room_choices": [],
+            "map": {"floor": 1, "current_node_id": "a", "visited_node_ids": ["a"], "nodes": [{"id": "a", "type": "rest", "row": 1, "column": 1, "label": "Camp", "note": ""}], "edges": {"a": ["b"]}},
+            "last_result": {"outcome": "risk_entered"}, "history": [],
+        }
+        synced = LocalStateService._campaign_source_projection({"dungeon_run": run})["dungeon_run"]
+        self.assertLessEqual(set(synced), allow_list("item", "run_id"))
+        self.assertLessEqual(set(synced["map"]), allow_list("(item -> 'map')", "nodes"))
+        self.assertLessEqual(set(synced["map"]["nodes"][0]), allow_list("mob_item", "column"))
+        self.assertLessEqual(set(synced["risk_profile"]), allow_list("(item -> 'risk_profile')", "preview"))
+        for phrase in ("create or replace function public.validate_campaign_projection", "dungeon map nodes must be bounded", "revoke all on function public.validate_campaign_projection(jsonb) from public;"):
+            self.assertIn(phrase, sql)
+
+    def test_dungeon_grid_migration_allows_every_boss_phase(self):
+        import re
+
+        from ide.server.state import BOSS_REQUIREMENTS
+
+        sql = DUNGEON_GRID_MIGRATION.read_text(encoding="utf-8")
+        phases = re.search(r"field_name not in \(([^)]*)\)", sql)
+        self.assertIsNotNone(phases)
+        self.assertEqual(set(re.findall(r"'([a-z_]+)'", phases.group(1))), set(BOSS_REQUIREMENTS))
+        self.assertIn(f"-> 'verified') > {len(BOSS_REQUIREMENTS)} then", sql)
 
 
 if __name__ == "__main__":

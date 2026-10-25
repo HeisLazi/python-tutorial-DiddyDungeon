@@ -17,6 +17,7 @@
   ],
   "boss_lore": "The False Alibi has an answer for every question. The trick is asking the one question its story cannot survive.",
   "boss_brief": "Bring a finished detective.py: generated or loaded cases with unique suspects, filtering questions with turn limits and accusations, a question advisor, a machine detective that solves cases in few questions, and a case where one witness lies.",
+  "boss_twist": "The False Alibi lies once per case. Write inconsistent_witness(case) that cross-checks every witness statement against the case facts and returns the witness whose statements contradict the others, or None when everyone agrees. Your machine detective must still solve cases with one lying witness in at most six questions on average across 200 generated cases; print that average. Accusing with no suspects left, or with two still standing, must be handled without a crash.",
   "mobs": [
     {
       "name": "The Lineup", "concept": "Dictionaries and lists of dictionaries",

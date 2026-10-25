@@ -17,6 +17,7 @@
   ],
   "boss_lore": "The Pattern Warden never guesses. It remembers what you did last time, and it waits for you to do it again.",
   "boss_brief": "Bring a finished rps.py: first-to-N matches with safe input and rematches, rules stored as data (with lizard and spock), move history and stats, and at least two pattern-reading bots that you can duel against each other and against yourself.",
+  "boss_twist": "The Pattern Warden counters anything predictable. Write warden_duel(bot_a, bot_b, rounds=1000, seed=None) that plays two of your bots against each other with a seeded random.Random, returns a dict with each side's wins, losses and draws plus the longest winning streak, and never crashes on a bot that returns an invalid move (that round is a forfeit for that bot). Then add an anti_pattern bot that tracks the opponent's last three moves and beats your own frequency bot in more than 55% of 1000 rounds; print that rate.",
   "mobs": [
     {
       "name": "The Mimic", "concept": "Input/output and random choice from a list",

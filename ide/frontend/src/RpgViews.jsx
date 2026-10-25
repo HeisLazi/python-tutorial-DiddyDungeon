@@ -436,7 +436,7 @@ function isGameTreeItem(item) {
   return true
 }
 
-export function ContextPanel({ activeView, campaign, files = [], activePath, compact = false, onToggleCompact, editorMode = 'file', openFile, openQuestDocument, newFile, setActiveView, submitBattle, submitBoss, battleQuestions = {}, battleFeedback = null, onAskBattleQuestion, onAnswerBattleOption, busy }) {
+export function ContextPanel({ activeView, campaign, files = [], activePath, compact = false, onToggleCompact, editorMode = 'file', openFile, openQuestDocument, newFile, setActiveView, submitBattle, submitBoss, onAskBossQuestion, onAnswerBossOption, battleQuestions = {}, battleFeedback = null, onAskBattleQuestion, onAnswerBattleOption, busy }) {
   const progress = campaign?.progress || {}
   const player = progress.player || {}
   const activeProject = (progress.projects || []).find((project) => project.status === 'active')
@@ -607,7 +607,8 @@ export function ContextPanel({ activeView, campaign, files = [], activePath, com
               <PyrCompanion />
             </> : <>
               <div className="panel-title"><span>BOSS GATE</span><b>{encounter.resolve ?? encounter.boss_resolve ?? 0}/{encounter.max_resolve ?? encounter.boss_max_resolve ?? 0}</b></div>
-              <div className="campaign-battle-resolve" data-testid="forge-boss-resolve">
+              <BossBrief encounter={encounter} board={campaign?.campaign_board} questions={battleQuestions} feedback={battleFeedback} onAsk={onAskBossQuestion} onAnswer={onAnswerBossOption} busy={busy} />
+              <div className="campaign-battle-resolve" data-testid="forge-boss-resolve" hidden>
                 <ProgressBar value={encounter.resolve ?? encounter.boss_resolve ?? 0} max={encounter.max_resolve ?? encounter.boss_max_resolve ?? 1} label="Boss Resolve" className="resolve boss-resolve" />
               </div>
               <PyrCompanion />
@@ -2768,7 +2769,7 @@ function CampaignMarket({ progress, hunter, hunterActions, armory, armoryActions
 }
 
 // What each objective asks of you, as a poster tag.
-const OBJECTIVE_KIND = { code_checkpoint: 'BUILD', bug_diagnosis: 'FIX', prediction: 'PREDICT', explanation: 'EXPLAIN' }
+const OBJECTIVE_KIND = { code_checkpoint: 'BUILD', bug_diagnosis: 'FIX', prediction: 'PREDICT', explanation: 'EXPLAIN', snippet_check: 'READ', code_interview: 'INTERVIEW' }
 
 function CampaignOffice({ progress, board, onEnter }) {
   const activeProject = (progress?.projects || []).find((project) => project.status === 'active') || {}
@@ -3338,7 +3339,7 @@ function BattleBrief({ encounter, board, questions = {}, feedback, onAsk, onAnsw
             <small>Build it in <code>{entry}</code>, then press <b>Submit run</b>.</small>
           </>
         )}
-        {feedback && <div className={`battle-feedback ${feedback.verdict}`} role="status">{feedback.verdict === 'correct' ? '✔ ' : '✘ '}{feedback.reason}</div>}
+        {feedback && !String(feedback.objectiveId || '').startsWith('boss:') && <div className={`battle-feedback ${feedback.verdict}`} role="status">{feedback.verdict === 'correct' ? '✔ ' : '✘ '}{feedback.reason}</div>}
         {choice && codeLeft.length > 0 && <small className="battle-brief-also">Also open: {codeLeft.map((item) => item.label).join(', ')} (Submit run).</small>}
       </section>
       <section className="battle-brief-enemy">
@@ -3354,6 +3355,64 @@ function BattleBrief({ encounter, board, questions = {}, feedback, onAsk, onAnsw
           <li key={objective.id} className={done.has(objective.id) ? 'done' : current?.id === objective.id ? 'current' : ''}>
             <b className={`kind-${objective.question_type}`}>{done.has(objective.id) ? '✔' : OBJECTIVE_KIND[objective.question_type] || 'TASK'}</b>
             <span>{objective.label}</span>
+          </li>
+        ))}
+      </ol>
+    </div>
+  )
+}
+
+const BOSS_CHOICE_KINDS = new Set(['snippet_check', 'code_interview'])
+
+// The boss gate in the sidebar: the current goal first (a coding task to
+// build in the Forge, or a clickable question about your own file), then the
+// boss and every phase of the fight.
+function BossBrief({ encounter, board, questions = {}, feedback, onAsk, onAnswer, busy }) {
+  const phases = encounter.boss_requirements_projection || []
+  const current = encounter.boss_current_requirement || null
+  const choice = Boolean(current && BOSS_CHOICE_KINDS.has(current.question_type))
+  const key = current ? `boss:${current.id}` : ''
+  const question = current ? questions[key] : null
+  const asked = useRef(new Set())
+  useEffect(() => {
+    if (!choice || question || !onAsk || busy) return
+    if (asked.current.has(key)) return
+    asked.current.add(key)
+    onAsk(current.id)
+  }, [choice, key, Boolean(question), busy])
+  const entry = board?.entry_file || 'your project file'
+  const shownFeedback = feedback && String(feedback.objectiveId || '').startsWith('boss:') ? feedback : null
+  return (
+    <div className="battle-brief boss-brief" data-testid="forge-boss-brief">
+      <section className="battle-brief-question">
+        <span className="battle-eyebrow">THE QUESTION{current ? ` · ${OBJECTIVE_KIND[current.question_type] || 'TASK'}` : ''}</span>
+        {!current ? <p>Every goal is verified. The boss falls.</p> : choice ? (
+          question ? (
+            <>
+              <DungeonPromptText text={question.prompt} />
+              <ChoicePanel options={question.options || []} onChoose={(index) => onAnswer?.(current.id, index)} busy={busy} label="PICK ONE" />
+            </>
+          ) : <p className="battle-brief-wait">PYR is reading your {entry} for a question…{!busy && <button type="button" onClick={() => { asked.current.delete(key); onAsk?.(current.id) }}>Ask again</button>}</p>
+        ) : (
+          <>
+            <strong>{current.label}</strong>
+            <p>{current.quest || current.brief}</p>
+            <small>Build it in <code>{entry}</code>, then press <b>Submit run</b>.</small>
+          </>
+        )}
+        {shownFeedback && <div className={`battle-feedback ${shownFeedback.verdict}`} role="status">{shownFeedback.verdict === 'correct' ? '✔ ' : '✘ '}{shownFeedback.reason}</div>}
+      </section>
+      <section className="battle-brief-enemy">
+        <span className="battle-eyebrow">WHAT YOU'RE FIGHTING</span>
+        <strong>{encounter.boss || 'The boss'}</strong>
+        <ProgressBar value={encounter.resolve ?? encounter.boss_resolve ?? 0} max={encounter.max_resolve ?? encounter.boss_max_resolve ?? 1} label="Boss Resolve" className="resolve boss-resolve" />
+        {encounter.boss_lore && <p className="battle-brief-lore">{encounter.boss_lore}</p>}
+      </section>
+      <ol className="battle-brief-objectives">
+        {phases.map((phase) => (
+          <li key={phase.id} className={phase.status === 'verified' ? 'done' : phase.status === 'current' ? 'current' : ''}>
+            <b className={`kind-${phase.question_type}`}>{phase.status === 'verified' ? '✔' : OBJECTIVE_KIND[phase.question_type] || 'TASK'}</b>
+            <span>{phase.label}</span>
           </li>
         ))}
       </ol>

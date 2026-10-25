@@ -748,7 +748,10 @@ test('boss gate provider bridge binds behaviour, explanation and interview evide
   assert.match(server, /class PyrBossVerdictRequest/)
   assert.match(server, /answer_source: Literal\["manual", "forge_active_file"\]/)
   assert.match(server, /current_requirement\.get\("question_type"\)/)
-  assert.match(server, /all\(requirement in verified for requirement in BOSS_REQUIREMENTS\)/)
+  // The clear comes from saved state, so clicked and coded boss goals finish it alike.
+  assert.match(server, /def _clear_boss_if_ready\(\)/)
+  assert.match(server, /@app\.post\("\/api\/boss\/answer-option"\)/)
+  assert.match(views, /function BossBrief\(/)
 })
 
 test('boss phases and bounded trinket triggers stay state-service sourced', () => {

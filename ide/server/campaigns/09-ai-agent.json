@@ -19,6 +19,7 @@
   ],
   "boss_lore": "The Rogue Familiar was never cruel. It was simply given tools without a leash and goals without a limit.",
   "boss_brief": "Bring a finished agent.py: a chat loop with history, a swappable brain, a tool registry with a safe calculator and notes, an act-observe loop with a step limit, planning and searchable memory, guardrails with confirmations and an action log, and an evaluation harness that passes with your scripted brain.",
+  "boss_twist": "The Rogue Familiar tries to break your guardrails. Write at least eight scripted evaluation cases, including a tool call with bad arguments, an action that needs confirmation, a loop that would pass the step limit and a memory recall. run_evals(brain) must return pass or fail per case and an overall score, and your scripted brain must pass every case. Any tool that raises must be caught, logged and handed back to the brain as an observation.",
   "mobs": [
     {
       "name": "The Silent Familiar",

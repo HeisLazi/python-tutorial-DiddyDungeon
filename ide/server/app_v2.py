@@ -37,6 +37,7 @@ from ide.server.context_bridge import (
 )
 from ide.server.security import allowed_hosts, allowed_origins, is_allowed_origin
 from ide.server.state import (
+    BOSS_CHOICE_TYPES,
     BOSS_REQUIREMENTS,
     CAMPAIGN_MARKET_CATALOG,
     HUNTER_SIGN_CONCEPTS,
@@ -325,7 +326,7 @@ class PyrBossSubmissionRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     nonce: str = Field(min_length=16, max_length=128)
-    requirement_id: Literal["required_behavior", "explanation", "interview"]
+    requirement_id: Literal["required_behavior", "explanation", "edge_cases", "interview"]
     answer: str = Field(min_length=1, max_length=20_000)
     answer_source: Literal["manual", "forge_active_file"] = "manual"
     source_path: str | None = Field(default=None, max_length=240)
@@ -339,7 +340,7 @@ class PyrBossVerdictRequest(BaseModel):
     submission_id: str = Field(min_length=1, max_length=MAX_IDENTIFIER_LENGTH)
     answer_digest: str = Field(min_length=64, max_length=64, pattern=r"^[0-9a-f]{64}$")
     verdict: Literal["correct", "incorrect"]
-    requirement_id: Literal["required_behavior", "explanation", "interview"]
+    requirement_id: Literal["required_behavior", "explanation", "edge_cases", "interview"]
     evidence_id: str = Field(min_length=1, max_length=MAX_IDENTIFIER_LENGTH)
     reason: str = Field(min_length=1, max_length=MAX_REASON_LENGTH)
 
@@ -2108,6 +2109,8 @@ def create_pyr_boss_submission(payload: PyrBossSubmissionRequest):
                 current_requirement_id = current_requirement.get("id") if isinstance(current_requirement, dict) else None
                 if current_requirement_id and requirement_id != current_requirement_id:
                     raise HTTPException(status_code=409, detail="Submit the current boss goal before a later goal")
+                if isinstance(current_requirement, dict) and current_requirement.get("question_type") in BOSS_CHOICE_TYPES:
+                    raise HTTPException(status_code=409, detail="This boss goal is answered by clicking an option in the sidebar")
                 submission_id = f"boss-{secrets.token_hex(12)}"
                 evidence_id = submission_id
                 answer_digest = hashlib.sha256(answer.encode("utf-8")).hexdigest()
@@ -2148,6 +2151,35 @@ def create_pyr_boss_submission(payload: PyrBossSubmissionRequest):
             "expires_in": max(0, int(float(challenge["expires_at"]) - time.monotonic())),
         },
     }
+
+
+def _clear_boss_if_ready() -> dict | None:
+    """Clear the boss once every goal is verified in the saved state. Call
+    with PROGRESS_LOCK held, right after recording a boss requirement."""
+
+    progress, _metadata = STATE_SERVICE.snapshot_with_metadata()
+    encounter = STATE_SERVICE.encounter_projection(progress)
+    if not isinstance(encounter, dict) or encounter.get("boss_phase") != "ready_to_clear":
+        return None
+    project = next((item for item in progress.get("projects", []) if isinstance(item, dict) and item.get("status") == "active"), {})
+    validation = project.get("boss_validation") if isinstance(project.get("boss_validation"), dict) else {}
+    evidence: dict[str, dict] = {}
+    for entry in validation.get("history") or []:
+        if isinstance(entry, dict) and entry.get("requirement_id") in BOSS_REQUIREMENTS:
+            evidence[entry["requirement_id"]] = entry
+    fallback = next(iter(evidence.values()), {}).get("evidence_id") or f"boss-{secrets.token_hex(12)}"
+    reason = "Boss requirements verified; " + "; ".join(
+        str(evidence.get(requirement, {}).get("reason") or "validated") for requirement in BOSS_REQUIREMENTS
+    )
+    return STATE_SERVICE.apply_internal(
+        "record_boss_clear",
+        {
+            "evidence_id": evidence.get("required_behavior", {}).get("evidence_id") or fallback,
+            "explanation_evidence_id": evidence.get("explanation", {}).get("evidence_id") or fallback,
+            "interview_evidence_id": evidence.get("interview", {}).get("evidence_id") or fallback,
+            "reason": reason[:MAX_REASON_LENGTH],
+        },
+    )
 
 
 @app.post("/api/pyr/boss-verdict")
@@ -2221,19 +2253,8 @@ def apply_pyr_boss_verdict(payload: PyrBossVerdictRequest):
                     # Keep this bounded boss challenge usable for the next
                     # phase while binding it to the newly committed revision.
                     challenge["revision"] = requirement_mutation["revision"]
-                if all(requirement in verified for requirement in BOSS_REQUIREMENTS):
-                    reason = "Boss requirements verified; " + "; ".join(
-                        str(verified[requirement].get("reason") or "validated") for requirement in BOSS_REQUIREMENTS
-                    )
-                    mutation = STATE_SERVICE.apply_internal(
-                        "record_boss_clear",
-                        {
-                            "evidence_id": verified["required_behavior"]["evidence_id"],
-                            "explanation_evidence_id": verified["explanation"]["evidence_id"],
-                            "interview_evidence_id": verified["interview"]["evidence_id"],
-                            "reason": reason[:MAX_REASON_LENGTH],
-                        },
-                    )
+                mutation = _clear_boss_if_ready()
+                if mutation is not None:
                     _clear_challenge(PYR_CONTEXT_CHALLENGES, client_id)
                     if client_id == "default":
                         PYR_CONTEXT_CHALLENGE = None
@@ -3168,6 +3189,110 @@ def ai_dungeon_question(payload: AiDungeonQuestionRequest):
     if key is not None:
         CHOICE_ANSWER_KEYS[f"dungeon:{question['id']}"] = {**key, "options": list(written.get("options") or [])}
     return {"ok": True, "changed": True, "revision": mutation.get("revision"), "dungeon": projection}
+
+
+# Clickable boss goals PYR wrote, by 'boss:<project>:<requirement>'.
+BOSS_QUESTIONS: dict[str, dict[str, object]] = {}
+BOSS_QUESTION_STYLES = {
+    "snippet_check": (
+        "Read your code",
+        "Quote a short snippet (3-8 lines) from the learner's own file and ask what it does or what it prints for a given input.",
+    ),
+    "code_interview": (
+        "Code interview",
+        "Pick a function or block the learner wrote in this file. Quote it, then ask why it is written that way or what changes if an input or line changes. Harder than a plain read.",
+    ),
+}
+
+
+class BossOptionRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    requirement_id: Literal["required_behavior", "explanation", "edge_cases", "interview"]
+    option_index: int = Field(ge=0, le=7)
+
+
+def _boss_choice_goal() -> tuple[dict, dict, dict, str]:
+    """The active project, boss encounter, its current click goal and cache key."""
+
+    try:
+        progress, _metadata = STATE_SERVICE.snapshot_with_metadata()
+        encounter = STATE_SERVICE.encounter_projection(progress)
+    except StateCommandError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
+    if not isinstance(encounter, dict) or encounter.get("status") != "boss_available":
+        raise HTTPException(status_code=409, detail="There is no boss fight right now")
+    goal = encounter.get("boss_current_requirement")
+    if not isinstance(goal, dict) or goal.get("question_type") not in BOSS_CHOICE_TYPES:
+        raise HTTPException(status_code=409, detail="The current boss goal is not a clickable question")
+    project = next((item for item in progress.get("projects", []) if isinstance(item, dict) and item.get("status") == "active"), {})
+    return project, encounter, goal, f"boss:{encounter.get('project_id')}:{goal['id']}"
+
+
+@app.post("/api/ai/boss-question")
+def ai_boss_question():
+    """PYR writes the clickable question for the current boss goal, about the
+    player's own project file. Cached until answered."""
+
+    project, encounter, goal, key = _boss_choice_goal()
+    cached = BOSS_QUESTIONS.get(key)
+    if cached:
+        return {"ok": True, "question": {"requirement_id": goal["id"], **cached}}
+    code = ""
+    entry = project.get("entry_file")
+    if isinstance(entry, str) and entry.endswith(".py"):
+        path = (WORKSPACE / entry).resolve()
+        if path.is_file() and WORKSPACE.resolve() in path.parents:
+            code = path.read_text(encoding="utf-8", errors="replace")[:6000]
+    label, style = BOSS_QUESTION_STYLES[goal["question_type"]]
+    written = _ai_call(
+        ai_tutor.write_battle_question,
+        concept=str(project.get("name") or ""),
+        project=str(encounter.get("project_name") or ""),
+        contract=f"Boss fight: {encounter.get('boss') or 'the boss'}",
+        objective=label,
+        brief=style,
+        code=code,
+    )
+    BOSS_QUESTIONS[key] = {"prompt": written["prompt"], "options": written["options"]}
+    CHOICE_ANSWER_KEYS[key] = {"answer": written["answer"], "why": written.get("why", ""), "options": written["options"]}
+    return {"ok": True, "question": {"requirement_id": goal["id"], **BOSS_QUESTIONS[key]}}
+
+
+@app.post("/api/boss/answer-option")
+def answer_boss_option(payload: BossOptionRequest):
+    """Grade a clicked boss answer. Right verifies the goal (and clears the
+    boss when it was the last one); wrong costs nothing, exactly like a wrong
+    code submission, and the next question for the goal is a fresh one."""
+
+    with PROGRESS_LOCK:
+        _project, _encounter, goal, key = _boss_choice_goal()
+        if payload.requirement_id != goal["id"]:
+            raise HTTPException(status_code=409, detail="Answer the current boss goal")
+        question = BOSS_QUESTIONS.get(key)
+        answer = CHOICE_ANSWER_KEYS.get(key)
+        if not question or not answer:
+            raise HTTPException(status_code=409, detail="That question is no longer open; ask PYR for it again")
+        options = list(question.get("options") or [])
+        if payload.option_index >= len(options):
+            raise HTTPException(status_code=422, detail="That question has no such option")
+        BOSS_QUESTIONS.pop(key, None)
+        CHOICE_ANSWER_KEYS.pop(key, None)
+        correct_text = options[int(answer["answer"])]
+        verdict = "correct" if payload.option_index == int(answer["answer"]) else "incorrect"
+        why = str(answer.get("why") or "")
+        reason = ((why or f"Right: {correct_text}.") if verdict == "correct" else f"The answer was {correct_text}. {why}".strip())[:400]
+        cleared = None
+        if verdict == "correct":
+            try:
+                STATE_SERVICE.apply_internal(
+                    "record_boss_requirement",
+                    {"requirement_id": goal["id"], "evidence_id": f"bs-click-{uuid.uuid4().hex[:16]}", "reason": reason[:MAX_REASON_LENGTH]},
+                )
+                cleared = _clear_boss_if_ready()
+            except StateCommandError as exc:
+                raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
+    return {"ok": True, "verdict": verdict, "reason": reason, "correct_index": int(answer["answer"]), "complete": cleared is not None}
 
 
 # Campaign choice questions PYR wrote, by 'battle:<project>:<mob>:<objective>'.

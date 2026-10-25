@@ -205,3 +205,32 @@ class LegacyGearTests(unittest.TestCase):
         for armour, reduction in (("Debugger Plate", 15), ("Ledgerguard Coat", 25), ("Emberweave Mantle", 30)):
             effects = LocalStateService._gear_effects({"equipment": {"armor": armour}})
             self.assertEqual(effects["reduction"], reduction, armour)
+
+
+class BossGateTests(unittest.TestCase):
+    def test_an_older_save_resumes_at_the_new_coding_twist(self):
+        project = {"branch": "01-blackjack", "name": "Blackjack", "boss": "The House", "boss_status": "available",
+                   "boss_twist": "Turn your rules into data: a HouseRules dict.",
+                   "boss_validation": {"verified": ["required_behavior", "explanation"], "history": []}}
+        projection = LocalStateService._boss_validation_projection(project)
+        self.assertEqual(projection["boss_phase"], "edge_cases")
+        goal = projection["boss_current_requirement"]
+        self.assertEqual(goal["question_type"], "code_checkpoint")
+        self.assertIn("HouseRules", goal["quest"])
+
+    def test_a_defeated_boss_stays_complete_and_phases_alternate_code_and_clicks(self):
+        defeated = LocalStateService._boss_validation_projection({"boss_status": "defeated", "completed": True, "boss_validation": {"verified": ["required_behavior", "explanation", "interview"]}})
+        self.assertEqual(defeated["boss_phase"], "complete")
+        fresh = LocalStateService._boss_validation_projection({"branch": "09-ai-agent", "boss_status": "available", "boss_brief": "Bring a finished agent.py."})
+        kinds = [item["question_type"] for item in fresh["boss_requirements_projection"]]
+        self.assertEqual(kinds, ["code_checkpoint", "snippet_check", "code_checkpoint", "code_interview"])
+        self.assertIn("agent.py", fresh["boss_requirements_projection"][0]["quest"])
+
+    def test_every_shipped_boss_has_a_long_practical_twist(self):
+        import json
+        from pathlib import Path
+
+        for path in sorted((Path(__file__).with_name("campaigns")).glob("*.json")):
+            twist = json.loads(path.read_text(encoding="utf-8")).get("boss_twist", "")
+            self.assertGreater(len(twist), 250, path.name)
+            self.assertRegex(twist, r"[a-z_]+\(", path.name)

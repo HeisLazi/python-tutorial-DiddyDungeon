@@ -18,6 +18,7 @@
   ],
   "boss_lore": "The Unbound fights like you, because it learned from watching you. Change, or lose the way you always do.",
   "boss_brief": "Bring a finished gladiator.py: classes built from templates, defend and risky actions, status effects with durations, crowd favour, an opponent that chooses by expected value, upgrades across a run, an eight-fighter bracket, a balance simulation across every class matchup, and a saved hall of laurels.",
+  "boss_twist": "The Unbound never fights the same way twice. Write balance_report(classes, fights=200, seed=None) that fights every class against every other class and returns a win-rate matrix, flagging any matchup above 65% as unbalanced. Tune at least one stat so no matchup stays above 65%, and print the report before and after. Applying the same status effect twice must refresh or stack its duration by one clear rule, never duplicate it.",
   "mobs": [
     {
       "name": "The Rulescribe", "concept": "Planning state and turn order in comments",

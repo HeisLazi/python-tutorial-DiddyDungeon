@@ -934,7 +934,7 @@ class PyrContextBridgeTests(unittest.TestCase):
                 app_v2.WORKSPACE = original_workspace
                 app_v2.PROGRESS_PATH = original_progress
 
-    def test_boss_bridge_requires_three_bound_evidence_verdicts_before_clear(self):
+    def test_boss_gate_mixes_code_and_click_goals_and_clears_from_saved_state(self):
         original_workspace = app_v2.WORKSPACE
         original_progress = app_v2.PROGRESS_PATH
         with tempfile.TemporaryDirectory() as directory:
@@ -960,44 +960,57 @@ class PyrContextBridgeTests(unittest.TestCase):
             app_v2.PYR_CONTEXT_CHALLENGE = None
             try:
                 client = TestClient(app_v2.app, base_url="http://127.0.0.1")
-                context = client.post("/api/pyr/context", headers={"host": "127.0.0.1"}, json={}).json()["context"]
-                self.assertEqual(context["verdict"]["challenge_type"], "boss")
-                self.assertEqual(context["verdict"]["requirements"], ["required_behavior", "explanation", "interview"])
-                nonce = context["verdict"]["nonce"]
+                host = {"host": "127.0.0.1"}
 
-                for index, requirement in enumerate(("required_behavior", "explanation", "interview")):
-                    submission = client.post(
-                        "/api/pyr/boss-submission",
-                        headers={"host": "127.0.0.1"},
-                        json={"nonce": nonce, "requirement_id": requirement, "answer": f"Evidence for {requirement}"},
-                    )
-                    self.assertEqual(submission.status_code, 200)
-                    body = submission.json()["submission"]
-                    verdict = client.post(
-                        "/api/pyr/boss-verdict",
-                        headers={"host": "127.0.0.1"},
-                        json={
-                            "nonce": nonce,
-                            "submission_id": body["submission_id"],
-                            "answer_digest": body["answer_digest"],
-                            "verdict": "correct",
-                            "requirement_id": requirement,
-                            "evidence_id": body["evidence_id"],
-                            "reason": f"Validated {requirement}",
-                        },
-                    )
-                    self.assertEqual(verdict.status_code, 200, verdict.text)
-                    if index < 2:
-                        self.assertFalse(verdict.json()["complete"])
-                        self.assertEqual(verdict.json()["verified_requirements"], sorted(["required_behavior", "explanation"][: index + 1]))
-                    else:
-                        self.assertTrue(verdict.json()["complete"])
-                        self.assertEqual(verdict.json()["mutation"]["event"]["action"], "record_boss_clear")
-                        self.assertEqual(verdict.json()["mutation"]["revision"], 11)
+                def capture():
+                    context = client.post("/api/pyr/context", headers=host, json={}).json()["context"]
+                    self.assertEqual(context["verdict"]["challenge_type"], "boss")
+                    return context["verdict"]["nonce"]
+
+                def code_goal(requirement):
+                    nonce = capture()
+                    body = client.post("/api/pyr/boss-submission", headers=host, json={"nonce": nonce, "requirement_id": requirement, "answer": f"Evidence for {requirement}"})
+                    self.assertEqual(body.status_code, 200, body.text)
+                    body = body.json()["submission"]
+                    return client.post("/api/pyr/boss-verdict", headers=host, json={
+                        "nonce": nonce, "submission_id": body["submission_id"], "answer_digest": body["answer_digest"], "verdict": "correct",
+                        "requirement_id": requirement, "evidence_id": body["evidence_id"], "reason": f"Validated {requirement}",
+                    })
+
+                def click_goal(requirement, pick):
+                    key = f"boss:{app_v2.STATE_SERVICE.encounter_projection(json.loads(canonical.read_text(encoding='utf-8')))['project_id']}:{requirement}"
+                    app_v2.BOSS_QUESTIONS[key] = {"prompt": "What does deal() return?", "options": ["A card", "A list", "None"]}
+                    app_v2.CHOICE_ANSWER_KEYS[key] = {"answer": 0, "why": "deal pops one card.", "options": ["A card", "A list", "None"]}
+                    return client.post("/api/boss/answer-option", headers=host, json={"requirement_id": requirement, "option_index": pick})
+
+                self.assertEqual(capture() and app_v2.BOSS_REQUIREMENTS, ("required_behavior", "explanation", "edge_cases", "interview"))
+                first = code_goal("required_behavior")
+                self.assertEqual(first.status_code, 200, first.text)
+                self.assertFalse(first.json()["complete"])
+
+                # The snippet check is clicked: a Forge submission for it is refused.
+                nonce = capture()
+                refused = client.post("/api/pyr/boss-submission", headers=host, json={"nonce": nonce, "requirement_id": "explanation", "answer": "an essay"})
+                self.assertEqual(refused.status_code, 409)
+                wrong = click_goal("explanation", 2)
+                self.assertEqual(wrong.json()["verdict"], "incorrect")
+                self.assertEqual(json.loads(canonical.read_text(encoding="utf-8"))["player"].get("hp"), state["player"].get("hp"))
+                right = click_goal("explanation", 0)
+                self.assertEqual(right.json()["verdict"], "correct")
+                self.assertFalse(right.json()["complete"])
+
+                twist = code_goal("edge_cases")
+                self.assertEqual(twist.status_code, 200, twist.text)
+                self.assertFalse(twist.json()["complete"])
+
+                last = click_goal("interview", 0)
+                self.assertEqual(last.json()["verdict"], "correct")
+                self.assertTrue(last.json()["complete"])
 
                 final = json.loads(canonical.read_text(encoding="utf-8"))
                 self.assertTrue(final["projects"][0]["completed"])
                 self.assertEqual(final["projects"][0]["boss_status"], "defeated")
+                self.assertEqual(final["projects"][0]["boss_validation"]["verified"], list(app_v2.BOSS_REQUIREMENTS))
                 self.assertEqual(final["player"]["xp"], 50)
                 self.assertEqual(final["player"]["level"], 3)
                 self.assertEqual(final["player"]["lifetime_xp"], 250)

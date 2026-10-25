@@ -17,6 +17,7 @@
   ],
   "boss_lore": "The House has watched every hand you dealt. It does not cheat; it simply waits for a rule you forgot.",
   "boss_brief": "Bring a finished blackjack.py: aces worth 1 or 11, a real shoe that reshuffles, naturals paying 3:2, a validated bankroll with doubling, and a menu where your basic-strategy bot can play, simulate thousands of hands and count cards.",
+  "boss_twist": "The House changes the rules mid-game. Turn your rules into data: a HouseRules dict or dataclass with decks, dealer_hits_soft_17, blackjack_payout and double_after_split, read by your scoring and dealer play instead of constants. Write simulate(strategy, rules, hands=10000, seed=None) that returns the bankroll change and the house edge as a percentage, and print the edge with dealer_hits_soft_17 off and on. A shoe that runs out mid-hand must reshuffle without losing the cards already on the table.",
   "mobs": [
     {
       "name": "The Empty Table",
