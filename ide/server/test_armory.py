@@ -180,3 +180,28 @@ class ArmoryBehaviourTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class DungeonFoeNameTests(unittest.TestCase):
+    def test_multi_question_fight_keeps_its_first_foe_name(self):
+        run = {
+            "room_type": "boss",
+            "floor": 1,
+            "question": {"id": "q1", "question_type": "code_checkpoint", "difficulty": 4, "concept_id": "functions"},
+            "fight": {"room_type": "boss", "questions_total": 5, "questions_cleared": 0, "resolve": 12, "max_resolve": 12, "guards": 0, "breaks": 0, "misses": 0, "mechanic": None},
+        }
+        first = LocalStateService._dungeon_pin_foe(run, LocalStateService._dungeon_mob_spec(run))
+        run["question"] = {"id": "q2", "question_type": "bug_hunt", "difficulty": 4, "concept_id": "functions"}
+        second = LocalStateService._dungeon_mob_spec(run)
+        self.assertEqual(first["name"], second["name"])
+        self.assertEqual(run["fight"]["foe"]["name"], first["name"])
+
+
+class LegacyGearTests(unittest.TestCase):
+    def test_merchant_trinkets_and_armours_have_real_effects(self):
+        for trinket, key in (("Syntax Ward", "block_first_miss"), ("Loop Lens", "heal_on_objective"), ("Guard Bell", "start_guards"), ("Scimitar of Momentum", "coin_bonus"), ("Vision Scroll", "loot_luck")):
+            effects = LocalStateService._gear_effects({"equipment": {"trinket": trinket}})
+            self.assertTrue(effects[key], trinket)
+        for armour, reduction in (("Debugger Plate", 15), ("Ledgerguard Coat", 25), ("Emberweave Mantle", 30)):
+            effects = LocalStateService._gear_effects({"equipment": {"armor": armour}})
+            self.assertEqual(effects["reduction"], reduction, armour)

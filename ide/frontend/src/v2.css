@@ -1564,3 +1564,10 @@
 .spar-bar i { background: #f87171; }
 .spar-empty { color: var(--muted, #999); }
 @media (max-width: 760px) { .spar-arena { grid-template-columns: 1fr; } }
+
+/* Codex reader: keep the Practice button on one line. */
+.resource-reader-heading > button { white-space: nowrap; flex: none; }
+/* IDE practice: a long PYR question never pushes the lens picker off screen. */
+.forge-v2 .resource-ide-heading > div { flex: 1 1 auto; min-width: 0; }
+.forge-v2 .resource-ide-heading > label { flex: none; }
+.forge-v2 .resource-ide-heading pre, .forge-v2 .pyr-practice-question pre { overflow-x: auto; max-width: 100%; }

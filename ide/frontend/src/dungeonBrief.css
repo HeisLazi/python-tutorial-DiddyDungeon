@@ -244,3 +244,24 @@
 .choice-option:hover:not(:disabled), .choice-option:focus-visible { border-color: var(--dungeon-gold); background: color-mix(in srgb, var(--dungeon-gold) 10%, var(--dungeon-panel)); outline: none; }
 .choice-option:disabled { opacity: 0.6; cursor: default; }
 .choice-panel > small { color: var(--dungeon-muted); }
+
+/* Loadout cards: the Equip button gets its own row, never over the text. */
+.dungeon-screen-shell .dungeon-loadout-item { grid-template-columns: 34px minmax(0, 1fr); }
+.dungeon-screen-shell .dungeon-loadout-item > button { grid-column: 1 / -1; justify-self: start; }
+/* The vision scroll button keeps its label on one line. */
+.dungeon-risk-card { flex-wrap: wrap; }
+.dungeon-risk-card > div:not(.dungeon-risk-actions) { flex: 1 1 0; min-width: 0; }
+.dungeon-risk-card > .dungeon-risk-actions { flex: 1 1 100%; display: flex; flex-wrap: wrap; gap: 8px; }
+.dungeon-risk-actions button { white-space: nowrap; font-size: 12px; flex: 1 1 auto; width: auto; }
+/* Lane map nodes: short words that fit. */
+.dungeon-proto-map:not(.grid-floor) .dungeon-map-node strong { white-space: normal; overflow: visible; text-overflow: clip; font-size: 9px; text-align: center; }
+/* Lane map nodes stack the icon over the word so labels never split. */
+.dungeon-screen-shell .dungeon-proto-map:not(.grid-floor) .dungeon-map-node { grid-template-columns: 1fr; grid-template-rows: auto auto auto; justify-items: center; gap: 1px; padding: 4px 2px; }
+.dungeon-screen-shell .dungeon-proto-map:not(.grid-floor) .dungeon-map-node > span { grid-row: auto; width: 20px; height: 20px; }
+.dungeon-screen-shell .dungeon-proto-map:not(.grid-floor) .dungeon-map-node strong { overflow-wrap: normal; word-break: keep-all; }
+/* Dungeon market: item descriptions wrap instead of being cut off. */
+.dungeon-screen-shell .dungeon-market-item small { white-space: normal; overflow: visible; text-overflow: clip; display: block; }
+.dungeon-screen-shell .dungeon-market-item > span { min-width: 0; flex: 1 1 auto; }
+/* The shell column never grows to a child's min-content (Monaco keeps a pixel width). */
+.app-shell { grid-template-columns: minmax(0, 1fr); }
+.app-shell > .workspace-grid { min-width: 0; }

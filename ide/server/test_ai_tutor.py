@@ -271,6 +271,10 @@ class AiTutorEndpointTests(AiTutorTestCase):
         self.assertIn("two colours", first.json()["dungeon"]["question"]["prompt"])
         again = self.client.post("/api/ai/dungeon-question", headers=self.headers, json={"run_id": run["run_id"]})
         self.assertFalse(again.json()["changed"])
+        # After an app restart the in-memory set is empty; the save still says PYR wrote it.
+        app_v2.AI_ISSUED_DUNGEON_QUESTIONS.clear()
+        restarted = self.client.post("/api/ai/dungeon-question", headers=self.headers, json={"run_id": run["run_id"]})
+        self.assertFalse(restarted.json()["changed"])
         # Multiline AI questions must survive the cloud-sync projection too.
         snapshot, _metadata = app_v2.STATE_SERVICE.sync_snapshot()
         self.assertIn("```python", snapshot["campaign"]["dungeon_run"]["question"]["prompt"])

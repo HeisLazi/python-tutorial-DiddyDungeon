@@ -1090,8 +1090,13 @@ test('submit shortcut is intercepted before Monaco can insert a newline', () => 
   const app = source('../AppV2.jsx')
 
   assert.match(app, /modifier && event\.shiftKey && event\.key === 'Enter'/)
-  assert.match(app, /document\.querySelector\('\[data-qol-submit\]'\)\?\.click\(\)/)
+  // Each surface owns its submit button: Dungeon, Tutor, then the Forge's enhancement button.
+  assert.match(app, /activeView === 'dungeon' \? '\[data-dungeon-submit\]'/)
+  assert.match(app, /'\[data-tutor-submit\]' : '\[data-qol-submit\]'/)
   assert.match(app, /event\.preventDefault\(\)[\s\S]*event\.stopPropagation\(\)[\s\S]*data-qol-submit/)
+  const views = source('../RpgViews.jsx')
+  assert.match(views, /data-dungeon-submit onClick=\{onSubmit\}/)
+  assert.match(views, /data-tutor-submit onClick=\{submit\}/)
 })
 
 test('account settings exposes revision diagnostics without changing sync authority', () => {

@@ -154,14 +154,14 @@ EQUIPMENT_CATALOG: tuple[dict[str, Any], ...] = (
     {"id": "trinket-ember-scythe", "name": "Ember Scythe", "kind": "trinket", "effect": "+1 Impact on the first verified objective", "description": "A weapon-shaped trinket; Impact remains evidence-backed."},
     {"id": "trinket-guardian-sigil", "name": "Guardian Sigil", "kind": "trinket", "effect": "Negates one counterattack", "description": "A single bounded ward for a risky submission."},
     {"id": "trinket-phoenix-ember", "name": "Phoenix Ember", "kind": "trinket", "effect": "Revives at 1 HP once per encounter", "description": "A last spark when an incorrect answer would down you."},
-    {"id": "debugger-plate", "name": "Debugger Plate", "kind": "armor", "effect": "Makes the next mechanic hit less punishing", "description": "A plated guard tuned for the next mechanic."},
-    {"id": "ledgerguard-coat", "name": "Ledgerguard Coat", "kind": "armor", "effect": "Steadier guard against repeated failures", "description": "A careful coat for long, difficult lessons."},
-    {"id": "emberweave-mantle", "name": "Emberweave Mantle", "kind": "armor", "effect": "Softens one heavy mechanic hit each encounter", "description": "Warm woven plates catch one punishing mistake."},
-    {"id": "syntax-ward", "name": "Syntax Ward", "kind": "trinket", "effect": "Reduces syntax-error retaliation", "description": "A compact ward against syntax-error damage."},
-    {"id": "loop-lens", "name": "Loop Lens", "kind": "trinket", "effect": "+1 Guard Break impact against loop weaknesses", "description": "A lens that rewards careful loop construction."},
-    {"id": "guard-bell", "name": "Guard Bell", "kind": "trinket", "effect": "Telegraphs the first mechanic before it fires", "description": "A small bell that makes danger easier to read."},
-    {"id": "scimitar-of-momentum", "name": "Scimitar of Momentum", "kind": "trinket", "effect": "Improves Guard Break impact", "description": "A weapon-shaped trinket for pressing an opening."},
-    {"id": "vision-scroll", "name": "Vision Scroll", "kind": "trinket", "effect": "Reveals one hidden risk-room identity", "description": "A costly scroll that exposes one uncertain route."},
+    {"id": "debugger-plate", "name": "Debugger Plate", "kind": "armor", "effect": "15% less damage from misses", "description": "A plated guard tuned for the next mechanic."},
+    {"id": "ledgerguard-coat", "name": "Ledgerguard Coat", "kind": "armor", "effect": "25% less damage from misses", "description": "A careful coat for long, difficult lessons."},
+    {"id": "emberweave-mantle", "name": "Emberweave Mantle", "kind": "armor", "effect": "30% less damage from misses", "description": "Warm woven plates catch one punishing mistake."},
+    {"id": "syntax-ward", "name": "Syntax Ward", "kind": "trinket", "effect": "Blocks the first counterattack each battle", "description": "A compact ward against syntax-error damage."},
+    {"id": "loop-lens", "name": "Loop Lens", "kind": "trinket", "effect": "Heal 2 HP per verified objective", "description": "A lens that rewards careful loop construction."},
+    {"id": "guard-bell", "name": "Guard Bell", "kind": "trinket", "effect": "Start every battle with a free mistake", "description": "A small bell that makes danger easier to read."},
+    {"id": "scimitar-of-momentum", "name": "Scimitar of Momentum", "kind": "trinket", "effect": "+15% bounty coins", "description": "A weapon-shaped trinket for pressing an opening."},
+    {"id": "vision-scroll", "name": "Vision Scroll", "kind": "trinket", "effect": "+10% chance of rarer loot", "description": "A costly scroll that exposes one uncertain route."},
 )
 EQUIPMENT_BY_ID: dict[str, dict[str, Any]] = {item["id"]: item for item in EQUIPMENT_CATALOG}
 # Paper-doll appearance, stored as equipment.avatar. Values are names the
@@ -208,14 +208,14 @@ CAMPAIGN_MARKET_CATALOG: tuple[dict[str, Any], ...] = (
     {"id": "field-bandage", "name": "Field bandage", "kind": "supply", "supply": "bandages", "price": 18, "description": "Recover during Home preparation."},
     {"id": "ember-tonic", "name": "Ember tonic", "kind": "supply", "supply": "tonics", "price": 32, "description": "A one-use buffer for the next encounter."},
     {"id": "camp-meal", "name": "Camp meal", "kind": "supply", "supply": "meals", "price": 26, "description": "Restore a small amount of HP from the encounter kit."},
-    {"id": "debugger-plate", "name": "Debugger Plate", "kind": "armor", "price": 72, "description": "Makes the next mechanic hit less punishing."},
-    {"id": "ledgerguard-coat", "name": "Ledgerguard Coat", "kind": "armor", "price": 118, "description": "A steadier guard against repeated failed submissions."},
-    {"id": "emberweave-mantle", "name": "Emberweave Mantle", "kind": "armor", "price": 146, "description": "Softens one heavy mechanic hit each encounter."},
-    {"id": "syntax-ward", "name": "Syntax Ward", "kind": "trinket", "price": 48, "description": "Reduces syntax-error retaliation."},
-    {"id": "loop-lens", "name": "Loop Lens", "kind": "trinket", "price": 64, "description": "Adds a little Guard Break impact when the weakness is a loop."},
-    {"id": "guard-bell", "name": "Guard Bell", "kind": "trinket", "price": 78, "description": "Telegraphs the first mechanic before it fires."},
-    {"id": "scimitar-of-momentum", "name": "Scimitar of Momentum", "kind": "trinket", "price": 110, "description": "Improves Guard Break impact."},
-    {"id": "vision-scroll", "name": "Vision Scroll", "kind": "trinket", "price": 125, "description": "Reveal one hidden risk-room identity on the dungeon map."},
+    {"id": "debugger-plate", "name": "Debugger Plate", "kind": "armor", "price": 72, "description": "15% less damage from misses."},
+    {"id": "ledgerguard-coat", "name": "Ledgerguard Coat", "kind": "armor", "price": 118, "description": "25% less damage from misses."},
+    {"id": "emberweave-mantle", "name": "Emberweave Mantle", "kind": "armor", "price": 146, "description": "30% less damage from misses."},
+    {"id": "syntax-ward", "name": "Syntax Ward", "kind": "trinket", "price": 48, "description": "Blocks the first counterattack each battle."},
+    {"id": "loop-lens", "name": "Loop Lens", "kind": "trinket", "price": 64, "description": "Heal 2 HP per verified objective."},
+    {"id": "guard-bell", "name": "Guard Bell", "kind": "trinket", "price": 78, "description": "Start every battle with a free mistake."},
+    {"id": "scimitar-of-momentum", "name": "Scimitar of Momentum", "kind": "trinket", "price": 110, "description": "+15% bounty coins."},
+    {"id": "vision-scroll", "name": "Vision Scroll", "kind": "trinket", "price": 125, "description": "+10% chance of rarer loot."},
 )
 CAMPAIGN_MARKET_BY_ID: dict[str, dict[str, Any]] = {item["id"]: item for item in CAMPAIGN_MARKET_CATALOG}
 
@@ -1167,7 +1167,18 @@ ARMORY_BONUS_CAP = 50
 ARMORY_REDUCTION_CAP = 80
 ARMORY_MAX_STACK = 99
 CAMPAIGN_BREAK_COINS = 3
-LEGACY_ARMOR_REDUCTION = {"Apprentice Coat": 10, "Leather Guard": 20, "Runic Mail": 30, "Emberplate": 40, "Guardian Aegis": 50, "Mythril Archive Plate": 60}
+LEGACY_ARMOR_REDUCTION = {
+    "Apprentice Coat": 10, "Leather Guard": 20, "Runic Mail": 30, "Emberplate": 40, "Guardian Aegis": 50, "Mythril Archive Plate": 60,
+    "Debugger Plate": 15, "Ledgerguard Coat": 25, "Emberweave Mantle": 30,
+}
+# The Merchant's original trinkets, given real armory effects.
+LEGACY_TRINKET_EFFECTS = {
+    "Syntax Ward": {"block_first_miss": True},
+    "Loop Lens": {"heal_on_objective": 2},
+    "Guard Bell": {"start_guards": 1},
+    "Scimitar of Momentum": {"coin_bonus": 15},
+    "Vision Scroll": {"loot_luck": 10},
+}
 _ARMORY_CACHE: dict[str, Any] = {"source": None, "by_id": {}, "by_name": {}}
 _OBJECTIVE_WORDS = {"code_checkpoint": "BUILD", "bug_diagnosis": "FIX", "prediction": "PREDICT", "explanation": "EXPLAIN"}
 
@@ -3575,6 +3586,15 @@ class LocalStateService:
         run["fight"] = fight
         return fight
 
+    @staticmethod
+    def _dungeon_pin_foe(run: dict[str, Any], mob: dict[str, Any] | None) -> dict[str, Any] | None:
+        """Remember who this fight is against, so later questions keep the name."""
+
+        fight = run.get("fight")
+        if mob and isinstance(fight, dict) and not isinstance(fight.get("foe"), Mapping):
+            fight["foe"] = {"name": mob["name"], "category": mob["category"]}
+        return mob
+
     def _dungeon_fight(self, run: dict[str, Any], progress: Mapping[str, Any]) -> dict[str, Any]:
         fight = run.get("fight")
         if not isinstance(fight, dict) or fight.get("room_type") != run.get("room_type"):
@@ -3652,6 +3672,7 @@ class LocalStateService:
         profile = profile_by_room.get(room_type, profile_by_room["encounter"])
         beast_sign = next((sign for sign in hunter_signs_for(question.get("concept_id") or run.get("concept_id")) if sign in HUNTER_BEASTS), None)
         name = archetype["name"]
+        category = archetype["category"]
         region = DUNGEON_REGIONS.get(str(run.get("region_id") or ""))
         if region and room_type == "boss":
             name = region["boss"]
@@ -3660,10 +3681,15 @@ class LocalStateService:
             if sign_id:
                 beast = HUNTER_BEASTS[sign_id]["beast"]
                 name = beast if room_type == "encounter" else f"Elder {beast.removeprefix('The ')}"
+        # One fight, one foe: a multi-question fight keeps the name it started with.
+        foe = fight.get("foe") if fight and isinstance(fight.get("foe"), Mapping) else None
+        if foe and isinstance(foe.get("name"), str) and foe["name"]:
+            name = foe["name"]
+            category = str(foe.get("category") or category)
         return {
             "id": f"{question.get('id', 'dungeon-question')}-mob",
             "name": name,
-            "category": archetype["category"],
+            "category": category,
             "concept_id": str(question.get("concept_id") or run.get("concept_id") or "python-basics")[:MAX_IDENTIFIER_LENGTH],
             "sign_id": beast_sign,
             "question_type": question_type,
@@ -4210,7 +4236,7 @@ class LocalStateService:
             run["question"] = question
             question_id = question["id"]
             self._dungeon_start_fight(run, progress)
-            mob = self._dungeon_mob_spec(run)
+            mob = self._dungeon_pin_foe(run, self._dungeon_mob_spec(run))
         elif kind == "mystery":
             seed = str(run.get("seed") or run.get("run_id") or "dungeon")
             node_id = str(choice_id)
@@ -4468,6 +4494,8 @@ class LocalStateService:
         if not isinstance(editor_content, str):
             raise StateCommandError("Existing Dungeon editor content is invalid", status_code=500)
         projection["editor_content"] = editor_content if status == "active" else ""
+        current_question = run.get("question") if isinstance(run.get("question"), Mapping) else {}
+        projection["pyr_written"] = bool(current_question.get("id")) and run.get("pyr_question_id") == current_question.get("id")
         last_result = run.get("last_result")
         if isinstance(last_result, Mapping):
             projection["last_result"] = {
@@ -4687,6 +4715,8 @@ class LocalStateService:
                 "question": question,
                 "room_choices": [],
                 "editor_content": "",
+                # Local-only: PYR already wrote this room, so a restart never rewrites it.
+                "pyr_question_id": question["id"],
                 "updated_at": _utc_now(),
             }
         )
@@ -4733,7 +4763,7 @@ class LocalStateService:
         if question is None or question.get("id") != question_id or run.get("room_type") not in {"encounter", "elite", "boss"}:
             raise StateCommandError("Dungeon question changed; reload the current room", status_code=409)
         fight = self._dungeon_fight(run, progress)
-        mob = self._dungeon_mob_spec(run)
+        mob = self._dungeon_pin_foe(run, self._dungeon_mob_spec(run))
         difficulty = self._integer(question.get("difficulty", 1), "question.difficulty", minimum=1, maximum=MAX_DUNGEON_DIFFICULTY)
         run["attempts"] = self._counter(run, "attempts") + 1
         score_delta = 0
@@ -6020,8 +6050,11 @@ class LocalStateService:
         weapon = catalog.get(armory.get("weapon")) if isinstance(armory.get("weapon"), str) and armory.get("weapon") in owned else None
         armor_name = str(equipment.get("armor") or "")
         armor = by_name.get(armor_name) if by_name.get(armor_name, {}).get("slot") == "armor" else None
-        trinket = by_name.get(str(equipment.get("trinket") or ""))
+        trinket_name = str(equipment.get("trinket") or "")
+        trinket = by_name.get(trinket_name)
         trinket = trinket if trinket and trinket["slot"] == "trinket" else None
+        if trinket is None and trinket_name in LEGACY_TRINKET_EFFECTS:
+            trinket = {"name": trinket_name, "slot": "trinket", "effect": LEGACY_TRINKET_EFFECTS[trinket_name]}
         relics = [catalog[item] for item in owned if item in catalog and catalog[item]["slot"] == "relic"]
         trinket_effect = trinket["effect"] if trinket else {}
         armor_effect = armor["effect"] if armor else {}
@@ -7106,6 +7139,11 @@ class LocalStateService:
             if project.get("boss_status") == "available":
                 # New contracts stand between the hunter and the boss again.
                 project.pop("boss_status", None)
+            if project.get("status") == "active":
+                progress["current_quest"] = (
+                    f"{project.get('name') or project.get('branch')}: clear the bounty board, "
+                    f"then face {project.get('boss') or 'the boss'}."
+                )
             if project.get("mob_sequence_complete"):
                 project["mob_sequence_complete"] = False
             cleared = sum(1 for item in mobs if item.get("status") in {"defeated", "cleared"})
@@ -7924,6 +7962,7 @@ class LocalStateService:
             {
                 "session_id": session_id,
                 "outcome": outcome,
+                "concept": str(session.get("concept") or "")[:120],
                 "evidence_id": evidence_id,
                 "reason": reason,
                 "reward_xp": 0,

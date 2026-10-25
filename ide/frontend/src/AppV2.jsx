@@ -381,6 +381,27 @@ const TerminalPane = forwardRef(function TerminalPane(
   )
 })
 
+// The banner follows the live board, so an extended board never shows a stale boss line.
+function questLine(progress) {
+  const project = (progress?.projects || []).find((item) => item?.status === 'active')
+  const mobs = Array.isArray(project?.mobs) ? project.mobs : []
+  const next = mobs.find((mob) => mob?.status === 'available')
+  if (project && next && project.boss_status !== 'available') return `${project.name || project.branch}: next bounty, ${next.name}. Then face ${project.boss || 'the boss'}.`
+  return progress?.current_quest || 'Choose a quest.'
+}
+
+// What a Dungeon fate room did, in plain words.
+const DUNGEON_RISK_OUTCOMES = {
+  elite: 'Elite ambush! A harder fight begins.',
+  quiz: 'Risk quiz: answer right for run coins.',
+  reward: 'Hidden cache: +20 run coins and a field bandage.',
+  debuff: 'Hexed route: your next miss costs double HP.',
+  buff: 'Ember blessing: your next correct answer hits harder.',
+  teleport: 'The corridor folds: the route moves on.',
+  discount: 'Discount stall: one supply at a discount.',
+  armory: 'Sealed armory: take one weapon or armour piece.',
+}
+
 // Campaign objectives answered by clicking an option rather than submitting a file.
 const BATTLE_CHOICE_TYPES = new Set(['prediction', 'explanation'])
 
@@ -931,21 +952,13 @@ function AppV2() {
         body: `Floor ${event.floor ?? 0} · ${event.score ?? 0} score`,
         detail: 'Death resets the run; Campaign progress is unchanged',
       })
-    } else if (action === 'practice_session_started') {
-      notifications.push({
-        id: `${event.id}:practice`,
-        kind: 'objective',
-        title: 'PRACTICE DRILL READY',
-        body: `${event.concept || 'Concept'} · ${event.question_type || 'question'}`,
-        detail: `Tier ${event.difficulty ?? 1} · no Campaign or Dungeon rewards`,
-      })
     } else if (action === 'practice_record_attempt') {
       notifications.push({
         id: `${event.id}:practice-result`,
         kind: event.outcome === 'correct' ? 'reward' : 'objective',
-        title: 'PRACTICE RESULT RECORDED',
-        body: String(event.outcome || 'reviewed').toUpperCase(),
-        detail: 'Learning history updated; game state unchanged',
+        title: event.outcome === 'correct' ? 'TRAINING · CORRECT' : 'TRAINING · NOT YET',
+        body: event.concept || 'Tutor training',
+        detail: event.outcome === 'correct' ? 'Your sign grows. Training never costs HP.' : 'No HP lost. Read the why, then try another.',
       })
     } else if (action === 'reconcile_legacy_progress') {
       const restoredMobs = Array.isArray(event.restored_mobs) ? event.restored_mobs : []
@@ -1728,6 +1741,8 @@ function AppV2() {
         event.stopPropagation()
         if (tutorSurface) void runTutor()
         else if (activeView === 'forge') void runCurrent()
+        else if (activeView === 'dungeon') document.querySelector('[data-dungeon-run]')?.click()
+        else if (activeView === 'tutor' || activeView === 'practice') document.querySelector('[data-tutor-run]')?.click()
         return
       }
       if (modifier && event.shiftKey && event.key === 'Enter') {
@@ -1737,7 +1752,9 @@ function AppV2() {
         // focus; the fallback clipboard path remains in that handler.
         event.preventDefault()
         event.stopPropagation()
-        document.querySelector('[data-qol-submit]')?.click()
+        // Each surface owns its own submit button; click the one on screen.
+        const target = activeView === 'dungeon' ? '[data-dungeon-submit]' : activeView === 'tutor' || activeView === 'practice' ? '[data-tutor-submit]' : '[data-qol-submit]'
+        document.querySelector(target)?.click()
         return
       }
       if (modifier && event.key.toLowerCase() === 's') {
@@ -1931,7 +1948,7 @@ function AppV2() {
     return `${labels[action] || action} complete${result.healed ? ` · +${result.healed} HP` : ''}. One campsite action used.`
   })
   const revealDungeonRisk = (runId) => dungeonAction('/api/dungeon/risk/reveal', { run_id: runId }, () => 'Vision scroll consumed. The risk profile is now visible.')
-  const enterDungeonRisk = (runId) => dungeonAction('/api/dungeon/risk/enter', { run_id: runId }, (result) => `Risk entered. ${result.risk_kind || 'The room'} is now state-owned.`)
+  const enterDungeonRisk = (runId) => dungeonAction('/api/dungeon/risk/enter', { run_id: runId }, (result) => DUNGEON_RISK_OUTCOMES[result.risk_kind] || 'The fate is sealed. Choose your next room.')
   const buyDungeonItem = (runId, itemId) => dungeonAction('/api/dungeon/market', { run_id: runId, item_id: itemId }, (result) => `Bought ${result.item?.name || itemId} for run currency.`)
   // A clicked option is graded instantly by the server's hidden key; a
   // question without one (built-in, or after a restart) goes to PYR as text.
@@ -1953,7 +1970,8 @@ function AppV2() {
   const equipDungeonItem = (runId, itemId) => dungeonAction('/api/dungeon/equip', { run_id: runId, item_id: itemId }, (result) => `${result.equipped || itemId} equipped.`)
   const chooseDungeonRoom = (runId, choiceId) => dungeonAction('/api/dungeon/choose', { run_id: runId, choice_id: choiceId }, (result) => {
     const kind = result.choice?.kind || result.dungeon?.room_type || 'room'
-    return `${String(kind).replaceAll('_', ' ')} selected. The state service issued this room.`
+    const words = { encounter: 'A gate fight', elite: 'An elite fight', rest: 'A camp', market: 'A market', mystery: 'A fate room', boss: 'The boss' }
+    return `${words[kind] || 'A new room'} waits. Read the room panel.`
   })
   const leaveDungeonRoom = (runId) => dungeonAction('/api/dungeon/leave', { run_id: runId }, () => 'Room cleared. Choose the next route on the map.')
   const finishDungeonRun = (runId) => dungeonAction('/api/dungeon/finish', { run_id: runId }, (result) => `Run banked at ${result.score ?? result.dungeon?.score ?? 0} score.`)
@@ -2065,13 +2083,14 @@ function AppV2() {
     const question = dungeon.question
     if (!openCodeReady || aiTutor.settings?.generate_dungeon_questions === false || pyrThinking) return
     if (activeView !== 'dungeon' || !dungeon.active || !question?.id || !['encounter', 'elite', 'boss'].includes(dungeon.room_type)) return
-    if (pyrWrittenRoomsRef.current.has(question.id) || String(dungeonCode || '').trim()) return
+    // dungeon.pyr_written survives restarts; dungeonDirty means the player is typing.
+    if (dungeon.pyr_written || dungeonDirty || pyrWrittenRoomsRef.current.has(question.id) || String(dungeonCode || '').trim()) return
     pyrWrittenRoomsRef.current.add(question.id)
     withPyr('PYR is writing this room…', async () => {
       await api('/api/ai/dungeon-question', { method: 'POST', body: JSON.stringify({ run_id: dungeon.run_id }) })
       await refreshCampaign({ silent: true })
     }).catch((error) => setNotice(`PYR could not write this room (${error.message}); using the built-in question.`))
-  }, [openCodeReady, aiTutor.settings?.generate_dungeon_questions, activeView, dungeon.active, dungeon.run_id, dungeon.room_type, dungeon.question?.id, dungeonCode, pyrThinking])
+  }, [openCodeReady, aiTutor.settings?.generate_dungeon_questions, activeView, dungeon.active, dungeon.run_id, dungeon.room_type, dungeon.question?.id, dungeon.pyr_written, dungeonCode, dungeonDirty, pyrThinking])
 
   const formatCurrent = async () => {
     if (!activePath || editorMode === 'quest') return
@@ -2646,7 +2665,7 @@ function AppV2() {
 
       <div className="quest-banner">
         <div><strong>{campaignReady ? (companion.name || 'PYR') : 'PYR'}</strong> · {campaignReady ? (companion.form || 'Tiny Code-Flame') : 'waiting for campaign'}</div>
-        <div className="quest-text">{campaignReady ? (progress.current_quest || 'Choose a quest.') : 'Syncing campaign state…'}</div>
+        <div className="quest-text">{campaignReady ? questLine(progress) : 'Syncing campaign state…'}</div>
         <div className="git-pill">{campaignReady ? `${git.branch || 'no branch'} · ${git.dirty_count ?? 0} changes` : 'campaign unavailable'}</div>
       </div>
 
@@ -2750,7 +2769,7 @@ function AppV2() {
               }}
               theme="vs-dark"
               options={{
-                minimap: { enabled: false },
+                minimap: { enabled: false }, acceptSuggestionOnEnter: 'off',
                 fontSize: editorFontSize,
                 fontFamily: 'JetBrains Mono, ui-monospace, monospace',
                 lineHeight: Math.round(editorFontSize * 1.55),

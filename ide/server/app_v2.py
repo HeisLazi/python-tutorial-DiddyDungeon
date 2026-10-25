@@ -3135,7 +3135,11 @@ def ai_dungeon_question(payload: AiDungeonQuestionRequest):
     run_state = progress.get("dungeon_run") if isinstance(progress.get("dungeon_run"), dict) else {}
     # Issuing a question resets dungeon.py, so never rewrite a room the player
     # has already started answering (e.g. after an app restart).
-    if question["id"] in AI_ISSUED_DUNGEON_QUESTIONS or str(run_state.get("editor_content") or "").strip():
+    if (
+        question["id"] in AI_ISSUED_DUNGEON_QUESTIONS
+        or run_state.get("pyr_question_id") == question["id"]
+        or str(run_state.get("editor_content") or "").strip()
+    ):
         return {"ok": True, "changed": False, "dungeon": projection}
     fight = run_state.get("fight") if isinstance(run_state.get("fight"), dict) else {}
     written = _ai_call(
