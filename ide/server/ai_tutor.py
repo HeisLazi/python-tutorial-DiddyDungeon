@@ -568,6 +568,39 @@ def write_battle_question(*, concept: str, project: str, contract: str, objectiv
     return {"prompt": text.strip(), "options": options, **key}
 
 
+def write_spar_question(*, concept: str, foe: str, question_type: str, round_number: int, rounds: int) -> dict[str, Any]:
+    """A Tutor sparring question: theory and code reading are both fair game
+    here (the notebook is where the hunter studies)."""
+
+    true_false = question_type == "true_false"
+    shape = 'a true/false statement; options must be exactly ["True", "False"]' if true_false else "a multiple-choice question with 4 short SINGLE-LINE options, exactly one correct"
+    prompt = "\n\n".join(
+        (
+            TUTOR_RULES,
+            "Task: write one question for a sparring round in the Tutor notebook of a Python learning game.",
+            f"Foe: {foe}\nConcept: {concept}\nRound {round_number} of {rounds}\nShape: {shape}",
+            "Mix ideas and code: a definition, a common mistake, or a short snippet to read. Later rounds are a little harder.",
+            "Never put the answer in the prompt.",
+            (
+                'Reply with ONLY this JSON object: {"prompt": "the question text (may include a fenced code snippet)", '
+                '"options": ["..."], "answer": the 0-based index of the correct option, "why": "one short sentence on why"}'
+            ),
+        )
+    )
+    reply = extract_json_object(run_prompt(prompt, title="Quest Lab · sparring question"))
+    text = reply.get("prompt")
+    options = ["True", "False"] if true_false else reply.get("options", [])
+    if not isinstance(text, str) or not text.strip() or len(text) > 6_000:
+        raise AiTutorError("PYR's question had no usable prompt", kind="unparseable")
+    if not isinstance(options, list) or not 2 <= len(options) <= 5 or not all(isinstance(item, str) and item.strip() for item in options):
+        raise AiTutorError("PYR's question needs 2-5 options", kind="unparseable")
+    options = [" ".join(item.split())[:200] for item in options]
+    key = _answer_key(reply, options)
+    if not key:
+        raise AiTutorError("PYR's question had no valid answer", kind="unparseable")
+    return {"prompt": text.strip(), "options": options, **key}
+
+
 def choose_practice_lens(*, concept: str, lenses: list[dict[str, str]], learner: Any) -> dict[str, str]:
     allowed = {lens["id"] for lens in lenses}
     catalogue = "\n".join(f"- {lens['id']}: {lens['label']} — {lens['prompt']}" for lens in lenses)

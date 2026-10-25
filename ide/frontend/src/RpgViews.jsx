@@ -1923,7 +1923,7 @@ function HunterCodex({ view, hunter, pages, entries, progress, encounter, pyr, b
   )
 }
 
-function ResourceTutorScreen({ pyr, hunter, avatar, activeView, progress, revision, codexProjection, encounter, tutorCode, tutorDirty, tutorExternalChange, editorFontSize = 14, busy, onTutorChange, onTutorSave, onTutorFormat, onTutorRun, onPracticePrompt, onTutorReloadExternal, onTutorKeepEdits, onNavigate }) {
+function ResourceTutorScreen({ pyr, hunter, sparRoster = [], sparActions, avatar, activeView, progress, revision, codexProjection, encounter, tutorCode, tutorDirty, tutorExternalChange, editorFontSize = 14, busy, onTutorChange, onTutorSave, onTutorFormat, onTutorRun, onPracticePrompt, onTutorReloadExternal, onTutorKeepEdits, onNavigate }) {
   const pages = Array.isArray(codexProjection?.pages) && codexProjection.pages.length ? codexProjection.pages : resourceFallbackPages(encounter)
   const entries = Array.isArray(codexProjection?.entries) ? codexProjection.entries : []
   // Tutor opens on the Hunter's Codex contract board; Bestiary and Signs sit
@@ -2014,7 +2014,8 @@ function ResourceTutorScreen({ pyr, hunter, avatar, activeView, progress, revisi
   return (
     <div className="resource-tutor-screen" data-testid="resource-tutor" data-campaign-revision={revision}>
       <header className="resource-tutor-header"><div><span className="screen-kicker">TUTOR NOTEBOOK</span><h2>{huntView ? 'Study the beast. Train the sign. Hunt.' : 'Learn it, then make it yours.'}</h2><p>{huntView ? 'Every bug is a beast and every concept a sign that beats it. Contracts lead you from reading to a drill to the hunt.' : 'Reference pages, a writable tutor.py and bounded PYR guidance share one calm workspace.'}</p></div><div className="resource-tutor-header-actions"><button type="button" onClick={() => onNavigate?.('forge')}>Resume Forge</button><span>REV {revision ?? 0}</span></div></header>
-      <nav className="resource-tutor-tabs" aria-label="Tutor sections"><button type="button" className={surface === 'contracts' ? 'active' : ''} onClick={() => setSurface('contracts')}>Contracts</button><button type="button" className={surface === 'bestiary' ? 'active' : ''} onClick={() => setSurface('bestiary')}>Bestiary</button><button type="button" className={surface === 'signs' ? 'active' : ''} onClick={() => setSurface('signs')}>Signs</button><button type="button" className={surface === 'codex' ? 'active' : ''} onClick={() => setSurface('codex')}>▣ Codex</button><button type="button" className={surface === 'ide' || surface === 'notes' ? 'active' : ''} onClick={() => setSurface('ide')}>↗ IDE practice</button></nav>
+      <nav className="resource-tutor-tabs" aria-label="Tutor sections"><button type="button" className={surface === 'contracts' ? 'active' : ''} onClick={() => setSurface('contracts')}>Contracts</button><button type="button" className={surface === 'bestiary' ? 'active' : ''} onClick={() => setSurface('bestiary')}>Bestiary</button><button type="button" className={surface === 'signs' ? 'active' : ''} onClick={() => setSurface('signs')}>Signs</button><button type="button" className={surface === 'codex' ? 'active' : ''} onClick={() => setSurface('codex')}>▣ Codex</button><button type="button" className={surface === 'ide' || surface === 'notes' ? 'active' : ''} onClick={() => setSurface('ide')}>↗ IDE practice</button><button type="button" className={surface === 'spar' ? 'active' : ''} onClick={() => setSurface('spar')}>⚔ Sparring</button></nav>
+      {surface === 'spar' && <SparringArena roster={sparRoster} actions={sparActions} busy={busy} />}
       {huntView && <HunterCodex view={surface} hunter={hunter} pages={pages} entries={entries} progress={progress} encounter={encounter} pyr={pyr} busy={busy}
         selectedId={huntPick} onSelect={(pageId) => { setHuntPick(pageId); setSelectedId(pageId) }} onView={setSurface}
         onRead={(pageId) => { setHuntPick(pageId); setSelectedId(pageId); setReadPage(0); setSurface('codex') }}
@@ -3169,6 +3170,113 @@ function DungeonFightStrip({ fight }) {
   )
 }
 
+const SPAR_ROUNDS = 5
+
+// Simulated fights in the Tutor notebook: only foes already met, five
+// clickable rounds, no damage. Right first clicks still grow your signs.
+function SparringArena({ roster = [], actions, busy }) {
+  const [foeId, setFoeId] = useState('')
+  const [round, setRound] = useState(0)
+  const [question, setQuestion] = useState(null)
+  const [feedback, setFeedback] = useState(null)
+  const [score, setScore] = useState(0)
+  const [error, setError] = useState('')
+  const foe = roster.find((item) => item.id === foeId)
+  const contracts = roster.filter((item) => item.kind === 'contract')
+  const beasts = roster.filter((item) => item.kind === 'beast')
+  const ask = async (target, number) => {
+    setError('')
+    setQuestion(null)
+    try {
+      setQuestion(await actions?.ask?.(target, number))
+    } catch (failure) {
+      setError(failure?.message || 'PYR could not write this round.')
+    }
+  }
+  const start = (id) => {
+    setFoeId(id)
+    setRound(1)
+    setScore(0)
+    setFeedback(null)
+    void ask(id, 1)
+  }
+  const choose = async (index) => {
+    if (!question || busy || feedback) return
+    try {
+      const result = await actions?.answer?.(foeId, index)
+      setFeedback({ ...result, picked: index })
+      if (result?.verdict === 'correct') setScore((value) => value + 1)
+    } catch (failure) {
+      setError(failure?.message || 'That answer could not be checked.')
+    }
+  }
+  const next = () => {
+    setFeedback(null)
+    if (round >= SPAR_ROUNDS) {
+      setRound(SPAR_ROUNDS + 1)
+      setQuestion(null)
+      return
+    }
+    setRound(round + 1)
+    void ask(foeId, round + 1)
+  }
+  const finished = round > SPAR_ROUNDS
+  const foeButton = (item) => (
+    <button key={item.id} type="button" className={`spar-foe ${item.id === foeId ? 'active' : ''}`} onClick={() => start(item.id)} disabled={busy}>
+      {item.sign && <HuntSigil pageId={item.sign} size={18} />}
+      <span><strong>{item.name}</strong><small>{item.kind === 'contract' ? item.campaign : `Sign of the ${HUNT_BEASTS[item.sign]?.sign || item.sign}`}</small></span>
+    </button>
+  )
+  return (
+    <section className="spar-arena" aria-label="Sparring">
+      <aside className="spar-roster">
+        <span className="screen-kicker">FOES YOU HAVE MET</span>
+        {roster.length === 0 && <p className="spar-empty">Nobody yet. Fight a campaign bounty or delve the Dungeon, then come back to train against what you met.</p>}
+        {contracts.length > 0 && <><small className="spar-group">Campaign bounties</small>{contracts.map(foeButton)}</>}
+        {beasts.length > 0 && <><small className="spar-group">Dungeon beasts</small>{beasts.map(foeButton)}</>}
+      </aside>
+      <div className="spar-ring">
+        {!foe ? (
+          <div className="spar-intro"><span className="screen-kicker">THE SPARRING RING</span><h3>Train against what you have fought.</h3><p>A simulated fight: five quick rounds of clickable questions, theory and code reading both fair game. Nothing here can hurt you, and every right first answer still sharpens your signs.</p></div>
+        ) : (
+          <>
+            <div className="dungeon-brief-strip spar-strip">
+              <span className="dungeon-brief-kind">SIMULATED · NO DAMAGE</span>
+              <span>Round {Math.min(round, SPAR_ROUNDS)} / {SPAR_ROUNDS}</span>
+              <span>Score {score}</span>
+            </div>
+            <section className="spar-question">
+              <span className="dungeon-eyebrow">{finished ? 'BOUT OVER' : 'THE QUESTION'}</span>
+              {finished ? (
+                <div className="spar-result"><h3>{score >= 4 ? 'A clean win.' : score >= 3 ? 'You held your own.' : 'Back to the notebook.'}</h3><p>You answered {score} of {SPAR_ROUNDS} rounds right against {foe.name}.</p><button type="button" className="campaign-button" onClick={() => start(foe.id)} disabled={busy}>Spar again</button></div>
+              ) : question ? (
+                <>
+                  <DungeonPromptText text={question.prompt} />
+                  {!feedback && <ChoicePanel options={question.options || []} onChoose={choose} busy={busy} label="PICK ONE" />}
+                  {feedback && (
+                    <div className={`battle-feedback ${feedback.verdict}`} role="status">
+                      <strong>{feedback.verdict === 'correct' ? '✔ Hit. ' : '✘ Parried. '}</strong>{feedback.reason}
+                      <button type="button" className="campaign-button" onClick={next} autoFocus>{round >= SPAR_ROUNDS ? 'See the result' : 'Next round'} →</button>
+                    </div>
+                  )}
+                </>
+              ) : error ? (
+                <p className="spar-empty">{error} <button type="button" className="campaign-button ghost" onClick={() => ask(foeId, round)}>Try again</button></p>
+              ) : <p className="spar-empty">PYR is writing round {round}…</p>}
+            </section>
+            <section className="spar-foe-card">
+              <span className="dungeon-eyebrow">WHAT YOU'RE SPARRING</span>
+              <strong>{foe.name}</strong>
+              <small>{foe.concept}{foe.campaign ? ` · ${foe.campaign}` : ''}</small>
+              <div className="hunter-bar spar-bar" aria-hidden="true"><i style={{ width: `${Math.max(0, 100 - Math.round((Math.min(round - 1 + (feedback ? 1 : 0), SPAR_ROUNDS) / SPAR_ROUNDS) * 100))}%` }} /></div>
+            </section>
+          </>
+        )}
+      </div>
+    </section>
+  )
+}
+
 const BATTLE_CHOICE_KINDS = new Set(['prediction', 'explanation'])
 
 // The campaign battle sidebar, laid out like the Dungeon brief: the question
@@ -3968,7 +4076,7 @@ function SettingsScreen({ preferences, setters, resetLayout, account, accountBus
   )
 }
 
-export function GameScreen({ pyr, settingsAi, runtime, setAvatar, selectCampaign, hunter, spendStatPoint, hunterActions, campaignBoard, armory, armoryActions, onDungeonApplyOil, onDungeonTravel, onDungeonAnswerOption, activeView, progress, revision, avatarDataUrl = '', encounter, codexProjection, practiceProjection, equipmentProjection, dungeon, dungeonEditorContent, onDungeonEditorChange, onSaveDungeon, onDungeonChoose, onDungeonRest, onDungeonCampAction, onDungeonRevealRisk, onDungeonEnterRisk, onDungeonMarketPurchase, onDungeonEquip, onDungeonLeave, onDungeonFinish, onDungeonReset, purchaseCosmetic, purchaseMarketItem, equipCosmetic, equipCampaignItem, buildRoomUpgrade, performHomesteadAction, saveCodexNote, busy, dungeonSaving, submitBattle, submitBoss, submitDungeon, onStartDungeon, onPracticePrompt, preferences, setters, resetLayout, account, accountBusy, accountNotice, onSignIn, onSignUp, onSignOut, onDeviceLabelSave, onResolveConflict, workspaceTransfer, workspaceTransferBusy, workspaceTransferNotice, onWorkspaceTransferRefresh, onWorkspaceTransferPush, onWorkspaceTransferPreviewPull, onWorkspaceTransferApplyPull, onNavigate, tutorCode, tutorDirty, tutorExternalChange, editorFontSize = 14, onTutorChange, onTutorSave, onTutorFormat, onTutorRun, onTutorReloadExternal, onTutorKeepEdits, campaignReady = true, showNavigation = true }) {
+export function GameScreen({ pyr, settingsAi, runtime, setAvatar, selectCampaign, hunter, spendStatPoint, hunterActions, campaignBoard, armory, armoryActions, sparRoster, sparActions, onDungeonApplyOil, onDungeonTravel, onDungeonAnswerOption, activeView, progress, revision, avatarDataUrl = '', encounter, codexProjection, practiceProjection, equipmentProjection, dungeon, dungeonEditorContent, onDungeonEditorChange, onSaveDungeon, onDungeonChoose, onDungeonRest, onDungeonCampAction, onDungeonRevealRisk, onDungeonEnterRisk, onDungeonMarketPurchase, onDungeonEquip, onDungeonLeave, onDungeonFinish, onDungeonReset, purchaseCosmetic, purchaseMarketItem, equipCosmetic, equipCampaignItem, buildRoomUpgrade, performHomesteadAction, saveCodexNote, busy, dungeonSaving, submitBattle, submitBoss, submitDungeon, onStartDungeon, onPracticePrompt, preferences, setters, resetLayout, account, accountBusy, accountNotice, onSignIn, onSignUp, onSignOut, onDeviceLabelSave, onResolveConflict, workspaceTransfer, workspaceTransferBusy, workspaceTransferNotice, onWorkspaceTransferRefresh, onWorkspaceTransferPush, onWorkspaceTransferPreviewPull, onWorkspaceTransferApplyPull, onNavigate, tutorCode, tutorDirty, tutorExternalChange, editorFontSize = 14, onTutorChange, onTutorSave, onTutorFormat, onTutorRun, onTutorReloadExternal, onTutorKeepEdits, campaignReady = true, showNavigation = true }) {
   const wideRoute = ['hub', 'character', 'homestead', 'codex', 'tutor', 'settings'].includes(activeView)
   // Historical contract marker: const wideRoute = ['hub', 'character', 'homestead', 'codex', 'settings']
   const withWideNavigation = (screen) => wideRoute && showNavigation
@@ -3985,7 +4093,7 @@ export function GameScreen({ pyr, settingsAi, runtime, setAvatar, selectCampaign
     )
   }
   if (activeView === 'hub') return withWideNavigation(<CampaignSurface setAvatar={setAvatar} selectCampaign={selectCampaign} hunter={hunter} spendStatPoint={spendStatPoint} hunterActions={hunterActions} campaignBoard={campaignBoard} armory={armory} armoryActions={armoryActions} progress={progress} revision={revision} equipmentProjection={equipmentProjection} purchaseCosmetic={purchaseCosmetic} purchaseMarketItem={purchaseMarketItem} equipCosmetic={equipCosmetic} equipCampaignItem={equipCampaignItem} buildRoomUpgrade={buildRoomUpgrade} performHomesteadAction={performHomesteadAction} busy={busy} onNavigate={onNavigate} />)
-  if (activeView === 'quests' || activeView === 'codex' || activeView === 'tutor') return withWideNavigation(<ResourceTutorScreen pyr={pyr} hunter={hunter} avatar={equipmentProjection?.avatar} activeView={activeView} progress={progress} revision={revision} codexProjection={codexProjection} encounter={encounter} tutorCode={tutorCode} tutorDirty={tutorDirty} tutorExternalChange={tutorExternalChange} editorFontSize={editorFontSize} busy={busy} onTutorChange={onTutorChange} onTutorSave={onTutorSave} onTutorFormat={onTutorFormat} onTutorRun={onTutorRun} onPracticePrompt={onPracticePrompt} onTutorReloadExternal={onTutorReloadExternal} onTutorKeepEdits={onTutorKeepEdits} onNavigate={onNavigate} />)
+  if (activeView === 'quests' || activeView === 'codex' || activeView === 'tutor') return withWideNavigation(<ResourceTutorScreen pyr={pyr} hunter={hunter} sparRoster={sparRoster} sparActions={sparActions} avatar={equipmentProjection?.avatar} activeView={activeView} progress={progress} revision={revision} codexProjection={codexProjection} encounter={encounter} tutorCode={tutorCode} tutorDirty={tutorDirty} tutorExternalChange={tutorExternalChange} editorFontSize={editorFontSize} busy={busy} onTutorChange={onTutorChange} onTutorSave={onTutorSave} onTutorFormat={onTutorFormat} onTutorRun={onTutorRun} onPracticePrompt={onPracticePrompt} onTutorReloadExternal={onTutorReloadExternal} onTutorKeepEdits={onTutorKeepEdits} onNavigate={onNavigate} />)
   // Legacy render contract retained in source comments for downstream static
   // checks; the live route above owns the replacement surface.
   // withWideNavigation(<Codex progress={progress} revision={revision} codexProjection={codexProjection} showNavigation={false} />)

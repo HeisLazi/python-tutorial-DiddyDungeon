@@ -1544,3 +1544,23 @@
 .campaign-battle-sidebar:has(.battle-brief) { flex: 1 1 auto; max-height: none; min-height: 0; }
 .battle-brief .dungeon-prompt-text, .battle-brief pre { max-width: 100%; overflow-x: auto; font-size: 13px; }
 .battle-brief pre { margin: 4px 0; padding: 8px; background: rgba(0, 0, 0, 0.35); border: 1px solid var(--line, #444); }
+
+/* Tutor sparring ring. */
+.spar-arena { display: grid; grid-template-columns: minmax(220px, 300px) minmax(0, 1fr); gap: 16px; padding: 16px; min-height: 480px; }
+.spar-roster { display: grid; align-content: start; gap: 6px; max-height: 70vh; overflow-y: auto; }
+.spar-group { margin-top: 6px; color: var(--muted, #999); font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; }
+.spar-foe { display: flex; align-items: center; gap: 8px; padding: 8px; border: 1px solid var(--line, #444); background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.spar-foe span { display: grid; gap: 2px; }
+.spar-foe small { color: var(--muted, #999); font-size: 12px; }
+.spar-foe svg { flex: none; fill: none; stroke: currentColor; stroke-width: 1.6; }
+.spar-foe.active, .spar-foe:hover:not(:disabled) { border-color: var(--gold, #f5c542); }
+.spar-ring { display: grid; align-content: start; gap: 12px; }
+.spar-intro h3, .spar-result h3 { margin: 4px 0; }
+.spar-question, .spar-foe-card { display: grid; gap: 8px; padding: 14px; border: 1px solid var(--line, #444); }
+.spar-question { border-color: var(--gold, #f5c542); }
+.spar-question .choice-panel { height: auto; padding: 0; }
+.spar-question .battle-feedback { display: grid; gap: 8px; }
+.spar-question .battle-feedback button { justify-self: start; }
+.spar-bar i { background: #f87171; }
+.spar-empty { color: var(--muted, #999); }
+@media (max-width: 760px) { .spar-arena { grid-template-columns: 1fr; } }

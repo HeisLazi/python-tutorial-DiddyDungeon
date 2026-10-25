@@ -7118,6 +7118,45 @@ class LocalStateService:
         changed = self._extend_campaign(progress)
         return Mutation(changed, {"extended": changed}, {"reason": "campaign_extended"} if changed else None)
 
+    def spar_roster(self, progress: Mapping[str, Any]) -> list[dict[str, Any]]:
+        """Foes the hunter has already met, for simulated Tutor fights:
+        campaign contracts cleared (or being fought) and beasts whose sign the
+        hunter has used."""
+
+        roster: list[dict[str, Any]] = []
+        encounter = progress.get("encounter_state") if isinstance(progress.get("encounter_state"), Mapping) else {}
+        projects = progress.get("projects") if isinstance(progress.get("projects"), list) else []
+        for project_index, project in enumerate(projects):
+            if not isinstance(project, Mapping):
+                continue
+            for mob_index, mob in enumerate(project.get("mobs", []) if isinstance(project.get("mobs"), list) else []):
+                if not isinstance(mob, Mapping) or not isinstance(mob.get("name"), str):
+                    continue
+                fighting = encounter.get("mob_name") == mob["name"] and (encounter.get("completed_objectives") or self._counter(encounter, "attempts"))
+                if mob.get("status") not in {"defeated", "cleared"} and not fighting:
+                    continue
+                contract = campaign_contract(project.get("branch"), mob["name"]) or {}
+                sign = contract.get("sign") if isinstance(contract.get("sign"), str) else None
+                roster.append({
+                    "id": f"c-{project_index}-{mob_index}",
+                    "name": mob["name"],
+                    "kind": "contract",
+                    "campaign": project.get("name"),
+                    "concept": str(mob.get("concept") or contract.get("concept") or ""),
+                    "sign": sign,
+                })
+        for sign in self.hunter_projection(progress)["signs"]:
+            if sign["xp"] > 0 and sign["id"] in HUNTER_BEASTS:
+                roster.append({
+                    "id": f"b-{sign['id']}",
+                    "name": HUNTER_BEASTS[sign["id"]]["beast"],
+                    "kind": "beast",
+                    "campaign": None,
+                    "concept": HUNTER_SIGN_CONCEPTS[sign["id"]],
+                    "sign": sign["id"],
+                })
+        return roster[:80]
+
     def campaign_view(self, progress: Mapping[str, Any]) -> dict[str, Any]:
         """A copy of the save brought up to the authored campaign, for reads."""
 

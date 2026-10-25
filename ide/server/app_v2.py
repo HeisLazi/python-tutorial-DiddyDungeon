@@ -39,6 +39,7 @@ from ide.server.security import allowed_hosts, allowed_origins, is_allowed_origi
 from ide.server.state import (
     BOSS_REQUIREMENTS,
     CAMPAIGN_MARKET_CATALOG,
+    HUNTER_SIGN_CONCEPTS,
     MAX_CODEX_NOTE_BYTES,
     MAX_CODEX_SNIPPET_BYTES,
     MAX_DUNGEON_EDITOR_BYTES,
@@ -964,6 +965,7 @@ def campaign():
     return {
         "campaign_board": STATE_SERVICE.campaign_board(progress),
         "armory": STATE_SERVICE.armory_projection(progress),
+        "spar_roster": STATE_SERVICE.spar_roster(progress),
         "progress": _without_identify_answer(progress),
         "revision": metadata["revision"],
         "sync_storage_namespace": checkout_storage_namespace(),
@@ -3259,6 +3261,88 @@ def answer_battle_option(payload: BattleOptionRequest):
         except StateCommandError as exc:
             raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
     return {"ok": True, "verdict": verdict, "reason": reason, "correct_index": int(answer["answer"]), "result": applied.get("result")}
+
+
+# Tutor sparring: one live question per foe, by foe id.
+SPAR_QUESTIONS: dict[str, dict[str, object]] = {}
+SPAR_ROUNDS = 5
+
+
+class SparQuestionRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    target_id: str = Field(min_length=1, max_length=MAX_IDENTIFIER_LENGTH)
+    round: int = Field(default=1, ge=1, le=SPAR_ROUNDS)
+
+
+class SparOptionRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    target_id: str = Field(min_length=1, max_length=MAX_IDENTIFIER_LENGTH)
+    option_index: int = Field(ge=0, le=7)
+
+
+def _spar_foe(target_id: str) -> dict:
+    try:
+        progress, _metadata = STATE_SERVICE.snapshot_with_metadata()
+    except StateCommandError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
+    foe = next((item for item in STATE_SERVICE.spar_roster(progress) if item["id"] == target_id), None)
+    if foe is None:
+        raise HTTPException(status_code=404, detail="You can only spar with foes you have already met")
+    return foe
+
+
+@app.post("/api/ai/spar-question")
+def ai_spar_question(payload: SparQuestionRequest):
+    """PYR writes the next sparring question (a simulated fight: no damage)."""
+
+    foe = _spar_foe(payload.target_id)
+    question_type = "true_false" if payload.round % 3 == 0 else "multiple_choice"
+    written = _ai_call(
+        ai_tutor.write_spar_question,
+        concept=foe["concept"] or foe["name"],
+        foe=foe["name"],
+        question_type=question_type,
+        round_number=payload.round,
+        rounds=SPAR_ROUNDS,
+    )
+    key = f"spar:{payload.target_id}"
+    SPAR_QUESTIONS[key] = {"prompt": written["prompt"], "options": written["options"], "question_type": question_type}
+    CHOICE_ANSWER_KEYS[key] = {"answer": written["answer"], "why": written.get("why", ""), "options": written["options"]}
+    return {"ok": True, "question": {"target_id": payload.target_id, "round": payload.round, **SPAR_QUESTIONS[key]}}
+
+
+@app.post("/api/spar/answer-option")
+def answer_spar_option(payload: SparOptionRequest):
+    """Grade a sparring click. Each question is its own practice drill, so a
+    right first click earns sign XP exactly like Tutor practice; nothing hurts."""
+
+    foe = _spar_foe(payload.target_id)
+    key = f"spar:{payload.target_id}"
+    with PROGRESS_LOCK:
+        question = SPAR_QUESTIONS.pop(key, None)
+        answer = CHOICE_ANSWER_KEYS.pop(key, None)
+        if not question or not answer:
+            raise HTTPException(status_code=409, detail="That sparring question is no longer open")
+        options = list(question.get("options") or [])
+        if payload.option_index >= len(options):
+            raise HTTPException(status_code=422, detail="That question has no such option")
+        correct_text = options[int(answer["answer"])]
+        verdict = "correct" if payload.option_index == int(answer["answer"]) else "incorrect"
+        why = str(answer.get("why") or "")
+        reason = ((why or f"Right: {correct_text}.") if verdict == "correct" else f"The answer was {correct_text}. {why}".strip())[:400]
+        concept = HUNTER_SIGN_CONCEPTS.get(foe.get("sign") or "", foe["concept"] or foe["name"])
+        try:
+            started = STATE_SERVICE.apply("practice_session_started", {"concept": concept[:120], "question_type": str(question["question_type"]), "difficulty": 2}, "player")
+            session_id = started["result"]["session"]["session_id"]
+            recorded = STATE_SERVICE.apply_internal(
+                "practice_record_attempt",
+                {"session_id": session_id, "outcome": verdict, "evidence_id": f"sp-click-{uuid.uuid4().hex[:16]}", "reason": reason},
+            )
+        except StateCommandError as exc:
+            raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
+    return {"ok": True, "verdict": verdict, "reason": reason, "correct_index": int(answer["answer"]), "hunter_gain": recorded["result"].get("hunter_gain")}
 
 
 class DungeonOptionRequest(BaseModel):

@@ -183,6 +183,7 @@ class AiTutorEndpointTests(AiTutorTestCase):
         app_v2.AI_ISSUED_DUNGEON_QUESTIONS.clear()
         app_v2.CHOICE_ANSWER_KEYS.clear()
         app_v2.BATTLE_QUESTIONS.clear()
+        app_v2.SPAR_QUESTIONS.clear()
         self.client = TestClient(app_v2.app, base_url="http://127.0.0.1")
         self.headers = {"host": "127.0.0.1"}
 
@@ -370,6 +371,31 @@ class AiTutorEndpointTests(AiTutorTestCase):
         for objective_id in ("choice_flow", "stop_condition", "no_such_objective"):
             result = self.client.post("/api/ai/battle-question", headers=self.headers, json={"objective_id": objective_id})
             self.assertEqual(result.status_code, 409, objective_id)
+
+    def test_tutor_sparring_fights_only_met_foes_and_never_hurts(self):
+        roster = self.client.get("/api/campaign", headers=self.headers).json()["spar_roster"]
+        names = [foe["name"] for foe in roster]
+        self.assertIn("The Empty Table", names)  # a cleared bounty
+        self.assertNotIn("The Bust Hound", names)  # never met
+        foe = roster[0]
+        missing = self.client.post("/api/ai/spar-question", headers=self.headers, json={"target_id": "c-9-9", "round": 1})
+        self.assertEqual(missing.status_code, 404)
+        hp_before = json.loads(self.canonical.read_text(encoding="utf-8"))["player"]["hp"]
+        self.reply({"prompt": "Which keyword makes a variable hold a value?", "options": ["=", "==", "is", "in"], "answer": 0, "why": "= assigns."})
+        question = self.client.post("/api/ai/spar-question", headers=self.headers, json={"target_id": foe["id"], "round": 1}).json()["question"]
+        self.assertNotIn("answer", question)
+        right = self.client.post("/api/spar/answer-option", headers=self.headers, json={"target_id": foe["id"], "option_index": 0}).json()
+        self.assertEqual(right["verdict"], "correct")
+        self.assertTrue(right["hunter_gain"]["signs"])
+        again = self.client.post("/api/spar/answer-option", headers=self.headers, json={"target_id": foe["id"], "option_index": 0})
+        self.assertEqual(again.status_code, 409)
+        self.reply({"prompt": "True or false: == assigns.", "options": ["True", "False"], "answer": 1, "why": "== compares."})
+        tf = self.client.post("/api/ai/spar-question", headers=self.headers, json={"target_id": foe["id"], "round": 3}).json()["question"]
+        self.assertEqual(tf["options"], ["True", "False"])
+        wrong = self.client.post("/api/spar/answer-option", headers=self.headers, json={"target_id": foe["id"], "option_index": 0}).json()
+        self.assertEqual(wrong["verdict"], "incorrect")
+        self.assertFalse((wrong["hunter_gain"] or {}).get("signs"))
+        self.assertEqual(json.loads(self.canonical.read_text(encoding="utf-8"))["player"]["hp"], hp_before)  # sparring never hurts
 
 
 if __name__ == "__main__":

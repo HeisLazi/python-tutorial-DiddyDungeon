@@ -1398,6 +1398,24 @@ function AppV2() {
     return submitBattle({ objectiveId: currentQuest.id })
   }
 
+  // Tutor sparring: simulated fights with foes already met (no damage).
+  const sparActions = {
+    ask: (targetId, round) => withPyr('PYR is writing the next round…', async () => {
+      const result = await api('/api/ai/spar-question', { method: 'POST', body: JSON.stringify({ target_id: targetId, round }) })
+      return result.question
+    }),
+    answer: async (targetId, index) => {
+      setBusy(true)
+      try {
+        const result = await api('/api/spar/answer-option', { method: 'POST', body: JSON.stringify({ target_id: targetId, option_index: index }) })
+        await refreshCampaign({ silent: true })
+        return result
+      } finally {
+        setBusy(false)
+      }
+    },
+  }
+
   // Clickable campaign questions (PREDICT / EXPLAIN objectives).
   const [battleQuestions, setBattleQuestions] = useState({})
   const [battleFeedback, setBattleFeedback] = useState(null)
@@ -2798,6 +2816,8 @@ function AppV2() {
               onDungeonAnswerOption={answerDungeonOption}
               hunterActions={hunterActions}
               armory={campaign?.armory || null}
+              sparRoster={campaign?.spar_roster || []}
+              sparActions={sparActions}
               armoryActions={armoryActions}
               campaignBoard={campaign?.campaign_board || null}
               onDungeonChoose={chooseDungeonRoom}
