@@ -181,6 +181,7 @@ class AiTutorEndpointTests(AiTutorTestCase):
         app_v2.DUNGEON_PATH = workspace / "dungeon.py"
         app_v2.PYR_DUNGEON_CHALLENGE = None
         app_v2.AI_ISSUED_DUNGEON_QUESTIONS.clear()
+        app_v2.CHOICE_ANSWER_KEYS.clear()
         self.client = TestClient(app_v2.app, base_url="http://127.0.0.1")
         self.headers = {"host": "127.0.0.1"}
 
@@ -283,6 +284,55 @@ class AiTutorEndpointTests(AiTutorTestCase):
         result = self.client.post("/api/ai/dungeon-question", headers=self.headers, json={"run_id": run["run_id"]})
         self.assertFalse(result.json()["changed"])
         self.assertFalse(any(call[:1] == ["run"] for call in self.calls()))
+
+    def choice_room(self):
+        """Enter a room and make its question a multiple-choice one PYR writes."""
+
+        run = self.enter_room()
+        state = json.loads(self.canonical.read_text(encoding="utf-8"))
+        state["dungeon_run"]["question"]["question_type"] = "multiple_choice"
+        self.canonical.write_text(json.dumps(state), encoding="utf-8")
+        self.reply({"prompt": "What does print(len([1, 2, 3])) show?", "options": ["2", "3", "4"], "answer": 1, "why": "len counts all three items."})
+        written = self.client.post("/api/ai/dungeon-question", headers=self.headers, json={"run_id": run["run_id"]}).json()["dungeon"]
+        return written
+
+    def test_a_clicked_option_is_graded_instantly_and_the_key_never_leaks(self):
+        run = self.choice_room()
+        self.assertEqual(run["question"]["options"], ["2", "3", "4"])
+        self.assertNotIn("len counts", self.canonical.read_text(encoding="utf-8"))
+        campaign = self.client.get("/api/campaign", headers=self.headers).json()
+        self.assertNotIn('"answer"', json.dumps(campaign["dungeon"]))
+        right = self.client.post("/api/dungeon/answer-option", headers=self.headers, json={"run_id": run["run_id"], "question_id": run["question"]["id"], "option_index": 1}).json()
+        self.assertTrue(right["graded"])
+        self.assertEqual(right["verdict"], "correct")
+        self.assertEqual(right["dungeon"]["last_result"]["outcome"], "correct")
+        again = self.client.post("/api/dungeon/answer-option", headers=self.headers, json={"run_id": run["run_id"], "question_id": run["question"]["id"], "option_index": 1})
+        self.assertEqual(again.status_code, 409)  # a double click never scores twice
+
+    def test_a_wrong_click_shows_the_answer_and_deals_a_new_question(self):
+        run = self.choice_room()
+        wrong = self.client.post("/api/dungeon/answer-option", headers=self.headers, json={"run_id": run["run_id"], "question_id": run["question"]["id"], "option_index": 0}).json()
+        self.assertEqual(wrong["verdict"], "incorrect")
+        self.assertIn("The answer was 3", wrong["reason"])
+        self.assertEqual(wrong["correct_index"], 1)
+        self.assertNotEqual(wrong["dungeon"]["question"]["id"], run["question"]["id"])
+        self.assertLess(wrong["dungeon"]["loadout"]["hp"], run["loadout"]["hp"])
+
+    def test_a_click_without_a_key_falls_back_to_pyr(self):
+        run = self.enter_room()
+        state = json.loads(self.canonical.read_text(encoding="utf-8"))
+        state["dungeon_run"]["question"].update(question_type="multiple_choice", options=["a", "b", "c"])
+        self.canonical.write_text(json.dumps(state), encoding="utf-8")
+        result = self.client.post("/api/dungeon/answer-option", headers=self.headers, json={"run_id": run["run_id"], "question_id": run["question"]["id"], "option_index": 2}).json()
+        self.assertFalse(result["graded"])
+
+    def test_pyr_answer_keys_are_validated(self):
+        self.reply({"prompt": "Pick one", "options": ["a", "b"], "answer": 5})
+        question = ai_tutor.write_dungeon_question(concept="loops", question_type="multiple_choice", difficulty=1, room_type="encounter", floor=1)
+        self.assertNotIn("answer", question)  # an out-of-range key is dropped, not trusted
+        self.reply({"prompt": "True or false?", "options": ["True", "False"], "answer": "False", "why": "Because."})
+        question = ai_tutor.write_dungeon_question(concept="loops", question_type="true_false", difficulty=1, room_type="encounter", floor=1)
+        self.assertEqual((question["answer"], question["why"]), (1, "Because."))
 
 
 if __name__ == "__main__":

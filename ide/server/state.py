@@ -445,6 +445,7 @@ ACTION_DEFINITIONS: dict[str, ActionDefinition] = {
     "dungeon_equip_item": ActionDefinition(frozenset({"player"})),
     "dungeon_apply_oil": ActionDefinition(frozenset({"player"})),
     "dungeon_travel": ActionDefinition(frozenset({"player"})),
+    "dungeon_reroll_question": ActionDefinition(frozenset({SYSTEM_ACTOR}), internal=True),
     "hunter_craft_oil": ActionDefinition(frozenset({"player"})),
     "hunter_upgrade_kit": ActionDefinition(frozenset({"player"})),
     "armory_equip": ActionDefinition(frozenset({"player"})),
@@ -3509,8 +3510,14 @@ class LocalStateService:
             MAX_DUNGEON_DIFFICULTY,
             max(1, 1 + (floor - 1) // 2 + (2 if room_type == "elite" else 3 if room_type == "boss" else 0) + (1 if run.get("floor_modifier") == "deep" else 0)),
         )
-        types = ("true_false", "multiple_choice", "code_checkpoint", "bug_hunt", "short_explanation")
-        question_type = types[(room - 1) % len(types)]
+        # Harder rooms ask for more code: encounters mix quick clickable
+        # questions with short code, elites lean on code, bosses are all code.
+        # Theory belongs in the Tutor notebook.
+        types = {
+            "boss": ("code_checkpoint", "bug_hunt", "code_checkpoint"),
+            "elite": ("code_checkpoint", "multiple_choice", "bug_hunt"),
+        }.get(room_type, ("multiple_choice", "code_checkpoint", "true_false", "bug_hunt"))
+        question_type = types[int(run.get("question_number", room) or room) % len(types)]
         prompt_by_type = {
             "true_false": f"True or false: a {concept} loop should make its stopping condition observable.",
             "multiple_choice": f"Which small change would make a {concept} example easier to test?",
@@ -5173,6 +5180,27 @@ class LocalStateService:
             {"run_id": run_id, "item_id": item_id, "item_name": item.get("name"), "slot": field, "reason": "dungeon_item_equipped"},
         )
 
+    def _dungeon_reroll_question(self, payload: Mapping[str, Any], progress: dict[str, Any]) -> Mutation:
+        """After a wrong click on a choice question, deal a fresh question in
+        the same fight so the options cannot simply be tried one by one."""
+
+        data = self._payload(payload, {"run_id", "question_id"}, {"run_id", "question_id"})
+        run = self._active_dungeon_run(progress)
+        if run.get("run_id") != data["run_id"]:
+            raise StateCommandError("Dungeon run changed; reload the current run", status_code=409)
+        question = run.get("question")
+        if run.get("room_type") not in {"encounter", "elite", "boss"} or not isinstance(question, Mapping) or question.get("id") != data["question_id"]:
+            raise StateCommandError("That Dungeon question is no longer current", status_code=409)
+        run["question_number"] = self._counter(run, "question_number") + 1
+        run["question"] = self._dungeon_question_for_room(
+            run,
+            room=self._integer(run.get("room", 1), "room", minimum=1, maximum=MAX_DUNGEON_ROOM),
+            floor=self._integer(run.get("floor", 1), "floor", minimum=1, maximum=MAX_DUNGEON_FLOOR),
+        )
+        run["editor_content"] = ""
+        run["updated_at"] = _utc_now()
+        return Mutation(True, {"run": self.dungeon_projection(progress)}, {"run_id": run["run_id"], "question_id": run["question"]["id"], "editor_reset": True, "reason": "dungeon_question_rerolled"})
+
     def _dungeon_apply_oil(self, payload: Mapping[str, Any], progress: dict[str, Any]) -> Mutation:
         """Coat your blade for the current fight with an oil for its beast."""
 
@@ -5700,6 +5728,7 @@ class LocalStateService:
             "dungeon_equip_item": self._dungeon_equip_item,
             "dungeon_apply_oil": self._dungeon_apply_oil,
             "dungeon_travel": self._dungeon_travel,
+            "dungeon_reroll_question": self._dungeon_reroll_question,
             "hunter_craft_oil": self._hunter_craft_oil,
             "hunter_upgrade_kit": self._hunter_upgrade_kit,
             "armory_equip": self._armory_equip,

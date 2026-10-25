@@ -234,3 +234,13 @@
 .dungeon-proto-map.grid-floor .dungeon-map-node.current { background: color-mix(in srgb, var(--dungeon-gold) 16%, #171e17); border-width: 2px; }
 .dungeon-proto-map.grid-floor .dungeon-map-edges line { stroke-width: 4; opacity: 0.6; }
 .dungeon-proto-map.grid-floor .dungeon-map-edges line.active { opacity: 1; }
+
+/* Clickable answers (multiple choice, true/false). */
+.choice-panel { display: grid; align-content: start; gap: 12px; height: 100%; padding: 18px; overflow-y: auto; }
+.choice-options { display: grid; gap: 10px; }
+.choice-option { display: grid; grid-template-columns: 40px minmax(0, 1fr); align-items: center; gap: 12px; min-height: 56px; padding: 10px 14px; border: 2px solid var(--dungeon-line); background: var(--dungeon-panel); color: var(--dungeon-text); font: inherit; font-size: 16px; text-align: left; cursor: pointer; }
+.choice-option b { display: grid; place-items: center; width: 34px; height: 34px; border: 2px solid var(--dungeon-gold); color: var(--dungeon-gold); }
+.choice-option span { overflow-wrap: anywhere; font-family: 'JetBrains Mono', ui-monospace, monospace; }
+.choice-option:hover:not(:disabled), .choice-option:focus-visible { border-color: var(--dungeon-gold); background: color-mix(in srgb, var(--dungeon-gold) 10%, var(--dungeon-panel)); outline: none; }
+.choice-option:disabled { opacity: 0.6; cursor: default; }
+.choice-panel > small { color: var(--dungeon-muted); }

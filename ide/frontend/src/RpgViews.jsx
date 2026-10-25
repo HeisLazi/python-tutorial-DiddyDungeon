@@ -3174,6 +3174,39 @@ function DungeonFightStrip({ fight }) {
   )
 }
 
+// Clickable answers for multiple-choice and true/false questions. Letter and
+// number keys pick an option, but never while the player is typing somewhere.
+function ChoicePanel({ options, onChoose, busy, label = 'CHOOSE YOUR ANSWER', note }) {
+  useEffect(() => {
+    const onKey = (event) => {
+      if (busy || event.ctrlKey || event.metaKey || event.altKey || event.repeat) return
+      const target = event.target
+      if (target?.closest?.('input, textarea, select, [contenteditable="true"], .monaco-editor')) return
+      const key = String(event.key || '').toLowerCase()
+      const index = /^[1-9]$/.test(key) ? Number(key) - 1 : /^[a-h]$/.test(key) ? key.charCodeAt(0) - 97 : -1
+      if (index >= 0 && index < options.length) {
+        event.preventDefault()
+        onChoose(index)
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [options, onChoose, busy])
+  return (
+    <div className="choice-panel" role="group" aria-label="Answer options">
+      <span className="dungeon-eyebrow">{label}</span>
+      <div className="choice-options">
+        {options.map((option, index) => (
+          <button key={`${index}-${option}`} type="button" className="choice-option" onClick={() => onChoose(index)} disabled={busy}>
+            <b>{String.fromCharCode(65 + index)}</b><span>{option}</span>
+          </button>
+        ))}
+      </div>
+      <small>{note || `Click an answer, or press A–${String.fromCharCode(64 + options.length)} / 1–${options.length}.`}</small>
+    </div>
+  )
+}
+
 function DungeonQuestionBrief({ run, question, loadout, editorContent, avatar, hunter, onApplyOil, busy }) {
   const encounter = run.encounter || {}
   const mechanic = encounter.mechanic || {}
@@ -3202,15 +3235,21 @@ function DungeonQuestionBrief({ run, question, loadout, editorContent, avatar, h
       <section className="dungeon-brief-question">
         <span className="dungeon-eyebrow">THE QUESTION · {String(question.concept_id || encounter.concept_id || 'python').replaceAll('-', ' ').toUpperCase()}</span>
         {question.prompt ? <DungeonPromptText text={question.prompt} /> : <p className="dungeon-brief-empty">PYR is preparing this room's question…</p>}
-        {options.length > 0 && <ol className="dungeon-brief-options" type="A">{options.map((option, index) => <li key={`${index}-${option}`}><b>{String.fromCharCode(65 + index)}</b><span>{option}</span></li>)}</ol>}
       </section>
 
-      <section className="dungeon-brief-how">
-        <span className="dungeon-eyebrow">HOW TO ANSWER</span>
-        <p>{type.how} Write it in <code>dungeon.py</code>, then Submit.</p>
-        <pre className="dungeon-brief-sample" aria-label="Answer layout sample"><code>{type.sample}</code></pre>
-        <small>Sample layout only, not the answer.</small>
-      </section>
+      {options.length > 0 ? (
+        <section className="dungeon-brief-how">
+          <span className="dungeon-eyebrow">HOW TO ANSWER</span>
+          <p>Pick one of the {options.length} answers on the right: click it, or press its letter or number. A wrong pick shows the right answer and deals a new question.</p>
+        </section>
+      ) : (
+        <section className="dungeon-brief-how">
+          <span className="dungeon-eyebrow">HOW TO ANSWER</span>
+          <p>{type.how} Write it in <code>dungeon.py</code>, then Submit.</p>
+          <pre className="dungeon-brief-sample" aria-label="Answer layout sample"><code>{type.sample}</code></pre>
+          <small>Sample layout only, not the answer.</small>
+        </section>
+      )}
 
       <section className="dungeon-brief-enemy">
         <div className="dungeon-brief-enemy-head">
@@ -3271,6 +3310,7 @@ function DungeonVerdictCard({ card, avatar, onClose, onContinue }) {
     return () => window.removeEventListener('keydown', onKey)
   }, [onClose])
   const snap = card.snapshot || {}
+  const clicked = String(card.evidence_id || '').startsWith('dg-click-')
   const fight = card.fight || null // the server's record of this exchange
   const done = !fight || fight.fight_done
   const damage = Number(card.damage) || 0
@@ -3343,18 +3383,18 @@ function DungeonVerdictCard({ card, avatar, onClose, onContinue }) {
         {card.loot?.trinket && <p className="dungeon-verdict-summary">{card.loot.trinket.name}: {card.loot.trinket.description}</p>}
         {card.died && (card.packLost || []).length > 0 && <p className="dungeon-verdict-lost">Unbanked loot lost: {lootText(card.packLost)}.</p>}
         {!card.died && (card.loot?.items || []).length > 0 && <p className="dungeon-verdict-hint">Parts go in your pack. Bank them at a camp or by ending the run.</p>}
-        <p className="dungeon-verdict-hint">{error ? 'Nothing was spent. Fix the problem above and submit again.' : card.died ? `Your run ended with ${card.score ?? 0} score. Pick a class to start a new one.` : correct ? (done ? 'Pick your next room on the map.' : 'The next question is ready in dungeon.py.') : 'Your answer is still in dungeon.py. Fix it and submit again.'}</p>
+        <p className="dungeon-verdict-hint">{error ? 'Nothing was spent. Fix the problem above and submit again.' : card.died ? `Your run ended with ${card.score ?? 0} score. Pick a class to start a new one.` : correct ? (done ? 'Pick your next room on the map.' : 'The next question is ready.') : clicked ? 'A new question is ready.' : 'Your answer is still in dungeon.py. Fix it and submit again.'}</p>
         <div className="dungeon-verdict-actions">
           {correct && done && !card.died
             ? <button type="button" className="dungeon-primary-button" onClick={onContinue} autoFocus>Choose next room <span>→</span></button>
-            : <button type="button" className="dungeon-primary-button" onClick={onClose} autoFocus>{card.died ? 'Back to setup' : correct ? 'Next question' : 'Try again'} {correct && !card.died && <span>→</span>}</button>}
+            : <button type="button" className="dungeon-primary-button" onClick={onClose} autoFocus>{card.died ? 'Back to setup' : correct || clicked ? 'Next question' : 'Try again'} {(correct || clicked) && !card.died && <span>→</span>}</button>}
         </div>
       </section>
     </div>
   )
 }
 
-function DungeonScreen({ avatar, hunter, onApplyOil, onTravel, dungeon, revision, onStart, onChoose, onRest, onCampAction, onRevealRisk, onEnterRisk, onMarketPurchase, onEquip, onLeave, onFinish, onReset, submitDungeon, busy, saving, editorContent, onEditorChange, onSave }) {
+function DungeonScreen({ avatar, hunter, onApplyOil, onTravel, onAnswerOption, dungeon, revision, onStart, onChoose, onRest, onCampAction, onRevealRisk, onEnterRisk, onMarketPurchase, onEquip, onLeave, onFinish, onReset, submitDungeon, busy, saving, editorContent, onEditorChange, onSave }) {
   const [selectedClassId, setSelectedClassId] = useState('')
   const [submitStatus, setSubmitStatus] = useState('')
   const [roomTab, setRoomTab] = useState('room')
@@ -3429,6 +3469,20 @@ function DungeonScreen({ avatar, hunter, onApplyOil, onTravel, dungeon, revision
     }
   }
 
+  const choiceOptions = Array.isArray(question.options) ? question.options : []
+  const chooseOption = async (index) => {
+    if (!onAnswerOption || busy || !question.id || verdictCard) return
+    setSubmitStatus('Checking your answer…')
+    try {
+      const result = await onAnswerOption({ runId: run.run_id, questionId: question.id, index, text: choiceOptions[index] })
+      setSubmitStatus(result && result.graded === false && !result.judged ? 'Sent to PYR. The room changes once it posts a verdict.' : '')
+    } catch (error) {
+      const message = error?.message || 'That answer could not be checked.'
+      setSubmitStatus(message)
+      setVerdictCard({ outcome: 'error', reason: message })
+    }
+  }
+
   const openCode = () => setRoomTab('code')
   const chooseRoom = async (runId, choiceId) => {
     const result = await onChoose?.(runId, choiceId)
@@ -3442,7 +3496,7 @@ function DungeonScreen({ avatar, hunter, onApplyOil, onTravel, dungeon, revision
     <div className="dungeon-screen-shell" data-testid="dungeon" data-campaign-revision={revision}>
       {verdictCard && <ShellPortal scope="dungeon-screen-shell"><DungeonVerdictCard card={verdictCard} avatar={avatar} onClose={() => setVerdictCard(null)} onContinue={() => { setVerdictCard(null); setRoomTab('map') }} /></ShellPortal>}
       <header className="dungeon-local-header"><div className="dungeon-local-brand"><span className="dungeon-brand-mark"><RouteIcon id="spark" /></span><div><span className="dungeon-eyebrow">INFINITE DUNGEON</span><h1>{run.active ? `Floor ${run.floor} · Room ${run.room}` : 'Design Lab'}</h1></div></div><span className="dungeon-local-badge"><i /> CANONICAL RUN · STATE GATEWAY</span>{run.active ? <div className="dungeon-run-stats" aria-label="Run stats"><div><small>FLOOR</small><strong>{run.floor ?? 1}</strong></div><div><small>HP</small><strong>{loadout.hp ?? 0}/{loadout.max_hp ?? 0}</strong></div><div><small>SCORE</small><strong>{run.score ?? 0}</strong></div><div><small>COINS</small><strong>{run.run_coins ?? 0}</strong></div><button className="dungeon-reset-header" type="button" onClick={() => onReset?.(run.run_id)} disabled={busy || !onReset}>Reset run</button></div> : <div className="dungeon-header-note"><span className="dungeon-eyebrow">BEFORE THE DESCENT</span><strong>CHOOSE YOUR CLASS</strong></div>}</header>
-      {!run.active ? <main className="dungeon-class-select" aria-label="Choose a dungeon class"><section className="dungeon-class-hero"><span className="dungeon-eyebrow">RUN SETUP · FLOOR 1</span><h2>So how you wanna play it.</h2><p>Pick a class</p>{lastRunLoot && <p className="delve-last-run">{lastRunLoot}</p>}</section><section className="dungeon-class-grid" role="radiogroup" aria-label="Dungeon classes">{DUNGEON_CLASSES.map((starterClass) => <button key={starterClass.id} type="button" role="radio" aria-checked={selectedClassId === starterClass.id} className={`dungeon-class-card ${selectedClassId === starterClass.id ? 'selected' : ''}`} onClick={() => setSelectedClassId(starterClass.id)} disabled={busy}><span className="dungeon-class-card-top"><span className="dungeon-class-icon" aria-hidden="true"><RouteIcon id={starterClass.iconId} /></span><span><span className="dungeon-eyebrow">{starterClass.role}</span><strong>{starterClass.name}</strong></span>{selectedClassId === starterClass.id && <small className="dungeon-class-picked">READY</small>}</span><span className="dungeon-class-weapon"><span className="dungeon-class-label">STARTER WEAPON</span><strong>{starterClass.weapon}</strong><small>{starterClass.weaponDetail || 'A bounded run weapon for this playstyle.'}</small></span><span className="dungeon-class-passive"><span className="dungeon-class-label">PASSIVE</span><p>{starterClass.passive}</p></span></button>)}</section><DelvePicker hunter={hunter} selected={selectedRegionId} onSelect={setSelectedRegionId} busy={busy} />{selectedClassId && <div className="dungeon-class-cta" aria-live="polite"><button className="dungeon-primary-button" type="button" onClick={start} disabled={busy}>{busy ? 'Starting…' : 'Enter the dungeon'} <span>→</span></button></div>}</main> : roomTab === 'code' ? <section className="dungeon-ide-screen" aria-label="Challenge IDE"><div className="dungeon-ide-topline"><button type="button" className="dungeon-ghost-button" onClick={() => setRoomTab('room')}>← Map locked</button><span className="dungeon-eyebrow">{run.room_type === 'boss' ? 'FLOOR BOSS · FINAL DESTINATION' : run.room_type === 'elite' ? 'ELITE GATE · TRINKET DROP' : 'QUESTION ROOM · NO ROUTE CONTROLS'}</span><span className="dungeon-ide-risk">FAILURE COSTS HP</span></div><div className="dungeon-ide-layout"><DungeonQuestionBrief run={run} question={question} loadout={loadout} editorContent={editorContent} avatar={avatar} hunter={hunter} onApplyOil={onApplyOil} busy={busy} /><div className="dungeon-code-workbench"><div className="dungeon-editor-toolbar"><span>dungeon.py · current room buffer</span><span>PYTHON · MONACO · LOCAL COMPLETION</span></div><DungeonEditorSurface value={editorContent || ''} onChange={onEditorChange} onSave={onSave} onSubmit={submit} busy={busy} saving={saving} />{submitStatus && <small className="battle-submit-status" role="status">{submitStatus}</small>}</div></div></section> : <><div className="dungeon-workspace-tabs" role="tablist" aria-label="Dungeon workspace"><button type="button" role="tab" aria-selected={roomTab === 'map'} className={roomTab === 'map' ? 'active' : ''} onClick={() => setRoomTab('map')}>Map &amp; route</button><button type="button" role="tab" aria-selected={roomTab === 'room'} className={roomTab === 'room' ? 'active' : ''} onClick={() => setRoomTab('room')}>Room screen</button><button type="button" role="tab" aria-selected={roomTab === 'code'} className={roomTab === 'code' ? 'active' : ''} onClick={openCode} disabled={!['encounter', 'elite', 'boss'].includes(run.room_type)}>Code editor</button></div><div className="dungeon-prototype-grid" data-testid="dungeon-tab-panel"><DungeonMap run={run} onChoose={chooseRoom} onTravel={onTravel} busy={busy} /><DungeonRoomPanel run={run} question={question} loadout={loadout} onRest={onRest} onCampAction={onCampAction} onRevealRisk={onRevealRisk} onEnterRisk={onEnterRisk} onMarketPurchase={onMarketPurchase} onLeave={onLeave} onOpenCode={openCode} busy={busy} /><DungeonCharacterPanel run={run} tab={characterTab} setTab={setCharacterTab} onEquip={onEquip} busy={busy} onFinish={onFinish} onReset={onReset} /></div><p className="dungeon-checkpoint-note">{statusText} Run <code>{run.run_id}</code> will resume after a Forge or workstation restart; death is the only reset.</p></>}
+      {!run.active ? <main className="dungeon-class-select" aria-label="Choose a dungeon class"><section className="dungeon-class-hero"><span className="dungeon-eyebrow">RUN SETUP · FLOOR 1</span><h2>So how you wanna play it.</h2><p>Pick a class</p>{lastRunLoot && <p className="delve-last-run">{lastRunLoot}</p>}</section><section className="dungeon-class-grid" role="radiogroup" aria-label="Dungeon classes">{DUNGEON_CLASSES.map((starterClass) => <button key={starterClass.id} type="button" role="radio" aria-checked={selectedClassId === starterClass.id} className={`dungeon-class-card ${selectedClassId === starterClass.id ? 'selected' : ''}`} onClick={() => setSelectedClassId(starterClass.id)} disabled={busy}><span className="dungeon-class-card-top"><span className="dungeon-class-icon" aria-hidden="true"><RouteIcon id={starterClass.iconId} /></span><span><span className="dungeon-eyebrow">{starterClass.role}</span><strong>{starterClass.name}</strong></span>{selectedClassId === starterClass.id && <small className="dungeon-class-picked">READY</small>}</span><span className="dungeon-class-weapon"><span className="dungeon-class-label">STARTER WEAPON</span><strong>{starterClass.weapon}</strong><small>{starterClass.weaponDetail || 'A bounded run weapon for this playstyle.'}</small></span><span className="dungeon-class-passive"><span className="dungeon-class-label">PASSIVE</span><p>{starterClass.passive}</p></span></button>)}</section><DelvePicker hunter={hunter} selected={selectedRegionId} onSelect={setSelectedRegionId} busy={busy} />{selectedClassId && <div className="dungeon-class-cta" aria-live="polite"><button className="dungeon-primary-button" type="button" onClick={start} disabled={busy}>{busy ? 'Starting…' : 'Enter the dungeon'} <span>→</span></button></div>}</main> : roomTab === 'code' ? <section className="dungeon-ide-screen" aria-label="Challenge IDE"><div className="dungeon-ide-topline"><button type="button" className="dungeon-ghost-button" onClick={() => setRoomTab('room')}>← Map locked</button><span className="dungeon-eyebrow">{run.room_type === 'boss' ? 'FLOOR BOSS · FINAL DESTINATION' : run.room_type === 'elite' ? 'ELITE GATE · TRINKET DROP' : 'QUESTION ROOM · NO ROUTE CONTROLS'}</span><span className="dungeon-ide-risk">FAILURE COSTS HP</span></div><div className="dungeon-ide-layout"><DungeonQuestionBrief run={run} question={question} loadout={loadout} editorContent={editorContent} avatar={avatar} hunter={hunter} onApplyOil={onApplyOil} busy={busy} /><div className="dungeon-code-workbench">{choiceOptions.length ? <ChoicePanel options={choiceOptions} onChoose={chooseOption} busy={busy || Boolean(verdictCard)} /> : <><div className="dungeon-editor-toolbar"><span>dungeon.py · current room buffer</span><span>PYTHON · MONACO · LOCAL COMPLETION</span></div><DungeonEditorSurface value={editorContent || ''} onChange={onEditorChange} onSave={onSave} onSubmit={submit} busy={busy} saving={saving} /></>}{submitStatus && <small className="battle-submit-status" role="status">{submitStatus}</small>}</div></div></section> : <><div className="dungeon-workspace-tabs" role="tablist" aria-label="Dungeon workspace"><button type="button" role="tab" aria-selected={roomTab === 'map'} className={roomTab === 'map' ? 'active' : ''} onClick={() => setRoomTab('map')}>Map &amp; route</button><button type="button" role="tab" aria-selected={roomTab === 'room'} className={roomTab === 'room' ? 'active' : ''} onClick={() => setRoomTab('room')}>Room screen</button><button type="button" role="tab" aria-selected={roomTab === 'code'} className={roomTab === 'code' ? 'active' : ''} onClick={openCode} disabled={!['encounter', 'elite', 'boss'].includes(run.room_type)}>Code editor</button></div><div className="dungeon-prototype-grid" data-testid="dungeon-tab-panel"><DungeonMap run={run} onChoose={chooseRoom} onTravel={onTravel} busy={busy} /><DungeonRoomPanel run={run} question={question} loadout={loadout} onRest={onRest} onCampAction={onCampAction} onRevealRisk={onRevealRisk} onEnterRisk={onEnterRisk} onMarketPurchase={onMarketPurchase} onLeave={onLeave} onOpenCode={openCode} busy={busy} /><DungeonCharacterPanel run={run} tab={characterTab} setTab={setCharacterTab} onEquip={onEquip} busy={busy} onFinish={onFinish} onReset={onReset} /></div><p className="dungeon-checkpoint-note">{statusText} Run <code>{run.run_id}</code> will resume after a Forge or workstation restart; death is the only reset.</p></>}
     </div>
   )
 }
@@ -3856,7 +3910,7 @@ function SettingsScreen({ preferences, setters, resetLayout, account, accountBus
   )
 }
 
-export function GameScreen({ pyr, settingsAi, runtime, setAvatar, selectCampaign, hunter, spendStatPoint, hunterActions, campaignBoard, armory, armoryActions, onDungeonApplyOil, onDungeonTravel, activeView, progress, revision, avatarDataUrl = '', encounter, codexProjection, practiceProjection, equipmentProjection, dungeon, dungeonEditorContent, onDungeonEditorChange, onSaveDungeon, onDungeonChoose, onDungeonRest, onDungeonCampAction, onDungeonRevealRisk, onDungeonEnterRisk, onDungeonMarketPurchase, onDungeonEquip, onDungeonLeave, onDungeonFinish, onDungeonReset, purchaseCosmetic, purchaseMarketItem, equipCosmetic, equipCampaignItem, buildRoomUpgrade, performHomesteadAction, saveCodexNote, busy, dungeonSaving, submitBattle, submitBoss, submitDungeon, onStartDungeon, onPracticePrompt, preferences, setters, resetLayout, account, accountBusy, accountNotice, onSignIn, onSignUp, onSignOut, onDeviceLabelSave, onResolveConflict, workspaceTransfer, workspaceTransferBusy, workspaceTransferNotice, onWorkspaceTransferRefresh, onWorkspaceTransferPush, onWorkspaceTransferPreviewPull, onWorkspaceTransferApplyPull, onNavigate, tutorCode, tutorDirty, tutorExternalChange, editorFontSize = 14, onTutorChange, onTutorSave, onTutorFormat, onTutorRun, onTutorReloadExternal, onTutorKeepEdits, campaignReady = true, showNavigation = true }) {
+export function GameScreen({ pyr, settingsAi, runtime, setAvatar, selectCampaign, hunter, spendStatPoint, hunterActions, campaignBoard, armory, armoryActions, onDungeonApplyOil, onDungeonTravel, onDungeonAnswerOption, activeView, progress, revision, avatarDataUrl = '', encounter, codexProjection, practiceProjection, equipmentProjection, dungeon, dungeonEditorContent, onDungeonEditorChange, onSaveDungeon, onDungeonChoose, onDungeonRest, onDungeonCampAction, onDungeonRevealRisk, onDungeonEnterRisk, onDungeonMarketPurchase, onDungeonEquip, onDungeonLeave, onDungeonFinish, onDungeonReset, purchaseCosmetic, purchaseMarketItem, equipCosmetic, equipCampaignItem, buildRoomUpgrade, performHomesteadAction, saveCodexNote, busy, dungeonSaving, submitBattle, submitBoss, submitDungeon, onStartDungeon, onPracticePrompt, preferences, setters, resetLayout, account, accountBusy, accountNotice, onSignIn, onSignUp, onSignOut, onDeviceLabelSave, onResolveConflict, workspaceTransfer, workspaceTransferBusy, workspaceTransferNotice, onWorkspaceTransferRefresh, onWorkspaceTransferPush, onWorkspaceTransferPreviewPull, onWorkspaceTransferApplyPull, onNavigate, tutorCode, tutorDirty, tutorExternalChange, editorFontSize = 14, onTutorChange, onTutorSave, onTutorFormat, onTutorRun, onTutorReloadExternal, onTutorKeepEdits, campaignReady = true, showNavigation = true }) {
   const wideRoute = ['hub', 'character', 'homestead', 'codex', 'tutor', 'settings'].includes(activeView)
   // Historical contract marker: const wideRoute = ['hub', 'character', 'homestead', 'codex', 'settings']
   const withWideNavigation = (screen) => wideRoute && showNavigation
@@ -3879,7 +3933,7 @@ export function GameScreen({ pyr, settingsAi, runtime, setAvatar, selectCampaign
   // withWideNavigation(<Codex progress={progress} revision={revision} codexProjection={codexProjection} showNavigation={false} />)
   if (activeView === 'character') return withWideNavigation(<CharacterSheet progress={progress} revision={revision} avatarDataUrl={avatarDataUrl} encounter={encounter} codexProjection={codexProjection} onNavigate={onNavigate} />)
   if (activeView === 'homestead') return withWideNavigation(<Homestead hunter={hunter} spendStatPoint={spendStatPoint} armory={armory} armoryActions={armoryActions} progress={progress} revision={revision} equipmentProjection={equipmentProjection} purchaseCosmetic={purchaseCosmetic} equipCosmetic={equipCosmetic} equipCampaignItem={equipCampaignItem} buildRoomUpgrade={buildRoomUpgrade} performHomesteadAction={performHomesteadAction} busy={busy} onNavigate={onNavigate} />)
-  if (activeView === 'dungeon') return <DungeonScreen avatar={equipmentProjection?.avatar} hunter={hunter} onApplyOil={onDungeonApplyOil} onTravel={onDungeonTravel} dungeon={dungeon} revision={revision} onStart={onStartDungeon} onChoose={onDungeonChoose} onRest={onDungeonRest} onCampAction={onDungeonCampAction} onRevealRisk={onDungeonRevealRisk} onEnterRisk={onDungeonEnterRisk} onMarketPurchase={onDungeonMarketPurchase} onEquip={onDungeonEquip} onLeave={onDungeonLeave} onFinish={onDungeonFinish} onReset={onDungeonReset} submitDungeon={submitDungeon} busy={busy} saving={dungeonSaving} editorContent={dungeonEditorContent} onEditorChange={onDungeonEditorChange} onSave={onSaveDungeon} />
+  if (activeView === 'dungeon') return <DungeonScreen avatar={equipmentProjection?.avatar} hunter={hunter} onApplyOil={onDungeonApplyOil} onTravel={onDungeonTravel} onAnswerOption={onDungeonAnswerOption} dungeon={dungeon} revision={revision} onStart={onStartDungeon} onChoose={onDungeonChoose} onRest={onDungeonRest} onCampAction={onDungeonCampAction} onRevealRisk={onDungeonRevealRisk} onEnterRisk={onDungeonEnterRisk} onMarketPurchase={onDungeonMarketPurchase} onEquip={onDungeonEquip} onLeave={onDungeonLeave} onFinish={onDungeonFinish} onReset={onDungeonReset} submitDungeon={submitDungeon} busy={busy} saving={dungeonSaving} editorContent={dungeonEditorContent} onEditorChange={onDungeonEditorChange} onSave={onSaveDungeon} />
   if (activeView === 'practice') return <PracticeScreen progress={progress} revision={revision} practiceProjection={practiceProjection} onPracticePrompt={onPracticePrompt} busy={busy} />
   if (activeView === 'settings') return <SettingsScreen ai={settingsAi} runtime={runtime} preferences={preferences} setters={setters} resetLayout={resetLayout} account={account} accountBusy={accountBusy} accountNotice={accountNotice} onSignIn={onSignIn} onSignUp={onSignUp} onSignOut={onSignOut} onDeviceLabelSave={onDeviceLabelSave} onResolveConflict={onResolveConflict} workspaceTransfer={workspaceTransfer} workspaceTransferBusy={workspaceTransferBusy} workspaceTransferNotice={workspaceTransferNotice} onWorkspaceTransferRefresh={onWorkspaceTransferRefresh} onWorkspaceTransferPush={onWorkspaceTransferPush} onWorkspaceTransferPreviewPull={onWorkspaceTransferPreviewPull} onWorkspaceTransferApplyPull={onWorkspaceTransferApplyPull} revision={revision} />
   return null

@@ -1877,6 +1877,21 @@ function AppV2() {
   const revealDungeonRisk = (runId) => dungeonAction('/api/dungeon/risk/reveal', { run_id: runId }, () => 'Vision scroll consumed. The risk profile is now visible.')
   const enterDungeonRisk = (runId) => dungeonAction('/api/dungeon/risk/enter', { run_id: runId }, (result) => `Risk entered. ${result.risk_kind || 'The room'} is now state-owned.`)
   const buyDungeonItem = (runId, itemId) => dungeonAction('/api/dungeon/market', { run_id: runId, item_id: itemId }, (result) => `Bought ${result.item?.name || itemId} for run currency.`)
+  // A clicked option is graded instantly by the server's hidden key; a
+  // question without one (built-in, or after a restart) goes to PYR as text.
+  const answerDungeonOption = async ({ runId, questionId, index, text }) => {
+    setBusy(true)
+    try {
+      const result = await api('/api/dungeon/answer-option', { method: 'POST', body: JSON.stringify({ run_id: runId, question_id: questionId, option_index: index }) })
+      if (result.graded) {
+        await refreshCampaign({ silent: true })
+        return result
+      }
+    } finally {
+      setBusy(false)
+    }
+    return submitDungeon({ runId, questionId, answer: text })
+  }
   const travelDungeon = (runId, nodeId) => dungeonAction('/api/dungeon/travel', { run_id: runId, node_id: nodeId }, () => 'You walk back through explored rooms.')
   const applyDungeonOil = (runId, oilId) => dungeonAction('/api/dungeon/oil', { run_id: runId, oil_id: oilId }, (result) => `${result.oil?.name || 'Oil'} applied: ${result.oil?.effect || ''}`)
   const equipDungeonItem = (runId, itemId) => dungeonAction('/api/dungeon/equip', { run_id: runId, item_id: itemId }, (result) => `${result.equipped || itemId} equipped.`)
@@ -2736,6 +2751,7 @@ function AppV2() {
               onDungeonEquip={equipDungeonItem}
               onDungeonApplyOil={applyDungeonOil}
               onDungeonTravel={travelDungeon}
+              onDungeonAnswerOption={answerDungeonOption}
               hunterActions={hunterActions}
               armory={campaign?.armory || null}
               armoryActions={armoryActions}

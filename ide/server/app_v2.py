@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import fcntl
 import hashlib
+import uuid
 import importlib.util
 import json
 import os
@@ -3057,6 +3058,8 @@ def _grading_context(kind: str, context: dict) -> dict:
 # Question ids PYR has already rewritten this session, so a re-render or a
 # second tab cannot rotate the same room's question (and wipe the editor) twice.
 AI_ISSUED_DUNGEON_QUESTIONS: set[str] = set()
+# Hidden answer keys for clickable questions, by '<mode>:<question id>'; server memory only.
+CHOICE_ANSWER_KEYS: dict[str, dict[str, object]] = {}
 
 
 @app.get("/api/ai/status")
@@ -3132,6 +3135,7 @@ def ai_dungeon_question(payload: AiDungeonQuestionRequest):
     # has already started answering (e.g. after an app restart).
     if question["id"] in AI_ISSUED_DUNGEON_QUESTIONS or str(run_state.get("editor_content") or "").strip():
         return {"ok": True, "changed": False, "dungeon": projection}
+    fight = run_state.get("fight") if isinstance(run_state.get("fight"), dict) else {}
     written = _ai_call(
         ai_tutor.write_dungeon_question,
         concept=str(question.get("concept_id") or "python-basics"),
@@ -3139,8 +3143,13 @@ def ai_dungeon_question(payload: AiDungeonQuestionRequest):
         difficulty=int(question.get("difficulty") or 1),
         room_type=str(projection.get("room_type")),
         floor=int(projection.get("floor") or 1),
+        fight_step=int(fight.get("questions_cleared", 0) or 0) + 1,
+        fight_total=int(fight.get("questions_total", 1) or 1),
     )
-    replacement = {key: question[key] for key in ("id", "question_type", "concept_id", "difficulty")}
+    # The answer key stays in server memory: never in the save or the browser.
+    key = {"answer": written.pop("answer"), "why": written.pop("why", "")} if "answer" in written else None
+    written.pop("why", None)
+    replacement = {key_name: question[key_name] for key_name in ("id", "question_type", "concept_id", "difficulty")}
     replacement.update(written)
     with PROGRESS_LOCK:
         try:
@@ -3150,7 +3159,60 @@ def ai_dungeon_question(payload: AiDungeonQuestionRequest):
         except StateCommandError as exc:
             raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
     AI_ISSUED_DUNGEON_QUESTIONS.add(question["id"])
+    if key is not None:
+        CHOICE_ANSWER_KEYS[f"dungeon:{question['id']}"] = {**key, "options": list(written.get("options") or [])}
     return {"ok": True, "changed": True, "revision": mutation.get("revision"), "dungeon": projection}
+
+
+class DungeonOptionRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    run_id: str = Field(min_length=1, max_length=MAX_IDENTIFIER_LENGTH)
+    question_id: str = Field(min_length=1, max_length=MAX_IDENTIFIER_LENGTH)
+    option_index: int = Field(ge=0, le=7)
+
+
+@app.post("/api/dungeon/answer-option")
+def answer_dungeon_option(payload: DungeonOptionRequest):
+    """Grade a clicked option instantly against the hidden key. Without a key
+    (a built-in question, or after a restart) the browser falls back to PYR.
+    A wrong click shows the answer and deals a fresh question."""
+
+    key_name = f"dungeon:{payload.question_id}"
+    with PROGRESS_LOCK:
+        try:
+            progress, _metadata = STATE_SERVICE.snapshot_with_metadata()
+            projection = STATE_SERVICE.dungeon_projection(progress)
+        except StateCommandError as exc:
+            raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
+        question = projection.get("question") if isinstance(projection.get("question"), dict) else None
+        if not projection.get("active") or projection.get("run_id") != payload.run_id or not question or question.get("id") != payload.question_id:
+            raise HTTPException(status_code=409, detail="That Dungeon question is no longer current")
+        options = list(question.get("options") or [])
+        if not options or payload.option_index >= len(options):
+            raise HTTPException(status_code=422, detail="That question has no such option")
+        key = CHOICE_ANSWER_KEYS.get(key_name)
+        if key is None or key.get("options") != options:
+            return {"ok": True, "graded": False}
+        CHOICE_ANSWER_KEYS.pop(key_name, None)
+        correct_text = options[int(key["answer"])]
+        verdict = "correct" if payload.option_index == int(key["answer"]) else "incorrect"
+        why = str(key.get("why") or "")
+        reason = (why or f"Right: {correct_text}.") if verdict == "correct" else f"The answer was {correct_text}. {why}".strip()
+        try:
+            STATE_SERVICE.apply_internal(
+                "dungeon_record_verdict",
+                {"run_id": payload.run_id, "question_id": payload.question_id, "verdict": verdict, "evidence_id": f"dg-click-{uuid.uuid4().hex[:16]}", "reason": reason[:400]},
+            )
+            progress, _metadata = STATE_SERVICE.snapshot_with_metadata()
+            after = STATE_SERVICE.dungeon_projection(progress)
+            if verdict == "incorrect" and after.get("active") and (after.get("question") or {}).get("id") == payload.question_id:
+                STATE_SERVICE.apply_internal("dungeon_reroll_question", {"run_id": payload.run_id, "question_id": payload.question_id})
+                progress, _metadata = STATE_SERVICE.snapshot_with_metadata()
+                after = STATE_SERVICE.dungeon_projection(progress)
+        except StateCommandError as exc:
+            raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
+    return {"ok": True, "graded": True, "verdict": verdict, "reason": reason, "correct_index": int(key["answer"]), "dungeon": after}
 
 
 @app.post("/api/ai/practice-lens")

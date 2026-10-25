@@ -443,28 +443,68 @@ def judge(kind: str, *, context: Any, answer: str, question: str = "") -> dict[s
 DUNGEON_QUESTION_SHAPES = {
     "true_false": "a true/false statement; options must be exactly [\"True\", \"False\"]",
     "multiple_choice": "a multiple-choice question with 3 or 4 short SINGLE-LINE options (one correct); put any code the options refer to in the prompt",
-    "code_checkpoint": "a request to write a tiny piece of Python (under 10 lines); options must be []",
+    "code_checkpoint": "a request to write working Python code; options must be []",
     "bug_hunt": "a short buggy Python snippet (inside the prompt) with a request to find and explain the bug; options must be []",
     "short_explanation": "a request to explain an idea in two or three sentences; options must be []",
 }
 
 
-def write_dungeon_question(*, concept: str, question_type: str, difficulty: int, room_type: str, floor: int) -> dict[str, Any]:
+# How much code a Dungeon task asks for: harder rooms are longer and more
+# practical, and a boss saves its biggest program for the last question.
+DUNGEON_CODE_SIZES = {
+    "encounter": "a short practical task of about 5-10 lines",
+    "elite": "a practical function of about 10-20 lines",
+    "boss": "a practical function of about 15-25 lines",
+    "boss_final": "a small practical program of about 25-40 lines that combines several ideas",
+}
+CHOICE_QUESTION_TYPES = frozenset({"multiple_choice", "true_false"})
+
+
+def _answer_key(reply: dict[str, Any], options: list[str]) -> dict[str, Any]:
+    """The correct option index and a one-line why, when the reply has a valid one."""
+
+    answer = reply.get("answer")
+    index = None
+    if isinstance(answer, bool):
+        index = 0 if answer else 1 if options == ["True", "False"] else None
+    elif isinstance(answer, int) and 0 <= answer < len(options):
+        index = answer
+    elif isinstance(answer, str):
+        wanted = " ".join(answer.split()).casefold()
+        index = next((position for position, option in enumerate(options) if option.casefold() == wanted), None)
+    if index is None or len({option.casefold() for option in options}) != len(options):
+        return {}
+    why = reply.get("why")
+    return {"answer": index, "why": _bounded(why, 300) if isinstance(why, str) and why.strip() else ""}
+
+
+def write_dungeon_question(*, concept: str, question_type: str, difficulty: int, room_type: str, floor: int, fight_step: int = 1, fight_total: int = 1) -> dict[str, Any]:
     shape = DUNGEON_QUESTION_SHAPES.get(question_type, DUNGEON_QUESTION_SHAPES["short_explanation"])
+    choice = question_type in CHOICE_QUESTION_TYPES
+    size_key = "boss_final" if room_type == "boss" and fight_step >= fight_total else room_type if room_type in DUNGEON_CODE_SIZES else "encounter"
+    guidance = (
+        "Prefer reading real code (what does this print, which line breaks) over definitions or theory."
+        if choice
+        else f"Size: {DUNGEON_CODE_SIZES[size_key]}. Make it a practical, game-like task (scores, inventories, cards, maps), not theory."
+    )
+    reply_shape = (
+        '{"prompt": "the question text (may include a fenced code snippet)", "options": ["..."], '
+        '"answer": the 0-based index of the correct option, "why": "one short sentence on why it is right"}'
+        if choice
+        else '{"prompt": "the question text (may include a fenced code snippet)", "options": []}'
+    )
     prompt = "\n\n".join(
         (
             TUTOR_RULES,
-            "Task: write one fresh Infinite Dungeon question for a beginner Python learner.",
+            "Task: write one fresh Infinite Dungeon question for a Python learner.",
             (
                 f"Concept: {concept}\nQuestion type: {question_type} ({shape})\n"
-                f"Difficulty: {difficulty} of 5\nRoom: {room_type} on floor {floor} "
+                f"Difficulty: {difficulty} of 5\nRoom: {room_type} on floor {floor}, question {fight_step} of {fight_total} "
                 "(elite and boss rooms should be noticeably harder)"
             ),
-            "Keep it answerable in the in-game editor in a few minutes. Do not include the answer.",
-            (
-                'Reply with ONLY this JSON object: {"prompt": "the question text (may include a fenced code '
-                'snippet)", "options": ["..."]}'
-            ),
+            guidance,
+            "Keep it answerable in the in-game editor. Never put the answer in the prompt.",
+            f"Reply with ONLY this JSON object: {reply_shape}",
         )
     )
     reply = extract_json_object(run_prompt(prompt, title="Quest Lab · dungeon question"))
@@ -482,7 +522,12 @@ def write_dungeon_question(*, concept: str, question_type: str, difficulty: int,
         raise AiTutorError("PYR's multiple-choice question needs 2-5 options", kind="unparseable")
     # Options are single-line text in the game state; collapse any line breaks
     # (models sometimes put a two-line code snippet in an option).
-    return {"prompt": text.strip(), "options": [" ".join(item.split())[:200] for item in options]}
+    options = [" ".join(item.split())[:200] for item in options]
+    written: dict[str, Any] = {"prompt": text.strip(), "options": options}
+    if options:
+        # The key never reaches the save or the browser; the server grades clicks with it.
+        written.update(_answer_key(reply, options))
+    return written
 
 
 def choose_practice_lens(*, concept: str, lenses: list[dict[str, str]], learner: Any) -> dict[str, str]:
