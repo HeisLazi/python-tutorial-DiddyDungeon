@@ -38,6 +38,9 @@ from ide.server.context_bridge import (
 from ide.server.security import allowed_hosts, allowed_origins, is_allowed_origin
 from ide.server.state import (
     BOSS_CHOICE_TYPES,
+    load_campaign_bounties,
+    project_dir_name,
+    project_file_name,
     BOSS_REQUIREMENTS,
     CAMPAIGN_MARKET_CATALOG,
     HUNTER_SIGN_CONCEPTS,
@@ -1684,8 +1687,8 @@ def _validate_forge_submission_source(
         raise HTTPException(status_code=409, detail="Forge file changed; capture the active Forge context again")
     if not expected_digest or (file_digest or "").lower() != expected_digest:
         raise HTTPException(status_code=409, detail="Forge file digest changed; capture the active Forge context again")
-    if not normalized.lower().endswith(".py") or filename in {"tutor.py", "dungeon.py"}:
-        raise HTTPException(status_code=422, detail="Forge submissions must use the active campaign .py file")
+    if not normalized.lower().endswith((".py", ".md")) or filename in {"tutor.py", "dungeon.py"}:
+        raise HTTPException(status_code=422, detail="Forge submissions must use an active campaign .py or .md file")
     if not answer.strip():
         raise HTTPException(status_code=422, detail="Active Forge file is empty")
     if hashlib.sha256(answer.encode("utf-8")).hexdigest() != expected_digest:
@@ -1783,6 +1786,16 @@ def create_pyr_battle_submission(payload: PyrBattleSubmissionRequest):
                 )
                 if objective is None:
                     raise HTTPException(status_code=422, detail="objective_id is not available for the active encounter")
+                project = next((item for item in progress.get("projects", []) if isinstance(item, dict) and item.get("status") == "active"), {})
+                story = load_campaign_bounties().get(str(project.get("branch") or ""))
+                folder = project_dir_name(story.get("project_dir")) if isinstance(story, dict) else ""
+                graded_file = f"{folder}/{objective['file']}" if folder and objective.get("file") else objective.get("file")
+                if not graded_file and project.get("multi_file") is True:
+                    # In a multi-file project an unnamed goal is graded on the entry file.
+                    graded_file = project.get("entry_file")
+                submitted = str(payload.source_path or "").strip().replace("\\", "/")
+                if graded_file and payload.answer_source == "forge_active_file" and submitted != graded_file:
+                    raise HTTPException(status_code=409, detail=f"'{objective.get('label')}' is graded on {graded_file}; open it in the Forge and submit again")
 
                 submission_id = f"battle-{secrets.token_hex(12)}"
                 evidence_id = submission_id
@@ -3059,6 +3072,49 @@ def _ai_call(func, *args, **kwargs):
         raise HTTPException(status_code=exc.status_code, detail={"message": str(exc), "kind": exc.kind}) from exc
 
 
+GRADING_FILE_CHARS = 2_500
+GRADING_FILES_TOTAL = 9_000
+
+
+def _grading_files(kind: str, submission: dict) -> dict | None:
+    """For a multi-file campaign, the project's files (which exist, and their
+    size) and the bounded contents of the files this goal names, so a goal
+    like "split the reels into reels.py" is graded on the real project."""
+
+    if kind not in {"battle", "boss"}:
+        return None
+    try:
+        progress, _metadata = STATE_SERVICE.snapshot_with_metadata()
+        encounter = STATE_SERVICE.encounter_projection(progress) or {}
+    except StateCommandError:
+        return None
+    project = next((item for item in progress.get("projects", []) if isinstance(item, dict) and item.get("status") == "active"), {})
+    entry = load_campaign_bounties().get(str(project.get("branch") or ""))
+    if not isinstance(entry, dict) or entry.get("multi_file") is not True:
+        return None
+    names = [name for name in entry.get("project_files", []) if project_file_name(name)][:12]
+    folder = WORKSPACE / project_dir_name(entry.get("project_dir"))
+    listing = []
+    for name in names:
+        path = folder / name
+        listing.append({"file": name, "exists": path.is_file(), "bytes": path.stat().st_size if path.is_file() else 0})
+    if kind == "battle":
+        objective = next((item for item in encounter.get("available_objectives") or [] if item.get("id") == submission.get("objective_id")), {})
+        wanted = [*(objective.get("see") or []), *([objective["file"]] if objective.get("file") else [])]
+    else:
+        wanted = names
+    related, budget = {}, GRADING_FILES_TOTAL
+    submitted = str(submission.get("source_path") or "").replace("\\", "/")
+    for name in dict.fromkeys(wanted):
+        path = folder / name
+        if budget <= 0 or not project_file_name(name) or not path.is_file() or path.resolve() == (WORKSPACE / submitted).resolve():
+            continue
+        text = path.read_text(encoding="utf-8", errors="replace")[: min(GRADING_FILE_CHARS, budget)]
+        related[name] = text
+        budget -= len(text)
+    return {"project_files": listing, "related_files": related}
+
+
 def _grading_context(kind: str, context: dict) -> dict:
     """Keep only what a grader needs. The full bounded context runs to ~20k
     characters, which made real grades take minutes; the submitted answer
@@ -3115,6 +3171,9 @@ def ai_judge(payload: AiJudgeRequest):
     if hashlib.sha256(payload.answer.encode("utf-8")).hexdigest() != submission.get("answer_digest"):
         raise HTTPException(status_code=409, detail="The answer does not match the bound submission")
     context = None if payload.kind == "practice" else _grading_context(payload.kind, read_pyr_context(payload.client_id)["context"])
+    files = _grading_files(payload.kind, submission)
+    if context is not None and files:
+        context.update(files)
     graded = _ai_call(ai_tutor.judge, payload.kind, context=context, answer=payload.answer, question=payload.question)
     common = {
         "nonce": submission.get("nonce"),

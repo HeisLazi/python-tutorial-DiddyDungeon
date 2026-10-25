@@ -934,6 +934,62 @@ class PyrContextBridgeTests(unittest.TestCase):
                 app_v2.WORKSPACE = original_workspace
                 app_v2.PROGRESS_PATH = original_progress
 
+    def test_a_multi_file_goal_is_graded_on_its_own_file_and_sees_the_project(self):
+        from ide.server.test_campaign_content import use_real_content, user_like_progress
+
+        use_real_content()
+        original_workspace, original_progress = app_v2.WORKSPACE, app_v2.PROGRESS_PATH
+        app_v2.PYR_CONTEXT_CHALLENGE = None
+        app_v2.PYR_CONTEXT_CHALLENGES.clear()
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            workspace = root / "quest"
+            workspace.mkdir()
+            project_dir = workspace / "silver_reels"
+            project_dir.mkdir()
+            (project_dir / "casino.py").write_text("import reels\n", encoding="utf-8")
+            (project_dir / "reels.py").write_text("SYMBOLS = ['A', 'B']\n", encoding="utf-8")
+            (project_dir / "README.md").write_text("# Silver Reels\nRun python casino.py\n", encoding="utf-8")
+            canonical = root / "platform" / "progress.json"
+            canonical.parent.mkdir()
+            state = user_like_progress()
+            state["projects"] = [{"branch": "04-casino-slots", "name": "Casino / Slots", "status": "active", "boss": "Ekse Ouens P Diddy", "order": 4, "entry_file": "silver_reels/casino.py", "multi_file": True,
+                                  "mobs": [{"name": "The File Splitter", "concept": "Modules and imports", "encounter": "Split it.", "status": "available"}]}]
+            canonical.write_text(json.dumps(state), encoding="utf-8")
+            app_v2.WORKSPACE, app_v2.PROGRESS_PATH = workspace, canonical
+            try:
+                client = TestClient(app_v2.app, base_url="http://127.0.0.1")
+                host = {"host": "127.0.0.1"}
+
+                def submit(active, objective):
+                    app_v2.PYR_CONTEXT_CHALLENGES.clear()
+                    app_v2.PYR_CONTEXT_CHALLENGE = None
+                    verdict = client.post("/api/pyr/context", headers=host, json={"active_path": active}).json()["context"]["verdict"]
+                    text = (workspace / active).read_text(encoding="utf-8")
+                    return client.post("/api/pyr/battle-submission", headers=host, json={
+                        "nonce": verdict["nonce"], "objective_id": objective, "answer": text, "answer_source": "forge_active_file",
+                        "source_path": active, "file_digest": verdict["file_digest"],
+                    })
+
+                wrong = submit("silver_reels/reels.py", "payouts_module")
+                self.assertEqual(wrong.status_code, 409)
+                self.assertIn("silver_reels/payouts.py", wrong.json()["detail"])
+                right = submit("silver_reels/reels.py", "reels_module")
+                self.assertEqual(right.status_code, 200, right.text)
+                readme = submit("silver_reels/README.md", "reels_module")
+                self.assertEqual(readme.status_code, 409)  # a README is accepted as a file, just not for this goal
+                self.assertIn("silver_reels/reels.py", readme.json()["detail"])
+
+                files = app_v2._grading_files("battle", {"objective_id": "imports_run", "source_path": "silver_reels/casino.py"})
+                listing = {item["file"]: item["exists"] for item in files["project_files"]}
+                self.assertTrue(listing["reels.py"] and listing["README.md"])
+                self.assertFalse(listing["payouts.py"])
+                self.assertEqual(set(files["related_files"]), {"reels.py"})  # the submitted file is not repeated
+            finally:
+                app_v2.WORKSPACE, app_v2.PROGRESS_PATH = original_workspace, original_progress
+                app_v2.PYR_CONTEXT_CHALLENGE = None
+                app_v2.PYR_CONTEXT_CHALLENGES.clear()
+
     def test_boss_gate_mixes_code_and_click_goals_and_clears_from_saved_state(self):
         original_workspace = app_v2.WORKSPACE
         original_progress = app_v2.PROGRESS_PATH

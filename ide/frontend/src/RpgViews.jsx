@@ -2768,6 +2768,9 @@ function CampaignMarket({ progress, hunter, hunterActions, armory, armoryActions
   )
 }
 
+// Bounties that train the craft around the code, as a poster ribbon.
+const CONTRACT_KIND_LABELS = { workshop: 'WORKSHOP', debug: 'DEBUG', memory: 'FROM MEMORY', creative: 'MAKE IT YOURS' }
+
 // What each objective asks of you, as a poster tag.
 const OBJECTIVE_KIND = { code_checkpoint: 'BUILD', bug_diagnosis: 'FIX', prediction: 'PREDICT', explanation: 'EXPLAIN', snippet_check: 'READ', code_interview: 'INTERVIEW' }
 
@@ -2796,7 +2799,7 @@ function CampaignOffice({ progress, board, onEnter }) {
       : contract.name ? 'mob'
       : ['mob', 'elite', 'boss'].includes(authoredRank) ? authoredRank
       : index === mobs.length - 1 ? 'boss' : index === mobs.length - 2 || index === Math.floor(mobs.length / 2) ? 'elite' : 'mob'
-    return { id: mob.id || mob.name || `mob-${index}`, name: mob.name || `Unknown bounty ${index + 1}`, category: mob.concept || mob.category || 'Learning contract', status: mob.status || 'locked', rank, signal: mob.status === 'available' ? 'REWARD' : mob.status === 'defeated' ? 'CLEARED' : 'LOCKED', reward: mob.status === 'available' ? '+ COINS' : mob.status === 'defeated' ? 'CLEARED' : 'HIDDEN', icon: mob.status === 'defeated' ? '✓' : '✦', detail: contract.contract || mob.brief || mob.encounter || 'A state-owned learning contract.', task: mob.encounter, act: contract.act || 1, sign: contract.sign, beast: contract.beast, objectives: contract.objectives || [], tier: contract.tier || null }
+    return { id: mob.id || mob.name || `mob-${index}`, name: mob.name || `Unknown bounty ${index + 1}`, category: mob.concept || mob.category || 'Learning contract', status: mob.status || 'locked', rank, signal: mob.status === 'available' ? 'REWARD' : mob.status === 'defeated' ? 'CLEARED' : 'LOCKED', reward: mob.status === 'available' ? '+ COINS' : mob.status === 'defeated' ? 'CLEARED' : 'HIDDEN', icon: mob.status === 'defeated' ? '✓' : '✦', detail: contract.contract || mob.brief || mob.encounter || 'A state-owned learning contract.', task: mob.encounter, act: contract.act || 1, sign: contract.sign, beast: contract.beast, objectives: contract.objectives || [], tier: contract.tier || null, kind: contract.kind || null }
   }) : fallback.map((entry, index) => ({ ...entry, rank: entry.rank || (index === fallback.length - 1 ? 'boss' : index === 2 ? 'elite' : 'mob') }))
   const boardSize = 7
   // A story's acts are its boards; older boards page seven posters at a time.
@@ -2806,6 +2809,12 @@ function CampaignOffice({ progress, board, onEnter }) {
     : Array.from({ length: Math.max(1, Math.ceil(entries.length / boardSize)) }, (_, index) => entries.slice(index * boardSize, (index + 1) * boardSize))
   const openBoard = Math.max(0, boards.findIndex((items) => items.some((entry) => entry.status === 'available')))
   const [boardIndex, setBoardIndex] = useState(openBoard)
+  // Switching campaign opens the new board on the act you are playing.
+  const projectKey = activeProject.branch || activeProject.name || ''
+  useEffect(() => {
+    setBoardIndex(openBoard)
+    setSelectedId(boards[openBoard]?.[0]?.id || '')
+  }, [projectKey])
   const currentAct = actBoards[boardIndex]?.act
   const boardEntries = boards[boardIndex] || boards[0]
   const [selectedId, setSelectedId] = useState(boardEntries[0]?.id || '')
@@ -2821,7 +2830,7 @@ function CampaignOffice({ progress, board, onEnter }) {
       <div className="campaign-place-heading"><div><span className="campaign-eyebrow">BOUNTY OFFICE · {story.client ? `CONTRACT FOR ${story.client.toUpperCase()}` : 'CONTRACT BOARD'}</span><h2>{story.title || 'Choose the work that moves you.'}</h2><p>{story.hook || 'Every bounty is a learning task. Read the weakness, prepare at Home, then enter the Forge when you are ready to write.'}</p>{board?.entry_file && <small className="office-entry-file">You build this in <code>{board.entry_file}</code> in the Forge.</small>}</div><span className="campaign-place-seal office">✦</span></div>
       {currentAct && <div className="office-act-banner"><span className="campaign-eyebrow">{currentAct.title}</span><p>{currentAct.goal}</p></div>}
       <div className="office-toolbar"><div className="office-tabs"><button type="button" className="office-tab active">MAIN BOUNTIES</button><button type="button" className="office-tab" disabled>VILLAGE · NEXT</button></div><div className="board-switcher"><button type="button" className="board-switch" onClick={() => selectBoard(boardIndex - 1)} disabled={boardIndex === 0}>← {currentAct ? 'PREVIOUS ACT' : 'PREVIOUS BOARD'}</button><span className="board-page-label">{currentAct ? `ACT ${boardIndex + 1} / ${boards.length}` : `BOARD ${boardIndex + 1} / ${boards.length}`}<small>{boardEntries.length} contracts{currentAct ? '' : ` · max ${boardSize}`}</small></span><button type="button" className="board-switch" onClick={() => selectBoard(boardIndex + 1)} disabled={boardIndex >= boards.length - 1}>{currentAct ? 'NEXT ACT' : 'NEXT BOARD'} →</button></div></div>
-      <section className="office-board" aria-label="Bounty board"><div className="office-board-header"><strong>{String(activeProject.name || 'Campaign').toUpperCase()} · COMMUNITY BOUNTIES</strong><span className="campaign-eyebrow">{entries.length} POSTERS · {mobs.filter((mob) => isMobDefeated(mob.status)).length} CLEARED</span></div><div className="bounty-posters">{boardEntries.map((entry) => <button type="button" key={entry.id} className={`bounty-poster poster-size-${entry.rank} ${entry.status === 'locked' ? 'locked' : ''} ${selected?.id === entry.id ? 'active' : ''}`} onClick={() => entry.status !== 'locked' && setSelectedId(entry.id)} disabled={entry.status === 'locked'}><span className="poster-pin" /><div className="poster-art">{entry.status === 'locked' ? '?' : entry.icon}<span className="poster-rank">{(entry.tier || entry.rank).toUpperCase()}</span></div><span className="poster-signal">{entry.signal}</span><h3>{entry.status === 'locked' ? 'HIDDEN SILHOUETTE' : entry.name}</h3><p>{entry.status === 'locked' ? 'Complete the previous bounty to reveal this poster.' : entry.category}</p><small>{entry.reward}</small></button>)}</div></section>
+      <section className="office-board" aria-label="Bounty board"><div className="office-board-header"><strong>{String(activeProject.name || 'Campaign').toUpperCase()} · COMMUNITY BOUNTIES</strong><span className="campaign-eyebrow">{entries.length} POSTERS · {mobs.filter((mob) => isMobDefeated(mob.status)).length} CLEARED</span></div><div className="bounty-posters">{boardEntries.map((entry) => <button type="button" key={entry.id} className={`bounty-poster poster-size-${entry.rank} ${entry.status === 'locked' ? 'locked' : ''} ${selected?.id === entry.id ? 'active' : ''}`} onClick={() => entry.status !== 'locked' && setSelectedId(entry.id)} disabled={entry.status === 'locked'}><span className="poster-pin" /><div className="poster-art">{entry.status === 'locked' ? '?' : entry.icon}<span className="poster-rank">{(entry.tier || entry.rank).toUpperCase()}</span></div><span className="poster-signal">{entry.signal}</span>{entry.kind && entry.status !== 'locked' && <span className={`poster-kind kind-${entry.kind}`}>{CONTRACT_KIND_LABELS[entry.kind]}</span>}<h3>{entry.status === 'locked' ? 'HIDDEN SILHOUETTE' : entry.name}</h3><p>{entry.status === 'locked' ? 'Complete the previous bounty to reveal this poster.' : entry.category}</p><small>{entry.reward}</small></button>)}</div></section>
       {selected && <section className="office-detail"><div><span className="campaign-eyebrow">{unlocked ? 'SELECTED BOUNTY' : 'LOCKED BOUNTY'}</span><h3>{unlocked ? selected.name : 'Hidden silhouette'}</h3><p>{selected.detail}</p>{unlocked && selected.task && selected.task !== selected.detail && <p className="office-detail-task"><b>The job:</b> {selected.task}</p>}<div className="office-detail-facts"><span>{selected.category}</span>{selected.sign && <span className="office-sign"><HuntSigil pageId={selected.sign} size={14} /> Sign of the {HUNT_BEASTS[selected.sign]?.sign || selected.sign}{selected.beast ? ` · ${selected.beast}` : ''}</span>}<span>{selected.reward}</span></div>{unlocked && selected.objectives.length > 0 && <ol className="office-objectives">{selected.objectives.map((objective) => <li key={objective.id}><b className={`kind-${objective.question_type}`}>{OBJECTIVE_KIND[objective.question_type] || 'TASK'}</b>{objective.label}</li>)}</ol>}</div><button type="button" className="campaign-button" onClick={onEnter} disabled={!unlocked}>{unlocked ? 'Study this work →' : 'Complete the previous bounty'}</button></section>}
       <div className="campaign-stat-row"><span><small>CHAPTER</small><strong>{activeProject.name || '01'}</strong></span><span><small>CLEARED</small><strong>{mobs.filter((mob) => isMobDefeated(mob.status)).length}</strong></span><span><small>REWARDS</small><strong>COINS + TOKENS</strong></span></div>
     </>
@@ -3309,6 +3318,7 @@ const BATTLE_CHOICE_KINDS = new Set(['prediction', 'explanation'])
 function BattleBrief({ encounter, board, questions = {}, feedback, onAsk, onAnswer, busy }) {
   const open = encounter.available_objectives || []
   const current = open.find((item) => BATTLE_CHOICE_KINDS.has(item.question_type)) || open[0]
+  const gradedOn = current?.file ? (board?.project_dir ? `${board.project_dir}/${current.file}` : current.file) : board?.entry_file || 'your project file'
   const choice = Boolean(current && BATTLE_CHOICE_KINDS.has(current.question_type))
   const question = current ? questions[current.id] : null
   const asked = useRef(new Set())
@@ -3338,8 +3348,8 @@ function BattleBrief({ encounter, board, questions = {}, feedback, onAsk, onAnsw
         ) : (
           <>
             <strong>{current.label}</strong>
-            <p>{current.brief}</p>
-            <small>Build it in <code>{entry}</code>, then press <b>Submit run</b>.</small>
+            <DungeonPromptText text={current.brief} />
+            <small>Graded on <code>{gradedOn}</code>: open it in the Forge, then press <b>Submit run</b>.</small>
           </>
         )}
         {feedback && !String(feedback.objectiveId || '').startsWith('boss:') && <div className={`battle-feedback ${feedback.verdict}`} role="status">{feedback.verdict === 'correct' ? '✔ ' : '✘ '}{feedback.reason}</div>}

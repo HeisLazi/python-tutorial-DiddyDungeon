@@ -25,6 +25,10 @@ def use_real_content() -> None:
     state._CAMPAIGN_CACHE.update(key=None, data={})
 
 
+def state_module_base() -> Path:
+    return state.CAMPAIGN_BOUNTIES_PATH
+
+
 def story_files() -> list[dict]:
     return [json.loads(path.read_text(encoding="utf-8")) for path in sorted(CONTENT_DIR.glob("*.json"))]
 
@@ -65,10 +69,16 @@ class CampaignContentSchemaTests(unittest.TestCase):
                     code = kinds.count("code_checkpoint") + kinds.count("bug_diagnosis")
                     tier = mob.get("tier")
                     self.assertIn(tier, {None, "light", "quick", "elite"}, mob["name"])
+                    self.assertIn(mob.get("kind"), {None, "workshop", "debug", "memory", "creative"}, mob["name"])
+                    for item in objectives:
+                        for name in [item.get("file"), *item.get("see", [])]:
+                            self.assertTrue(name is None or state.project_file_name(name), (mob["name"], name))
                     if tier == "light":
-                        # An early, lighter fight: one coding task and two questions.
+                        # A lighter fight: one coding task and two questions, early on
+                        # or as the bounty that opens an act.
                         self.assertEqual((len(kinds), code), (3, 1), mob["name"])
-                        self.assertLessEqual(mob["act"], 2, mob["name"])
+                        opens_act = next(item for item in mobs if item["act"] == mob["act"]) is mob
+                        self.assertTrue(mob["act"] <= 2 or opens_act, mob["name"])
                     elif tier == "quick":
                         self.assertEqual((len(kinds), code), (2, 1), mob["name"])
                     elif tier == "elite":
@@ -77,6 +87,39 @@ class CampaignContentSchemaTests(unittest.TestCase):
                         # A standard contract: three or four goals, mostly building code.
                         self.assertTrue(3 <= len(kinds) <= 4, mob["name"])
                         self.assertGreaterEqual(code, len(kinds) / 2, mob["name"])
+
+    def test_full_length_campaigns_teach_the_whole_craft(self):
+        # A rebuilt (multi-file) campaign: 18-20 bounties in four acts, a
+        # workshop thread through every act, debugging, a rebuild from memory,
+        # a creative bounty, repeated concepts and a project the grader can see.
+        full = [entry for entry in story_files() if entry.get("multi_file")]
+        self.assertTrue(full)
+        for entry in full:
+            with self.subTest(branch=entry["branch"]):
+                mobs = entry["mobs"]
+                self.assertTrue(18 <= len(mobs) <= MAX_SYNC_MOBS_PER_PROJECT, len(mobs))
+                self.assertEqual(len(entry["acts"]), 4)
+                kinds = [mob.get("kind") for mob in mobs]
+                for act in entry["acts"]:
+                    self.assertTrue(any(mob.get("kind") == "workshop" for mob in mobs if mob["act"] == act["id"]), act["title"])
+                self.assertGreaterEqual(kinds.count("debug"), 2)
+                self.assertGreaterEqual(kinds.count("memory"), 1)
+                self.assertGreaterEqual(kinds.count("creative"), 1)
+                signs = [mob["sign"] for mob in mobs]
+                self.assertGreaterEqual(sum(signs.count(sign) >= 3 for sign in set(signs)), 3)
+                goals = [item for mob in mobs for item in mob["objectives"]]
+                self.assertTrue(55 <= len(goals) <= 75, len(goals))
+                code = sum(item["question_type"] in {"code_checkpoint", "bug_diagnosis"} for item in goals)
+                self.assertTrue(0.6 <= code / len(goals) <= 0.8, code / len(goals))
+                files = entry["project_files"]
+                # The project lives in its own folder, never the workspace root.
+                self.assertTrue(state.project_dir_name(entry["project_dir"]))
+                self.assertEqual(entry["entry_file"].split("/")[0], entry["project_dir"])
+                self.assertIn(entry["entry_file"].split("/")[-1], files)
+                self.assertTrue(all(state.project_file_name(name) for name in files))
+                named = {name for item in goals for name in [item.get("file"), *item.get("see", [])] if name}
+                self.assertLessEqual(named, set(files))
+                self.assertIn("README.md", named)
 
     def test_fights_vary_in_length_and_mix(self):
         files = story_files()
@@ -154,6 +197,58 @@ class CampaignExtensionTests(unittest.TestCase):
 
     def blackjack(self) -> dict:
         return next(project for project in self.read()["projects"] if project["branch"] == "01-blackjack")
+
+    def add_old_casino(self, **changes) -> None:
+        """Casino as the player's save holds it: the old board, seeded but unplayed."""
+
+        state = self.read()
+        old = json.loads(state_module_base().read_text(encoding="utf-8"))["04-casino-slots"]["mobs"]
+        casino = {"branch": "04-casino-slots", "name": "Casino / Slots", "status": "available", "progress": 0, "boss": "Lady Luck", "order": 4,
+                  "mobs": [{"name": mob["name"], "concept": mob["concept"], "encounter": mob["encounter"], "status": "available" if index == 0 else "locked"} for index, mob in enumerate(old)]}
+        casino.update(changes)
+        state["projects"].append(casino)
+        self.path.write_text(json.dumps(state), encoding="utf-8")
+
+    def casino(self) -> dict:
+        return next(project for project in self.read()["projects"] if project["branch"] == "04-casino-slots")
+
+    def test_an_unplayed_rewritten_board_is_reseeded_whole_and_follows_its_new_boss(self):
+        self.add_old_casino()
+        blackjack_before = self.blackjack()
+        self.service.apply_internal("campaign_extend", {})
+        casino = self.casino()
+        authored = [mob["name"] for mob in json.loads((CONTENT_DIR / "04-casino-slots.json").read_text(encoding="utf-8"))["mobs"]]
+        self.assertEqual([mob["name"] for mob in casino["mobs"]], authored)
+        self.assertEqual(len(casino["mobs"]), 20)
+        self.assertEqual([mob["status"] for mob in casino["mobs"]], ["available"] + ["locked"] * 19)
+        self.assertEqual(casino["boss"], "Ekse Ouens P Diddy")
+        self.assertTrue(casino["multi_file"])
+        self.assertEqual(casino["entry_file"], "silver_reels/casino.py")
+        blackjack_after = self.blackjack()
+        self.assertEqual([(mob["name"], mob["status"]) for mob in blackjack_after["mobs"][:8]], [(mob["name"], mob["status"]) for mob in blackjack_before["mobs"][:8]])
+        once = self.read()
+        self.service.apply_internal("campaign_extend", {})
+        self.assertEqual(self.read()["projects"], once["projects"])  # doing it again changes nothing
+
+    def test_a_board_with_any_progress_is_never_reseeded(self):
+        self.add_old_casino()
+        state = self.read()
+        casino = next(project for project in state["projects"] if project["branch"] == "04-casino-slots")
+        casino["mobs"][0]["status"] = "defeated"
+        self.path.write_text(json.dumps(state), encoding="utf-8")
+        self.service.apply_internal("campaign_extend", {})
+        self.assertEqual(self.casino()["mobs"][0]["name"], "The Coin Rat")
+        self.assertEqual(self.casino()["mobs"][1]["name"], "The Spin Imp")
+        self.assertEqual(self.casino()["mobs"][0]["status"], "defeated")
+        self.assertEqual(len(self.casino()["mobs"]), 20)  # old board kept, then topped up to the cap
+
+    def test_a_goal_can_name_the_file_it_is_graded_on(self):
+        board = self.service.campaign_board(self.service.campaign_view({**self.read(), "projects": [
+            {"branch": "04-casino-slots", "name": "Casino / Slots", "status": "active", "boss": "Ekse Ouens P Diddy", "mobs": [
+                {"name": "The File Splitter", "concept": "Modules", "encounter": "Split it.", "status": "available"}]}]}))
+        splitter = board["contracts"][0]
+        self.assertEqual(splitter["kind"], "workshop")
+        self.assertEqual([item.get("file") for item in splitter["objectives"]], ["reels.py", "payouts.py", "casino.py", None])
 
     def test_an_extended_board_reopens_with_the_new_contracts_and_relocks_the_boss(self):
         result = self.service.apply_internal("campaign_extend", {})

@@ -1571,3 +1571,11 @@
 .forge-v2 .resource-ide-heading > div { flex: 1 1 auto; min-width: 0; }
 .forge-v2 .resource-ide-heading > label { flex: none; }
 .forge-v2 .resource-ide-heading pre, .forge-v2 .pyr-practice-question pre { overflow-x: auto; max-width: 100%; }
+
+/* Bounty kind ribbon: workshop, debug, from memory, make it yours. */
+.bounty-poster .poster-kind { display: inline-block; margin: 2px 0; padding: 1px 6px; border: 1px solid currentColor; font-size: 9px; letter-spacing: .08em; }
+.bounty-poster .poster-kind.kind-workshop { color: #7dd3fc; }
+.bounty-poster .poster-kind.kind-debug { color: #f87171; }
+.bounty-poster .poster-kind.kind-memory { color: #c4b5fd; }
+.bounty-poster .poster-kind.kind-creative { color: #fbbf24; }
+.battle-brief-question .dungeon-prompt-text { font-size: inherit; }

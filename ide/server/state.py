@@ -75,6 +75,26 @@ def load_campaign_bounties() -> dict[str, Any]:
     return data
 
 
+PROJECT_FILE_NAME = re.compile(r"^[A-Za-z0-9_][A-Za-z0-9_.-]{0,80}\.(?:py|md|json|txt)$")
+# The kinds of bounty a campaign can author, shown on its poster.
+CONTRACT_KINDS = frozenset({"workshop", "debug", "memory", "creative"})
+
+
+PROJECT_DIR_NAME = re.compile(r"^[a-z0-9][a-z0-9_-]{0,40}$")
+
+
+def project_dir_name(value: object) -> str:
+    """A multi-file campaign's own folder in the workspace (never the root)."""
+
+    return value if isinstance(value, str) and PROJECT_DIR_NAME.match(value) else ""
+
+
+def project_file_name(value: object) -> str | None:
+    """A plain project file name (no folders) a goal can be graded on."""
+
+    return value if isinstance(value, str) and PROJECT_FILE_NAME.match(value) and value not in {"tutor.py", "dungeon.py"} else None
+
+
 def campaign_contract(branch: object, mob_name: object) -> dict[str, Any] | None:
     """The authored contract for one bounty, matched by name (never index)."""
 
@@ -3279,6 +3299,8 @@ class LocalStateService:
                 "brief": str(definition.get("brief") or "Submit your own evidence for this objective."),
                 "impact": int(definition["impact"]),
                 "question_type": str(definition["question_type"]),
+                **({"file": definition["file"]} if definition.get("file") else {}),
+                **({"see": list(definition["see"])} if definition.get("see") else {}),
             }
             for objective_id, definition in profile["objectives"].items()
             if objective_id not in completed_ids
@@ -7094,6 +7116,8 @@ class LocalStateService:
                     "question_type": str(item["question_type"]),
                     "label": str(item["label"]),
                     "brief": str(item["brief"]),
+                    **({"file": project_file_name(item.get("file"))} if project_file_name(item.get("file")) else {}),
+                    **({"see": [name for name in item["see"] if project_file_name(name)][:4]} if isinstance(item.get("see"), list) else {}),
                 }
                 for item in authored
                 if isinstance(item, Mapping) and item.get("question_type") in CAMPAIGN_QUESTION_TYPES
@@ -7181,6 +7205,19 @@ class LocalStateService:
                     project["mobs"] = [{"name": item["name"], "concept": item["concept"], "encounter": item["encounter"], "status": "defeated", "resolve": 0} for item in authored]
                     changed = True
                 continue
+            if isinstance(entry.get("boss"), str) and entry["boss"] and project.get("boss") != entry["boss"]:
+                # The boss is authored content: an unfinished campaign follows a renamed boss.
+                project["boss"] = entry["boss"]
+                changed = True
+            if entry.get("multi_file") is True and project.get("multi_file") is not True:
+                project["multi_file"] = True
+                changed = True
+            if self._reseed_untouched_board(progress, project, authored):
+                mobs = project.get("mobs")
+                if isinstance(entry.get("entry_file"), str):
+                    # A rewritten campaign may move into its own project folder.
+                    project["entry_file"] = entry["entry_file"]
+                changed = True
             if isinstance(mobs, list):
                 for mob in mobs:
                     contract = by_name.get(mob.get("name")) if isinstance(mob, dict) else None
@@ -7227,6 +7264,34 @@ class LocalStateService:
             project["progress"] = round(cleared / max(1, len(mobs)) * 100)
             changed = True
         return changed
+
+    @staticmethod
+    def _reseed_untouched_board(progress: Mapping[str, Any], project: dict[str, Any], authored: list[Mapping[str, Any]]) -> bool:
+        """Replace a board nobody has played when its campaign was rewritten.
+
+        Only a board that is not the active one, has nothing cleared and is not
+        the current fight is replaced, so no progress can ever be lost; it is
+        replaced whole (never appended to) and doing it twice changes nothing.
+        """
+
+        mobs = project.get("mobs")
+        if not authored or not isinstance(mobs, list) or not mobs or project.get("status") == "active":
+            return False
+        names = [item.get("name") for item in mobs if isinstance(item, Mapping)]
+        if names == [item["name"] for item in authored]:
+            return False
+        if any(isinstance(item, Mapping) and item.get("status") in {"defeated", "cleared"} for item in mobs):
+            return False
+        encounter = progress.get("encounter_state")
+        if isinstance(encounter, Mapping) and encounter.get("mob_name") in names:
+            return False
+        project["mobs"] = [{"name": item["name"], "concept": item["concept"], "encounter": item["encounter"], "status": "locked"} for item in authored]
+        project["mobs"][0]["status"] = "available"
+        project["progress"] = 0
+        project.pop("boss_status", None)
+        project.pop("boss_validation", None)
+        project["mob_sequence_complete"] = False
+        return True
 
     def _campaign_extend(self, payload: Mapping[str, Any], progress: dict[str, Any]) -> Mutation:
         self._payload(payload, set(), set())
@@ -7308,13 +7373,15 @@ class LocalStateService:
                 "beast": HUNTER_BEASTS[sign]["beast"] if sign in HUNTER_BEASTS else None,
                 # light (one code task, two questions), quick (two goals) or elite (four or five).
                 "tier": contract.get("tier") if contract.get("tier") in {"light", "quick", "elite"} else None,
-                "objectives": [{"id": key, "label": value["label"], "question_type": value["question_type"]} for key, value in profile["objectives"].items()],
+                "kind": contract.get("kind") if contract.get("kind") in CONTRACT_KINDS else None,
+                "objectives": [{"id": key, "label": value["label"], "question_type": value["question_type"], **({"file": value["file"]} if value.get("file") else {})} for key, value in profile["objectives"].items()],
             })
         return {
             "branch": project.get("branch"),
             "name": project.get("name"),
             "boss": project.get("boss"),
             "entry_file": project.get("entry_file") or entry.get("entry_file"),
+            "project_dir": project_dir_name(entry.get("project_dir")),
             "story": {key: story[key] for key in ("title", "client", "hook") if isinstance(story.get(key), str)},
             "acts": acts,
             "boss_brief": entry.get("boss_brief") if isinstance(entry.get("boss_brief"), str) else None,

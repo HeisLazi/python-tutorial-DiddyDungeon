@@ -1264,8 +1264,8 @@ function AppV2() {
   const forgeSubmission = () => {
     const path = String(activePath || '').replaceAll('\\', '/')
     const filename = path.split('/').at(-1)?.toLowerCase() || ''
-    if (!path.toLowerCase().endsWith('.py') || filename === 'tutor.py' || filename === 'dungeon.py') {
-      throw new Error('Open the active campaign .py file in Forge before submitting it.')
+    if (!/\.(py|md)$/i.test(path) || filename === 'tutor.py' || filename === 'dungeon.py') {
+      throw new Error('Open the campaign .py or README .md file this goal is graded on, then submit it.')
     }
     if (!String(code || '').trim()) throw new Error('Save or write evidence in the active Forge file before submitting it.')
     return { path, answer: String(code) }
@@ -1409,8 +1409,16 @@ function AppV2() {
     if (bossMode) return submitBoss()
     // Submit run answers BUILD / FIX objectives with the project file; PREDICT
     // and EXPLAIN objectives are clickable questions in the battle sidebar.
-    const currentQuest = (encounter.available_objectives || []).find((item) => !BATTLE_CHOICE_TYPES.has(item.question_type))
+    // A goal that names its file is graded on that file, so submit the open
+    // goal that matches the file in the editor (README.md, test_casino.py...).
+    const codeGoals = (encounter.available_objectives || []).filter((item) => !BATTLE_CHOICE_TYPES.has(item.question_type))
+    const openPath = String(activePath || '').replaceAll('\\', '/')
+    const board = campaign?.campaign_board || {}
+    const goalPath = (item) => (item.file ? (board.project_dir ? `${board.project_dir}/${item.file}` : item.file) : String(board.entry_file || ''))
+    const multiFile = (progress.projects || []).some((item) => item?.status === 'active' && item.multi_file === true)
+    const currentQuest = codeGoals.find((item) => goalPath(item) === openPath) || (multiFile || codeGoals.some((item) => item.file) ? null : codeGoals[0])
     if (!currentQuest?.id) {
+      if (codeGoals.length) throw new Error(`Open ${goalPath(codeGoals[0]) || 'the project file'} to submit "${codeGoals[0].label}".`)
       if ((encounter.available_objectives || []).length) throw new Error('Answer the question in the battle sidebar: this objective is a click, not a file.')
       throw new Error('There is no current state-owned quest to submit yet.')
     }

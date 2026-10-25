@@ -420,7 +420,9 @@ def judge(kind: str, *, context: Any, answer: str, question: str = "") -> dict[s
             (
                 f"Task: decide whether the learner's submission satisfies {JUDGE_TASKS[kind]}. "
                 "Be fair to beginners: correct-but-unpolished work passes; work that misses the "
-                "objective, does not run, or answers a different question fails."
+                "objective, does not run, or answers a different question fails. When the context lists "
+                "project_files and related_files, judge the goal against the whole project: a file the "
+                "objective names must exist and do its job."
             ),
             f"Question / objective:\n{_bounded(question, 4_000)}" if question else "",
             f"Bounded game context (JSON):\n{_bounded(context, MAX_CONTEXT_CHARS)}",
