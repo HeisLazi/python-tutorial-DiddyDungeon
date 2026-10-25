@@ -3092,7 +3092,7 @@ def _grading_files(kind: str, submission: dict) -> dict | None:
     entry = load_campaign_bounties().get(str(project.get("branch") or ""))
     if not isinstance(entry, dict) or entry.get("multi_file") is not True:
         return None
-    names = [name for name in entry.get("project_files", []) if project_file_name(name)][:12]
+    names = [name for name in entry.get("project_files", []) if project_file_name(name)][:20]
     folder = WORKSPACE / project_dir_name(entry.get("project_dir"))
     listing = []
     for name in names:

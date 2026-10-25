@@ -75,7 +75,8 @@ def load_campaign_bounties() -> dict[str, Any]:
     return data
 
 
-PROJECT_FILE_NAME = re.compile(r"^[A-Za-z0-9_][A-Za-z0-9_.-]{0,80}\.(?:py|md|json|txt)$")
+# A project file, at most one folder deep (crawler/world.py, tests/test_world.py).
+PROJECT_FILE_NAME = re.compile(r"^[A-Za-z0-9_][A-Za-z0-9_.-]{0,40}(?:/[A-Za-z0-9_][A-Za-z0-9_.-]{0,80})?\.(?:py|md|json|txt|toml|cfg|ini)$")
 # The kinds of bounty a campaign can author, shown on its poster.
 CONTRACT_KINDS = frozenset({"workshop", "debug", "memory", "creative"})
 
@@ -7217,6 +7218,8 @@ class LocalStateService:
                 if isinstance(entry.get("entry_file"), str):
                     # A rewritten campaign may move into its own project folder.
                     project["entry_file"] = entry["entry_file"]
+                if isinstance(entry.get("name"), str) and entry["name"]:
+                    project["name"] = entry["name"]
                 changed = True
             if isinstance(mobs, list):
                 for mob in mobs:

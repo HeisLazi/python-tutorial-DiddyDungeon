@@ -1,195 +1,209 @@
 {
   "branch": "05-dungeon-crawler",
-  "name": "Dungeon Crawler + RPG Shop",
-  "boss": "The Dungeon Core",
+  "name": "The Deep Crawler",
+  "boss": "Die Tozza van Zamalek",
   "order": 5,
-  "entry_file": "crawler.py",
-  "concept_focus": "Systems on shared state, then a real map: grids, fog, procedural levels, pathfinding and saves",
-  "story": {
-    "title": "Below the Old Mine",
-    "client": "Foreman Brigid of the collapsed Deepvein mine",
-    "hook": "The Deepvein mine broke into something older than the mine, and things keep climbing out. Brigid needs a crawler built: first the fights and the shop, then a real map below, one that changes every time you go down, so her miners can practise before they face the Core."
-  },
+  "entry_file": "deep_crawler/play.py",
+  "project_dir": "deep_crawler",
+  "multi_file": true,
+  "project_files": ["play.py", "README.md", "pyproject.toml", "CHANGELOG.md", "crawler/__init__.py", "crawler/entities.py", "crawler/world.py", "crawler/pathfinding.py", "crawler/events.py", "crawler/errors.py", "crawler/saves.py", "crawler/cli.py", "tests/conftest.py", "tests/test_entities.py", "tests/test_world.py", "tests/test_pathfinding.py", "tests/test_events.py", "tests/test_saves.py", "memory_astar.py"],
+  "concept_focus": "Hard Python: a real package with dataclasses, enums, generators, search algorithms, an installable CLI, events, decorators, context managers, logging, pytest, profiling and type checking",
+  "story": {"title": "Below the Old Mine", "client": "Foreman Brigid of the collapsed Deepvein mine", "hook": "The Deepvein mine broke into the halls of Die Tozza van Zamalek, who rebuilds the maze every night and sells maps that lead nowhere. Brigid needs a crawler her miners can trust: a real package they can install, floors that are random but repeatable, a pathfinder that never lies, saves that survive a crash, and tests that prove all of it."},
   "acts": [
-    {"id": 1, "title": "Act I: The First Descent", "goal": "Player state, a fight, potions and gold that stays with you."},
-    {"id": 2, "title": "Act II: The Run", "goal": "Varied enemies, a shop, numbered rooms with events and a mini-boss that ends runs."},
-    {"id": 3, "title": "Act III: The Deep Map", "goal": "A grid to walk, fog of war, equipment, generated mazes and a path-finding guide."},
-    {"id": 4, "title": "Act IV: The Core", "goal": "Save and load the whole run, and a boss with phases at the bottom."}
+    {"id": 1, "title": "Act I: The Gate", "goal": "A real package and data you can trust: modules, dataclasses, enums, shared-state bugs and seeded floors."},
+    {"id": 2, "title": "Act II: The Depths", "goal": "Generators, breadth-first search, A*, fog of war, and a virtual environment with a crawl command."},
+    {"id": 3, "title": "Act III: The Machinery", "goal": "An event bus, decorators, context managers, an error family, closures and logging."},
+    {"id": 4, "title": "Act IV: The Core", "goal": "A pytest suite, profiling, type checking, A* from memory and a system of your own design."}
   ],
-  "boss_lore": "The Core is the dungeon's heart. Every room you walked through was part of it, and it has been learning your path.",
-  "boss_brief": "Bring a finished crawler.py: shared player state, fights, potions, a shop and gold, a generated grid map with fog and a guaranteed exit, equipment that changes stats, path-finding, a full save and load, and a phased boss at the bottom.",
-  "boss_twist": "The Dungeon Core rebuilds the map under you. Write generate_dungeon(width, height, seed) that guarantees a walkable path from the start to the exit, checked with your own path-finding and regenerated when the check fails. Write save_game(state, path) and load_game(path) so a loaded game equals the saved one, equipment and fog included. A missing or corrupted save file must give a clear message instead of a crash.",
-  "boss_gauntlet": ["required_behavior", "edge_cases", "explanation", "twist_2", "twist_3", "interview"],
-  "boss_phases": {"twist_2": {"label": "Phase 2: The Core floods the halls", "quest": "The Core starts flooding rooms. Each turn, water spreads from flooded tiles to open neighbours; flooded tiles cost an extra move and deal damage. Write spread_flood(grid) and make path-finding prefer dry tiles, falling back to wet ones only when no dry path exists."}, "twist_3": {"label": "Phase 3: The Core's last heartbeat", "quest": "Record every move, fight and purchase in a run log, save it with the score, and write replay(log) that prints the run step by step. Two runs from the same seed with the same moves must produce identical logs; prove it with an assert."}},
+  "boss_lore": "Die Tozza van Zamalek runs the deep halls like a market: every corridor for sale, every map a little wrong, and the maze rebuilt every night. Nobody has reached the bottom with a working save.",
+  "boss_brief": "Bring the finished deep_crawler package: installed with pip install -e . and run as crawl with --seed, --size and --radius; seeded floors with a guaranteed way down; BFS and A* that agree; fog of war; dataclass entities; an event bus, decorators and atomic saves through a context manager; logging; a passing pytest suite; mypy clean; and a README that explains install, run, test and the architecture.",
+  "boss_twist": "The Tozza's halls shift: every five turns walls move. Write shift_walls(grid, rng) that toggles walls while keeping the stairs reachable (re-check with your pathfinder), make monsters re-plan their paths after a shift, and add tests proving the stairs stay reachable across 1,000 seeded shifts.",
+  "boss_gauntlet": ["required_behavior", "edge_cases", "twist_2", "explanation", "twist_3", "twist_4", "interview"],
+  "boss_phases": {"edge_cases": {"label": "Phase 1: The shifting halls"}, "twist_2": {"label": "Phase 2: The horde", "quest": "The Tozza releases a horde: 200 monsters path toward the hero every turn. Profile a 100-turn run on a 60x60 floor, then make it finish in under two seconds (cache paths, reuse results, or compute one breadth-first distance map from the hero that every monster follows). Print the before and after timings."}, "twist_3": {"label": "Phase 3: The corrupted save", "quest": "The Tozza corrupts saves mid-write. Make saves versioned (a schema_version field and a migration from version 1 to version 2) and verified (a checksum), on top of atomic writes. Add tests: a crash halfway through a write never loses the last good save, a tampered save raises SaveCorrupted, and an old version 1 save still loads."}, "twist_4": {"label": "Phase 4: Ship it", "quest": "Release the crawler: build a wheel with python -m build, install it into a brand new virtual environment from the wheel, and run crawl --seed 7 there. Bump the version to 1.0.0, write CHANGELOG.md, and make sure the README's install steps work for someone who has never seen the project."}},
   "mobs": [
     {
-      "name": "The Hollow Adventurer", "concept": "Dictionaries for player state",
-      "encounter": "Decide what the player must carry between rooms and how to keep HP, attack, gold and potions together in one place.",
-      "act": 1, "sign": "dictionaries",
-      "contract": "Brigid's first miner went down with a pocketful of numbers and lost half of them by the second room. Keep everything the player is in one place.",
+      "name": "The Hollow Adventurer", "concept": "Packages, modules and a thin entry point", "encounter": "Make deep_crawler with a crawler package and a play.py launcher, and run it.", "act": 1, "sign": "functions", "tier": "light", "kind": "workshop",
+      "contract": "Brigid's miners keep losing scripts in one giant file. Start the way real projects start: a folder, a package, and a thin door into it.",
       "objectives": [
-        {"id": "player_state", "label": "Pack the player", "question_type": "code_checkpoint", "impact": 3, "brief": "In crawler.py, keep the player's name, HP, max HP, attack, gold and potions in one dictionary."},
-        {"id": "status_line", "label": "Show the status", "question_type": "code_checkpoint", "impact": 2, "brief": "Write a function that prints a one-line status from that dictionary."},
-        {"id": "state_reason", "label": "Explain one place", "question_type": "explanation", "impact": 2, "brief": "Explain why one dictionary is safer than six loose variables once functions start changing the player."}
+        {"id": "package_shape", "label": "Shape the package", "question_type": "code_checkpoint", "impact": 4, "brief": "Make the folder deep_crawler. Inside it create the package crawler/ (crawler/__init__.py with a __version__ = \"0.1.0\" line) and play.py, a launcher of three lines that imports crawler and prints its version. Run it from the terminal: cd deep_crawler, then python play.py.", "file": "play.py", "see": ["crawler/__init__.py"]},
+        {"id": "package_vs_module", "label": "Package or module", "question_type": "explanation", "impact": 2, "brief": "Explain the difference between a module and a package, and what __init__.py does when you import crawler."},
+        {"id": "import_path", "label": "Predict the import", "question_type": "prediction", "impact": 2, "brief": "Predict what happens if you run python play.py from the folder above deep_crawler instead of inside it, and why."}
       ]
     },
     {
-      "name": "The Tunnel Rat", "concept": "Combat loop and conditionals",
-      "encounter": "Make one enemy fight work with attack and run choices, and explain when the enemy gets to act.",
-      "act": 1, "sign": "conditionals",
-      "contract": "Something with teeth blocks the tunnel. Fight it, or run, and know who strikes when.",
+      "name": "The Stat Golem", "concept": "Dataclasses and type hints", "encounter": "Model the hero and monsters as dataclasses with types, defaults and validation.", "act": 1, "sign": "classes",
+      "contract": "The Golem is all numbers and no rules: health below zero, attack as a string. Give your creatures a shape that refuses nonsense.",
       "objectives": [
-        {"id": "fight_loop", "label": "Fight the rat", "question_type": "code_checkpoint", "impact": 4, "brief": "Loop a fight where the player chooses attack or run and the enemy strikes back after the player's turn."},
-        {"id": "run_away", "label": "Run away", "question_type": "code_checkpoint", "impact": 2, "brief": "Let running succeed on a chance, and give the enemy a free hit when it fails."},
-        {"id": "turn_bug", "label": "Order the turns", "question_type": "bug_diagnosis", "impact": 2, "brief": "Explain the bug where a dead enemy still strikes back, and show your loop checks first."}
+        {"id": "entities", "label": "Model the creatures", "question_type": "code_checkpoint", "impact": 4, "brief": "In crawler/entities.py write @dataclass classes Hero and Monster with type hints: name, hp, max_hp, attack, defence and a position tuple, with sensible defaults.", "file": "crawler/entities.py"},
+        {"id": "post_init", "label": "Refuse nonsense", "question_type": "code_checkpoint", "impact": 3, "brief": "Add __post_init__ validation so hp above max_hp, negative stats or a non-tuple position raise ValueError with a clear message.", "file": "crawler/entities.py"},
+        {"id": "dataclass_gain", "label": "Why dataclasses", "question_type": "explanation", "impact": 2, "brief": "Explain what @dataclass writes for you (look at __init__, __repr__ and __eq__), and when you would still write a normal class."}
       ]
     },
     {
-      "name": "The Potion Leech", "concept": "Inventory quantities",
-      "encounter": "Let the player heal from a limited potion supply and reason about what should happen when it runs out.",
-      "act": 1, "sign": "variables",
-      "contract": "The Leech drinks your potions when you are not looking. Count them carefully and never drink one you do not have.",
+      "name": "The Enum Warden", "concept": "Enums and structural pattern matching", "encounter": "Describe tiles and directions with Enums and act on them with match.", "act": 1, "sign": "conditionals", "tier": "quick",
+      "contract": "The Warden speaks only in numbers: 0 is floor, 1 is wall, 7 is... nobody remembers. Give every tile and direction a real name.",
       "objectives": [
-        {"id": "use_potion", "label": "Drink a potion", "question_type": "code_checkpoint", "impact": 3, "brief": "Add a potion choice in a fight that heals without passing max HP and uses one potion."},
-        {"id": "empty_flask", "label": "Handle an empty flask", "question_type": "code_checkpoint", "impact": 2, "brief": "Refuse to heal when there are no potions left, without wasting the player's turn."},
-        {"id": "overheal_bug", "label": "Stop the overheal", "question_type": "bug_diagnosis", "impact": 2, "brief": "Explain how a potion could take HP above max HP and show your fix."}
+        {"id": "tiles_enum", "label": "Name the tiles", "question_type": "code_checkpoint", "impact": 5, "brief": "In crawler/world.py define Tile (FLOOR, WALL, DOOR, STAIRS) and Direction (N, E, S, W with a (dx, dy) value) as Enums, and write describe(tile) using match with a case for every tile.", "file": "crawler/world.py"},
+        {"id": "enum_compare", "label": "Enum or number", "question_type": "prediction", "impact": 2, "brief": "Predict what Tile.WALL == 1 and Tile.WALL.value == 1 give, and explain why the first is safer to get wrong loudly."}
       ]
     },
     {
-      "name": "The Gold Goblin", "concept": "Updating shared state",
-      "encounter": "Award gold after a victory and explain why the reward must land on the same player state that survives into the next room.",
-      "act": 1, "sign": "functions",
-      "contract": "The Goblin pays well, but only if the coins land in the purse you carry out of the room.",
+      "name": "The Shared Satchel", "concept": "Mutable defaults and object references", "encounter": "Find why every hero shares one inventory, and fix it.", "act": 1, "sign": "references", "kind": "debug",
+      "contract": "Two heroes walked in. One picked up a key, and both of them have it. Something in the satchel is shared.",
       "objectives": [
-        {"id": "award_gold", "label": "Pay the reward", "question_type": "code_checkpoint", "impact": 3, "brief": "Write a function that gives the player gold after a win by changing the player dictionary passed in."},
-        {"id": "two_rooms", "label": "Carry it onward", "question_type": "code_checkpoint", "impact": 2, "brief": "Fight two enemies in a row and show the gold and HP carry over between them."},
-        {"id": "local_bug", "label": "Explain the lost coins", "question_type": "bug_diagnosis", "impact": 3, "brief": "Explain why gold = gold + 10 inside a function does not change the player's gold, while player['gold'] += 10 does."}
+        {"id": "satchel_bug", "label": "Unshare the satchel", "question_type": "bug_diagnosis", "impact": 4, "brief": "This is the rival crawler's hero:\n```python\n@dataclass\nclass Hero:\n    name: str\n    inventory: list = []\n```\nRun it and read the error, then explain why Python refuses it and why a normal class with def __init__(self, inventory=[]) is worse. Fix your Hero with field(default_factory=list).", "file": "crawler/entities.py"},
+        {"id": "prove_unshared", "label": "Prove it", "question_type": "code_checkpoint", "impact": 3, "brief": "Write a short script or test showing two heroes picking up different items and keeping separate inventories.", "file": "tests/test_entities.py"},
+        {"id": "reference_explain", "label": "Names and objects", "question_type": "explanation", "impact": 2, "brief": "Explain the difference between two names pointing at one list and two separate lists, using id() or is."}
       ]
     },
     {
-      "name": "The Spawn Pit", "concept": "Randomness and functions that build data",
-      "encounter": "Generate enemies with different stats so fights vary, and explain where randomness enters each one.",
-      "act": 2, "sign": "random-selection",
-      "contract": "The pit spits out something new each time: bigger, faster, nastier. Make enemies from templates plus a little chaos.",
+      "name": "The Seeded Maze", "concept": "Procedural generation with seeds", "encounter": "Generate a dungeon floor from a seed, with a path guaranteed from start to stairs.", "act": 1, "sign": "grids", "tier": "elite",
+      "contract": "Every miner wants a fresh floor, and Brigid wants to replay the one that killed them. Make floors random and repeatable.",
       "objectives": [
-        {"id": "templates", "label": "Write enemy templates", "question_type": "code_checkpoint", "impact": 3, "brief": "Keep enemy types (name, base HP, attack, gold) in a list of dictionaries."},
-        {"id": "make_enemy", "label": "Spawn an enemy", "question_type": "code_checkpoint", "impact": 3, "brief": "Write make_enemy(depth) that copies a random template and varies its stats, stronger the deeper you are."},
-        {"id": "template_bug", "label": "Keep templates clean", "question_type": "bug_diagnosis", "impact": 2, "brief": "Explain why damaging an enemy made from a template without copying it would weaken every later enemy of that type."}
+        {"id": "generate", "label": "Carve the floor", "question_type": "code_checkpoint", "impact": 4, "brief": "Write generate_floor(width, height, seed) in crawler/world.py that returns a grid of Tiles using its own random.Random(seed), never the global random.", "file": "crawler/world.py"},
+        {"id": "reachable", "label": "Guarantee a way down", "question_type": "code_checkpoint", "impact": 3, "brief": "Flood-fill from the start; if the stairs are unreachable, carve a corridor or regenerate, so every floor can be finished.", "file": "crawler/world.py"},
+        {"id": "seed_test", "label": "Same seed, same floor", "question_type": "code_checkpoint", "impact": 3, "brief": "Add tests that the same seed gives the same floor, different seeds usually differ, and the stairs are always reachable over 200 seeds.", "file": "tests/test_world.py"},
+        {"id": "seed_reason", "label": "Why its own Random", "question_type": "explanation", "impact": 2, "brief": "Explain why a private random.Random(seed) beats calling random.seed() at the top of the program."}
       ]
     },
     {
-      "name": "The Merchant Shade", "concept": "Shop loop with lists and dictionaries",
-      "encounter": "Build a shop that shows items and prices, checks affordability, updates gold and inventory, and lets the player leave empty-handed.",
-      "act": 2, "sign": "dictionaries",
-      "contract": "A shade sells potions and blades by lantern light. It never gives credit and never lets you leave with what you did not pay for.",
+      "name": "The Wandering Eye", "concept": "Generators and lazy iteration", "encounter": "Yield the moves a creature can make instead of building lists.", "act": 2, "sign": "loops", "tier": "light",
+      "contract": "The Eye looks everywhere at once and drowns in it. Teach it to look one step at a time.",
       "objectives": [
-        {"id": "shop_menu", "label": "Open the shop", "question_type": "code_checkpoint", "impact": 3, "brief": "Show the items and prices as a numbered menu, with the player's gold."},
-        {"id": "buy_item", "label": "Buy an item", "question_type": "code_checkpoint", "impact": 4, "brief": "Buying takes the gold and adds the item or its effect in one step; refuse it if the player cannot afford it."},
-        {"id": "leave_shop", "label": "Leave the shop", "question_type": "code_checkpoint", "impact": 2, "brief": "Let the player buy several things or none and leave when they choose."}
+        {"id": "neighbours", "label": "Yield the moves", "question_type": "code_checkpoint", "impact": 4, "brief": "Write neighbours(grid, pos) as a generator that yields each walkable (x, y) next to pos, using your Direction enum.", "file": "crawler/world.py"},
+        {"id": "lazy_predict", "label": "Predict laziness", "question_type": "prediction", "impact": 2, "brief": "Predict what printing neighbours(grid, (1, 1)) shows before and after wrapping it in list(), and what happens if you loop over the same generator twice."},
+        {"id": "generator_why", "label": "Why yield", "question_type": "explanation", "impact": 2, "brief": "Explain when a generator beats returning a list, in memory and in time."}
       ]
     },
     {
-      "name": "The Floor Stalker", "concept": "Counters, random rooms and modulo",
-      "encounter": "Advance through numbered rooms with random events and reason about how the game knows a shop is due.",
-      "act": 2, "sign": "loops",
-      "tier": "quick",
-      "contract": "The Stalker follows you room to room. Count the rooms, roll what is in each, and open a shop every few.",
+      "name": "The Pathfinder", "concept": "Breadth-first search", "encounter": "Find the shortest path across the floor, or report there is none.", "act": 2, "sign": "search",
+      "contract": "Miners keep dying in dead ends. The Pathfinder knows the shortest way and will not tell you; work it out yourself.",
       "objectives": [
-        {"id": "room_walk", "label": "Walk the rooms", "question_type": "code_checkpoint", "impact": 5, "brief": "Loop through numbered rooms where each holds a fight, treasure or nothing at random, and open the shop every fifth room using the room number and %."},
-        {"id": "modulo_trace", "label": "Predict the shops", "question_type": "prediction", "impact": 2, "brief": "Predict which rooms from 1 to 20 have a shop, then run it."}
+        {"id": "bfs", "label": "Breadth-first", "question_type": "code_checkpoint", "impact": 4, "brief": "Write shortest_path(grid, start, goal) in crawler/pathfinding.py with breadth-first search and collections.deque, returning the list of positions, or None when there is no way.", "file": "crawler/pathfinding.py", "see": ["crawler/world.py"]},
+        {"id": "bfs_tests", "label": "Test the edges", "question_type": "code_checkpoint", "impact": 3, "brief": "Test a straight corridor, a maze with one route, start == goal, and an unreachable goal.", "file": "tests/test_pathfinding.py"},
+        {"id": "bfs_shortest", "label": "Why shortest", "question_type": "explanation", "impact": 2, "brief": "Explain why breadth-first search finds the shortest path on a grid where every step costs the same."}
       ]
     },
     {
-      "name": "The Mini-Boss", "concept": "Scheduled events and end-of-run state",
-      "encounter": "Bring a tougher encounter every few rooms and end the run on death with a final score.",
-      "act": 2, "sign": "control-flow",
-      "tier": "elite",
-      "contract": "Every tenth room something big is waiting. Beat it and go deeper; fall and the run is over, with your score carved on the wall.",
+      "name": "The Star Seeker", "concept": "A* search with a heap", "encounter": "Find paths faster with A*, a priority queue and a heuristic.", "act": 2, "sign": "search", "tier": "elite",
+      "contract": "On a big floor your breadth-first search crawls. The Seeker moves toward the goal on purpose. Learn its trick.",
       "objectives": [
-        {"id": "boss_every_n", "label": "Schedule the mini-boss", "question_type": "code_checkpoint", "impact": 3, "brief": "Make every tenth room a stronger enemy with a bigger reward."},
-        {"id": "death_end", "label": "End the run", "question_type": "code_checkpoint", "impact": 3, "brief": "End the run when the player dies and show rooms cleared, gold and a score."},
-        {"id": "end_reason", "label": "Explain the score", "question_type": "explanation", "impact": 2, "brief": "Explain how your score is calculated and why it rewards going deeper over hoarding gold."},
-        {"id": "telegraph", "label": "Read the wind-up", "question_type": "code_checkpoint", "impact": 3, "brief": "Give the mini-boss one attack it announces a turn early, and let the player defend that turn to halve the damage."}
+        {"id": "astar", "label": "Write A*", "question_type": "code_checkpoint", "impact": 4, "brief": "Write astar(grid, start, goal) in crawler/pathfinding.py using heapq and a Manhattan-distance heuristic, returning the same paths as your BFS.", "file": "crawler/pathfinding.py"},
+        {"id": "expansions", "label": "Count the work", "question_type": "code_checkpoint", "impact": 3, "brief": "Count the nodes each search expands and print both counts on a 60x60 floor.", "file": "crawler/pathfinding.py"},
+        {"id": "astar_tests", "label": "Same answers", "question_type": "code_checkpoint", "impact": 3, "brief": "Add parametrised tests that astar and shortest_path return paths of equal length on 50 seeded floors.", "file": "tests/test_pathfinding.py"},
+        {"id": "heuristic_rule", "label": "The heuristic's rule", "question_type": "explanation", "impact": 2, "brief": "Explain why Manhattan distance never overestimates on this grid, and what goes wrong if a heuristic does."}
       ]
     },
     {
-      "name": "The Cartographer", "concept": "A 2D grid map and movement",
-      "encounter": "Replace numbered rooms with a grid the player walks across.",
-      "act": 3, "sign": "grids",
-      "contract": "Brigid's miners need a real map: rooms side by side, walls between them, and a hunter who can walk north, south, east and west.",
+      "name": "The Fog Weaver", "concept": "Sets and set algebra", "encounter": "Track what the hero sees now and what they have explored, with sets.", "act": 2, "sign": "sets",
+      "contract": "The Weaver hides the floor. Remember what you have seen, and show only what you can see.",
       "objectives": [
-        {"id": "grid_map", "label": "Lay out the grid", "question_type": "code_checkpoint", "impact": 3, "brief": "Store the level as a list of lists of tiles (floor, wall, exit) with the player's position as a row and column."},
-        {"id": "move_commands", "label": "Walk the grid", "question_type": "code_checkpoint", "impact": 4, "brief": "Move the player with n, s, e and w, refusing walls and the edge of the map."},
-        {"id": "draw_map", "label": "Draw the map", "question_type": "code_checkpoint", "impact": 2, "brief": "Print the grid with the player's position marked."}
+        {"id": "visible", "label": "What you see", "question_type": "code_checkpoint", "impact": 3, "brief": "Write visible_from(grid, pos, radius) returning a set of positions within radius that are not behind a wall in a straight line.", "file": "crawler/world.py"},
+        {"id": "explored", "label": "What you remember", "question_type": "code_checkpoint", "impact": 3, "brief": "Keep an explored set that grows with each move, and draw unexplored tiles as fog, seen tiles normally and remembered tiles dimmed.", "file": "crawler/world.py"},
+        {"id": "set_ops", "label": "Set algebra", "question_type": "prediction", "impact": 2, "brief": "Predict the result of visible - explored, visible & explored and explored | visible after two moves, then check."}
       ]
     },
     {
-      "name": "The Fog Lantern", "concept": "Fog of war",
-      "encounter": "Show only the tiles the player has seen.",
-      "act": 3, "sign": "sets",
-      "contract": "Below the mine there is no light but your lantern. Show what you have seen, and nothing you have not.",
+      "name": "The Venv Smith", "concept": "Virtual environments, pyproject and a CLI", "encounter": "Install your crawler into a virtual environment and give it a real command.", "act": 2, "sign": "input-output", "kind": "workshop",
+      "contract": "Brigid's miners each have different Python setups, and nothing works twice. Give the crawler a home of its own and a command anyone can type.",
       "objectives": [
-        {"id": "seen_tiles", "label": "Remember what was seen", "question_type": "code_checkpoint", "impact": 3, "brief": "Keep a set of seen positions and add the player's tile and its neighbours after every move."},
-        {"id": "fogged_draw", "label": "Draw with fog", "question_type": "code_checkpoint", "impact": 3, "brief": "Draw unseen tiles as fog and seen ones as they are."},
-        {"id": "edge_bug", "label": "Light the edges safely", "question_type": "bug_diagnosis", "impact": 2, "brief": "Explain why marking neighbours at the map edge can crash or wrap around, and how you prevent it."}
+        {"id": "venv", "label": "Make a home", "question_type": "code_checkpoint", "impact": 3, "brief": "Create a virtual environment in deep_crawler (python -m venv .venv), activate it, and add .venv to a .gitignore. Show which python is active in the terminal.", "file": "README.md"},
+        {"id": "pyproject", "label": "Describe the project", "question_type": "code_checkpoint", "impact": 3, "brief": "Write pyproject.toml with the project's name, version, Python requirement and a console script crawl = \"crawler.cli:main\", then pip install -e . inside the environment.", "file": "pyproject.toml"},
+        {"id": "cli", "label": "A real command", "question_type": "code_checkpoint", "impact": 3, "brief": "Write crawler/cli.py with argparse: crawl --seed 42 --size 30 --radius 4, with help text, validation and sensible defaults, and run it as crawl from the terminal.", "file": "crawler/cli.py"},
+        {"id": "venv_why", "label": "Why a virtual environment", "question_type": "explanation", "impact": 2, "brief": "Explain what a virtual environment isolates, and what pip install -e . does differently from pip install ."}
       ]
     },
     {
-      "name": "The Armourer", "concept": "Equipment slots that change stats",
-      "encounter": "Let the player equip weapons and armour that change their stats.",
-      "act": 3, "sign": "dictionaries",
-      "contract": "The Armourer will fit you out, but only one blade and one coat at a time. Swapping must never leave a stat behind.",
+      "name": "The Event Herald", "concept": "Callbacks and an event bus", "encounter": "Let parts of the game react to events without knowing about each other.", "act": 3, "sign": "callbacks", "tier": "light",
+      "contract": "Every system shouts at every other system. The Herald proposes a better way: announce events, and let whoever cares listen.",
       "objectives": [
-        {"id": "slots", "label": "Add equipment slots", "question_type": "code_checkpoint", "impact": 3, "brief": "Give the player weapon and armour slots and items with stat bonuses."},
-        {"id": "effective_stats", "label": "Compute the real stats", "question_type": "code_checkpoint", "impact": 4, "brief": "Work out attack and defence from base stats plus equipped items, every time, rather than adding bonuses into the base."},
-        {"id": "swap_bug", "label": "Swap without leftovers", "question_type": "bug_diagnosis", "impact": 2, "brief": "Explain what goes wrong if equipping adds a bonus to the base stat and unequipping forgets to remove it."}
+        {"id": "event_bus", "label": "Build the bus", "question_type": "code_checkpoint", "impact": 4, "brief": "Write crawler/events.py with an EventBus that has subscribe(name, handler) and emit(name, **data), and use it so a monster's death fires monster_died.", "file": "crawler/events.py"},
+        {"id": "emit_order", "label": "Predict the order", "question_type": "prediction", "impact": 2, "brief": "Predict the order handlers run in when three subscribe to the same event, and what happens if one raises."},
+        {"id": "decoupling", "label": "Why events", "question_type": "explanation", "impact": 2, "brief": "Explain how the event bus lets you add a scoreboard without editing the combat code."}
       ]
     },
     {
-      "name": "The Maze Wright", "concept": "Procedural generation with a guarantee",
-      "encounter": "Generate a new maze every level, always with a reachable exit.",
-      "act": 3, "sign": "grids",
-      "contract": "The deep changes every time you go down. The Wright carves a new maze each level, and it must always leave a way out.",
+      "name": "The Decorator Monk", "concept": "Decorators and functools.wraps", "encounter": "Wrap actions with logging and cooldowns using your own decorators.", "act": 3, "sign": "callbacks",
+      "contract": "The Monk adds rules to actions without touching them. Learn to wrap a function in another one.",
       "objectives": [
-        {"id": "carve_maze", "label": "Carve a maze", "question_type": "code_checkpoint", "impact": 4, "brief": "Generate each level by carving floor through solid rock with a random walk from the start."},
-        {"id": "place_things", "label": "Place the contents", "question_type": "code_checkpoint", "impact": 3, "brief": "Place the exit, enemies, treasure and a shop on floor tiles, never on the start."},
-        {"id": "reachable_check", "label": "Guarantee the exit", "question_type": "bug_diagnosis", "impact": 3, "brief": "Check the exit can be reached from the start (and regenerate if not), and explain how your check works."}
+        {"id": "log_action", "label": "Log every action", "question_type": "code_checkpoint", "impact": 3, "brief": "Write a @log_action decorator that records the action's name and arguments each time it runs, and use functools.wraps so the name survives.", "file": "crawler/events.py"},
+        {"id": "cooldown", "label": "Cooldowns", "question_type": "code_checkpoint", "impact": 4, "brief": "Write @cooldown(turns) so a decorated ability raises AbilityOnCooldown if used again too soon, and test it.", "see": ["crawler/events.py"]},
+        {"id": "wraps_why", "label": "Why wraps", "question_type": "explanation", "impact": 2, "brief": "Explain what breaks (help(), __name__, tracebacks) when a decorator forgets functools.wraps."}
       ]
     },
     {
-      "name": "The Pathfinder", "concept": "Breadth-first search",
-      "encounter": "Find the shortest path to the exit and offer to walk it.",
-      "act": 3, "sign": "search",
-      "contract": "Brigid's miners get lost. The Pathfinder floods the map from where you stand and always knows the shortest way out.",
+      "name": "The Context Keeper", "concept": "Context managers and custom exceptions", "encounter": "Save safely with a context manager and give errors their own family.", "act": 3, "sign": "exceptions", "tier": "elite",
+      "contract": "Saves vanish when the crawler crashes mid-write. The Keeper only trusts code that cleans up after itself.",
       "objectives": [
-        {"id": "bfs", "label": "Flood the map", "question_type": "code_checkpoint", "impact": 5, "brief": "Write a breadth-first search over floor tiles that returns the shortest path from the player to the exit."},
-        {"id": "guide_command", "label": "Offer a guide", "question_type": "code_checkpoint", "impact": 3, "brief": "Add a guide command that shows the next step, and an auto-walk that stops if an enemy appears."},
-        {"id": "bfs_trace", "label": "Trace the flood", "question_type": "prediction", "impact": 2, "brief": "On a small hand-made map, predict the length of the shortest path, then check your search."}
+        {"id": "errors", "label": "An error family", "question_type": "code_checkpoint", "impact": 3, "brief": "Define CrawlerError and subclasses (SaveCorrupted, AbilityOnCooldown, InvalidMove) in crawler/errors.py, and raise them instead of bare Exception.", "file": "crawler/errors.py"},
+        {"id": "atomic_save", "label": "Save atomically", "question_type": "code_checkpoint", "impact": 4, "brief": "Write a context manager atomic_write(path) with contextlib that writes to a temporary file and only replaces the real save when the block finishes without an error.", "file": "crawler/saves.py"},
+        {"id": "save_load", "label": "Save and load", "question_type": "code_checkpoint", "impact": 3, "brief": "Save and load the hero, floor seed and explored set as JSON through atomic_write, and turn a broken file into SaveCorrupted.", "file": "crawler/saves.py"},
+        {"id": "with_explain", "label": "What with does", "question_type": "explanation", "impact": 2, "brief": "Explain what __enter__ and __exit__ do, and why the temporary file must be cleaned up even when an exception escapes."}
       ]
     },
     {
-      "name": "The Save Crystal", "concept": "Saving and loading the whole game",
-      "encounter": "Save the run to a file and load it back exactly.",
-      "act": 4, "sign": "files-json",
-      "contract": "The crystal remembers everything: where you stood, what you carried, what you saw. Touch it and you can leave the mine and come back.",
+      "name": "The Silent Saboteur", "concept": "Closures and late binding", "encounter": "Find why every button runs the last action.", "act": 3, "sign": "callbacks", "kind": "debug",
+      "contract": "The Saboteur rewired the hotkeys. Press 1, 2 or 3 and you always cast the last spell.",
       "objectives": [
-        {"id": "save_game", "label": "Save the run", "question_type": "code_checkpoint", "impact": 4, "brief": "Save the player, the map, the seen tiles, the depth and the enemies to a JSON file, converting anything JSON cannot store (such as sets)."},
-        {"id": "load_game", "label": "Load the run", "question_type": "code_checkpoint", "impact": 3, "brief": "Load a saved run and carry on exactly where it stopped."},
-        {"id": "save_bug", "label": "Handle a broken save", "question_type": "bug_diagnosis", "impact": 2, "brief": "Make a missing or broken save file harmless and explain what the player sees in each case."}
+        {"id": "late_binding", "label": "Rewire the hotkeys", "question_type": "bug_diagnosis", "impact": 4, "brief": "The rival crawler binds hotkeys like this:\n```python\nhotkeys = {}\nfor number, spell in enumerate(['fire', 'ice', 'storm'], 1):\n    hotkeys[number] = lambda: cast(spell)\n```\nEvery key casts storm. Explain late binding in a comment and fix it two ways: a default argument and functools.partial.", "see": ["crawler/events.py"]},
+        {"id": "binding_test", "label": "Pin it with a test", "question_type": "code_checkpoint", "impact": 3, "brief": "Write a test that fails on the broken version and passes on yours.", "file": "tests/test_events.py"},
+        {"id": "closure_explain", "label": "Closures", "question_type": "explanation", "impact": 2, "brief": "Explain what a closure captures: the value, or the variable?"}
       ]
     },
     {
-      "name": "The Core Heart", "concept": "A boss with phases",
-      "encounter": "Build the final boss: a fight that changes as it is hurt.",
-      "act": 4, "sign": "control-flow",
-      "tier": "elite",
-      "contract": "At the bottom of the deepest level, the Core beats. It fights differently when wounded, and differently again when it is dying.",
+      "name": "The Lantern Keeper", "concept": "Logging instead of print", "encounter": "Replace prints with logging and debug a failing run from its log.", "act": 3, "sign": "exceptions", "tier": "elite", "kind": "workshop",
+      "contract": "Down here, print statements vanish into the dark. The Keeper reads logs, levels and timestamps.",
       "objectives": [
-        {"id": "phases", "label": "Give it phases", "question_type": "code_checkpoint", "impact": 4, "brief": "Give the boss three phases by HP, each with its own attacks and a message when it changes."},
-        {"id": "phase_mechanic", "label": "Add a mechanic", "question_type": "code_checkpoint", "impact": 3, "brief": "In the last phase, add a mechanic the player can see coming and must react to, such as a charged attack."},
-        {"id": "victory", "label": "Win the game", "question_type": "code_checkpoint", "impact": 3, "brief": "End the game with a victory screen, the run's stats, and an offer to start a fresh run."},
-        {"id": "enrage_timer", "label": "Beat the clock", "question_type": "code_checkpoint", "impact": 3, "brief": "If the fight lasts more than 15 turns the Core enrages and its attacks double; show a countdown so the player can see it coming."},
-        {"id": "phase_tests", "label": "Test the phases", "question_type": "code_checkpoint", "impact": 3, "brief": "Write assert tests that each HP threshold switches phase exactly once, even when one hit crosses two thresholds."}
+        {"id": "logging_setup", "label": "Light the lanterns", "question_type": "code_checkpoint", "impact": 3, "brief": "Configure logging once in crawler/cli.py: INFO to the terminal, DEBUG to deep_crawler.log with timestamps, and use logging.getLogger(__name__) in every module.", "file": "crawler/cli.py"},
+        {"id": "replace_prints", "label": "Retire print", "question_type": "code_checkpoint", "impact": 2, "brief": "Replace debugging prints across the package with log calls at the right level (debug, info, warning, error).", "see": ["crawler/world.py", "crawler/pathfinding.py"]},
+        {"id": "log_debug", "label": "Debug from the log", "question_type": "code_checkpoint", "impact": 3, "brief": "Break a floor on purpose (no stairs), run it, and find the cause using only deep_crawler.log; paste the log lines that gave it away in a comment.", "file": "crawler/world.py"},
+        {"id": "log_levels", "label": "Choose a level", "question_type": "explanation", "impact": 2, "brief": "Explain when you would use debug, info, warning and error, and why the log file and the terminal show different levels."}
+      ]
+    },
+    {
+      "name": "The Test Legion", "concept": "pytest fixtures and parametrize", "encounter": "Grow the tests into a suite with fixtures, parametrize and tmp_path.", "act": 4, "sign": "testing", "kind": "workshop",
+      "contract": "The Legion marches in formation: every test sets up the same way. Stop copying setup code into every test.",
+      "objectives": [
+        {"id": "fixtures", "label": "Shared fixtures", "question_type": "code_checkpoint", "impact": 3, "brief": "Create tests/conftest.py with fixtures for a small seeded floor, a hero and an event bus, and use them across your tests.", "file": "tests/conftest.py"},
+        {"id": "tmp_saves", "label": "Test the saves", "question_type": "code_checkpoint", "impact": 3, "brief": "Test save and load with tmp_path, including a corrupted file raising SaveCorrupted.", "file": "tests/test_saves.py", "see": ["crawler/saves.py"]},
+        {"id": "pytest_run", "label": "Read the run", "question_type": "explanation", "impact": 2, "brief": "Run pytest -q from deep_crawler. Explain what the dots, F and E mean, and how pytest -k and -x help you."}
+      ]
+    },
+    {
+      "name": "The Profiler", "concept": "Measuring and optimising", "encounter": "Profile the search on a huge floor and make it faster.", "act": 4, "sign": "search",
+      "contract": "On a 200x200 floor your crawler freezes. Guessing is forbidden; measure first.",
+      "objectives": [
+        {"id": "profile", "label": "Measure", "question_type": "code_checkpoint", "impact": 3, "brief": "Profile astar on a 200x200 floor with cProfile and timeit, and write the slowest functions and timings in a comment.", "file": "crawler/pathfinding.py"},
+        {"id": "optimise", "label": "Make it fast", "question_type": "code_checkpoint", "impact": 4, "brief": "Fix the hotspot (for example a list used as the closed set, or recomputed neighbours) and show the speed-up with the same measurement.", "file": "crawler/pathfinding.py"},
+        {"id": "big_o", "label": "Why it was slow", "question_type": "explanation", "impact": 2, "brief": "Explain in Big-O terms why checking membership in a list is slow and in a set is fast."}
+      ]
+    },
+    {
+      "name": "The Type Inquisitor", "concept": "Type hints, mypy and Protocols", "encounter": "Type the whole package and make mypy happy.", "act": 4, "sign": "classes", "tier": "elite",
+      "contract": "The Inquisitor trusts no argument it cannot name. Type everything and let a checker prove it.",
+      "objectives": [
+        {"id": "type_everything", "label": "Type the package", "question_type": "code_checkpoint", "impact": 3, "brief": "Add type hints to every public function in the package, including return types and Optional where something can be None.", "see": ["crawler/world.py", "crawler/pathfinding.py"]},
+        {"id": "mypy", "label": "Pass mypy", "question_type": "code_checkpoint", "impact": 3, "brief": "pip install mypy in your environment, run mypy crawler, and fix every error it reports; paste the clean result in a comment.", "file": "crawler/__init__.py"},
+        {"id": "protocol", "label": "A Protocol", "question_type": "code_checkpoint", "impact": 3, "brief": "Define a Mover Protocol (position plus move()) in crawler/entities.py and type pathfinding helpers against it, so Hero and Monster both fit without inheritance.", "file": "crawler/entities.py"},
+        {"id": "typing_why", "label": "Why types", "question_type": "explanation", "impact": 2, "brief": "Explain what mypy can catch before you run anything, and what it can never catch."}
+      ]
+    },
+    {
+      "name": "The Amnesiac", "concept": "Rebuilding A* from memory", "encounter": "Rebuild A* from memory in a blank file and prove it.", "act": 4, "sign": "search", "kind": "memory",
+      "contract": "The Amnesiac forgets every route the moment it walks it. Prove you will not.",
+      "objectives": [
+        {"id": "rebuild_astar", "label": "Rebuild it", "question_type": "code_checkpoint", "impact": 4, "brief": "Close crawler/pathfinding.py. In a new file memory_astar.py, write A* on a grid from memory, with heapq and a Manhattan heuristic.", "file": "memory_astar.py"},
+        {"id": "rebuild_check", "label": "Check it", "question_type": "code_checkpoint", "impact": 3, "brief": "Under it, compare your rebuild with crawler.pathfinding.astar on 20 seeded floors and assert equal path lengths.", "file": "memory_astar.py"},
+        {"id": "rebuild_compare", "label": "Compare", "question_type": "explanation", "impact": 2, "brief": "What did you remember straight away, and what did you have to reason out again?"}
+      ]
+    },
+    {
+      "name": "The Architect", "concept": "Designing your own system", "encounter": "Design and build a new system for the crawler, wired through events.", "act": 4, "sign": "classes", "kind": "creative",
+      "contract": "Brigid's last request: something nobody asked for. Design a system of your own and build it the way the rest of the crawler is built.",
+      "objectives": [
+        {"id": "design_doc", "label": "Design it first", "question_type": "code_checkpoint", "impact": 3, "brief": "Write a design section in README.md: what your system does (traps, crafting, a merchant, monster factions...), the dataclasses it needs and the events it listens to.", "file": "README.md"},
+        {"id": "build_system", "label": "Build it", "question_type": "code_checkpoint", "impact": 4, "brief": "Build it in its own module, wired through the event bus, with tests for its rules."},
+        {"id": "design_defend", "label": "Defend it", "question_type": "explanation", "impact": 2, "brief": "Explain one trade-off you made and what you would change with another week."}
       ]
     }
   ],

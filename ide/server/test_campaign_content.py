@@ -121,6 +121,12 @@ class CampaignContentSchemaTests(unittest.TestCase):
                 self.assertLessEqual(named, set(files))
                 self.assertIn("README.md", named)
 
+    def test_goal_files_stay_inside_the_project_folder(self):
+        for name in ("casino.py", "README.md", "pyproject.toml", "crawler/world.py", "tests/test_world.py"):
+            self.assertTrue(state.project_file_name(name), name)
+        for name in ("../escape.py", "crawler/../escape.py", "a/b/c.py", ".hidden.py", "tutor.py", "dungeon.py", "/etc/passwd.txt", "notes.exe"):
+            self.assertIsNone(state.project_file_name(name), name)
+
     def test_fights_vary_in_length_and_mix(self):
         files = story_files()
         tiers = [mob.get("tier") for entry in files for mob in entry["mobs"]]
