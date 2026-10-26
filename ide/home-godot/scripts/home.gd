@@ -1,19 +1,39 @@
 extends Node2D
-## DiddyDungeon Home: the walkable base. This scene only draws and walks.
+## DiddyDungeon Home: the walkable castle hall. This scene only draws and walks.
 ## The app owns every rule: it sends the save's state in (window.diddyHomeReceive)
 ## and gets "use this station" events back (window.parent.postMessage).
+## See docs/HOME_AND_ART.md for the whole picture.
 
 const T := 16
-const COLS := 20
-const ROWS := 13
+const COLS := 28
+const ROWS := 16
 const WORLD := Vector2(COLS * T, ROWS * T)
 const SPEED := 62.0
 const FEET := Vector2(8, 4)
+const FRAME := Vector2i(24, 40)   # one hunter frame
 
 const TILES: Texture2D = preload("res://art/tiles.png")
-const HUNTER: Texture2D = preload("res://art/hunter.png")
 var FONT_FILE: FontFile = preload("res://art/PressStart2P.woff2")
 const CRT_SHADER: Shader = preload("res://shaders/crt.gdshader")
+
+# Each look (skin) is three layers so the cloth moves on its own.
+const LOOKS := {
+	"dracula": {
+		"body": preload("res://art/hunter_dracula_body.png"),
+		"gown": preload("res://art/hunter_dracula_gown.png"),
+		"cape": preload("res://art/hunter_dracula_cape.png"),
+	},
+	"alucard": {
+		"body": preload("res://art/hunter_alucard_body.png"),
+		"gown": preload("res://art/hunter_alucard_gown.png"),
+		"cape": preload("res://art/hunter_alucard_cape.png"),
+	},
+	"belmont": {
+		"body": preload("res://art/hunter_belmont_body.png"),
+		"gown": preload("res://art/hunter_belmont_gown.png"),
+		"cape": preload("res://art/hunter_belmont_cape.png"),
+	},
+}
 
 const FACING_ROW := {"down": 0, "left": 1, "right": 2, "up": 3}
 const WALK_CYCLE := [0, 1, 0, 2]
@@ -21,7 +41,7 @@ const WALK_CYCLE := [0, 1, 0, 2]
 # What the app can tell us (all optional; these are the defaults for a standalone run).
 var state := {
 	"hp": 100, "max_hp": 100, "embers": 0,
-	"fire_lit": true, "crt": true,
+	"fire_lit": true, "crt": true, "look": "dracula",
 	"tiers": {"hearth": 0, "armory": 0, "map": 0},
 	"max_tiers": {"hearth": 3, "armory": 3, "map": 3},
 }
@@ -32,12 +52,13 @@ var background := Node2D.new()
 var world := Node2D.new()
 var pips := Node2D.new()
 var hunter := Node2D.new()
-var hunter_sprite := Sprite2D.new()
+var cape_sprite := Sprite2D.new()
+var body_sprite := Sprite2D.new()
+var gown_sprite := Sprite2D.new()
 var pyr := Sprite2D.new()
 var hearth_sprite: Sprite2D
 var torches: Array[Sprite2D] = []
 var flames: Array[Dictionary] = []
-var candle: Sprite2D
 var camera := Camera2D.new()
 var hud := CanvasLayer.new()
 var hp_label := Label.new()
@@ -46,19 +67,21 @@ var prompt_label := Label.new()
 var toast_label := Label.new()
 var crt_rect := ColorRect.new()
 
-var pos := Vector2(160, 132)   # the hunter's feet, in float
+var pos := Vector2(224, 164)   # the hunter's feet, in float
 var facing := "down"
 var anim_t := 0.0
+var cape_t := 0.0
 var clock := 0.0
-var pyr_pos := Vector2(146, 128)
+var pyr_pos := Vector2(210, 160)
 var near: Dictionary = {}
 var toast_time := 0.0
 var hint_time := 7.0
-# Testing only: `godot --path . -- --shot=/tmp/a.png --pos=160,90 --face=up` saves a frame and quits.
+var look := "dracula"
 # Keys are tracked from events (not polled) so even a very short tap moves the hunter a few pixels.
 var held := {}
 var tap_ttl := {}
 const MOVE_KEYS := [KEY_W, KEY_A, KEY_S, KEY_D, KEY_UP, KEY_DOWN, KEY_LEFT, KEY_RIGHT]
+# Testing only: `godot --path . -- --shot=/tmp/a.png --pos=224,90 --face=up --look=alucard` saves a frame and quits.
 var shot_path := ""
 var shot_frames := 0
 
@@ -97,6 +120,9 @@ func _ready() -> void:
 			pos = Vector2(float(xy[0]), float(xy[1]))
 		elif arg.begins_with("--face="):
 			facing = arg.trim_prefix("--face=")
+		elif arg.begins_with("--look="):
+			state["look"] = arg.trim_prefix("--look=")
+			_apply_state()
 		elif arg == "--unlit":
 			state["fire_lit"] = false
 		elif arg == "--tiers":
@@ -152,63 +178,86 @@ func _build_room() -> void:
 				piece = "plinth"
 			_piece(background, piece, Vector2(x * T, y * T))
 	# The red carpet runs from the great door to the hearth.
-	for y in range(4, 12):
-		_piece(background, "carpet", Vector2(144, y * T))
+	for y in range(4, ROWS - 1):
+		_piece(background, "carpet", Vector2(208, y * T))
 	# Moonlight falls from the windows onto the marble.
-	for wx in [88, 216]:
+	for wx in [152, 280, 388]:
 		_piece(background, "moonbeam", Vector2(wx - 10, 64))
-	# On the wall: pillars, stained glass, banners and sconces.
-	for px in [0, 304]:
+	# The ring the hunter trains in.
+	_piece(background, "ring", Vector2(48, 176))
+	# On the wall: pillars, stained glass, banners, sconces and the wall stations.
+	for px in [0, WORLD.x - 16]:
 		_piece(background, "pillar", Vector2(px, 16))
-	for wx in [88, 216]:
+	for wx in [152, 280, 388]:
 		_piece(background, "window", Vector2(wx, 16))
-	for bx in [120, 184]:
+	for bx in [184, 248]:
 		_piece(background, "banner", Vector2(bx, 16))
-	for sx in [248, 108]:
+	for sx in [168, 300, 40, 410]:
 		torches.append(_piece(background, "sconce_0", Vector2(sx, 22)))
 	_piece(background, "bookshelf", Vector2(28, 48), true)
-	_piece(background, "bookshelf", Vector2(278, 48), true)
-	hearth_sprite = _piece(background, "fire_0", Vector2(160, 54), true)
-	_piece(background, "armory", Vector2(60, 52), true)
-	_piece(background, "door", Vector2(160, 200), true)
+	_piece(background, "bookshelf", Vector2(WORLD.x - 28, 48), true)
+	_piece(background, "trophy_case", Vector2(72, 52), true)
+	_piece(background, "armory", Vector2(120, 52), true)
+	hearth_sprite = _piece(background, "fire_0", Vector2(224, 54), true)
+	_piece(background, "pantry_shelf", Vector2(352, 52), true)
+	_piece(background, "door", Vector2(224, 254), true)
 	# The world's walls and edges.
 	_block(Rect2(0, 0, WORLD.x, 64))
-	_block(Rect2(0, 192, WORLD.x, 16))
+	_block(Rect2(0, WORLD.y - 16, WORLD.x, 16))
 	_block(Rect2(-16, 0, 24, WORLD.y))
 	_block(Rect2(WORLD.x - 8, 0, 24, WORLD.y))
-	# Things you can walk around: the Map table, candelabras, braziers, statues, urns and a chest.
-	_piece(world, "shadow", Vector2(240, 114), true).z_index = -1
-	candle = _piece(world, "candle_0", Vector2(240, 112), true)
-	_block(Rect2(224, 98, 32, 14))
-	for at in [Vector2(122, 98), Vector2(198, 98)]:
+	# Things you can walk around, sorted by their feet.
+	_piece(world, "shadow", Vector2(370, 130), true)
+	_flame(world, "candle", Vector2(370, 132), true)
+	_block(Rect2(354, 118, 32, 14))
+	_piece(world, "shadow", Vector2(70, 130), true)
+	_flame(world, "desk", Vector2(70, 132), true)
+	_block(Rect2(54, 120, 32, 12))
+	_piece(world, "dummy", Vector2(80, 190), true)
+	_block(Rect2(74, 184, 12, 6))
+	_flame(world, "cauldron", Vector2(352, 96), true)
+	_block(Rect2(345, 90, 14, 6))
+	_piece(world, "perch", Vector2(392, 218), true)
+	_block(Rect2(386, 212, 12, 6))
+	for at in [Vector2(190, 100), Vector2(258, 100)]:
 		_flame(world, "candelabra", at, true)
 		_block(Rect2(at.x - 5, at.y - 5, 10, 5))
-	for at in [Vector2(132, 190), Vector2(188, 190)]:
+	for at in [Vector2(198, 236), Vector2(250, 236)]:
 		_flame(world, "brazier", at, true)
 		_block(Rect2(at.x - 6, at.y - 6, 12, 6))
-	for at in [Vector2(24, 188), Vector2(296, 188)]:
+	for at in [Vector2(24, 232), Vector2(WORLD.x - 24, 232)]:
 		_piece(world, "armor", at, true)
 		_block(Rect2(at.x - 7, at.y - 6, 14, 6))
-	for at in [Vector2(24, 84), Vector2(296, 84), Vector2(296, 140)]:
+	for at in [Vector2(24, 84), Vector2(WORLD.x - 24, 84), Vector2(WORLD.x - 24, 150)]:
 		_piece(world, "urn" if at.y < 100 else "chest", at, true)
 		_block(Rect2(at.x - 6, at.y - 6, 12, 6))
 	# The stations you use. Each area is where the hunter stands to use it.
-	_station("hearth", "Rest at the Hearth", Rect2(140, 62, 40, 24), Vector2(160, 12))
-	_station("armory", "Open the Armory", Rect2(40, 62, 40, 24), Vector2(60, 16))
-	_station("map", "Plan a Dungeon run", Rect2(214, 112, 52, 24), Vector2(240, 80))
-	_station("door", "Go to the Forge", Rect2(134, 168, 52, 24), Vector2(160, 164))
+	_station("trophy", "View your trophies", Rect2(52, 62, 40, 24), Vector2(72, 12))
+	_station("armory", "Open the Armory", Rect2(100, 62, 40, 24), Vector2(120, 16))
+	_station("hearth", "Rest at the Hearth", Rect2(204, 62, 40, 24), Vector2(224, 12))
+	_station("pantry", "Eat at the Pantry", Rect2(326, 62, 52, 30), Vector2(352, 14))
+	_station("study", "Study at the desk", Rect2(52, 134, 38, 22), Vector2(70, 100))
+	_station("map", "Plan a Dungeon run", Rect2(344, 134, 52, 24), Vector2(370, 100))
+	_station("training", "Train in the ring", Rect2(48, 192, 64, 34), Vector2(80, 152))
+	_station("perch", "Visit Pyr's perch", Rect2(366, 196, 52, 36), Vector2(392, 180))
+	_station("door", "Go to the Forge", Rect2(206, 216, 36, 24), Vector2(224, 206))
 
 
+# ── The hunter: a cape behind, the body, and the gown over the legs ─────────
 func _build_hunter() -> void:
 	hunter.name = "Hunter"
 	var shadow := _piece(hunter, "shadow", Vector2(0, 2), true)
-	shadow.z_index = -1
-	hunter_sprite.texture = HUNTER
-	hunter_sprite.region_enabled = true
-	hunter_sprite.centered = false
-	hunter_sprite.offset = Vector2(-8, -30)
-	hunter.add_child(hunter_sprite)
+	shadow.name = "Shadow"
+	for sprite in [cape_sprite, body_sprite, gown_sprite]:
+		sprite.region_enabled = true
+		sprite.centered = false
+		sprite.offset = Vector2(-FRAME.x / 2.0, -38)
+		hunter.add_child(sprite)
+	cape_sprite.name = "Cape"
+	body_sprite.name = "Body"
+	gown_sprite.name = "Gown"
 	world.add_child(hunter)
+	_set_look(str(state["look"]))
 	# Pyr, the little code-flame, follows along.
 	pyr.texture = TILES
 	pyr.region_enabled = true
@@ -217,6 +266,15 @@ func _build_hunter() -> void:
 	pyr.offset = Vector2(-8, -16)
 	world.add_child(pyr)
 	_refresh_hunter()
+
+
+func _set_look(name: String) -> void:
+	if not LOOKS.has(name):
+		name = "dracula"
+	look = name
+	cape_sprite.texture = LOOKS[name]["cape"]
+	body_sprite.texture = LOOKS[name]["body"]
+	gown_sprite.texture = LOOKS[name]["gown"]
 
 
 # ── The HUD (drawn above the room, under the CRT) ───────────────────────────
@@ -297,6 +355,8 @@ func _apply_state() -> void:
 		state["toast"] = ""
 	hp_label.text = "HP %d/%d   EMBERS %d" % [int(state["hp"]), int(state["max_hp"]), int(state["embers"])]
 	crt_rect.visible = bool(state["crt"])
+	if str(state.get("look", "dracula")) != look:
+		_set_look(str(state["look"]))
 	pips.queue_redraw()
 
 
@@ -334,9 +394,11 @@ func _process(delta: float) -> void:
 		else:
 			facing = "down" if dir.y > 0 else "up"
 		anim_t += delta * 7.0
+		cape_t += delta * 6.0
 		_move(dir * SPEED * delta)
 	else:
 		anim_t = 0.0
+		cape_t += delta * 2.0     # the cape keeps breathing when he stands
 	_refresh_hunter()
 	_follow_pyr(delta)
 	_animate_room()
@@ -360,12 +422,19 @@ func _hits(feet: Vector2) -> bool:
 
 func _refresh_hunter() -> void:
 	hunter.position = pos.round()
+	var row: int = FACING_ROW[facing]
 	var col: int = WALK_CYCLE[int(anim_t) % 4] if anim_t > 0.0 else 0
-	hunter_sprite.region_rect = Rect2(col * 16, FACING_ROW[facing] * 32, 16, 32)
+	body_sprite.region_rect = Rect2(col * FRAME.x, row * FRAME.y, FRAME.x, FRAME.y)
+	gown_sprite.region_rect = Rect2(col * FRAME.x, row * FRAME.y, FRAME.x, FRAME.y)
+	cape_sprite.region_rect = Rect2((int(cape_t) % 4) * FRAME.x, row * FRAME.y, FRAME.x, FRAME.y)
+	# Facing away, the cape hangs in front of the body; otherwise it flows behind.
+	var cape_index := hunter.get_child_count() - 1 if facing == "up" else 1
+	if cape_sprite.get_index() != cape_index and cape_sprite.get_parent() == hunter:
+		hunter.move_child(cape_sprite, cape_index)
 
 
 func _follow_pyr(delta: float) -> void:
-	var behind := {"down": Vector2(-14, -10), "up": Vector2(14, -6), "left": Vector2(12, -10), "right": Vector2(-12, -10)}[facing] as Vector2
+	var behind := {"down": Vector2(-18, -14), "up": Vector2(18, -10), "left": Vector2(16, -14), "right": Vector2(-16, -14)}[facing] as Vector2
 	var target := pos + behind
 	pyr_pos = pyr_pos.lerp(target, 1.0 - exp(-5.0 * delta))
 	var bob := sin(clock * 3.0) * 1.5
@@ -381,7 +450,6 @@ func _animate_room() -> void:
 	for flame in flames:
 		_set_piece(flame["sprite"], "%s_%d" % [flame["base"], (beat + int(flame["sprite"].position.x) % 2) % 2])
 	_set_piece(hearth_sprite, ("fire_%d" % beat) if bool(state["fire_lit"]) else "fire_out")
-	_set_piece(candle, "candle_%d" % beat)
 
 
 func _update_prompt(delta: float) -> void:

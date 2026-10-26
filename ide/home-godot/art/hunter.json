@@ -1,7 +1,7 @@
 {
  "frame": [
-  16,
-  32
+  24,
+  40
  ],
  "rows": [
   "down",
@@ -9,15 +9,21 @@
   "right",
   "up"
  ],
- "cols": [
+ "body_cols": [
   "stand",
   "stepa",
   "stepb"
  ],
- "walk": [
+ "gown_cols": [
   "stand",
   "stepa",
-  "stand",
   "stepb"
- ]
+ ],
+ "cape_cols": 4,
+ "looks": [
+  "dracula",
+  "alucard",
+  "belmont"
+ ],
+ "layers": "cape behind body (in front when facing up); gown over the legs"
 }

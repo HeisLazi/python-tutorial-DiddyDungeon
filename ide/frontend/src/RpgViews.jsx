@@ -2999,7 +2999,9 @@ const HOME_STATION_UPGRADES = {
   armory: ['warding-loom', 'breaker-workbench'],
 }
 
-function homeRoomState(progress, crt) {
+const HUNTER_LOOKS = ['dracula', 'alucard', 'belmont']
+
+function homeRoomState(progress, crt, look) {
   const player = progress?.player || {}
   const homestead = progress?.homestead || {}
   const owned = Array.isArray(homestead.room_upgrades) ? homestead.room_upgrades : []
@@ -3019,6 +3021,7 @@ function homeRoomState(progress, crt) {
     embers: homestead.upgrade_tokens ?? 0,
     fire_lit: Boolean((day.lines || 0) + (day.answers || 0) + (day.mobs || 0) > 0),
     crt,
+    look,
     tiers,
     max_tiers: maxTiers,
   }
@@ -3062,9 +3065,16 @@ function HomeRoom({ progress, armory, armoryActions, performHomesteadAction, onN
     try { return window.localStorage.getItem('questlab.homeCrt') !== 'false' } catch { return true }
   })
   const [panel, setPanel] = useState('')
-  const [toastText, setToastText] = useState('')
+  const [look, setLook] = useState(() => {
+    try { return HUNTER_LOOKS.includes(window.localStorage.getItem('questlab.hunterLook')) ? window.localStorage.getItem('questlab.hunterLook') : 'dracula' } catch { return 'dracula' }
+  })
+  const cycleLook = () => setLook((current) => {
+    const next = HUNTER_LOOKS[(HUNTER_LOOKS.indexOf(current) + 1) % HUNTER_LOOKS.length]
+    try { window.localStorage.setItem('questlab.hunterLook', next) } catch { /* storage unavailable */ }
+    return next
+  })
   const stateRef = useRef(null)
-  stateRef.current = homeRoomState(progress, crt)
+  stateRef.current = homeRoomState(progress, crt, look)
 
   const send = (extra = {}) => {
     const target = frameRef.current?.contentWindow
@@ -3073,19 +3083,33 @@ function HomeRoom({ progress, armory, armoryActions, performHomesteadAction, onN
   }
   useEffect(() => { send() }, [JSON.stringify(stateRef.current)])
 
+  // A Home action (rest, eat, feed Pyr): the toast says what happened or why it could not.
+  const homeAction = async (action, done) => {
+    try {
+      const result = await performHomesteadAction?.(action)
+      const healed = Number(result?.event?.healed || 0)
+      send({ toast: done(healed, result) })
+    } catch (error) {
+      send({ toast: String(error?.message || 'That did not work').slice(0, 60) })
+    }
+  }
+
   const useStation = async (id) => {
     if (id === 'door') return onNavigate?.('forge')
     if (id === 'map') return onNavigate?.('dungeon')
     if (id === 'armory') return setPanel('armory')
-    if (id === 'hearth') {
-      try {
-        const result = await performHomesteadAction?.('recover')
-        const healed = Number(result?.event?.healed || 0)
-        send({ toast: healed > 0 ? `You rest by the fire: +${healed} HP` : 'You are fully rested.' })
-      } catch {
-        send({ toast: 'The fire will not take.' })
-      }
+    if (id === 'study') return onNavigate?.('tutor')
+    if (id === 'trophy') {
+      try { window.localStorage.setItem('questlab.settingsSection', 'stats') } catch { /* storage unavailable */ }
+      return onNavigate?.('settings')
     }
+    if (id === 'training') {
+      try { window.sessionStorage.setItem('questlab.tutor.surface', JSON.stringify('spar')) } catch { /* storage unavailable */ }
+      return onNavigate?.('tutor')
+    }
+    if (id === 'hearth') return homeAction('recover', (healed) => (healed > 0 ? `You rest by the fire: +${healed} HP` : 'You are fully rested.'))
+    if (id === 'pantry') return homeAction('meal', (healed) => `You eat a hot meal: +${healed} HP`)
+    if (id === 'perch') return homeAction('feed_pyr', () => 'Pyr is fed and glows brighter.')
   }
   const useStationRef = useRef(useStation)
   useStationRef.current = useStation
@@ -3122,8 +3146,9 @@ function HomeRoom({ progress, armory, armoryActions, performHomesteadAction, onN
         )}
       </div>
       <div className="home-room-bar" style={{ width: frameSize.width + 6 }}>
-        <small>Walk with WASD or the arrows · E to use a station</small>
+        <small>WASD or arrows walk · E uses a station: trophies, armory, hearth, pantry, study, map, ring, perch, door</small>
         <span>
+          <button type="button" onClick={cycleLook} title="Change the hunter's look">Look: {look}</button>
           <button type="button" onClick={toggleCrt} aria-pressed={crt}>Scanlines {crt ? 'on' : 'off'}</button>
           <button type="button" onClick={onClassic}>Classic home</button>
         </span>

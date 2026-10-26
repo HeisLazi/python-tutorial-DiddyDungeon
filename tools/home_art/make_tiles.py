@@ -368,24 +368,30 @@ def bookshelf():
 
 
 def door():
-    """A grand double door in a pointed stone arch (32x32)."""
-    s = Sprite(32, 32)
-    s.rect(1, 6, 30, 31, "st3")
-    for y, x in ((5, 5), (4, 8), (3, 11), (2, 13), (1, 15)):
+    """A grand double door in a tall pointed stone arch (32x44)."""
+    s = Sprite(32, 44)
+    arch = {1: 15, 2: 13, 3: 11, 4: 9, 5: 7, 6: 6, 7: 5, 8: 4, 9: 3, 10: 2, 11: 1}
+    s.rect(1, 12, 30, 43, "st3")
+    for y, x in arch.items():
         s.rect(x, y, 31 - x, y, "st3")
-    s.rect(4, 8, 27, 31, "st0")
-    s.rect(5, 7, 26, 7, "st0"); s.rect(8, 6, 23, 6, "st0"); s.rect(12, 5, 19, 5, "st0")
-    s.rect(5, 9, 15, 31, "wd1"); s.rect(16, 9, 26, 31, "wd1")
-    s.rect(6, 8, 25, 8, "wd1"); s.rect(9, 7, 22, 7, "wd1"); s.rect(13, 6, 18, 6, "wd1")
+    s.rect(4, 14, 27, 43, "st0")
+    for y, x in arch.items():
+        if y >= 4:
+            s.rect(x + 3, y + 1, 28 - x, y + 1, "st0")
+    s.rect(5, 13, 26, 43, "st0")
+    s.rect(5, 15, 15, 43, "wd1"); s.rect(16, 15, 26, 43, "wd1")
+    for y, x in ((14, 6), (13, 8), (12, 11), (11, 13), (10, 15)):
+        s.rect(x, y, 31 - x, y, "wd1")
     for x in (7, 10, 13, 18, 21, 24):
-        s.vline(x, 9, 31, "wd0")
-    s.vline(15, 7, 31, "line"); s.vline(16, 7, 31, "line")
-    for y in (13, 22):
+        s.vline(x, 15, 43, "wd0")
+    s.vline(15, 11, 43, "line"); s.vline(16, 11, 43, "line")
+    for y in (20, 31):
         s.hline(5, 26, y, "mt0"); s.hline(5, 26, y + 1, "mt1")
     for x in (13, 18):
-        s.disc(x, 21, 1, "gold")
-    s.hline(1, 30, 31, "st1")
-    s.vline(4, 8, 31, "st4"); s.vline(27, 8, 31, "st1")
+        s.disc(x, 30, 1, "gold")
+    s.px(15, 6, "red1"); s.px(16, 6, "red1")
+    s.hline(1, 30, 43, "st1")
+    s.vline(4, 14, 43, "st4"); s.vline(27, 14, 43, "st1")
     return s.outline()
 
 
@@ -460,6 +466,131 @@ def map_table(frame):
     return s.outline()
 
 
+def trophy_case():
+    """The Trophy wall: a glass-fronted case with a cup, a crown and a skull (32x32)."""
+    s = Sprite(32, 32)
+    s.rect(1, 1, 30, 30, "wd1")
+    s.rect(2, 2, 29, 29, "wd0")
+    s.hline(1, 30, 1, "wd2")
+    s.rect(3, 3, 28, 26, "gl0")
+    s.rect(4, 4, 27, 25, "st0")
+    s.rect(4, 4, 27, 5, "gl1")
+    s.hline(4, 27, 14, "wd2"); s.hline(4, 27, 15, "wd0")
+    s.hline(4, 27, 25, "wd2")
+    # a golden cup, a crown and a skull on the shelves
+    s.rect(7, 8, 12, 9, "gold"); s.rect(8, 10, 11, 12, "gold"); s.rect(9, 13, 10, 13, "gold0"); s.hline(7, 12, 8, "gold1")
+    s.px(6, 9, "gold0"); s.px(13, 9, "gold0")
+    s.rect(15, 10, 20, 13, "gold"); s.px(15, 8, "gold1"); s.px(17, 7, "gold1"); s.px(20, 8, "gold1")
+    s.px(17, 11, "red1"); s.px(19, 11, "gl2")
+    s.rect(22, 9, 26, 13, "par1"); s.px(23, 11, "line"); s.px(25, 11, "line"); s.px(24, 13, "line")
+    s.rect(7, 18, 11, 24, "mt1"); s.rect(8, 19, 10, 20, "mt2")                   # a relic sword hilt
+    s.rect(15, 21, 20, 24, "red"); s.rect(16, 19, 19, 21, "red1")                # a cushion with a gem
+    s.px(17, 19, "gl2")
+    s.rect(23, 20, 27, 24, "gp1"); s.px(25, 19, "gold1")
+    s.rect(4, 4, 6, 24, (140, 170, 230, 40))                                     # glass glare
+    s.rect(11, 27, 20, 29, "gold0"); s.hline(11, 20, 27, "gold1")                # the plaque
+    return s.outline()
+
+
+def study_desk(frame):
+    """The Study desk: a writing desk with an open book, a quill and a lamp (32x28)."""
+    s = Sprite(32, 28)
+    s.rect(1, 8, 30, 22, "wd1"); s.hline(1, 30, 8, "wd2"); s.rect(1, 20, 30, 23, "wd0")
+    s.rect(3, 23, 5, 27, "wd0"); s.rect(26, 23, 28, 27, "wd0")
+    s.rect(5, 9, 17, 18, "par1"); s.vline(11, 9, 18, "par0")                        # the open book
+    for y in (11, 13, 15):
+        s.hline(6, 10, y, "par0"); s.hline(12, 16, y, "par0")
+    s.hline(5, 17, 9, "par2")
+    s.rect(20, 9, 25, 11, "red"); s.rect(20, 12, 25, 14, "gp1")                     # stacked books
+    s.rect(20, 9, 20, 14, "red0")
+    s.rect(19, 15, 21, 18, "mt0")                                                    # inkwell
+    s.px(19, 14, "par2"); s.px(18, 13, "par2"); s.px(17, 12, "par1")               # the quill
+    s.rect(27, 4, 28, 12, "gold0"); s.rect(26, 3, 29, 4, "gold")                     # the brass lamp
+    s.px(27 + frame, 1, "ember"); s.px(27 + frame, 2, "ember1")
+    return s.outline()
+
+
+def dummy():
+    """A straw training dummy on a post (16x32)."""
+    s = Sprite(16, 32)
+    s.rect(7, 12, 8, 29, "wd1"); s.vline(7, 12, 29, "wd2")
+    s.rect(2, 11, 13, 13, "wd1"); s.hline(2, 13, 11, "wd2")
+    s.rect(4, 12, 11, 24, "par0"); s.rect(4, 12, 6, 24, "par1")
+    s.disc(8, 18, 3, "red"); s.disc(8, 18, 1, "par2"); s.px(8, 18, "red1")
+    s.rect(5, 3, 10, 10, "par1"); s.rect(5, 3, 7, 10, "par2")
+    s.px(6, 6, "line"); s.px(9, 6, "line"); s.hline(6, 9, 8, "line")
+    s.rect(5, 2, 10, 3, "wd2")
+    s.rect(3, 29, 12, 30, "st2"); s.hline(3, 12, 29, "st3")
+    for x, y in ((3, 13), (12, 14), (4, 22), (11, 23)):
+        s.px(x, y, "gold0")
+    return s.outline()
+
+
+def ring():
+    """A rune circle on the floor for training (64x40, translucent)."""
+    s = Sprite(64, 40)
+    import math
+    cx, cy = 31.5, 19.5
+    for y in range(40):
+        for x in range(64):
+            d = math.hypot((x - cx) / 30.0, (y - cy) / 18.0)
+            if 0.9 <= d <= 1.0:
+                s.px(x, y, (240, 190, 60, 200))
+            elif 0.78 <= d < 0.9:
+                s.px(x, y, (150, 108, 28, 110))
+            elif d < 0.78:
+                s.px(x, y, (20, 16, 34, 70))
+    for i in range(8):                                                           # rune ticks
+        a = i * math.pi / 4
+        x, y = int(cx + math.cos(a) * 24), int(cy + math.sin(a) * 14)
+        s.px(x, y, "gold1"); s.px(x + 1, y, "gold")
+    return s
+
+
+def cauldron(frame):
+    """The Pantry's cauldron: bubbling stew over a small fire (16x24)."""
+    s = Sprite(16, 24)
+    s.rect(2, 8, 13, 17, "mt0"); s.rect(2, 8, 4, 17, "mt1")
+    s.hline(1, 14, 8, "mt1"); s.hline(1, 14, 9, "mt0")
+    s.rect(3, 9, 12, 10, "gr0"); s.hline(4, 11, 9, "gr1")                           # the stew
+    s.px(5 + frame, 7, "gr1"); s.px(9 - frame, 6, "gr1"); s.px(7, 7 - frame, "gr1")
+    s.rect(3, 18, 4, 20, "mt0"); s.rect(11, 18, 12, 20, "mt0")
+    s.rect(4, 20, 11, 21, "wd1")
+    s.rect(5, 19, 10, 20, "ember0")
+    s.rect(6 + frame, 17, 9, 19, "ember"); s.px(7, 18, "ember1")
+    return s.outline()
+
+
+def pantry_shelf():
+    """The Pantry shelves: jars, bread, bottles and hanging herbs (32x32)."""
+    s = Sprite(32, 32)
+    s.rect(1, 1, 30, 30, "st2"); s.hline(1, 30, 1, "st3")
+    s.rect(3, 3, 28, 29, "st0")
+    for y in (13, 22):
+        s.rect(3, y, 28, y + 1, "wd2"); s.hline(3, 28, y + 1, "wd0")
+    for x, col in ((5, "red"), (9, "gr1"), (13, "gp1"), (17, "gold0"), (21, "red1")):  # bottles
+        s.rect(x, 7, x + 2, 12, col); s.px(x + 1, 6, "mt1"); s.px(x, 7, "white")
+    for x in (5, 11, 17):                                                           # loaves
+        s.rect(x, 17, x + 4, 21, "wd3"); s.hline(x, x + 4, 17, "gold0"); s.px(x + 2, 19, "wd2")
+    s.rect(23, 15, 27, 21, "wd1"); s.hline(23, 27, 15, "wd2"); s.hline(23, 27, 18, "mt0")  # a keg
+    for x in (6, 12, 18, 24):                                                       # jars
+        s.rect(x, 24, x + 3, 28, "par0"); s.rect(x, 24, x + 3, 25, "par1"); s.px(x + 1, 26, "red")
+    return s.outline()
+
+
+def perch():
+    """Pyr's perch: an iron stand with a red cushion and a ring of embers (16x32)."""
+    s = Sprite(16, 32)
+    s.rect(7, 12, 8, 27, "mt0"); s.vline(7, 12, 27, "mt1")
+    s.rect(4, 27, 11, 29, "mt0"); s.hline(4, 11, 27, "mt1"); s.rect(5, 30, 10, 30, "mt0")
+    s.rect(2, 7, 13, 11, "red"); s.hline(2, 13, 7, "red1"); s.hline(2, 13, 11, "red0")
+    s.rect(1, 9, 1, 10, "gold"); s.rect(14, 9, 14, 10, "gold")
+    s.px(4, 8, "gold1"); s.px(11, 8, "gold1")
+    s.px(5, 5, "ember"); s.px(10, 4, "ember1"); s.px(8, 3, "ember")                 # drifting embers
+    return s.outline()
+
+
+
 def pyr(frame):
     """Pyr, the Tiny Code-Flame: a little living flame with bright eyes."""
     s = Sprite(16, 16)
@@ -516,6 +647,14 @@ def build():
     pieces["pillar"] = pillar()
     pieces["armor"] = armor_statue()
     pieces["door"] = door()
+    pieces["trophy_case"] = trophy_case()
+    for f in (0, 1):
+        pieces[f"desk_{f}"] = study_desk(f)
+        pieces[f"cauldron_{f}"] = cauldron(f)
+    pieces["dummy"] = dummy()
+    pieces["ring"] = ring()
+    pieces["pantry_shelf"] = pantry_shelf()
+    pieces["perch"] = perch()
     pieces["chest"] = chest()
     pieces["urn"] = urn()
     pieces["bookshelf"] = bookshelf()
