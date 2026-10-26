@@ -36,6 +36,7 @@ var hunter_sprite := Sprite2D.new()
 var pyr := Sprite2D.new()
 var hearth_sprite: Sprite2D
 var torches: Array[Sprite2D] = []
+var flames: Array[Dictionary] = []
 var candle: Sprite2D
 var camera := Camera2D.new()
 var hud := CanvasLayer.new()
@@ -132,7 +133,14 @@ func _station(id: String, label: String, area: Rect2, pip_at: Vector2) -> void:
 	stations.append({"id": id, "label": label, "area": area, "pip": pip_at})
 
 
+func _flame(parent: Node, base: String, at: Vector2, from_feet := false) -> Sprite2D:
+	var sprite := _piece(parent, base + "_0", at, from_feet)
+	flames.append({"sprite": sprite, "base": base})
+	return sprite
+
+
 func _build_room() -> void:
+	# A castle hall: a stone wall with a plinth, a polished marble checker floor.
 	for y in ROWS:
 		for x in COLS:
 			var piece := "floor_%d" % ((x + y) % 2)
@@ -141,37 +149,54 @@ func _build_room() -> void:
 			elif y == 1 or y == 2:
 				piece = "wall_face_%d" % (x % 2)
 			elif y == 3:
-				piece = "skirting"
+				piece = "plinth"
 			_piece(background, piece, Vector2(x * T, y * T))
-	_piece(background, "rug_big", Vector2(120, 100))
-	for wx in [3, 16]:
-		_piece(background, "window", Vector2(wx * T, T))
-	for tx in [7, 12]:
-		torches.append(_piece(background, "torch_0", Vector2(tx * T, T + 2)))
-	# Wall pieces: the bookshelves, the Hearth and the Armory rack.
-	_piece(background, "bookshelf", Vector2(24, 48), true)
-	_piece(background, "bookshelf", Vector2(296, 48), true)
+	# The red carpet runs from the great door to the hearth.
+	for y in range(4, 12):
+		_piece(background, "carpet", Vector2(144, y * T))
+	# Moonlight falls from the windows onto the marble.
+	for wx in [88, 216]:
+		_piece(background, "moonbeam", Vector2(wx - 10, 64))
+	# On the wall: pillars, stained glass, banners and sconces.
+	for px in [0, 304]:
+		_piece(background, "pillar", Vector2(px, 16))
+	for wx in [88, 216]:
+		_piece(background, "window", Vector2(wx, 16))
+	for bx in [120, 184]:
+		_piece(background, "banner", Vector2(bx, 16))
+	for sx in [248, 108]:
+		torches.append(_piece(background, "sconce_0", Vector2(sx, 22)))
+	_piece(background, "bookshelf", Vector2(28, 48), true)
+	_piece(background, "bookshelf", Vector2(278, 48), true)
 	hearth_sprite = _piece(background, "fire_0", Vector2(160, 54), true)
-	_piece(background, "armory", Vector2(64, 52), true)
-	_piece(background, "door", Vector2(152, 200), true)
+	_piece(background, "armory", Vector2(60, 52), true)
+	_piece(background, "door", Vector2(160, 200), true)
 	# The world's walls and edges.
 	_block(Rect2(0, 0, WORLD.x, 64))
 	_block(Rect2(0, 192, WORLD.x, 16))
 	_block(Rect2(-16, 0, 24, WORLD.y))
 	_block(Rect2(WORLD.x - 8, 0, 24, WORLD.y))
-	# Things you can walk around: the Map table, barrels, crates and plants.
+	# Things you can walk around: the Map table, candelabras, braziers, statues, urns and a chest.
 	_piece(world, "shadow", Vector2(240, 114), true).z_index = -1
-	var table := _piece(world, "candle_0", Vector2(240, 112), true)
-	candle = table
+	candle = _piece(world, "candle_0", Vector2(240, 112), true)
 	_block(Rect2(224, 98, 32, 14))
-	for item in [["barrel", Vector2(302, 84)], ["barrel", Vector2(302, 100)], ["crate", Vector2(284, 86)], ["plant", Vector2(14, 82)], ["plant", Vector2(306, 182)], ["plant", Vector2(14, 182)]]:
-		_piece(world, item[0], item[1], true)
-		_block(Rect2(item[1].x - 6, item[1].y - 6, 12, 6))
+	for at in [Vector2(122, 98), Vector2(198, 98)]:
+		_flame(world, "candelabra", at, true)
+		_block(Rect2(at.x - 5, at.y - 5, 10, 5))
+	for at in [Vector2(132, 190), Vector2(188, 190)]:
+		_flame(world, "brazier", at, true)
+		_block(Rect2(at.x - 6, at.y - 6, 12, 6))
+	for at in [Vector2(24, 188), Vector2(296, 188)]:
+		_piece(world, "armor", at, true)
+		_block(Rect2(at.x - 7, at.y - 6, 14, 6))
+	for at in [Vector2(24, 84), Vector2(296, 84), Vector2(296, 140)]:
+		_piece(world, "urn" if at.y < 100 else "chest", at, true)
+		_block(Rect2(at.x - 6, at.y - 6, 12, 6))
 	# The stations you use. Each area is where the hunter stands to use it.
-	_station("hearth", "Rest at the Hearth", Rect2(140, 62, 40, 24), Vector2(160, 14))
-	_station("armory", "Open the Armory", Rect2(44, 62, 40, 24), Vector2(64, 18))
+	_station("hearth", "Rest at the Hearth", Rect2(140, 62, 40, 24), Vector2(160, 12))
+	_station("armory", "Open the Armory", Rect2(40, 62, 40, 24), Vector2(60, 16))
 	_station("map", "Plan a Dungeon run", Rect2(214, 112, 52, 24), Vector2(240, 80))
-	_station("door", "Go to the Forge", Rect2(134, 168, 36, 24), Vector2(152, 172))
+	_station("door", "Go to the Forge", Rect2(134, 168, 52, 24), Vector2(160, 164))
 
 
 func _build_hunter() -> void:
@@ -352,7 +377,9 @@ func _follow_pyr(delta: float) -> void:
 func _animate_room() -> void:
 	var beat := int(clock * 4.0) % 2
 	for torch in torches:
-		_set_piece(torch, "torch_%d" % beat)
+		_set_piece(torch, "sconce_%d" % beat)
+	for flame in flames:
+		_set_piece(flame["sprite"], "%s_%d" % [flame["base"], (beat + int(flame["sprite"].position.x) % 2) % 2])
 	_set_piece(hearth_sprite, ("fire_%d" % beat) if bool(state["fire_lit"]) else "fire_out")
 	_set_piece(candle, "candle_%d" % beat)
 

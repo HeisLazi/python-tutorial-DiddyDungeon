@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
-"""Generate the Home room tileset and objects (GBA / FireRed look, dark-arcade palette).
+"""Generate the Home hall tileset and objects: a gothic castle hall (Castlevania
+meets GBA Pokemon), in the app's dark indigo palette with crimson and gold.
 
-Writes ide/home-godot/art/tiles.png (an atlas) and tiles.json (name -> region),
-so the Godot scene can place any piece by name. Every sprite is drawn in code
-with a fixed palette, a 1px dark outline and flat 3-tone shading; re-run this
-script to regenerate. Frames of animated pieces are separate regions
-(torch_0, torch_1, fire_0, ...).
+Writes ide/home-godot/art/tiles.png (an atlas), tiles.json and tiles_data.gd
+(name -> region) so the Godot scene can place any piece by name. Everything is
+drawn in code with a fixed palette, a 1px dark outline and flat 3-4 tone
+shading; re-run this script to regenerate. Animated pieces are separate
+regions (flame_0, flame_1, ...).
 
 Run with the system Python (it has Pillow):  python3 tools/home_art/make_tiles.py
 """
@@ -21,30 +22,35 @@ from PIL import Image
 ROOT = Path(__file__).resolve().parents[2]
 OUT = ROOT / "ide" / "home-godot" / "art"
 
-# ── Palette: the app's deep indigo shadows with warm wood, ember and gold ─────
 C = {
-    "line": (20, 16, 31),
-    "st0": (35, 30, 56), "st1": (49, 43, 78), "st2": (66, 59, 102), "st3": (92, 84, 134),
-    "br0": (56, 32, 46), "br1": (84, 48, 64), "br2": (112, 66, 84), "br3": (140, 88, 104),
-    "wd0": (60, 36, 24), "wd1": (98, 60, 34), "wd2": (140, 88, 48), "wd3": (186, 124, 68),
-    "gold": (245, 197, 66), "gold0": (176, 130, 32), "gold1": (255, 232, 140),
-    "ember": (255, 122, 42), "ember0": (214, 70, 30), "ember1": (255, 209, 102),
-    "red": (192, 57, 43), "red0": (132, 34, 36),
-    "pur0": (62, 44, 112), "pur1": (96, 70, 164), "pur2": (132, 104, 208),
-    "par0": (205, 183, 122), "par1": (232, 217, 168), "par2": (248, 240, 208),
-    "gr0": (38, 106, 53), "gr1": (63, 143, 74), "gr2": (110, 186, 110),
-    "mt0": (93, 102, 124), "mt1": (154, 163, 184), "mt2": (214, 220, 232),
-    "white": (242, 239, 230), "glass": (120, 170, 230), "glass0": (62, 100, 170),
+    "line": (16, 12, 28),
+    # cool castle stone
+    "st0": (30, 28, 50), "st1": (46, 44, 74), "st2": (66, 64, 100), "st3": (92, 90, 130), "st4": (122, 120, 160),
+    # polished dark marble floor
+    "m0": (22, 20, 38), "m1": (36, 34, 58), "m2": (54, 52, 82), "m3": (78, 76, 112),
+    # crimson carpet and banners
+    "red0": (92, 20, 38), "red": (150, 32, 52), "red1": (200, 56, 66), "red2": (236, 110, 102),
+    # gold and ember
+    "gold0": (150, 108, 28), "gold": (240, 190, 60), "gold1": (255, 232, 140),
+    "ember0": (214, 70, 30), "ember": (255, 122, 42), "ember1": (255, 209, 102),
+    # dark wood and iron
+    "wd0": (44, 28, 24), "wd1": (80, 50, 38), "wd2": (122, 78, 52), "wd3": (166, 112, 72),
+    "mt0": (60, 64, 88), "mt1": (122, 130, 158), "mt2": (190, 198, 222),
+    # parchment, glass, plants, wax
+    "par0": (190, 168, 112), "par1": (226, 210, 160), "par2": (246, 238, 206),
+    "gl0": (36, 54, 120), "gl1": (64, 96, 186), "gl2": (120, 160, 232), "gp0": (84, 52, 140), "gp1": (130, 92, 200),
+    "gr0": (34, 90, 56), "gr1": (60, 132, 80),
+    "wax": (236, 228, 204), "white": (242, 239, 230), "moon": (140, 170, 230),
 }
 
 
-def rgba(name: str, alpha: int = 255):
+def rgba(name, alpha=255):
     r, g, b = C[name]
     return (r, g, b, alpha)
 
 
 class Sprite:
-    def __init__(self, w: int, h: int):
+    def __init__(self, w, h):
         self.img = Image.new("RGBA", (w, h), (0, 0, 0, 0))
         self.w, self.h = w, h
 
@@ -70,10 +76,8 @@ class Sprite:
                     self.px(x, y, c)
 
     def outline(self, color="line"):
-        """A 1px dark outline around every opaque pixel (kept inside the canvas)."""
         out = self.img.copy()
-        src = self.img.load()
-        dst = out.load()
+        src, dst = self.img.load(), out.load()
         for y in range(self.h):
             for x in range(self.w):
                 if src[x, y][3]:
@@ -87,171 +91,266 @@ class Sprite:
         return self
 
 
-def noise(seed: int):
+def noise(seed):
     return random.Random(seed)
 
 
-# ── Floor and wall tiles (16x16, tileable) ───────────────────────────────────
-def floor_tile(variant: int) -> Sprite:
-    """Warm wooden planks (FireRed house floors), two planks per tile with staggered joints."""
+# ── Floor, carpet and walls (tileable) ───────────────────────────────────────
+def floor_tile(variant):
+    """Polished dark marble in a checker, each cell bevelled."""
     s = Sprite(16, 16)
-    rng = noise(100 + variant)
-    s.rect(0, 0, 15, 15, "wd2")
-    joints = [(5, 12), (11, 4)][variant]
-    for plank, top in enumerate((0, 8)):
-        s.hline(0, 15, top, "wd3")              # lit top edge
-        s.hline(0, 15, top + 6, "wd1")          # shade before the seam
-        s.hline(0, 15, top + 7, "wd0")          # seam
-        s.vline(joints[plank], top, top + 6, "wd0")
-        s.vline(joints[plank] + 1, top + 1, top + 5, "wd3")
-        for _ in range(5):                       # grain flecks
-            s.px(rng.randrange(16), top + 1 + rng.randrange(5), "wd1" if rng.random() < 0.6 else "wd3")
+    rng = noise(300 + variant)
+    for cy in (0, 1):
+        for cx in (0, 1):
+            light = (cx + cy) % 2 == 0
+            x0, y0 = cx * 8, cy * 8
+            s.rect(x0, y0, x0 + 7, y0 + 7, "m2" if light else "m1")
+            s.hline(x0, x0 + 7, y0, "m3" if light else "m2")        # lit top edge
+            s.vline(x0, y0, y0 + 7, "m3" if light else "m2")        # lit left edge
+            s.hline(x0, x0 + 7, y0 + 7, "m0")                       # shade bottom
+            s.vline(x0 + 7, y0, y0 + 7, "m0")
+    for _ in range(4 + variant * 3):                                # veins and flecks
+        x, y = rng.randrange(16), rng.randrange(16)
+        s.px(x, y, "m3" if rng.random() < 0.5 else "m0")
+    if variant:
+        for i in range(4):
+            s.px(10 + i, 3 + i, "m3")
     return s
 
 
-def rug_tile(kind: str) -> Sprite:
-    s = Sprite(16, 16)
-    s.rect(0, 0, 15, 15, "pur0")
-    s.rect(1, 1, 14, 14, "pur1")
-    if kind == "mid":
-        for i in range(0, 16, 4):
-            s.px(i + 2, 7, "gold")
-            s.px(i + 2, 8, "gold0")
-        s.hline(0, 15, 0, "pur0")
-        s.hline(0, 15, 15, "pur0")
-    s.vline(0, 0, 15, "gold0")
-    s.vline(15, 0, 15, "gold0")
+def carpet_tile():
+    """A 2-tile-wide crimson runner (32x16) that tiles vertically."""
+    s = Sprite(32, 16)
+    s.rect(0, 0, 31, 15, "red")
+    s.rect(0, 0, 1, 15, "gold0")
+    s.rect(30, 0, 31, 15, "gold0")
+    s.vline(2, 0, 15, "gold")
+    s.vline(29, 0, 15, "gold")
+    s.rect(3, 0, 4, 15, "red0")
+    s.rect(27, 0, 28, 15, "red0")
+    cx = 16
+    s.px(cx - 1, 7, "gold"); s.px(cx, 7, "gold")
+    s.px(cx - 2, 8, "gold0"); s.px(cx - 1, 8, "gold1"); s.px(cx, 8, "gold1"); s.px(cx + 1, 8, "gold0")
+    s.px(cx - 1, 9, "gold"); s.px(cx, 9, "gold")
+    s.px(cx - 1, 6, "red1"); s.px(cx, 6, "red1"); s.px(cx - 1, 10, "red1"); s.px(cx, 10, "red1")
+    for x in range(6, 26, 4):
+        s.px(x, 2, "red1")
+        s.px(x + 2, 13, "red1")
     return s
 
 
-def wall_face_tile(variant: int) -> Sprite:
-    s = Sprite(16, 16)
-    s.rect(0, 0, 15, 15, "br1")
-    rng = noise(200 + variant)
-    for row in range(4):  # four brick rows, offset every other row
-        y = row * 4
-        s.hline(0, 15, y + 3, "br0")
-        off = 0 if row % 2 == 0 else 4
-        for x in range(off, 16, 8):
-            s.vline(x, y, y + 2, "br0")
-        s.hline(0, 15, y, "br2")
-        for _ in range(2):
-            s.px(rng.randrange(16), y + 1 + rng.randrange(2), "br3")
-    return s
-
-
-def wall_top_tile() -> Sprite:
-    s = Sprite(16, 16)
-    s.rect(0, 0, 15, 15, "st0")
-    s.hline(0, 15, 12, "st1")
-    s.hline(0, 15, 13, "st2")
-    s.hline(0, 15, 14, "st3")
-    s.hline(0, 15, 15, "line")
-    return s
-
-
-def skirting_tile() -> Sprite:
+def wall_face_tile(variant):
+    """Large cool stone blocks (16x8 courses, offset)."""
     s = Sprite(16, 16)
     s.rect(0, 0, 15, 15, "st1")
-    s.rect(0, 0, 15, 3, "wd1")
-    s.hline(0, 15, 0, "wd3")
-    s.hline(0, 15, 3, "wd0")
-    s.hline(0, 15, 7, "st0")
-    s.hline(0, 15, 15, "st0")
-    s.vline(7, 8, 14, "st0")
-    s.hline(0, 15, 8, "st2")
+    rng = noise(400 + variant)
+    for row in range(2):
+        y = row * 8
+        off = 0 if (row + variant) % 2 == 0 else 8
+        s.hline(0, 15, y + 7, "st0")
+        s.hline(0, 15, y, "st2")
+        for x in (off % 16, (off + 8) % 16):
+            s.vline(x, y, y + 6, "st0")
+            if x + 1 < 16:
+                s.vline(x + 1, y + 1, y + 5, "st2")
+        for _ in range(5):
+            s.px(rng.randrange(16), y + 1 + rng.randrange(5), "st3" if rng.random() < 0.4 else "st0")
+    return s
+
+
+def wall_top_tile():
+    """The top cornice: a dark band with a lit lip."""
+    s = Sprite(16, 16)
+    s.rect(0, 0, 15, 15, "st0")
+    s.hline(0, 15, 9, "st1")
+    s.hline(0, 15, 10, "st2")
+    s.rect(0, 11, 15, 12, "st3")
+    s.hline(0, 15, 13, "st1")
+    s.hline(0, 15, 14, "st0")
+    for x in range(1, 16, 4):                                       # corbels
+        s.rect(x, 5, x + 1, 9, "st1")
+        s.px(x, 5, "st2")
+    return s
+
+
+def plinth_tile():
+    """The stone plinth where the wall meets the marble."""
+    s = Sprite(16, 16)
+    s.rect(0, 0, 15, 15, "st2")
+    s.hline(0, 15, 0, "st4")
+    s.hline(0, 15, 1, "st3")
+    s.rect(0, 2, 15, 6, "st2")
+    s.hline(0, 15, 7, "st1")
+    s.hline(0, 15, 8, "st0")
+    s.rect(0, 9, 15, 15, "m0")                                      # its shadow on the floor
+    s.hline(0, 15, 9, "m1")
+    for x in (4, 12):
+        s.vline(x, 2, 6, "st1")
     return s
 
 
 # ── Objects ──────────────────────────────────────────────────────────────────
-def torch(frame: int) -> Sprite:
-    s = Sprite(16, 16)
-    s.rect(7, 9, 8, 14, "wd2")
-    s.vline(7, 9, 14, "wd1")
-    s.rect(5, 8, 10, 9, "mt0")
-    s.hline(5, 10, 8, "mt1")
-    flame = [(7, 4, 8, 7), (6, 5, 9, 7)] if frame == 0 else [(7, 3, 8, 7), (6, 5, 9, 7)]
-    s.rect(*flame[1], "ember0")
-    s.rect(*flame[0], "ember")
-    s.rect(7, 6, 8, 7, "ember1")
-    s.px(8 if frame else 7, 2 if frame else 3, "ember1")
+def window_arch():
+    """A tall pointed-arch stained-glass window (16x32) with moonlight."""
+    s = Sprite(16, 32)
+    s.rect(1, 3, 14, 31, "st3")
+    for y, x in ((2, 5), (1, 7)):
+        s.rect(x, y, 15 - x, y, "st3")
+    s.rect(3, 6, 12, 29, "gl0")
+    s.rect(4, 5, 11, 5, "gl0")
+    s.rect(6, 4, 9, 4, "gl0")
+    s.rect(4, 8, 11, 28, "gl1")
+    s.rect(5, 6, 10, 7, "gl1")
+    s.rect(6, 5, 9, 5, "gl1")
+    s.rect(5, 9, 10, 14, "gp0")                                     # stained glass panes
+    s.rect(6, 10, 9, 13, "gp1")
+    s.rect(5, 17, 10, 22, "red0")
+    s.rect(6, 18, 9, 21, "red")
+    s.px(7, 11, "gold1"); s.px(8, 19, "gold")
+    s.vline(7, 5, 29, "st1")                                        # mullions and tracery
+    s.vline(8, 5, 29, "st1")
+    s.hline(4, 11, 15, "st1")
+    s.hline(4, 11, 16, "st1")
+    s.hline(4, 11, 24, "st1")
+    s.px(5, 7, "gl2"); s.px(5, 8, "gl2"); s.px(10, 26, "gl2"); s.px(10, 27, "gl2")
+    s.rect(1, 29, 14, 31, "st2")                                    # sill
+    s.hline(1, 14, 29, "st4")
     return s.outline()
 
 
-def window() -> Sprite:
-    s = Sprite(16, 16)
-    s.rect(2, 1, 13, 14, "wd2")
-    s.rect(3, 2, 12, 13, "glass0")
-    s.rect(4, 3, 11, 12, "glass")
-    s.vline(7, 2, 13, "wd1")
-    s.vline(8, 2, 13, "wd2")
-    s.hline(3, 12, 7, "wd1")
-    s.hline(3, 12, 8, "wd2")
-    s.px(5, 4, "white")
-    s.px(5, 5, "white")
-    s.px(10, 10, "par2")
-    s.rect(1, 14, 14, 14, "wd0")
+def banner():
+    """A crimson banner on a pole (16x32) with a gold flame crest."""
+    s = Sprite(16, 32)
+    s.rect(1, 1, 14, 1, "gold0")
+    s.hline(1, 14, 2, "gold")
+    s.px(1, 1, "gold1"); s.px(14, 1, "gold1")
+    s.rect(2, 3, 13, 24, "red")
+    s.vline(2, 3, 24, "red0"); s.vline(13, 3, 24, "red0")
+    s.vline(3, 3, 24, "red1")
+    for i in range(6):                                              # swallowtail
+        s.hline(2 + i, 13 - i, 25 + i, "red")
+        s.px(2 + i, 25 + i, "red0"); s.px(13 - i, 25 + i, "red0")
+    s.hline(2, 13, 4, "red1")
+    s.rect(6, 8, 9, 15, "gold")                                     # crest: a flame
+    s.rect(7, 6, 8, 9, "gold1")
+    s.px(6, 12, "gold0"); s.px(9, 12, "gold0")
+    s.rect(5, 17, 10, 17, "gold0")
+    s.rect(7, 18, 8, 20, "gold0")
     return s.outline()
 
 
-def door() -> Sprite:
+def sconce(frame):
+    s = Sprite(16, 16)
+    s.rect(6, 9, 9, 13, "mt0")
+    s.hline(6, 9, 9, "mt1")
+    s.rect(4, 8, 11, 9, "mt0")
+    s.hline(4, 11, 8, "mt1")
+    s.rect(7, 13, 8, 14, "mt0")
+    s.rect(7, 5, 8, 7, "wax")
+    s.px(7, 5, "white")
+    f = [(7, 3, 8, 4), (7, 2, 8, 4)][frame]
+    s.rect(*f, "ember")
+    s.px(7 + frame, 3 if frame == 0 else 2, "ember1")
+    return s.outline()
+
+
+def pillar():
+    """A fluted stone column (16x48) with a capital and a base."""
+    s = Sprite(16, 48)
+    s.rect(1, 0, 14, 5, "st3")
+    s.hline(1, 14, 0, "st4")
+    s.rect(2, 5, 13, 7, "st2")
+    s.rect(3, 8, 12, 39, "st2")
+    s.vline(3, 8, 39, "st3"); s.vline(4, 8, 39, "st3")
+    s.vline(11, 8, 39, "st1"); s.vline(12, 8, 39, "st0")
+    s.vline(7, 8, 39, "st1"); s.vline(8, 8, 39, "st1")
+    s.rect(2, 40, 13, 42, "st2")
+    s.rect(1, 43, 14, 47, "st3")
+    s.hline(1, 14, 43, "st4")
+    s.hline(1, 14, 47, "st1")
+    return s.outline()
+
+
+def candelabra(frame):
+    """A standing iron candelabra (16x32) with three flames."""
+    s = Sprite(16, 32)
+    s.rect(7, 12, 8, 27, "mt0")
+    s.vline(7, 12, 27, "mt1")
+    s.rect(4, 27, 11, 29, "mt0")
+    s.hline(4, 11, 27, "mt1")
+    s.rect(5, 30, 10, 30, "mt0")
+    s.hline(2, 13, 11, "mt0")
+    s.vline(2, 8, 11, "mt0"); s.vline(13, 8, 11, "mt0")
+    for cx, top in ((2, 5), (7, 3), (13, 5)):
+        x0 = cx if cx != 7 else 7
+        x1 = cx if cx != 7 else 8
+        s.rect(x0, top + 2, x1, top + 6, "wax")
+        s.px(x0, top + 2, "white")
+        s.rect(x0, top - 1 - frame, x1, top + 1, "ember")
+        s.px(x0, top - frame, "ember1")
+    return s.outline()
+
+
+def brazier(frame):
+    """An iron fire bowl on a tripod (16x24)."""
     s = Sprite(16, 24)
-    s.rect(1, 1, 14, 23, "wd1")
-    s.rect(2, 2, 13, 23, "wd2")
-    for x in (5, 8, 11):
-        s.vline(x, 2, 23, "wd1")
-    s.hline(2, 13, 2, "wd3")
-    s.rect(2, 20, 13, 23, "wd0")
-    s.px(11, 13, "gold")
-    s.px(11, 14, "gold0")
-    s.rect(0, 0, 15, 0, "line")
+    s.rect(2, 12, 13, 14, "mt0")
+    s.hline(2, 13, 12, "mt1")
+    s.rect(3, 14, 12, 16, "mt0")
+    s.rect(5, 17, 10, 17, "mt0")
+    for x, y in ((4, 18), (11, 18)):
+        s.vline(x, y, 22, "mt0")
+    s.vline(7, 18, 22, "mt0"); s.vline(8, 18, 22, "mt0")
+    s.hline(3, 12, 22, "mt0")
+    s.rect(4, 10, 11, 11, "ember0")
+    flame = [((5, 5, 10, 10), (6, 3, 9, 7)), ((5, 4, 10, 10), (7, 2, 8, 6))][frame]
+    s.rect(*flame[0], "ember")
+    s.rect(*flame[1], "ember1")
     return s.outline()
 
 
-def barrel() -> Sprite:
+def armor_statue():
+    """A suit of armour on a plinth (16x32)."""
+    s = Sprite(16, 32)
+    s.rect(2, 27, 13, 30, "st2"); s.hline(2, 13, 27, "st3")
+    s.rect(5, 17, 10, 26, "mt0"); s.rect(5, 17, 6, 26, "mt1")      # legs
+    s.vline(8, 20, 26, "line")
+    s.rect(3, 9, 12, 17, "mt0"); s.rect(3, 9, 5, 17, "mt1")        # torso and pauldrons
+    s.rect(7, 11, 8, 15, "gold0")
+    s.rect(5, 1, 10, 8, "mt0"); s.rect(5, 1, 7, 8, "mt1")          # helmet
+    s.hline(6, 9, 4, "line"); s.px(7, 5, "line"); s.px(8, 5, "line")
+    s.rect(7, 0, 8, 1, "red1")                                      # plume
+    s.rect(1, 12, 2, 24, "mt2")                                     # a sword at rest
+    s.rect(0, 11, 3, 11, "gold")
+    return s.outline()
+
+
+def chest():
     s = Sprite(16, 16)
-    s.rect(3, 2, 12, 13, "wd2")
-    s.rect(3, 2, 5, 13, "wd3")
-    s.rect(10, 2, 12, 13, "wd1")
-    for y in (4, 11):
-        s.hline(3, 12, y, "mt0")
-        s.hline(3, 12, y + 1, "mt1")
-    s.hline(4, 11, 1, "wd3")
-    s.hline(4, 11, 14, "wd0")
+    s.rect(2, 5, 13, 14, "wd2"); s.rect(2, 5, 13, 7, "wd3")
+    s.rect(2, 12, 13, 14, "wd1")
+    s.hline(2, 13, 8, "mt0")
+    s.rect(7, 8, 8, 10, "gold")
+    s.vline(2, 5, 14, "mt0"); s.vline(13, 5, 14, "mt0")
+    s.hline(3, 12, 4, "wd2")
     return s.outline()
 
 
-def crate() -> Sprite:
+def urn():
     s = Sprite(16, 16)
-    s.rect(2, 3, 13, 14, "wd2")
-    s.rect(2, 3, 13, 4, "wd3")
-    s.rect(2, 13, 13, 14, "wd0")
-    s.rect(2, 3, 3, 14, "wd1")
-    s.rect(12, 3, 13, 14, "wd1")
-    for i in range(4, 12):
-        s.px(i, 4 + (i - 4) * 9 // 8, "wd1")
+    s.rect(5, 12, 10, 14, "st2")
+    s.rect(4, 7, 11, 11, "st3"); s.rect(4, 7, 5, 11, "st4")
+    s.rect(5, 5, 10, 6, "st2")
+    s.hline(4, 11, 9, "gold0")
+    s.disc(8, 3, 2, "gr1"); s.px(7, 2, "gr0"); s.px(10, 4, "red1")
     return s.outline()
 
 
-def plant() -> Sprite:
-    s = Sprite(16, 16)
-    s.rect(5, 10, 10, 14, "br2")
-    s.rect(5, 10, 10, 11, "br3")
-    s.rect(5, 14, 10, 14, "br0")
-    s.disc(8, 6, 4, "gr1")
-    s.disc(5, 8, 2, "gr0")
-    s.disc(11, 8, 2, "gr0")
-    s.px(7, 4, "gr2")
-    s.px(9, 5, "gr2")
-    s.px(6, 6, "gr2")
-    return s.outline()
-
-
-def bookshelf() -> Sprite:
+def bookshelf():
     s = Sprite(16, 32)
     s.rect(1, 1, 14, 30, "wd1")
     s.rect(2, 2, 13, 29, "wd0")
-    cols = ["red", "pur1", "gold0", "gr1", "glass0", "par0", "red0", "pur2"]
+    cols = ["red", "gp1", "gold0", "gr1", "gl1", "par0", "red0", "gp0"]
     rng = noise(7)
     for shelf in range(3):
         top = 3 + shelf * 9
@@ -261,183 +360,172 @@ def bookshelf() -> Sprite:
             h = rng.choice((5, 6, 7))
             col = cols[rng.randrange(len(cols))]
             s.rect(x, top + 8 - h, min(12, x + w - 1), top + 7, col)
-            s.px(x, top + 8 - h, "white" if col != "par0" else "par2")
+            s.px(x, top + 8 - h, "white")
             x += w + (0 if rng.random() < 0.7 else 1)
         s.hline(2, 13, top + 8, "wd2")
     s.rect(1, 1, 14, 1, "wd3")
     return s.outline()
 
 
-def rug(w_tiles: int, h_tiles: int) -> Sprite:
-    s = Sprite(w_tiles * 16, h_tiles * 16)
-    s.rect(0, 0, s.w - 1, s.h - 1, "pur0")
-    s.rect(2, 2, s.w - 3, s.h - 3, "pur1")
-    s.rect(3, 3, s.w - 4, s.h - 4, "pur2")
-    s.rect(5, 5, s.w - 6, s.h - 6, "pur1")
-    for x in range(8, s.w - 8, 4):
-        s.px(x, s.h // 2, "gold")
-        s.px(x + 1, s.h // 2, "gold0")
-    s.rect(0, 0, s.w - 1, 0, "gold0")
-    s.rect(0, s.h - 1, s.w - 1, s.h - 1, "gold0")
-    return s
-
-
-def hearth(frame: int) -> Sprite:
-    """The Hearth station: a stone fireplace with a mantle and a live fire."""
+def door():
+    """A grand double door in a pointed stone arch (32x32)."""
     s = Sprite(32, 32)
-    s.rect(1, 1, 30, 30, "st2")
-    s.rect(1, 1, 30, 3, "st3")                     # mantle top
-    s.rect(1, 4, 30, 5, "wd1")                     # mantle beam
-    s.hline(1, 30, 4, "wd3")
-    s.rect(4, 6, 27, 29, "st1")                    # chimney breast
-    s.rect(7, 12, 24, 29, "line")                  # firebox
-    s.rect(8, 13, 23, 29, "st0")
-    for y in range(13, 30, 4):                     # inner bricks
-        s.hline(8, 23, y, "line")
-    # logs
-    s.rect(10, 26, 21, 28, "wd1")
-    s.hline(10, 21, 26, "wd3")
-    s.rect(12, 24, 19, 25, "wd2")
-    # fire (two frames), or an unlit grate (frame 2) with one ember left
-    if frame == 2:
-        s.px(15, 25, "ember0")
-        s.px(16, 25, "ember")
-    else:
-        flames = [
-            [(15, 14, 16, 18), (13, 17, 18, 24), (11, 20, 20, 25)],
-            [(14, 13, 17, 17), (12, 16, 19, 23), (11, 20, 20, 25)],
-        ][frame]
-        s.rect(*(flames[2][0], flames[2][1], flames[2][2], flames[2][3]), "ember0")
-        s.rect(*(flames[1][0], flames[1][1], flames[1][2], flames[1][3]), "ember")
-        s.rect(*(flames[0][0], flames[0][1], flames[0][2], flames[0][3]), "ember1")
-        s.rect(14, 21, 17, 25, "ember1")
-    # candlesticks on the mantle
-    for cx in (5, 26):
-        s.rect(cx, 0, cx + 1, 1, "par2")
-        s.px(cx, 0, "ember1")
-    # hanging pot hook
-    s.hline(7, 24, 12, "mt0")
+    s.rect(1, 6, 30, 31, "st3")
+    for y, x in ((5, 5), (4, 8), (3, 11), (2, 13), (1, 15)):
+        s.rect(x, y, 31 - x, y, "st3")
+    s.rect(4, 8, 27, 31, "st0")
+    s.rect(5, 7, 26, 7, "st0"); s.rect(8, 6, 23, 6, "st0"); s.rect(12, 5, 19, 5, "st0")
+    s.rect(5, 9, 15, 31, "wd1"); s.rect(16, 9, 26, 31, "wd1")
+    s.rect(6, 8, 25, 8, "wd1"); s.rect(9, 7, 22, 7, "wd1"); s.rect(13, 6, 18, 6, "wd1")
+    for x in (7, 10, 13, 18, 21, 24):
+        s.vline(x, 9, 31, "wd0")
+    s.vline(15, 7, 31, "line"); s.vline(16, 7, 31, "line")
+    for y in (13, 22):
+        s.hline(5, 26, y, "mt0"); s.hline(5, 26, y + 1, "mt1")
+    for x in (13, 18):
+        s.disc(x, 21, 1, "gold")
+    s.hline(1, 30, 31, "st1")
+    s.vline(4, 8, 31, "st4"); s.vline(27, 8, 31, "st1")
     return s.outline()
 
 
-def armory(frame: int = 0) -> Sprite:
-    """The Armory rack: a wooden board with a sword, an axe and a round shield."""
+def hearth(frame):
+    """A grand pointed-arch stone fireplace (32x32) with a live fire (frame 2: cold)."""
+    s = Sprite(32, 32)
+    s.rect(1, 2, 30, 31, "st2")
+    s.rect(1, 2, 30, 4, "st3"); s.hline(1, 30, 2, "st4")           # mantle
+    s.rect(3, 5, 28, 6, "st1")
+    s.rect(4, 7, 27, 31, "st1")
+    for y, x in ((11, 8), (9, 10), (8, 12), (7, 14)):               # the pointed arch
+        s.rect(x, y, 31 - x, y, "line")
+    s.rect(7, 12, 24, 31, "line")
+    s.rect(8, 12, 23, 31, "st0")
+    s.rect(9, 11, 22, 11, "st0"); s.rect(11, 10, 20, 10, "st0"); s.rect(13, 9, 18, 9, "st0")
+    s.rect(10, 27, 21, 29, "wd1"); s.hline(10, 21, 27, "wd3")      # logs
+    s.rect(12, 25, 19, 26, "wd2")
+    if frame == 2:
+        s.px(15, 26, "ember0"); s.px(16, 26, "ember")
+    else:
+        flames = [
+            [(15, 13, 16, 19), (13, 17, 18, 25), (11, 21, 20, 26)],
+            [(14, 12, 17, 18), (12, 16, 19, 24), (11, 21, 20, 26)],
+        ][frame]
+        s.rect(*flames[2], "ember0")
+        s.rect(*flames[1], "ember")
+        s.rect(*flames[0], "ember1")
+        s.rect(14, 22, 17, 26, "ember1")
+    for cx in (5, 25):                                              # candlesticks on the mantle
+        s.rect(cx, 0, cx + 1, 2, "wax"); s.px(cx, 0, "ember1")
+    s.px(15, 4, "red1"); s.px(16, 4, "red1")
+    return s.outline()
+
+
+def armory():
+    """The weapon rack: iron-banded dark wood with a sword, an axe and a round shield."""
     s = Sprite(32, 28)
     s.rect(1, 1, 30, 24, "wd1")
     s.rect(2, 2, 29, 23, "wd0")
-    s.hline(1, 30, 1, "wd3")
-    s.hline(2, 29, 12, "wd1")                      # a rail
-    s.hline(2, 29, 13, "wd2")
-    # sword (blade up, gold hilt)
-    s.rect(7, 3, 8, 15, "mt1")
-    s.vline(7, 3, 15, "mt2")
+    s.hline(1, 30, 1, "wd2")
+    for y in (6, 17):
+        s.hline(2, 29, y, "mt0"); s.hline(2, 29, y + 1, "mt1")
+    s.rect(7, 3, 8, 15, "mt1"); s.vline(7, 3, 15, "mt2")
     s.rect(5, 15, 10, 16, "gold")
     s.rect(7, 17, 8, 21, "wd2")
-    s.px(7, 22, "gold0")
-    s.px(8, 22, "gold0")
-    # round shield
-    s.disc(18, 11, 6, "pur1")
-    s.disc(18, 11, 4, "pur2")
-    s.disc(18, 11, 1, "gold")
-    s.px(18, 5, "gold0")
-    # axe
-    s.rect(26, 4, 27, 21, "wd2")
-    s.rect(23, 5, 25, 10, "mt1")
-    s.vline(23, 5, 10, "mt2")
-    s.rect(28, 4, 28, 21, "wd1")
-    # floor stand
-    s.rect(2, 24, 29, 26, "wd2")
-    s.hline(2, 29, 26, "wd0")
+    s.px(7, 22, "gold0"); s.px(8, 22, "gold0")
+    s.disc(18, 12, 6, "red0"); s.disc(18, 12, 4, "red"); s.disc(18, 12, 1, "gold")
+    s.px(18, 6, "gold0")
+    s.rect(26, 4, 27, 21, "wd2"); s.rect(23, 5, 25, 10, "mt1"); s.vline(23, 5, 10, "mt2")
+    s.rect(2, 24, 29, 26, "st2"); s.hline(2, 29, 26, "st0")
     return s.outline()
 
 
-def map_table(frame: int) -> Sprite:
-    """The Map table: a wooden table with a parchment map and a lit candle."""
+def map_table(frame):
+    """The Map table: a heavy dark-wood table with a parchment map and a candle."""
     s = Sprite(32, 28)
-    s.rect(1, 6, 30, 22, "wd2")
-    s.hline(1, 30, 6, "wd3")
-    s.rect(1, 20, 30, 23, "wd1")
-    s.rect(3, 23, 5, 27, "wd0")
-    s.rect(26, 23, 28, 27, "wd0")
-    s.rect(4, 8, 24, 19, "par1")                   # the map
-    s.hline(4, 24, 8, "par2")
-    s.hline(4, 24, 19, "par0")
+    s.rect(1, 6, 30, 22, "wd1")
+    s.hline(1, 30, 6, "wd2")
+    s.rect(1, 20, 30, 23, "wd0")
+    s.rect(3, 23, 5, 27, "wd0"); s.rect(26, 23, 28, 27, "wd0")
+    s.rect(4, 8, 24, 19, "par1")
+    s.hline(4, 24, 8, "par2"); s.hline(4, 24, 19, "par0")
     path = [(6, 17), (9, 15), (12, 16), (15, 13), (18, 14), (21, 11)]
     for a, b in zip(path, path[1:]):
         for t in range(5):
             s.px(a[0] + (b[0] - a[0]) * t // 5, a[1] + (b[1] - a[1]) * t // 5, "red0")
-    for gx, gy in ((7, 10), (13, 10), (19, 17)):    # little mountains
-        s.px(gx, gy, "br2")
-        s.px(gx - 1, gy + 1, "br1")
-        s.px(gx + 1, gy + 1, "br1")
-    s.px(21, 11, "red")
-    s.px(22, 12, "red")
-    s.px(20, 12, "red")
-    s.rect(26, 3, 27, 7, "par2")                    # candle
-    s.px(26, 3, "par1")
-    flame = 0 if frame == 0 else 1
-    s.px(26 + flame, 1, "ember")
-    s.px(26 + flame, 2, "ember1")
-    s.px(27 - flame, 2, "ember")
+    for gx, gy in ((7, 10), (13, 10), (19, 17)):
+        s.px(gx, gy, "st1"); s.px(gx - 1, gy + 1, "st0"); s.px(gx + 1, gy + 1, "st0")
+    s.px(21, 11, "red"); s.px(22, 12, "red"); s.px(20, 12, "red")
+    s.rect(26, 3, 27, 7, "wax"); s.px(26, 3, "white")
+    s.px(26 + frame, 1, "ember"); s.px(26 + frame, 2, "ember1"); s.px(27 - frame, 2, "ember")
     return s.outline()
 
 
-def pyr(frame: int) -> Sprite:
+def pyr(frame):
     """Pyr, the Tiny Code-Flame: a little living flame with bright eyes."""
     s = Sprite(16, 16)
     bob = frame
     s.disc(8, 9 + bob, 4, "ember0")
     s.disc(8, 9 + bob, 3, "ember")
-    s.rect(7, 4 + bob, 8, 6 + bob, "ember")         # the flame tip
-    s.px(8, 3 + bob, "ember1")
-    s.px(7, 4 + bob, "ember1")
+    s.rect(7, 4 + bob, 8, 6 + bob, "ember")
+    s.px(8, 3 + bob, "ember1"); s.px(7, 4 + bob, "ember1")
     s.rect(6, 9 + bob, 7, 10 + bob, "ember1")
-    s.rect(6, 9 + bob, 6, 10 + bob, "line")        # eyes
+    s.rect(6, 9 + bob, 6, 10 + bob, "line")
     s.rect(9, 9 + bob, 9, 10 + bob, "line")
-    s.px(6, 9 + bob, "white")
-    s.px(9, 9 + bob, "white")
+    s.px(6, 9 + bob, "white"); s.px(9, 9 + bob, "white")
     return s.outline()
 
 
-def shadow() -> Sprite:
+def shadow():
     s = Sprite(16, 8)
     for y, (x0, x1) in enumerate([(5, 10), (3, 12), (2, 13), (2, 13), (3, 12), (5, 10)], start=1):
         for x in range(x0, x1 + 1):
-            s.px(x, y, (10, 8, 20, 96))
+            s.px(x, y, (6, 4, 14, 110))
     return s
 
 
-def build() -> None:
-    pieces: dict[str, Sprite] = {}
-    for variant in (0, 1):
-        pieces[f"floor_{variant}"] = floor_tile(variant)
-    pieces["rug_edge"] = rug_tile("edge")
-    pieces["rug_mid"] = rug_tile("mid")
-    for variant in (0, 1):
-        pieces[f"wall_face_{variant}"] = wall_face_tile(variant)
+def moonbeam():
+    """A soft slanted shaft of moonlight on the marble (32x48, translucent)."""
+    s = Sprite(32, 48)
+    for y in range(48):
+        for x in range(32):
+            lean = y // 3
+            if 4 + lean <= x <= 14 + lean:
+                edge = min(x - (4 + lean), (14 + lean) - x)
+                s.px(x, y, (140, 170, 230, 26 if edge > 1 else 14))
+    return s
+
+
+def build():
+    pieces = {}
+    for v in (0, 1):
+        pieces[f"floor_{v}"] = floor_tile(v)
+        pieces[f"wall_face_{v}"] = wall_face_tile(v)
+    pieces["carpet"] = carpet_tile()
     pieces["wall_top"] = wall_top_tile()
-    pieces["skirting"] = skirting_tile()
-    for frame in (0, 1):
-        pieces[f"torch_{frame}"] = torch(frame)
-        pieces[f"fire_{frame}"] = hearth(frame)
-        pieces[f"candle_{frame}"] = map_table(frame)
-        pieces[f"pyr_{frame}"] = pyr(frame)
+    pieces["plinth"] = plinth_tile()
+    for f in (0, 1):
+        pieces[f"sconce_{f}"] = sconce(f)
+        pieces[f"fire_{f}"] = hearth(f)
+        pieces[f"candle_{f}"] = map_table(f)
+        pieces[f"pyr_{f}"] = pyr(f)
+        pieces[f"candelabra_{f}"] = candelabra(f)
+        pieces[f"brazier_{f}"] = brazier(f)
     pieces["fire_out"] = hearth(2)
-    pieces["window"] = window()
+    pieces["window"] = window_arch()
+    pieces["banner"] = banner()
+    pieces["pillar"] = pillar()
+    pieces["armor"] = armor_statue()
     pieces["door"] = door()
-    pieces["barrel"] = barrel()
-    pieces["crate"] = crate()
-    pieces["plant"] = plant()
+    pieces["chest"] = chest()
+    pieces["urn"] = urn()
     pieces["bookshelf"] = bookshelf()
-    pieces["rug_big"] = rug(5, 3)
     pieces["armory"] = armory()
     pieces["shadow"] = shadow()
+    pieces["moonbeam"] = moonbeam()
 
-    # Pack into a simple shelf atlas (rows grow as needed).
-    atlas_w = 256
+    atlas_w = 320
     x = y = row_h = 0
-    placed: dict[str, dict[str, int]] = {}
-    positions: list[tuple[str, int, int]] = []
+    placed, positions = {}, []
     for name, sprite in pieces.items():
         if x + sprite.w > atlas_w:
             x, y, row_h = 0, y + row_h + 1, 0
@@ -451,7 +539,6 @@ def build() -> None:
     OUT.mkdir(parents=True, exist_ok=True)
     atlas.save(OUT / "tiles.png")
     (OUT / "tiles.json").write_text(json.dumps(placed, indent=1), encoding="utf-8")
-    # The same map as GDScript, so an exported build never needs a loose JSON file.
     lines = ["# Generated by tools/home_art/make_tiles.py. Do not edit.", "class_name TilesData", "", "const REGIONS := {"]
     for name, r in placed.items():
         lines.append(f'\t"{name}": Rect2({r["x"]}, {r["y"]}, {r["w"]}, {r["h"]}),')
