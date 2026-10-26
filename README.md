@@ -198,7 +198,32 @@ Ideas to settle together before building:
 5. **Day/night and streaks**: the room reflects your streak and time of day; a lit hearth when you coded today.
 6. **Keep it fast**: one heavy process at a time on this 14 GB machine; assets are static PNG spritesheets, no runtime 3D.
 
-Open questions: Godot-embedded vs React canvas; art style (chunky 16-bit vs smooth 32-bit); first slice (one room with 3 working stations?); how much of the avatar customisation moves into the room.
+### Art direction (set 2026-10-26)
+
+- **Look:** Game Boy Advance, Pokemon FireRed/LeafGreen era, with Zelda: A Link to the Past/Minish Cap overworld feel. Top-down, 16x16 tiles, chunky outlined sprites with flat 3-4 tone shading, grass tufts, fences, bushes, flower beds, wooden floors with plank lines. Reference: FireRed town screenshot (tile style) and Gen 5 trainer sprite sheets (the character sheet layout: 4-direction walk, run, idle, bike/ride, throw/cast poses, plus a large portrait per character).
+- **Retro-fy on top:** scanlines, slight CRT curve/vignette and a soft phosphor glow as a toggleable post effect (a Settings option, default on in Home), limited palette per scene, 2x or 3x integer scaling, no smoothing.
+- **Characters:** same sheet format as the references (walk cycle in 4 directions, idle, a "cast/point" pose and a portrait), but moulded to our world: the hunter (the paper-doll avatar: skin, hair, outfit, accent), Pyr the code-flame companion, the Merchant, Auditor Pell and the campaign bosses as portraits. Hunter gear shows on the sprite (weapon, armour, trinket glow). The theme stays dark-arcade monster-hunter; the references are for *form and craft*, not for characters or costumes.
+- **Pipeline:** Blender models a low-poly character and props once, renders 4 directions x walk/idle frames at tiny size, a palette-reduce pass makes them match, LibreSprite/Pixelorama hand-clean, Tiled builds rooms, Godot or a canvas scene plays them. One sprite sheet per character, one tileset per zone.
+
+### Room upgrades: Home as a Hades-style base (proposal)
+
+The Homestead becomes a base that grows between runs, like the House of Hades: upgrades are permanent, bought with a meta currency, and most of them make the Infinite Dungeon and the campaign feel better.
+
+- **Two currencies:** *coins* (cosmetics, Market) and *Embers* (the existing upgrade tokens; earned from Dungeon floors, bosses and clean clears). Upgrades cost Embers, so playing the roguelike funds the base and the base makes the next run stronger.
+- **Stations, each with a track of tiers** (a station is a spot in the room you walk to):
+  - **Hearth** (rest): max HP, heal between floors, a "warm start" (begin a run with a free ward).
+  - **Armory rack:** more loadout slots, gear repair-free swaps, +loot luck, Aid storage cap (free asks, wards).
+  - **Pantry / Kitchen:** stronger food and tonics, carry more, one meal that lasts a whole run.
+  - **Study desk:** LearnHarness and Tutor hooks; unlock "hint lanterns" that cost less PYR reward; sign XP boosts.
+  - **Training dummy / sparring ring:** sparring rewards, practice a mob you already beat for Embers.
+  - **Map table:** Dungeon route intel (see risk on stairs, reveal a room type, choose a start region, reroll a floor once).
+  - **Trophy wall:** achievements, boss relics, the activity graph; relics on the wall give small passives.
+  - **Pyr's perch:** companion stages and abilities (a free hint per floor, a warning before a trap).
+- **Pre-run "loadout" step** (like choosing a Keepsake/Weapon in Hades): before a Dungeon run pick one relic from the wall, one Aid item, and a starting boon the base unlocked.
+- **Rules to keep it honest:** upgrades never write your code or reduce what you must write; they change HP, loot, information and convenience. Costs scale per tier; some tiers need a campaign milestone (clear a boss to unlock a station).
+- **State:** stays in `homestead.room_upgrades` and `upgrade_tokens` (already synced); the five current upgrades (Reinforced Hearth, Warding Loom, Breaker Workbench, Siphon Basin, Field Kitchen) become tier 1 of the stations above. Dungeon runs read `upgrade_effects`.
+
+Open questions: Godot-embedded vs React canvas; first slice (suggest: one room, Hearth + Armory rack + Map table working, walking hunter, scanlines); exact Ember sources in the Dungeon; how much of the avatar customisation moves into the room.
 
 Asset and tool notes live in `docs/` when the work starts.
 
