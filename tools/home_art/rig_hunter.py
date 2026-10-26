@@ -108,6 +108,8 @@ class Rig:
 
     def afro(self, phase):
         """A round afro around the head, drawn over the crown and behind the face."""
+        if self.view == "side":
+            return self.side_afro(phase)
         fx0, fy0, fx1, fy1 = self.face
         cx, cy = (fx0 + fx1) / 2.0, fy0 + 1
         rx = (fx1 - fx0) / 2.0 + (3.4 if self.view != "side" else 3.0)
@@ -189,7 +191,13 @@ class Rig:
         swing = {"stand": 0, "contA": 1, "stepa": 0, "contB": -1, "stepb": 0}[pose]
         out = {}
         new_hem = FEET_Y - 14                            # coat to the knee, then 14 rows of leg
-        src = {(x, y): n for (x, y), n in base.items() if y <= self.hem}
+        src = {}
+        for (x, y), n in base.items():
+            if y > self.hem or y < self.y0 + 10:
+                continue                                 # the source head is redrawn below
+            if CLASS_OF[n] == "skin" and y >= self.y0 + 13:
+                n = "ck1"                                # the source's skin patch was a hand: redrawn below
+            src[(x, y)] = n
         rows = {}
         for (x, y), n in src.items():
             rows.setdefault(y, {})[x] = n
@@ -204,11 +212,79 @@ class Rig:
                 nx = x + (d * swing if y > new_hem - 8 else 0)
                 out[(nx, y + bob)] = n
         self.hem_row = new_hem
+        out.update({(x, y + bob): n for (x, y), n in self.side_head().items()})
+        self.side_arm(out, pose, d, bob)
         hip = int(round(self.cx)) + (1 if self.mirror else -1) * 0
         near_x, near_up, far_x, far_up = SIDE_LEGS[pose]
         for x, up, shade in ((far_x, far_up, ("b0", "b0", "b1")), (near_x, near_up, ("b1", "b2", "b2"))):
             self.leg(out, hip, d * x, up, shade, d)
         return out
+
+    def side_afro(self, phase):
+        """A round afro that sits behind and over the profile face."""
+        d = 1 if self.mirror else -1
+        skin = self.side_head()
+        hx, cy = self._head
+        ax, ay = hx - d * 1.5, cy - 2.6 + [0, -1, 0, -1][phase % 4]
+        rx, ry = 6.6, 6.6
+        out = {}
+        for y in range(int(ay - ry) - 1, int(ay + ry) + 2):
+            for x in range(int(ax - rx) - 1, int(ax + rx) + 2):
+                dd = ((x - ax) / rx) ** 2 + ((y - ay) / ry) ** 2
+                edge = 1.0 + 0.09 * (((x * 5 + y * 11) % 4) - 1.5)
+                if dd > edge:
+                    continue
+                if d * (x - hx) >= 1 and y >= cy - 3:
+                    continue                              # the hairline: the face shows below it
+                if (x, y + (0 if phase % 2 == 0 else 1)) in skin:
+                    continue
+                h = (x * 7 + y * 13 + (x ^ y) * 3) % 5
+                light = (ax - x) * 0.04 * d + (ay - y) * 0.05 - dd * 0.6
+                k = 3 if (light > 0.55 and h < 2) else 2 if (light > 0.2 and h < 3) else 1 if dd < 0.8 else 0
+                out[(x, y)] = ("h0", "h1", "h2", "h3")[k]
+        return out
+
+    def side_head(self):
+        """A profile face (forehead, nose, eye, jaw, ear) facing forward."""
+        d = 1 if self.mirror else -1
+        hx, cy = int(round(self.cx)) + d * 2, self.y0 + 7
+        out = {}
+        for y in range(cy - 6, cy + 6):
+            for x in range(hx - 5, hx + 6):
+                dd = ((x - hx) / 4.2) ** 2 + ((y - cy) / 5.0) ** 2
+                if dd <= 1.0:
+                    front = d * (x - hx)                  # how far toward the face's front
+                    shade = "sk3" if front >= 2 and y < cy + 1 else "sk1" if y >= cy + 3 or front <= -3 else "sk2"
+                    out[(x, y)] = shade
+        out[(hx + d * 5, cy + 1)] = "sk2"                 # nose
+        out[(hx + d * 4, cy + 1)] = "sk2"
+        out[(hx + d * 3, cy - 1)] = "line"                # eye
+        out[(hx - d * 1, cy + 1)] = "sk0"                 # ear
+        out[(hx - d * 1, cy + 2)] = "sk0"
+        for y in range(cy + 4, cy + 6):                   # neck
+            for x in range(hx - 2, hx + 2):
+                out[(x, y)] = "sk1"
+        self._head = (hx, cy)
+        return out
+
+    def side_arm(self, out, pose, d, bob):
+        """The near arm swings opposite the near leg: coat sleeve, gold cuff, skin hand."""
+        sh = {"stand": 0, "contA": -3, "stepa": 0, "contB": 3, "stepb": 0}[pose]
+        x0, y0 = int(round(self.cx)) + (1 if self.mirror else -1) * -1, self.y0 + 15 + bob
+        x1, y1 = x0 + d * sh, y0 + 14
+        for y in range(y0, y1 + 1):
+            t = (y - y0) / float(y1 - y0)
+            cx = x0 + int(round((x1 - x0) * t))
+            for k in (-1, 0, 1):
+                out[(cx + k, y)] = "ck0" if k == -1 else "ck1" if k == 0 else "ck2"
+            if y1 - 3 <= y <= y1 - 2:
+                for k in (-1, 0, 1):
+                    out[(cx + k, y)] = "g1"                # cuff
+        hx = x1
+        for y in range(y1 + 1, y1 + 4):                    # hand
+            for k in (-1, 0, 1):
+                out[(hx + k, y)] = "sk2"
+        out[(hx + d, y1 + 3)] = "sk1"
 
     def hem_fill(self, bob):
         """Coat pixels along the hem row so the torso and legs never show a seam."""
