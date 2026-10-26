@@ -37,4 +37,4 @@ Thumbs.db
 # Home (Godot): built web output, editor cache, test screenshots
 ide/frontend/public/home/
 ide/home-godot/.godot/
-ide/home-godot/shot_*.png
+ide/home-godot/shot_*
