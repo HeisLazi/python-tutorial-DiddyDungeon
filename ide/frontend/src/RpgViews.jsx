@@ -442,7 +442,7 @@ function isGameTreeItem(item) {
   return true
 }
 
-export function ContextPanel({ activeView, campaign, files = [], activePath, compact = false, onToggleCompact, editorMode = 'file', openFile, openQuestDocument, newFile, setActiveView, submitBattle, submitBoss, onAskBossQuestion, onAnswerBossOption, battleQuestions = {}, battleFeedback = null, onAskBattleQuestion, onAnswerBattleOption, busy }) {
+export function ContextPanel({ activeView, campaign, files = [], activePath, compact = false, onToggleCompact, editorMode = 'file', openFile, openQuestDocument, newFile, setActiveView, submitBattle, submitBoss, onAskBossQuestion, onAnswerBossOption, battleQuestions = {}, battleFeedback = null, onAskBattleQuestion, onAnswerBattleOption, onCheckSetup, busy }) {
   const progress = campaign?.progress || {}
   const player = progress.player || {}
   const activeProject = (progress.projects || []).find((project) => project.status === 'active')
@@ -604,7 +604,7 @@ export function ContextPanel({ activeView, campaign, files = [], activePath, com
             ))}
             {!files.length && <div className="empty-state">No workspace files available.</div>}
             {Boolean(files.length) && projectDir && !showAllFiles && !treeFiles.length && <div className="empty-state">
-              <strong>{projectDir}/</strong> isn't on disk yet. The first bounty starts by making it: use ＋ New file and create <code>{activeProject.entry_file}</code>.
+              <strong>{projectDir}/</strong> isn't on disk yet. Your first bounty walks you through making it in the terminal below.
             </div>}
           </div> : <div className="active-file-summary" data-testid="forge-active-file-summary">
             <span>CAMPAIGN EDITOR</span>
@@ -615,7 +615,7 @@ export function ContextPanel({ activeView, campaign, files = [], activePath, com
             <div className="campaign-battle-sidebar">
             {encounter.mob_name ? <>
               <div className="panel-title"><span>ACTIVE BATTLE</span><b>{encounter.resolve ?? 0}/{encounter.max_resolve ?? 0}</b></div>
-              <BattleBrief encounter={encounter} board={campaign?.campaign_board} questions={battleQuestions} feedback={battleFeedback} onAsk={onAskBattleQuestion} onAnswer={onAnswerBattleOption} busy={busy} />
+              <BattleBrief encounter={encounter} board={campaign?.campaign_board} questions={battleQuestions} feedback={battleFeedback} onAsk={onAskBattleQuestion} onAnswer={onAnswerBattleOption} onCheckSetup={onCheckSetup} busy={busy} />
               <div className="campaign-battle-resolve" data-testid="forge-encounter-resolve" hidden>
                 <ProgressBar value={encounter.resolve ?? 0} max={encounter.max_resolve ?? 1} label="Enemy Resolve" className="resolve" />
               </div>
@@ -2787,7 +2787,7 @@ function CampaignMarket({ progress, hunter, hunterActions, armory, armoryActions
 const CONTRACT_KIND_LABELS = { workshop: 'WORKSHOP', debug: 'DEBUG', memory: 'FROM MEMORY', creative: 'MAKE IT YOURS' }
 
 // What each objective asks of you, as a poster tag.
-const OBJECTIVE_KIND = { code_checkpoint: 'BUILD', bug_diagnosis: 'FIX', prediction: 'PREDICT', explanation: 'EXPLAIN', snippet_check: 'READ', code_interview: 'INTERVIEW' }
+const OBJECTIVE_KIND = { setup_check: 'SETUP', code_checkpoint: 'BUILD', bug_diagnosis: 'FIX', prediction: 'PREDICT', explanation: 'EXPLAIN', snippet_check: 'READ', code_interview: 'INTERVIEW' }
 
 function CampaignOffice({ progress, board, onEnter }) {
   const activeProject = (progress?.projects || []).find((project) => project.status === 'active') || {}
@@ -3330,9 +3330,15 @@ const BATTLE_CHOICE_KINDS = new Set(['prediction', 'explanation'])
 
 // The campaign battle sidebar, laid out like the Dungeon brief: the question
 // first, then what you are fighting, then every objective.
-function BattleBrief({ encounter, board, questions = {}, feedback, onAsk, onAnswer, busy }) {
+function BattleBrief({ encounter, board, questions = {}, feedback, onAsk, onAnswer, onCheckSetup, busy }) {
   const open = encounter.available_objectives || []
-  const current = open.find((item) => BATTLE_CHOICE_KINDS.has(item.question_type)) || open[0]
+  const contract = (board?.contracts || []).find((item) => item.name === encounter.mob_name)
+  // Setup steps come first, and a workshop bounty is played in its written
+  // order (make the folder, the file, run it, then explain it); elsewhere the
+  // clickable questions lead while code waits for Submit run.
+  const current = open.find((item) => item.question_type === 'setup_check')
+    || (contract?.kind === 'workshop' ? open[0] : open.find((item) => BATTLE_CHOICE_KINDS.has(item.question_type)) || open[0])
+  const setup = current?.question_type === 'setup_check'
   const gradedOn = current?.file ? (board?.project_dir ? `${board.project_dir}/${current.file}` : current.file) : board?.entry_file || 'your project file'
   const choice = Boolean(current && BATTLE_CHOICE_KINDS.has(current.question_type))
   const question = current ? questions[current.id] : null
@@ -3344,16 +3350,23 @@ function BattleBrief({ encounter, board, questions = {}, feedback, onAsk, onAnsw
     asked.current.add(key)
     onAsk(current.id)
   }, [choice, current?.id, Boolean(question), encounter.mob_name, busy])
-  const contract = (board?.contracts || []).find((item) => item.name === encounter.mob_name)
   const done = new Set(encounter.completed_objectives || [])
   const allObjectives = contract?.objectives?.length ? contract.objectives : [...(encounter.completed_objectives || []).map((id) => ({ id, label: id.replaceAll('_', ' ') })), ...open]
   const entry = board?.entry_file || 'your project file'
-  const codeLeft = open.filter((item) => !BATTLE_CHOICE_KINDS.has(item.question_type))
+  const codeLeft = open.filter((item) => !BATTLE_CHOICE_KINDS.has(item.question_type) && item.question_type !== 'setup_check')
   return (
     <div className="battle-brief" data-testid="forge-contract">
       <section className="battle-brief-question">
         <span className="battle-eyebrow">THE QUESTION{current ? ` · ${OBJECTIVE_KIND[current.question_type] || 'TASK'}` : ''}</span>
-        {!current ? <p>Every objective is done.</p> : choice ? (
+        {!current ? <p>Every objective is done.</p> : setup ? (
+          <>
+            <strong>{current.label}</strong>
+            <DungeonPromptText text={current.brief} />
+            <button type="button" className="campaign-button battle-setup-check" onClick={() => onCheckSetup?.(current.id)} disabled={busy || !onCheckSetup}>Check</button>
+            <small>The game looks in your project folder itself: no PYR call, and not done yet costs nothing.</small>
+            {feedback?.objectiveId === current.id && feedback.output && <pre className="battle-setup-output">{feedback.output}</pre>}
+          </>
+        ) : choice ? (
           question ? (
             <>
               <DungeonPromptText text={question.prompt} />
@@ -3367,7 +3380,7 @@ function BattleBrief({ encounter, board, questions = {}, feedback, onAsk, onAnsw
             <small>Graded on <code>{gradedOn}</code>: open it in the Forge, then press <b>Submit run</b>.</small>
           </>
         )}
-        {feedback && !String(feedback.objectiveId || '').startsWith('boss:') && <div className={`battle-feedback ${feedback.verdict}`} role="status">{feedback.verdict === 'correct' ? '✔ ' : '✘ '}{feedback.reason}</div>}
+        {feedback && !String(feedback.objectiveId || '').startsWith('boss:') && <div className={`battle-feedback ${feedback.verdict}`} role="status">{feedback.verdict === 'correct' ? '✔ ' : feedback.verdict === 'not_yet' ? 'Not yet. ' : '✘ '}{feedback.reason}</div>}
         {choice && codeLeft.length > 0 && <small className="battle-brief-also">Also open: {codeLeft.map((item) => item.label).join(', ')} (Submit run).</small>}
         {current && <StudyAtHomeButton topic={encounter.mob?.concept || contract?.concept || current.label} context={`fighting ${encounter.mob_name}: ${current.label.toLowerCase()} in ${entry}`} />}
       </section>

@@ -3539,6 +3539,82 @@ def answer_battle_option(payload: BattleOptionRequest):
     return {"ok": True, "verdict": verdict, "reason": reason, "correct_index": int(answer["answer"]), "result": applied.get("result")}
 
 
+SETUP_RUN_TIMEOUT_SECONDS = 10
+SETUP_RUN_OUTPUT_CHARS = 1200
+
+
+def _setup_check(project_dir: Path, check: dict) -> tuple[bool, str, str]:
+    """Look at the learner's own folder for one setup step: (passed, reason, output)."""
+
+    if "dir" in check:
+        folder = project_dir if check["dir"] == "." else project_dir / check["dir"]
+        shown = folder.relative_to(WORKSPACE).as_posix()
+        if folder.is_dir():
+            return True, f"{shown}/ is there.", ""
+        return False, f"There is no {shown}/ folder yet. Make it in the terminal, then check again.", ""
+    if "file" in check:
+        target = project_dir / check["file"]
+        shown = target.relative_to(WORKSPACE).as_posix()
+        if target.is_file():
+            return True, f"{shown} exists.", ""
+        return False, f"There is no {shown} yet. Create it, then check again.", ""
+    target = project_dir / check["run"]
+    shown = target.relative_to(WORKSPACE).as_posix()
+    if not target.is_file():
+        return False, f"There is no {shown} to run yet.", ""
+    try:
+        # Run it the way the brief says: from inside the project folder.
+        done = subprocess.run(
+            [sys.executable, check["run"]], cwd=project_dir, stdin=subprocess.DEVNULL, capture_output=True,
+            text=True, timeout=SETUP_RUN_TIMEOUT_SECONDS, env=terminal_environment("shell"),
+        )
+    except subprocess.TimeoutExpired:
+        return False, f"{check['run']} was still running after {SETUP_RUN_TIMEOUT_SECONDS} seconds. Does it wait for input or loop forever?", ""
+    output = (done.stdout + done.stderr)[-SETUP_RUN_OUTPUT_CHARS:]
+    if done.returncode != 0:
+        return False, f"{check['run']} stopped with an error. Read the last line of the traceback, fix it, run it again.", output
+    missing = [text for text in check["expect"] if text not in done.stdout]
+    if missing:
+        return False, f"{check['run']} runs, but its output does not show {', '.join(repr(text) for text in missing)} yet.", output
+    return True, f"{check['run']} runs and prints what it should.", output
+
+
+@app.post("/api/battle/setup-check")
+def check_setup_step(payload: BattleQuestionRequest):
+    """Verify a workshop setup step (folder, file, first run) on disk. Free:
+    no PYR call. Not done yet is not a miss; the learner just tries again."""
+
+    try:
+        progress, _metadata = STATE_SERVICE.snapshot_with_metadata()
+        encounter = STATE_SERVICE.encounter_projection(progress)
+    except StateCommandError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
+    if not isinstance(encounter, dict) or not encounter.get("mob_name"):
+        raise HTTPException(status_code=409, detail="There is no campaign battle right now")
+    objective = next((item for item in encounter.get("available_objectives") or [] if item.get("id") == payload.objective_id), None)
+    if objective is None or objective.get("question_type") != "setup_check" or not isinstance(objective.get("check"), dict):
+        raise HTTPException(status_code=409, detail="That objective is not an open setup step")
+    project = next((item for item in progress.get("projects", []) if isinstance(item, dict) and item.get("status") == "active"), {})
+    story = load_campaign_bounties().get(str(project.get("branch") or ""))
+    folder = project_dir_name(story.get("project_dir")) if isinstance(story, dict) else ""
+    if not folder:
+        raise HTTPException(status_code=409, detail="This campaign has no project folder")
+    # The check (it may run the learner's file) happens outside the state lock;
+    # recording it re-checks that the objective is still open.
+    passed, reason, output = _setup_check(safe_path(folder), objective["check"])
+    if not passed:
+        return {"ok": True, "verdict": "not_yet", "reason": reason, "output": output}
+    try:
+        with PROGRESS_LOCK:
+            applied = STATE_SERVICE.apply_internal(
+                "record_battle_objective",
+                {"objective_id": payload.objective_id, "evidence_id": f"setup-{uuid.uuid4().hex[:16]}", "reason": "Setup step checked on disk"},
+            )
+    except StateCommandError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
+    return {"ok": True, "verdict": "correct", "reason": reason, "output": output, "result": applied.get("result")}
+
+
 # Tutor sparring: one live question per foe, by foe id.
 SPAR_QUESTIONS: dict[str, dict[str, object]] = {}
 SPAR_ROUNDS = 5

@@ -40,7 +40,9 @@ RETIRED_CAMPAIGNS = frozenset({
     "00-rps-tournament", "02-detective-game", "03-pokemon-battle", "06-gladiator-arena",
     "07-football-manager", "08-game-agent", "09-ai-agent",
 })
-CAMPAIGN_QUESTION_TYPES = frozenset({"code_checkpoint", "bug_diagnosis", "prediction", "explanation"})
+# setup_check: a workshop step (make the folder, the file, run it) the game
+# checks on disk by itself, with no PYR call.
+CAMPAIGN_QUESTION_TYPES = frozenset({"code_checkpoint", "bug_diagnosis", "prediction", "explanation", "setup_check"})
 _CAMPAIGN_CACHE: dict[str, Any] = {"key": None, "data": {}}
 
 
@@ -104,6 +106,26 @@ def project_file_name(value: object) -> str | None:
     """A plain project file name (no folders) a goal can be graded on."""
 
     return value if isinstance(value, str) and PROJECT_FILE_NAME.match(value) and value not in {"tutor.py", "dungeon.py"} else None
+
+
+SETUP_FOLDER_NAME = re.compile(r"^[A-Za-z0-9_][A-Za-z0-9_.-]{0,40}$")
+
+
+def setup_check_spec(value: object) -> dict[str, Any] | None:
+    """A setup step's check, inside the campaign folder: {"dir": "."} or a
+    subfolder, {"file": name}, or {"run": name.py, "expect": [text, ...]}."""
+
+    if not isinstance(value, Mapping):
+        return None
+    if set(value) == {"dir"} and (value["dir"] == "." or (isinstance(value["dir"], str) and SETUP_FOLDER_NAME.match(value["dir"]))):
+        return {"dir": value["dir"]}
+    if set(value) == {"file"} and project_file_name(value["file"]):
+        return {"file": value["file"]}
+    if set(value) == {"run", "expect"} and project_file_name(value["run"]) and value["run"].endswith(".py"):
+        expect = value["expect"]
+        if isinstance(expect, list) and 0 < len(expect) <= 4 and all(isinstance(item, str) and 0 < len(item) <= 80 for item in expect):
+            return {"run": value["run"], "expect": list(expect)}
+    return None
 
 
 def campaign_contract(branch: object, mob_name: object) -> dict[str, Any] | None:
@@ -3312,6 +3334,7 @@ class LocalStateService:
                 "question_type": str(definition["question_type"]),
                 **({"file": definition["file"]} if definition.get("file") else {}),
                 **({"see": list(definition["see"])} if definition.get("see") else {}),
+                **({"check": dict(definition["check"])} if definition.get("check") else {}),
             }
             for objective_id, definition in profile["objectives"].items()
             if objective_id not in completed_ids
@@ -7129,9 +7152,11 @@ class LocalStateService:
                     "brief": str(item["brief"]),
                     **({"file": project_file_name(item.get("file"))} if project_file_name(item.get("file")) else {}),
                     **({"see": [name for name in item["see"] if project_file_name(name)][:4]} if isinstance(item.get("see"), list) else {}),
+                    **({"check": setup_check_spec(item.get("check"))} if item.get("question_type") == "setup_check" else {}),
                 }
                 for item in authored
                 if isinstance(item, Mapping) and item.get("question_type") in CAMPAIGN_QUESTION_TYPES
+                and (item.get("question_type") != "setup_check" or setup_check_spec(item.get("check")))
                 and all(isinstance(item.get(key), str) for key in ("id", "label", "brief")) and isinstance(item.get("impact"), int)
             }
             if objectives:

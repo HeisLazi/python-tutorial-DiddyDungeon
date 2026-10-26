@@ -422,6 +422,13 @@ function AppV2() {
   const [activePath, setActivePath] = useState('')
   const [editorMode, setEditorMode] = useState('file')
   const [code, setCode] = useState('')
+  // The editor text as of the last keystroke: Ctrl+S can fire before React
+  // re-renders, so saving reads this, never a possibly stale `code`.
+  const codeRef = useRef('')
+  const setEditorCode = (value) => {
+    codeRef.current = value
+    setCode(value)
+  }
   const [dirty, setDirty] = useState(false)
   const [tutorCode, setTutorCode] = useState('')
   const [tutorDirty, setTutorDirty] = useState(false)
@@ -570,9 +577,9 @@ function AppV2() {
         if (exists) return openFile(activeEntryFile, false)
         setEditorMode('file')
         setActivePath('')
-        setCode('')
+        setEditorCode('')
         setDirty(false)
-        setNotice(`Now playing ${name}. Create ${activeEntryFile} in the Forge (＋ New file) to start its first bounty.`)
+        setNotice(`Now playing ${name}. Its first bounty walks you through making ${activeEntryFile} in the terminal.`)
       })()
     }
     lastProjectBranchRef.current = branch
@@ -1232,7 +1239,7 @@ function AppV2() {
         if (preferred) await openFile(preferred.path, false)
         else {
           setActivePath('')
-          setCode('')
+          setEditorCode('')
           setDirty(false)
         }
       }
@@ -1435,6 +1442,8 @@ function AppV2() {
     // and EXPLAIN objectives are clickable questions in the battle sidebar.
     // A goal that names its file is graded on that file, so submit the open
     // goal that matches the file in the editor (README.md, test_casino.py...).
+    const setupGoal = (encounter.available_objectives || []).find((item) => item.question_type === 'setup_check')
+    if (setupGoal) throw new Error(`Finish the setup step first: "${setupGoal.label}". Do it in the terminal, then press Check in the battle sidebar.`)
     const codeGoals = (encounter.available_objectives || []).filter((item) => !BATTLE_CHOICE_TYPES.has(item.question_type))
     const openPath = String(activePath || '').replaceAll('\\', '/')
     const board = campaign?.campaign_board || {}
@@ -1492,6 +1501,21 @@ function AppV2() {
         delete next[objectiveId]
         return next
       })
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  // A workshop setup step (make the folder, the file, run it): the server
+  // looks on disk itself. Not done yet is no miss, just try again.
+  const checkSetupStep = async (objectiveId) => {
+    setBusy(true)
+    try {
+      const result = await api('/api/battle/setup-check', { method: 'POST', body: JSON.stringify({ objective_id: objectiveId }) })
+      setBattleFeedback({ objectiveId, verdict: result.verdict, reason: result.reason, output: result.output })
+      await Promise.all([refreshCampaign({ silent: true }), refreshFiles()])
+    } catch (error) {
+      setNotice(`Setup not checked: ${error.message}`)
     } finally {
       setBusy(false)
     }
@@ -1883,7 +1907,7 @@ function AppV2() {
       setEditorMode('file')
       setActivePath(path)
       editorSelectionRef.current = ''
-      setCode(result.content ?? '')
+      setEditorCode(result.content ?? '')
       setDirty(false)
       setNotice('')
     } catch (error) {
@@ -1907,7 +1931,7 @@ function AppV2() {
       setBusy(true)
       await api('/api/file', {
         method: 'PUT',
-        body: JSON.stringify({ path: activePath, content: code }),
+        body: JSON.stringify({ path: activePath, content: codeRef.current }),
       })
       setDirty(false)
       setNotice(`Saved ${activePath}`)
@@ -2159,9 +2183,9 @@ function AppV2() {
       setBusy(true)
       const result = await api('/api/format', {
         method: 'POST',
-        body: JSON.stringify({ path: activePath, content: code }),
+        body: JSON.stringify({ path: activePath, content: codeRef.current }),
       })
-      setCode(result.content ?? code)
+      setEditorCode(result.content ?? codeRef.current)
       setDirty(false)
       setNotice(`Formatted ${activePath} with ${result.formatter}`)
     } catch (error) {
@@ -2756,6 +2780,7 @@ function AppV2() {
             battleFeedback={battleFeedback}
             onAskBattleQuestion={askBattleQuestion}
             onAnswerBattleOption={answerBattleOption}
+            onCheckSetup={checkSetupStep}
             onAskBossQuestion={askBossQuestion}
             onAnswerBossOption={answerBossOption}
             busy={busy || Boolean(pyrThinking)}
@@ -2830,7 +2855,7 @@ function AppV2() {
                   setTutorCode(value ?? '')
                   setTutorDirty(true)
                 } else if (!questSurface) {
-                  setCode(value ?? '')
+                  setEditorCode(value ?? '')
                   setDirty(true)
                 }
               }}

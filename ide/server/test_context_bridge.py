@@ -990,6 +990,60 @@ class PyrContextBridgeTests(unittest.TestCase):
                 app_v2.PYR_CONTEXT_CHALLENGE = None
                 app_v2.PYR_CONTEXT_CHALLENGES.clear()
 
+    def test_the_casino_opens_with_setup_steps_the_game_checks_on_disk(self):
+        from ide.server.test_campaign_content import use_real_content, user_like_progress
+
+        use_real_content()
+        original_workspace, original_progress = app_v2.WORKSPACE, app_v2.PROGRESS_PATH
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            workspace = root / "quest"
+            workspace.mkdir()
+            canonical = root / "platform" / "progress.json"
+            canonical.parent.mkdir()
+            state = user_like_progress()
+            state["projects"] = [{"branch": "04-casino-slots", "name": "Casino / Slots", "status": "active", "boss": "Ekse Ouens P Diddy", "order": 2, "entry_file": "silver_reels/casino.py", "multi_file": True,
+                                  "mobs": [{"name": "The Coin Rat", "concept": "Project folders, files and running Python", "encounter": "Set it up.", "status": "available"}]}]
+            canonical.write_text(json.dumps(state), encoding="utf-8")
+            app_v2.WORKSPACE, app_v2.PROGRESS_PATH = workspace, canonical
+            try:
+                client = TestClient(app_v2.app, base_url="http://127.0.0.1")
+
+                def check(objective):
+                    return client.post("/api/battle/setup-check", headers={"host": "127.0.0.1"}, json={"objective_id": objective})
+
+                def resolve():
+                    return json.loads(canonical.read_text(encoding="utf-8"))
+
+                hp = resolve()["player"]["hp"]
+                early = check("make_folder").json()
+                self.assertEqual(early["verdict"], "not_yet")  # nothing on disk yet, and no miss
+                self.assertIn("silver_reels/", early["reason"])
+                self.assertEqual(check("what_ran").status_code, 409)  # a question is not a setup step
+                (workspace / "silver_reels").mkdir()
+                made = check("make_folder")
+                self.assertEqual(made.json().get("verdict"), "correct", made.text)
+                self.assertEqual(check("make_file").json()["verdict"], "not_yet")
+                (workspace / "silver_reels" / "casino.py").write_text("bankroll = 100\n", encoding="utf-8")
+                self.assertEqual(check("make_file").json()["verdict"], "correct")
+                silent = check("first_run").json()
+                self.assertEqual(silent["verdict"], "not_yet")  # runs, but prints nothing yet
+                (workspace / "silver_reels" / "casino.py").write_text("bankroll = 100\nprint(bankroll +)\n", encoding="utf-8")
+                broken = check("first_run").json()
+                self.assertEqual(broken["verdict"], "not_yet")
+                self.assertIn("SyntaxError", broken["output"])
+                (workspace / "silver_reels" / "casino.py").write_text("bankroll = 100\nprint(f'Welcome to the Silver Reels. Purse: {bankroll}')\n", encoding="utf-8")
+                ran = check("first_run").json()
+                self.assertEqual(ran["verdict"], "correct")
+                self.assertIn("Purse: 100", ran["output"])
+                self.assertEqual(check("first_run").status_code, 409)  # done objectives stay done
+                encounter = client.get("/api/campaign", headers={"host": "127.0.0.1"}).json()["encounter"]
+                self.assertEqual([item["id"] for item in encounter["available_objectives"]], ["what_ran", "bankroll_trace"])
+                self.assertEqual(encounter["resolve"], encounter["max_resolve"] - 5)
+                self.assertEqual(resolve()["player"]["hp"], hp)  # not done yet never hurt
+            finally:
+                app_v2.WORKSPACE, app_v2.PROGRESS_PATH = original_workspace, original_progress
+
     def test_boss_gate_mixes_code_and_click_goals_and_clears_from_saved_state(self):
         original_workspace = app_v2.WORKSPACE
         original_progress = app_v2.PROGRESS_PATH

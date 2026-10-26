@@ -68,8 +68,19 @@ class CampaignContentSchemaTests(unittest.TestCase):
                         self.assertIn(item["question_type"], CAMPAIGN_QUESTION_TYPES, (mob["name"], item["id"]))
                         self.assertTrue(1 <= item["impact"] <= MAX_IMPACT, (mob["name"], item["id"]))
                         self.assertTrue(item["label"].strip() and item["brief"].strip())
-                    kinds = [item["question_type"] for item in objectives]
-                    code = kinds.count("code_checkpoint") + kinds.count("bug_diagnosis")
+                    # Setup steps (make the folder, make the file) open a workshop
+                    # bounty and sit outside its fight shape; a first-run check
+                    # is that fight's build.
+                    steps = [item for item in objectives if item["question_type"] == "setup_check"]
+                    for item in steps:
+                        self.assertTrue(state.setup_check_spec(item.get("check")), (mob["name"], item["id"]))
+                    setup = [item for item in steps if "run" not in item["check"]]
+                    self.assertTrue(not steps or mob.get("kind") == "workshop", mob["name"])
+                    self.assertLessEqual(len(setup), 3, mob["name"])
+                    self.assertEqual(objectives[:len(setup)], setup, mob["name"])  # setup comes first
+                    fight = objectives[len(setup):]
+                    kinds = [item["question_type"] for item in fight]
+                    code = kinds.count("code_checkpoint") + kinds.count("bug_diagnosis") + sum(1 for item in fight if "run" in item.get("check", {}))
                     tier = mob.get("tier")
                     self.assertIn(tier, {None, "light", "quick", "elite"}, mob["name"])
                     self.assertIn(mob.get("kind"), {None, "workshop", "debug", "memory", "creative"}, mob["name"])
@@ -334,7 +345,7 @@ class CampaignExtensionTests(unittest.TestCase):
         self.assertEqual(crawler["mobs"][0]["status"], "available")
         encounter = self.service.encounter_projection(self.read())
         self.assertEqual(encounter["mob_name"], "The Hollow Adventurer")
-        self.assertEqual([item["id"] for item in encounter["available_objectives"]], ["package_shape", "package_vs_module", "import_path"])
+        self.assertEqual([item["id"] for item in encounter["available_objectives"]], ["make_folders", "make_package", "package_shape", "package_vs_module", "import_path"])
         # Blackjack keeps its board while another project is played.
         self.assertEqual(len(next(item for item in self.read()["projects"] if item["branch"] == "01-blackjack")["mobs"]), 19)
 
