@@ -19,6 +19,9 @@ import json
 import sys
 from pathlib import Path
 
+import sys as _sys
+from pathlib import Path as _P
+_sys.path.insert(0, str(_P(__file__).parent))
 from PIL import Image, ImageEnhance, ImageFilter
 
 TARGET_H = 56
@@ -130,6 +133,17 @@ def place(frame):
     return cell
 
 
+def darken_skin(img):
+    """Recolour skin-hued pixels (warm, mid-saturation, bright) to deep umber, keeping the shading."""
+    from from_reference import is_skin
+    px = img.load()
+    for y in range(img.height):
+        for x in range(img.width):
+            r, g, b, a = px[x, y]
+            if a and is_skin((r, g, b)):
+                px[x, y] = (int(r * 0.50), int(g * 0.42), int(b * 0.42), a)
+
+
 def build(sheet_dir, out_dir, height=TARGET_H):
     sheet_dir, out_dir = Path(sheet_dir), Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -164,6 +178,7 @@ def build(sheet_dir, out_dir, height=TARGET_H):
             q = c.convert("RGB").quantize(palette=pal, dither=Image.NONE).convert("RGB")
             q = q.convert("RGBA")
             q.putalpha(alpha)
+            darken_skin(q)
             sheet.paste(q, (i * FW, 0))
         sheet.save(out_dir / f"hunter_{name}.png")
     meta = {"frame": [FW, FH], "frames": 8, "facings": {"down": "front", "left": "side", "right": "side(mirrored)", "up": "back"}}
