@@ -2,7 +2,7 @@ import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState }
 import Editor from '@monaco-editor/react'
 import { Terminal } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
-import { buildQuestDocument, ContextPanel, GameScreen, PyrChatPanel, RewardQueue, SurfaceNavigation, TutorPracticeBar } from './RpgViews.jsx?homePortParity20260921'
+import { buildQuestDocument, ContextPanel, GameScreen, projectDirOf, PyrChatPanel, RewardQueue, SurfaceNavigation, TutorPracticeBar } from './RpgViews.jsx?homePortParity20260921'
 import { syncEngine } from './cloud/syncEngine.js'
 import { pyrClientId } from './cloud/pyrClient.js'
 
@@ -562,11 +562,29 @@ function AppV2() {
     if (!branch) return
     if (lastProjectBranchRef.current && lastProjectBranchRef.current !== branch && activeEntryFile) {
       const exists = files.some((item) => String(item.path || '').toLowerCase() === activeEntryFile.toLowerCase())
-      if (exists) void openFile(activeEntryFile, false)
-      else setNotice(`Now playing ${activeProjectInfo.name || 'a new project'}. Create ${activeEntryFile} in the Forge (＋ New file) to start its first bounty.`)
+      const name = activeProjectInfo.name || 'a new project'
+      void (async () => {
+        // Keep the old project's edits, then never leave its file open as
+        // if it belonged to the new project.
+        if (dirty) await saveFile()
+        if (exists) return openFile(activeEntryFile, false)
+        setEditorMode('file')
+        setActivePath('')
+        setCode('')
+        setDirty(false)
+        setNotice(`Now playing ${name}. Create ${activeEntryFile} in the Forge (＋ New file) to start its first bounty.`)
+      })()
     }
     lastProjectBranchRef.current = branch
   }, [activeProjectInfo.branch])
+  useEffect(() => {
+    // On load the file tree can arrive before the campaign does; once the
+    // entry file is known, a folder campaign re-picks one of its own files.
+    const dir = projectDirOf(activeEntryFile).toLowerCase()
+    if (!dir || dirty || editorMode !== 'file') return
+    if (activePath && activePath.toLowerCase().startsWith(`${dir}/`)) return
+    void refreshFiles()
+  }, [activeEntryFile])
   if (prevLevelRef.current === null) prevLevelRef.current = player.level ?? 1
   const stats = progress.stats || {}
   const streak = progress.streak || {}
@@ -1196,14 +1214,20 @@ function AppV2() {
       // arbitrary backend __init__.py as the learner's campaign surface;
       // prefer the active project's conventional file and otherwise leave
       // the editor empty until the transferred project source arrives.
+      // A campaign in its own folder only ever opens a file from that folder,
+      // so another campaign's blackjack.py is never shown in its place.
+      const projectDir = projectDirOf(activeEntryFileRef.current).toLowerCase()
       const projectFiles = nextFiles.filter((item) => {
         if (item.type !== 'file' || !item.path.endsWith('.py') || item.path === 'tutor.py') return false
         const normalized = item.path.replaceAll('\\\\', '/').toLowerCase()
+        if (projectDir) return normalized.startsWith(`${projectDir}/`) && !normalized.includes('/test_') && !normalized.includes('/tests/')
         return !normalized.startsWith('ide/') && !normalized.startsWith('tools/') && !normalized.startsWith('tests/') && !normalized.includes('/test_') && !normalized.includes('/tests/')
       })
+      // Any file of a folder campaign (its README.md, notes) stays open.
       const activeProjectFile = projectFiles.some((item) => item.path === activePath)
+        || (Boolean(projectDir) && nextFiles.some((item) => item.type === 'file' && item.path === activePath && item.path.toLowerCase().startsWith(`${projectDir}/`)))
       if (!activeProjectFile) {
-        const preferredNames = [activeEntryFileRef.current, 'blackjack.py', 'campaign.py', 'main.py'].filter(Boolean)
+        const preferredNames = [activeEntryFileRef.current.toLowerCase(), ...(projectDir ? [] : ['blackjack.py', 'campaign.py', 'main.py'])].filter(Boolean)
         const preferred = preferredNames.map((name) => projectFiles.find((item) => item.path.toLowerCase() === name)).find(Boolean) || projectFiles[0]
         if (preferred) await openFile(preferred.path, false)
         else {
@@ -2172,8 +2196,12 @@ function AppV2() {
   }
 
   const newFile = async () => {
-    const path = window.prompt('New file path relative to the quest workspace, e.g. scratch.py')
-    if (!path) return
+    const dir = projectDirOf(activeEntryFileRef.current)
+    const path = window.prompt(
+      dir ? `New file path relative to the quest workspace, e.g. ${dir}/notes.md` : 'New file path relative to the quest workspace, e.g. scratch.py',
+      dir ? `${dir}/` : '',
+    )
+    if (!path || path.endsWith('/')) return
     try {
       await api('/api/file', { method: 'PUT', body: JSON.stringify({ path, content: '' }) })
       await refreshFiles()

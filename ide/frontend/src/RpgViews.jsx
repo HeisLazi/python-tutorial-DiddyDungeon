@@ -428,6 +428,12 @@ export function ActivityRail({ activeView, setActiveView, player, avatarDataUrl 
 const PLATFORM_TREE_ROOTS = new Set(['ide', 'tools', 'supabase', 'prototypes', 'questlab-state', 'questlab-files', 'node_modules'])
 const GAME_FILE_PATTERN = /\.(py|js|jsx|ts|tsx|html|css|sql|rs|go|java|c|cpp|h|rb|lua|txt)$/i
 
+// The folder a campaign's entry file lives in ('' for a root-level file).
+export function projectDirOf(entryFile) {
+  const parts = String(entryFile || '').replaceAll('\\', '/').split('/').filter(Boolean)
+  return parts.length > 1 ? parts[0] : ''
+}
+
 function isGameTreeItem(item) {
   const segments = String(item?.path || '').replaceAll('\\', '/').split('/').filter(Boolean)
   if (!segments.length || segments.some((segment) => segment.startsWith('.'))) return false
@@ -454,9 +460,15 @@ export function ContextPanel({ activeView, campaign, files = [], activePath, com
     try { window.localStorage.setItem('questlab.showAllFiles', String(!current)) } catch { /* storage unavailable */ }
     return !current
   })
+  // A campaign that lives in its own folder (silver_reels/casino.py) shows
+  // only that folder in the game view, never another campaign's files.
+  const projectDir = projectDirOf(activeProject?.entry_file)
   const treeFiles = files.filter((item) => {
     const path = String(item?.path || '')
-    return path && !path.startsWith('\\') && !path.includes('\0') && (showAllFiles || isGameTreeItem(item))
+    if (!path || path.startsWith('\\') || path.includes('\0')) return false
+    if (showAllFiles) return true
+    if (projectDir) return path === projectDir || path.startsWith(`${projectDir}/`)
+    return isGameTreeItem(item)
   })
   const campaignSourceFiles = treeFiles.filter((item) => {
     if (item.type !== 'file' || !/\.py$/i.test(String(item.path || ''))) return false
@@ -591,6 +603,9 @@ export function ContextPanel({ activeView, campaign, files = [], activePath, com
               </button>
             ))}
             {!files.length && <div className="empty-state">No workspace files available.</div>}
+            {Boolean(files.length) && projectDir && !showAllFiles && !treeFiles.length && <div className="empty-state">
+              <strong>{projectDir}/</strong> isn't on disk yet. The first bounty starts by making it: use ＋ New file and create <code>{activeProject.entry_file}</code>.
+            </div>}
           </div> : <div className="active-file-summary" data-testid="forge-active-file-summary">
             <span>CAMPAIGN EDITOR</span>
             <strong>{activePath || 'No campaign file selected'}</strong>
