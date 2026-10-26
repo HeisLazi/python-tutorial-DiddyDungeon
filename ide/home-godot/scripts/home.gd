@@ -54,6 +54,10 @@ var near: Dictionary = {}
 var toast_time := 0.0
 var hint_time := 7.0
 # Testing only: `godot --path . -- --shot=/tmp/a.png --pos=160,90 --face=up` saves a frame and quits.
+# Keys are tracked from events (not polled) so even a very short tap moves the hunter a few pixels.
+var held := {}
+var tap_ttl := {}
+const MOVE_KEYS := [KEY_W, KEY_A, KEY_S, KEY_D, KEY_UP, KEY_DOWN, KEY_LEFT, KEY_RIGHT]
 var shot_path := ""
 var shot_frames := 0
 
@@ -293,9 +297,11 @@ func _process(delta: float) -> void:
 		if shot_frames == 20:
 			get_viewport().get_texture().get_image().save_png(shot_path)
 			get_tree().quit()
+	for key in tap_ttl.keys():
+		tap_ttl[key] = maxf(0.0, float(tap_ttl[key]) - delta)
 	var dir := Vector2(
-		float(Input.is_physical_key_pressed(KEY_D) or Input.is_physical_key_pressed(KEY_RIGHT)) - float(Input.is_physical_key_pressed(KEY_A) or Input.is_physical_key_pressed(KEY_LEFT)),
-		float(Input.is_physical_key_pressed(KEY_S) or Input.is_physical_key_pressed(KEY_DOWN)) - float(Input.is_physical_key_pressed(KEY_W) or Input.is_physical_key_pressed(KEY_UP)))
+		float(_down(KEY_D) or _down(KEY_RIGHT)) - float(_down(KEY_A) or _down(KEY_LEFT)),
+		float(_down(KEY_S) or _down(KEY_DOWN)) - float(_down(KEY_W) or _down(KEY_UP)))
 	if dir != Vector2.ZERO:
 		dir = dir.normalized()
 		if absf(dir.x) > absf(dir.y):
@@ -372,6 +378,19 @@ func _update_prompt(delta: float) -> void:
 		toast_time -= delta
 		if toast_time <= 0.0:
 			toast_label.text = ""
+
+
+func _down(key: int) -> bool:
+	return bool(held.get(key, false)) or float(tap_ttl.get(key, 0.0)) > 0.0
+
+
+func _input(event: InputEvent) -> void:
+	if event is InputEventKey and not event.echo:
+		var key: int = event.physical_keycode if event.physical_keycode != KEY_NONE else event.keycode
+		if key in MOVE_KEYS:
+			held[key] = event.pressed
+			if event.pressed:
+				tap_ttl[key] = 0.09
 
 
 func _unhandled_input(event: InputEvent) -> void:

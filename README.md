@@ -229,6 +229,15 @@ The Homestead becomes a base that grows between runs, like the House of Hades: u
 - **First slice:** one room (Tiled map, FireRed-style tiles), a walking hunter from a Blender-made sheet, three working stations (Hearth, Armory rack, Map table), Pyr following, scanlines/CRT toggle. Everything else in this README stays parked until this feels good.
 - **Blocker to start the web build:** Godot's web export templates are not installed and must be downloaded (needs the user's OK).
 
+### Home first slice: built (2026-10-26)
+
+The walkable Home exists and runs inside the app: `ide/home-godot` (Godot 4.7, 240x160 GBA resolution) embedded as an iframe on Home. One room with a Hearth (rest, +HP), the Armory rack (opens the real Armory panel), a Map table (to the Dungeon), a door (to the Forge), tier pips per station, a walking hunter with Pyr following, and a scanline/vignette shader you can toggle. The app sends the save's HP, Embers, upgrade tiers and "coded today" (a lit or cold hearth); Godot reports "use this station". "Classic home" stays one click away, and is the fallback when the web build is absent.
+
+- **Build it:** `tools/build_home.sh` regenerates the art (`tools/home_art/make_tiles.py`, `make_hunter.py`) and exports the web build to `ide/frontend/public/home/` (git-ignored), then rebuild the frontend. It needs Godot 4.7.2 and its Web export templates (`web_nothreads_release.zip` and friends in `~/.var/app/org.godotengine.Godot/data/godot/export_templates/4.7.2.stable/`).
+- **Art:** tiles and objects are drawn in code with a fixed palette (FireRed-style planks, brick, a stone hearth). The 16x32 hunter is hand-placed pixels: a Blender 3D render shrunk to 16 px turned to mush, so Blender is kept for big pieces (portraits, props; `tools/home_art/hunter_blender.py`).
+- **Test it:** `tools/home_art/shots.sh` saves screenshots of the room at a few spots.
+- **Next for Home:** more stations (Pantry, Study desk, Training ring, Trophy wall, Pyr's perch), the Ember upgrade tracks and costs from the economy table, the pre-run loadout pick, day/night, the avatar's look on the walking sprite, and a Tiled-built bigger map.
+
 ### Upgrade economy target
 
 Maxing every upgrade should be a real grind in Infinite Dungeon playtime:

@@ -3040,7 +3040,24 @@ function useHomeBuild() {
 
 function HomeRoom({ progress, armory, armoryActions, performHomesteadAction, onNavigate, onClassic, busy }) {
   const frameRef = useRef(null)
+  const sectionRef = useRef(null)
   const readyRef = useRef(false)
+  // The room is 240x160 and Godot scales it by whole *device* pixels, so the
+  // frame is sized to the largest whole multiple that fits (any zoom level).
+  const [frameSize, setFrameSize] = useState({ width: 720, height: 480 })
+  useEffect(() => {
+    const fit = () => {
+      const ratio = window.devicePixelRatio || 1
+      const room = sectionRef.current?.parentElement?.clientWidth || 960
+      // Fit the width of the panel and the height of the window (the prompt bar is at the bottom).
+      const widest = Math.min(room - 12, 960, Math.max(320, window.innerHeight - 250) * 1.5)
+      const scale = Math.max(2, Math.floor((widest * ratio) / 240))
+      setFrameSize({ width: (240 * scale) / ratio, height: (160 * scale) / ratio })
+    }
+    fit()
+    window.addEventListener('resize', fit)
+    return () => window.removeEventListener('resize', fit)
+  }, [])
   const [crt, setCrt] = useState(() => {
     try { return window.localStorage.getItem('questlab.homeCrt') !== 'false' } catch { return true }
   })
@@ -3094,8 +3111,8 @@ function HomeRoom({ progress, armory, armoryActions, performHomesteadAction, onN
     return !current
   })
   return (
-    <section className="home-room" data-testid="home-room" aria-label="Your home">
-      <div className="home-room-frame">
+    <section className="home-room" data-testid="home-room" aria-label="Your home" ref={sectionRef}>
+      <div className="home-room-frame" style={{ width: frameSize.width, height: frameSize.height }}>
         <iframe ref={frameRef} title="Home" src="/home/index.html" allow="autoplay" onLoad={() => frameRef.current?.focus()} />
         {panel === 'armory' && (
           <div className="home-room-panel" role="dialog" aria-label="Armory">
@@ -3104,7 +3121,7 @@ function HomeRoom({ progress, armory, armoryActions, performHomesteadAction, onN
           </div>
         )}
       </div>
-      <div className="home-room-bar">
+      <div className="home-room-bar" style={{ width: frameSize.width + 6 }}>
         <small>Walk with WASD or the arrows · E to use a station</small>
         <span>
           <button type="button" onClick={toggleCrt} aria-pressed={crt}>Scanlines {crt ? 'on' : 'off'}</button>
