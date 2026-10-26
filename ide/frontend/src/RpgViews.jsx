@@ -725,7 +725,7 @@ export function ContextPanel({ activeView, campaign, files = [], activePath, com
             <div className="campaign-battle-sidebar">
             {encounter.mob_name ? <>
               <div className="panel-title"><span>ACTIVE BATTLE</span><b>{encounter.resolve ?? 0}/{encounter.max_resolve ?? 0}</b></div>
-              <BattleBrief encounter={encounter} board={campaign?.campaign_board} questions={battleQuestions} feedback={battleFeedback} onAsk={onAskBattleQuestion} onAnswer={onAnswerBattleOption} onCheckSetup={onCheckSetup} busy={busy} />
+              <BattleBrief encounter={encounter} board={campaign?.campaign_board} charges={campaign?.armory?.charges} questions={battleQuestions} feedback={battleFeedback} onAsk={onAskBattleQuestion} onAnswer={onAnswerBattleOption} onCheckSetup={onCheckSetup} busy={busy} />
               <div className="campaign-battle-resolve" data-testid="forge-encounter-resolve" hidden>
                 <ProgressBar value={encounter.resolve ?? 0} max={encounter.max_resolve ?? 1} label="Enemy Resolve" className="resolve" />
               </div>
@@ -936,6 +936,7 @@ export function PyrChatPanel({ log = [], ready, thinking, model, onAsk, onOpenSe
       </div>
       {battleCost && <p className={`pyr-chat-cost ${battleCost.asks ? 'spent' : ''}`} data-testid="pyr-chat-cost">
         Help costs rewards in a fight: each ask takes 20% off {battleCost.mob}'s XP and coins (down to 40%), and from the 2nd ask it drops no loot.
+        {battleCost.free > 0 && <b className="pyr-chat-free"> {battleCost.free} free ask{battleCost.free === 1 ? '' : 's'} armed (PYR's Favour): the next one costs nothing.</b>}
         {battleCost.asks > 0 && <b> Asked {battleCost.asks}× · now {battleCost.scale}%{battleCost.asks >= 2 ? ' · no loot' : ''}.</b>}
       </p>}
       <div className="pyr-chat-compose">
@@ -1560,6 +1561,23 @@ function resourceFallbackPages(encounter) {
   }]
 }
 
+// Where you are in the Tutor survives going to the Forge and back, and a
+// reload, but not closing the app: sessionStorage lives as long as the window.
+function useSessionState(key, initial) {
+  const [value, setValue] = useState(() => {
+    try {
+      const saved = window.sessionStorage.getItem(`questlab.tutor.${key}`)
+      return saved === null ? (typeof initial === 'function' ? initial() : initial) : JSON.parse(saved)
+    } catch {
+      return typeof initial === 'function' ? initial() : initial
+    }
+  })
+  useEffect(() => {
+    try { window.sessionStorage.setItem(`questlab.tutor.${key}`, JSON.stringify(value)) } catch { /* storage unavailable */ }
+  }, [key, value])
+  return [value, setValue]
+}
+
 function ResourceNotebook({ pages, selectedPage, entries, onSelectPage }) {
   const storageKey = 'questlab-forge-resource-notebook'
   const [chapters, setChapters] = useState(() => {
@@ -1568,8 +1586,8 @@ function ResourceNotebook({ pages, selectedPage, entries, onSelectPage }) {
       return Array.isArray(stored) && stored.length ? stored : RESOURCE_DEFAULT_CHAPTERS
     } catch { return RESOURCE_DEFAULT_CHAPTERS }
   })
-  const [chapterId, setChapterId] = useState(() => chapters[0]?.id || 'fundamentals')
-  const [pageIndex, setPageIndex] = useState(0)
+  const [chapterId, setChapterId] = useSessionState('notebookChapter', () => chapters[0]?.id || 'fundamentals')
+  const [pageIndex, setPageIndex] = useSessionState('notebookPage', 0)
   const [notes, setNotes] = useState(() => {
     try { return JSON.parse(window.localStorage.getItem(`${storageKey}:notes`) || '{}') || {} } catch { return {} }
   })
@@ -1866,7 +1884,7 @@ function HuntSigil({ pageId, size = 28 }) {
 
 function HunterCodex({ view, hunter, pages, entries, progress, encounter, pyr, busy, selectedId, onSelect, onView, onRead, onPractice }) {
   const [studied, setStudied] = useState(() => readStudied())
-  const [region, setRegion] = useState('all')
+  const [region, setRegion] = useSessionState('huntRegion', 'all')
   const [askText, setAskText] = useState('')
   const [askLog, setAskLog] = useState([])
   const byId = Object.fromEntries(pages.map((page) => [page.id, page]))
@@ -2065,25 +2083,26 @@ function ResourceTutorScreen({ pyr, hunter, sparRoster = [], sparActions, avatar
   const entries = Array.isArray(codexProjection?.entries) ? codexProjection.entries : []
   // Tutor opens on the Hunter's Codex contract board; Bestiary and Signs sit
   // beside it, and all three lead into the Codex reader and IDE practice.
-  const [surface, setSurface] = useState('contracts')
+  const [surface, setSurface] = useSessionState('surface', 'contracts')
   const huntView = ['contracts', 'bestiary', 'signs'].includes(surface)
   // The beast picked in the codex; empty means "the current hunt".
-  const [huntPick, setHuntPick] = useState('')
-  const [selectedId, setSelectedId] = useState(pages[0]?.id || '')
-  const [readPage, setReadPage] = useState(0)
-  const [practiceMode, setPracticeMode] = useState('predict')
-  const [practiceDifficulty, setPracticeDifficulty] = useState(1)
+  const [huntPick, setHuntPick] = useSessionState('huntPick', '')
+  const [selectedId, setSelectedId] = useSessionState('codexPage', pages[0]?.id || '')
+  const [readPage, setReadPage] = useSessionState('readPage', 0)
+  const [practiceMode, setPracticeMode] = useSessionState('practiceMode', 'predict')
+  const [practiceDifficulty, setPracticeDifficulty] = useSessionState('practiceDifficulty', 1)
   const [terminal, setTerminal] = useState({ status: 'ready', output: ['Tutor shell ready.', 'Run is a safe local self-check; Submit is the feedback boundary.'] })
   const [aiPrompt, setAiPrompt] = useState('')
   const [aiMessages, setAiMessages] = useState([{ role: 'pyr', text: 'PYR channel ready. Ask for a hint when you need a nudge, not a finished answer.' }])
   // A practice question PYR wrote for the chosen lens (null = use the lens's generic prompt).
   const [practiceQuestion, setPracticeQuestion] = useState(null)
-  const [query, setQuery] = useState('')
+  const [query, setQuery] = useSessionState('codexQuery', '')
   const selectedPage = pages.find((page) => page.id === selectedId) || pages[0]
   const selectedEntries = entries.filter((entry) => entry.page_id === selectedPage?.id)
+  const codexLoaded = Array.isArray(codexProjection?.pages) && codexProjection.pages.length > 0
   useEffect(() => {
-    if (!pages.some((page) => page.id === selectedId)) setSelectedId(pages[0]?.id || '')
-  }, [pages, selectedId])
+    if (codexLoaded && !pages.some((page) => page.id === selectedId)) setSelectedId(pages[0]?.id || '')
+  }, [codexLoaded, pages, selectedId])
   useEffect(() => {
     if (activeView === 'codex') setSurface('codex')
   }, [activeView])
@@ -2741,10 +2760,11 @@ const ARMORY_TABS = [
   { id: 'armor', label: 'Armour' },
   { id: 'trinket', label: 'Trinkets' },
   { id: 'supplies', label: 'Food & tonics' },
+  { id: 'aid', label: 'Aid' },
   { id: 'relic', label: 'Relics' },
   { id: 'collection', label: 'Collection' },
 ]
-const SLOT_WORDS = { weapon: 'Weapon', armor: 'Armour', trinket: 'Trinket', food: 'Food', tonic: 'Tonic', relic: 'Relic' }
+const SLOT_WORDS = { weapon: 'Weapon', armor: 'Armour', trinket: 'Trinket', food: 'Food', tonic: 'Tonic', relic: 'Relic', aid: 'Aid' }
 
 function ArmoryItem({ item, children }) {
   return (
@@ -2765,6 +2785,7 @@ function ArmoryPanel({ armory, actions, busy }) {
   const shown = tab === 'supplies' ? items.filter((item) => item.slot === 'food' || item.slot === 'tonic') : items.filter((item) => item.slot === tab)
   const summary = armory.summary || {}
   const buffs = armory.buffs || {}
+  const charges = armory.charges || {}
   return (
     <section className="character-panel armory-panel" aria-label="Armory">
       <header><h3>Armory</h3><small>{items.length} items</small></header>
@@ -2782,9 +2803,11 @@ function ArmoryPanel({ armory, actions, busy }) {
           <ArmoryItem key={item.id} item={item}>
             {['weapon', 'armor', 'trinket'].includes(item.slot) && <button type="button" className="campaign-button" onClick={() => actions?.equip?.(item.id)} disabled={busy || item.equipped}>{item.equipped ? 'Equipped' : 'Equip'}</button>}
             {(item.slot === 'food' || item.slot === 'tonic') && <button type="button" className="campaign-button" onClick={() => actions?.use?.(item.id)} disabled={busy}>{item.slot === 'food' ? 'Eat' : 'Drink'}</button>}
+            {item.slot === 'aid' && <button type="button" className="campaign-button" onClick={() => actions?.use?.(item.id)} disabled={busy}>Arm it</button>}
           </ArmoryItem>
         ))}</div>
-      ) : <p className="alchemy-empty">Nothing here yet. Contracts, Dungeon bosses and the Merchant's armoury lots all drop {tab === 'supplies' ? 'food' : ARMORY_TABS.find((item) => item.id === tab)?.label.toLowerCase()}.</p>}
+      ) : <p className="alchemy-empty">{tab === 'aid' ? 'No Aid yet. Cleared bounties sometimes drop it, bosses always give a PYR\'s Blessing, and the Merchant sells it.' : `Nothing here yet. Contracts, Dungeon bosses and the Merchant's armoury lots all drop ${tab === 'supplies' ? 'food' : ARMORY_TABS.find((item) => item.id === tab)?.label.toLowerCase()}.`}</p>}
+      {tab === 'aid' && <p className="armory-summary armory-charges">Armed now: {charges.free_asks || 0} free PYR ask{charges.free_asks === 1 ? '' : 's'} · {charges.wards || 0} ward{charges.wards === 1 ? '' : 's'}. Arming spends the item; the charge waits until a fight needs it.</p>}
     </section>
   )
 }
@@ -2801,7 +2824,7 @@ function ArmouryLots({ armory, coins, actions, busy, onBack }) {
       <div className="bench-tabs" role="tablist" aria-label="Lots"><button type="button" className={filter === 'open' ? 'active' : ''} onClick={() => setFilter('open')}>Open lots</button><button type="button" className={filter === 'all' ? 'active' : ''} onClick={() => setFilter('all')}>All lots</button></div>
       {campaigns.length ? campaigns.map((branch) => (
         <section key={branch} className="alchemy-region">
-          <h4>{names[branch] || branch}</h4>
+          <h4>{branch === 'aid' ? 'Aid · one-time help' : names[branch] || branch}</h4>
           <div className="armory-grid">{lots.filter((lot) => lot.campaign === branch).map((lot) => (
             <ArmoryItem key={lot.id} item={lot}>
               <button type="button" className="campaign-button" onClick={() => actions?.buy?.(lot.id)} disabled={busy || !lot.affordable}>{lot.affordable || lot.locked ? `Buy · ${lot.price} coins` : `Need ${Math.max(1, lot.price - (coins || 0))} more coins`}</button>
@@ -3338,7 +3361,7 @@ const SPAR_ROUNDS = 5
 // Simulated fights in the Tutor notebook: only foes already met, five
 // clickable rounds, no damage. Right first clicks still grow your signs.
 function SparringArena({ roster = [], actions, busy }) {
-  const [foeId, setFoeId] = useState('')
+  const [foeId, setFoeId] = useSessionState('sparFoe', '')
   const [round, setRound] = useState(0)
   const [question, setQuestion] = useState(null)
   const [feedback, setFeedback] = useState(null)
@@ -3444,7 +3467,7 @@ const BATTLE_CHOICE_KINDS = new Set(['prediction', 'explanation'])
 
 // The campaign battle sidebar, laid out like the Dungeon brief: the question
 // first, then what you are fighting, then every objective.
-function BattleBrief({ encounter, board, questions = {}, feedback, onAsk, onAnswer, onCheckSetup, busy }) {
+function BattleBrief({ encounter, board, charges = {}, questions = {}, feedback, onAsk, onAnswer, onCheckSetup, busy }) {
   const open = encounter.available_objectives || []
   const contract = (board?.contracts || []).find((item) => item.name === encounter.mob_name)
   // Setup steps come first, and a workshop bounty is played in its written
@@ -3504,6 +3527,7 @@ function BattleBrief({ encounter, board, questions = {}, feedback, onAsk, onAnsw
         {contract?.sign && <small className="battle-brief-sign"><HuntSigil pageId={contract.sign} size={14} /> {contract.beast || 'Beast'} · Sign of the {HUNT_BEASTS[contract.sign]?.sign || contract.sign}</small>}
         <ProgressBar value={encounter.resolve ?? 0} max={encounter.max_resolve ?? 1} label="Enemy Resolve" className="resolve" />
         <small>{encounter.guards ? `${encounter.guards} free mistake${encounter.guards === 1 ? '' : 's'} banked · ` : ''}{done.size} of {allObjectives.length} objectives done</small>
+        {(charges?.free_asks > 0 || charges?.wards > 0) && <small className="battle-brief-aid" data-testid="battle-aid">Armed: {[charges.free_asks ? `${charges.free_asks} free PYR ask${charges.free_asks === 1 ? '' : 's'}` : '', charges.wards ? `${charges.wards} ward${charges.wards === 1 ? '' : 's'}` : ''].filter(Boolean).join(' · ')}</small>}
         {encounter.pyr_assists > 0 && <small className="battle-brief-pyr" data-testid="battle-pyr-cost">PYR helped {encounter.pyr_assists}× · this fight pays {encounter.reward_scale}% XP and coins{encounter.pyr_assists >= 2 ? ' · no loot' : ''}</small>}
         {encounter.mob?.lore && <p className="battle-brief-lore">{encounter.mob.lore}</p>}
       </section>
@@ -4237,6 +4261,7 @@ function WorkspaceTransferPanel({ transfer, busy, notice, onRefresh, onPush, onP
 }
 
 const SETTINGS_SECTIONS = [
+  { id: 'stats', label: 'Player Stats', hint: 'Activity graph, records' },
   { id: 'appearance', label: 'Appearance', hint: 'Theme, fonts, effects' },
   { id: 'editor', label: 'Editor & Terminal', hint: 'Sizes and panels' },
   { id: 'ai', label: 'AI Tutor', hint: 'OpenCode · PYR' },
@@ -4359,7 +4384,176 @@ function AiTutorSettings({ ai = {} }) {
   )
 }
 
-function SettingsScreen({ preferences, setters, resetLayout, account, accountBusy, accountNotice, onSignIn, onSignUp, onSignOut, onDeviceLabelSave, onResolveConflict, revision, workspaceTransfer, workspaceTransferBusy, workspaceTransferNotice, onWorkspaceTransferRefresh, onWorkspaceTransferPush, onWorkspaceTransferPreviewPull, onWorkspaceTransferApplyPull, ai, runtime }) {
+// ── Player stats: the activity graph and lifetime records ──────────────────
+// Days come from the local activity log (progress.activity_log.days), filled by
+// saving code, verified answers, cleared bounties, Dungeon floors and bosses.
+const ACTIVITY_WEEKS = 52
+const ACTIVITY_WEIGHTS = { lines: 1, answers: 3, mobs: 6, floors: 3, bosses: 25 }
+const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+
+function localDayKey(date) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+}
+
+function activityScore(day) {
+  return Object.entries(ACTIVITY_WEIGHTS).reduce((total, [key, weight]) => total + (Number(day?.[key]) || 0) * weight, 0)
+}
+
+function activityLevel(score) {
+  if (score <= 0) return 0
+  if (score < 10) return 1
+  if (score < 30) return 2
+  if (score < 80) return 3
+  return 4
+}
+
+function activityTitle(key, day) {
+  const date = new Date(`${key}T12:00:00`)
+  const label = `${MONTH_NAMES[date.getMonth()]} ${date.getDate()}, ${date.getFullYear()}`
+  const parts = [
+    day.lines ? `${day.lines} line${day.lines === 1 ? '' : 's'} of code` : '',
+    day.answers ? `${day.answers} answer${day.answers === 1 ? '' : 's'}` : '',
+    day.mobs ? `${day.mobs} mob${day.mobs === 1 ? '' : 's'} slain` : '',
+    day.floors ? `${day.floors} floor${day.floors === 1 ? '' : 's'} down` : '',
+    day.bosses ? `${day.bosses} boss${day.bosses === 1 ? '' : 'es'}` : '',
+  ].filter(Boolean)
+  return `${label}: ${parts.length ? parts.join(' · ') : 'no activity'}`
+}
+
+// Active-day streaks over the whole log (a day counts if anything happened).
+function activityStreaks(days) {
+  const active = new Set(Object.entries(days).filter(([, day]) => activityScore(day) > 0).map(([key]) => key))
+  let longest = 0
+  let run = 0
+  let previous = null
+  for (const key of [...active].sort()) {
+    const date = new Date(`${key}T12:00:00`)
+    run = previous && Math.round((date - previous) / 86400000) === 1 ? run + 1 : 1
+    longest = Math.max(longest, run)
+    previous = date
+  }
+  let current = 0
+  const cursor = new Date()
+  if (!active.has(localDayKey(cursor))) cursor.setDate(cursor.getDate() - 1)  // today can still be earned
+  while (active.has(localDayKey(cursor))) {
+    current += 1
+    cursor.setDate(cursor.getDate() - 1)
+  }
+  return { active: active.size, current, longest }
+}
+
+function ActivityGraph({ days = {} }) {
+  const scrollRef = useRef(null)
+  const today = new Date()
+  today.setHours(12, 0, 0, 0)
+  const start = new Date(today)
+  start.setDate(start.getDate() - (ACTIVITY_WEEKS * 7) - today.getDay())  // a Sunday, 52 full weeks back
+  const weeks = []
+  for (let cursor = new Date(start); cursor <= today; cursor.setDate(cursor.getDate() + 1)) {
+    if (cursor.getDay() === 0) weeks.push([])
+    const key = localDayKey(cursor)
+    const day = days[key] || {}
+    weeks[weeks.length - 1].push({ key, day, level: activityLevel(activityScore(day)), month: cursor.getMonth(), date: cursor.getDate() })
+  }
+  useEffect(() => {
+    if (scrollRef.current) scrollRef.current.scrollLeft = scrollRef.current.scrollWidth  // show the newest weeks
+  }, [])
+  return (
+    <div className="activity-graph" ref={scrollRef}>
+      <div className="activity-months" style={{ gridTemplateColumns: `repeat(${weeks.length}, var(--activity-cell))` }} aria-hidden="true">
+        {weeks.map((week, index) => {
+          const first = week.find((cell) => cell.date === 1)
+          return <span key={index}>{first ? MONTH_NAMES[first.month] : ''}</span>
+        })}
+      </div>
+      <div className="activity-body">
+        <div className="activity-weekdays" aria-hidden="true"><span /><span>Mon</span><span /><span>Wed</span><span /><span>Fri</span><span /></div>
+        <div className="activity-cells" role="img" aria-label="Daily activity over the last year">
+          {weeks.map((week, index) => (
+            <div key={index} className="activity-week">
+              {week.map((cell) => <span key={cell.key} className={`activity-cell level-${cell.level}`} title={activityTitle(cell.key, cell.day)} />)}
+            </div>
+          ))}
+        </div>
+      </div>
+      <div className="activity-legend" aria-hidden="true"><small>Less</small>{[0, 1, 2, 3, 4].map((level) => <span key={level} className={`activity-cell level-${level}`} />)}<small>More</small></div>
+    </div>
+  )
+}
+
+function StatCard({ label, value, hint }) {
+  return <div className="stat-card"><small>{label}</small><strong>{value}</strong>{hint && <span>{hint}</span>}</div>
+}
+
+function PlayerStatsPanel({ progress, hunter }) {
+  if (!progress || typeof progress !== 'object') {
+    return <section className="settings-group"><header><h3>Player Stats</h3></header><p className="settings-note">Your stats appear once your save has loaded.</p></section>
+  }
+  const days = progress.activity_log?.days && typeof progress.activity_log.days === 'object' ? progress.activity_log.days : {}
+  const records = progress.records || {}
+  const stats = progress.stats || {}
+  const player = progress.player || {}
+  const board = Array.isArray(progress.dungeon_leaderboard) ? progress.dungeon_leaderboard : []
+  const streaks = activityStreaks(days)
+  const yearAgo = new Date()
+  yearAgo.setDate(yearAgo.getDate() - 365)
+  const yearKey = localDayKey(yearAgo)
+  const thisYear = Object.entries(days).filter(([key]) => key >= yearKey)
+  const sum = (key) => thisYear.reduce((total, [, day]) => total + (Number(day?.[key]) || 0), 0)
+  const bestDay = thisYear.reduce((best, entry) => (activityScore(entry[1]) > activityScore(best?.[1]) ? entry : best), null)
+  const number = (value) => Number(value || 0).toLocaleString()
+  const survived = Math.max(Number(records.dungeon_runs_survived || 0), board.filter((run) => run.status === 'complete').length)
+  const deaths = Math.max(Number(records.dungeon_deaths || 0), board.filter((run) => run.status === 'dead').length)
+  const bestFloor = Math.max(Number(records.dungeon_best_floor || 0), ...board.map((run) => Number(run.floor) || 0), 0)
+  const bestScore = Math.max(Number(records.dungeon_best_score || 0), ...board.map((run) => Number(run.score) || 0), 0)
+  const bosses = Number(stats.bosses_defeated || 0)
+  return (
+    <section className="settings-group player-stats" data-testid="player-stats">
+      <header><h3>Player Stats</h3><p>Everything you have built and beaten. Counting started with this update, so older days and runs may be missing.</p></header>
+      <div className="activity-summary">
+        <strong>{number(sum('lines'))} lines of code</strong> and <strong>{number(sum('answers'))} answers</strong> in the last year · {streaks.active} active day{streaks.active === 1 ? '' : 's'}
+      </div>
+      <ActivityGraph days={days} />
+      <div className="stat-grid">
+        <StatCard label="Current streak" value={`${streaks.current} day${streaks.current === 1 ? '' : 's'}`} hint="days in a row with any activity" />
+        <StatCard label="Longest streak" value={`${streaks.longest} day${streaks.longest === 1 ? '' : 's'}`} />
+        <StatCard label="Best day" value={bestDay ? activityTitle(bestDay[0], bestDay[1]).split(':')[0] : '—'} hint={bestDay ? activityTitle(bestDay[0], bestDay[1]).split(': ')[1] : 'go make one'} />
+      </div>
+      <h4 className="stat-group-title">Campaign</h4>
+      <div className="stat-grid">
+        <StatCard label="Level" value={player.level ?? 1} hint={`${number(player.lifetime_xp ?? player.xp)} XP earned`} />
+        <StatCard label="Mobs slain" value={number(stats.mobs_defeated)} />
+        <StatCard label="Bosses defeated" value={number(bosses)} hint={`${number(stats.projects_cleared)} projects shipped`} />
+        <StatCard label="Answers verified" value={number(records.answers_verified)} />
+        <StatCard label="Guard Breaks" value={number(stats.guard_breaks)} />
+        <StatCard label="Clean clears" value={number(stats.clean_clears)} hint="a boss beaten without PYR help" />
+        <StatCard label="Coins" value={number(player.coins)} />
+        <StatCard label="Hunter level" value={hunter?.level ?? '—'} />
+      </div>
+      <h4 className="stat-group-title">Code</h4>
+      <div className="stat-grid">
+        <StatCard label="Lines written" value={number(records.lines_written)} hint="non-blank lines you added or rewrote" />
+        <StatCard label="Active days" value={number(streaks.active)} />
+      </div>
+      <h4 className="stat-group-title">Infinite Dungeon</h4>
+      <div className="stat-grid">
+        <StatCard label="Runs started" value={number(records.dungeon_runs_started)} />
+        <StatCard label="Runs survived" value={number(survived)} />
+        <StatCard label="Deaths" value={number(deaths)} />
+        <StatCard label="Highest floor" value={bestFloor || '—'} />
+        <StatCard label="Best score" value={number(bestScore)} />
+        <StatCard label="Floors descended" value={number(records.dungeon_floors_descended)} />
+      </div>
+      <h4 className="stat-group-title">Help</h4>
+      <div className="stat-grid">
+        <StatCard label="PYR asks in fights" value={number(records.pyr_asks)} hint="each one costs that fight's rewards" />
+        <StatCard label="Aid used" value={number(records.aid_used)} />
+      </div>
+    </section>
+  )
+}
+
+function SettingsScreen({ progress, hunter, preferences, setters, resetLayout, account, accountBusy, accountNotice, onSignIn, onSignUp, onSignOut, onDeviceLabelSave, onResolveConflict, revision, workspaceTransfer, workspaceTransferBusy, workspaceTransferNotice, onWorkspaceTransferRefresh, onWorkspaceTransferPush, onWorkspaceTransferPreviewPull, onWorkspaceTransferApplyPull, ai, runtime }) {
   const { editorFontSize, terminalFontSize, hudDensity, animations, showAiTerminal, themeChoice, fontFamily, zenMode, crtMode } = preferences
   const [section, setSection] = useState(() => {
     try { return window.localStorage.getItem('questlab.settingsSection') || 'appearance' } catch { return 'appearance' }
@@ -4383,6 +4577,7 @@ function SettingsScreen({ preferences, setters, resetLayout, account, accountBus
           ))}
         </nav>
         <div className="settings-content">
+          {active.id === 'stats' && <PlayerStatsPanel progress={progress} hunter={hunter} />}
           {active.id === 'appearance' && <section className="settings-group">
             <header><h3>Appearance</h3></header>
             <SettingRow label="Theme" description="Arcade is the pixel default. Homestead themes are cosmetics you buy with coins.">
@@ -4460,6 +4655,6 @@ export function GameScreen({ pyr, settingsAi, runtime, setAvatar, selectCampaign
   if (activeView === 'homestead') return withWideNavigation(<Homestead hunter={hunter} spendStatPoint={spendStatPoint} armory={armory} armoryActions={armoryActions} progress={progress} revision={revision} equipmentProjection={equipmentProjection} purchaseCosmetic={purchaseCosmetic} equipCosmetic={equipCosmetic} equipCampaignItem={equipCampaignItem} buildRoomUpgrade={buildRoomUpgrade} performHomesteadAction={performHomesteadAction} busy={busy} onNavigate={onNavigate} />)
   if (activeView === 'dungeon') return <DungeonScreen avatar={equipmentProjection?.avatar} hunter={hunter} onApplyOil={onDungeonApplyOil} onTravel={onDungeonTravel} onAnswerOption={onDungeonAnswerOption} dungeon={dungeon} revision={revision} onStart={onStartDungeon} onChoose={onDungeonChoose} onRest={onDungeonRest} onCampAction={onDungeonCampAction} onRevealRisk={onDungeonRevealRisk} onEnterRisk={onDungeonEnterRisk} onMarketPurchase={onDungeonMarketPurchase} onEquip={onDungeonEquip} onLeave={onDungeonLeave} onFinish={onDungeonFinish} onReset={onDungeonReset} submitDungeon={submitDungeon} busy={busy} saving={dungeonSaving} editorContent={dungeonEditorContent} onEditorChange={onDungeonEditorChange} onSave={onSaveDungeon} />
   if (activeView === 'practice') return <PracticeScreen progress={progress} revision={revision} practiceProjection={practiceProjection} onPracticePrompt={onPracticePrompt} busy={busy} />
-  if (activeView === 'settings') return <SettingsScreen ai={settingsAi} runtime={runtime} preferences={preferences} setters={setters} resetLayout={resetLayout} account={account} accountBusy={accountBusy} accountNotice={accountNotice} onSignIn={onSignIn} onSignUp={onSignUp} onSignOut={onSignOut} onDeviceLabelSave={onDeviceLabelSave} onResolveConflict={onResolveConflict} workspaceTransfer={workspaceTransfer} workspaceTransferBusy={workspaceTransferBusy} workspaceTransferNotice={workspaceTransferNotice} onWorkspaceTransferRefresh={onWorkspaceTransferRefresh} onWorkspaceTransferPush={onWorkspaceTransferPush} onWorkspaceTransferPreviewPull={onWorkspaceTransferPreviewPull} onWorkspaceTransferApplyPull={onWorkspaceTransferApplyPull} revision={revision} />
+  if (activeView === 'settings') return <SettingsScreen progress={progress} hunter={hunter} ai={settingsAi} runtime={runtime} preferences={preferences} setters={setters} resetLayout={resetLayout} account={account} accountBusy={accountBusy} accountNotice={accountNotice} onSignIn={onSignIn} onSignUp={onSignUp} onSignOut={onSignOut} onDeviceLabelSave={onDeviceLabelSave} onResolveConflict={onResolveConflict} workspaceTransfer={workspaceTransfer} workspaceTransferBusy={workspaceTransferBusy} workspaceTransferNotice={workspaceTransferNotice} onWorkspaceTransferRefresh={onWorkspaceTransferRefresh} onWorkspaceTransferPush={onWorkspaceTransferPush} onWorkspaceTransferPreviewPull={onWorkspaceTransferPreviewPull} onWorkspaceTransferApplyPull={onWorkspaceTransferApplyPull} revision={revision} />
   return null
 }

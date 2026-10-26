@@ -14,6 +14,7 @@ import os
 import random
 import re
 import threading
+import time
 import uuid
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
@@ -493,6 +494,7 @@ ACTION_DEFINITIONS: dict[str, ActionDefinition] = {
     "record_learning_event": ActionDefinition(frozenset({"pyr"})),
     "record_reference_mode": ActionDefinition(frozenset({"pyr"})),
     "record_pyr_assist": ActionDefinition(frozenset({SYSTEM_ACTOR}), internal=True),
+    "record_code_activity": ActionDefinition(frozenset({SYSTEM_ACTOR}), internal=True),
     "award_learning_reward": ActionDefinition(frozenset({SYSTEM_ACTOR}), internal=True),
     "player_hp_change": ActionDefinition(frozenset({SYSTEM_ACTOR}), internal=True),
     "record_achievement": ActionDefinition(frozenset({SYSTEM_ACTOR}), internal=True),
@@ -1275,9 +1277,9 @@ HUNTER_IDENTIFY_TIER_WEIGHTS = (("ward", 6), ("slowing", 3), ("bane", 1))
 # local hunter save (not the cloud projection); equipping armour or a trinket
 # writes only its name into the synced equipment fields. Effects come from a
 # short list of capped keys and never change how many objectives a fight has.
-ARMORY_SLOTS = ("weapon", "armor", "trinket", "food", "tonic", "relic")
+ARMORY_SLOTS = ("weapon", "armor", "trinket", "food", "tonic", "relic", "aid")
 ARMORY_GEAR_SLOTS = ("weapon", "armor", "trinket")
-ARMORY_STACK_SLOTS = ("food", "tonic")
+ARMORY_STACK_SLOTS = ("food", "tonic", "aid")
 ARMORY_TIERS = ("common", "uncommon", "rare", "epic", "legendary")
 ARMORY_EFFECT_CAPS = {
     "impact": 3, "break_coins": 10, "reduction": 60, "start_guards": 1, "heal_on_objective": 6,
@@ -1286,6 +1288,27 @@ ARMORY_EFFECT_CAPS = {
 ARMORY_FLAG_EFFECTS = frozenset({"first_miss_free", "block_first_miss", "revive"})
 ARMORY_ON_TYPES = frozenset({"any", *CAMPAIGN_QUESTION_TYPES})
 ARMORY_BUFF_CAPS = {"guards": 1, "reduction": 30, "xp_bonus": 50, "coin_bonus": 50}
+# Aid: one-time help that is armed by using it, then spent when it is needed.
+# free_asks: an Ask PYR in a fight that costs nothing; wards: a wrong answer
+# that deals no damage. Not tied to a campaign, so every board can drop them.
+AID_CHARGE_CAPS = {"free_asks": 5, "wards": 3}
+AID_CAMPAIGN = "aid"
+AID_ITEMS = (
+    {"id": "aid-pyrs-favour", "name": "PYR's Favour", "slot": "aid", "tier": "uncommon", "effect": {"free_asks": 1}, "price": 40,
+     "flavour": "PYR owes you one. Ask once without it costing the fight."},
+    {"id": "aid-ward-shield", "name": "Ward Shield", "slot": "aid", "tier": "uncommon", "effect": {"wards": 1}, "price": 45,
+     "flavour": "A thin silver ward. It takes one wrong answer for you."},
+    {"id": "aid-pyrs-blessing", "name": "PYR's Blessing", "slot": "aid", "tier": "rare", "effect": {"free_asks": 3}, "price": 100,
+     "flavour": "Three questions, no strings, no lost rewards."},
+    {"id": "aid-aegis-of-patience", "name": "Aegis of Patience", "slot": "aid", "tier": "rare", "effect": {"wards": 2}, "price": 110,
+     "flavour": "For the bounties where you will need two more tries."},
+)
+AID_DROP_CHANCE = 30  # % per cleared bounty
+# The local activity log behind the Settings activity graph: one entry per
+# (local) day. Never synced; old days fall off after a bit over a year.
+ACTIVITY_LOG_DAYS = 400
+ACTIVITY_KINDS = ("lines", "answers", "mobs", "floors", "bosses")
+MAX_CODE_LINES_PER_SAVE = 2_000
 ARMORY_BONUS_CAP = 50
 ARMORY_REDUCTION_CAP = 80
 ARMORY_MAX_STACK = 99
@@ -1316,6 +1339,8 @@ def armory_catalog() -> dict[str, dict[str, Any]]:
             for item in entry.get("armory", []) if isinstance(entry, Mapping) and isinstance(entry.get("armory"), list) else []:
                 if isinstance(item, Mapping) and item.get("slot") in ARMORY_SLOTS and isinstance(item.get("id"), str) and isinstance(item.get("name"), str):
                     by_id[item["id"]] = {**item, "campaign": branch}
+        for item in AID_ITEMS:
+            by_id[item["id"]] = {**item, "campaign": AID_CAMPAIGN}
         _ARMORY_CACHE.update(source=data, by_id=by_id, by_name={item["name"]: item for item in by_id.values()})
     return _ARMORY_CACHE["by_id"]
 
@@ -1354,6 +1379,12 @@ def armory_effect_text(effect: Mapping[str, Any]) -> str:
         parts.append(f"+{effect['loot_luck']}% chance of rarer loot")
     if effect.get("heal"):
         parts.append(f"restores {effect['heal']} HP")
+    if effect.get("free_asks"):
+        count = effect["free_asks"]
+        parts.append(f"your next {'Ask PYR' if count == 1 else f'{count} Ask PYRs'} in a fight cost{'s' if count == 1 else ''} no rewards")
+    if effect.get("wards"):
+        count = effect["wards"]
+        parts.append(f"blocks the damage of your next {'wrong answer' if count == 1 else f'{count} wrong answers'}")
     buff = effect.get("next_battle") if isinstance(effect.get("next_battle"), Mapping) else {}
     if buff:
         words = []
@@ -4025,6 +4056,9 @@ class LocalStateService:
             run["region_id"] = target
         modifier = mode if mode in {"deep", "quiet"} else None
         next_floor = min(MAX_DUNGEON_FLOOR, max(1, self._counter(run, "floor")) + 1)
+        self._log_activity(progress, "floors")
+        self._bump_record(progress, "dungeon_floors_descended")
+        self._bump_record(progress, "dungeon_best_floor", next_floor, best=True)
         seed = str(run.get("seed") or run.get("run_id"))
         run["map"] = self._dungeon_generate_grid(seed, next_floor, modifier=modifier, region_id=run.get("region_id"))
         run["floor_layout"] = "grid"
@@ -4677,6 +4711,10 @@ class LocalStateService:
         run_id = str(run.get("run_id") or "")
         if not run_id or any(isinstance(item, Mapping) and item.get("run_id") == run_id for item in board):
             return
+        cls._bump_record(progress, "dungeon_runs_ended")
+        cls._bump_record(progress, "dungeon_deaths" if status == "dead" else "dungeon_runs_survived")
+        cls._bump_record(progress, "dungeon_best_floor", max(1, int(run.get("floor", 1) or 1)), best=True)
+        cls._bump_record(progress, "dungeon_best_score", max(0, int(run.get("score", 0) or 0)), best=True)
         board.append(
             {
                 "run_id": run_id,
@@ -4696,6 +4734,7 @@ class LocalStateService:
         existing = self._dungeon_run(progress)
         if isinstance(existing, dict) and existing.get("status") == "active":
             raise StateCommandError("An active Dungeon run already exists", status_code=409)
+        self._bump_record(progress, "dungeon_runs_started")
 
         region_id = None
         if data.get("region_id"):
@@ -5875,6 +5914,7 @@ class LocalStateService:
             "record_learning_event": self._record_learning_event,
             "record_reference_mode": self._record_reference_mode,
             "record_pyr_assist": self._record_pyr_assist,
+            "record_code_activity": self._record_code_activity,
             "award_learning_reward": self._award_learning_reward,
             "player_hp_change": self._player_hp_change,
             "record_achievement": self._record_achievement,
@@ -5990,6 +6030,10 @@ class LocalStateService:
     ) -> dict[str, Any]:
         """Grow signs and stats for one verified correct answer, or for a
         cleared campaign bounty (campaign_use). Returns what was gained."""
+
+        if not campaign_use:
+            self._log_activity(progress, "answers")
+            self._bump_record(progress, "answers_verified")
 
         hunter = self._hunter_state(progress)
         now = _utc_now()
@@ -6277,6 +6321,11 @@ class LocalStateService:
         for item in ([relic] if relic and relic["id"] not in owned else []) + ([rng.choice(legendaries)] if legendaries else []):
             self._armory_add(hunter, item["id"])
             loot.append({"id": item["id"], "name": item["name"], "slot": item["slot"], "tier": item["tier"], "effect": armory_effect_text(item["effect"])})
+        # And a PYR's Blessing for the next campaign.
+        blessing = catalog.get("aid-pyrs-blessing")
+        if blessing:
+            self._armory_add(hunter, blessing["id"])
+            loot.append({"id": blessing["id"], "name": blessing["name"], "slot": "aid", "tier": blessing["tier"], "effect": armory_effect_text(blessing["effect"])})
         return loot
 
     def _dungeon_gear_drop(self, run: Mapping[str, Any], room_type: str, progress: Mapping[str, Any] | None) -> str | None:
@@ -6344,6 +6393,8 @@ class LocalStateService:
                     continue
                 need = "Start this campaign" if not started else ("Clear half of its contracts" if item["tier"] == "rare" and share < 0.5 and project.get("completed") is not True else None)
                 market.append(view(item, price=item["price"], locked=need, affordable=need is None and coins >= item["price"]))
+        for item in AID_ITEMS:
+            market.append(view(catalog[item["id"]], price=item["price"], locked=None, affordable=coins >= item["price"]))
         tier_rank = {tier: index for index, tier in enumerate(ARMORY_TIERS)}
         market.sort(key=lambda item: (item["locked"] is not None, item["campaign"], ARMORY_SLOTS.index(item["slot"]), tier_rank[item["tier"]]))
         effects = self._gear_effects(progress)
@@ -6352,6 +6403,7 @@ class LocalStateService:
             "equipped": equipped,
             "weapon": view(catalog[equipped["weapon"]]) if equipped["weapon"] in catalog else None,
             "buffs": {key: value for key, value in (armory.get("buffs") or {}).items() if isinstance(value, int) and value > 0} if isinstance(armory.get("buffs"), Mapping) else {},
+            "charges": self.aid_charges(progress),
             "collection": collection,
             "market": market,
             "summary": {key: effects[key] for key in ("reduction", "start_guards", "heal_on_objective", "coin_bonus", "xp_bonus", "loot_luck")},
@@ -6399,6 +6451,24 @@ class LocalStateService:
         if self._counter(stack, item_id) <= 0:
             raise StateCommandError("You have none of that left", status_code=409)
         effect = item["effect"]
+        if item["slot"] == "aid":
+            charges = hunter["armory"].setdefault("charges", {})
+            armed = {}
+            for key, cap in AID_CHARGE_CAPS.items():
+                if effect.get(key):
+                    before = self._counter(charges, key)
+                    charges[key] = min(cap, before + int(effect[key]))
+                    armed[key] = charges[key] - before
+            if not any(armed.values()):
+                raise StateCommandError("You already carry as much of that help as you can", status_code=409)
+            left = self._counter(stack, item_id) - 1
+            if left > 0:
+                stack[item_id] = left
+            else:
+                stack.pop(item_id, None)
+            records = self._dict(progress, "records")
+            records["aid_used"] = self._counter(records, "aid_used") + 1
+            return Mutation(True, {"armory": self.armory_projection(progress), "armed": armed, "charges": self.aid_charges(progress)}, {"item_id": item_id, "armed": armed, "reason": "aid_armed"})
         player = self._dict(progress, "player")
         healed = 0
         if effect.get("heal"):
@@ -6418,6 +6488,40 @@ class LocalStateService:
         else:
             stack.pop(item_id, None)
         return Mutation(True, {"armory": self.armory_projection(progress), "healed": healed, "hp": player.get("hp")}, {"item_id": item_id, "healed": healed, "reason": "armory_used"})
+
+    @staticmethod
+    def aid_charges(progress: Mapping[str, Any]) -> dict[str, int]:
+        """Armed Aid: free PYR asks and wards waiting to be spent."""
+
+        hunter = progress.get("hunter") if isinstance(progress.get("hunter"), Mapping) else {}
+        armory = hunter.get("armory") if isinstance(hunter.get("armory"), Mapping) else {}
+        charges = armory.get("charges") if isinstance(armory.get("charges"), Mapping) else {}
+        return {key: max(0, int(charges.get(key, 0) or 0)) if isinstance(charges.get(key, 0), int) else 0 for key in AID_CHARGE_CAPS}
+
+    def _spend_aid(self, progress: dict[str, Any], key: str) -> bool:
+        """Spend one armed charge if there is one."""
+
+        if self.aid_charges(progress).get(key, 0) <= 0:
+            return False
+        charges = self._hunter_state(progress)["armory"].setdefault("charges", {})
+        charges[key] = self._counter(charges, key) - 1
+        return True
+
+    def _aid_drop(self, progress: dict[str, Any], project: Mapping[str, Any], mobs: list[Mapping[str, Any]], index: int, mob: Mapping[str, Any], evidence_id: str) -> dict[str, Any] | None:
+        """A cleared bounty sometimes drops one-time help, rarer help deeper in."""
+
+        rng = random.Random(f"aid:{self.device_id()}:{project.get('branch')}:{mob.get('name')}:{evidence_id}")
+        if rng.randrange(100) >= AID_DROP_CHANCE:
+            return None
+        depth = index / max(1, len(mobs) - 1)
+        weights = {item["id"]: (40 if item["tier"] == "uncommon" else round(8 + 22 * depth)) for item in AID_ITEMS}
+        roll = rng.randrange(sum(weights.values()))
+        for item in AID_ITEMS:
+            roll -= weights[item["id"]]
+            if roll < 0:
+                self._armory_add(self._hunter_state(progress), item["id"])
+                return {"id": item["id"], "name": item["name"], "slot": "aid", "tier": item["tier"], "effect": armory_effect_text(item["effect"])}
+        return None
 
     def _armory_buy(self, payload: Mapping[str, Any], progress: dict[str, Any]) -> Mutation:
         data = self._payload(payload, {"item_id"}, {"item_id"})
@@ -7068,6 +7172,46 @@ class LocalStateService:
         )
 
     @staticmethod
+    def _log_activity(progress: dict[str, Any], kind: str, amount: int = 1) -> None:
+        """Count today's work for the activity graph (local day, local only)."""
+
+        if kind not in ACTIVITY_KINDS or amount <= 0:
+            return
+        log = progress.get("activity_log")
+        if not isinstance(log, dict) or not isinstance(log.get("days"), dict):
+            log = {"days": {}}
+            progress["activity_log"] = log
+        days = log["days"]
+        today = time.strftime("%Y-%m-%d")
+        day = days.get(today) if isinstance(days.get(today), dict) else {}
+        day[kind] = int(day.get(kind, 0) or 0) + int(amount)
+        days[today] = day
+        if len(days) > ACTIVITY_LOG_DAYS:
+            for stale in sorted(days)[: len(days) - ACTIVITY_LOG_DAYS]:
+                days.pop(stale, None)
+
+    @staticmethod
+    def _bump_record(progress: dict[str, Any], key: str, amount: int = 1, *, best: bool = False) -> None:
+        """Lifetime records for the Settings stats (local only)."""
+
+        records = progress.get("records")
+        if not isinstance(records, dict):
+            records = {}
+            progress["records"] = records
+        current = records.get(key, 0)
+        current = current if isinstance(current, int) and not isinstance(current, bool) else 0
+        records[key] = max(current, amount) if best else current + amount
+
+    def _record_code_activity(self, payload: Mapping[str, Any], progress: dict[str, Any]) -> Mutation:
+        """Lines of code the learner added in a save, for the activity graph."""
+
+        data = self._payload(payload, {"lines"}, {"lines"})
+        lines = self._integer(data["lines"], "lines", minimum=1, maximum=MAX_CODE_LINES_PER_SAVE)
+        self._log_activity(progress, "lines", lines)
+        self._bump_record(progress, "lines_written", lines)
+        return Mutation(True, {"lines": lines}, {"lines": lines, "reason": "code_saved"})
+
+    @staticmethod
     def pyr_reward_scale(assists: object) -> int:
         """The share (in %) of a fight's XP and coins left after PYR asks."""
 
@@ -7081,6 +7225,14 @@ class LocalStateService:
         reason = self._text(data.get("reason") or "Asked PYR for help", "reason")
         project, _mobs, index, mob = self._active_project_and_mob(progress)
         encounter = self._ensure_encounter_state(progress, project, mob, index)
+        records = self._dict(progress, "records")
+        records["pyr_asks"] = self._counter(records, "pyr_asks") + 1
+        if self._spend_aid(progress, "free_asks"):
+            # PYR's Favour: this ask is on the house.
+            scale = self.pyr_reward_scale(self._counter(encounter, "pyr_assists"))
+            result = {"mob_name": str(mob.get("name") or ""), "pyr_assists": self._counter(encounter, "pyr_assists"), "reward_scale": scale,
+                      "loot_lost": self._counter(encounter, "pyr_assists") >= PYR_ASSIST_LOOT_LIMIT, "free": True, "free_asks_left": self.aid_charges(progress)["free_asks"]}
+            return Mutation(True, result, {**result, "reason": reason})
         encounter["pyr_assists"] = self._counter(encounter, "pyr_assists") + 1
         mob["assist"] = "assisted"
         assist = self._dict(progress, "assist")
@@ -7091,6 +7243,7 @@ class LocalStateService:
             "pyr_assists": encounter["pyr_assists"],
             "reward_scale": scale,
             "loot_lost": encounter["pyr_assists"] >= PYR_ASSIST_LOOT_LIMIT,
+            "free": False,
         }
         return Mutation(True, result, {**result, "reason": reason})
 
@@ -7773,6 +7926,7 @@ class LocalStateService:
 
         stats = self._dict(progress, "stats")
         stats["mobs_defeated"] = self._counter(stats, "mobs_defeated") + 1
+        self._log_activity(progress, "mobs")
         self._hunter_record(progress, concept=self._mob_sign_concept(project, mob), question_type=None, source="campaign", clean=True, campaign_use=True)
         cleared_count = sum(1 for candidate in mobs if candidate.get("status") in {"defeated", "cleared"})
         project["progress"] = round(cleared_count / max(1, len(mobs)) * 100)
@@ -7802,6 +7956,7 @@ class LocalStateService:
         reward_coins = reward_coins * reward_scale // 100
         reward = self._grant_reward(player, reward_xp, reward_coins)
         loot = None if pyr_assists >= PYR_ASSIST_LOOT_LIMIT else self._armory_contract_drop(progress, project, mobs, index, mob, evidence_id)
+        aid_loot = None if pyr_assists >= PYR_ASSIST_LOOT_LIMIT else self._aid_drop(progress, project, mobs, index, mob, evidence_id)
         achievement_unlocked = None
         achievements = progress.get("achievements")
         if isinstance(achievements, list):
@@ -7824,6 +7979,7 @@ class LocalStateService:
             "reward_xp": reward_xp,
             "reward_coins": reward_coins,
             "loot": loot,
+            "aid_loot": aid_loot,
             "pyr_assists": pyr_assists,
             "reward_scale": reward_scale,
             "level_before": reward["level_before"],
@@ -8472,6 +8628,7 @@ class LocalStateService:
         reward = self._grant_reward(player, 100, 0)
         stats = self._dict(progress, "stats")
         stats["projects_cleared"] = self._counter(stats, "projects_cleared") + 1
+        self._log_activity(progress, "bosses")
         stats["bosses_defeated"] = self._counter(stats, "bosses_defeated") + 1
         project["progress"] = 100
         project["completed"] = True
@@ -8678,6 +8835,7 @@ class LocalStateService:
         trinket_trigger = None
         revived = False
         guard_used = False
+        ward_used = False
         trinket_name = str((progress.get("equipment") or {}).get("trinket") or "")
         trinket_triggers = encounter.setdefault("trinket_triggers", []) if isinstance(encounter, dict) else []
         if not isinstance(trinket_triggers, list):
@@ -8686,6 +8844,9 @@ class LocalStateService:
             # A banked free mistake (Guard Break, trinket or food) takes the hit.
             encounter["guards"] = self._counter(encounter, "guards") - 1
             prevented_damage, damage, guard_used = damage, 0, True
+        elif self._spend_aid(progress, "wards"):
+            # A Ward Shield the hunter armed takes this wrong answer.
+            prevented_damage, damage, ward_used = damage, 0, True
         elif trinket_name == "Guardian Sigil" and "guardian-sigil:counterattack" not in trinket_triggers:
             prevented_damage = damage
             damage = 0
@@ -8720,6 +8881,8 @@ class LocalStateService:
                 "trinket_trigger": trinket_trigger,
                 "revived": revived,
                 "guard_used": guard_used,
+                "ward_used": ward_used,
+                "wards_left": self.aid_charges(progress)["wards"],
                 "guards": self._counter(encounter, "guards") if isinstance(encounter, dict) else 0,
                 "mob_name": mob_name,
                 "objective_id": objective_id,
@@ -8730,6 +8893,7 @@ class LocalStateService:
                 "damage": damage,
                 "prevented_damage": prevented_damage,
                 "trinket_trigger": trinket_trigger,
+                "ward_used": ward_used,
                 "revived": revived,
                 "hp_before": current,
                 "hp_after": updated,

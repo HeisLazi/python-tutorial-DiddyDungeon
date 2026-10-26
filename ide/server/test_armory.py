@@ -79,7 +79,7 @@ class ArmoryBehaviourTests(unittest.TestCase):
         armory = state["hunter"].setdefault("armory", {"owned": [], "stack": {}, "buffs": {}})
         for item_id in item_ids:
             item = armory_catalog()[item_id]
-            if item["slot"] in {"food", "tonic"}:
+            if item["slot"] in {"food", "tonic", "aid"}:
                 armory.setdefault("stack", {})[item_id] = armory.get("stack", {}).get(item_id, 0) + 1
             else:
                 armory.setdefault("owned", []).append(item_id)
@@ -137,6 +137,42 @@ class ArmoryBehaviourTests(unittest.TestCase):
         self.assertTrue(loot["id"].startswith("bj-"))
         armory = self.read()["hunter"]["armory"]
         self.assertTrue(loot["id"] in armory["owned"] or armory["stack"].get(loot["id"]))
+
+    def test_aid_buys_a_free_pyr_ask_and_a_ward_for_a_wrong_answer(self):
+        self.give("aid-pyrs-favour", "aid-ward-shield")
+        armed = self.service.apply("armory_use", {"item_id": "aid-pyrs-favour"}, "player")["result"]
+        self.assertEqual(armed["armed"], {"free_asks": 1})
+        self.service.apply("armory_use", {"item_id": "aid-ward-shield"}, "player")
+        self.assertEqual(self.service.armory_projection(self.read())["charges"], {"free_asks": 1, "wards": 1})
+        self.assertNotIn("aid-pyrs-favour", self.read()["hunter"]["armory"]["stack"])  # spent by arming it
+        free = self.service.apply_internal("record_pyr_assist", {})["result"]
+        self.assertTrue(free["free"])
+        self.assertEqual((free["pyr_assists"], free["reward_scale"]), (0, 100))  # the fight still pays in full
+        paid = self.service.apply_internal("record_pyr_assist", {})["result"]
+        self.assertEqual((paid["free"], paid["pyr_assists"], paid["reward_scale"]), (False, 1, 80))
+        hp = self.read()["player"]["hp"]
+        warded = self.miss("ace_rule")
+        self.assertTrue(warded["ward_used"])
+        self.assertEqual((warded["damage"], warded["wards_left"]), (0, 0))
+        self.assertEqual(self.read()["player"]["hp"], hp)
+        hit = self.miss("ace_rule")
+        self.assertFalse(hit["ward_used"])
+        self.assertGreater(hit["damage"], 0)  # one ward, one wrong answer
+
+    def test_aid_is_always_on_sale_and_cannot_be_armed_past_its_cap(self):
+        market = self.service.armory_projection(self.read())["market"]
+        aid = {lot["id"]: lot for lot in market if lot["campaign"] == "aid"}
+        self.assertEqual(set(aid), {"aid-pyrs-favour", "aid-ward-shield", "aid-pyrs-blessing", "aid-aegis-of-patience"})
+        self.assertTrue(all(lot["locked"] is None for lot in aid.values()))
+        self.give(coins=500)
+        self.service.apply("armory_buy", {"item_id": "aid-aegis-of-patience"}, "player")
+        self.service.apply("armory_use", {"item_id": "aid-aegis-of-patience"}, "player")
+        self.give("aid-aegis-of-patience")
+        self.assertEqual(self.service.apply("armory_use", {"item_id": "aid-aegis-of-patience"}, "player")["result"]["armed"], {"wards": 1})  # capped at 3
+        self.give("aid-ward-shield")
+        with self.assertRaises(StateCommandError):
+            self.service.apply("armory_use", {"item_id": "aid-ward-shield"}, "player")
+        self.assertEqual(self.read()["hunter"]["armory"]["stack"].get("aid-ward-shield"), 1)  # a refused use keeps the item
 
     def test_the_merchant_gates_lots_by_campaign_progress(self):
         state = self.read()

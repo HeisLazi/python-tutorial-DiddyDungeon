@@ -1162,6 +1162,36 @@ class PyrContextBridgeTests(unittest.TestCase):
         self.assertNotIn("tutor.py", paths)
         self.assertLessEqual({"silver_reels/notes", "silver_reels/notes/ideas.md", "silver_reels/notes.md", "silver_reels/tutor.py"}, paths)
 
+    def test_saving_code_feeds_the_activity_graph(self):
+        import time as clock
+
+        from ide.server.test_campaign_content import user_like_progress
+
+        self.assertEqual(app_v2.added_code_lines("", "a = 1\n\nb = 2\n"), 2)  # blank lines don't count
+        self.assertEqual(app_v2.added_code_lines("a = 1\nb = 2\n", "a = 1\nb = 3\nc = 4\n"), 2)  # a rewrite and a new line
+        self.assertEqual(app_v2.added_code_lines("a = 1\nb = 2\n", "b = 2\n"), 0)  # deleting is not writing
+        self.assertEqual(app_v2.added_code_lines("a = 1  \n", "a = 1\n"), 0)  # trailing spaces only
+        original_workspace, original_progress = app_v2.WORKSPACE, app_v2.PROGRESS_PATH
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            workspace = root / "quest"
+            workspace.mkdir()
+            canonical = root / "progress.json"
+            canonical.write_text(json.dumps(user_like_progress()), encoding="utf-8")
+            app_v2.WORKSPACE, app_v2.PROGRESS_PATH = workspace, canonical
+            try:
+                client = TestClient(app_v2.app, base_url="http://127.0.0.1")
+                save = lambda content: client.put("/api/file", headers={"host": "127.0.0.1"}, json={"path": "silver_reels/casino.py", "content": content})
+                self.assertEqual(save("bankroll = 100\nprint(bankroll)\n").status_code, 200)
+                self.assertEqual(save("bankroll = 100\nprint(bankroll)\n").status_code, 200)  # an unchanged save adds nothing
+                self.assertEqual(save("bankroll = 100\nbet = 5\nprint(bankroll)\n").status_code, 200)
+                saved = json.loads(canonical.read_text(encoding="utf-8"))
+            finally:
+                app_v2.WORKSPACE, app_v2.PROGRESS_PATH = original_workspace, original_progress
+        today = clock.strftime("%Y-%m-%d")
+        self.assertEqual(saved["activity_log"]["days"][today]["lines"], 3)
+        self.assertEqual(saved["records"]["lines_written"], 3)
+
     def test_boss_gate_mixes_code_and_click_goals_and_clears_from_saved_state(self):
         original_workspace = app_v2.WORKSPACE
         original_progress = app_v2.PROGRESS_PATH

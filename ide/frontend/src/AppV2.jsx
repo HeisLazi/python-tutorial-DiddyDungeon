@@ -710,6 +710,15 @@ function AppV2() {
           detail: `+${Number(event.guard_break.coins || 0)} coins · the fight still needs every objective`,
         })
       }
+      if (event.aid_loot) {
+        notifications.push({
+          id: `${event.id}:aid`,
+          kind: 'unlock',
+          title: 'AID FOUND',
+          body: event.aid_loot.name,
+          detail: event.aid_loot.effect || 'Added to your Armory (Aid)',
+        })
+      }
       if (event.loot) {
         notifications.push({
           id: `${event.id}:loot`,
@@ -871,6 +880,15 @@ function AppV2() {
           title: 'COUNTERATTACK',
           body: `−${damage} HP`,
           detail: event.reason || 'Verified Battle miss',
+        })
+      }
+      if (event.ward_used) {
+        notifications.push({
+          id: `${event.id}:ward`,
+          kind: 'reward',
+          title: 'WARD HELD',
+          body: `Blocked ${Number(event.prevented_damage || 0)} HP of damage`,
+          detail: 'Your armed ward took that wrong answer',
         })
       }
       if (event.trinket_trigger) {
@@ -1196,9 +1214,12 @@ function AppV2() {
     ask: ({ question, concept, code, battle = false }) => withPyr('PYR is thinking…', async () => {
       const result = await api('/api/ai/ask', { method: 'POST', body: JSON.stringify({ question, concept, code, battle }) })
       if (result.assist) {
-        // Help during a fight costs that fight's rewards (see the battle sidebar).
-        const { reward_scale: scale, loot_lost: lootLost, mob_name: mobName } = result.assist
-        setNotice(`PYR helped against ${mobName}: it now pays ${scale}% XP and coins${lootLost ? ' and drops no loot' : ''}.`)
+        // Help during a fight costs that fight's rewards (see the battle sidebar),
+        // unless an armed PYR's Favour paid for it.
+        const { reward_scale: scale, loot_lost: lootLost, mob_name: mobName, free, free_asks_left: freeLeft } = result.assist
+        setNotice(free
+          ? `PYR's Favour spent: that ask cost nothing (${freeLeft} free ask${freeLeft === 1 ? '' : 's'} left).`
+          : `PYR helped against ${mobName}: it now pays ${scale}% XP and coins${lootLost ? ' and drops no loot' : ''}.`)
         void refreshCampaign({ silent: true })
       }
       return result.reply
@@ -2470,7 +2491,7 @@ function AppV2() {
     unequip: (slot) => hunterPost('/api/armory/unequip', { slot }, 'Could not take that off'),
     use: async (itemId) => {
       const result = await hunterPost('/api/armory/use', { item_id: itemId }, 'Could not use that')
-      if (result) setNotice(result.healed ? `+${result.healed} HP.` : 'Your next battle is buffed.')
+      if (result) setNotice(result.armed ? `Armed: ${[result.armed.free_asks ? `${result.armed.free_asks} free PYR ask${result.armed.free_asks === 1 ? '' : 's'}` : '', result.armed.wards ? `${result.armed.wards} ward${result.armed.wards === 1 ? '' : 's'}` : ''].filter(Boolean).join(' and ')}. It waits until a fight needs it.` : result.healed ? `+${result.healed} HP.` : 'Your next battle is buffed.')
       return result
     },
     buy: async (itemId) => {
@@ -3094,7 +3115,7 @@ function AppV2() {
               thinking={pyrThinking}
               model={aiTutor.settings?.model || 'Auto'}
               onOpenSettings={() => setActiveView('settings')}
-              battleCost={campaign?.encounter?.mob_name ? { mob: campaign.encounter.mob_name, asks: campaign.encounter.pyr_assists || 0, scale: campaign.encounter.reward_scale ?? 100 } : null}
+              battleCost={campaign?.encounter?.mob_name ? { mob: campaign.encounter.mob_name, asks: campaign.encounter.pyr_assists || 0, scale: campaign.encounter.reward_scale ?? 100, free: campaign?.armory?.charges?.free_asks || 0 } : null}
               onAsk={(question) => {
                 pushPyrLog({ role: 'you', text: question })
                 pyrTools.ask({ question, concept: campaign?.encounter?.concept || campaign?.encounter?.mob?.concept || '', code: String(code || ''), battle: Boolean(campaign?.encounter?.mob_name) })

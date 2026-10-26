@@ -1582,6 +1582,8 @@
 .battle-brief-objectives b.kind-bug_diagnosis { border-color: #f87171; color: #f87171; }
 .battle-brief-objectives b.kind-setup_check, .office-objectives b.kind-setup_check { border-color: #67e8f9; color: #67e8f9; }
 .battle-brief .battle-brief-pyr { color: #fdba74; }
+.battle-brief .battle-brief-aid { color: #67e8f9; }
+.pyr-chat-cost .pyr-chat-free { color: #67e8f9; }
 .pyr-chat-cost { margin: 0; padding: 6px 10px; border-top: 1px solid var(--line, #444); color: var(--muted, #9da59a); font-size: 11px; line-height: 1.45; }
 .pyr-chat-cost.spent b { color: #fdba74; }
 .battle-feedback.not_yet { border-color: #67e8f9; color: #a5f3fc; }

@@ -4,6 +4,7 @@ import asyncio
 import fcntl
 import hashlib
 import uuid
+import difflib
 import importlib.util
 import json
 import os
@@ -2422,8 +2423,46 @@ def write_file(payload: FileWrite):
     if len(encoded) > MAX_TEXT_BYTES:
         raise HTTPException(status_code=413, detail="File is too large for the learning editor")
     target.parent.mkdir(parents=True, exist_ok=True)
+    before = _read_text_or_empty(target)
     target.write_text(payload.content, encoding="utf-8")
+    _record_code_lines(before, payload.content)
     return {"ok": True, "path": target.relative_to(WORKSPACE).as_posix(), "bytes": len(encoded)}
+
+
+CODE_LINE_SUFFIXES = {".py", ".md", ".txt", ".json", ".toml", ".cfg", ".ini", ".html", ".css", ".js", ".sql"}
+
+
+def _read_text_or_empty(target: Path) -> str:
+    try:
+        return target.read_text(encoding="utf-8") if target.is_file() else ""
+    except (OSError, UnicodeDecodeError):
+        return ""
+
+
+def added_code_lines(before: str, after: str) -> int:
+    """Non-blank lines a save adds or rewrites (moved or deleted lines don't count)."""
+
+    old = [line.rstrip() for line in before.splitlines()]
+    new = [line.rstrip() for line in after.splitlines()]
+    matcher = difflib.SequenceMatcher(a=old, b=new, autojunk=False)
+    return sum(
+        sum(1 for line in new[b0:b1] if line.strip())
+        for tag, _a0, _a1, b0, b1 in matcher.get_opcodes()
+        if tag in {"insert", "replace"}
+    )
+
+
+def _record_code_lines(before: str, after: str) -> None:
+    """Feed the Settings activity graph; a save never fails because of it."""
+
+    lines = min(added_code_lines(before, after), 2_000)
+    if lines <= 0:
+        return
+    try:
+        with PROGRESS_LOCK:
+            STATE_SERVICE.apply_internal("record_code_activity", {"lines": lines})
+    except StateCommandError:
+        pass
 
 
 class WorkspaceEntryCreate(BaseModel):
@@ -2556,7 +2595,9 @@ def write_tutor(payload: TutorWrite):
     if len(encoded) > MAX_TEXT_BYTES:
         raise HTTPException(status_code=413, detail="Tutor notebook is too large")
     target = ensure_tutor_file()
+    before = _read_text_or_empty(target)
     target.write_text(payload.content, encoding="utf-8")
+    _record_code_lines(before, payload.content)
     return {
         "ok": True,
         "path": "tutor.py",
