@@ -2989,9 +2989,143 @@ function CampaignOffice({ progress, board, onEnter }) {
   )
 }
 
+// ── Home as a room you walk around (embedded Godot web build) ─────────────────
+// The Godot scene (ide/home-godot, built into public/home/) only draws and
+// walks. This component sends it the save's state and acts on its "use this
+// station" events, so every rule stays in the app. If the build is missing
+// the classic Home is shown instead.
+const HOME_STATION_UPGRADES = {
+  hearth: ['reinforced-hearth', 'field-kitchen', 'siphon-basin'],
+  armory: ['warding-loom', 'breaker-workbench'],
+}
+
+function homeRoomState(progress, crt) {
+  const player = progress?.player || {}
+  const homestead = progress?.homestead || {}
+  const owned = Array.isArray(homestead.room_upgrades) ? homestead.room_upgrades : []
+  const days = progress?.activity_log?.days || {}
+  const today = new Date()
+  const key = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
+  const day = days[key] || {}
+  const tiers = {}
+  const maxTiers = {}
+  for (const [id, ids] of Object.entries(HOME_STATION_UPGRADES)) {
+    tiers[id] = ids.filter((upgrade) => owned.includes(upgrade)).length
+    maxTiers[id] = ids.length
+  }
+  return {
+    hp: player.hp ?? 0,
+    max_hp: player.max_hp ?? 100,
+    embers: homestead.upgrade_tokens ?? 0,
+    fire_lit: Boolean((day.lines || 0) + (day.answers || 0) + (day.mobs || 0) > 0),
+    crt,
+    tiers,
+    max_tiers: maxTiers,
+  }
+}
+
+function useHomeBuild() {
+  // 'checking' | 'ready' | 'missing'
+  const [status, setStatus] = useState('checking')
+  useEffect(() => {
+    let cancelled = false
+    fetch('/home/index.html', { cache: 'no-cache' })
+      .then((response) => (response.ok ? response.text() : ''))
+      .then((text) => { if (!cancelled) setStatus(/godot/i.test(text) ? 'ready' : 'missing') })
+      .catch(() => { if (!cancelled) setStatus('missing') })
+    return () => { cancelled = true }
+  }, [])
+  return status
+}
+
+function HomeRoom({ progress, armory, armoryActions, performHomesteadAction, onNavigate, onClassic, busy }) {
+  const frameRef = useRef(null)
+  const readyRef = useRef(false)
+  const [crt, setCrt] = useState(() => {
+    try { return window.localStorage.getItem('questlab.homeCrt') !== 'false' } catch { return true }
+  })
+  const [panel, setPanel] = useState('')
+  const [toastText, setToastText] = useState('')
+  const stateRef = useRef(null)
+  stateRef.current = homeRoomState(progress, crt)
+
+  const send = (extra = {}) => {
+    const target = frameRef.current?.contentWindow
+    if (!readyRef.current || !target || typeof target.diddyHomeReceive !== 'function') return
+    try { target.diddyHomeReceive(JSON.stringify({ ...stateRef.current, ...extra })) } catch { /* the room is reloading */ }
+  }
+  useEffect(() => { send() }, [JSON.stringify(stateRef.current)])
+
+  const useStation = async (id) => {
+    if (id === 'door') return onNavigate?.('forge')
+    if (id === 'map') return onNavigate?.('dungeon')
+    if (id === 'armory') return setPanel('armory')
+    if (id === 'hearth') {
+      try {
+        const result = await performHomesteadAction?.('recover')
+        const healed = Number(result?.event?.healed || 0)
+        send({ toast: healed > 0 ? `You rest by the fire: +${healed} HP` : 'You are fully rested.' })
+      } catch {
+        send({ toast: 'The fire will not take.' })
+      }
+    }
+  }
+  const useStationRef = useRef(useStation)
+  useStationRef.current = useStation
+
+  useEffect(() => {
+    const onMessage = (event) => {
+      if (event.origin !== window.location.origin || event.source !== frameRef.current?.contentWindow) return
+      const data = event.data
+      if (!data || data.source !== 'diddy-home') return
+      if (data.type === 'ready') {
+        readyRef.current = true
+        send()
+      } else if (data.type === 'use' && typeof data.station === 'string') {
+        void useStationRef.current(data.station)
+      }
+    }
+    window.addEventListener('message', onMessage)
+    return () => window.removeEventListener('message', onMessage)
+  }, [])
+
+  const toggleCrt = () => setCrt((current) => {
+    try { window.localStorage.setItem('questlab.homeCrt', String(!current)) } catch { /* storage unavailable */ }
+    return !current
+  })
+  return (
+    <section className="home-room" data-testid="home-room" aria-label="Your home">
+      <div className="home-room-frame">
+        <iframe ref={frameRef} title="Home" src="/home/index.html" allow="autoplay" onLoad={() => frameRef.current?.focus()} />
+        {panel === 'armory' && (
+          <div className="home-room-panel" role="dialog" aria-label="Armory">
+            <button type="button" className="home-room-close" onClick={() => setPanel('')} aria-label="Close the Armory">Close</button>
+            <ArmoryPanel armory={armory} actions={armoryActions} busy={busy} />
+          </div>
+        )}
+      </div>
+      <div className="home-room-bar">
+        <small>Walk with WASD or the arrows · E to use a station</small>
+        <span>
+          <button type="button" onClick={toggleCrt} aria-pressed={crt}>Scanlines {crt ? 'on' : 'off'}</button>
+          <button type="button" onClick={onClassic}>Classic home</button>
+        </span>
+      </div>
+    </section>
+  )
+}
+
 function CampaignSurface({ progress, revision, equipmentProjection, purchaseCosmetic, purchaseMarketItem, equipCosmetic, equipCampaignItem, buildRoomUpgrade, performHomesteadAction, setAvatar, selectCampaign, hunter, spendStatPoint, hunterActions, campaignBoard, armory, armoryActions, busy, onNavigate }) {
   const [place, setPlace] = useState('office')
   const [mapCollapsed, setMapCollapsed] = useState(false)
+  const homeBuild = useHomeBuild()
+  const [classicHome, setClassicHome] = useState(() => {
+    try { return window.localStorage.getItem('questlab.classicHome') === 'true' } catch { return false }
+  })
+  const setClassic = (value) => {
+    setClassicHome(value)
+    try { window.localStorage.setItem('questlab.classicHome', String(value)) } catch { /* storage unavailable */ }
+  }
   const openForge = () => onNavigate?.('forge')
   const selectPlace = (next) => setPlace(next)
   const homeNavigate = (next) => {
@@ -3007,7 +3141,9 @@ function CampaignSurface({ progress, revision, equipmentProjection, purchaseCosm
       <div className={`campaign-layout ${mapCollapsed ? 'map-rail-is-collapsed' : ''}`}>
         <CampaignMapRail progress={progress} place={place} onSelect={selectPlace} onSelectCampaign={selectCampaign} busy={busy} collapsed={mapCollapsed} onToggle={() => setMapCollapsed((value) => !value)} />
         <main className="campaign-place-panel" data-place={place}>
-          {place === 'home' && <Homestead hunter={hunter} spendStatPoint={spendStatPoint} armory={armory} armoryActions={armoryActions} progress={progress} revision={revision} equipmentProjection={equipmentProjection} purchaseCosmetic={purchaseCosmetic} equipCosmetic={equipCosmetic} equipCampaignItem={equipCampaignItem} buildRoomUpgrade={buildRoomUpgrade} performHomesteadAction={performHomesteadAction} setAvatar={setAvatar} busy={busy} onNavigate={homeNavigate} />}
+          {place === 'home' && homeBuild === 'ready' && !classicHome && <HomeRoom progress={progress} armory={armory} armoryActions={armoryActions} performHomesteadAction={performHomesteadAction} onNavigate={onNavigate} onClassic={() => setClassic(true)} busy={busy} />}
+          {place === 'home' && homeBuild === 'ready' && classicHome && <div className="home-room-switch"><button type="button" onClick={() => setClassic(false)}>Back to the room</button></div>}
+          {place === 'home' && (homeBuild !== 'ready' || classicHome) && <Homestead hunter={hunter} spendStatPoint={spendStatPoint} armory={armory} armoryActions={armoryActions} progress={progress} revision={revision} equipmentProjection={equipmentProjection} purchaseCosmetic={purchaseCosmetic} equipCosmetic={equipCosmetic} equipCampaignItem={equipCampaignItem} buildRoomUpgrade={buildRoomUpgrade} performHomesteadAction={performHomesteadAction} setAvatar={setAvatar} busy={busy} onNavigate={homeNavigate} />}
           {place === 'market' && <CampaignMarket progress={progress} hunter={hunter} hunterActions={hunterActions} armory={armory} armoryActions={armoryActions} purchaseMarketItem={purchaseMarketItem} busy={busy} onBackHome={() => setPlace('home')} />}
           {place === 'office' && <CampaignOffice progress={progress} board={campaignBoard} onEnter={openForge} />}
         </main>

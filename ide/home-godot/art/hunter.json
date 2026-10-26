@@ -1,0 +1,23 @@
+{
+ "frame": [
+  16,
+  32
+ ],
+ "rows": [
+  "down",
+  "left",
+  "right",
+  "up"
+ ],
+ "cols": [
+  "stand",
+  "stepa",
+  "stepb"
+ ],
+ "walk": [
+  "stand",
+  "stepa",
+  "stand",
+  "stepb"
+ ]
+}
