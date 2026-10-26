@@ -58,11 +58,11 @@ Before signed-in cloud sync, `progress.json` is the canonical local learning/pla
 
 | Dev activity | Current |
 |---|---:|
-| Activity score | **155** |
+| Activity score | **160** |
 | Commit streak | **5 days** — best: 5 |
-| Commits | **70** / 7d · **70** / 30d |
+| Commits | **72** / 7d · **72** / 30d |
 | Active dev days | **5** / 7d · **5** / 30d |
-| Active branches (30d) | **1** |
+| Active branches (30d) | **2** |
 | Last commit day | **2026-10-26** |
 
 `Activity score` is machine-derived from commit history. It rewards active days and streaks, caps effective commits per day, and does **not** grant learning XP or Mastery Shields.
