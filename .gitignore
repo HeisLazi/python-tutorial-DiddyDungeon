@@ -38,3 +38,6 @@ Thumbs.db
 ide/frontend/public/home/
 ide/home-godot/.godot/
 ide/home-godot/shot_*
+
+# Large AI reference renders (kept local; the converted sprite sources are in tools/home_art/assets)
+ide/home-godot/reference/
