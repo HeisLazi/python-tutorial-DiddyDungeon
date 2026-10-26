@@ -48,7 +48,7 @@ while play_again:
                 print(f"rah my ahh got {d_score}")
 
             if d_score > 21 or p_score > d_score:
-                print("aint no way this nigga gotta be cheating run ts back!" )
+                print("aint no way this nigga gotta be cheating run ts back!")
             elif p_score == d_score:
                 print("Push / Standoff!")
             else:
@@ -57,10 +57,7 @@ while play_again:
         else:
             print("Hella man i said hit or stand mxm!")
 
-
     rematch = input("HELLA LETS RUN TS BACK FR (yes / no): ").strip().lower()
     if rematch != "yes":
         print("CMON U SCARED??")
         play_again = False
-        
-
