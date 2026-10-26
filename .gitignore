@@ -30,3 +30,6 @@ supabase/.temp/
 .vscode/
 .DS_Store
 Thumbs.db
+
+# Forge explorer deletes (recoverable)
+.questlab-trash/

@@ -126,6 +126,7 @@ NOTE_IDENTIFIER_PATTERN = r"[A-Za-z0-9][A-Za-z0-9._-]{0,119}"
 MAX_TEXT_BYTES = 2_000_000
 IGNORED_DIRS = {
     ".git",
+    ".questlab-trash",
     "node_modules",
     ".venv",
     "venv",
@@ -2458,6 +2459,55 @@ def create_workspace_entry(payload: WorkspaceEntryCreate):
     return {"ok": True, "path": relative, "type": payload.type}
 
 
+# Explorer deletes go here, never straight to oblivion: a learner can get a
+# file back from <workspace>/.questlab-trash/<time>/.
+TRASH_DIR_NAME = ".questlab-trash"
+PLATFORM_ROOT_FILES = {"tutor.py", "dungeon.py"}
+
+
+class WorkspaceEntryDelete(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    path: str = Field(min_length=1, max_length=240)
+
+
+def _deletable_game_path(target: Path) -> bool:
+    """Only game files can be deleted from the explorer: anything inside a
+    campaign's project folder, or a root-level .py file that is not part of
+    the platform. The workspace, tool folders and state stay untouchable."""
+
+    relative = target.relative_to(WORKSPACE)
+    parts = relative.parts
+    if not parts or any(part.startswith(".") or part in IGNORED_DIRS for part in parts):
+        return False
+    folders = {
+        project_dir_name(entry.get("project_dir"))
+        for entry in load_campaign_bounties().values()
+        if isinstance(entry, dict)
+    } - {""}
+    if parts[0] in folders:
+        return len(parts) > 1
+    return len(parts) == 1 and target.suffix == ".py" and parts[0] not in PLATFORM_ROOT_FILES
+
+
+@app.post("/api/workspace/delete")
+def delete_workspace_entry(payload: WorkspaceEntryDelete):
+    """Move a game file or folder to the workspace trash (recoverable)."""
+
+    target = safe_path(payload.path.replace("\\", "/"))
+    reject_state_file_access(target)
+    if not target.exists() or target.is_symlink():
+        raise HTTPException(status_code=404, detail="Nothing to delete there")
+    if not _deletable_game_path(target):
+        raise HTTPException(status_code=403, detail="Only your project's own files can be deleted here")
+    relative = target.relative_to(WORKSPACE)
+    stamp = f"{time.strftime('%Y%m%d-%H%M%S')}-{uuid.uuid4().hex[:6]}"
+    destination = WORKSPACE / TRASH_DIR_NAME / stamp / relative
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    shutil.move(str(target), str(destination))
+    return {"ok": True, "path": relative.as_posix(), "trash": destination.relative_to(WORKSPACE).as_posix()}
+
+
 def _apply_state_or_http(action: str, payload: dict, actor: str, *, internal: bool = False) -> dict:
     try:
         return STATE_SERVICE.apply(action, payload, actor, internal=internal)
@@ -3094,6 +3144,8 @@ class AiAskRequest(BaseModel):
     question: str = Field(min_length=1, max_length=2_000)
     concept: str = Field(default="", max_length=200)
     code: str = Field(default="", max_length=20_000)
+    # Asked from the Forge during a campaign fight: the fight pays less.
+    battle: bool = False
 
 
 def _ai_call(func, *args, **kwargs):
@@ -3802,7 +3854,15 @@ def ai_practice_lens(payload: AiPracticeLensRequest):
 @app.post("/api/ai/ask")
 def ai_ask(payload: AiAskRequest):
     reply = _ai_call(ai_tutor.ask, question=payload.question, concept=payload.concept, code=payload.code)
-    return {"ok": True, "reply": reply}
+    assist = None
+    if payload.battle:
+        # Only a reply that arrived counts; with no fight on, help is free.
+        try:
+            with PROGRESS_LOCK:
+                assist = STATE_SERVICE.apply_internal("record_pyr_assist", {"reason": "Asked PYR during a fight"}).get("result")
+        except StateCommandError:
+            assist = None
+    return {"ok": True, "reply": reply, "assist": assist}
 
 
 # App mode (`ide/quest.py --app`, used by the desktop shell) serves the built

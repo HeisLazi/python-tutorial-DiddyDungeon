@@ -425,8 +425,6 @@ export function ActivityRail({ activeView, setActiveView, player, avatarDataUrl 
 // The workspace is the platform checkout, so the raw tree also lists Quest
 // Lab's own docs, tooling and dot-folders. "Game" view keeps only what the
 // player builds: code files at the root and folders they created.
-const PLATFORM_TREE_ROOTS = new Set(['ide', 'tools', 'supabase', 'prototypes', 'questlab-state', 'questlab-files', 'node_modules'])
-const GAME_FILE_PATTERN = /\.(py|js|jsx|ts|tsx|html|css|sql|rs|go|java|c|cpp|h|rb|lua|txt)$/i
 
 function parentDirOf(path) {
   const parts = String(path || '').split('/').filter(Boolean)
@@ -443,6 +441,7 @@ function ExplorerIcon({ kind }) {
     'new-folder': <><path d="M3 7.5V18a1 1 0 0 0 1 1h16a1 1 0 0 0 1-1V9a1 1 0 0 0-1-1h-8l-2-2.5H4a1 1 0 0 0-1 1Z" /><path d="M12 11v6M9 14h6" /></>,
     collapse: <><path d="M4 5h16v14H4Z" /><path d="M8 12h8" /></>,
     expand: <><path d="M4 5h16v14H4Z" /><path d="M8 12h8M12 8v8" /></>,
+    trash: <><path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-12M9 7V4h6v3" /></>,
   }
   return <svg className={`explorer-icon explorer-icon-${kind}`} viewBox="0 0 24 24" aria-hidden="true" focusable="false">{paths[kind]}</svg>
 }
@@ -467,15 +466,14 @@ export function projectDirOf(entryFile) {
   return parts.length > 1 ? parts[0] : ''
 }
 
-function isGameTreeItem(item) {
-  const segments = String(item?.path || '').replaceAll('\\', '/').split('/').filter(Boolean)
-  if (!segments.length || segments.some((segment) => segment.startsWith('.'))) return false
-  if (PLATFORM_TREE_ROOTS.has(segments[0])) return false
-  if (segments.length === 1 && item.type === 'file') return GAME_FILE_PATTERN.test(segments[0]) && segments[0] !== 'index.html'
-  return true
+// A root-level campaign's file: a .py at the workspace root that is not one
+// of the platform's own (tutor.py, dungeon.py).
+function isRootGameFile(item) {
+  const path = String(item?.path || '')
+  return item?.type === 'file' && !path.includes('/') && !path.startsWith('.') && /\.py$/i.test(path) && !['tutor.py', 'dungeon.py'].includes(path)
 }
 
-export function ContextPanel({ activeView, campaign, files = [], activePath, compact = false, onToggleCompact, editorMode = 'file', openFile, openQuestDocument, newFile, onCreateEntry, setActiveView, submitBattle, submitBoss, onAskBossQuestion, onAnswerBossOption, battleQuestions = {}, battleFeedback = null, onAskBattleQuestion, onAnswerBattleOption, onCheckSetup, busy }) {
+export function ContextPanel({ activeView, campaign, files = [], activePath, compact = false, onToggleCompact, editorMode = 'file', openFile, openQuestDocument, newFile, onCreateEntry, onDeleteEntry, setActiveView, submitBattle, submitBoss, onAskBossQuestion, onAnswerBossOption, battleQuestions = {}, battleFeedback = null, onAskBattleQuestion, onAnswerBattleOption, onCheckSetup, busy }) {
   const progress = campaign?.progress || {}
   const player = progress.player || {}
   const activeProject = (progress.projects || []).find((project) => project.status === 'active')
@@ -486,22 +484,15 @@ export function ContextPanel({ activeView, campaign, files = [], activePath, com
   // A malformed legacy transfer can leave a literal backslash directory in
   // the checkout. It is not part of the learner workspace and must never be
   // rendered as a second filesystem root in the editor tree.
-  const [showAllFiles, setShowAllFiles] = useState(() => {
-    try { return window.localStorage.getItem('questlab.showAllFiles') === 'true' } catch { return false }
-  })
-  const toggleShowAllFiles = () => setShowAllFiles((current) => {
-    try { window.localStorage.setItem('questlab.showAllFiles', String(!current)) } catch { /* storage unavailable */ }
-    return !current
-  })
-  // A campaign that lives in its own folder (silver_reels/casino.py) shows
-  // only that folder in the game view, never another campaign's files.
+  // The explorer shows game files only, never how the app itself is built:
+  // a campaign in its own folder (silver_reels/casino.py) shows just that
+  // folder; a root-level campaign shows its own .py files.
   const projectDir = projectDirOf(activeProject?.entry_file)
   const treeFiles = files.filter((item) => {
     const path = String(item?.path || '')
     if (!path || path.startsWith('\\') || path.includes('\0')) return false
-    if (showAllFiles) return true
     if (projectDir) return path === projectDir || path.startsWith(`${projectDir}/`)
-    return isGameTreeItem(item)
+    return isRootGameFile(item)
   })
   const campaignSourceFiles = treeFiles.filter((item) => {
     if (item.type !== 'file' || !/\.py$/i.test(String(item.path || ''))) return false
@@ -583,6 +574,13 @@ export function ContextPanel({ activeView, campaign, files = [], activePath, com
   // folder (the last folder clicked, else the open file's folder, else the
   // project folder), like any code editor.
   const [selectedDir, setSelectedDir] = useState('')
+  // Delete asks in the row itself; the file goes to the workspace trash.
+  const [deleting, setDeleting] = useState('')
+  const confirmDelete = async (item) => {
+    const result = await onDeleteEntry?.(item.path)
+    setDeleting('')
+    if (result?.ok && (selectedDir === item.path || selectedDir.startsWith(`${item.path}/`))) setSelectedDir(parentDirOf(item.path))
+  }
   const [creating, setCreating] = useState(null)
   const startCreate = (type) => {
     const known = new Set(directoryPaths)
@@ -665,7 +663,6 @@ export function ContextPanel({ activeView, campaign, files = [], activePath, com
                 <button type="button" className="explorer-action" onClick={() => startCreate('file')} title="New file" aria-label="New file"><ExplorerIcon kind="new-file" /></button>
                 <button type="button" className="explorer-action" onClick={() => startCreate('dir')} title="New folder" aria-label="New folder"><ExplorerIcon kind="new-folder" /></button>
                 <button type="button" className="explorer-action" onClick={toggleAllDirs} title={allDirsOpen ? 'Collapse all folders' : 'Expand all folders'} aria-label={allDirsOpen ? 'Collapse all folders' : 'Expand all folders'}><ExplorerIcon kind={allDirsOpen ? 'collapse' : 'expand'} /></button>
-                <button type="button" onClick={toggleShowAllFiles} aria-pressed={showAllFiles} title={showAllFiles ? 'Showing every workspace file · switch to game files only' : 'Showing game files only · switch to every workspace file'}>{showAllFiles ? 'All' : 'Game'}</button>
               </>}
               <button type="button" onClick={() => setShowFiles((current) => !current)} title={showFiles ? 'Hide project files' : 'Show project files'} aria-label={showFiles ? 'Hide project files' : 'Show project files'}>{showFiles ? 'Hide' : 'Files'}</button>
             </div>}
@@ -681,8 +678,15 @@ export function ContextPanel({ activeView, campaign, files = [], activePath, com
               const open = item.type === 'dir' && (openDirs || new Set()).has(item.path)
               return (
                 <Fragment key={item.path}>
+                  {deleting === item.path ? <div className="file-row explorer-confirm" role="treeitem" aria-level={item.depth + 1}>
+                    {Array.from({ length: item.depth }, (_, index) => <span key={index} className="tree-guide" aria-hidden="true" />)}
+                    <span className="explorer-confirm-text">Delete {item.name}{item.type === 'dir' ? '/ and everything in it' : ''}?</span>
+                    <button type="button" className="explorer-confirm-yes" autoFocus onClick={() => void confirmDelete(item)} onKeyDown={(event) => { if (event.key === 'Escape') setDeleting('') }}>Delete</button>
+                    <button type="button" onClick={() => setDeleting('')}>Cancel</button>
+                  </div> : <div className="file-row-wrap">
                   <button
                     className={`file-row ${activePath === item.path ? 'active' : ''} ${item.type === 'dir' && selectedDir === item.path ? 'selected' : ''} ${item.type}`}
+                    onKeyDown={(event) => { if (event.key === 'Delete' && item.path !== projectDir) { event.preventDefault(); setDeleting(item.path) } }}
                     onClick={() => {
                       if (item.type === 'dir') {
                         setSelectedDir(item.path)
@@ -702,12 +706,14 @@ export function ContextPanel({ activeView, campaign, files = [], activePath, com
                     {item.type === 'dir' ? <ExplorerIcon kind={open ? 'folder-open' : 'folder'} /> : <FileTypeIcon name={item.name} />}
                     <span className="file-tree-name">{item.name}</span>
                   </button>
+                  {item.path !== projectDir && <button type="button" className="explorer-row-delete" onClick={() => setDeleting(item.path)} title={`Delete ${item.name}`} aria-label={`Delete ${item.name}`}><ExplorerIcon kind="trash" /></button>}
+                  </div>}
                   {creating && creating.parent === item.path && open && createRow(item.depth + 1)}
                 </Fragment>
               )
             })}
             {!files.length && <div className="empty-state">No workspace files available.</div>}
-            {Boolean(files.length) && projectDir && !showAllFiles && !treeFiles.length && <div className="empty-state">
+            {Boolean(files.length) && projectDir && !treeFiles.length && <div className="empty-state">
               <strong>{projectDir}/</strong> isn't on disk yet. Your first bounty walks you through making it in the terminal below.
             </div>}
           </div> : <div className="active-file-summary" data-testid="forge-active-file-summary">
@@ -900,7 +906,7 @@ function ProgressBar({ value, max, label, className = '' }) {
 
 // Built-in PYR (OpenCode mode): replaces the raw CLI terminal in the Forge.
 // Verdicts from Submit run land here too, so the panel is the PYR log.
-export function PyrChatPanel({ log = [], ready, thinking, model, onAsk, onOpenSettings }) {
+export function PyrChatPanel({ log = [], ready, thinking, model, onAsk, onOpenSettings, battleCost = null }) {
   const [draft, setDraft] = useState('')
   const listRef = useRef(null)
   useEffect(() => {
@@ -928,6 +934,10 @@ export function PyrChatPanel({ log = [], ready, thinking, model, onAsk, onOpenSe
         ))}
         {thinking && <div className="pyr-chat-entry pyr pending"><span>PYR</span><p>{thinking}</p></div>}
       </div>
+      {battleCost && <p className={`pyr-chat-cost ${battleCost.asks ? 'spent' : ''}`} data-testid="pyr-chat-cost">
+        Help costs rewards in a fight: each ask takes 20% off {battleCost.mob}'s XP and coins (down to 40%), and from the 2nd ask it drops no loot.
+        {battleCost.asks > 0 && <b> Asked {battleCost.asks}× · now {battleCost.scale}%{battleCost.asks >= 2 ? ' · no loot' : ''}.</b>}
+      </p>}
       <div className="pyr-chat-compose">
         <textarea value={draft} rows={3} placeholder="Ask for a hint, not a finished answer…" onChange={(event) => setDraft(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); send() } }} disabled={!ready} />
         <button type="button" className="primary" onClick={send} disabled={!ready || Boolean(thinking) || !draft.trim()}>Ask PYR</button>
@@ -3494,6 +3504,7 @@ function BattleBrief({ encounter, board, questions = {}, feedback, onAsk, onAnsw
         {contract?.sign && <small className="battle-brief-sign"><HuntSigil pageId={contract.sign} size={14} /> {contract.beast || 'Beast'} · Sign of the {HUNT_BEASTS[contract.sign]?.sign || contract.sign}</small>}
         <ProgressBar value={encounter.resolve ?? 0} max={encounter.max_resolve ?? 1} label="Enemy Resolve" className="resolve" />
         <small>{encounter.guards ? `${encounter.guards} free mistake${encounter.guards === 1 ? '' : 's'} banked · ` : ''}{done.size} of {allObjectives.length} objectives done</small>
+        {encounter.pyr_assists > 0 && <small className="battle-brief-pyr" data-testid="battle-pyr-cost">PYR helped {encounter.pyr_assists}× · this fight pays {encounter.reward_scale}% XP and coins{encounter.pyr_assists >= 2 ? ' · no loot' : ''}</small>}
         {encounter.mob?.lore && <p className="battle-brief-lore">{encounter.mob.lore}</p>}
       </section>
       <ol className="battle-brief-objectives">

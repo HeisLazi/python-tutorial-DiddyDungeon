@@ -288,6 +288,41 @@ class CampaignExtensionTests(unittest.TestCase):
         finished = next(item for item in self.read()["projects"] if item["branch"] == "00-rps-tournament")
         self.assertEqual(finished["mobs"], [])  # a finished retired campaign is kept exactly as it was
 
+    def test_asking_pyr_in_a_fight_costs_that_fights_rewards(self):
+        import shutil
+
+        def fight(asks):
+            directory = tempfile.TemporaryDirectory()
+            self.addCleanup(directory.cleanup)
+            path = Path(directory.name) / "progress.json"
+            shutil.copyfile(self.path, path)
+            service = LocalStateService(path, threading.RLock())
+            service.apply_internal("campaign_extend", {})
+            for _ in range(asks):
+                service.apply_internal("record_pyr_assist", {"reason": "Asked PYR during a fight"})
+            encounter = service.encounter_projection(json.loads(path.read_text(encoding="utf-8")))
+            for objective in ("ace_rule", "multi_ace_trace", "ace_bug"):
+                result = service.apply_internal("record_battle_objective", {"objective_id": objective, "evidence_id": f"bj-{objective}", "reason": "Verified"})["result"]
+            return encounter, result, json.loads(path.read_text(encoding="utf-8"))
+
+        clean_encounter, clean, _ = fight(0)
+        self.assertEqual((clean_encounter["pyr_assists"], clean_encounter["reward_scale"]), (0, 100))
+        self.assertEqual(clean["reward_scale"], 100)
+        once_encounter, once, once_state = fight(1)
+        self.assertEqual((once_encounter["pyr_assists"], once_encounter["reward_scale"]), (1, 80))
+        self.assertEqual(once["reward_xp"], clean["reward_xp"] * 80 // 100)
+        self.assertEqual(once["reward_coins"], clean["reward_coins"] * 80 // 100)
+        trickster = next(mob for mob in once_state["projects"][1]["mobs"] if mob["name"] == "The Ace Trickster")
+        self.assertEqual(trickster["assist"], "assisted")  # it no longer counts toward a Clean Clear
+        self.assertEqual(once_state["assist"]["pyr_asks"], 1)
+        _twice_encounter, twice, _ = fight(2)
+        self.assertEqual(twice["reward_scale"], 60)
+        self.assertIsNone(twice["loot"])  # from the second ask on, no loot
+        _many_encounter, many, many_state = fight(5)
+        self.assertEqual(many["reward_scale"], 40)  # never below 40%
+        self.assertNotIn("pyr_assists", many_state["encounter_state"] if many_state["encounter_state"].get("mob_name") != "The Ace Trickster" else {})
+        self.assertEqual(self.service.encounter_projection(many_state)["pyr_assists"], 0)  # the next fight starts clean
+
     def test_an_authored_contract_falls_on_its_last_objective(self):
         self.service.apply_internal("campaign_extend", {})
         encounter = self.service.encounter_projection(self.read())

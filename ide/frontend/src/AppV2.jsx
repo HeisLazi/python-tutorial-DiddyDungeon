@@ -405,6 +405,16 @@ const DUNGEON_RISK_OUTCOMES = {
 
 // Campaign objectives answered by clicking an option rather than submitting a file.
 const BATTLE_CHOICE_TYPES = new Set(['prediction', 'explanation'])
+
+// `cd "<workspace>/<folder>" && python3 "<file>"`, or the plain relative
+// command while the workspace path is still loading.
+function runInFolderCommand(workspace, path) {
+  const parts = String(path || '').replaceAll('\\', '/').split('/').filter(Boolean)
+  const file = parts.pop() || ''
+  if (!workspace) return `python3 ${JSON.stringify(String(path || ''))}`
+  const folder = [String(workspace).replace(/\/+$/, ''), ...parts].join('/')
+  return `cd ${JSON.stringify(folder)} && python3 ${JSON.stringify(file)}`
+}
 const BOSS_PHASE_NAMES = { required_behavior: 'Required behaviour', explanation: 'Read your code', edge_cases: 'The boss twist', twist_2: "The boss's second phase", twist_3: "The boss's third phase", twist_4: "The boss's final phase", read_2: 'Read your code again', interview: 'Code interview' }
 // Boss goals answered by clicking: a question about the player's own file.
 const BOSS_CHOICE_TYPES = new Set(['snippet_check', 'code_interview'])
@@ -1183,8 +1193,14 @@ function AppV2() {
   const pyrTools = {
     ready: openCodeReady,
     chooseLensEnabled: openCodeReady && aiTutor.settings?.choose_practice_lens !== false,
-    ask: ({ question, concept, code }) => withPyr('PYR is thinking…', async () => {
-      const result = await api('/api/ai/ask', { method: 'POST', body: JSON.stringify({ question, concept, code }) })
+    ask: ({ question, concept, code, battle = false }) => withPyr('PYR is thinking…', async () => {
+      const result = await api('/api/ai/ask', { method: 'POST', body: JSON.stringify({ question, concept, code, battle }) })
+      if (result.assist) {
+        // Help during a fight costs that fight's rewards (see the battle sidebar).
+        const { reward_scale: scale, loot_lost: lootLost, mob_name: mobName } = result.assist
+        setNotice(`PYR helped against ${mobName}: it now pays ${scale}% XP and coins${lootLost ? ' and drops no loot' : ''}.`)
+        void refreshCampaign({ silent: true })
+      }
       return result.reply
     }),
     chooseLens: ({ concept, lenses }) => withPyr('PYR is picking a practice lens…', () => api('/api/ai/practice-lens', {
@@ -2248,18 +2264,40 @@ function AppV2() {
     }
   }
 
+  // Explorer Delete: the server moves it to <workspace>/.questlab-trash/, so
+  // it can be got back. A deleted open file leaves the editor empty.
+  const deleteWorkspaceEntry = async (path) => {
+    try {
+      const result = await api('/api/workspace/delete', { method: 'POST', body: JSON.stringify({ path }) })
+      if (activePath === path || activePath.startsWith(`${path}/`)) {
+        setActivePath('')
+        setEditorCode('')
+        setDirty(false)
+      }
+      await refreshFiles()
+      setNotice(`Deleted ${path} (kept in ${result.trash || '.questlab-trash'} in case you need it back).`)
+      return { ok: true }
+    } catch (error) {
+      setNotice(`Delete failed: ${error.message}`)
+      return { ok: false, error: error.message }
+    }
+  }
+
   const runCurrent = async () => {
     if (!activePath || editorMode === 'quest') return
     if (dirty && !(await saveFile())) return
     setActiveView('forge')
-    shellTerminalRef.current?.send(`python3 ${JSON.stringify(activePath)}\n`)
+    // Run it the way the quests teach: from inside the file's own folder.
+    // The terminal may already be in another folder (cd silver_reels), so
+    // go there by absolute path instead of trusting the current one.
+    shellTerminalRef.current?.send(`${runInFolderCommand(campaign?.workspace, activePath)}\n`)
     shellTerminalRef.current?.focus()
   }
 
   const runTutor = async () => {
     if (tutorDirty && !(await saveTutor())) return
     setActiveView('tutor')
-    shellTerminalRef.current?.send('python3 tutor.py\n')
+    shellTerminalRef.current?.send(`${runInFolderCommand(campaign?.workspace, 'tutor.py')}\n`)
     shellTerminalRef.current?.focus()
   }
 
@@ -2792,6 +2830,7 @@ function AppV2() {
             openQuestDocument={openQuestDocument}
             newFile={newFile}
             onCreateEntry={createWorkspaceEntry}
+            onDeleteEntry={deleteWorkspaceEntry}
             setActiveView={setActiveView}
             submitBattle={submitBattle}
             submitBoss={submitBoss}
@@ -3023,9 +3062,10 @@ function AppV2() {
               thinking={pyrThinking}
               model={aiTutor.settings?.model || 'Auto'}
               onOpenSettings={() => setActiveView('settings')}
+              battleCost={campaign?.encounter?.mob_name ? { mob: campaign.encounter.mob_name, asks: campaign.encounter.pyr_assists || 0, scale: campaign.encounter.reward_scale ?? 100 } : null}
               onAsk={(question) => {
                 pushPyrLog({ role: 'you', text: question })
-                pyrTools.ask({ question, concept: campaign?.encounter?.concept || campaign?.encounter?.mob?.concept || '', code: String(code || '') })
+                pyrTools.ask({ question, concept: campaign?.encounter?.concept || campaign?.encounter?.mob?.concept || '', code: String(code || ''), battle: Boolean(campaign?.encounter?.mob_name) })
                   .then((reply) => pushPyrLog({ role: 'pyr', text: reply }))
                   .catch((error) => pushPyrLog({ role: 'pyr', text: `I couldn't answer that just now (${error.message}).` }))
               }}

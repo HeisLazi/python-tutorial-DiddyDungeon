@@ -1073,6 +1073,76 @@ class PyrContextBridgeTests(unittest.TestCase):
             finally:
                 app_v2.WORKSPACE = original_workspace
 
+    def test_the_explorer_deletes_only_game_files_and_keeps_them_in_the_trash(self):
+        from ide.server.test_campaign_content import use_real_content
+
+        use_real_content()
+        original_workspace = app_v2.WORKSPACE
+        with tempfile.TemporaryDirectory() as directory:
+            workspace = Path(directory).resolve()
+            (workspace / "silver_reels" / "tests").mkdir(parents=True)
+            (workspace / "silver_reels" / "casino.py").write_text("bankroll = 100\n", encoding="utf-8")
+            (workspace / "silver_reels" / "tests" / "test_casino.py").write_text("", encoding="utf-8")
+            (workspace / "blackjack.py").write_text("print('hit')\n", encoding="utf-8")
+            (workspace / "tutor.py").write_text("", encoding="utf-8")
+            (workspace / "README.md").write_text("# repo\n", encoding="utf-8")
+            (workspace / "ide").mkdir()
+            (workspace / "ide" / "app.py").write_text("", encoding="utf-8")
+            app_v2.WORKSPACE = workspace
+            try:
+                client = TestClient(app_v2.app, base_url="http://127.0.0.1")
+
+                def delete(path):
+                    return client.post("/api/workspace/delete", headers={"host": "127.0.0.1"}, json={"path": path})
+
+                gone = delete("silver_reels/casino.py")
+                self.assertEqual(gone.status_code, 200, gone.text)
+                self.assertFalse((workspace / "silver_reels" / "casino.py").exists())
+                kept = workspace / gone.json()["trash"]
+                self.assertEqual(kept.read_text(encoding="utf-8"), "bankroll = 100\n")  # recoverable
+                self.assertEqual(delete("silver_reels/tests").status_code, 200)  # a folder inside the project
+                self.assertEqual(delete("blackjack.py").status_code, 200)  # a root-level game file
+                for protected in ("silver_reels", "tutor.py", "README.md", "ide/app.py", "ide", ".questlab-trash"):
+                    self.assertIn(delete(protected).status_code, {403, 404}, protected)
+                self.assertTrue((workspace / "silver_reels").is_dir() and (workspace / "tutor.py").exists() and (workspace / "ide" / "app.py").exists())
+                self.assertEqual(delete("silver_reels/nope.py").status_code, 404)
+                self.assertEqual(delete("../outside.py").status_code, 403)
+                self.assertNotIn(".questlab-trash", {item["name"] for item in app_v2.build_tree()})  # never shown
+            finally:
+                app_v2.WORKSPACE = original_workspace
+
+    def test_only_a_battle_ask_that_gets_a_reply_costs_the_fight(self):
+        from ide.server.test_campaign_content import use_real_content, user_like_progress
+
+        use_real_content()
+        original_progress, original_call = app_v2.PROGRESS_PATH, app_v2._ai_call
+        with tempfile.TemporaryDirectory() as directory:
+            canonical = Path(directory) / "progress.json"
+            canonical.write_text(json.dumps(user_like_progress()), encoding="utf-8")
+            app_v2.PROGRESS_PATH = canonical
+            try:
+                client = TestClient(app_v2.app, base_url="http://127.0.0.1")
+                app_v2.STATE_SERVICE.apply_internal("campaign_extend", {})
+
+                def ask(battle):
+                    return client.post("/api/ai/ask", headers={"host": "127.0.0.1"}, json={"question": "a hint?", "battle": battle})
+
+                app_v2._ai_call = lambda fn, **kwargs: "Think about what an ace is worth."  # no real PYR call
+                free = ask(False).json()
+                self.assertIsNone(free["assist"])  # the Codex and Tutor notebook ask for free
+                paid = ask(True).json()
+                self.assertEqual((paid["assist"]["pyr_assists"], paid["assist"]["reward_scale"]), (1, 80))
+
+                def broken(fn, **kwargs):
+                    raise app_v2.HTTPException(status_code=503, detail="PYR is offline")
+
+                app_v2._ai_call = broken
+                self.assertEqual(ask(True).status_code, 503)
+                encounter = client.get("/api/campaign", headers={"host": "127.0.0.1"}).json()["encounter"]
+                self.assertEqual(encounter["pyr_assists"], 1)  # no reply, no cost
+            finally:
+                app_v2.PROGRESS_PATH, app_v2._ai_call = original_progress, original_call
+
     def test_boss_gate_mixes_code_and_click_goals_and_clears_from_saved_state(self):
         original_workspace = app_v2.WORKSPACE
         original_progress = app_v2.PROGRESS_PATH

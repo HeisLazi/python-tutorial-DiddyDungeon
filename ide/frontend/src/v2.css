@@ -230,6 +230,17 @@
 .forge-v2 .explorer-action .explorer-icon { width: 14px; height: 14px; }
 .forge-v2 .explorer-tree .file-row.explorer-create { height: auto; min-height: 26px; flex-wrap: wrap; padding-top: 2px; padding-bottom: 2px; }
 .forge-v2 .explorer-create input { flex: 1 1 120px; min-width: 0; height: 20px; padding: 0 5px; border: 1px solid var(--gold, #f5c542); background: var(--panel3, #0e0d0b); color: var(--text, #e7e2d6); font: 12px ui-monospace, monospace; }
+.forge-v2 .file-row-wrap { position: relative; }
+.forge-v2 .explorer-row-delete { position: absolute; top: 50%; right: 6px; transform: translateY(-50%); display: none; place-items: center; width: 20px; height: 20px; padding: 0; border: 0; background: transparent; color: var(--muted, #9da59a); }
+.forge-v2 .file-row-wrap:hover .explorer-row-delete,
+.forge-v2 .file-row-wrap:focus-within .explorer-row-delete { display: inline-grid; }
+.forge-v2 .explorer-row-delete:hover, .forge-v2 .explorer-row-delete:focus-visible { color: #f87171; }
+.forge-v2 .explorer-row-delete .explorer-icon { width: 14px; height: 14px; }
+.forge-v2 .file-row-wrap:hover .file-row .file-tree-name { padding-right: 22px; }
+.forge-v2 .explorer-tree .file-row.explorer-confirm { gap: 6px; background: color-mix(in srgb, #f87171 10%, var(--panel2)); }
+.forge-v2 .explorer-confirm-text { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #fca5a5; font-size: 12px; }
+.forge-v2 .explorer-confirm button { padding: 1px 6px; font-size: 11px; }
+.forge-v2 .explorer-confirm .explorer-confirm-yes { border-color: #f87171; color: #fca5a5; }
 .forge-v2 .explorer-create-error { flex-basis: 100%; padding: 2px 0 4px 20px; color: #fca5a5; font-size: 11px; white-space: normal; }
 
 @media (max-width: 720px) {
@@ -1570,6 +1581,9 @@
 .battle-brief-objectives b.kind-code_checkpoint { border-color: var(--gold, #f5c542); color: var(--gold, #f5c542); }
 .battle-brief-objectives b.kind-bug_diagnosis { border-color: #f87171; color: #f87171; }
 .battle-brief-objectives b.kind-setup_check, .office-objectives b.kind-setup_check { border-color: #67e8f9; color: #67e8f9; }
+.battle-brief .battle-brief-pyr { color: #fdba74; }
+.pyr-chat-cost { margin: 0; padding: 6px 10px; border-top: 1px solid var(--line, #444); color: var(--muted, #9da59a); font-size: 11px; line-height: 1.45; }
+.pyr-chat-cost.spent b { color: #fdba74; }
 .battle-feedback.not_yet { border-color: #67e8f9; color: #a5f3fc; }
 .battle-brief .battle-setup-check { justify-self: start; }
 .battle-brief .battle-setup-output { margin: 0; padding: 6px 8px; border: 1px solid var(--line, #444); background: rgba(0, 0, 0, 0.35); white-space: pre-wrap; max-height: 160px; overflow-y: auto; }

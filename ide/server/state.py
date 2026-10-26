@@ -138,6 +138,12 @@ def campaign_contract(branch: object, mob_name: object) -> dict[str, Any] | None
     return next((item for item in mobs if isinstance(item, dict) and item.get("name") == mob_name), None)
 MAX_IDENTIFIER_LENGTH = 120
 MAX_REWARD_XP = 100
+# Asking PYR for help during a campaign fight costs that fight's rewards:
+# each ask takes 20% off its XP and coins (never below 40%), and from the
+# second ask on it drops no loot. The bounty also stops counting as clean.
+PYR_ASSIST_REWARD_STEP = 20
+PYR_ASSIST_REWARD_FLOOR = 40
+PYR_ASSIST_LOOT_LIMIT = 2
 MAX_REWARD_COINS = 100
 MAX_HP_DELTA = 100
 MAX_IMPACT = 8
@@ -486,6 +492,7 @@ ACTION_DEFINITIONS: dict[str, ActionDefinition] = {
     "hunter_spend_point": ActionDefinition(frozenset({"player"})),
     "record_learning_event": ActionDefinition(frozenset({"pyr"})),
     "record_reference_mode": ActionDefinition(frozenset({"pyr"})),
+    "record_pyr_assist": ActionDefinition(frozenset({SYSTEM_ACTOR}), internal=True),
     "award_learning_reward": ActionDefinition(frozenset({SYSTEM_ACTOR}), internal=True),
     "player_hp_change": ActionDefinition(frozenset({SYSTEM_ACTOR}), internal=True),
     "record_achievement": ActionDefinition(frozenset({SYSTEM_ACTOR}), internal=True),
@@ -3363,6 +3370,8 @@ class LocalStateService:
             "completed_objectives": completed_ids,
             "available_objectives": available,
             "attempts": attempts,
+            "pyr_assists": max(0, int(matching.get("pyr_assists", 0) or 0)),
+            "reward_scale": self.pyr_reward_scale(int(matching.get("pyr_assists", 0) or 0)),
             "guards": max(0, int(matching.get("guards", 0) or 0)) if isinstance(matching, Mapping) else 0,
             "question_types": observed_types,
             "current_quest": available[0] if available else None,
@@ -5865,6 +5874,7 @@ class LocalStateService:
             "hunter_spend_point": self._hunter_spend_point,
             "record_learning_event": self._record_learning_event,
             "record_reference_mode": self._record_reference_mode,
+            "record_pyr_assist": self._record_pyr_assist,
             "award_learning_reward": self._award_learning_reward,
             "player_hp_change": self._player_hp_change,
             "record_achievement": self._record_achievement,
@@ -7057,6 +7067,33 @@ class LocalStateService:
             {"milestone_id": milestone_id, "evidence_id": evidence_id, "xp_forfeited": xp_forfeited, "reason": reason},
         )
 
+    @staticmethod
+    def pyr_reward_scale(assists: object) -> int:
+        """The share (in %) of a fight's XP and coins left after PYR asks."""
+
+        count = assists if isinstance(assists, int) and assists > 0 else 0
+        return max(PYR_ASSIST_REWARD_FLOOR, 100 - PYR_ASSIST_REWARD_STEP * count)
+
+    def _record_pyr_assist(self, payload: Mapping[str, Any], progress: dict[str, Any]) -> Mutation:
+        """PYR helped during the current campaign fight: it now pays less."""
+
+        data = self._payload(payload, {"reason"}, set())
+        reason = self._text(data.get("reason") or "Asked PYR for help", "reason")
+        project, _mobs, index, mob = self._active_project_and_mob(progress)
+        encounter = self._ensure_encounter_state(progress, project, mob, index)
+        encounter["pyr_assists"] = self._counter(encounter, "pyr_assists") + 1
+        mob["assist"] = "assisted"
+        assist = self._dict(progress, "assist")
+        assist["pyr_asks"] = self._counter(assist, "pyr_asks") + 1
+        scale = self.pyr_reward_scale(encounter["pyr_assists"])
+        result = {
+            "mob_name": str(mob.get("name") or ""),
+            "pyr_assists": encounter["pyr_assists"],
+            "reward_scale": scale,
+            "loot_lost": encounter["pyr_assists"] >= PYR_ASSIST_LOOT_LIMIT,
+        }
+        return Mutation(True, result, {**result, "reason": reason})
+
     def _award_learning_reward(self, payload: Mapping[str, Any], progress: dict[str, Any]) -> Mutation:
         data = self._payload(payload, {"xp", "coins", "reason", "evidence_id"}, {"xp", "coins", "reason", "evidence_id"})
         xp = self._integer(data["xp"], "xp", minimum=0, maximum=MAX_REWARD_XP)
@@ -7759,8 +7796,12 @@ class LocalStateService:
         buffs = encounter.get("buffs") if isinstance(encounter.get("buffs"), Mapping) else {}
         reward_xp = min(MAX_REWARD_XP, reward_xp * (100 + min(ARMORY_BONUS_CAP, effects["xp_bonus"] + int(buffs.get("xp_bonus", 0)))) // 100)
         reward_coins = min(MAX_REWARD_COINS, reward_coins * (100 + min(ARMORY_BONUS_CAP, effects["coin_bonus"] + int(buffs.get("coin_bonus", 0)))) // 100)
+        pyr_assists = self._counter(encounter, "pyr_assists")
+        reward_scale = self.pyr_reward_scale(pyr_assists)
+        reward_xp = reward_xp * reward_scale // 100
+        reward_coins = reward_coins * reward_scale // 100
         reward = self._grant_reward(player, reward_xp, reward_coins)
-        loot = self._armory_contract_drop(progress, project, mobs, index, mob, evidence_id)
+        loot = None if pyr_assists >= PYR_ASSIST_LOOT_LIMIT else self._armory_contract_drop(progress, project, mobs, index, mob, evidence_id)
         achievement_unlocked = None
         achievements = progress.get("achievements")
         if isinstance(achievements, list):
@@ -7783,6 +7824,8 @@ class LocalStateService:
             "reward_xp": reward_xp,
             "reward_coins": reward_coins,
             "loot": loot,
+            "pyr_assists": pyr_assists,
+            "reward_scale": reward_scale,
             "level_before": reward["level_before"],
             "level_after": reward["level_after"],
             "achievement_unlocked": achievement_unlocked,
