@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://csitujusyioct"
-path="res://.godot/imported/hunter_dracula_body.png-7b8a1d483edae29d95ce5beced959ad3.ctex"
+uid="uid://b1qlr52jq5mmr"
+path="res://.godot/imported/hunter_front.png-c8e9e8175821b37201acde0a26615df7.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://art/hunter_dracula_body.png"
-dest_files=["res://.godot/imported/hunter_dracula_body.png-7b8a1d483edae29d95ce5beced959ad3.ctex"]
+source_file="res://art/hunter_front.png"
+dest_files=["res://.godot/imported/hunter_front.png-c8e9e8175821b37201acde0a26615df7.ctex"]
 
 [params]
 

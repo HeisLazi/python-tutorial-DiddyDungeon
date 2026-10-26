@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://b5ftntw4nndu8"
-path="res://.godot/imported/hunter_alucard_cape.png-0eaff2f0f7f9c169cbf622fb395626ff.ctex"
+uid="uid://dxbrtss6d1ek7"
+path="res://.godot/imported/hunter_back.png-0da955e0ab06d05038c7f24c9b9d9d5b.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://art/hunter_alucard_cape.png"
-dest_files=["res://.godot/imported/hunter_alucard_cape.png-0eaff2f0f7f9c169cbf622fb395626ff.ctex"]
+source_file="res://art/hunter_back.png"
+dest_files=["res://.godot/imported/hunter_back.png-0da955e0ab06d05038c7f24c9b9d9d5b.ctex"]
 
 [params]
 

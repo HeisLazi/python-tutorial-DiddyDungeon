@@ -8,7 +8,8 @@ set -e
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT/ide/home-godot"
 python3 "$ROOT/tools/home_art/make_tiles.py"
-python3 "$ROOT/tools/home_art/make_hunter.py"
+# the hunter sheets are committed (made by tools/home_art/from_sheets.py)
+cp "$ROOT"/tools/home_art/assets/hunter/hunter_*.png art/
 mkdir -p "$ROOT/ide/frontend/public/home"
 godot --headless --path . --import >/dev/null 2>&1 || true
 godot --headless --path . --export-release "Web" ../frontend/public/home/index.html

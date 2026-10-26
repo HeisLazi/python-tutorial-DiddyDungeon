@@ -24,8 +24,8 @@ from pathlib import Path as _P
 _sys.path.insert(0, str(_P(__file__).parent))
 from PIL import Image, ImageEnhance, ImageFilter
 
-TARGET_H = 56
-FW, FH = 56, 64          # cell the character is centred in; feet on the bottom row
+TARGET_H = 40
+FW, FH = 48, 46          # cell the character is centred in; feet on the bottom row (derived from the height below)
 BG_TOL = 40
 COLORS = 56
 
@@ -199,6 +199,10 @@ def preview(out_dir, path, scale=6):
 
 if __name__ == "__main__":
     if sys.argv[1] == "preview":
+        meta = json.loads((Path(sys.argv[2]) / "hunter_sheet.json").read_text(encoding="utf-8"))
+        FW, FH = meta["frame"]
         preview(sys.argv[2], sys.argv[3])
     else:
-        build(sys.argv[1], sys.argv[2], int(sys.argv[3]) if len(sys.argv) > 3 else TARGET_H)
+        h = int(sys.argv[3]) if len(sys.argv) > 3 else TARGET_H
+        FW, FH = int(h * 1.2) // 2 * 2, h + 6        # the side view with its sword is the widest
+        build(sys.argv[1], sys.argv[2], h)

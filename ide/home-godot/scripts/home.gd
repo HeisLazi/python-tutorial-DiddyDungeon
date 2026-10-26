@@ -10,38 +10,24 @@ const ROWS := 16
 const WORLD := Vector2(COLS * T, ROWS * T)
 const SPEED := 62.0
 const FEET := Vector2(8, 4)
-const FRAME := Vector2i(24, 40)   # one hunter frame
+const FRAME := Vector2i(48, 46)   # one hunter frame (tools/home_art/from_sheets.py), feet on the bottom row
 
 const TILES: Texture2D = preload("res://art/tiles.png")
 var FONT_FILE: FontFile = preload("res://art/PressStart2P.woff2")
 const CRT_SHADER: Shader = preload("res://shaders/crt.gdshader")
 
-# Each look (skin) is three layers so the cloth moves on its own.
-const LOOKS := {
-	"dracula": {
-		"body": preload("res://art/hunter_dracula_body.png"),
-		"gown": preload("res://art/hunter_dracula_gown.png"),
-		"cape": preload("res://art/hunter_dracula_cape.png"),
-	},
-	"alucard": {
-		"body": preload("res://art/hunter_alucard_body.png"),
-		"gown": preload("res://art/hunter_alucard_gown.png"),
-		"cape": preload("res://art/hunter_alucard_cape.png"),
-	},
-	"belmont": {
-		"body": preload("res://art/hunter_belmont_body.png"),
-		"gown": preload("res://art/hunter_belmont_gown.png"),
-		"cape": preload("res://art/hunter_belmont_cape.png"),
-	},
-}
+# The hunter: one sheet per facing, 8 frames each. Right is the side sheet flipped.
+const SHEET_FRONT: Texture2D = preload("res://art/hunter_front.png")
+const SHEET_SIDE: Texture2D = preload("res://art/hunter_side.png")
+const SHEET_BACK: Texture2D = preload("res://art/hunter_back.png")
+const WALK_FRAMES := 8
+const WALK_FPS := 10.0
 
-const FACING_ROW := {"down": 0, "left": 1, "right": 2, "up": 3}
-const WALK_CYCLE := [0, 1, 0, 2]
 
 # What the app can tell us (all optional; these are the defaults for a standalone run).
 var state := {
 	"hp": 100, "max_hp": 100, "embers": 0,
-	"fire_lit": true, "crt": true, "look": "dracula",
+	"fire_lit": true, "crt": true, "look": "alucard",
 	"tiers": {"hearth": 0, "armory": 0, "map": 0},
 	"max_tiers": {"hearth": 3, "armory": 3, "map": 3},
 }
@@ -52,9 +38,7 @@ var background := Node2D.new()
 var world := Node2D.new()
 var pips := Node2D.new()
 var hunter := Node2D.new()
-var cape_sprite := Sprite2D.new()
 var body_sprite := Sprite2D.new()
-var gown_sprite := Sprite2D.new()
 var pyr := Sprite2D.new()
 var hearth_sprite: Sprite2D
 var torches: Array[Sprite2D] = []
@@ -70,13 +54,12 @@ var crt_rect := ColorRect.new()
 var pos := Vector2(224, 164)   # the hunter's feet, in float
 var facing := "down"
 var anim_t := 0.0
-var cape_t := 0.0
 var clock := 0.0
 var pyr_pos := Vector2(210, 160)
 var near: Dictionary = {}
 var toast_time := 0.0
 var hint_time := 7.0
-var look := "dracula"
+var look := "alucard"   # skins come later; the app sends one name
 # Keys are tracked from events (not polled) so even a very short tap moves the hunter a few pixels.
 var held := {}
 var tap_ttl := {}
@@ -243,21 +226,17 @@ func _build_room() -> void:
 	_station("door", "Go to the Forge", Rect2(206, 216, 36, 24), Vector2(224, 206))
 
 
-# ── The hunter: a cape behind, the body, and the gown over the legs ─────────
+# ── The hunter: one animated sprite ─────────────────────────────────────────
 func _build_hunter() -> void:
 	hunter.name = "Hunter"
 	var shadow := _piece(hunter, "shadow", Vector2(0, 2), true)
 	shadow.name = "Shadow"
-	for sprite in [cape_sprite, body_sprite, gown_sprite]:
-		sprite.region_enabled = true
-		sprite.centered = false
-		sprite.offset = Vector2(-FRAME.x / 2.0, -38)
-		hunter.add_child(sprite)
-	cape_sprite.name = "Cape"
 	body_sprite.name = "Body"
-	gown_sprite.name = "Gown"
+	body_sprite.region_enabled = true
+	body_sprite.centered = false
+	body_sprite.offset = Vector2(-FRAME.x / 2.0, -FRAME.y + 1)
+	hunter.add_child(body_sprite)
 	world.add_child(hunter)
-	_set_look(str(state["look"]))
 	# Pyr, the little code-flame, follows along.
 	pyr.texture = TILES
 	pyr.region_enabled = true
@@ -266,15 +245,6 @@ func _build_hunter() -> void:
 	pyr.offset = Vector2(-8, -16)
 	world.add_child(pyr)
 	_refresh_hunter()
-
-
-func _set_look(name: String) -> void:
-	if not LOOKS.has(name):
-		name = "dracula"
-	look = name
-	cape_sprite.texture = LOOKS[name]["cape"]
-	body_sprite.texture = LOOKS[name]["body"]
-	gown_sprite.texture = LOOKS[name]["gown"]
 
 
 # ── The HUD (drawn above the room, under the CRT) ───────────────────────────
@@ -355,8 +325,6 @@ func _apply_state() -> void:
 		state["toast"] = ""
 	hp_label.text = "HP %d/%d   EMBERS %d" % [int(state["hp"]), int(state["max_hp"]), int(state["embers"])]
 	crt_rect.visible = bool(state["crt"])
-	if str(state.get("look", "dracula")) != look:
-		_set_look(str(state["look"]))
 	pips.queue_redraw()
 
 
@@ -393,12 +361,10 @@ func _process(delta: float) -> void:
 			facing = "right" if dir.x > 0 else "left"
 		else:
 			facing = "down" if dir.y > 0 else "up"
-		anim_t += delta * 7.0
-		cape_t += delta * 6.0
+		anim_t += delta * WALK_FPS
 		_move(dir * SPEED * delta)
 	else:
 		anim_t = 0.0
-		cape_t += delta * 2.0     # the cape keeps breathing when he stands
 	_refresh_hunter()
 	_follow_pyr(delta)
 	_animate_room()
@@ -422,15 +388,20 @@ func _hits(feet: Vector2) -> bool:
 
 func _refresh_hunter() -> void:
 	hunter.position = pos.round()
-	var row: int = FACING_ROW[facing]
-	var col: int = WALK_CYCLE[int(anim_t) % 4] if anim_t > 0.0 else 0
-	body_sprite.region_rect = Rect2(col * FRAME.x, row * FRAME.y, FRAME.x, FRAME.y)
-	gown_sprite.region_rect = Rect2(col * FRAME.x, row * FRAME.y, FRAME.x, FRAME.y)
-	cape_sprite.region_rect = Rect2((int(cape_t) % 4) * FRAME.x, row * FRAME.y, FRAME.x, FRAME.y)
-	# Facing away, the cape hangs in front of the body; otherwise it flows behind.
-	var cape_index := hunter.get_child_count() - 1 if facing == "up" else 1
-	if cape_sprite.get_index() != cape_index and cape_sprite.get_parent() == hunter:
-		hunter.move_child(cape_sprite, cape_index)
+	match facing:
+		"up":
+			body_sprite.texture = SHEET_BACK
+		"down":
+			body_sprite.texture = SHEET_FRONT
+		_:
+			body_sprite.texture = SHEET_SIDE
+	body_sprite.flip_h = facing == "right"
+	var col := 0
+	if anim_t > 0.0:
+		col = int(anim_t) % WALK_FRAMES
+	elif facing == "down":
+		col = int(clock * 3.0) % WALK_FRAMES     # the front sheet is an idle loop
+	body_sprite.region_rect = Rect2(col * FRAME.x, 0, FRAME.x, FRAME.y)
 
 
 func _follow_pyr(delta: float) -> void:

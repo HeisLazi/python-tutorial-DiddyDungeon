@@ -2999,7 +2999,7 @@ const HOME_STATION_UPGRADES = {
   armory: ['warding-loom', 'breaker-workbench'],
 }
 
-const HUNTER_LOOKS = ['dracula', 'alucard', 'belmont']
+const HUNTER_LOOKS = ['alucard']
 
 function homeRoomState(progress, crt, look) {
   const player = progress?.player || {}
@@ -3066,7 +3066,7 @@ function HomeRoom({ progress, armory, armoryActions, performHomesteadAction, onN
   })
   const [panel, setPanel] = useState('')
   const [look, setLook] = useState(() => {
-    try { return HUNTER_LOOKS.includes(window.localStorage.getItem('questlab.hunterLook')) ? window.localStorage.getItem('questlab.hunterLook') : 'dracula' } catch { return 'dracula' }
+    try { return HUNTER_LOOKS.includes(window.localStorage.getItem('questlab.hunterLook')) ? window.localStorage.getItem('questlab.hunterLook') : 'alucard' } catch { return 'alucard' }
   })
   const cycleLook = () => setLook((current) => {
     const next = HUNTER_LOOKS[(HUNTER_LOOKS.indexOf(current) + 1) % HUNTER_LOOKS.length]
@@ -3148,7 +3148,7 @@ function HomeRoom({ progress, armory, armoryActions, performHomesteadAction, onN
       <div className="home-room-bar" style={{ width: frameSize.width + 6 }}>
         <small>WASD or arrows walk · E uses a station: trophies, armory, hearth, pantry, study, map, ring, perch, door</small>
         <span>
-          <button type="button" onClick={cycleLook} title="Change the hunter's look">Look: {look}</button>
+          {HUNTER_LOOKS.length > 1 && <button type="button" onClick={cycleLook} title="Change the hunter's look">Look: {look}</button>}
           <button type="button" onClick={toggleCrt} aria-pressed={crt}>Scanlines {crt ? 'on' : 'off'}</button>
           <button type="button" onClick={onClassic}>Classic home</button>
         </span>
