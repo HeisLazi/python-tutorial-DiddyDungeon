@@ -223,7 +223,34 @@ The Homestead becomes a base that grows between runs, like the House of Hades: u
 - **Rules to keep it honest:** upgrades never write your code or reduce what you must write; they change HP, loot, information and convenience. Costs scale per tier; some tiers need a campaign milestone (clear a boss to unlock a station).
 - **State:** stays in `homestead.room_upgrades` and `upgrade_tokens` (already synced); the five current upgrades (Reinforced Hearth, Warding Loom, Breaker Workbench, Siphon Basin, Field Kitchen) become tier 1 of the stations above. Dungeon runs read `upgrade_effects`.
 
-Open questions: Godot-embedded vs React canvas; first slice (suggest: one room, Hearth + Armory rack + Map table working, walking hunter, scanlines); exact Ember sources in the Dungeon; how much of the avatar customisation moves into the room.
+### Decisions (2026-10-26)
+
+- **Engine: embedded Godot.** Home is a Godot 4 scene exported to the web (HTML5, single-threaded export so it needs no special headers) and embedded in the Forge app as an iframe on the same origin. The React app stays the source of truth: it passes the save (hunter look, gear, upgrades, Embers, streak) into the scene and the scene sends back "use station" events (open Armory, rest, buy upgrade, start run). No game rules live in Godot; it draws and walks.
+- **First slice:** one room (Tiled map, FireRed-style tiles), a walking hunter from a Blender-made sheet, three working stations (Hearth, Armory rack, Map table), Pyr following, scanlines/CRT toggle. Everything else in this README stays parked until this feels good.
+- **Blocker to start the web build:** Godot's web export templates are not installed and must be downloaded (needs the user's OK).
+
+### Upgrade economy target
+
+Maxing every upgrade should be a real grind in Infinite Dungeon playtime:
+
+| Player | Time to max |
+|---|---|
+| Newer / slower coder | 30-40 h |
+| OK player | about 20 h |
+| Experienced coder | about 15 h |
+| Speedrunner (300 wpm, no thinking) | under 5 h |
+
+Because faster players clear more floors per hour but earn the same Embers per floor, the time ratio falls out of floors per hour (roughly 6 / 10 / 14 / 42 floors an hour). With about 10 Embers per cleared floor on average (more on boss floors, a little more for clean clears), the **total cost of every upgrade is about 2,100 Embers** (35 h x 6 floors x 10). Per-tier costs are built from that budget and tuned with real data: the Dungeon will record playtime and floors per run so these numbers can be corrected after the first playtests. Speed is capped by wrong answers and by the fact that floors still need correct answers, so rushing cannot beat knowing the material.
+
+### Roadmap (parked until the Home slice is done)
+
+1. **Dungeon locations with their own maps.** Each place in the Infinite Dungeon gets a mini location map and a theme: mountains, ocean monuments, abandoned cities, and more. Different zones, different tilesets and mobs, chosen at the Map table.
+2. **Depth as layers.** Each floor is a layer deeper into the location. It is not shown as a number; the art, lighting, mobs and music just get deeper and darker.
+3. **Reward exploration, not boss rushing.** Small mobs and side rooms teach you about the boss (lore, then **weaknesses**) and pay coins and loot for the shop.
+4. **Weaknesses.** A weakness you discover about a boss is a small, silly, concrete edge: it lowers the boss's Resolve, or acts like a trinket for the fight (for example double damage for the first two turns because you struck its swollen ankle). Discovered once, remembered in the Codex, usable on every later fight with that boss.
+5. Campaign and tooling roadmap (Guild Hall, Courier, Vault, AI projects, a VS Code companion) is unchanged.
+
+Open questions: exact Ember sources per floor and boss; how much of the avatar customisation moves into the room.
 
 Asset and tool notes live in `docs/` when the work starts.
 
