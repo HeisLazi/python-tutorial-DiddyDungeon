@@ -1542,8 +1542,8 @@ class StateServiceBehaviorTests(unittest.TestCase):
         first = state["projects"][0]
         first.update({"order": 1, "branch": "01-blackjack", "boss": "The House", "boss_status": "available"})
         first["mobs"] = [{"name": "The Empty Table", "status": "defeated", "concept": "Variables"}]
-        skipped = {"order": 0, "branch": "00-rps-tournament", "name": "Rock Paper Scissors Tournament", "status": "available", "boss": "The Pattern Warden", "progress": 0}
-        upcoming = {"order": 2, "branch": "02-detective-game", "name": "Guess Who / Detective Game", "status": "available", "boss": "The False Alibi", "progress": 0}
+        skipped = {"order": 0, "branch": "05-dungeon-crawler", "name": "The Deep Crawler", "status": "available", "boss": "Die Tozza van Zamalek", "progress": 0}
+        upcoming = {"order": 2, "branch": "04-casino-slots", "name": "The Silver Reels", "status": "available", "boss": "Ekse Ouens P Diddy", "progress": 0}
         state["projects"] = [skipped, first, upcoming]
         path.write_text(json.dumps(state), encoding="utf-8")
 
@@ -1551,34 +1551,34 @@ class StateServiceBehaviorTests(unittest.TestCase):
             "record_boss_clear",
             {"evidence_id": "b1", "explanation_evidence_id": "b2", "interview_evidence_id": "b3", "reason": "Boss beaten"},
         )
-        self.assertEqual(cleared["result"]["next_project"]["name"], "Guess Who / Detective Game")
+        self.assertEqual(cleared["result"]["next_project"]["name"], "The Silver Reels")
         self.assertFalse(cleared["result"]["campaign_complete"])
         after = self.read(path)
         by_branch = {item["branch"]: item for item in after["projects"]}
         self.assertEqual(by_branch["01-blackjack"]["status"], "completed")
-        detective = by_branch["02-detective-game"]
-        self.assertEqual(detective["status"], "active")
-        self.assertEqual(detective["entry_file"], "detective.py")
-        self.assertEqual(len(detective["mobs"]), 8)
-        self.assertEqual([mob["status"] for mob in detective["mobs"]], ["available"] + ["locked"] * 7)
-        self.assertIn("The False Alibi", after["current_quest"])
+        casino = by_branch["04-casino-slots"]
+        self.assertEqual(casino["status"], "active")
+        self.assertEqual(casino["entry_file"], "casino.py")
+        self.assertEqual(len(casino["mobs"]), 8)
+        self.assertEqual([mob["status"] for mob in casino["mobs"]], ["available"] + ["locked"] * 7)
+        self.assertIn("Ekse Ouens P Diddy", after["current_quest"])
         # A fresh board means a fresh encounter, not an instantly open boss gate.
         projection = service.encounter_projection(after)
-        self.assertEqual(projection["project_name"], "Guess Who / Detective Game")
+        self.assertEqual(projection["project_name"], "The Silver Reels")
         self.assertNotEqual(projection["status"], "boss_available")
 
         # Clearing the last project ahead wraps back to the skipped one.
-        detective_done = self.read(path)
-        for item in detective_done["projects"]:
-            if item["branch"] == "02-detective-game":
+        casino_done = self.read(path)
+        for item in casino_done["projects"]:
+            if item["branch"] == "04-casino-slots":
                 item["mobs"] = [dict(mob, status="defeated") for mob in item["mobs"]]
                 item["boss_status"] = "available"
-        path.write_text(json.dumps(detective_done), encoding="utf-8")
+        path.write_text(json.dumps(casino_done), encoding="utf-8")
         wrapped = service.apply_internal(
             "record_boss_clear",
             {"evidence_id": "c1", "explanation_evidence_id": "c2", "interview_evidence_id": "c3", "reason": "Second boss"},
         )
-        self.assertEqual(wrapped["result"]["next_project"]["name"], "Rock Paper Scissors Tournament")
+        self.assertEqual(wrapped["result"]["next_project"]["name"], "The Deep Crawler")
 
     def test_select_campaign_switches_project_and_keeps_the_old_board(self):
         service, path = self.make_service()
@@ -1586,23 +1586,23 @@ class StateServiceBehaviorTests(unittest.TestCase):
         first = state["projects"][0]
         first.update({"order": 1, "branch": "01-blackjack", "name": "Blackjack", "boss": "The House", "progress": 40})
         first["mobs"] = [{"name": "The Empty Table", "status": "defeated", "concept": "Variables"}, {"name": "Bust", "status": "available", "concept": "Conditionals"}]
-        detective = {"order": 2, "branch": "02-detective-game", "name": "Guess Who / Detective Game", "status": "available", "boss": "The False Alibi", "progress": 0}
+        casino = {"order": 2, "branch": "04-casino-slots", "name": "The Silver Reels", "status": "available", "boss": "Ekse Ouens P Diddy", "progress": 0}
         cleared = {"order": 0, "branch": "00-rps-tournament", "name": "Rock Paper Scissors Tournament", "status": "completed", "boss": "The Pattern Warden"}
-        state["projects"] = [cleared, first, detective]
+        state["projects"] = [cleared, first, casino]
         path.write_text(json.dumps(state), encoding="utf-8")
 
-        switched = service.apply("select_campaign", {"branch": "02-detective-game"}, "player")
-        self.assertEqual(switched["result"]["project"]["name"], "Guess Who / Detective Game")
+        switched = service.apply("select_campaign", {"branch": "04-casino-slots"}, "player")
+        self.assertEqual(switched["result"]["project"]["name"], "The Silver Reels")
         self.assertEqual(switched["event"]["previous_project_id"], "01-blackjack")
         after = {item["branch"]: item for item in self.read(path)["projects"]}
-        self.assertEqual(after["02-detective-game"]["status"], "active")
-        self.assertEqual(after["02-detective-game"]["entry_file"], "detective.py")
-        self.assertEqual([mob["status"] for mob in after["02-detective-game"]["mobs"]], ["available"] + ["locked"] * 7)
+        self.assertEqual(after["04-casino-slots"]["status"], "active")
+        self.assertEqual(after["04-casino-slots"]["entry_file"], "casino.py")
+        self.assertEqual([mob["status"] for mob in after["04-casino-slots"]["mobs"]], ["available"] + ["locked"] * 7)
         # The project left behind keeps its board and progress.
         self.assertEqual(after["01-blackjack"]["status"], "available")
         self.assertEqual(after["01-blackjack"]["progress"], 40)
         self.assertEqual([mob["status"] for mob in after["01-blackjack"]["mobs"]], ["defeated", "available"])
-        self.assertEqual(service.encounter_projection(self.read(path))["project_name"], "Guess Who / Detective Game")
+        self.assertEqual(service.encounter_projection(self.read(path))["project_name"], "The Silver Reels")
 
         # Switching back resumes it; selecting the active one is a no-op.
         back = service.apply("select_campaign", {"branch": "01-blackjack"}, "player")

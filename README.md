@@ -129,14 +129,11 @@ Every project lives on its own branch and has a `HANDOFF.md` containing mobs, re
 
 | Order | Branch | Project | Focus | Boss |
 |---|---|---|---|---|
-| 0 | `00-rps-tournament` | Rock Paper Scissors Tournament | loops, conditionals, score state | The Pattern Warden |
-| 1 | `01-blackjack` | **Blackjack — ACTIVE** | lists, functions, game state | **The House** |
-| 2 | `02-detective-game` | Guess Who / Detective Game | dictionaries, filtering, branching | The False Alibi |
-| 3 | `03-pokemon-battle` | Creature Battle Simulator | nested lists/dictionaries, turn logic | The Arena Champion |
-| 4 | `04-casino-slots` | Casino / Slots | random, probability, economy state | Lady Luck |
-| 5 | `05-dungeon-crawler` | Dungeon Crawler + RPG Shop | inventory, encounters, connected systems | The Dungeon Core |
-| 6 | `06-gladiator-arena` | Turn-based Gladiator Game | combat systems, reusable functions | The Unbound |
-| 7 | `07-football-manager` | Mini Football Manager | larger datasets and simulation | The Invincibles |
+| 1 | `01-blackjack` | Blackjack | lists, functions, game state | The House |
+| 2 | `04-casino-slots` | The Silver Reels (`silver_reels/`) | random, probability, modules, tests, README | Ekse Ouens P Diddy |
+| 3 | `05-dungeon-crawler` | The Deep Crawler (`deep_crawler/`) | packages, classes, files/JSON, connected systems | Die Tozza van Zamalek |
+
+Next up: a Django campaign (The Guild Hall), then the backend projects (The Courier, The Vault) and the AI projects. The retired campaigns (RPS, Detective, Creature Battle, Gladiator, Football Manager, Game Agent, AI Familiar) are kept in `ide/server/campaigns_archive/` and no longer load.
 
 For now I am deliberately sharpening:
 

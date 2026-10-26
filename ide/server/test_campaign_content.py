@@ -21,12 +21,15 @@ IDENTIFIER = re.compile(r"^[a-z0-9][a-z0-9_]*$")
 
 
 def use_real_content() -> None:
+    state.CAMPAIGN_BOUNTIES_PATH = None
     state.CAMPAIGN_CONTENT_DIR = CONTENT_DIR
     state._CAMPAIGN_CACHE.update(key=None, data={})
 
 
 def state_module_base() -> Path:
-    return state.CAMPAIGN_BOUNTIES_PATH
+    from ide.server.conftest import LEGACY_BOARDS
+
+    return LEGACY_BOARDS
 
 
 def story_files() -> list[dict]:
@@ -129,16 +132,17 @@ class CampaignContentSchemaTests(unittest.TestCase):
 
     def test_fights_vary_in_length_and_mix(self):
         files = story_files()
-        tiers = [mob.get("tier") for entry in files for mob in entry["mobs"]]
-        for tier in ("light", "quick", "elite"):
-            self.assertGreaterEqual(tiers.count(tier), 4, tier)
+        for entry in files:
+            if "project_dir" in entry:  # a full-length campaign mixes every kind of fight
+                with self.subTest(branch=entry["branch"]):
+                    self.assertEqual({"light", "quick", "elite"} - {mob.get("tier") for mob in entry["mobs"]}, set())
+        files.sort(key=lambda entry: entry["order"])
         gauntlets = [tuple(entry["boss_gauntlet"]) for entry in files]
         code_phases = {"required_behavior", "edge_cases", "twist_2", "twist_3", "twist_4"}
-        shapes = {(len(g), sum(phase in code_phases for phase in g)) for g in gauntlets}
-        self.assertGreaterEqual(len(shapes), 5, shapes)
-        first, last = gauntlets[0], gauntlets[-1]
-        self.assertEqual(sum(phase in code_phases for phase in first), 1)  # the first boss is light on code
-        self.assertEqual((len(last), sum(phase in code_phases for phase in last)), (6, 5))  # the last is five coding phases and an interview
+        shapes = [(len(g), sum(phase in code_phases for phase in g)) for g in gauntlets]
+        self.assertEqual(len(set(shapes)), len(shapes), shapes)  # every boss fights differently
+        self.assertEqual(shapes, sorted(shapes))  # and each campaign's boss asks for more than the last
+        self.assertEqual(shapes[-1][1], 5)  # the final boss is five coding phases
         for entry in files:
             with self.subTest(branch=entry["branch"]):
                 self.assertEqual(entry["boss_gauntlet"][0], "required_behavior")
@@ -271,7 +275,7 @@ class CampaignExtensionTests(unittest.TestCase):
         self.assertTrue(all(set(mob) <= {"name", "concept", "encounter", "status", "resolve"} for mob in project["mobs"]))
         self.assertFalse(self.service.apply_internal("campaign_extend", {})["changed"])  # idempotent
         finished = next(item for item in self.read()["projects"] if item["branch"] == "00-rps-tournament")
-        self.assertEqual({mob["status"] for mob in finished["mobs"]}, {"defeated"})  # a finished board shows cleared
+        self.assertEqual(finished["mobs"], [])  # a finished retired campaign is kept exactly as it was
 
     def test_an_authored_contract_falls_on_its_last_objective(self):
         self.service.apply_internal("campaign_extend", {})
@@ -299,32 +303,59 @@ class CampaignExtensionTests(unittest.TestCase):
         self.assertEqual(len(trickster["objectives"]), 3)
         self.assertEqual(len(self.blackjack()["mobs"]), 8)  # a read never writes the save
 
-    def test_new_agent_projects_join_the_campaign_and_open_with_their_boards(self):
+    def test_only_the_current_campaigns_remain_and_played_retired_ones_are_kept(self):
+        state_now = self.read()
+        legacy = json.loads(state_module_base().read_text(encoding="utf-8"))
+
+        def board(branch, cleared=0):
+            return [{"name": mob["name"], "concept": mob["concept"], "encounter": mob["encounter"], "status": "defeated" if index < cleared else "locked"} for index, mob in enumerate(legacy[branch]["mobs"])]
+
+        state_now["projects"] += [
+            {"branch": "02-detective-game", "name": "Guess Who / Detective Game", "status": "available", "boss": "The False Alibi", "order": 2, "progress": 0, "mobs": board("02-detective-game")},
+            {"branch": "03-pokemon-battle", "name": "Pokemon-Style Battle", "status": "available", "boss": "The Champion", "order": 3, "progress": 0, "mobs": board("03-pokemon-battle", cleared=1)},
+            {"branch": "09-ai-agent", "name": "The Familiar", "status": "available", "boss": "The Rogue Familiar", "order": 9, "progress": 0, "mobs": []},
+        ]
+        self.path.write_text(json.dumps(state_now), encoding="utf-8")
         self.service.apply_internal("campaign_extend", {})
-        branches = {project["branch"]: project for project in self.read()["projects"]}
-        self.assertEqual(branches["08-game-agent"]["status"], "available")
-        self.assertEqual(branches["09-ai-agent"]["name"], "The Familiar")
-        self.assertTrue(set(branches["09-ai-agent"]) <= {"branch", "name", "status", "boss", "order", "progress", "mobs", "entry_file"})  # entry_file is never synced
-        selected = self.service.apply("select_campaign", {"branch": "09-ai-agent"}, "player")["result"]["project"]
-        self.assertEqual(selected["entry_file"], "agent.py")
-        project = next(item for item in self.read()["projects"] if item["branch"] == "09-ai-agent")
-        self.assertEqual(len(project["mobs"]), 16)
-        self.assertEqual(project["mobs"][0]["status"], "available")
+        projects = self.read()["projects"]
+        # Untouched retired campaigns leave; anything played or finished stays.
+        self.assertEqual([item["branch"] for item in projects], ["00-rps-tournament", "01-blackjack", "03-pokemon-battle", "04-casino-slots", "05-dungeon-crawler"])
+        self.assertEqual([mob["status"] for mob in projects[2]["mobs"]][:2], ["defeated", "locked"])
+        current = {item["branch"]: item for item in projects if item["branch"] not in state.RETIRED_CAMPAIGNS}
+        self.assertEqual({branch: item["order"] for branch, item in current.items()}, {"01-blackjack": 1, "04-casino-slots": 2, "05-dungeon-crawler": 3})
+        self.assertTrue(set(current["05-dungeon-crawler"]) <= {"branch", "name", "status", "boss", "order", "progress", "mobs", "entry_file", "multi_file"})
+        once = self.read()
+        self.assertFalse(self.service.apply_internal("campaign_extend", {})["changed"])  # idempotent
+        self.assertEqual(self.read()["projects"], once["projects"])
+        selected = self.service.apply("select_campaign", {"branch": "05-dungeon-crawler"}, "player")["result"]["project"]
+        self.assertEqual(selected["entry_file"], "deep_crawler/play.py")
+        crawler = next(item for item in self.read()["projects"] if item["branch"] == "05-dungeon-crawler")
+        self.assertEqual(len(crawler["mobs"]), 20)
+        self.assertEqual(crawler["mobs"][0]["status"], "available")
         encounter = self.service.encounter_projection(self.read())
-        self.assertEqual(encounter["mob_name"], "The Silent Familiar")
-        self.assertEqual([item["id"] for item in encounter["available_objectives"]], ["chat_loop", "quit_words", "empty_input"])
+        self.assertEqual(encounter["mob_name"], "The Hollow Adventurer")
+        self.assertEqual([item["id"] for item in encounter["available_objectives"]], ["package_shape", "package_vs_module", "import_path"])
         # Blackjack keeps its board while another project is played.
         self.assertEqual(len(next(item for item in self.read()["projects"] if item["branch"] == "01-blackjack")["mobs"]), 19)
 
+    def test_a_finished_board_that_synced_empty_shows_cleared(self):
+        state_now = self.read()
+        state_now["projects"].append({"branch": "05-dungeon-crawler", "name": "The Deep Crawler", "status": "completed", "completed": True, "boss": "Die Tozza van Zamalek", "order": 3, "progress": 100, "mobs": []})
+        self.path.write_text(json.dumps(state_now), encoding="utf-8")
+        self.service.apply_internal("campaign_extend", {})
+        crawler = next(item for item in self.read()["projects"] if item["branch"] == "05-dungeon-crawler")
+        self.assertEqual(len(crawler["mobs"]), 20)
+        self.assertEqual({mob["status"] for mob in crawler["mobs"]}, {"defeated"})
+
     def test_an_untouched_project_opens_with_its_whole_story_board(self):
         state_now = self.read()
-        state_now["projects"].append({"branch": "02-detective-game", "name": "Guess Who / Detective Game", "status": "available", "boss": "The False Alibi", "order": 2, "progress": 0, "mobs": []})
+        state_now["projects"].append({"branch": "05-dungeon-crawler", "name": "The Deep Crawler", "status": "available", "boss": "Die Tozza van Zamalek", "order": 3, "progress": 0, "mobs": []})
         self.path.write_text(json.dumps(state_now), encoding="utf-8")
-        self.service.apply("select_campaign", {"branch": "02-detective-game"}, "player")
-        detective = next(item for item in self.read()["projects"] if item["branch"] == "02-detective-game")
-        self.assertEqual(len(detective["mobs"]), 14)
-        self.assertEqual(detective["entry_file"], "detective.py")
-        self.assertEqual([mob["status"] for mob in detective["mobs"]][:2], ["available", "locked"])
+        self.service.apply("select_campaign", {"branch": "05-dungeon-crawler"}, "player")
+        crawler = next(item for item in self.read()["projects"] if item["branch"] == "05-dungeon-crawler")
+        self.assertEqual(len(crawler["mobs"]), 20)
+        self.assertEqual(crawler["entry_file"], "deep_crawler/play.py")
+        self.assertEqual([mob["status"] for mob in crawler["mobs"]][:2], ["available", "locked"])
 
     def test_the_synced_campaign_stays_small_and_a_pull_rebuilds_every_board(self):
         import copy
@@ -335,7 +366,8 @@ class CampaignExtensionTests(unittest.TestCase):
         content = load_campaign_bounties()
         for index, project in enumerate(progress["projects"]):
             # Worst realistic case: every campaign finished except one fully cleared board.
-            project["mobs"] = [{"name": mob["name"], "concept": mob["concept"], "encounter": mob["encounter"], "status": "defeated", "resolve": 0, "max_resolve": 9, "impact_applied": 9, "objective_attempts": 4} for mob in content[project["branch"]]["mobs"]]
+            authored = content.get(project["branch"], {}).get("mobs", [])  # a finished retired campaign has none
+            project["mobs"] = [{"name": mob["name"], "concept": mob["concept"], "encounter": mob["encounter"], "status": "defeated", "resolve": 0, "max_resolve": 9, "impact_applied": 9, "objective_attempts": 4} for mob in authored]
             finished = index != 1
             project.update({"completed": finished, "status": "completed" if finished else "active", "progress": 100})
         projection = LocalStateService._sync_projection(progress)

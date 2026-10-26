@@ -25,13 +25,21 @@ from pydantic import BaseModel, ConfigDict, Field
 
 MAX_EVENT_RECORDS = 100
 MAX_REASON_LENGTH = 240
-# Bounty boards for campaign projects, keyed by project branch. Seeded into a
-# project the first time a boss clear opens it (see _advance_campaign).
-CAMPAIGN_BOUNTIES_PATH = Path(__file__).with_name("campaign_bounties.json")
+# An optional base layer of bounty boards keyed by project branch, under the
+# story files. The shipped game has none; tests point it at the archived
+# legacy boards (campaigns_archive/legacy_bounties.json) as fixture content.
+CAMPAIGN_BOUNTIES_PATH: Path | None = None
 # One authored story file per project (ide/server/campaigns/<branch>.json):
 # its story, acts and contracts, each contract with its own objectives. A
-# file here replaces that project's entry in campaign_bounties.json.
+# file here replaces that project's entry in the base layer.
 CAMPAIGN_CONTENT_DIR = Path(__file__).with_name("campaigns")
+# Campaigns taken out of the game (their files are in campaigns_archive/).
+# An untouched save project on one of these is removed; one with any
+# progress is kept as it is.
+RETIRED_CAMPAIGNS = frozenset({
+    "00-rps-tournament", "02-detective-game", "03-pokemon-battle", "06-gladiator-arena",
+    "07-football-manager", "08-game-agent", "09-ai-agent",
+})
 CAMPAIGN_QUESTION_TYPES = frozenset({"code_checkpoint", "bug_diagnosis", "prediction", "explanation"})
 _CAMPAIGN_CACHE: dict[str, Any] = {"key": None, "data": {}}
 
@@ -52,7 +60,9 @@ def boss_gauntlet(project: Mapping[str, Any]) -> tuple[str, ...]:
 
 
 def load_campaign_bounties() -> dict[str, Any]:
-    paths = [CAMPAIGN_BOUNTIES_PATH, *(sorted(CAMPAIGN_CONTENT_DIR.glob("*.json")) if CAMPAIGN_CONTENT_DIR.is_dir() else [])]
+    base = CAMPAIGN_BOUNTIES_PATH
+    stories = sorted(CAMPAIGN_CONTENT_DIR.glob("*.json")) if CAMPAIGN_CONTENT_DIR.is_dir() else []
+    paths = [*([base] if base is not None else []), *stories]
     try:
         key = tuple((str(path), path.stat().st_mtime_ns) for path in paths if path.exists())
     except OSError:
@@ -60,11 +70,11 @@ def load_campaign_bounties() -> dict[str, Any]:
     if key is not None and key == _CAMPAIGN_CACHE["key"]:
         return _CAMPAIGN_CACHE["data"]
     try:
-        data = json.loads(CAMPAIGN_BOUNTIES_PATH.read_text(encoding="utf-8"))
+        data = json.loads(base.read_text(encoding="utf-8")) if base is not None else {}
     except (OSError, ValueError):
         data = {}
     data = dict(data) if isinstance(data, dict) else {}
-    for path in paths[1:]:
+    for path in stories:
         try:
             entry = json.loads(path.read_text(encoding="utf-8"))
         except (OSError, ValueError):
@@ -7171,6 +7181,10 @@ class LocalStateService:
             return False
         content = load_campaign_bounties()
         changed = False
+        kept = [item for item in projects if not self._retired_and_untouched(progress, item)]
+        if len(kept) != len(projects):
+            projects[:] = kept
+            changed = True
         known = {item.get("branch") for item in projects if isinstance(item, dict)}
         for branch, entry in sorted(content.items(), key=lambda pair: int(pair[1].get("order", 99)) if isinstance(pair[1], Mapping) and isinstance(pair[1].get("order"), int) else 99):
             if not isinstance(entry, Mapping) or not entry.get("catalog") or branch in known or len(projects) >= MAX_SYNC_PROJECTS:
@@ -7206,6 +7220,10 @@ class LocalStateService:
                     project["mobs"] = [{"name": item["name"], "concept": item["concept"], "encounter": item["encounter"], "status": "defeated", "resolve": 0} for item in authored]
                     changed = True
                 continue
+            if isinstance(entry.get("order"), int) and project.get("order") != entry["order"]:
+                # The campaign order is authored; the next boss clear follows it.
+                project["order"] = entry["order"]
+                changed = True
             if isinstance(entry.get("boss"), str) and entry["boss"] and project.get("boss") != entry["boss"]:
                 # The boss is authored content: an unfinished campaign follows a renamed boss.
                 project["boss"] = entry["boss"]
@@ -7267,6 +7285,21 @@ class LocalStateService:
             project["progress"] = round(cleared / max(1, len(mobs)) * 100)
             changed = True
         return changed
+
+    @staticmethod
+    def _retired_and_untouched(progress: Mapping[str, Any], project: object) -> bool:
+        """A retired campaign nobody has played: safe to drop from the save."""
+
+        if not isinstance(project, Mapping) or project.get("branch") not in RETIRED_CAMPAIGNS:
+            return False
+        if project.get("status") in {"active", "completed"} or project.get("completed") is True or project.get("boss_validation"):
+            return False
+        mobs = project.get("mobs")
+        names = {item.get("name") for item in mobs if isinstance(item, Mapping)} if isinstance(mobs, list) else set()
+        if any(isinstance(item, Mapping) and item.get("status") in {"defeated", "cleared"} for item in mobs or []):
+            return False
+        encounter = progress.get("encounter_state")
+        return not (isinstance(encounter, Mapping) and encounter.get("mob_name") in names)
 
     @staticmethod
     def _reseed_untouched_board(progress: Mapping[str, Any], project: dict[str, Any], authored: list[Mapping[str, Any]]) -> bool:

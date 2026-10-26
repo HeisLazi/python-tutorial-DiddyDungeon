@@ -56,7 +56,7 @@ class ArmoryContentTests(unittest.TestCase):
                         self.assertIn(effect["on"], ARMORY_ON_TYPES)
                     if item["slot"] in {"food", "tonic"}:
                         self.assertTrue(effect.get("heal") or effect.get("next_battle"), item["name"])
-        self.assertGreaterEqual(len(ids), 200)
+        self.assertGreaterEqual(len(ids), 20 * len(story_files()))
         self.assertTrue(legacy_names.isdisjoint(names - legacy_names))
 
 
@@ -139,11 +139,14 @@ class ArmoryBehaviourTests(unittest.TestCase):
         self.assertTrue(loot["id"] in armory["owned"] or armory["stack"].get(loot["id"]))
 
     def test_the_merchant_gates_lots_by_campaign_progress(self):
+        state = self.read()
+        next(item for item in state["projects"] if item["branch"] == "05-dungeon-crawler").update(status="completed", completed=True)
+        self.path.write_text(json.dumps(state), encoding="utf-8")
         market = self.service.armory_projection(self.read())["market"]
-        rps = [lot for lot in market if lot["campaign"] == "00-rps-tournament"]
-        self.assertTrue(rps)  # a finished campaign sells everything up to rare
-        familiar = [lot for lot in market if lot["campaign"] == "09-ai-agent"]
-        self.assertTrue(all(lot["locked"] == "Start this campaign" for lot in familiar))
+        crawler = [lot for lot in market if lot["campaign"] == "05-dungeon-crawler"]
+        self.assertTrue(crawler and all(lot["locked"] is None for lot in crawler))  # a finished campaign sells everything up to rare
+        casino = [lot for lot in market if lot["campaign"] == "04-casino-slots"]
+        self.assertTrue(casino and all(lot["locked"] == "Start this campaign" for lot in casino))
         blackjack_rare = next(lot for lot in market if lot["campaign"] == "01-blackjack" and lot["tier"] == "rare" and lot["slot"] == "weapon")
         self.assertEqual(blackjack_rare["locked"], "Clear half of its contracts")  # 8 of 19 is under half
         self.give(coins=500)
@@ -151,7 +154,7 @@ class ArmoryBehaviourTests(unittest.TestCase):
         self.assertEqual(bought["coins"], 460)
         self.assertIn("bj-card-edge-dagger", self.read()["hunter"]["armory"]["owned"])
         with self.assertRaises(Exception):
-            self.service.apply("armory_buy", {"item_id": "fam-quill-stylus"}, "player")
+            self.service.apply("armory_buy", {"item_id": "cas-coin-roll-club"}, "player")
 
     def test_armory_ownership_never_reaches_the_cloud(self):
         self.give("bj-the-house-cutter", "bj-the-high-roller-s-mail", "bj-counting-abacus", "bj-free-bar-peanuts", "bj-the-house-s-broken-shoe")

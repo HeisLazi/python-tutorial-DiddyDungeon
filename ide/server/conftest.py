@@ -2,12 +2,18 @@
 
 Most tests build small fixture boards; the authored contracts in
 ide/server/campaigns/ would extend them. Tests that cover the authored
-campaign set state.CAMPAIGN_CONTENT_DIR back to the real folder.
+campaign set state.CAMPAIGN_CONTENT_DIR back to the real folder (and drop
+the legacy base layer, as the shipped game does).
 """
+
+from pathlib import Path
 
 import pytest
 
 from ide.server import learnharness, state
+
+# The archived boards of the retired campaigns: small, stable fixture content.
+LEGACY_BOARDS = Path(state.__file__).parent / "campaigns_archive" / "legacy_bounties.json"
 
 
 @pytest.fixture(autouse=True)
@@ -23,6 +29,7 @@ def _no_real_learnharness(tmp_path, monkeypatch):
 
 @pytest.fixture(autouse=True)
 def _no_shipped_campaign_content(tmp_path, monkeypatch):
+    monkeypatch.setattr(state, "CAMPAIGN_BOUNTIES_PATH", LEGACY_BOARDS)
     monkeypatch.setattr(state, "CAMPAIGN_CONTENT_DIR", tmp_path / "no-campaigns")
     state._CAMPAIGN_CACHE.update(key=None, data={})
     yield
