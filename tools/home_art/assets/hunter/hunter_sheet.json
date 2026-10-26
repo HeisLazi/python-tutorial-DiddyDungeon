@@ -1,0 +1,13 @@
+{
+ "frame": [
+  56,
+  64
+ ],
+ "frames": 8,
+ "facings": {
+  "down": "front",
+  "left": "side",
+  "right": "side(mirrored)",
+  "up": "back"
+ }
+}
