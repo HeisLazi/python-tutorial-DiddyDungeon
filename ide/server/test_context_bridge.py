@@ -1044,6 +1044,35 @@ class PyrContextBridgeTests(unittest.TestCase):
             finally:
                 app_v2.WORKSPACE, app_v2.PROGRESS_PATH = original_workspace, original_progress
 
+    def test_the_explorer_creates_files_and_folders_but_never_overwrites(self):
+        original_workspace = app_v2.WORKSPACE
+        with tempfile.TemporaryDirectory() as directory:
+            workspace = Path(directory).resolve()
+            app_v2.WORKSPACE = workspace
+            try:
+                client = TestClient(app_v2.app, base_url="http://127.0.0.1")
+
+                def new(path, kind):
+                    return client.post("/api/workspace/new", headers={"host": "127.0.0.1"}, json={"path": path, "type": kind})
+
+                self.assertEqual(new("silver_reels", "dir").json()["path"], "silver_reels")
+                self.assertTrue((workspace / "silver_reels").is_dir())
+                self.assertEqual(new("silver_reels/tests/test_casino.py", "file").status_code, 200)  # parents are made too
+                self.assertEqual((workspace / "silver_reels/tests/test_casino.py").read_text(), "")
+                (workspace / "silver_reels/casino.py").write_text("bankroll = 100\n", encoding="utf-8")
+                taken = new("silver_reels/casino.py", "file")
+                self.assertEqual(taken.status_code, 409)
+                self.assertEqual((workspace / "silver_reels/casino.py").read_text(), "bankroll = 100\n")  # work is never wiped
+                self.assertEqual(new("silver_reels", "dir").status_code, 409)
+                self.assertEqual(new("silver_reels/casino.py/inner.py", "file").status_code, 409)  # a file is in the way
+                for bad in (".hidden", "silver_reels/.git", "node_modules", "../escape", "silver_reels/../../escape"):
+                    self.assertIn(new(bad, "dir").status_code, {403, 422}, bad)
+                self.assertGreaterEqual(new("progress.json", "file").status_code, 400)
+                self.assertFalse((workspace / "progress.json").exists())
+                self.assertEqual(new("x", "link").status_code, 422)
+            finally:
+                app_v2.WORKSPACE = original_workspace
+
     def test_boss_gate_mixes_code_and_click_goals_and_clears_from_saved_state(self):
         original_workspace = app_v2.WORKSPACE
         original_progress = app_v2.PROGRESS_PATH

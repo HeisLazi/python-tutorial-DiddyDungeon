@@ -2427,6 +2427,37 @@ def write_file(payload: FileWrite):
     return {"ok": True, "path": target.relative_to(WORKSPACE).as_posix(), "bytes": len(encoded)}
 
 
+class WorkspaceEntryCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    path: str = Field(min_length=1, max_length=240)
+    type: Literal["file", "dir"]
+
+
+@app.post("/api/workspace/new")
+def create_workspace_entry(payload: WorkspaceEntryCreate):
+    """Create an empty file or a folder from the Forge explorer. Never
+    overwrites: an existing name is refused, so New File cannot wipe work."""
+
+    parts = [part for part in payload.path.replace("\\", "/").split("/") if part]
+    if not parts or any(part in {".", ".."} or part.startswith(".") or part in IGNORED_DIRS for part in parts):
+        raise HTTPException(status_code=422, detail="Use plain names: no hidden (dot) or tool folders")
+    target = safe_path("/".join(parts))
+    reject_state_file_access(target)
+    relative = target.relative_to(WORKSPACE).as_posix()
+    if target.exists():
+        raise HTTPException(status_code=409, detail=f"{relative} already exists")
+    try:
+        if payload.type == "dir":
+            target.mkdir(parents=True)
+        else:
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.touch(exist_ok=False)
+    except OSError as exc:  # a file where a folder should be, or a race
+        raise HTTPException(status_code=409, detail=f"Could not create {relative}: a file is in the way") from exc
+    return {"ok": True, "path": relative, "type": payload.type}
+
+
 def _apply_state_or_http(action: str, payload: dict, actor: str, *, internal: bool = False) -> dict:
     try:
         return STATE_SERVICE.apply(action, payload, actor, internal=internal)

@@ -592,7 +592,6 @@ function AppV2() {
     if (activePath && activePath.toLowerCase().startsWith(`${dir}/`)) return
     void refreshFiles()
   }, [activeEntryFile])
-  if (prevLevelRef.current === null) prevLevelRef.current = player.level ?? 1
   const stats = progress.stats || {}
   const streak = progress.streak || {}
   const companion = progress.companion || {}
@@ -2235,6 +2234,20 @@ function AppV2() {
     }
   }
 
+  // Explorer New file / New folder. The server refuses an existing name, so
+  // this can never overwrite work; a new file opens in the editor.
+  const createWorkspaceEntry = async (path, type) => {
+    try {
+      await api('/api/workspace/new', { method: 'POST', body: JSON.stringify({ path, type }) })
+      await refreshFiles()
+      if (type === 'file') await openFile(path)
+      setNotice(`Created ${path}${type === 'dir' ? '/' : ''}`)
+      return { ok: true }
+    } catch (error) {
+      return { ok: false, error: error.message }
+    }
+  }
+
   const runCurrent = async () => {
     if (!activePath || editorMode === 'quest') return
     if (dirty && !(await saveFile())) return
@@ -2639,7 +2652,12 @@ function AppV2() {
   useEffect(() => {
     if (!campaignReady) return
     const currentLevel = player.level ?? 1
-    if (prevLevelRef.current !== undefined && currentLevel > prevLevelRef.current) {
+    // The first loaded save sets the baseline: opening the app is not a level up.
+    if (prevLevelRef.current === null) {
+      prevLevelRef.current = currentLevel
+      return
+    }
+    if (currentLevel > prevLevelRef.current) {
       setLevelUp(true)
       playSound(880, 0.12)
       setTimeout(() => playSound(1320, 0.15), 120)
@@ -2773,6 +2791,7 @@ function AppV2() {
             openFile={openFile}
             openQuestDocument={openQuestDocument}
             newFile={newFile}
+            onCreateEntry={createWorkspaceEntry}
             setActiveView={setActiveView}
             submitBattle={submitBattle}
             submitBoss={submitBoss}

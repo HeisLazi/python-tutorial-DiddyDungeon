@@ -202,6 +202,36 @@
 .forge-v2 .file-tree-disclosure { display: inline-grid; place-items: center; width: 13px; color: var(--gold); font-size: 12px; }
 .forge-v2 .file-tree-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
+/* Forge explorer: a normal editor file tree (chevrons, folder and file-type
+   icons, indent guides, inline New file / New folder) with room to show it. */
+.forge-v2 .explorer-tree { flex: 0 0 auto; min-height: 96px; max-height: 38vh; padding: 4px 0; border-bottom: 1px solid var(--line); }
+.forge-v2 .explorer-tree .file-row { gap: 4px; padding: 0 8px 0 6px; min-height: 24px; height: 24px; }
+.forge-v2 .explorer-tree .file-row.dir { color: var(--text, #e7e2d6); font-weight: 600; }
+.forge-v2 .explorer-tree .file-row.selected:not(.active) { background: color-mix(in srgb, var(--gold) 6%, var(--panel2)); }
+.forge-v2 .explorer-tree .file-row:focus-visible { outline: 1px solid var(--gold); outline-offset: -1px; }
+.forge-v2 .tree-guide { align-self: stretch; flex: 0 0 12px; margin-left: 3px; border-left: 1px solid color-mix(in srgb, var(--muted, #9da59a) 28%, transparent); }
+.forge-v2 .explorer-tree .file-row:hover .tree-guide { border-left-color: var(--line2, #6b6b6b); }
+.forge-v2 .explorer-tree .file-tree-disclosure { width: 14px; flex: 0 0 14px; }
+.forge-v2 .explorer-tree .file-tree-disclosure svg { width: 12px; height: 12px; fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; transition: transform .12s ease; }
+.forge-v2 .explorer-tree .file-tree-disclosure.open svg { transform: rotate(90deg); }
+.forge-v2 .explorer-icon { width: 15px; height: 15px; flex: 0 0 15px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linejoin: round; stroke-linecap: round; }
+.forge-v2 .explorer-tree .explorer-icon-folder,
+.forge-v2 .explorer-tree .explorer-icon-folder-open { color: var(--gold, #f5c542); }
+.forge-v2 .file-type-icon { position: relative; display: inline-grid; place-items: center; width: 15px; height: 15px; flex: 0 0 15px; color: var(--muted, #9da59a); }
+.forge-v2 .file-type-icon svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linejoin: round; }
+.forge-v2 .file-type-icon b { position: absolute; bottom: -1px; right: -3px; padding: 0 1px; font: 700 6px/1 ui-monospace, monospace; text-transform: uppercase; background: var(--panel, #14120f); color: currentColor; }
+.forge-v2 .file-type-py { color: #60a5fa; }
+.forge-v2 .file-type-md { color: #7dd3fc; }
+.forge-v2 .file-type-json { color: #facc15; }
+.forge-v2 .file-type-cfg { color: #a3a3a3; }
+.forge-v2 .file-type-txt { color: #d4d4d4; }
+.forge-v2 .file-type-web { color: #f472b6; }
+.forge-v2 .explorer-action { display: inline-grid; place-items: center; }
+.forge-v2 .explorer-action .explorer-icon { width: 14px; height: 14px; }
+.forge-v2 .explorer-tree .file-row.explorer-create { height: auto; min-height: 26px; flex-wrap: wrap; padding-top: 2px; padding-bottom: 2px; }
+.forge-v2 .explorer-create input { flex: 1 1 120px; min-width: 0; height: 20px; padding: 0 5px; border: 1px solid var(--gold, #f5c542); background: var(--panel3, #0e0d0b); color: var(--text, #e7e2d6); font: 12px ui-monospace, monospace; }
+.forge-v2 .explorer-create-error { flex-basis: 100%; padding: 2px 0 4px 20px; color: #fca5a5; font-size: 11px; white-space: normal; }
+
 @media (max-width: 720px) {
   .forge-v2 .surface-nav { justify-content: flex-start; }
   .forge-v2 .surface-nav-links { margin-inline: 0; }

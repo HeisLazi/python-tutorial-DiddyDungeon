@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { Fragment, useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import Editor from '@monaco-editor/react'
 import './homestead.css'
@@ -428,6 +428,39 @@ export function ActivityRail({ activeView, setActiveView, player, avatarDataUrl 
 const PLATFORM_TREE_ROOTS = new Set(['ide', 'tools', 'supabase', 'prototypes', 'questlab-state', 'questlab-files', 'node_modules'])
 const GAME_FILE_PATTERN = /\.(py|js|jsx|ts|tsx|html|css|sql|rs|go|java|c|cpp|h|rb|lua|txt)$/i
 
+function parentDirOf(path) {
+  const parts = String(path || '').split('/').filter(Boolean)
+  return parts.slice(0, -1).join('/')
+}
+
+// Explorer glyphs drawn in the shared SVG style (no emoji).
+function ExplorerIcon({ kind }) {
+  const paths = {
+    chevron: <path d="m9 6 6 6-6 6" />,
+    folder: <path d="M3 7.5V18a1 1 0 0 0 1 1h16a1 1 0 0 0 1-1V9a1 1 0 0 0-1-1h-8l-2-2.5H4a1 1 0 0 0-1 1Z" />,
+    'folder-open': <path d="M3 18V6.5a1 1 0 0 1 1-1h6l2 2.5h7a1 1 0 0 1 1 1V11M3 18l2.6-6.4a1 1 0 0 1 .9-.6H21l-3 7.4a1 1 0 0 1-.9.6H4a1 1 0 0 1-1-1Z" />,
+    'new-file': <><path d="M14 3H7a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V7Z" /><path d="M14 3v4h4M12 11v6M9 14h6" /></>,
+    'new-folder': <><path d="M3 7.5V18a1 1 0 0 0 1 1h16a1 1 0 0 0 1-1V9a1 1 0 0 0-1-1h-8l-2-2.5H4a1 1 0 0 0-1 1Z" /><path d="M12 11v6M9 14h6" /></>,
+    collapse: <><path d="M4 5h16v14H4Z" /><path d="M8 12h8" /></>,
+    expand: <><path d="M4 5h16v14H4Z" /><path d="M8 12h8M12 8v8" /></>,
+  }
+  return <svg className={`explorer-icon explorer-icon-${kind}`} viewBox="0 0 24 24" aria-hidden="true" focusable="false">{paths[kind]}</svg>
+}
+
+const FILE_TYPES = { py: 'py', md: 'md', json: 'json', toml: 'cfg', cfg: 'cfg', ini: 'cfg', txt: 'txt', csv: 'txt', html: 'web', css: 'web', js: 'web', jsx: 'web' }
+
+// A file's icon: a page with its type tag, coloured by type like an editor.
+function FileTypeIcon({ name }) {
+  const ext = String(name || '').split('.').pop().toLowerCase()
+  const type = FILE_TYPES[ext] || 'file'
+  return (
+    <span className={`file-type-icon file-type-${type}`} aria-hidden="true">
+      <svg viewBox="0 0 24 24" focusable="false"><path d="M14 3H7a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V7Z" /><path d="M14 3v4h4" /></svg>
+      {type !== 'file' && <b>{ext === 'toml' || ext === 'cfg' || ext === 'ini' ? ext.slice(0, 3) : ext.slice(0, 4)}</b>}
+    </span>
+  )
+}
+
 // The folder a campaign's entry file lives in ('' for a root-level file).
 export function projectDirOf(entryFile) {
   const parts = String(entryFile || '').replaceAll('\\', '/').split('/').filter(Boolean)
@@ -442,7 +475,7 @@ function isGameTreeItem(item) {
   return true
 }
 
-export function ContextPanel({ activeView, campaign, files = [], activePath, compact = false, onToggleCompact, editorMode = 'file', openFile, openQuestDocument, newFile, setActiveView, submitBattle, submitBoss, onAskBossQuestion, onAnswerBossOption, battleQuestions = {}, battleFeedback = null, onAskBattleQuestion, onAnswerBattleOption, onCheckSetup, busy }) {
+export function ContextPanel({ activeView, campaign, files = [], activePath, compact = false, onToggleCompact, editorMode = 'file', openFile, openQuestDocument, newFile, onCreateEntry, setActiveView, submitBattle, submitBoss, onAskBossQuestion, onAnswerBossOption, battleQuestions = {}, battleFeedback = null, onAskBattleQuestion, onAnswerBattleOption, onCheckSetup, busy }) {
   const progress = campaign?.progress || {}
   const player = progress.player || {}
   const activeProject = (progress.projects || []).find((project) => project.status === 'active')
@@ -533,12 +566,66 @@ export function ContextPanel({ activeView, campaign, files = [], activePath, com
     })
   }
 
+  const allDirsOpen = Boolean(openDirs && openDirs.size === directoryPaths.length && directoryPaths.length > 0)
   const toggleAllDirs = () => {
     setOpenDirs((current) => {
       const expanded = current || new Set()
       return expanded.size === directoryPaths.length && directoryPaths.length > 0 ? new Set() : new Set(directoryPaths)
     })
   }
+
+  // The project folder opens like the root of an editor's explorer.
+  useEffect(() => {
+    if (projectDir && directoryPaths.includes(projectDir)) setOpenDirs((current) => new Set([...(current || []), projectDir]))
+  }, [projectDir, directoryPaths.includes(projectDir)])
+
+  // Explorer: New file / New folder appear as a name box inside the chosen
+  // folder (the last folder clicked, else the open file's folder, else the
+  // project folder), like any code editor.
+  const [selectedDir, setSelectedDir] = useState('')
+  const [creating, setCreating] = useState(null)
+  const startCreate = (type) => {
+    const known = new Set(directoryPaths)
+    const parent = [selectedDir, parentDirOf(activePath), projectDir].find((path) => path && known.has(path)) || ''
+    const ancestors = parent.split('/').filter(Boolean).map((_, index, parts) => parts.slice(0, index + 1).join('/'))
+    setOpenDirs((current) => new Set([...(current || []), ...ancestors]))
+    setCreating({ type, parent, name: '', error: '', busy: false })
+  }
+  const submitCreate = async () => {
+    const name = String(creating?.name || '').trim().replace(/^\/+|\/+$/g, '')
+    if (!creating || !name) return setCreating(null)
+    const path = creating.parent ? `${creating.parent}/${name}` : name
+    setCreating((current) => current && { ...current, busy: true, error: '' })
+    const result = await onCreateEntry?.(path, creating.type)
+    if (result?.ok) {
+      if (creating.type === 'dir') setSelectedDir(path)
+      setCreating(null)
+    } else {
+      setCreating((current) => current && { ...current, busy: false, error: result?.error || 'Could not create it' })
+    }
+  }
+  const createRow = (depth) => (
+    <div className="file-row explorer-create" role="treeitem" aria-level={depth + 1} key="explorer-create">
+      {Array.from({ length: depth }, (_, index) => <span key={index} className="tree-guide" aria-hidden="true" />)}
+      <span className="file-tree-disclosure" aria-hidden="true" />
+      {creating.type === 'dir' ? <ExplorerIcon kind="folder" /> : <FileTypeIcon name={creating.name || 'new'} />}
+      <input
+        autoFocus
+        value={creating.name}
+        disabled={creating.busy}
+        aria-label={creating.type === 'dir' ? 'New folder name' : 'New file name'}
+        placeholder={creating.type === 'dir' ? 'folder name' : 'file name, e.g. reels.py'}
+        onChange={(event) => setCreating((current) => current && { ...current, name: event.target.value, error: '' })}
+        onKeyDown={(event) => {
+          event.stopPropagation()
+          if (event.key === 'Enter') { event.preventDefault(); void submitCreate() }
+          if (event.key === 'Escape') { event.preventDefault(); setCreating(null) }
+        }}
+        onBlur={() => { if (!creating.busy && !creating.name.trim()) setCreating(null) }}
+      />
+      {creating.error && <small className="explorer-create-error" role="alert">{creating.error}</small>}
+    </div>
+  )
 
   const collapsibleContext = activeView === 'tutor' || activeView === 'practice' || activeView === 'dungeon'
   if (compact && collapsibleContext) return <ContextCompactPanel activeView={activeView} onToggleCompact={onToggleCompact} />
@@ -571,15 +658,16 @@ export function ContextPanel({ activeView, campaign, files = [], activePath, com
     return (
       <>
         <div className="panel-title">
-          <span>{multiFileProject ? 'PROJECT FILES' : 'ACTIVE FILE'}</span>
+          <span>{multiFileProject ? 'EXPLORER' : 'ACTIVE FILE'}</span>
           <div className="panel-title-actions">
             {multiFileProject && <div className="file-tree-actions">
-              <button type="button" onClick={() => setShowFiles((current) => !current)} title={showFiles ? 'Hide project files' : 'Show project files'} aria-label={showFiles ? 'Hide project files' : 'Show project files'}>{showFiles ? 'Hide' : 'Files'}</button>
               {showFiles && <>
+                <button type="button" className="explorer-action" onClick={() => startCreate('file')} title="New file" aria-label="New file"><ExplorerIcon kind="new-file" /></button>
+                <button type="button" className="explorer-action" onClick={() => startCreate('dir')} title="New folder" aria-label="New folder"><ExplorerIcon kind="new-folder" /></button>
+                <button type="button" className="explorer-action" onClick={toggleAllDirs} title={allDirsOpen ? 'Collapse all folders' : 'Expand all folders'} aria-label={allDirsOpen ? 'Collapse all folders' : 'Expand all folders'}><ExplorerIcon kind={allDirsOpen ? 'collapse' : 'expand'} /></button>
                 <button type="button" onClick={toggleShowAllFiles} aria-pressed={showAllFiles} title={showAllFiles ? 'Showing every workspace file · switch to game files only' : 'Showing game files only · switch to every workspace file'}>{showAllFiles ? 'All' : 'Game'}</button>
-                <button type="button" onClick={toggleAllDirs} title={openDirs && openDirs.size === directoryPaths.length && directoryPaths.length > 0 ? 'Collapse all folders' : 'Expand all folders'} aria-label={openDirs && openDirs.size === directoryPaths.length && directoryPaths.length > 0 ? 'Collapse all folders' : 'Expand all folders'}>{openDirs && openDirs.size === directoryPaths.length && directoryPaths.length > 0 ? '−' : '+'}</button>
-                <button type="button" onClick={newFile} title="New file" aria-label="New file">＋</button>
               </>}
+              <button type="button" onClick={() => setShowFiles((current) => !current)} title={showFiles ? 'Hide project files' : 'Show project files'} aria-label={showFiles ? 'Hide project files' : 'Show project files'}>{showFiles ? 'Hide' : 'Files'}</button>
             </div>}
             <button type="button" onClick={() => setActiveView('tutor')} title="Open Tutor Notebook" aria-label="Open Tutor Notebook"><RouteIcon id="tutor" /></button>
             {onToggleCompact && <button className="sidebar-collapse-toggle" type="button" onClick={onToggleCompact} title="Compact Forge sidebar" aria-label="Compact Forge sidebar"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="m15 5-7 7 7 7" /><path d="M20 5v14" /></svg></button>}
@@ -587,21 +675,37 @@ export function ContextPanel({ activeView, campaign, files = [], activePath, com
         </div>
         <div className="workspace-label">{campaign?.workspace || 'loading workspace…'}</div>
         <ForgeDocumentTabs activePath={activePath} editorMode={editorMode} openFile={openFile} openQuestDocument={openQuestDocument} />
-        {multiFileProject && showFiles ? <div className="file-list" role="tree" aria-label="Workspace files">
-            {treeFiles.filter(isTreeItemVisible).map((item) => (
-              <button
-                key={item.path}
-                className={`file-row ${activePath === item.path ? 'active' : ''} ${item.type}`}
-                style={{ paddingLeft: `${10 + item.depth * 14}px` }}
-                onClick={() => item.type === 'dir' ? toggleDir(item.path) : openFile(item.path)}
-                role="treeitem"
-                aria-expanded={item.type === 'dir' ? (openDirs || new Set()).has(item.path) : undefined}
-                aria-level={item.depth + 1}
-              >
-                <span className="file-tree-disclosure" aria-hidden="true">{item.type === 'dir' ? ((openDirs || new Set()).has(item.path) ? '▾' : '▸') : '·'}</span>
-                <span className="file-tree-name">{item.name}</span>
-              </button>
-            ))}
+        {multiFileProject && showFiles ? <div className="file-list explorer-tree" role="tree" aria-label="Workspace files">
+            {creating && creating.parent === '' && createRow(0)}
+            {treeFiles.filter(isTreeItemVisible).map((item) => {
+              const open = item.type === 'dir' && (openDirs || new Set()).has(item.path)
+              return (
+                <Fragment key={item.path}>
+                  <button
+                    className={`file-row ${activePath === item.path ? 'active' : ''} ${item.type === 'dir' && selectedDir === item.path ? 'selected' : ''} ${item.type}`}
+                    onClick={() => {
+                      if (item.type === 'dir') {
+                        setSelectedDir(item.path)
+                        toggleDir(item.path)
+                      } else {
+                        setSelectedDir(parentDirOf(item.path))
+                        openFile(item.path)
+                      }
+                    }}
+                    title={item.path}
+                    role="treeitem"
+                    aria-expanded={item.type === 'dir' ? open : undefined}
+                    aria-level={item.depth + 1}
+                  >
+                    {Array.from({ length: item.depth }, (_, index) => <span key={index} className="tree-guide" aria-hidden="true" />)}
+                    <span className={`file-tree-disclosure ${open ? 'open' : ''}`} aria-hidden="true">{item.type === 'dir' ? <ExplorerIcon kind="chevron" /> : null}</span>
+                    {item.type === 'dir' ? <ExplorerIcon kind={open ? 'folder-open' : 'folder'} /> : <FileTypeIcon name={item.name} />}
+                    <span className="file-tree-name">{item.name}</span>
+                  </button>
+                  {creating && creating.parent === item.path && open && createRow(item.depth + 1)}
+                </Fragment>
+              )
+            })}
             {!files.length && <div className="empty-state">No workspace files available.</div>}
             {Boolean(files.length) && projectDir && !showAllFiles && !treeFiles.length && <div className="empty-state">
               <strong>{projectDir}/</strong> isn't on disk yet. Your first bounty walks you through making it in the terminal below.
