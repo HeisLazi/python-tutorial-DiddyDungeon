@@ -170,6 +170,38 @@ When a friend joins, their entry in `rivals.json` looks like:
 }
 ```
 
+## Where the game is now (2026-10-26)
+
+DiddyDungeon is a Tauri desktop app (FastAPI backend in `ide/server/`, React/Vite frontend in `ide/frontend/`) with a pixel-arcade look. It is a monster-hunter RPG for learning to be a complete programmer: bugs are beasts, concepts are signs.
+
+- **Campaigns** (see the table above): Blackjack, The Silver Reels, The Deep Crawler. Each has 18-22 bounties in four acts, a boss gauntlet, and a real project folder (`silver_reels/`, `deep_crawler/`). A bounty opens like real development: make the folder and file in the terminal, run it, press **Check**. The game verifies setup steps on disk (free, no PYR call); code is graded by PYR.
+- **Forge**: Monaco editor, terminal, an editor-style **explorer** (New file / New folder, delete to a recoverable trash, files made in the terminal appear on their own, game files only). Run `cd`s into the file's own folder first.
+- **PYR** (OpenCode) grades work and gives hints. Asking PYR in a fight costs that fight's rewards: 20% off XP and coins per ask (floor 40%), no loot from the 2nd ask.
+- **Aid**: one-time loot, not trinkets. PYR's Favour/Blessing = free asks; Ward Shield/Aegis of Patience = block a wrong answer's damage. Armed from the Armory's Aid tab; dropped by bounties and bosses, sold by the Merchant.
+- **Tutor Notebook**: Codex, Bestiary, Signs, sparring, IDE practice. It remembers where you were until you close the app.
+- **Settings → Player Stats**: a GitHub-style activity graph (lines of code, answers, mobs, floors, bosses) and lifetime records (mobs, bosses, Dungeon runs survived, highest floor, ...). Local only.
+- **LearnHarness bridge**: send a concept home to study, and see what you studied (read-only).
+- **Infinite Dungeon**: grid floors, camps, elites, floor bosses and a leaderboard.
+
+Next campaigns, in order: The Guild Hall (Django), then The Courier and The Vault (backend), Forge Your Own Model and The Oracle (AI). A VS Code companion extension is an open idea.
+
+## Roadmap: Home overhaul (next)
+
+Home ("the Homestead": rest, loadout, upgrades, Market, Bounty Office) works but is a menu with a picture. The goal is a place that is fun to be in and play around in, and that makes you want to open the app.
+
+Ideas to settle together before building:
+
+1. **A real 2D room/town you walk around**, not a list of cards: stations (Armory, Hearth, Pantry, Study desk, Pyr's perch, Market stall, Bounty board) you move to and use. A Godot 4 scene exported to the web (HTML5) and embedded in the app, or a canvas/Pixi scene in React fed by the same state. Decide which; Godot is better for animation, a React canvas is lighter and easier to wire to the save.
+2. **Art pipeline with the installed tools** (all present on this machine via flatpak shims in `~/.local/bin`): Blender renders low-poly characters and props to pixel-art spritesheets (turntables/idle/walk); Tiled builds the room map; LibreSprite/Pixelorama for hand-cleaning pixels; Material Maker for floor/wall textures; Godot for scenes, animation and tilemaps. The `gamedev` MCP tools (`blender_render_turnaround`, `spritesheet_tool`, `tiled_map_tool`, `godot_scaffold_2d`) automate the repetitive parts.
+3. **Living character**: the paper-doll avatar (skin, hair, outfit, gear) rendered as a walking sprite that shows equipped weapon/armour; Pyr the companion follows and reacts (hints, level-ups, streaks).
+4. **Things to do at home**: cook/eat (food and tonics), train at the dummy (sparring), study desk (LearnHarness, Tutor), trophy wall (achievements, boss relics, the activity graph on the wall), a notice board with the next bounty.
+5. **Day/night and streaks**: the room reflects your streak and time of day; a lit hearth when you coded today.
+6. **Keep it fast**: one heavy process at a time on this 14 GB machine; assets are static PNG spritesheets, no runtime 3D.
+
+Open questions: Godot-embedded vs React canvas; art style (chunky 16-bit vs smooth 32-bit); first slice (one room with 3 working stations?); how much of the avatar customisation moves into the room.
+
+Asset and tool notes live in `docs/` when the work starts.
+
 ## Play it
 
 Quest Lab is a desktop app with a retro pixel arcade look: open **Diddy
