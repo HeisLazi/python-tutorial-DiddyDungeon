@@ -1143,6 +1143,25 @@ class PyrContextBridgeTests(unittest.TestCase):
             finally:
                 app_v2.PROGRESS_PATH, app_v2._ai_call = original_progress, original_call
 
+    def test_the_tree_hides_platform_names_only_at_the_workspace_root(self):
+        original_workspace = app_v2.WORKSPACE
+        with tempfile.TemporaryDirectory() as directory:
+            workspace = Path(directory).resolve()
+            (workspace / "notes").mkdir()
+            (workspace / "tutor.py").write_text("", encoding="utf-8")
+            (workspace / "silver_reels" / "notes").mkdir(parents=True)
+            (workspace / "silver_reels" / "notes" / "ideas.md").write_text("", encoding="utf-8")
+            (workspace / "silver_reels" / "notes.md").write_text("", encoding="utf-8")
+            (workspace / "silver_reels" / "tutor.py").write_text("", encoding="utf-8")
+            app_v2.WORKSPACE = workspace
+            try:
+                paths = {item["path"] for item in app_v2.build_tree()}
+            finally:
+                app_v2.WORKSPACE = original_workspace
+        self.assertNotIn("notes", paths)  # the concept-notes folder at the root
+        self.assertNotIn("tutor.py", paths)
+        self.assertLessEqual({"silver_reels/notes", "silver_reels/notes/ideas.md", "silver_reels/notes.md", "silver_reels/tutor.py"}, paths)
+
     def test_boss_gate_mixes_code_and_click_goals_and_clears_from_saved_state(self):
         original_workspace = app_v2.WORKSPACE
         original_progress = app_v2.PROGRESS_PATH

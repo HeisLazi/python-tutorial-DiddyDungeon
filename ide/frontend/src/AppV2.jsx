@@ -1221,6 +1221,38 @@ function AppV2() {
     }
   }
 
+  // Files made in the terminal (touch notes.md, mkdir tests) show up on
+  // their own: while the Forge is open the tree is re-read every few
+  // seconds and when the window regains focus. It only replaces the list
+  // when something changed and never switches the open file.
+  const filesSignatureRef = useRef('')
+  filesSignatureRef.current = files.map((item) => `${item.type}:${item.path}`).join('|')
+  useEffect(() => {
+    if (activeView !== 'forge') return undefined
+    let stopped = false
+    const poll = async () => {
+      if (stopped || document.visibilityState !== 'visible') return
+      try {
+        const result = await api('/api/tree')
+        const nextFiles = (result.items || []).filter((item) => {
+          const path = String(item?.path || '')
+          return path && !path.startsWith('\\') && !path.includes('\0')
+        })
+        const signature = nextFiles.map((item) => `${item.type}:${item.path}`).join('|')
+        if (!stopped && signature !== filesSignatureRef.current) setFiles(nextFiles)
+      } catch {
+        // The next tick tries again; a failed poll is never shown.
+      }
+    }
+    const timer = window.setInterval(poll, 2500)
+    window.addEventListener('focus', poll)
+    return () => {
+      stopped = true
+      window.clearInterval(timer)
+      window.removeEventListener('focus', poll)
+    }
+  }, [activeView])
+
   const refreshFiles = async () => {
     try {
       const result = await api('/api/tree')

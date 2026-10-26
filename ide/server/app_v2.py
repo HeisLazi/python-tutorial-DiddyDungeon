@@ -808,13 +808,11 @@ def build_tree() -> list[dict]:
             # learner should open or mistake for the canonical state save.
             # Keep it out of the tree as well as rejecting direct file access.
             # This prevents a stray edit from looking like a second live save.
-            if child.name in IGNORED_DIRS or child.name in {
-                "progress.json",
-                DUNGEON_PATH.name,
-                f"{DUNGEON_PATH.name}.tmp",
-                TUTOR_PATH.name,
-                NOTES_DIR_NAME,
-            } or child.name.startswith(".DS_Store"):
+            if child.name in IGNORED_DIRS or child.name == "progress.json" or child.name.startswith(".DS_Store"):
+                continue
+            # The platform's own files sit at the workspace root; the same
+            # names inside a project (silver_reels/notes/) are the learner's.
+            if depth == 0 and child.name in {DUNGEON_PATH.name, f"{DUNGEON_PATH.name}.tmp", TUTOR_PATH.name, NOTES_DIR_NAME}:
                 continue
             # Do not follow symlinks while projecting the workspace. A linked
             # directory can escape the checkout and flood the tree with host
