@@ -227,13 +227,45 @@ crouch, jump, dash and slash frames to build attacks from. Generate them the sam
   passives, boss relics), Pyr's perch (Pyr's stages and abilities).
 - **Ember upgrade tracks** per station with the economy target below; pre-run **loadout** pick
   (relic + Aid + boon); day/night and a hearth that dies without activity (`fire_lit` exists).
-- **Redesign (owner request): make Home more compact and the interior cooler and less bland.** Split the one
-  big hall into several smaller one-screen rooms joined by doors (great hall, library/study, armory and
-  training, pantry, trophy gallery, map room) with richer furniture; probably rescale the furniture so the
-  40 px hunter sits well (or use a 320x180 view). The HP and Embers text was removed from the room so it is
-  just the map.
-- **Pyr evolves** into a mythical beast (a Taurus-like flame bull or an original creature) as the player
-  progresses; draw each stage with the same image-model sheet process, then add it to `perch`.
+- **Redesign (owner request, plan agreed in chat): compact Home, seven one-screen rooms.** View 320x180
+  (20x11 tiles; the 40 px hunter is too big for 240x160), doors that fade-cut between rooms, Pyr follows.
+  Locked rooms start boarded up and cost Embers to open (Great Hall, Library and Hall of Arms open from the
+  start). The bridge and stations are unchanged. Draw order: Great Hall, Library, Hall of Arms, then Pantry,
+  Trophy Gallery, War Room, Pyr's Den. Design each room as a concept image first (image model), then build tiles
+  to match; do not draw furniture blind.
+
+  Layout:
+  ```
+                   [Trophy Gallery]
+                          |
+  [Library] --- [GREAT HALL] --- [Hall of Arms]
+                          |             |
+     [Pantry] ---- [door: Forge]    [War Room]
+                          |
+                    [Pyr's Den]
+  ```
+
+  Every room is designed **from base (tier 0) to max (tier 3)**; each tier is a visible change, not just a pip:
+
+  | Room (station) | Base | Tier 1 | Tier 2 | Max |
+  |---|---|---|---|---|
+  | **Great Hall** (hearth) | bare stone, a small fire, one torch, cold draughts | carpet runner, two sconces, banners | chandelier, stained glass, a warm hearth glow | grand hall: tall arches, gold-trimmed carpet, a roaring blue-gold hearth, moonbeams, floating embers |
+  | **Library** (study desk) | a desk, one shelf, a stub candle | full shelves, a lectern, a reading lamp | rolling ladder, globe, rugs, a second floor of books | tower library: glowing tomes, floating pages, a skylight, a brass orrery |
+  | **Hall of Arms** (armory, training) | a bare rack, one wooden dummy, a dirt ring | proper weapon wall, a stone ring, banners | trophy shields, spotlit weapons, iron dummies | a champion's hall: runed ring that glows, enchanted weapons floating on stands, battle standards |
+  | **Pantry** (meals) | a crate and a pot over a fire | shelves, hanging herbs, a barrel | a long table, a proper cauldron, stocked shelves | a feast kitchen: steaming pots, hanging meats and garlic, a roaring range |
+  | **Trophy Gallery** (trophy wall) | an empty case and bare plinths | cases with first relics, a window | spotlights, a carpet, more plinths | a museum of your runs: boss relics glowing, a mosaic floor, a gold-framed portrait of the hunter |
+  | **War Room** (map table) | a bare table, a rolled map | pinned maps, a lamp | a carved table with markers, a window onto the night | a living map: lit dungeon sites, wax seals, moving markers, a chandelier |
+  | **Pyr's Den** (feed Pyr) | a bare perch and a few twigs | a nest and a lamp | a rock aerie, a moonlit window | a mountain aerie: crag, clouds, sunrise glow, drifting embers (like the phoenix reference) |
+
+- **Pyr becomes a fire eagle (owner pick: the blue-and-gold phoenix eagle in
+  `tools/home_art/sheets/pyr_phoenix_reference.png`).** Colour identity: deep blue plumage, gold/ember edges,
+  a flame crest and a long ember tail. Four stages, each a new sprite set (idle, fly-follow, perch, feed):
+  1. **Ember chick**: the current flame with a tiny beak and eyes, hops.
+  2. **Fledgling**: small blue-gold wings, short tail, a flame crest tuft, flaps to follow.
+  3. **Firehawk**: full eagle, ember-edged wings, glowing eyes, glides beside the hunter.
+  4. **Phoenix eagle** (max): the reference: huge wings, a long flame tail, leaves a trail of embers; the Den
+     becomes its aerie. Stage is tied to Pyr's level and to Den tier; each stage can unlock a free-ask/aid.
+  Make each stage with the same image-model process (clean sheet, then a script), not hand-drawn.
 - Skins as unlockable cosmetics; a skin picker in Settings; weapon shown on the walking sprite.
 - A bigger hall built in Tiled; castle wings per campaign.
 
