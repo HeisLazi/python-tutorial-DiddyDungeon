@@ -3045,17 +3045,17 @@ function HomeRoom({ progress, armory, armoryActions, performHomesteadAction, onN
   const frameRef = useRef(null)
   const sectionRef = useRef(null)
   const readyRef = useRef(false)
-  // The room is 240x160 and Godot scales it by whole *device* pixels, so the
+  // The room is 320x180 and Godot scales it by whole *device* pixels, so the
   // frame is sized to the largest whole multiple that fits (any zoom level).
-  const [frameSize, setFrameSize] = useState({ width: 720, height: 480 })
+  const [frameSize, setFrameSize] = useState({ width: 960, height: 540 })
   useEffect(() => {
     const fit = () => {
       const ratio = window.devicePixelRatio || 1
       const room = sectionRef.current?.parentElement?.clientWidth || 960
       // Fit the width of the panel and the height of the window (the prompt bar is at the bottom).
-      const widest = Math.min(room - 12, 960, Math.max(320, window.innerHeight - 250) * 1.5)
-      const scale = Math.max(2, Math.floor((widest * ratio) / 240))
-      setFrameSize({ width: (240 * scale) / ratio, height: (160 * scale) / ratio })
+      const widest = Math.min(room - 12, 960, Math.max(320, window.innerHeight - 250) * (16 / 9))
+      const scale = Math.max(2, Math.floor((widest * ratio) / 320))
+      setFrameSize({ width: (320 * scale) / ratio, height: (180 * scale) / ratio })
     }
     fit()
     window.addEventListener('resize', fit)

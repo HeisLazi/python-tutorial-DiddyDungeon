@@ -4,7 +4,7 @@ shader_type canvas_item;
 // blurs the picture, so every game pixel stays crisp and square.
 
 uniform sampler2D screen_tex : hint_screen_texture, filter_nearest, repeat_disable;
-uniform vec2 game_res = vec2(240.0, 160.0);
+uniform vec2 game_res = vec2(320.0, 180.0);
 uniform float scanline : hint_range(0.0, 1.0) = 0.26;
 uniform float vignette : hint_range(0.0, 1.0) = 0.38;
 uniform float mask : hint_range(0.0, 0.3) = 0.06;

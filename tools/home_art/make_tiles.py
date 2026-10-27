@@ -13,12 +13,14 @@ Run with the system Python (it has Pillow):  python3 tools/home_art/make_tiles.p
 
 from __future__ import annotations
 
+import sys
 import json
 import random
 from pathlib import Path
 
 from PIL import Image
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 ROOT = Path(__file__).resolve().parents[2]
 OUT = ROOT / "ide" / "home-godot" / "art"
 
@@ -661,8 +663,10 @@ def build():
     pieces["armory"] = armory()
     pieces["shadow"] = shadow()
     pieces["moonbeam"] = moonbeam()
+    import hall_pieces
+    hall_pieces.add(pieces, Sprite, C, noise)
 
-    atlas_w = 320
+    atlas_w = 384
     x = y = row_h = 0
     placed, positions = {}, []
     for name, sprite in pieces.items():

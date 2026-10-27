@@ -1,13 +1,14 @@
 extends Node2D
-## DiddyDungeon Home: the walkable castle hall. This scene only draws and walks.
+## DiddyDungeon Home: a castle of small rooms you walk through. This scene only draws and walks.
 ## The app owns every rule: it sends the save's state in (window.diddyHomeReceive)
 ## and gets "use this station" events back (window.parent.postMessage).
-## See docs/HOME_AND_ART.md for the whole picture.
+## Rooms are built in code by rooms.gd from the tileset (art/tiles.png), lit with
+## pixel-banded 2D lights, one screen each (320x180). See docs/HOME_AND_ART.md.
 
 const T := 16
-const COLS := 28
-const ROWS := 16
-const WORLD := Vector2(COLS * T, ROWS * T)
+const COLS := 20
+const ROWS := 12
+const VIEW := Vector2(320, 180)
 const SPEED := 62.0
 const FEET := Vector2(8, 4)
 const FRAME := Vector2i(48, 46)   # one hunter frame (tools/home_art/from_sheets.py), feet on the bottom row
@@ -16,7 +17,7 @@ const TILES: Texture2D = preload("res://art/tiles.png")
 var FONT_FILE: FontFile = preload("res://art/PressStart2P.woff2")
 const CRT_SHADER: Shader = preload("res://shaders/crt.gdshader")
 
-# The hunter: one sheet per facing, 8 frames each. Right is the side sheet flipped.
+# The hunter: one sheet per facing, 8 walk frames then 4 idle frames. Right is the side sheet flipped.
 const SHEET_FRONT: Texture2D = preload("res://art/hunter_front.png")
 const SHEET_SIDE: Texture2D = preload("res://art/hunter_side.png")
 const SHEET_BACK: Texture2D = preload("res://art/hunter_back.png")
@@ -25,6 +26,11 @@ const WALK_FPS := 10.0
 const IDLE_FRAMES := 4
 const IDLE_FPS := 1.6
 
+# Which save tier drives which room (the app only sends the ones it has).
+const ROOM_TIER_KEY := {
+	"great_hall": "hearth", "library": "study", "armory": "armory", "pantry": "pantry",
+	"gallery": "trophy", "war_room": "map", "den": "perch",
+}
 
 # What the app can tell us (all optional; these are the defaults for a standalone run).
 var state := {
@@ -34,87 +40,149 @@ var state := {
 	"max_tiers": {"hearth": 3, "armory": 3, "map": 3},
 }
 
+var room_id := "great_hall"
+var cli_tier := -1                      # testing: force every room to this tier
 var blockers: Array[Rect2] = []
 var stations: Array[Dictionary] = []
+var doors: Array[Dictionary] = []       # {rect, to, spawn}: walk into the rect to change rooms
 var background := Node2D.new()
 var world := Node2D.new()
+var light_layer := Node2D.new()
 var pips := Node2D.new()
+var ambient := CanvasModulate.new()
+var room_nodes: Array[Node] = []        # things in `world` that belong to the room (freed on change)
+var animated: Array[Dictionary] = []    # {sprite, base, frames, phase}
+var lights: Array[Dictionary] = []      # {node, base, flicker}
+var hearth_sprite: Sprite2D
+var hearth_base := "fire"
 var hunter := Node2D.new()
 var body_sprite := Sprite2D.new()
 var pyr := Sprite2D.new()
-var hearth_sprite: Sprite2D
-var torches: Array[Sprite2D] = []
-var flames: Array[Dictionary] = []
-var camera := Camera2D.new()
+var pyr_light: PointLight2D
 var hud := CanvasLayer.new()
 var prompt_box := ColorRect.new()
 var prompt_label := Label.new()
 var toast_label := Label.new()
+var fade := ColorRect.new()
 var crt_rect := ColorRect.new()
+var light_tex: ImageTexture
 
-var pos := Vector2(224, 164)   # the hunter's feet, in float
-var facing := "down"
+var pos := Vector2(160, 150)   # the hunter's feet, in float
+var facing := "up"
 var anim_t := 0.0
 var clock := 0.0
-var pyr_pos := Vector2(210, 160)
+var pyr_pos := Vector2(142, 136)
 var near: Dictionary = {}
 var toast_time := 0.0
 var hint_time := 7.0
-var look := "alucard"   # skins come later; the app sends one name
+var changing := false
+var flicker_t := 0.0
+var lights_on := true
 # Keys are tracked from events (not polled) so even a very short tap moves the hunter a few pixels.
 var held := {}
 var tap_ttl := {}
 const MOVE_KEYS := [KEY_W, KEY_A, KEY_S, KEY_D, KEY_UP, KEY_DOWN, KEY_LEFT, KEY_RIGHT]
-# Testing only: `godot --path . -- --shot=/tmp/a.png --pos=224,90 --face=up --look=alucard` saves a frame and quits.
+# Testing only: `godot --path . -- --shot=/tmp/a.png --room=great_hall --tier=3 --pos=160,150 --face=up` saves a frame and quits.
 var shot_path := ""
 var shot_frames := 0
+var start_pos := Vector2.ZERO
 
 
 func _ready() -> void:
 	FONT_FILE.antialiasing = TextServer.FONT_ANTIALIASING_NONE
 	FONT_FILE.hinting = TextServer.HINTING_NONE
 	FONT_FILE.subpixel_positioning = TextServer.SUBPIXEL_POSITIONING_DISABLED
+	light_tex = _make_light_texture()
 	background.name = "Background"
 	world.name = "World"
 	world.y_sort_enabled = true
+	add_child(ambient)
 	add_child(background)
 	add_child(world)
+	light_layer.name = "Lights"
+	add_child(light_layer)
 	pips.name = "Pips"
 	pips.z_index = 20
 	pips.draw.connect(_draw_pips)
 	add_child(pips)
-	_build_room()
 	_build_hunter()
 	_build_hud()
-	camera.position_smoothing_enabled = false
-	camera.limit_left = 0
-	camera.limit_top = 0
-	camera.limit_right = int(WORLD.x)
-	camera.limit_bottom = int(WORLD.y)
-	hunter.add_child(camera)
-	camera.position = Vector2(0, -16)
-	camera.make_current()
 	_connect_app()
-	_apply_state()
 	for arg in OS.get_cmdline_user_args():
 		if arg.begins_with("--shot="):
 			shot_path = arg.trim_prefix("--shot=")
+		elif arg.begins_with("--room="):
+			room_id = arg.trim_prefix("--room=")
+		elif arg.begins_with("--tier="):
+			cli_tier = int(arg.trim_prefix("--tier="))
 		elif arg.begins_with("--pos="):
 			var xy := arg.trim_prefix("--pos=").split(",")
-			pos = Vector2(float(xy[0]), float(xy[1]))
+			start_pos = Vector2(float(xy[0]), float(xy[1]))
 		elif arg.begins_with("--face="):
 			facing = arg.trim_prefix("--face=")
-		elif arg.begins_with("--look="):
-			state["look"] = arg.trim_prefix("--look=")
-			_apply_state()
 		elif arg == "--unlit":
 			state["fire_lit"] = false
+		elif arg == "--nolights":
+			lights_on = false
 		elif arg == "--tiers":
 			state["tiers"] = {"hearth": 2, "armory": 1, "map": 3}
-			_apply_state()
+	go_room(room_id, start_pos if start_pos != Vector2.ZERO else Rooms.spawn_default(room_id), true)
+	_apply_state()
 
 
-# ── The room ────────────────────────────────────────────────────────────────
+# ── Rooms ───────────────────────────────────────────────────────────────────
+func room_tier(id: String) -> int:
+	if cli_tier >= 0:
+		return cli_tier
+	var key: String = ROOM_TIER_KEY.get(id, id)
+	return int((state["tiers"] as Dictionary).get(key, 0))
+
+
+func go_room(id: String, spawn: Vector2, instant := false) -> void:
+	if changing:
+		return
+	changing = true
+	if not instant:
+		var out := create_tween()
+		out.tween_property(fade, "color:a", 1.0, 0.12)
+		await out.finished
+	_clear_room()
+	room_id = id
+	Rooms.build(self, id, room_tier(id))
+	pos = spawn
+	pyr_pos = spawn + Vector2(-18, -14)
+	held.clear()
+	tap_ttl.clear()
+	anim_t = 0.0
+	_refresh_hunter()
+	_apply_state()
+	if not instant:
+		var back := create_tween()
+		back.tween_property(fade, "color:a", 0.0, 0.18)
+		await back.finished
+	changing = false
+
+
+func _clear_room() -> void:
+	for n in room_nodes:
+		if is_instance_valid(n):
+			n.queue_free()
+	room_nodes.clear()
+	for c in background.get_children():
+		c.queue_free()
+	for c in light_layer.get_children():
+		c.queue_free()
+	blockers.clear()
+	stations.clear()
+	doors.clear()
+	animated.clear()
+	lights.clear()
+	hearth_sprite = null
+	near = {}
+	pips.queue_redraw()
+
+
+# Helpers the room builders (rooms.gd) use.
 func _piece(parent: Node, piece: String, at: Vector2, from_feet := false) -> Sprite2D:
 	var r: Rect2 = TilesData.REGIONS[piece]
 	var s := Sprite2D.new()
@@ -135,96 +203,117 @@ func _set_piece(s: Sprite2D, piece: String) -> void:
 	s.region_rect = TilesData.REGIONS[piece]
 
 
-func _block(rect: Rect2) -> void:
+func tile(piece: String, x: int, y: int) -> Sprite2D:
+	return _piece(background, piece, Vector2(x * T, y * T))
+
+
+func bg(piece: String, at: Vector2, from_feet := false) -> Sprite2D:
+	return _piece(background, piece, at, from_feet)
+
+
+func obj(piece: String, feet: Vector2, block: Rect2 = Rect2()) -> Sprite2D:
+	var s := _piece(world, piece, feet, true)
+	room_nodes.append(s)
+	if block.size != Vector2.ZERO:
+		blockers.append(block)
+	return s
+
+
+func anim(piece: String, feet: Vector2, block: Rect2 = Rect2(), from_bg := false) -> Sprite2D:
+	## An object whose frames are `piece_0`, `piece_1` ...; toggled in _animate_room.
+	var s := _piece(background if from_bg else world, piece + "_0", feet, true)
+	if not from_bg:
+		room_nodes.append(s)
+	if block.size != Vector2.ZERO:
+		blockers.append(block)
+	animated.append({"sprite": s, "base": piece, "frames": 2, "phase": int(feet.x) % 2})
+	return s
+
+
+func block(rect: Rect2) -> void:
 	blockers.append(rect)
 
 
-func _station(id: String, label: String, area: Rect2, pip_at: Vector2) -> void:
+func station(id: String, label: String, area: Rect2, pip_at: Vector2) -> void:
 	stations.append({"id": id, "label": label, "area": area, "pip": pip_at})
 
 
-func _flame(parent: Node, base: String, at: Vector2, from_feet := false) -> Sprite2D:
-	var sprite := _piece(parent, base + "_0", at, from_feet)
-	flames.append({"sprite": sprite, "base": base})
-	return sprite
+func door(rect: Rect2, to: String, spawn: Vector2) -> void:
+	doors.append({"rect": rect, "to": to, "spawn": spawn})
 
 
-func _build_room() -> void:
-	# A castle hall: a stone wall with a plinth, a polished marble checker floor.
-	for y in ROWS:
-		for x in COLS:
-			var piece := "floor_%d" % ((x + y) % 2)
-			if y == 0 or y == ROWS - 1:
-				piece = "wall_top"
-			elif y == 1 or y == 2:
-				piece = "wall_face_%d" % (x % 2)
-			elif y == 3:
-				piece = "plinth"
-			_piece(background, piece, Vector2(x * T, y * T))
-	# The red carpet runs from the great door to the hearth.
-	for y in range(4, ROWS - 1):
-		_piece(background, "carpet", Vector2(208, y * T))
-	# Moonlight falls from the windows onto the marble.
-	for wx in [152, 280, 388]:
-		_piece(background, "moonbeam", Vector2(wx - 10, 64))
-	# The ring the hunter trains in.
-	_piece(background, "ring", Vector2(48, 176))
-	# On the wall: pillars, stained glass, banners, sconces and the wall stations.
-	for px in [0, WORLD.x - 16]:
-		_piece(background, "pillar", Vector2(px, 16))
-	for wx in [152, 280, 388]:
-		_piece(background, "window", Vector2(wx, 16))
-	for bx in [184, 248]:
-		_piece(background, "banner", Vector2(bx, 16))
-	for sx in [168, 300, 40, 410]:
-		torches.append(_piece(background, "sconce_0", Vector2(sx, 22)))
-	_piece(background, "bookshelf", Vector2(28, 48), true)
-	_piece(background, "bookshelf", Vector2(WORLD.x - 28, 48), true)
-	_piece(background, "trophy_case", Vector2(72, 52), true)
-	_piece(background, "armory", Vector2(120, 52), true)
-	hearth_sprite = _piece(background, "fire_0", Vector2(224, 54), true)
-	_piece(background, "pantry_shelf", Vector2(352, 52), true)
-	_piece(background, "door", Vector2(224, 254), true)
-	# The world's walls and edges.
-	_block(Rect2(0, 0, WORLD.x, 64))
-	_block(Rect2(0, WORLD.y - 16, WORLD.x, 16))
-	_block(Rect2(-16, 0, 24, WORLD.y))
-	_block(Rect2(WORLD.x - 8, 0, 24, WORLD.y))
-	# Things you can walk around, sorted by their feet.
-	_piece(world, "shadow", Vector2(370, 130), true)
-	_flame(world, "candle", Vector2(370, 132), true)
-	_block(Rect2(354, 118, 32, 14))
-	_piece(world, "shadow", Vector2(70, 130), true)
-	_flame(world, "desk", Vector2(70, 132), true)
-	_block(Rect2(54, 120, 32, 12))
-	_piece(world, "dummy", Vector2(80, 190), true)
-	_block(Rect2(74, 184, 12, 6))
-	_flame(world, "cauldron", Vector2(352, 96), true)
-	_block(Rect2(345, 90, 14, 6))
-	_piece(world, "perch", Vector2(392, 218), true)
-	_block(Rect2(386, 212, 12, 6))
-	for at in [Vector2(190, 100), Vector2(258, 100)]:
-		_flame(world, "candelabra", at, true)
-		_block(Rect2(at.x - 5, at.y - 5, 10, 5))
-	for at in [Vector2(198, 236), Vector2(250, 236)]:
-		_flame(world, "brazier", at, true)
-		_block(Rect2(at.x - 6, at.y - 6, 12, 6))
-	for at in [Vector2(24, 232), Vector2(WORLD.x - 24, 232)]:
-		_piece(world, "armor", at, true)
-		_block(Rect2(at.x - 7, at.y - 6, 14, 6))
-	for at in [Vector2(24, 84), Vector2(WORLD.x - 24, 84), Vector2(WORLD.x - 24, 150)]:
-		_piece(world, "urn" if at.y < 100 else "chest", at, true)
-		_block(Rect2(at.x - 6, at.y - 6, 12, 6))
-	# The stations you use. Each area is where the hunter stands to use it.
-	_station("trophy", "View your trophies", Rect2(52, 62, 40, 24), Vector2(72, 12))
-	_station("armory", "Open the Armory", Rect2(100, 62, 40, 24), Vector2(120, 16))
-	_station("hearth", "Rest at the Hearth", Rect2(204, 62, 40, 24), Vector2(224, 12))
-	_station("pantry", "Eat at the Pantry", Rect2(326, 62, 52, 30), Vector2(352, 14))
-	_station("study", "Study at the desk", Rect2(52, 134, 38, 22), Vector2(70, 100))
-	_station("map", "Plan a Dungeon run", Rect2(344, 134, 52, 24), Vector2(370, 100))
-	_station("training", "Train in the ring", Rect2(48, 192, 64, 34), Vector2(80, 152))
-	_station("perch", "Visit Pyr's perch", Rect2(366, 196, 52, 36), Vector2(392, 180))
-	_station("door", "Go to the Forge", Rect2(206, 216, 36, 24), Vector2(224, 206))
+func set_ambient(c: Color) -> void:
+	ambient.color = c if lights_on else Color.WHITE
+
+
+func add_light(at: Vector2, radius: float, color: Color, energy := 1.0, flicker := 0.0) -> PointLight2D:
+	var l := PointLight2D.new()
+	l.texture = light_tex
+	l.texture_scale = radius / 32.0
+	l.color = color
+	l.energy = energy
+	l.position = at.round()
+	l.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	l.enabled = lights_on
+	light_layer.add_child(l)
+	lights.append({"node": l, "base": energy, "flicker": flicker})
+	return l
+
+
+func add_embers(rect: Rect2, color: Color, amount := 10, rise := 14.0, life := 2.2) -> CPUParticles2D:
+	var p := CPUParticles2D.new()
+	p.position = rect.get_center()
+	p.emission_shape = CPUParticles2D.EMISSION_SHAPE_RECTANGLE
+	p.emission_rect_extents = rect.size / 2.0
+	p.amount = amount
+	p.lifetime = life
+	p.direction = Vector2(0, -1)
+	p.spread = 22.0
+	p.gravity = Vector2.ZERO
+	p.initial_velocity_min = rise * 0.5
+	p.initial_velocity_max = rise
+	p.scale_amount_min = 1.0
+	p.scale_amount_max = 1.0
+	p.color = color
+	var ramp := Gradient.new()
+	ramp.set_color(0, Color(color, 1.0))
+	ramp.set_color(1, Color(color, 0.0))
+	p.color_ramp = ramp
+	p.z_index = 6
+	world.add_child(p)
+	room_nodes.append(p)
+	return p
+
+
+func add_shaft(top_left: Vector2, width: float, height: float, slant: float, color: Color) -> Polygon2D:
+	## A slanted additive beam of light (window moonbeams), brightest at the top.
+	var poly := Polygon2D.new()
+	poly.polygon = PackedVector2Array([
+		top_left, top_left + Vector2(width, 0),
+		top_left + Vector2(width + slant, height), top_left + Vector2(slant, height)])
+	poly.vertex_colors = PackedColorArray([color, color, Color(color, 0.0), Color(color, 0.0)])
+	var mat := CanvasItemMaterial.new()
+	mat.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
+	mat.light_mode = CanvasItemMaterial.LIGHT_MODE_UNSHADED
+	poly.material = mat
+	poly.z_index = 4
+	world.add_child(poly)
+	room_nodes.append(poly)
+	return poly
+
+
+func _make_light_texture() -> ImageTexture:
+	## A radial light in hard bands (4 steps), so it reads as pixel art, not a soft glow.
+	var size := 64
+	var img := Image.create(size, size, false, Image.FORMAT_RGBA8)
+	for y in size:
+		for x in size:
+			var d := Vector2(x - 31.5, y - 31.5).length() / 32.0
+			var lvl := 0.0
+			if d < 1.0:
+				lvl = ceilf((1.0 - d) * 4.0) / 4.0
+			img.set_pixel(x, y, Color(lvl, lvl, lvl, 1.0))
+	return ImageTexture.create_from_image(img)
 
 
 # ── The hunter: one animated sprite ─────────────────────────────────────────
@@ -238,13 +327,21 @@ func _build_hunter() -> void:
 	body_sprite.offset = Vector2(-FRAME.x / 2.0, -FRAME.y + 1)
 	hunter.add_child(body_sprite)
 	world.add_child(hunter)
-	# Pyr, the little code-flame, follows along.
+	# Pyr, the little code-flame, follows along (and lights the way).
 	pyr.texture = TILES
 	pyr.region_enabled = true
 	pyr.region_rect = TilesData.REGIONS["pyr_0"]
 	pyr.centered = false
 	pyr.offset = Vector2(-8, -16)
 	world.add_child(pyr)
+	pyr_light = PointLight2D.new()
+	pyr_light.texture = light_tex
+	pyr_light.texture_scale = 26.0 / 32.0
+	pyr_light.color = Color("ff9a4a")
+	pyr_light.energy = 0.55
+	pyr_light.position = Vector2(0, -8)
+	pyr_light.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	pyr.add_child(pyr_light)
 	_refresh_hunter()
 
 
@@ -261,14 +358,14 @@ func _build_hud() -> void:
 	hud.layer = 10
 	add_child(hud)
 	prompt_box.color = Color(0.08, 0.06, 0.12, 0.92)
-	prompt_box.position = Vector2(8, 138)
-	prompt_box.size = Vector2(224, 18)
+	prompt_box.position = Vector2(8, 156)
+	prompt_box.size = Vector2(304, 18)
 	prompt_box.visible = false
 	hud.add_child(prompt_box)
 	var edge := ColorRect.new()
 	edge.color = Color("f5c542")
 	edge.position = Vector2(0, 0)
-	edge.size = Vector2(224, 1)
+	edge.size = Vector2(304, 1)
 	prompt_box.add_child(edge)
 	_style(prompt_label)
 	prompt_label.position = Vector2(6, 5)
@@ -276,10 +373,17 @@ func _build_hud() -> void:
 	_style(toast_label, 8, Color("ffd166"))
 	toast_label.position = Vector2(4, 3)
 	hud.add_child(toast_label)
+	var fade_layer := CanvasLayer.new()
+	fade_layer.layer = 50
+	add_child(fade_layer)
+	fade.color = Color(0, 0, 0, 0)
+	fade.size = VIEW
+	fade.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	fade_layer.add_child(fade)
 	var crt_layer := CanvasLayer.new()
 	crt_layer.layer = 100
 	add_child(crt_layer)
-	crt_rect.size = Vector2(240, 160)
+	crt_rect.size = VIEW
 	var mat := ShaderMaterial.new()
 	mat.shader = CRT_SHADER
 	crt_rect.material = mat
@@ -349,22 +453,24 @@ func _process(delta: float) -> void:
 			get_tree().quit()
 	for key in tap_ttl.keys():
 		tap_ttl[key] = maxf(0.0, float(tap_ttl[key]) - delta)
-	var dir := Vector2(
-		float(_down(KEY_D) or _down(KEY_RIGHT)) - float(_down(KEY_A) or _down(KEY_LEFT)),
-		float(_down(KEY_S) or _down(KEY_DOWN)) - float(_down(KEY_W) or _down(KEY_UP)))
-	if dir != Vector2.ZERO:
-		dir = dir.normalized()
-		if absf(dir.x) > absf(dir.y):
-			facing = "right" if dir.x > 0 else "left"
+	if not changing:
+		var dir := Vector2(
+			float(_down(KEY_D) or _down(KEY_RIGHT)) - float(_down(KEY_A) or _down(KEY_LEFT)),
+			float(_down(KEY_S) or _down(KEY_DOWN)) - float(_down(KEY_W) or _down(KEY_UP)))
+		if dir != Vector2.ZERO:
+			dir = dir.normalized()
+			if absf(dir.x) > absf(dir.y):
+				facing = "right" if dir.x > 0 else "left"
+			else:
+				facing = "down" if dir.y > 0 else "up"
+			anim_t += delta * WALK_FPS
+			_move(dir * SPEED * delta)
 		else:
-			facing = "down" if dir.y > 0 else "up"
-		anim_t += delta * WALK_FPS
-		_move(dir * SPEED * delta)
-	else:
-		anim_t = 0.0
+			anim_t = 0.0
+		_check_doors()
 	_refresh_hunter()
 	_follow_pyr(delta)
-	_animate_room()
+	_animate_room(delta)
 	_update_prompt(delta)
 
 
@@ -381,6 +487,14 @@ func _hits(feet: Vector2) -> bool:
 		if b.intersects(r):
 			return true
 	return false
+
+
+func _check_doors() -> void:
+	var feet := Rect2(pos.x - 2, pos.y - 2, 4, 2)
+	for d in doors:
+		if (d["rect"] as Rect2).intersects(feet):
+			go_room(str(d["to"]), d["spawn"])
+			return
 
 
 func _refresh_hunter() -> void:
@@ -411,13 +525,20 @@ func _follow_pyr(delta: float) -> void:
 	pyr.region_rect = TilesData.REGIONS[flame]
 
 
-func _animate_room() -> void:
+func _animate_room(delta: float) -> void:
 	var beat := int(clock * 4.0) % 2
-	for torch in torches:
-		_set_piece(torch, "sconce_%d" % beat)
-	for flame in flames:
-		_set_piece(flame["sprite"], "%s_%d" % [flame["base"], (beat + int(flame["sprite"].position.x) % 2) % 2])
-	_set_piece(hearth_sprite, ("fire_%d" % beat) if bool(state["fire_lit"]) else "fire_out")
+	for a in animated:
+		_set_piece(a["sprite"], "%s_%d" % [a["base"], (beat + int(a["phase"])) % int(a["frames"])])
+	if hearth_sprite != null:
+		_set_piece(hearth_sprite, ("%s_%d" % [hearth_base, beat]) if bool(state["fire_lit"]) else (hearth_base + "_out"))
+	flicker_t += delta
+	if flicker_t >= 0.09:
+		flicker_t = 0.0
+		for l in lights:
+			var f := float(l["flicker"])
+			if f > 0.0:
+				(l["node"] as PointLight2D).energy = float(l["base"]) * (1.0 + f * (randf() * 2.0 - 1.0))
+	pyr_light.energy = 0.5 + 0.12 * sin(clock * 9.0)
 
 
 func _update_prompt(delta: float) -> void:
@@ -458,7 +579,7 @@ func _input(event: InputEvent) -> void:
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and not event.echo and event.keycode in [KEY_E, KEY_SPACE, KEY_ENTER, KEY_Z]:
-		if not near.is_empty():
+		if not near.is_empty() and not changing:
 			use_station(str(near["id"]))
 
 
