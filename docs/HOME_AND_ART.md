@@ -284,7 +284,16 @@ Home is being rebuilt as **seven one-screen rooms** (plan in 8c). The engine and
                     [Pyr's Den]
   ```
 
-  Every room is designed **from base (tier 0) to max (tier 3)**; each tier is a visible change, not just a pip:
+  **Upgrades are a ladder of small steps, not four jumps.** Every room has ~12 levels (0 = neglected base, max = the
+  concept); each purchase adds or changes ONE visible thing, has a name and an Ember cost, and plays a flash plus a
+  "BUILT: <name>" toast. The Great Hall's ladder (the template) lives in `rooms.gd` `LADDERS` (cost total 344 Embers,
+  a proposal to tune against the ~2,100 total across seven rooms): Sweep the hall (8), Mend the benches (10), Light a
+  second torch (12), Rebuild the hearth (18), Hang crest banners (20), Lay the crimson runner (24), Reglaze the windows
+  (28), Lay a marble aisle (32), Floor the hall in marble (36), Hang the chandelier (44), Set the banquet (52), The grand
+  finish (60). Build a room as `_room(h, lv)` with `if lv >= N` thresholds, and ramp light and ambient with `lv`.
+  Test every step: `tools/home_art/shots.sh great_hall 0 1 2 ... 12`. The app can send `levels: {great_hall: n}`;
+  the older `tiers` (0..3 per station) still work and count as four levels each. The table below is the milestone view
+  (base, a few steps in, max), not the full ladder:
 
   | Room (station) | Base | Tier 1 | Tier 2 | Max |
   |---|---|---|---|---|

@@ -42,8 +42,9 @@ var state := {
 }
 
 var room_id := "great_hall"
-var built_tier := -1                    # the tier the current room was built at
-var cli_tier := -1                      # testing: force every room to this tier
+var built_level := -1                   # the level the current room was built at
+var cli_level := -1                     # testing: force every room to this level
+var flash := ColorRect.new()            # a quick glow when something is built
 var blockers: Array[Rect2] = []
 var stations: Array[Dictionary] = []
 var doors: Array[Dictionary] = []       # {rect, to, spawn}: walk into the rect to change rooms
@@ -84,7 +85,7 @@ var lights_on := true
 var held := {}
 var tap_ttl := {}
 const MOVE_KEYS := [KEY_W, KEY_A, KEY_S, KEY_D, KEY_UP, KEY_DOWN, KEY_LEFT, KEY_RIGHT]
-# Testing only: `godot --path . -- --shot=/tmp/a.png --room=great_hall --tier=3 --pos=160,150 --face=up` saves a frame and quits.
+# Testing only: `godot --path . -- --shot=/tmp/a.png --room=great_hall --level=12 --pos=160,150 --face=up` saves a frame and quits.
 var shot_path := ""
 var shot_frames := 0
 var start_pos := Vector2.ZERO
@@ -115,8 +116,10 @@ func _ready() -> void:
 			shot_path = arg.trim_prefix("--shot=")
 		elif arg.begins_with("--room="):
 			room_id = arg.trim_prefix("--room=")
+		elif arg.begins_with("--level="):
+			cli_level = int(arg.trim_prefix("--level="))
 		elif arg.begins_with("--tier="):
-			cli_tier = int(arg.trim_prefix("--tier="))
+			cli_level = int(arg.trim_prefix("--tier=")) * 4     # the old four tiers
 		elif arg.begins_with("--pos="):
 			var xy := arg.trim_prefix("--pos=").split(",")
 			start_pos = Vector2(float(xy[0]), float(xy[1]))
@@ -133,11 +136,16 @@ func _ready() -> void:
 
 
 # ── Rooms ───────────────────────────────────────────────────────────────────
-func room_tier(id: String) -> int:
-	if cli_tier >= 0:
-		return cli_tier
+func room_level(id: String) -> int:
+	## Upgrade level of a room, 0 .. Rooms.max_level(id). The app can send `levels: {room: n}`; the older
+	## `tiers` (0..3 per station) still work and count as four levels each.
+	if cli_level >= 0:
+		return mini(cli_level, Rooms.max_level(id))
+	var levels: Dictionary = state.get("levels", {})
+	if levels.has(id):
+		return mini(int(levels[id]), Rooms.max_level(id))
 	var key: String = ROOM_TIER_KEY.get(id, id)
-	return int((state["tiers"] as Dictionary).get(key, 0))
+	return mini(int((state["tiers"] as Dictionary).get(key, 0)) * 4, Rooms.max_level(id))
 
 
 func go_room(id: String, spawn: Vector2, instant := false) -> void:
@@ -150,8 +158,8 @@ func go_room(id: String, spawn: Vector2, instant := false) -> void:
 		await out.finished
 	_clear_room()
 	room_id = id
-	built_tier = room_tier(id)
-	Rooms.build(self, id, built_tier)
+	built_level = room_level(id)
+	Rooms.build(self, id, built_level)
 	pos = spawn
 	pyr_pos = spawn + Vector2(-18, -14)
 	held.clear()
@@ -164,6 +172,14 @@ func go_room(id: String, spawn: Vector2, instant := false) -> void:
 		back.tween_property(fade, "color:a", 0.0, 0.18)
 		await back.finished
 	changing = false
+
+
+func _celebrate(what: String) -> void:
+	## A quick warm flash and a toast when something new is built.
+	toast("BUILT: " + what)
+	flash.color = Color(1.0, 0.85, 0.5, 0.45)
+	var tw := create_tween()
+	tw.tween_property(flash, "color:a", 0.0, 0.5)
 
 
 func _clear_room() -> void:
@@ -443,6 +459,10 @@ func _build_hud() -> void:
 	fade.size = VIEW
 	fade.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	fade_layer.add_child(fade)
+	flash.color = Color(1.0, 0.85, 0.5, 0.0)
+	flash.size = VIEW
+	flash.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	fade_layer.add_child(flash)
 	var crt_layer := CanvasLayer.new()
 	crt_layer.layer = 100
 	add_child(crt_layer)
@@ -490,8 +510,11 @@ func _apply_state() -> void:
 		state["toast"] = ""
 	crt_rect.visible = bool(state["crt"])
 	pips.queue_redraw()
-	if not changing and built_tier >= 0 and room_tier(room_id) != built_tier:
-		go_room(room_id, pos, true)     # an upgrade was bought: rebuild this room at its new tier
+	if not changing and built_level >= 0 and room_level(room_id) != built_level:
+		var gained: bool = room_level(room_id) > built_level
+		go_room(room_id, pos, true)     # an upgrade was bought: rebuild this room at its new level
+		if gained:
+			_celebrate(Rooms.upgrade_name(room_id, built_level))
 
 
 func _draw_pips() -> void:
