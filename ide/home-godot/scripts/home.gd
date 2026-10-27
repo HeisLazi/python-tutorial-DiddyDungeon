@@ -22,6 +22,8 @@ const SHEET_SIDE: Texture2D = preload("res://art/hunter_side.png")
 const SHEET_BACK: Texture2D = preload("res://art/hunter_back.png")
 const WALK_FRAMES := 8
 const WALK_FPS := 10.0
+const IDLE_FRAMES := 4
+const IDLE_FPS := 1.6
 
 
 # What the app can tell us (all optional; these are the defaults for a standalone run).
@@ -45,7 +47,6 @@ var torches: Array[Sprite2D] = []
 var flames: Array[Dictionary] = []
 var camera := Camera2D.new()
 var hud := CanvasLayer.new()
-var hp_label := Label.new()
 var prompt_box := ColorRect.new()
 var prompt_label := Label.new()
 var toast_label := Label.new()
@@ -259,9 +260,6 @@ func _style(label: Label, size := 8, color := Color("f2efe6")) -> void:
 func _build_hud() -> void:
 	hud.layer = 10
 	add_child(hud)
-	_style(hp_label, 8, Color("f5c542"))
-	hp_label.position = Vector2(4, 3)
-	hud.add_child(hp_label)
 	prompt_box.color = Color(0.08, 0.06, 0.12, 0.92)
 	prompt_box.position = Vector2(8, 138)
 	prompt_box.size = Vector2(224, 18)
@@ -276,7 +274,7 @@ func _build_hud() -> void:
 	prompt_label.position = Vector2(6, 5)
 	prompt_box.add_child(prompt_label)
 	_style(toast_label, 8, Color("ffd166"))
-	toast_label.position = Vector2(4, 14)
+	toast_label.position = Vector2(4, 3)
 	hud.add_child(toast_label)
 	var crt_layer := CanvasLayer.new()
 	crt_layer.layer = 100
@@ -323,7 +321,6 @@ func _apply_state() -> void:
 	if said != "":
 		toast(said)
 		state["toast"] = ""
-	hp_label.text = "HP %d/%d   EMBERS %d" % [int(state["hp"]), int(state["max_hp"]), int(state["embers"])]
 	crt_rect.visible = bool(state["crt"])
 	pips.queue_redraw()
 
@@ -396,11 +393,11 @@ func _refresh_hunter() -> void:
 		_:
 			body_sprite.texture = SHEET_SIDE
 	body_sprite.flip_h = facing == "right"
-	var col := 0
+	var col: int
 	if anim_t > 0.0:
 		col = int(anim_t) % WALK_FRAMES
-	elif facing == "down":
-		col = int(clock * 3.0) % WALK_FRAMES     # the front sheet is an idle loop
+	else:
+		col = WALK_FRAMES + int(clock * IDLE_FPS) % IDLE_FRAMES   # breathing, after the walk frames
 	body_sprite.region_rect = Rect2(col * FRAME.x, 0, FRAME.x, FRAME.y)
 
 

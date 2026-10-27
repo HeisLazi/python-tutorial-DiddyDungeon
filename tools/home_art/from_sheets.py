@@ -22,12 +22,15 @@ from pathlib import Path
 import sys as _sys
 from pathlib import Path as _P
 _sys.path.insert(0, str(_P(__file__).parent))
-from PIL import Image, ImageEnhance, ImageFilter
+from PIL import Image, ImageDraw, ImageEnhance, ImageFilter
 
 TARGET_H = 40
 FW, FH = 48, 46          # cell the character is centred in; feet on the bottom row (derived from the height below)
 BG_TOL = 40
 COLORS = 56
+CAPE_FILL = (46, 46, 66)
+FACE = (184, 138, 95)      # the flat face colour, before the skin is darkened
+IDLE_FRAMES = 4
 
 # sheet -> (file, band index, frames)
 SHEETS = {
@@ -50,6 +53,23 @@ def bands(mask, w, h):
     return out
 
 
+def fill_hollows(flat, w, h):
+    """Mark enclosed background pixels (the cape's inside, which is background grey) as part of the figure."""
+    mask = Image.new("L", (w, h), 0)
+    mask.putdata([255 if v else 0 for v in flat])
+    grown = mask.filter(ImageFilter.MaxFilter(3))                  # close 1px gaps in the outline
+    ImageDraw.floodfill(grown, (0, 0), 128)                         # the outside
+    inside = grown.point(lambda v: 255 if v == 0 else 0)           # left unfilled: enclosed
+    fill = inside.filter(ImageFilter.MaxFilter(3))                  # plus the ring the dilation ate
+    fp, mp = fill.load(), mask.load()
+    out = list(flat)
+    for y in range(h):
+        for x in range(w):
+            if fp[x, y] and not mp[x, y]:
+                out[y * w + x] = True
+    return out
+
+
 def cut(path, band_index, frames):
     """Return a list of RGBA frames (original resolution) for one sheet."""
     img = Image.open(path).convert("RGB")
@@ -57,6 +77,7 @@ def cut(path, band_index, frames):
     px = img.load()
     bg = px[3, 3]
     flat = [sum(abs(a - b) for a, b in zip(px[x, y], bg)) > BG_TOL for y in range(h) for x in range(w)]
+    flat = fill_hollows(flat, w, h)
     y0, y1 = bands(flat, w, h)[band_index]
     # horizontal extent of all figures, then equal cells (side-view frames touch, so no gap-finding)
     xs = [x for x in range(w) if any(flat[y * w + x] for y in range(y0, y1))]
@@ -67,7 +88,9 @@ def cut(path, band_index, frames):
     for y in range(h):
         for x in range(w):
             if flat[y * w + x]:
-                rp[x, y] = px[x, y] + (255,)
+                src = px[x, y]
+                # hollows we filled are still background-coloured: paint them cape-dark
+                rp[x, y] = (src if sum(abs(a - b) for a, b in zip(src, bg)) > BG_TOL else CAPE_FILL) + (255,)
     # a stray pixel here and there is background noise: open the alpha a little
     alpha = rgba.getchannel("A").filter(ImageFilter.MedianFilter(3))
     rgba.putalpha(alpha)
@@ -133,6 +156,30 @@ def place(frame):
     return cell
 
 
+def flatten_face(img):
+    """The face has no features: paint every bright warm pixel and anything dark inside it as one flat colour."""
+    import colorsys
+    px = img.load()
+    top = next((y for y in range(img.height) if any(px[x, y][3] for x in range(img.width))), None)
+    if top is None:
+        return
+    for y in range(top, min(img.height, top + 15)):
+        xs = []
+        for x in range(img.width):
+            r, g, b, a = px[x, y]
+            if not a:
+                continue
+            hh, ss, vv = colorsys.rgb_to_hsv(r / 255.0, g / 255.0, b / 255.0)
+            if 0.0 <= hh <= 0.15 and ss > 0.3 and vv > 0.5:
+                xs.append(x)
+        if not xs:
+            continue
+        for x in range(min(xs), max(xs) + 1):
+            r, g, b, a = px[x, y]
+            if a:
+                px[x, y] = FACE + (255,)
+
+
 def darken_skin(img):
     """Recolour skin-hued pixels (warm, mid-saturation, bright) to deep umber, keeping the shading."""
     from from_reference import is_skin
@@ -172,16 +219,33 @@ def build(sheet_dir, out_dir, height=TARGET_H):
     pal = swatch.quantize(colors=COLORS, method=Image.MEDIANCUT, dither=Image.NONE)
     paletted = Image.new("RGB", (1, 1))
     for name, lst in cells.items():
-        sheet = Image.new("RGBA", (FW * len(lst), FH), (0, 0, 0, 0))
         for i, c in enumerate(lst):
             alpha = c.getchannel("A")
             q = c.convert("RGB").quantize(palette=pal, dither=Image.NONE).convert("RGB")
             q = q.convert("RGBA")
             q.putalpha(alpha)
+            if name != "back":
+                flatten_face(q)
             darken_skin(q)
+            lst[i] = q
+        # idle: the same standing frame, torso and head one pixel lower on the second half of the loop
+        base = lst[0]
+        split = FH - 17
+        idle = []
+        for k in (0, 0, 1, 1):
+            f = Image.new("RGBA", (FW, FH), (0, 0, 0, 0))
+            if k:
+                f.alpha_composite(base.crop((0, 0, FW, split)), (0, k))
+                f.alpha_composite(base.crop((0, split, FW, FH)), (0, split))
+            else:
+                f.alpha_composite(base)
+            idle.append(f)
+        frames = lst + idle
+        sheet = Image.new("RGBA", (FW * len(frames), FH), (0, 0, 0, 0))
+        for i, q in enumerate(frames):
             sheet.paste(q, (i * FW, 0))
         sheet.save(out_dir / f"hunter_{name}.png")
-    meta = {"frame": [FW, FH], "frames": 8, "facings": {"down": "front", "left": "side", "right": "side(mirrored)", "up": "back"}}
+    meta = {"frame": [FW, FH], "frames": 8, "idle_start": 8, "idle_frames": IDLE_FRAMES, "facings": {"down": "front", "left": "side", "right": "side(mirrored)", "up": "back"}}
     (out_dir / "hunter_sheet.json").write_text(json.dumps(meta, indent=1), encoding="utf-8")
     print("wrote", out_dir)
 

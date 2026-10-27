@@ -4,6 +4,8 @@
   46
  ],
  "frames": 8,
+ "idle_start": 8,
+ "idle_frames": 4,
  "facings": {
   "down": "front",
   "left": "side",
