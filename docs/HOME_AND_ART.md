@@ -259,6 +259,27 @@ Home is being rebuilt as **seven one-screen rooms** (plan in 8c). The engine and
   window, an oak door and a carved gold door. 16-bit, chunky 1px dark outlines, crisp pixels, no text, no shadows on
   the floor."
 
+#### The Great Hall's image-sourced props (how they were made)
+
+Three Higgsfield `z_image` prop sheets (0.25 credit each; Google image models are better if you have them) were saved in
+`tools/home_art/sheets/props/` (`hall_fire_decor.png`, `hall_furniture.png`, `hall_wall_clean.png`; the wall sheet had stray
+planks and a block painted out by hand because they glued the gold door to a plank). `from_props.py` strips the model's cast
+shadows and ground line, and `make_tiles.py` loads the results from `tools/home_art/props/` over the code-drawn pieces. To
+regenerate (names are in reading order, `-` skips a prop, `@N` is the height in px):
+
+```sh
+python3 tools/home_art/from_props.py tools/home_art/sheets/props/hall_wall_clean.png window_glass@40 window_plain@40 banner_crest@36 door_wood@52 door_gold@52 pillar_g@50 --out tools/home_art/props
+python3 tools/home_art/from_props.py tools/home_art/sheets/props/hall_fire_decor.png "hearthm@66!62-88,28-70>bg" chandelier@40!0-50 knight@48 - torch@28!0-50 urn_gold@24 --out tools/home_art/props
+python3 tools/home_art/from_props.py tools/home_art/sheets/props/hall_furniture.png - - chair_l@24 - - table_small@20 bench@14 - barrel@20 crate@20 --out tools/home_art/props
+python3 tools/home_art/make_tiles.py
+```
+
+One fireplace serves every level: `!62-88,28-70` shifts the fire region 1 px for a 2-frame flicker and makes a cold `_out` frame;
+`>bg` derives a dim (`hearthb`, levels 0-3) and a blue (`hearthg`, level 12) version. Still code-drawn: the banquet table
+(it merged with a chair on its sheet), broken benches, torn banner, stone pillar, floor and wall tiles, rubble and other dressing.
+Lessons: ask for ONE row of well-spaced props per sheet and split themes across several sheets; the model likes to add a
+ground line and soft shadows (the slicer removes them); animated props need a flicker pair made from one image.
+
 ### 8c. Home next
 
 - More stations are placed; give each real depth: Pantry (cook/stock meals), Study desk (spend Embers on

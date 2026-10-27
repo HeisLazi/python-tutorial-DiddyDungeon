@@ -672,6 +672,10 @@ def build():
         spr = Sprite(img.width, img.height)
         spr.img = img
         pieces[png.stem] = spr
+        if png.stem.endswith("_l") and not (props_dir / (png.stem[:-2] + "_r.png")).exists():
+            mirrored = Sprite(img.width, img.height)           # a left-facing prop gets a mirrored right-facing twin
+            mirrored.img = img.transpose(Image.FLIP_LEFT_RIGHT)
+            pieces[png.stem[:-2] + "_r"] = mirrored
 
     atlas_w = 384
     x = y = row_h = 0
