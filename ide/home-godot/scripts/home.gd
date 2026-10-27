@@ -17,6 +17,7 @@ const TILES: Texture2D = preload("res://art/tiles.png")
 var FONT_FILE: FontFile = preload("res://art/PressStart2P.woff2")
 const CRT_SHADER: Shader = preload("res://shaders/crt.gdshader")
 const SWAY_SHADER: Shader = preload("res://shaders/sway.gdshader")
+const UNARMED_SHADER: Shader = preload("res://shaders/home_unarmed.gdshader")
 
 # The hunter: one sheet per facing, 8 walk frames then 4 idle frames. Right is the side sheet flipped.
 const SHEET_FRONT: Texture2D = preload("res://art/hunter_front.png")
@@ -410,6 +411,9 @@ func _build_hunter() -> void:
 	body_sprite.region_enabled = true
 	body_sprite.centered = false
 	body_sprite.offset = Vector2(-FRAME.x / 2.0, -FRAME.y + 1)
+	var unarmed_material := ShaderMaterial.new()
+	unarmed_material.shader = UNARMED_SHADER
+	body_sprite.material = unarmed_material
 	hunter.add_child(body_sprite)
 	world.add_child(hunter)
 	# Pyr, the little code-flame, follows along (and lights the way).
@@ -599,13 +603,17 @@ func _check_doors() -> void:
 
 func _refresh_hunter() -> void:
 	hunter.position = pos.round()
+	var material: ShaderMaterial = body_sprite.material as ShaderMaterial
 	match facing:
 		"up":
 			body_sprite.texture = SHEET_BACK
+			material.set_shader_parameter("facing", 2)
 		"down":
 			body_sprite.texture = SHEET_FRONT
+			material.set_shader_parameter("facing", 0)
 		_:
 			body_sprite.texture = SHEET_SIDE
+			material.set_shader_parameter("facing", 1)
 	body_sprite.flip_h = facing == "right"
 	var col: int
 	if anim_t > 0.0:

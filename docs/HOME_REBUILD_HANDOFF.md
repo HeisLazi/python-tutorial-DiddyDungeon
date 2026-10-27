@@ -202,3 +202,7 @@ rebuild the Godot web export after adding them. Missing or incorrectly sized str
 **Stage 4 — Phoenix eagle**
 
 > Pixel art sprite sheet, six evenly spaced square frames in one horizontal row, of the mature blue-and-gold phoenix eagle in the supplied reference, with broad ember-edged wings, a flame crest and a long golden fire tail contained inside each frame. Frames in order: idle A, idle B, flying A, flying B, perched, feeding. Flat plain grey background, crisp 16-bit pixels, clean dark outlines, centered whole character in every cell, no text, no grid, no shadows, no extra objects.
+
+## Home hunter weapon visibility
+
+Home hides the sword baked into the hunter sheets with `shaders/home_unarmed.gdshader`; it does not change the shared source sprites. The mask uses 48×46 frame coordinates for the current front, side and back sheets, so recheck all four directions and walking frames if those sheets are replaced. Forge and Dungeon do not use this Home shader.
