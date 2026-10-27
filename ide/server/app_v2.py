@@ -252,6 +252,13 @@ class HomesteadRoomUpgrade(BaseModel):
     upgrade_id: str = Field(min_length=1, max_length=MAX_IDENTIFIER_LENGTH)
 
 
+class HomeRoomPurchase(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    room_id: Literal["great_hall", "library", "armory", "pantry", "gallery", "war_room", "den"]
+    expected_level: int = Field(ge=0, le=9, strict=True)
+
+
 class HomesteadAction(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -964,9 +971,15 @@ def campaign():
     # Reads see the save brought up to the authored campaign (new contracts
     # and projects); the next state action persists the same extension.
     progress = STATE_SERVICE.campaign_view(progress)
+    try:
+        home_rooms = STATE_SERVICE.home_room_projection(progress)
+    except StateCommandError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
+    progress.setdefault("homestead", {})["room_levels"] = home_rooms["levels"]
     dungeon_projection = safe_campaign_dungeon_projection(progress)
     activity = read_json(REPO_ROOT / "activity.json", {})
     return {
+        "home_rooms": home_rooms,
         "campaign_board": STATE_SERVICE.campaign_board(progress),
         "armory": STATE_SERVICE.armory_projection(progress),
         "spar_roster": STATE_SERVICE.spar_roster(progress),
@@ -2792,6 +2805,19 @@ def purchase_campaign_market_item(payload: CampaignMarketPurchase):
 def equip_homestead_item(payload: HomesteadEquip):
     envelope = _apply_state_or_http("homestead_equip", payload.model_dump(), "player")
     return _flatten_state_result(envelope)
+
+
+@app.post("/api/home/rooms/purchase")
+def purchase_home_room(payload: HomeRoomPurchase):
+    envelope = _apply_state_or_http("home_room_purchase", payload.model_dump(), "player")
+    try:
+        progress, metadata = STATE_SERVICE.snapshot_with_metadata()
+        home_rooms = STATE_SERVICE.home_room_projection(progress)
+    except StateCommandError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
+    result = _flatten_state_result(envelope)
+    result.update({"progress": _without_identify_answer(progress), "home_rooms": home_rooms, "revision": metadata["revision"]})
+    return result
 
 
 @app.post("/api/homestead/room-upgrade")

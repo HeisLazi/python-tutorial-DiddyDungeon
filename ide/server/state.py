@@ -24,6 +24,8 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from ide.server.home_rooms import HOME_ROOM_LABELS, HOME_ROOM_LADDERS, effective_room_levels, validate_room_levels
+
 MAX_EVENT_RECORDS = 100
 MAX_REASON_LENGTH = 240
 # An optional base layer of bounty boards keyed by project branch, under the
@@ -486,6 +488,7 @@ ACTION_DEFINITIONS: dict[str, ActionDefinition] = {
     "homestead_equip": ActionDefinition(frozenset({"player"})),
     "campaign_market_purchase": ActionDefinition(frozenset({"player"})),
     "homestead_room_upgrade": ActionDefinition(frozenset({"player"})),
+    "home_room_purchase": ActionDefinition(frozenset({"player"})),
     "homestead_action": ActionDefinition(frozenset({"player"})),
     "equip_equipment": ActionDefinition(frozenset({"player"})),
     "set_avatar": ActionDefinition(frozenset({"player"})),
@@ -1043,7 +1046,7 @@ SYNC_PLAYER_FIELDS = frozenset(
 SYNC_EQUIPMENT_FIELDS = frozenset({"armor", "trinket", "title", "owned_armor", "owned_trinkets", "avatar"})
 SYNC_EQUIPMENT_LIST_FIELDS = frozenset({"owned_armor", "owned_trinkets"})
 SYNC_COMPANION_FIELDS = frozenset({"name", "form", "level", "bond", "next_form", "next_form_requirement", "energy", "max_energy", "fed_count", "training_count"})
-SYNC_HOMESTEAD_FIELDS = frozenset({"name", "owned_cosmetics", "equipped", "room_upgrades", "upgrade_tokens", "upgrade_effects", "market_purchases"})
+SYNC_HOMESTEAD_FIELDS = frozenset({"name", "owned_cosmetics", "equipped", "room_upgrades", "room_levels", "upgrade_tokens", "upgrade_effects", "market_purchases"})
 SYNC_HOMESTEAD_EQUIPPED_FIELDS = frozenset({"theme", "cursor", "hud", "terminal"})
 SYNC_CAMPAIGN_FIELDS = frozenset(
     {
@@ -2991,6 +2994,11 @@ class LocalStateService:
             if extra:
                 raise StateCommandError(f"Unsupported cloud Homestead field(s): {', '.join(sorted(extra))}")
             clean_homestead: dict[str, Any] = {}
+            if "room_levels" in homestead:
+                try:
+                    clean_homestead["room_levels"] = validate_room_levels(homestead["room_levels"])
+                except ValueError as exc:
+                    raise StateCommandError(str(exc)) from exc
             if "name" in homestead:
                 clean_homestead["name"] = cls._sync_text(homestead["name"], "homestead.name")
             owned = cls._sync_list(homestead["owned_cosmetics"], "homestead.owned_cosmetics") if "owned_cosmetics" in homestead else None
@@ -3063,6 +3071,10 @@ class LocalStateService:
         companion = copy_fields(progress.get("companion"), SYNC_COMPANION_FIELDS)
         homestead_source = progress.get("homestead")
         homestead = copy_fields(homestead_source, frozenset({"name", "owned_cosmetics", "equipped", "room_upgrades", "upgrade_tokens", "upgrade_effects", "market_purchases"}))
+        try:
+            homestead["room_levels"] = effective_room_levels(progress)
+        except ValueError as exc:
+            raise StateCommandError(str(exc), status_code=500) from exc
         if isinstance(homestead.get("owned_cosmetics"), list):
             homestead["owned_cosmetics"] = [
                 item for item in homestead["owned_cosmetics"] if isinstance(item, str)
@@ -3142,7 +3154,7 @@ class LocalStateService:
             if isinstance(incoming_equipped, Mapping) and any(item_id not in owned for item_id in incoming_equipped.values()):
                 raise StateCommandError("Every equipped cosmetic must be owned")
             changed = False
-            for field in ("name", "owned_cosmetics", "equipped", "room_upgrades", "upgrade_tokens", "upgrade_effects", "market_purchases"):
+            for field in ("name", "owned_cosmetics", "equipped", "room_upgrades", "room_levels", "upgrade_tokens", "upgrade_effects", "market_purchases"):
                 if field in incoming_home and target_home.get(field) != incoming_home[field]:
                     target_home[field] = incoming_home[field]
                     changed = True
@@ -5906,6 +5918,7 @@ class LocalStateService:
             "homestead_equip": self._homestead_equip,
             "campaign_market_purchase": self._campaign_market_purchase,
             "homestead_room_upgrade": self._homestead_room_upgrade,
+            "home_room_purchase": self._home_room_purchase,
             "homestead_action": self._homestead_action,
             "equip_equipment": self._equip_equipment,
             "set_avatar": self._set_avatar,
@@ -6939,6 +6952,44 @@ class LocalStateService:
             {"item": item, "equipped": equipped},
             {"item_id": item_id, "kind": kind, "reason": "homestead_equip"},
         )
+
+    @staticmethod
+    def home_room_projection(progress: Mapping[str, Any]) -> dict[str, Any]:
+        try:
+            levels = effective_room_levels(progress)
+        except ValueError as exc:
+            raise StateCommandError(str(exc), status_code=500) from exc
+        return {"levels": levels, "ladders": HOME_ROOM_LADDERS, "labels": HOME_ROOM_LABELS}
+
+    def _home_room_purchase(self, payload: Mapping[str, Any], progress: dict[str, Any]) -> Mutation:
+        data = self._payload(payload, {"room_id", "expected_level"}, {"room_id", "expected_level"})
+        room = self._text(data["room_id"], "room_id", max_length=40, identifier=True)
+        if room not in HOME_ROOM_LADDERS:
+            raise StateCommandError("Unknown Home room", status_code=404)
+        expected = self._integer(data["expected_level"], "expected_level", minimum=0, maximum=len(HOME_ROOM_LADDERS[room]))
+        home = progress.get("homestead")
+        if not isinstance(home, dict):
+            raise StateCommandError("Homestead state is not initialized", status_code=409)
+        try:
+            levels = effective_room_levels(progress)
+        except ValueError as exc:
+            raise StateCommandError(str(exc), status_code=500) from exc
+        level = levels[room]
+        if expected != level:
+            raise StateCommandError("Room level changed; refresh before buying", status_code=409)
+        if level >= len(HOME_ROOM_LADDERS[room]):
+            raise StateCommandError("This room is already fully upgraded", status_code=409)
+        tokens = home.get("upgrade_tokens", 0)
+        if not isinstance(tokens, int) or isinstance(tokens, bool) or tokens < 0:
+            raise StateCommandError("Existing upgrade_tokens is invalid", status_code=500)
+        step = HOME_ROOM_LADDERS[room][level]
+        if tokens < step["cost"]:
+            raise StateCommandError(f"{step['name']} needs {step['cost']} Embers", status_code=409)
+        levels[room] = level + 1
+        home["room_levels"] = levels
+        home["upgrade_tokens"] = tokens - step["cost"]
+        return Mutation(True, {"room_id": room, "level": levels[room], "levels": levels, "step": step, "upgrade_tokens": home["upgrade_tokens"]},
+                        {"room_id": room, "level": levels[room], "tokens_delta": -step["cost"], "reason": "home_room_purchase"})
 
     def _homestead_room_upgrade(self, payload: Mapping[str, Any], progress: dict[str, Any]) -> Mutation:
         """Build one authored Home room upgrade through the state gateway."""

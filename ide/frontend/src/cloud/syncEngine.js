@@ -130,6 +130,28 @@ const projectCampaignState = (progress = {}) => {
  */
 export function projectPlayerState(progress = {}) {
   const homestead = isRecord(progress.homestead) ? progress.homestead : {}
+  const homeExtras = {}
+  if (Object.prototype.hasOwnProperty.call(homestead, 'room_levels')) {
+    const limits = { great_hall: 9, library: 9, armory: 9, pantry: 8, gallery: 9, war_room: 9, den: 9 }
+    const levels = homestead.room_levels
+    if (!isRecord(levels) || Object.keys(levels).length !== Object.keys(limits).length ||
+        Object.entries(limits).some(([room, max]) => !Number.isInteger(levels[room]) || levels[room] < 0 || levels[room] > max)) {
+      throw new Error('Invalid Home room levels')
+    }
+    homeExtras.room_levels = copyFields(levels, Object.keys(limits))
+  }
+  if (Object.prototype.hasOwnProperty.call(homestead, 'upgrade_tokens')) {
+    if (!Number.isInteger(homestead.upgrade_tokens) || homestead.upgrade_tokens < 0 || homestead.upgrade_tokens > 1_000_000_000) throw new Error('Invalid Home Embers')
+    homeExtras.upgrade_tokens = homestead.upgrade_tokens
+  }
+  if (Array.isArray(homestead.room_upgrades)) homeExtras.room_upgrades = boundedTextList(homestead.room_upgrades, 5)
+  if (Array.isArray(homestead.market_purchases)) homeExtras.market_purchases = boundedTextList(homestead.market_purchases, 11)
+  if (isRecord(homestead.upgrade_effects)) {
+    const fields = ['max_hp_delta', 'failure_damage_reduction', 'resolve_impact_delta', 'guard_break_heal', 'meal_heal_delta']
+    const effects = copyFields(homestead.upgrade_effects, fields)
+    if (Object.values(effects).some((value) => !Number.isInteger(value) || value < 0 || value > 1_000_000_000)) throw new Error('Invalid Home upgrade effects')
+    homeExtras.upgrade_effects = effects
+  }
   const owned = Array.isArray(homestead.owned_cosmetics)
     ? [...new Set(homestead.owned_cosmetics.filter((item) => typeof item === 'string'))].slice(0, 100)
     : []
@@ -149,6 +171,7 @@ export function projectPlayerState(progress = {}) {
       ...copyFields(homestead, ['name']),
       owned_cosmetics: owned,
       equipped,
+      ...homeExtras,
     },
     campaign: projectCampaignState(progress),
   }
