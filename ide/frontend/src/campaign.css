@@ -128,3 +128,15 @@
   .campaign-v1 .campaign-selector-item { grid-template-columns: auto minmax(0, 1fr) auto; }
   .campaign-v1 .campaign-selector-state { display: none; }
 }
+
+.campaign-special-mechanic {
+  margin: 8px 0;
+  padding: 9px 10px;
+  border: 1px solid #8c7445;
+  background: #241f27;
+  color: #f1dfaf;
+  line-height: 1.45;
+}
+.campaign-special-mechanic strong { display: block; color: #ffd772; }
+.campaign-special-mechanic p { margin: 5px 0; }
+.campaign-special-mechanic small { color: #cbb785; }

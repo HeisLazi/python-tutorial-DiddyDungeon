@@ -726,6 +726,7 @@ export function ContextPanel({ activeView, campaign, files = [], activePath, com
             <div className="campaign-battle-sidebar">
             {encounter.mob_name ? <>
               <div className="panel-title"><span>ACTIVE BATTLE</span><b>{encounter.resolve ?? 0}/{encounter.max_resolve ?? 0}</b></div>
+              {encounter.special_mechanic && <div className="campaign-special-mechanic" data-testid="campaign-special-mechanic"><strong>{encounter.special_mechanic.label}</strong><p>{encounter.special_mechanic.detail}</p><small>{encounter.special_mechanic.triggered ? 'REWARD CLAIMED' : 'REWARD AVAILABLE'}</small></div>}
               <BattleBrief encounter={encounter} board={campaign?.campaign_board} charges={campaign?.armory?.charges} questions={battleQuestions} feedback={battleFeedback} onAsk={onAskBattleQuestion} onAnswer={onAnswerBattleOption} onCheckSetup={onCheckSetup} busy={busy} />
               <div className="campaign-battle-resolve" data-testid="forge-encounter-resolve" hidden>
                 <ProgressBar value={encounter.resolve ?? 0} max={encounter.max_resolve ?? 1} label="Enemy Resolve" className="resolve" />
@@ -733,6 +734,7 @@ export function ContextPanel({ activeView, campaign, files = [], activePath, com
               <PyrCompanion />
             </> : <>
               <div className="panel-title"><span>BOSS GATE</span><b>{encounter.resolve ?? encounter.boss_resolve ?? 0}/{encounter.max_resolve ?? encounter.boss_max_resolve ?? 0}</b></div>
+              {encounter.special_mechanic && <div className="campaign-special-mechanic" data-testid="campaign-special-mechanic"><strong>{encounter.special_mechanic.label}</strong><p>{encounter.special_mechanic.detail}</p><small>{encounter.special_mechanic.triggered ? 'REWARD CLAIMED' : 'REWARD AVAILABLE'}</small></div>}
               <BossBrief encounter={encounter} board={campaign?.campaign_board} questions={battleQuestions} feedback={battleFeedback} onAsk={onAskBossQuestion} onAnswer={onAnswerBossOption} busy={busy} />
               <div className="campaign-battle-resolve" data-testid="forge-boss-resolve" hidden>
                 <ProgressBar value={encounter.resolve ?? encounter.boss_resolve ?? 0} max={encounter.max_resolve ?? encounter.boss_max_resolve ?? 1} label="Boss Resolve" className="resolve boss-resolve" />
@@ -3709,11 +3711,10 @@ const BATTLE_CHOICE_KINDS = new Set(['prediction', 'explanation'])
 function BattleBrief({ encounter, board, charges = {}, questions = {}, feedback, onAsk, onAnswer, onCheckSetup, busy }) {
   const open = encounter.available_objectives || []
   const contract = (board?.contracts || []).find((item) => item.name === encounter.mob_name)
-  // Setup steps come first, and a workshop bounty is played in its written
-  // order (make the folder, the file, run it, then explain it); elsewhere the
-  // clickable questions lead while code waits for Submit run.
+  // Beginner lessons and workshops follow their written teaching order;
+  // other encounters put clickable questions before the coding goals.
   const current = open.find((item) => item.question_type === 'setup_check')
-    || (contract?.kind === 'workshop' ? open[0] : open.find((item) => BATTLE_CHOICE_KINDS.has(item.question_type)) || open[0])
+    || (contract?.kind === 'workshop' || encounter.project_id === '00-lantern-vale' ? open[0] : open.find((item) => BATTLE_CHOICE_KINDS.has(item.question_type)) || open[0])
   const setup = current?.question_type === 'setup_check'
   const gradedOn = current?.file ? (board?.project_dir ? `${board.project_dir}/${current.file}` : current.file) : board?.entry_file || 'your project file'
   const choice = Boolean(current && BATTLE_CHOICE_KINDS.has(current.question_type))

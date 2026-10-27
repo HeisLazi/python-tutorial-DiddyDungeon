@@ -147,6 +147,7 @@ class CampaignContentSchemaTests(unittest.TestCase):
             if "project_dir" in entry:  # a full-length campaign mixes every kind of fight
                 with self.subTest(branch=entry["branch"]):
                     self.assertEqual({"light", "quick", "elite"} - {mob.get("tier") for mob in entry["mobs"]}, set())
+        files = [entry for entry in files if entry["branch"] != "00-lantern-vale"]  # the optional beginner boss has its own teaching pace
         files.sort(key=lambda entry: entry["order"])
         gauntlets = [tuple(entry["boss_gauntlet"]) for entry in files]
         code_phases = {"required_behavior", "edge_cases", "twist_2", "twist_3", "twist_4"}

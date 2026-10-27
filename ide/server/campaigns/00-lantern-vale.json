@@ -51,6 +51,7 @@
   "boss_gauntlet": [
     "required_behavior",
     "explanation",
+    "edge_cases",
     "interview"
   ],
   "mobs": [
@@ -248,6 +249,14 @@
           ]
         },
         {
+          "id": "elite_test",
+          "label": "Break the endless echo",
+          "question_type": "code_checkpoint",
+          "impact": 2,
+          "file": "game.py",
+          "brief": "Demonstrate two menu actions followed by quit, and show that no extra action runs afterward. Include an unknown action before quit. Completing this objective grants one guard for this fight."
+        },
+        {
           "id": "explain",
           "label": "Predict or explain",
           "question_type": "explanation",
@@ -256,7 +265,15 @@
           "file": "game.py"
         }
       ],
-      "kind": "debug"
+      "kind": "debug",
+      "tier": "elite",
+      "mechanic": {
+        "id": "guard",
+        "label": "Echo Break",
+        "detail": "Prove the menu can stop and bank one guard against a later wrong answer.",
+        "trigger": "elite_test",
+        "reward": "guard"
+      }
     },
     {
       "name": "The Little Lantern",
@@ -449,7 +466,7 @@
           "label": "Check the edge cases",
           "question_type": "code_checkpoint",
           "impact": 2,
-          "brief": "Add assertions or a small repeatable demonstration for success, wrong location, missing item and a repeated delivery. Keep the other menu actions working.",
+          "brief": "Add assertions or a small repeatable demonstration for success, wrong location, missing item and a repeated delivery. Keep the other menu actions working. Completing this objective reduces damage from later mistakes in this fight by 3.",
           "file": "game.py",
           "see": [
             "rules.py",
@@ -467,7 +484,14 @@
         }
       ],
       "tier": "elite",
-      "kind": "creative"
+      "kind": "creative",
+      "mechanic": {
+        "id": "shelter",
+        "label": "Delivery Proof",
+        "detail": "Demonstrate delivery edge cases to reduce damage from later mistakes in this fight by 3.",
+        "trigger": "check_edges",
+        "reward": "shelter"
+      }
     },
     {
       "name": "The Broken Number",
@@ -652,6 +676,18 @@
           ]
         },
         {
+          "id": "elite_test",
+          "label": "Repair the caravan",
+          "question_type": "code_checkpoint",
+          "impact": 2,
+          "file": "models.py",
+          "see": [
+            "game.py",
+            "test_game.py"
+          ],
+          "brief": "Add a test with two Traveler instances at different locations. Move one and confirm the other stays put; check that an invalid destination changes neither. Completing this objective adds 1 Resolve impact to later verified objectives in this fight."
+        },
+        {
           "id": "explain",
           "label": "Predict or explain",
           "question_type": "explanation",
@@ -659,7 +695,15 @@
           "brief": "Explain which object owns each piece of state and why a separate delivery record helps when adding more quests.",
           "file": "models.py"
         }
-      ]
+      ],
+      "tier": "elite",
+      "mechanic": {
+        "id": "focus",
+        "label": "Caravan Repair",
+        "detail": "Prove travelers are independent to add 1 Resolve impact to later verified objectives in this fight.",
+        "trigger": "elite_test",
+        "reward": "focus"
+      }
     },
     {
       "name": "The Memory Keeper",
@@ -851,6 +895,17 @@
           ]
         },
         {
+          "id": "elite_test",
+          "label": "Open a new road",
+          "question_type": "code_checkpoint",
+          "impact": 2,
+          "file": "market.py",
+          "see": [
+            "test_game.py"
+          ],
+          "brief": "Use your basket function with a new set of prices and names, including a repeated item, and verify the expected total and missing-item behavior. Completing this objective grants two guards against mistakes in this fight."
+        },
+        {
           "id": "explain",
           "label": "Predict or explain",
           "question_type": "explanation",
@@ -859,7 +914,15 @@
           "file": "market.py"
         }
       ],
-      "kind": "creative"
+      "kind": "creative",
+      "tier": "elite",
+      "mechanic": {
+        "id": "double_guard",
+        "label": "The Open Road",
+        "detail": "Prove the basket works with new data to gain two guards against mistakes in this fight.",
+        "trigger": "elite_test",
+        "reward": "double_guard"
+      }
     }
   ],
   "armory": [
@@ -1117,5 +1180,11 @@
       },
       "flavour": "A keepsake from the roads of Lantern Vale."
     }
-  ]
+  ],
+  "boss_mechanic": {
+    "label": "The Changing Road",
+    "detail": "After the project is demonstrated and explained, the King changes the delivery requirements. Complete the new rule and edge-case tests to restore up to 8 HP; the final interview still remains.",
+    "reward": "heal",
+    "trigger": "edge_cases"
+  }
 }

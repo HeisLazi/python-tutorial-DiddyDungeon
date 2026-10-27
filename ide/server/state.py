@@ -686,6 +686,35 @@ ENCOUNTER_MECHANICS: tuple[dict[str, str], ...] = (
     },
 )
 
+
+def campaign_special_mechanic(project: Mapping[str, Any], mob_name: str | None = None) -> dict[str, str] | None:
+    """Look up the small, authored beginner combat reward, never client input."""
+    if project.get("branch") != "00-lantern-vale":
+        return None
+    story = load_campaign_bounties().get("00-lantern-vale", {})
+    source = (campaign_contract("00-lantern-vale", mob_name) or {}).get("mechanic") if mob_name else story.get("boss_mechanic")
+    if not isinstance(source, Mapping) or source.get("reward") not in {"guard", "double_guard", "shelter", "focus", "heal"}:
+        return None
+    if not all(isinstance(source.get(key), str) and source[key] for key in ("label", "detail", "trigger")):
+        return None
+    return {key: str(source[key]) for key in ("label", "detail", "trigger", "reward")}
+
+
+def apply_campaign_mechanic(progress: dict[str, Any], encounter: dict[str, Any] | None, mechanic: Mapping[str, str]) -> dict[str, int]:
+    """Grant a bounded one-time reward when its verified objective is recorded."""
+    result = {"guards": 0, "coins": 0, "healed": 0}
+    reward = mechanic["reward"]
+    player = progress.setdefault("player", {})
+    if reward in {"guard", "double_guard"} and encounter is not None:
+        before = max(0, int(encounter.get("guards", 0)))
+        encounter["guards"] = min(3, before + (2 if reward == "double_guard" else 1))
+        result["guards"] = encounter["guards"] - before
+    if reward == "heal":
+        hp, maximum = max(0, int(player.get("hp", 0))), max(0, int(player.get("max_hp", 0)))
+        result["healed"] = max(0, min(8, maximum - hp))
+        player["hp"] = hp + result["healed"]
+    return result
+
 # Boss metadata is a presentation-safe projection, not a second answer key.
 # The current goal is always the first unverified requirement; each verified
 # goal applies its canonical damage to the boss Resolve bar.  PYR may explain
@@ -3273,6 +3302,7 @@ class LocalStateService:
         boss_max_resolve = max(1, max_resolve)
         boss_resolve = 0 if phase in {"ready_to_clear", "complete"} else max(0, boss_max_resolve - resolved_damage)
         reward_envelope = dict(BOSS_REWARD_ENVELOPE)
+        special = campaign_special_mechanic(project)
         return {
             "verified_boss_requirements": verified_ids,
             "remaining_boss_requirements": remaining,
@@ -3286,6 +3316,7 @@ class LocalStateService:
             "current_quest": current_requirement if phase in gauntlet else None,
             "boss_requirements_projection": requirement_projection,
             "mechanics": [dict(item) for item in ENCOUNTER_MECHANICS],
+            "special_mechanic": {**special, "triggered": special["trigger"] in verified_ids} if special else None,
             "reward_envelope": reward_envelope,
         }
 
@@ -3377,6 +3408,7 @@ class LocalStateService:
             or f"Reason about {concept.lower()} using your own project evidence."
         )
         contract = campaign_contract(project.get("branch"), mob.get("name")) or {}
+        special = campaign_special_mechanic(project, mob_name)
         encounter_lore = str(
             mob.get("lore")
             or mob.get("background")
@@ -3428,6 +3460,7 @@ class LocalStateService:
             "question_types": observed_types,
             "current_quest": available[0] if available else None,
             "mechanics": [dict(item) for item in ENCOUNTER_MECHANICS],
+            "special_mechanic": {**special, "triggered": special["trigger"] in completed_ids} if special else None,
             "mob": {
                 "name": mob_name,
                 "index": index,
@@ -8087,6 +8120,9 @@ class LocalStateService:
         weapon = effects["weapon"]
         if weapon and weapon.get("on") in {"any", objective["question_type"]}:
             impact = min(MAX_IMPACT + ARMORY_EFFECT_CAPS["impact"], impact + int(weapon.get("impact", 0)))
+        special = campaign_special_mechanic(project, str(mob.get("name") or ""))
+        if special and special["reward"] == "focus" and special["trigger"] in completed:
+            impact = min(MAX_IMPACT + ARMORY_EFFECT_CAPS["impact"], impact + 1)
         after = max(0, before - impact)
         remaining = [key for key in profile["objectives"] if key not in completed and key != objective_id]
         guard_break = None
@@ -8109,6 +8145,7 @@ class LocalStateService:
             healed = max(0, min(effects["heal_on_objective"], self._counter(heal_player, "max_hp") - current_hp))
             heal_player["hp"] = current_hp + healed
         completed.append(objective_id)
+        mechanic_reward = apply_campaign_mechanic(progress, encounter, special) if special and special["trigger"] == objective_id else None
         encounter["completed_objectives"] = completed[-20:]
         encounter["resolve"] = after
         encounter["attempts"] = self._counter(encounter, "attempts") + 1
@@ -8144,6 +8181,7 @@ class LocalStateService:
             True,
             {
                 "guard_break": guard_break,
+                "mechanic_reward": mechanic_reward,
                 "healed": healed,
                 "guards": self._counter(encounter, "guards"),
                 "mob_name": str(mob.get("name") or ""),
@@ -8175,6 +8213,7 @@ class LocalStateService:
                 "mob_defeated": bool(finish),
                 "codex_entry_id": entry["id"],
                 "guard_break": guard_break,
+                "mechanic_reward": mechanic_reward,
                 **(finish or {"reward_xp": 0, "reward_coins": 0, "level_before": self._counter(progress.get("player") or {}, "level"), "level_after": self._counter(progress.get("player") or {}, "level"), "next_mob": None, "achievement_unlocked": None}),
             },
         )
@@ -8591,6 +8630,8 @@ class LocalStateService:
             )
 
         verified.append(requirement_id)
+        special = campaign_special_mechanic(project)
+        mechanic_reward = apply_campaign_mechanic(progress, None, special) if special and special["trigger"] == requirement_id else None
         validation["verified"] = [item for item in gauntlet if item in verified]
         history.append(
             {
@@ -8609,6 +8650,7 @@ class LocalStateService:
             boss_damage = 1
         result = {
             "boss_requirement_verified": True,
+            "mechanic_reward": mechanic_reward,
             "requirement_id": requirement_id,
             "evidence_id": evidence_id,
             "reason": reason,
@@ -8891,6 +8933,10 @@ class LocalStateService:
         buff_reduction = int(((encounter or {}).get("buffs") or {}).get("reduction", 0)) if isinstance(encounter, dict) else 0
         armor_reduction = min(ARMORY_REDUCTION_CAP, effects["reduction"] + buff_reduction)
         damage = max(1, (raw_damage * (100 - armor_reduction) + 99) // 100)
+        if objective_id and isinstance(encounter, dict):
+            special = campaign_special_mechanic(project, mob_name)
+            if special and special["reward"] == "shelter" and special["trigger"] in encounter.get("completed_objectives", []):
+                damage = max(1, damage - 3)
         prevented_damage = 0
         trinket_trigger = None
         revived = False
