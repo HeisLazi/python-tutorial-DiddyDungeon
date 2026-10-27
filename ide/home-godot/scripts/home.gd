@@ -26,6 +26,8 @@ const WALK_FRAMES := 8
 const WALK_FPS := 10.0
 const IDLE_FRAMES := 4
 const IDLE_FPS := 1.6
+const PYR_CELL := 32
+const PYR_FRAMES := 6  # idle x2, following x2, perch, feed
 
 # Which save tier drives which room (the app only sends the ones it has).
 const ROOM_TIER_KEY := {
@@ -36,7 +38,7 @@ const ROOM_TIER_KEY := {
 # What the app can tell us (all optional; these are the defaults for a standalone run).
 var state := {
 	"hp": 100, "max_hp": 100, "embers": 0,
-	"fire_lit": true, "crt": true, "look": "alucard",
+	"fire_lit": true, "crt": true, "look": "alucard", "pyr_stage": 1,
 	"tiers": {"hearth": 0, "armory": 0, "map": 0},
 	"max_tiers": {"hearth": 3, "armory": 3, "map": 3},
 }
@@ -62,6 +64,10 @@ var hunter := Node2D.new()
 var body_sprite := Sprite2D.new()
 var pyr := Sprite2D.new()
 var pyr_light: PointLight2D
+var pyr_sheet_stage := -1
+var pyr_custom_sheet := false
+var pyr_pose := 0
+var pyr_pose_time := 0.0
 var hud := CanvasLayer.new()
 var prompt_box := ColorRect.new()
 var prompt_label := Label.new()
@@ -504,6 +510,11 @@ func _send_app(message: Dictionary) -> void:
 
 
 func _apply_state() -> void:
+	_configure_pyr_sheet(clampi(int(state.get("pyr_stage", 1)), 1, 4))
+	if str(state.get("pyr_action", "")) == "feed":
+		pyr_pose = 3
+		pyr_pose_time = 2.5
+		state["pyr_action"] = ""
 	var said := str(state.get("toast", ""))
 	if said != "":
 		toast(said)
@@ -534,6 +545,7 @@ func _draw_pips() -> void:
 # ── Each frame ──────────────────────────────────────────────────────────────
 func _process(delta: float) -> void:
 	clock += delta
+	pyr_pose_time = maxf(0.0, pyr_pose_time - delta)
 	if shot_path != "":
 		shot_frames += 1
 		if shot_frames == 20:
@@ -603,14 +615,43 @@ func _refresh_hunter() -> void:
 	body_sprite.region_rect = Rect2(col * FRAME.x, 0, FRAME.x, FRAME.y)
 
 
+func _configure_pyr_sheet(stage: int) -> void:
+	## Optional imported six-frame strips. Missing or malformed art keeps the current flame.
+	if stage == pyr_sheet_stage:
+		return
+	pyr_sheet_stage = stage
+	var path := "res://art/pyr_stage_%d.png" % stage
+	var sheet: Texture2D = null
+	if ResourceLoader.exists(path):
+		sheet = load(path) as Texture2D
+	pyr_custom_sheet = sheet != null and sheet.get_width() == PYR_CELL * PYR_FRAMES and sheet.get_height() == PYR_CELL
+	if pyr_custom_sheet:
+		pyr.texture = sheet
+		pyr.offset = Vector2(-PYR_CELL / 2.0, -PYR_CELL)
+	else:
+		pyr.texture = TILES
+		pyr.offset = Vector2(-8, -16)
+		pyr.region_rect = TilesData.REGIONS["pyr_0"]
+
+
 func _follow_pyr(delta: float) -> void:
 	var behind := {"down": Vector2(-18, -14), "up": Vector2(18, -10), "left": Vector2(16, -14), "right": Vector2(-16, -14)}[facing] as Vector2
 	var target := pos + behind
 	pyr_pos = pyr_pos.lerp(target, 1.0 - exp(-5.0 * delta))
 	var bob := sin(clock * 3.0) * 1.5
 	pyr.position = (pyr_pos + Vector2(0, bob)).round()
-	var flame := "pyr_%d" % (int(clock * 3.0) % 2)
-	pyr.region_rect = TilesData.REGIONS[flame]
+	if pyr_custom_sheet:
+		var frame: int
+		if pyr_pose_time > 0.0:
+			frame = 5 if pyr_pose == 3 else 4
+		elif pyr_pos.distance_to(target) > 3.0:
+			frame = 2 + int(clock * 6.0) % 2
+		else:
+			frame = int(clock * 2.0) % 2
+		pyr.region_rect = Rect2(frame * PYR_CELL, 0, PYR_CELL, PYR_CELL)
+	else:
+		var flame := "pyr_%d" % (int(clock * 3.0) % 2)
+		pyr.region_rect = TilesData.REGIONS[flame]
 
 
 func _animate_room(delta: float) -> void:
@@ -672,6 +713,9 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 func use_station(id: String) -> void:
+	if id == "perch":
+		pyr_pose = 2
+		pyr_pose_time = 2.5
 	_send_app({"type": "use", "station": id})
 	if not OS.has_feature("web"):
 		toast_label.text = "(standalone) used " + id

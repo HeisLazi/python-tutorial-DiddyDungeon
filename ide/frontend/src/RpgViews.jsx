@@ -10,6 +10,7 @@ import './avatar.css'
 import { merchantPixelSprite } from './campaignMerchant.js'
 import { AVATAR_LABELS, AVATAR_PALETTES, AVATAR_STYLE_LABELS, AVATAR_VIEWBOX, CHARACTER_NAME, DEFAULT_APPEARANCE, avatarRects } from './avatarSprite.js'
 import { PORTRAIT_SIZE, portraitRects } from './portraitSprite.js'
+import { homePyrStage } from './homePyr.js'
 
 export const viewItems = [
   { id: 'hub', label: 'Campaign' },
@@ -3031,6 +3032,7 @@ function homeRoomState(progress, crt, look, homeRooms) {
     fire_lit: Boolean((day.lines || 0) + (day.answers || 0) + (day.mobs || 0) > 0),
     crt,
     look,
+    pyr_stage: homePyrStage(progress),
     levels: homeRooms?.levels || homestead.room_levels || {},
     tiers,
     max_tiers: maxTiers,
@@ -3100,7 +3102,7 @@ function HomeRoom({ progress, homeRooms, purchaseHomeRoom, armory, armoryActions
     try {
       const result = await performHomesteadAction?.(action)
       const healed = Number(result?.event?.healed || 0)
-      send({ toast: done(healed, result) })
+      send({ toast: done(healed, result), ...(action === 'feed_pyr' ? { pyr_action: 'feed' } : {}) })
     } catch (error) {
       send({ toast: String(error?.message || 'That did not work').slice(0, 60) })
     }

@@ -168,6 +168,35 @@ Suggested ladder mapping (section 4): 1 clear (add `twigs` litter at level 0, re
 - The server has a seven-room ladder catalog in `ide/server/home_rooms.py`, with a contract test against `rooms.gd`. Its 62 steps total 2,028 Embers. The helper projects old hearth/armory visual tiers without spending currency; the old map tier was not persisted by the app.
 - Atomic room purchases and bounded cloud projection are implemented. Legacy levels are materialized on the first successful purchase without another charge; stale or concurrent retries are rejected. Local Postgres validation and the isolated backend/cloud tests pass. The hosted database must receive `20261027081725_home_room_levels.sql` before the new projection can sync.
 - The Home station panel exposes the existing station action alongside the next room upgrade, completed steps, cost and Embers. It sends all room levels to Godot and refreshes state after a purchase.
-- Full-app Chromium verification used an isolated copy of the save: bought Great Hall step 1 (18) and Pantry step 1 (16), observed both rooms rebuild and the balance change from 100 to 66 Embers. The Pantry meal action reached the backend and reported the expected no-meals error. Godot and React production builds passed; backend tests were 241 passed, and the cloud suite was 89 passed with the same 10 pre-existing failures.
-- Next: prepare Pyr stage loading and the owner-facing image prompts. No hosted migration was applied.
-- Pyr's four eagle sheets are not present in `tools/home_art/sheets/pyr/`; prepare the loader and exact image prompts after the purchase workflow is complete.
+- Full-app Chromium verification used an isolated copy of the save: bought Great Hall step 1 (18) and Pantry step 1 (16), observed both rooms rebuild and the balance change from 100 to 66 Embers. The Pantry meal action reached the backend and reported the expected no-meals error. Godot and React production builds passed; backend tests were 241 passed, and the cloud suite now has 90 passed with the same 10 pre-existing failures.
+- Pyr's optional six-frame stage loader and the existing-flame fallback are implemented. Stages derive from existing bond thresholds (0, 3, 6); the fourth uses the existing three-Mastery-Shield milestone after bond 6. No new progression counter is stored. Idle and following use two frames each; perch and feed use one frame each.
+- The loader was checked in headless Godot and a Chromium Web export using a disposable synthetic strip; the missing-sheet fallback was also checked in Chromium. Real eagle artwork, its slicing pipeline extension and visual review remain blocked on the four source sheets below. The hosted Home projection migration has not been applied.
+
+
+## 10. Pyr source sheets requested from the owner
+
+Provide four separate source PNGs, saved as `tools/home_art/sheets/pyr/stage_1.png` through `stage_4.png`.
+Attach `tools/home_art/sheets/pyr_phoenix_reference.png` as the colour and design reference for stages 2–4.
+Each image should be one horizontal row of six equal square cells, in this exact order: idle A, idle B, flying A,
+flying B, perched, feeding. Keep the character centered with the full wings and tail inside each cell. Use a flat,
+uniform grey background and no text, grid lines, cast shadows, or extra objects. The final sliced strip must be
+192×32 pixels: six 32×32 transparent frames, with nearest-neighbour scaling. The existing `from_sheets.py` or
+`from_props.py` pipeline must be extended to cut and clean the supplied sheets; do not place raw source images in
+`ide/home-godot/art/`. Its four output filenames are `pyr_stage_1.png` through `pyr_stage_4.png`. Re-import and
+rebuild the Godot web export after adding them. Missing or incorrectly sized strips retain the current flame.
+
+**Stage 1 — Ember chick**
+
+> Pixel art sprite sheet, six evenly spaced square frames in one horizontal row, of a tiny ember chick: a living warm flame with a small beak, bright eyes and a hint of deep-blue plumage. Frames in order: idle A, idle B, flying A, flying B, perched, feeding. Flat plain grey background, crisp 16-bit pixels, clean dark outlines, centered whole character in every cell, no text, no grid, no shadows, no extra objects.
+
+**Stage 2 — Fledgling**
+
+> Pixel art sprite sheet, six evenly spaced square frames in one horizontal row, of a small blue-and-gold fire eagle fledgling with short wings, a tiny flame crest and a short ember tail, matching the supplied phoenix reference. Frames in order: idle A, idle B, flying A, flying B, perched, feeding. Flat plain grey background, crisp 16-bit pixels, clean dark outlines, centered whole character in every cell, no text, no grid, no shadows, no extra objects.
+
+**Stage 3 — Firehawk**
+
+> Pixel art sprite sheet, six evenly spaced square frames in one horizontal row, of a young firehawk with deep-blue plumage, gold and ember-edged wings, bright eyes and a flowing flame crest, matching the supplied phoenix reference. Frames in order: idle A, idle B, flying A, flying B, perched, feeding. Flat plain grey background, crisp 16-bit pixels, clean dark outlines, centered whole character in every cell, no text, no grid, no shadows, no extra objects.
+
+**Stage 4 — Phoenix eagle**
+
+> Pixel art sprite sheet, six evenly spaced square frames in one horizontal row, of the mature blue-and-gold phoenix eagle in the supplied reference, with broad ember-edged wings, a flame crest and a long golden fire tail contained inside each frame. Frames in order: idle A, idle B, flying A, flying B, perched, feeding. Flat plain grey background, crisp 16-bit pixels, clean dark outlines, centered whole character in every cell, no text, no grid, no shadows, no extra objects.
