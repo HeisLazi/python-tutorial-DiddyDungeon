@@ -4,7 +4,7 @@ extends RefCounted
 ## pixel-banded 2D lights (home.gd). `build(h, id, level)` is called by the Home scene with
 ## itself as `h`. Every room has an upgrade LADDER: level 0 is the neglected base and each
 ## step up (bought with Embers) adds or changes ONE visible thing, up to the max level. You
-## never jump from base to max: a room is a dozen small, satisfying changes, each with a name
+## never jump from base to max: a room is about ten small, satisfying changes, each with a name
 ## and a cost (LADDERS below; the app can show them in the station panel).
 ## Layout: a 320x180 screen, 16px tiles, a back wall of 4 rows (cap, two faces, plinth) and
 ## floor below, top-down 3/4. Keep the station ids.
@@ -21,10 +21,8 @@ extends RefCounted
 # The upgrade ladders. cost = Embers for that step (a proposal: tune against the economy table in the README).
 const LADDERS := {
 	"great_hall": [
-		{"name": "Sweep the hall", "cost": 8, "note": "rubble, puddles and cobwebs cleared"},
-		{"name": "Mend the benches", "cost": 10, "note": "broken benches repaired, barrels tidied"},
-		{"name": "Light a second torch", "cost": 12, "note": "a torch for the east wall, brighter flames"},
-		{"name": "Rebuild the hearth", "cost": 18, "note": "a proper fire, warmer light"},
+		{"name": "Clear and mend the hall", "cost": 18, "note": "rubble, puddles and cobwebs cleared, benches and barrels mended"},
+		{"name": "Rebuild the hearth", "cost": 30, "note": "a proper fire, warmer light, and a second torch lit"},
 		{"name": "Hang crest banners", "cost": 20, "note": "the torn rags are replaced"},
 		{"name": "Lay the crimson runner", "cost": 24, "note": "a carpet from the door to the hearth"},
 		{"name": "Reglaze the windows", "cost": 28, "note": "stained glass, coloured light on the floor"},
@@ -36,9 +34,26 @@ const LADDERS := {
 	],
 }
 
+# The Great Hall's steps by name (the level at which each thing appears).
+const GH_CLEAN := 1
+const GH_HEARTH := 2
+const GH_BANNERS := 3
+const GH_RUNNER := 4
+const GH_GLASS := 5
+const GH_AISLE := 6
+const GH_MARBLE := 7
+const GH_CHANDELIER := 8
+const GH_BANQUET := 9
+const GH_GRAND := 10
+
 
 static func max_level(id: String) -> int:
 	return (LADDERS.get(id, []) as Array).size()
+
+
+static func tier_to_level(id: String, tier: int) -> int:
+	## The app's older 0..3 tiers spread over the room's levels.
+	return int(round(tier * max_level(id) / 3.0))
 
 
 static func upgrade_name(id: String, level: int) -> String:
@@ -96,50 +111,50 @@ static func _prop(h, piece: String, feet: Vector2, w: float, d: float, shadow_w 
 static func _great_hall(h, lv: int) -> void:
 	var marble_from := -1
 	var marble_to := -1
-	if lv >= 9:
+	if lv >= GH_MARBLE:
 		marble_from = 0
 		marble_to = 19
-	elif lv == 8:
+	elif lv == GH_AISLE:
 		marble_from = 6
 		marble_to = 13
 	_shell(h, marble_from, marble_to)
-	var marble := lv >= 8
-	var glass := lv >= 7
+	var marble := lv >= GH_AISLE
+	var glass := lv >= GH_GLASS
 	# The ambient light brightens a little with every step.
-	h.set_ambient(Color(0.40, 0.41, 0.56).lerp(Color(0.52, 0.50, 0.66), lv / 12.0))
+	h.set_ambient(Color(0.40, 0.41, 0.56).lerp(Color(0.52, 0.50, 0.66), lv / float(GH_GRAND)))
 
 	# ── The wall: columns, damp stains, cobwebs ──
-	if lv < 1:
+	if lv < GH_CLEAN:
 		h.bg("cobweb_l", Vector2(2, 16))
 		h.bg("cobweb_r", Vector2(h.VIEW.x - 16, 16))
 		h.bg("cobweb_r", Vector2(h.VIEW.x - 16, 120))
-	if lv < 5:
+	if lv < GH_BANNERS:
 		for x in [26.0, 104.0, 250.0]:
 			h.bg("stain", Vector2(x, 18))
-	var pillar_piece := "pillar_g" if lv >= 12 else "pillar_s"
+	var pillar_piece := "pillar_g" if lv >= GH_GRAND else "pillar_s"
 	var pillar_xs: Array = [10.0, 310.0]
-	if lv >= 9:
+	if lv >= GH_MARBLE:
 		pillar_xs = [10.0, 60.0, 260.0, 310.0]
 	for x in pillar_xs:
 		h.bg(pillar_piece, Vector2(x, 66), true)
-	if lv >= 12:
+	if lv >= GH_GRAND:
 		h.add_tint(Rect2(0, 62, h.VIEW.x, 2), Color(0.95, 0.74, 0.25, 0.9))     # gold trim along the wall base
 
 	# ── Floor: wear at the start, a runner once laid, a rug under the banquet ──
-	if lv < 1:
+	if lv < GH_CLEAN:
 		h.bg("rubble_1", Vector2(56, 152), true)
 		h.bg("rubble_0", Vector2(250, 104), true)
 		h.bg("rubble_0", Vector2(124, 170), true)
 		h.bg("puddle", Vector2(214, 156), true)
-	if lv >= 6:
+	if lv >= GH_RUNNER:
 		for row in range(5, 12):
 			h.bg("carpet", Vector2(144, row * 16))
-	if lv >= 11:
+	if lv >= GH_BANQUET:
 		h.bg("rug_table", Vector2(210, 104))
 
 	# ── Windows: plain and cold, then stained glass throwing coloured light on the floor ──
 	var window_kind := "window_glass" if glass else "window_plain"
-	var beam := Color(0.50, 0.60, 0.95, 0.10 + (0.19 if glass else 0.0) * minf(1.0, (lv - 6) / 6.0))
+	var beam := Color(0.50, 0.60, 0.95, 0.10 + (0.19 if glass else 0.0) * minf(1.0, (lv - GH_GLASS) / float(GH_GRAND - GH_GLASS)))
 	var panes: Array = [Color(0.95, 0.25, 0.30, 0.30), Color(0.30, 0.45, 1.0, 0.32), Color(1.0, 0.78, 0.28, 0.30),
 		Color(0.65, 0.35, 0.95, 0.30), Color(0.35, 0.65, 1.0, 0.30), Color(0.95, 0.35, 0.40, 0.28)]
 	for x in [84.0, 236.0]:
@@ -160,15 +175,15 @@ static func _great_hall(h, lv: int) -> void:
 
 	# ── Banners: torn rags at the start, crimson crests after (they sway) ──
 	for x in [122.0, 198.0]:
-		var banner: Sprite2D = h.bg("banner_crest" if lv >= 5 else "banner_torn", Vector2(x, 56), true)
+		var banner: Sprite2D = h.bg("banner_crest" if lv >= GH_BANNERS else "banner_torn", Vector2(x, 56), true)
 		h.sway(banner, 0.9, 1.7, 36.0)
 
 	# ── The hearth: a small fire, a good fire, then blue-gold with a reflection on the floor ──
-	h.hearth_base = "hearthg" if lv >= 12 else ("hearthm" if lv >= 4 else "hearthb")
+	h.hearth_base = "hearthg" if lv >= GH_GRAND else ("hearthm" if lv >= GH_HEARTH else "hearthb")
 	h.hearth_sprite = h.bg(h.hearth_base + "_0", Vector2(160, 76), true)
-	var blue := lv >= 12
+	var blue := lv >= GH_GRAND
 	var hearth_color := Color(0.55, 0.72, 1.0) if blue else Color("ff9a4a")
-	h.add_light(Vector2(160, 66), 100.0 + 1.2 * lv, hearth_color, (0.8 if blue else 1.1 + 0.015 * lv + (0.1 if lv >= 4 else 0.0)), 0.22)
+	h.add_light(Vector2(160, 66), 100.0 + 1.2 * lv, hearth_color, (0.8 if blue else 1.1 + 0.015 * lv + (0.1 if lv >= GH_HEARTH else 0.0)), 0.22)
 	h.add_shadow(Vector2(160, 78), 52.0, 6.0, 0.3)
 	h.block(Rect2(136, 66, 48, 12))
 	h.station("hearth", "Rest at the Hearth", Rect2(136, 78, 48, 22), Vector2(160, 8))
@@ -179,47 +194,47 @@ static func _great_hall(h, lv: int) -> void:
 
 	# ── Wall torches: one, then a second ──
 	var torch_x: Array = [40.0]
-	if lv >= 3:
+	if lv >= GH_HEARTH:
 		torch_x = [40.0, 280.0]
 	for x in torch_x:
 		h.anim("torch", Vector2(x, 52), Rect2(), true)
 		h.add_light(Vector2(x, 38), 52.0, Color("ffb36b"), 0.8 + 0.03 * lv, 0.3)
 
 	# ── Furniture and clutter ──
-	var benches_fixed := lv >= 2
+	var benches_fixed := lv >= GH_CLEAN
 	var bench_kind := "bench" if benches_fixed else "bench_broken"
 	var bench_spots: Array = [Vector2(108, 112), Vector2(74, 142)]
-	if lv < 11:
+	if lv < GH_BANQUET:
 		bench_spots.append_array([Vector2(212, 112), Vector2(246, 142)])
 	if not benches_fixed:
 		bench_spots = [Vector2(104, 112), Vector2(74, 140), Vector2(232, 150)]
 	for at in bench_spots:
 		_prop(h, bench_kind, at, 30.0, 8.0)
-	if lv < 11:
-		_prop(h, "table_small", Vector2(238, 118) if lv < 2 else Vector2(238, 96), 24.0, 10.0)
-	if lv < 2:
+	if lv < GH_BANQUET:
+		_prop(h, "table_small", Vector2(238, 118) if lv < GH_CLEAN else Vector2(238, 96), 24.0, 10.0)
+	if lv < GH_CLEAN:
 		_prop(h, "crate_broken", Vector2(34, 100), 18.0, 8.0)
 		_prop(h, "barrel", Vector2(288, 96), 14.0, 7.0)
-	elif lv < 10:
+	elif lv < GH_CHANDELIER:
 		_prop(h, "barrel", Vector2(30, 98), 14.0, 7.0)
 		_prop(h, "barrel", Vector2(48, 102), 14.0, 7.0)
 		_prop(h, "crate", Vector2(292, 100), 18.0, 8.0)
-	if lv >= 10:
+	if lv >= GH_CHANDELIER:
 		for at in [Vector2(32, 100), Vector2(288, 100)]:
 			_prop(h, "knight", at, 14.0, 6.0, 16.0)
 		for x in [124.0, 196.0]:
-			_prop(h, "urn_gold" if lv >= 12 else "urn", Vector2(x, 178), 12.0, 6.0)
+			_prop(h, "urn_gold" if lv >= GH_GRAND else "urn", Vector2(x, 178), 12.0, 6.0)
 		h.add_chain(92.0, 2.0, 96.0)
 		h.add_shadow(Vector2(92, 160), 40.0, 10.0, 0.22)
 		h.anim("chandelier", Vector2(92, 132))
-		h.add_light(Vector2(92, 110), 92.0, Color("ffcf8a"), 0.8 + 0.08 * (lv - 10), 0.2)
-	if lv >= 11:
+		h.add_light(Vector2(92, 110), 92.0, Color("ffcf8a"), 0.8 + 0.08 * (lv - GH_CHANDELIER), 0.2)
+	if lv >= GH_BANQUET:
 		_prop(h, "table_long", Vector2(252, 130), 64.0, 14.0)
 		for cx in [236.0, 268.0]:
 			_prop(h, "chair_l" if cx < 252.0 else "chair_r", Vector2(cx, 110), 12.0, 6.0)
 			_prop(h, "chair_l" if cx < 252.0 else "chair_r", Vector2(cx, 154), 12.0, 6.0)
 		h.add_light(Vector2(252, 120), 48.0, Color("ffd27a"), 0.7, 0.2)
-	if lv >= 12:
+	if lv >= GH_GRAND:
 		for at in [Vector2(108, 86), Vector2(212, 86)]:
 			_prop(h, "knight", at, 14.0, 6.0, 16.0)
 		h.add_embers(Rect2(40, 90, 240, 80), Color("ffd27a"), 14, 6.0, 4.5)
@@ -228,5 +243,5 @@ static func _great_hall(h, lv: int) -> void:
 	h.add_embers(Rect2(40, 74, 240, 90), Color(0.75, 0.80, 1.0, 0.55), maxi(4, 16 - lv), 3.0, 5.0)
 
 	# ── The great door: a plain oak door until the grand finish ──
-	h.bg("door_gold" if lv >= 12 else "door_wood", Vector2(160, 186), true)
+	h.bg("door_gold" if lv >= GH_GRAND else "door_wood", Vector2(160, 186), true)
 	h.station("door", "Go to the Forge", Rect2(138, 158, 44, 24), Vector2(160, 134))

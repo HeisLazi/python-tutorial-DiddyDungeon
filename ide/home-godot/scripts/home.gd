@@ -119,7 +119,7 @@ func _ready() -> void:
 		elif arg.begins_with("--level="):
 			cli_level = int(arg.trim_prefix("--level="))
 		elif arg.begins_with("--tier="):
-			cli_level = int(arg.trim_prefix("--tier=")) * 4     # the old four tiers
+			cli_level = Rooms.tier_to_level(room_id, int(arg.trim_prefix("--tier=")))     # the old four tiers
 		elif arg.begins_with("--pos="):
 			var xy := arg.trim_prefix("--pos=").split(",")
 			start_pos = Vector2(float(xy[0]), float(xy[1]))
@@ -138,14 +138,14 @@ func _ready() -> void:
 # ── Rooms ───────────────────────────────────────────────────────────────────
 func room_level(id: String) -> int:
 	## Upgrade level of a room, 0 .. Rooms.max_level(id). The app can send `levels: {room: n}`; the older
-	## `tiers` (0..3 per station) still work and count as four levels each.
+	## `tiers` (0..3 per station) still work, spread over the room's levels.
 	if cli_level >= 0:
 		return mini(cli_level, Rooms.max_level(id))
 	var levels: Dictionary = state.get("levels", {})
 	if levels.has(id):
 		return mini(int(levels[id]), Rooms.max_level(id))
 	var key: String = ROOM_TIER_KEY.get(id, id)
-	return mini(int((state["tiers"] as Dictionary).get(key, 0)) * 4, Rooms.max_level(id))
+	return mini(Rooms.tier_to_level(id, int((state["tiers"] as Dictionary).get(key, 0))), Rooms.max_level(id))
 
 
 func go_room(id: String, spawn: Vector2, instant := false) -> void:
