@@ -403,6 +403,95 @@ def add(pieces, Sprite, C, noise):
         s.hline(3, 14, 2, "wd3"); s.hline(3, 14, 17, "wd0")
         return s.outline()
 
+
+    # ── wall dressing and clutter ───────────────────────────────────────────
+    def pillar(kind):
+        """A fluted wall column (16x50): grey stone, or gold-capped for the grand hall."""
+        w, h = 16, 50
+        s = Sprite(w, h)
+        cap, cap_hi = ("gs3", "gs4") if kind == "stone" else ("gold0", "gold")
+        s.rect(0, 0, 15, 6, cap); s.hline(0, 15, 0, cap_hi); s.hline(0, 15, 6, "gs0")
+        s.rect(2, 7, 13, 9, "gs3")
+        s.rect(3, 10, 12, 41, "gs2")
+        s.vline(3, 10, 41, "gs3"); s.vline(4, 10, 41, "gs3")
+        s.vline(7, 10, 41, "gs1"); s.vline(8, 10, 41, "gs1")
+        s.vline(11, 10, 41, "gs1"); s.vline(12, 10, 41, "gs0")
+        s.rect(2, 42, 13, 44, "gs3")
+        s.rect(0, 45, 15, 49, cap); s.hline(0, 15, 45, cap_hi); s.hline(0, 15, 49, "gs0")
+        if kind == "gold":
+            for x in (3, 7, 11):
+                s.px(x, 3, "gold1")
+        return s.outline()
+
+    def rubble(v):
+        w, h = (10, 6) if v == 0 else (14, 8)
+        s = Sprite(w, h)
+        r = rng(1100 + v)
+        for _ in range(3 + v * 2):
+            x, y = r.randrange(1, w - 3), r.randrange(1, h - 2)
+            s.rect(x, y, x + 2, y + 1, "gs2"); s.hline(x, x + 2, y, "gs3"); s.px(x + 2, y + 1, "gs0")
+        return s.outline()
+
+    def puddle():
+        s = Sprite(26, 9)
+        for y in range(9):
+            for x in range(26):
+                if ((x - 13) / 12.0) ** 2 + ((y - 4) / 4.0) ** 2 <= 1.0:
+                    s.px(x, y, (22, 30, 58, 200))
+        for x in (6, 7, 8, 16, 17):
+            s.px(x, 3, (110, 140, 220, 200))
+        s.px(11, 5, (110, 140, 220, 200))
+        return s
+
+    def crate(broken):
+        s = Sprite(20, 20)
+        s.rect(1, 3, 18, 18, "wd1")
+        s.hline(1, 18, 3, "wd3"); s.vline(1, 3, 18, "wd2")
+        s.hline(1, 18, 18, "wd0"); s.vline(18, 3, 18, "wd0")
+        s.hline(1, 18, 10, "wd0")
+        for a, b in ((2, 9), (11, 17)):
+            s.vline(a, 3, 18, "wd2") if False else None
+        s.rect(1, 3, 3, 18, "wd2"); s.rect(16, 3, 18, 18, "wd2")
+        s.px(2, 4, "mt1"); s.px(17, 4, "mt1"); s.px(2, 17, "mt1"); s.px(17, 17, "mt1")
+        if broken:
+            s.rect(6, 4, 9, 9, "line")                              # a smashed panel
+            s.px(10, 5, "wd3"); s.px(5, 8, "wd3")
+        return s.outline()
+
+    def urn_gold():
+        s = Sprite(14, 24)
+        s.rect(4, 2, 9, 3, "gold0"); s.hline(4, 9, 2, "gold")
+        s.rect(5, 4, 8, 6, "gold0"); s.vline(5, 4, 6, "gold")
+        s.rect(2, 7, 11, 17, "gold0"); s.vline(2, 7, 17, "gold"); s.vline(3, 8, 16, "gold"); s.vline(11, 7, 17, "wd0")
+        s.rect(0, 9, 1, 12, "gold0"); s.rect(12, 9, 13, 12, "gold0")        # handles
+        s.rect(4, 18, 9, 20, "gold0"); s.rect(2, 21, 11, 23, "gold"); s.hline(2, 11, 23, "wd0")
+        s.px(6, 11, "red"); s.px(7, 12, "red")
+        return s.outline()
+
+    def rug_table():
+        w, h = 84, 40
+        s = Sprite(w, h)
+        s.rect(0, 0, w - 1, h - 1, "gold0")
+        s.rect(2, 2, w - 3, h - 3, "red0")
+        s.rect(4, 4, w - 5, h - 5, "red")
+        s.rect(6, 6, w - 7, h - 7, "red0")
+        for x in range(10, w - 10, 8):
+            s.px(x, h // 2, "gold"); s.px(x + 1, h // 2, "gold"); s.px(x, h // 2 - 1, "gold0"); s.px(x, h // 2 + 1, "gold0")
+        for x in range(2, w - 2, 4):
+            s.px(x, 0, "gold1"); s.px(x, h - 1, "gold1")
+        return s
+
+    def stain():
+        """A damp streak down the wall (semi-transparent)."""
+        s = Sprite(12, 34)
+        r = rng(1200)
+        for y in range(34):
+            wdt = 2 + (y // 8) + r.randrange(0, 2)
+            x0 = 6 - wdt // 2
+            for x in range(x0, x0 + wdt):
+                s.px(x, y, (10, 12, 26, 70 if y < 26 else 40))
+        return s
+
     pieces["floor_flag_0"] = flag(0)
     pieces["floor_flag_1"] = flag(1)
     pieces["floor_flag_2"] = flag(2)
@@ -435,6 +524,16 @@ def add(pieces, Sprite, C, noise):
         pieces[f"torch_{f}"] = torch(f)
     pieces["knight"] = knight()
     pieces["barrel"] = barrel()
+    pieces["pillar_s"] = pillar("stone")
+    pieces["pillar_g"] = pillar("gold")
+    pieces["rubble_0"] = rubble(0)
+    pieces["rubble_1"] = rubble(1)
+    pieces["puddle"] = puddle()
+    pieces["crate"] = crate(False)
+    pieces["crate_broken"] = crate(True)
+    pieces["urn_gold"] = urn_gold()
+    pieces["rug_table"] = rug_table()
+    pieces["stain"] = stain()
 
 
 if __name__ == "__main__":

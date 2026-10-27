@@ -220,6 +220,45 @@ are one sprite per facing now with the **sword baked into every frame**, so the 
 their own sheets (or a sword-less base plus a weapon layer). `tools/home_art/sheets/actions.png` already has
 crouch, jump, dash and slash frames to build attacks from. Generate them the same way as the walk sheets.
 
+### 8b2. The Home rebuild: rooms, lighting and the "great room" checklist (2026-10-27)
+
+Home is being rebuilt as **seven one-screen rooms** (plan in 8c). The engine and the Great Hall are done on
+`feature/tauri-arcade` (not merged until every station has a room: the old 9-station hall is gone there).
+
+- **View 320x180**, 16 px tiles, top-down 3/4 (back wall of 4 rows, floor below), the hunter 40 px tall.
+  The concepts in `tools/home_art/concepts/` are isometric or oblique; they are targets for content, palette and
+  light only. Do not try to reproduce their camera (the hunter only has front/side/back sprites).
+- **Engine** (`ide/home-godot/scripts/home.gd` + `rooms.gd`): `Rooms.build(h, id, tier)` builds a room from the tileset;
+  `go_room()` fades between rooms; the room **rebuilds itself when the app sends a new tier**. Helpers on `h`:
+  `tile/bg/obj/anim`, `block`, `station`, `door`, `add_light` (banded `PointLight2D` + flicker), `set_ambient`
+  (`CanvasModulate`), `add_embers` (`CPUParticles2D`), `add_shaft` (additive beam), `add_patch` (coloured light on the
+  floor), `add_shadow` (contact shadow), `add_tint` (flat rectangle, wall-base shadow), `add_chain`, `sway` (cloth shader).
+  Test flags: `--room=great_hall --tier=0..3 --pos=x,y --face=up --shot=file.png`; `tools/home_art/shots.sh <room> <tiers>`.
+  The shots use the Compatibility renderer, the same as the web export. **Verify in the real web build in Chrome too**
+  (serve `ide/frontend/public/home` with `python3 -m http.server`, then send state with
+  `window.diddyHomeReceive(JSON.stringify({tiers:{hearth:3}}))`); hold keys by dispatching `keydown`/`keyup` with a `code`.
+- **Great-room checklist** (every room follows it; it is also at the top of `rooms.gd`):
+  1. Tier 0 is a believable neglected room, max is the concept: change props, light and motion between tiers.
+  2. Depth: a contact shadow under every prop, a shadow along the wall base, columns and trim on the wall.
+  3. Light tells the story: warm pools, cold window beams, coloured glass patches on the floor, a reflection on polished floors.
+  4. Life: flames and lights flicker, embers and dust drift, cloth sways.
+  5. Wear and clutter at the start, polish at the top; nothing symmetrical by accident.
+  6. Scale: doors ~48 px, tables ~24 px, hearth ~56 px next to the 40 px hunter.
+- **Where the art comes from.** The code-drawn pieces (`hall_pieces.py`, `make_tiles.py`) are clean but simple. The
+  quality jump for hero props is the same as for the hunter: an image model draws them, a script cuts them.
+  **Prop sheets:** one image of separate props on a flat plain grey background, top-down 3/4 camera, same palette
+  (indigo stone, crimson, gold, ember, navy and white marble). Then
+  `python3 tools/home_art/from_props.py sheet.png hearth_b_0@56 hearth_b_1@56 ... --out tools/home_art/props`
+  (names in reading order, `@N` = height in px). `make_tiles.py` loads every PNG in `tools/home_art/props/` over the
+  code-drawn piece with the same name, so the room code does not change. Animated props are `name_0`, `name_1`.
+  Example prompt: "Pixel art prop sprite sheet for a gothic castle great hall, top-down three-quarter view like
+  Pokemon FireRed and Castlevania, separate objects with clear gaps on a flat plain grey background: a stone
+  fireplace with a small fire, the same fireplace with a big fire, an ornate gold-trimmed fireplace with blue fire,
+  an iron chandelier with six candles, a suit of armour on a plinth, a long banquet table with a crimson cloth and
+  goblets, four high-backed crimson chairs, wooden benches, a gold urn, wall torches, crest banners, a stained-glass
+  window, an oak door and a carved gold door. 16-bit, chunky 1px dark outlines, crisp pixels, no text, no shadows on
+  the floor."
+
 ### 8c. Home next
 
 - More stations are placed; give each real depth: Pantry (cook/stock meals), Study desk (spend Embers on

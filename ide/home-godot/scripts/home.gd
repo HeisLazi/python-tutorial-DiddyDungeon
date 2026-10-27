@@ -16,6 +16,7 @@ const FRAME := Vector2i(48, 46)   # one hunter frame (tools/home_art/from_sheets
 const TILES: Texture2D = preload("res://art/tiles.png")
 var FONT_FILE: FontFile = preload("res://art/PressStart2P.woff2")
 const CRT_SHADER: Shader = preload("res://shaders/crt.gdshader")
+const SWAY_SHADER: Shader = preload("res://shaders/sway.gdshader")
 
 # The hunter: one sheet per facing, 8 walk frames then 4 idle frames. Right is the side sheet flipped.
 const SHEET_FRONT: Texture2D = preload("res://art/hunter_front.png")
@@ -302,6 +303,66 @@ func add_shaft(top_left: Vector2, width: float, height: float, slant: float, col
 	world.add_child(poly)
 	room_nodes.append(poly)
 	return poly
+
+
+func add_shadow(feet: Vector2, w := 14.0, h := 5.0, alpha := 0.38) -> Polygon2D:
+	## A soft dark ellipse on the floor under a prop, so it sits in the room instead of floating.
+	var pts := PackedVector2Array()
+	for i in 14:
+		var a := TAU * i / 14.0
+		pts.append(Vector2(cos(a) * w / 2.0, sin(a) * h / 2.0))
+	var poly := Polygon2D.new()
+	poly.polygon = pts
+	poly.color = Color(0.02, 0.02, 0.07, alpha)
+	poly.position = feet.round() - Vector2(0, 1)
+	background.add_child(poly)
+	return poly
+
+
+func add_tint(rect: Rect2, color: Color) -> Polygon2D:
+	## A flat dark (or coloured) rectangle under the props: wall-base shadow, floor tint.
+	var poly := Polygon2D.new()
+	poly.polygon = PackedVector2Array([rect.position, rect.position + Vector2(rect.size.x, 0), rect.position + rect.size, rect.position + Vector2(0, rect.size.y)])
+	poly.color = color
+	background.add_child(poly)
+	return poly
+
+
+func add_patch(points: PackedVector2Array, color: Color) -> Polygon2D:
+	## An additive patch of coloured light on the floor (stained glass, moonlight).
+	var poly := Polygon2D.new()
+	poly.polygon = points
+	poly.color = color
+	var mat := CanvasItemMaterial.new()
+	mat.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
+	mat.light_mode = CanvasItemMaterial.LIGHT_MODE_UNSHADED
+	poly.material = mat
+	background.add_child(poly)
+	return poly
+
+
+func add_chain(x: float, y_top: float, y_bottom: float) -> Line2D:
+	## A hanging chain (for the chandelier) drawn as a dotted dark line from the ceiling.
+	var line := Line2D.new()
+	line.points = PackedVector2Array([Vector2(x, y_top), Vector2(x, y_bottom)])
+	line.width = 2.0
+	line.default_color = Color("3c4058")
+	line.texture_mode = Line2D.LINE_TEXTURE_NONE
+	line.z_index = 3
+	world.add_child(line)
+	room_nodes.append(line)
+	return line
+
+
+func sway(sprite: Sprite2D, amp := 0.9, speed := 1.8, height := 36.0) -> void:
+	## Cloth that moves: banners and tapestries sway at the hem.
+	var mat := ShaderMaterial.new()
+	mat.shader = SWAY_SHADER
+	mat.set_shader_parameter("amp", amp)
+	mat.set_shader_parameter("speed", speed)
+	mat.set_shader_parameter("height", height)
+	mat.set_shader_parameter("phase", float(int(sprite.position.x) % 7))
+	sprite.material = mat
 
 
 func _make_light_texture() -> ImageTexture:

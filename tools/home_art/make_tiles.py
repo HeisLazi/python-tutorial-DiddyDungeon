@@ -665,6 +665,13 @@ def build():
     pieces["moonbeam"] = moonbeam()
     import hall_pieces
     hall_pieces.add(pieces, Sprite, C, noise)
+    # Props cut from AI prop sheets (tools/home_art/from_props.py) override a code-drawn piece of the same name.
+    props_dir = Path(__file__).resolve().parent / "props"
+    for png in sorted(props_dir.glob("*.png")) if props_dir.exists() else []:
+        img = Image.open(png).convert("RGBA")
+        spr = Sprite(img.width, img.height)
+        spr.img = img
+        pieces[png.stem] = spr
 
     atlas_w = 384
     x = y = row_h = 0
