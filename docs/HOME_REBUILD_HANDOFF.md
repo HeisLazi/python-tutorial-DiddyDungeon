@@ -25,7 +25,7 @@ Update the "Status" and "Next steps" sections after every major step and commit.
 | Library | `library` | 9 steps | E: great_hall | study | DONE |
 | Hall of Arms | `armory` | 9 steps | W: great_hall | armory, training | DONE (needs east exit to war_room later) |
 | Pantry | `pantry` | 8 steps, 238 Embers | E: library (W: gallery, add when the gallery exists) | pantry | DONE (all props sliced; `PN_*` constants; Library has a west exit to it) |
-| Trophy Gallery | `gallery` | designed below | E: pantry | trophy | concepts saved only |
+| Trophy Gallery | `gallery` | 9 steps, 288 Embers | E: pantry (Pantry has a west exit to it) | trophy | DONE (`GL_*`; props sliced from gal_plinths, gal_wall, gal_floor; not yet walked in Chrome) |
 | War Room | `war_room` | designed below | W: armory, E: den | map | concepts saved only |
 | Pyr's Den | `den` | designed below | W: war_room | perch | concepts saved only |
 
@@ -104,7 +104,7 @@ Watch for: furniture blocking a doorway at some level; props overlapping the wal
 ## 7. Next steps (in order)
 
 1. (done) Pantry. NOT yet checked in the real browser: do the Chrome walk Library -> Pantry -> Library once.
-2. Trophy Gallery (3 sheets), then War Room (+ Hall of Arms east exit), then Pyr's Den. Commit after each.
+2. (Gallery done) War Room (+ Hall of Arms east exit), then Pyr's Den. Commit after each.
 3. Station and bridge check across all rooms in the real app (`HomeRoom` in `ide/frontend/src/RpgViews.jsx` already forwards `use` events by station id). Update `homeRoomState` to send `levels` if the app should drive rooms directly.
 4. Merge: `ExitWorktree keep`, then from the main checkout `git merge --ff-only feature/tauri-arcade` (md5 of `progress.json` before and after), `sh tools/build_home.sh`, `npm --prefix ide/frontend run build`, run the backend tests (`ide/.venv` pytest) and `node --test ide/frontend/src/cloud/` (87 pass / 10 pre-existing failures is the baseline).
 5. Pyr's eagle redesign (4 stages), unlockable hunter skins, the three weapon types and the combat stage (`HOME_AND_ART.md` section 8).

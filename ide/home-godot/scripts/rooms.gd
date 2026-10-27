@@ -52,6 +52,17 @@ const LADDERS := {
 		{"name": "Set the table", "cost": 40, "note": "a roast ham, bread and bowls"},
 		{"name": "Stoke the feast", "cost": 50, "note": "a roaring fire, torches and steam everywhere"},
 	],
+	"gallery": [
+		{"name": "Dust and clear", "cost": 16, "note": "cobwebs and dust cleared"},
+		{"name": "Mend the display case", "cost": 20, "note": "a glass case with a greatsword and a horn"},
+		{"name": "Hang the banners", "cost": 22, "note": "flame banners replace the torn ones"},
+		{"name": "First relics", "cost": 26, "note": "a golden chalice on the central plinth"},
+		{"name": "Lay the carpet and ropes", "cost": 30, "note": "a crimson carpet and gold stanchions"},
+		{"name": "Spotlights", "cost": 34, "note": "the plinths and the case are lit"},
+		{"name": "Mount the beasts", "cost": 40, "note": "a ram, a wolf and a dragon on the wall"},
+		{"name": "Glowing relics", "cost": 46, "note": "a glowing heart and a burning claw"},
+		{"name": "Portrait of the hunter", "cost": 54, "note": "a gold-framed portrait and stained glass"},
+	],
 	"armory": [
 		{"name": "Sweep and clear", "cost": 16, "note": "cobwebs and rubble cleared"},
 		{"name": "Stock the rack", "cost": 20, "note": "a few swords and spears on the rack, a barrel of spears"},
@@ -85,6 +96,17 @@ const PN_BARRELS := 5
 const PN_RANGE := 6
 const PN_TABLE := 7
 const PN_FEAST := 8
+
+# The Trophy Gallery's steps by name.
+const GL_DUST := 1
+const GL_CASE := 2
+const GL_BANNERS := 3
+const GL_RELICS := 4
+const GL_CARPET := 5
+const GL_SPOT := 6
+const GL_BEASTS := 7
+const GL_GLOW := 8
+const GL_PORTRAIT := 9
 
 # The Hall of Arms' steps by name.
 const HA_SWEEP := 1
@@ -140,6 +162,8 @@ static func build(h, id: String, level: int) -> void:
 			_armory(h, level)
 		"pantry":
 			_pantry(h, level)
+		"gallery":
+			_gallery(h, level)
 		_:
 			_great_hall(h, level)
 
@@ -532,7 +556,7 @@ static func _armory(h, lv: int) -> void:
 
 
 static func _pantry(h, lv: int) -> void:
-	_shell(h, -1, -1, {}, {"to": "library", "spawn": Vector2(30, 142)}, "stone")
+	_shell(h, -1, -1, {"to": "gallery", "spawn": Vector2(290, 142)}, {"to": "library", "spawn": Vector2(30, 142)}, "stone")
 	h.set_ambient(Color(0.40, 0.36, 0.36).lerp(Color(0.56, 0.48, 0.44), lv / float(PN_FEAST)))
 	h.add_tint(Rect2(0, 0, h.VIEW.x, 64), Color(0.40, 0.25, 0.10, 0.10))       # warm, smoky stone
 
@@ -610,3 +634,85 @@ static func _pantry(h, lv: int) -> void:
 
 	# ── Smoke and dust ──
 	h.add_embers(Rect2(40, 74, 240, 90), Color(0.9, 0.8, 0.7, 0.4), maxi(4, 14 - lv), 3.0, 5.0)
+
+
+static func _gallery(h, lv: int) -> void:
+	_shell(h, -1, -1, {}, {"to": "pantry", "spawn": Vector2(30, 142)}, "stone")
+	h.set_ambient(Color(0.36, 0.40, 0.56).lerp(Color(0.52, 0.48, 0.56), lv / float(GL_PORTRAIT)))
+	h.add_tint(Rect2(0, 0, h.VIEW.x, 64), Color(0.10, 0.15, 0.40, 0.10))        # a cold, museum-blue wall
+
+	# ── Neglect ──
+	if lv < GL_DUST:
+		h.bg("cobweb_l", Vector2(2, 16))
+		h.bg("cobweb_r", Vector2(h.VIEW.x - 16, 16))
+		for at in [Vector2(70, 150), Vector2(190, 160), Vector2(240, 130)]:
+			h.bg("rubble_0", at, true)
+		for x in [96.0, 210.0]:
+			h.bg("stain", Vector2(x, 18))
+
+	# ── The wall: window, banners, torches, mounted beasts, portrait ──
+	var glass := lv >= GL_PORTRAIT
+	h.bg("window_stained" if glass else "window_moon", Vector2(40, 60), true)
+	h.add_shaft(Vector2(28, 40), 24.0, 96.0, 30.0, Color(0.5, 0.6, 0.95, 0.12 + (0.1 if glass else 0.0)))
+	h.add_light(Vector2(40, 66), 56.0, Color(0.45, 0.58, 0.95), 0.4, 0.0)
+	if glass:
+		var panes: Array = [Color(0.95, 0.25, 0.30, 0.30), Color(0.30, 0.45, 1.0, 0.32), Color(1.0, 0.78, 0.28, 0.30), Color(0.65, 0.35, 0.95, 0.30)]
+		var k := 0
+		for row in 3:
+			for col in 2:
+				var x0: float = 66.0 + col * 9.0 + row * 2.0
+				var y0: float = 100.0 + row * 9.0
+				h.add_patch(PackedVector2Array([Vector2(x0, y0), Vector2(x0 + 8, y0), Vector2(x0 + 9, y0 + 8), Vector2(x0 + 1, y0 + 8)]), panes[k % panes.size()])
+				k += 1
+	var banner_xs: Array = [70.0, 250.0]
+	if lv >= GL_BANNERS and lv < GL_PORTRAIT:
+		banner_xs = [70.0, 160.0, 250.0]
+	for x in banner_xs:
+		var banner: Sprite2D = h.bg("banner_flame" if lv >= GL_BANNERS else "banner_torn_gal", Vector2(x, 58), true)
+		h.sway(banner, 0.8, 1.6, 38.0)
+	for x in [136.0, 184.0]:
+		h.anim("torch_gal", Vector2(x, 56), Rect2(), true)
+		h.add_light(Vector2(x, 40), 52.0, Color("ffb36b"), 0.7 + 0.03 * lv, 0.3)
+	if lv >= GL_BEASTS:
+		h.bg("head_ram", Vector2(112, 54), true)
+		h.bg("head_wolf", Vector2(208, 54), true)
+		h.bg("head_dragon", Vector2(292, 54), true)
+	if lv >= GL_PORTRAIT:
+		h.bg("portrait", Vector2(160, 58), true)
+		h.add_light(Vector2(160, 44), 50.0, Color("ffe0a0"), 0.8, 0.0)
+
+	# ── The carpet and ropes ──
+	if lv >= GL_CARPET:
+		for row in range(5, 12):
+			h.bg("carpet", Vector2(144, row * 16))
+		for x in [112.0, 208.0]:
+			h.add_shadow(Vector2(x, 134), 40.0, 5.0, 0.3)
+			h.bg("stanchion", Vector2(x, 134), true)
+
+	# ── Plinths and relics ──
+	var spot := lv >= GL_SPOT
+	var left_piece := "plinth_heart" if lv >= GL_GLOW else "plinth_plain"
+	var right_piece := "plinth_claw" if lv >= GL_GLOW else "plinth_plain"
+	var mid_piece := "plinth_chalice" if lv >= GL_RELICS else "plinth_plain"
+	_prop(h, left_piece, Vector2(88, 102), 24.0, 8.0)
+	_prop(h, right_piece, Vector2(232, 102), 24.0, 8.0)
+	_prop(h, mid_piece, Vector2(160, 92), 24.0, 8.0)
+	h.station("trophy", "View your trophies", Rect2(128, 98, 64, 26), Vector2(160, 14))
+	if lv >= GL_CASE:
+		_prop(h, "case_sword", Vector2(276, 106), 16.0, 8.0)
+	if spot:
+		for at in [Vector2(88, 78), Vector2(160, 70), Vector2(232, 78)]:
+			h.add_light(at, 36.0, Color("fff0c8"), 0.85, 0.05)
+		if lv >= GL_CASE:
+			h.add_light(Vector2(276, 82), 36.0, Color("e8f4ff"), 0.7, 0.05)
+	if lv >= GL_GLOW:
+		h.add_light(Vector2(88, 84), 40.0, Color(1.0, 0.3, 0.35), 0.8, 0.3)
+		h.add_light(Vector2(232, 84), 40.0, Color(1.0, 0.6, 0.2), 0.8, 0.3)
+		h.add_embers(Rect2(222, 76, 20, 14), Color("ffb347"), 5, 8.0, 2.5)
+
+	# ── Crates in the corners (not in the doorway strip) ──
+	_prop(h, "crate_gal", Vector2(28, 140), 18.0, 7.0)
+	_prop(h, "crate_gal", Vector2(30, 100), 18.0, 7.0)
+
+	# ── Dust in the moonbeam ──
+	h.add_embers(Rect2(40, 74, 240, 90), Color(0.75, 0.80, 1.0, 0.5), maxi(4, 14 - lv), 3.0, 5.0)
