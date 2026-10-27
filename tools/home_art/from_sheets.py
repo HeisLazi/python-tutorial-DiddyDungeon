@@ -295,8 +295,44 @@ def preview(out_dir, path, scale=6):
     print("wrote", path)
 
 
+def build_pyr(sheet_dir, out_dir):
+    """Cut six grey-backed poses per stage into the 32px strips used by Home."""
+    sheet_dir, out_dir = Path(sheet_dir), Path(out_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    for stage in range(1, 5):
+        source = Image.open(sheet_dir / f"stage_{stage}.png").convert("RGB")
+        bg = source.getpixel((3, 3))
+        frames = []
+        for i in range(6):
+            cell = source.crop((round(i * source.width / 6), 0,
+                                round((i + 1) * source.width / 6), source.height))
+            rgba = cell.convert("RGBA")
+            rgba.putalpha(Image.new("L", cell.size))
+            rgba.putdata([(*p, 255 if sum(abs(a - b) for a, b in zip(p, bg)) > 40 else 0)
+                          for p in cell.getdata()])
+            clean(rgba)
+            bbox = rgba.getbbox()
+            if bbox is None:
+                raise ValueError(f"stage {stage}, frame {i} is empty")
+            frame = rgba.crop(bbox)
+            # The fledgling's two flying poses face the opposite way in the source.
+            if stage == 2 and i in (2, 3):
+                frame = frame.transpose(Image.Transpose.FLIP_LEFT_RIGHT)
+            frames.append(frame)
+        scale = min(30 / max(f.width for f in frames), 30 / max(f.height for f in frames))
+        strip = Image.new("RGBA", (192, 32))
+        for i, frame in enumerate(frames):
+            frame = frame.resize((max(1, round(frame.width * scale)),
+                                  max(1, round(frame.height * scale))), Image.Resampling.NEAREST)
+            strip.alpha_composite(frame, (i * 32 + (32 - frame.width) // 2, 31 - frame.height))
+        strip.save(out_dir / f"pyr_stage_{stage}.png")
+    print("wrote Pyr strips to", out_dir)
+
+
 if __name__ == "__main__":
-    if sys.argv[1] == "preview":
+    if sys.argv[1] == "pyr":
+        build_pyr(sys.argv[2], sys.argv[3])
+    elif sys.argv[1] == "preview":
         meta = json.loads((Path(sys.argv[2]) / "hunter_sheet.json").read_text(encoding="utf-8"))
         FW, FH = meta["frame"]
         preview(sys.argv[2], sys.argv[3])

@@ -170,19 +170,21 @@ Suggested ladder mapping (section 4): 1 clear (add `twigs` litter at level 0, re
 - The Home station panel exposes the existing station action alongside the next room upgrade, completed steps, cost and Embers. It sends all room levels to Godot and refreshes state after a purchase.
 - Full-app Chromium verification used an isolated copy of the save: bought Great Hall step 1 (18) and Pantry step 1 (16), observed both rooms rebuild and the balance change from 100 to 66 Embers. The Pantry meal action reached the backend and reported the expected no-meals error. Godot and React production builds passed; backend tests were 241 passed, and the cloud suite now has 90 passed with the same 10 pre-existing failures.
 - Pyr's optional six-frame stage loader and the existing-flame fallback are implemented. Stages derive from existing bond thresholds (0, 3, 6); the fourth uses the existing three-Mastery-Shield milestone after bond 6. No new progression counter is stored. Idle and following use two frames each; perch and feed use one frame each.
-- The loader was checked in headless Godot and a Chromium Web export using a disposable synthetic strip; the missing-sheet fallback was also checked in Chromium. Real eagle artwork, its slicing pipeline extension and visual review remain blocked on the four source sheets below. The hosted Home projection migration has not been applied.
+- The loader was checked in headless Godot and a Chromium Web export, including the missing-sheet fallback. Four generated eagle sheets now ship in Home; see section 10. The hosted Home projection migration has not been applied.
 
 
-## 10. Pyr source sheets requested from the owner
+## 10. Pyr source sheets and slicing
 
-Provide four separate source PNGs, saved as `tools/home_art/sheets/pyr/stage_1.png` through `stage_4.png`.
+The four source sheets were generated with the built-in image generation tool using the prompts below and the phoenix reference. They live in `tools/home_art/sheets/pyr/` and are included along with the sliced sprites. Recreate the game strips with `python3 tools/home_art/from_sheets.py pyr tools/home_art/sheets/pyr ide/home-godot/art`, then run `sh tools/build_home.sh`. The slicer removes the grey background and stray fragments, keeps a consistent scale within each stage, and flips the fledgling's two flying frames to match its other poses. The eagle follows farther from the hunter than the old flame so it remains visible. All four stages were inspected in the Godot Web export in Chromium; the final placement was rechecked after adjusting the following distance. The headless pose contract, progression test and production builds pass.
+
+The source PNGs are `tools/home_art/sheets/pyr/stage_1.png` through `stage_4.png`.
 Attach `tools/home_art/sheets/pyr_phoenix_reference.png` as the colour and design reference for stages 2–4.
 Each image should be one horizontal row of six equal square cells, in this exact order: idle A, idle B, flying A,
 flying B, perched, feeding. Keep the character centered with the full wings and tail inside each cell. Use a flat,
 uniform grey background and no text, grid lines, cast shadows, or extra objects. The final sliced strip must be
-192×32 pixels: six 32×32 transparent frames, with nearest-neighbour scaling. The existing `from_sheets.py` or
-`from_props.py` pipeline must be extended to cut and clean the supplied sheets; do not place raw source images in
-`ide/home-godot/art/`. Its four output filenames are `pyr_stage_1.png` through `pyr_stage_4.png`. Re-import and
+192×32 pixels: six 32×32 transparent frames, with nearest-neighbour scaling. The `from_sheets.py` pipeline cuts
+and cleans the source sheets; do not place raw source images in `ide/home-godot/art/`. Its four output filenames
+are `pyr_stage_1.png` through `pyr_stage_4.png`. Re-import and
 rebuild the Godot web export after adding them. Missing or incorrectly sized strips retain the current flame.
 
 **Stage 1 — Ember chick**

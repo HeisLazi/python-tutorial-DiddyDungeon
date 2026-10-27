@@ -635,12 +635,16 @@ func _configure_pyr_sheet(stage: int) -> void:
 
 
 func _follow_pyr(delta: float) -> void:
-	var behind := {"down": Vector2(-18, -14), "up": Vector2(18, -10), "left": Vector2(16, -14), "right": Vector2(-16, -14)}[facing] as Vector2
+	# The eagle strips are wider than the old flame: leave room beside the hunter.
+	var distance := 28 if pyr_custom_sheet else 18
+	var behind := {"down": Vector2(-distance, -14), "up": Vector2(distance, -10), "left": Vector2(distance, -14), "right": Vector2(-distance, -14)}[facing] as Vector2
 	var target := pos + behind
 	pyr_pos = pyr_pos.lerp(target, 1.0 - exp(-5.0 * delta))
 	var bob := sin(clock * 3.0) * 1.5
 	pyr.position = (pyr_pos + Vector2(0, bob)).round()
 	if pyr_custom_sheet:
+		if facing == "left" or facing == "right":
+			pyr.flip_h = (facing == "left") if pyr_sheet_stage == 1 else (facing == "right")
 		var frame: int
 		if pyr_pose_time > 0.0:
 			frame = 5 if pyr_pose == 3 else 4
@@ -650,6 +654,7 @@ func _follow_pyr(delta: float) -> void:
 			frame = int(clock * 2.0) % 2
 		pyr.region_rect = Rect2(frame * PYR_CELL, 0, PYR_CELL, PYR_CELL)
 	else:
+		pyr.flip_h = false
 		var flame := "pyr_%d" % (int(clock * 3.0) % 2)
 		pyr.region_rect = TilesData.REGIONS[flame]
 
