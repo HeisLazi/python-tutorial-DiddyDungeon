@@ -2435,6 +2435,26 @@ function AppV2() {
     }
   }
 
+  const purchaseHomeRoom = async (roomId, expectedLevel) => {
+    try {
+      setBusy(true)
+      const result = await api('/api/home/rooms/purchase', {
+        method: 'POST',
+        body: JSON.stringify({ room_id: roomId, expected_level: expectedLevel }),
+      })
+      let refreshed = await refreshCampaign()
+      if (refreshed && Number(refreshed.revision) < Number(result.revision)) refreshed = await refreshCampaign()
+      if (!refreshed) setCampaign((current) => current ? { ...current, progress: result.progress, home_rooms: result.home_rooms, revision: result.revision } : current)
+      setNotice(`${result.step?.name || 'Room upgrade'} built.`)
+      return result
+    } catch (error) {
+      setNotice(`Room upgrade failed: ${error.message}`)
+      throw error
+    } finally {
+      setBusy(false)
+    }
+  }
+
   const performHomesteadAction = async (action) => {
     try {
       setBusy(true)
@@ -3057,6 +3077,8 @@ function AppV2() {
               equipCosmetic={equipCosmetic}
               equipCampaignItem={equipCampaignItem}
               buildRoomUpgrade={buildRoomUpgrade}
+              homeRooms={campaign?.home_rooms}
+              purchaseHomeRoom={purchaseHomeRoom}
               performHomesteadAction={performHomesteadAction}
               saveCodexNote={saveCodexNote}
               pyr={pyrTools}

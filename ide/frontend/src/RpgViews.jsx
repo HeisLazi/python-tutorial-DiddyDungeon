@@ -2999,9 +2999,18 @@ const HOME_STATION_UPGRADES = {
   armory: ['warding-loom', 'breaker-workbench'],
 }
 
+const HOME_STATION_ROOMS = {
+  hearth: 'great_hall', study: 'library', armory: 'armory', pantry: 'pantry',
+  trophy: 'gallery', map: 'war_room', perch: 'den',
+}
+const HOME_STATION_ACTIONS = {
+  hearth: 'Rest at the hearth', study: 'Open Tutor', armory: 'Open the Armory',
+  pantry: 'Eat a meal', trophy: 'View player stats', map: 'Enter the Dungeon', perch: 'Feed Pyr',
+}
+
 const HUNTER_LOOKS = ['alucard']
 
-function homeRoomState(progress, crt, look) {
+function homeRoomState(progress, crt, look, homeRooms) {
   const player = progress?.player || {}
   const homestead = progress?.homestead || {}
   const owned = Array.isArray(homestead.room_upgrades) ? homestead.room_upgrades : []
@@ -3022,6 +3031,7 @@ function homeRoomState(progress, crt, look) {
     fire_lit: Boolean((day.lines || 0) + (day.answers || 0) + (day.mobs || 0) > 0),
     crt,
     look,
+    levels: homeRooms?.levels || homestead.room_levels || {},
     tiers,
     max_tiers: maxTiers,
   }
@@ -3041,7 +3051,7 @@ function useHomeBuild() {
   return status
 }
 
-function HomeRoom({ progress, armory, armoryActions, performHomesteadAction, onNavigate, onClassic, busy }) {
+function HomeRoom({ progress, homeRooms, purchaseHomeRoom, armory, armoryActions, performHomesteadAction, onNavigate, onClassic, busy }) {
   const frameRef = useRef(null)
   const sectionRef = useRef(null)
   const readyRef = useRef(false)
@@ -3065,6 +3075,8 @@ function HomeRoom({ progress, armory, armoryActions, performHomesteadAction, onN
     try { return window.localStorage.getItem('questlab.homeCrt') !== 'false' } catch { return true }
   })
   const [panel, setPanel] = useState('')
+  const [station, setStation] = useState('')
+  const [upgradeError, setUpgradeError] = useState('')
   const [look, setLook] = useState(() => {
     try { return HUNTER_LOOKS.includes(window.localStorage.getItem('questlab.hunterLook')) ? window.localStorage.getItem('questlab.hunterLook') : 'alucard' } catch { return 'alucard' }
   })
@@ -3074,7 +3086,7 @@ function HomeRoom({ progress, armory, armoryActions, performHomesteadAction, onN
     return next
   })
   const stateRef = useRef(null)
-  stateRef.current = homeRoomState(progress, crt, look)
+  stateRef.current = homeRoomState(progress, crt, look, homeRooms)
 
   const send = (extra = {}) => {
     const target = frameRef.current?.contentWindow
@@ -3094,7 +3106,7 @@ function HomeRoom({ progress, armory, armoryActions, performHomesteadAction, onN
     }
   }
 
-  const useStation = async (id) => {
+  const performStationAction = async (id) => {
     if (id === 'door') return onNavigate?.('forge')
     if (id === 'map') return onNavigate?.('dungeon')
     if (id === 'armory') return setPanel('armory')
@@ -3110,6 +3122,36 @@ function HomeRoom({ progress, armory, armoryActions, performHomesteadAction, onN
     if (id === 'hearth') return homeAction('recover', (healed) => (healed > 0 ? `You rest by the fire: +${healed} HP` : 'You are fully rested.'))
     if (id === 'pantry') return homeAction('meal', (healed) => `You eat a hot meal: +${healed} HP`)
     if (id === 'perch') return homeAction('feed_pyr', () => 'Pyr is fed and glows brighter.')
+  }
+  const useStation = (id) => {
+    if (!HOME_STATION_ROOMS[id]) return performStationAction(id)
+    setStation(id)
+    setUpgradeError('')
+    setPanel('room')
+  }
+  const closePanel = () => {
+    setPanel('')
+    frameRef.current?.focus()
+  }
+  const roomId = HOME_STATION_ROOMS[station]
+  const ladder = homeRooms?.ladders?.[roomId]
+  const level = homeRooms?.levels?.[roomId] ?? 0
+  const nextStep = ladder?.[level]
+  const embers = progress?.homestead?.upgrade_tokens ?? 0
+  const buyNextStep = async () => {
+    if (!nextStep || !purchaseHomeRoom) return
+    setUpgradeError('')
+    try {
+      const result = await purchaseHomeRoom(roomId, level)
+      if (result?.home_rooms?.levels) send({ levels: result.home_rooms.levels })
+      closePanel()
+    } catch (error) {
+      setUpgradeError(String(error?.message || 'Upgrade could not be purchased.'))
+    }
+  }
+  const runRoomAction = async () => {
+    if (station !== 'armory') closePanel()
+    await performStationAction(station)
   }
   const useStationRef = useRef(useStation)
   useStationRef.current = useStation
@@ -3138,6 +3180,23 @@ function HomeRoom({ progress, armory, armoryActions, performHomesteadAction, onN
     <section className="home-room" data-testid="home-room" aria-label="Your home" ref={sectionRef}>
       <div className="home-room-frame" style={{ width: frameSize.width, height: frameSize.height }}>
         <iframe ref={frameRef} title="Home" src="/home/index.html" allow="autoplay" onLoad={() => frameRef.current?.focus()} />
+        {panel === 'room' && (
+          <div className="home-room-panel home-upgrades" role="dialog" aria-modal="true" aria-label={`${homeRooms?.labels?.[roomId] || 'Home'} upgrades`}>
+            <button type="button" className="home-room-close" onClick={closePanel} aria-label="Close room upgrades" autoFocus>Close</button>
+            <div className="home-upgrades-heading"><span>HOME · {level} / {ladder?.length ?? '—'} BUILT</span><h2>{homeRooms?.labels?.[roomId] || 'Room upgrades'}</h2><p>{embers} Embers available</p></div>
+            <button type="button" className="home-upgrades-action" disabled={busy} onClick={runRoomAction}>{HOME_STATION_ACTIONS[station]}</button>
+            {!ladder ? <p role="status">Loading room upgrades…</p> : nextStep ? (
+              <section className="home-upgrades-next" aria-label="Next upgrade">
+                <small>NEXT UPGRADE · {level + 1} / {ladder.length}</small>
+                <h3>{nextStep.name}</h3><p>{nextStep.note}</p>
+                <button type="button" disabled={busy || !purchaseHomeRoom || embers < nextStep.cost} onClick={buyNextStep}>{busy ? 'Building…' : `Build · ${nextStep.cost} Embers`}</button>
+                {embers < nextStep.cost && <small>Need {nextStep.cost - embers} more Embers.</small>}
+              </section>
+            ) : <p className="home-upgrades-complete">This room is fully upgraded.</p>}
+            {upgradeError && <p role="alert" className="home-upgrades-error">{upgradeError}</p>}
+            {ladder && <section className="home-upgrades-built"><h3>Built steps</h3>{level === 0 ? <p>No upgrades built yet.</p> : <ol>{ladder.slice(0, level).map((step, index) => <li key={`${index}-${step.name}`}>{step.name}</li>)}</ol>}</section>}
+          </div>
+        )}
         {panel === 'armory' && (
           <div className="home-room-panel" role="dialog" aria-label="Armory">
             <button type="button" className="home-room-close" onClick={() => setPanel('')} aria-label="Close the Armory">Close</button>
@@ -3157,7 +3216,7 @@ function HomeRoom({ progress, armory, armoryActions, performHomesteadAction, onN
   )
 }
 
-function CampaignSurface({ progress, revision, equipmentProjection, purchaseCosmetic, purchaseMarketItem, equipCosmetic, equipCampaignItem, buildRoomUpgrade, performHomesteadAction, setAvatar, selectCampaign, hunter, spendStatPoint, hunterActions, campaignBoard, armory, armoryActions, busy, onNavigate }) {
+function CampaignSurface({ progress, homeRooms, purchaseHomeRoom, revision, equipmentProjection, purchaseCosmetic, purchaseMarketItem, equipCosmetic, equipCampaignItem, buildRoomUpgrade, performHomesteadAction, setAvatar, selectCampaign, hunter, spendStatPoint, hunterActions, campaignBoard, armory, armoryActions, busy, onNavigate }) {
   const [place, setPlace] = useState('office')
   const [mapCollapsed, setMapCollapsed] = useState(false)
   const homeBuild = useHomeBuild()
@@ -3183,7 +3242,7 @@ function CampaignSurface({ progress, revision, equipmentProjection, purchaseCosm
       <div className={`campaign-layout ${mapCollapsed ? 'map-rail-is-collapsed' : ''}`}>
         <CampaignMapRail progress={progress} place={place} onSelect={selectPlace} onSelectCampaign={selectCampaign} busy={busy} collapsed={mapCollapsed} onToggle={() => setMapCollapsed((value) => !value)} />
         <main className="campaign-place-panel" data-place={place}>
-          {place === 'home' && homeBuild === 'ready' && !classicHome && <HomeRoom progress={progress} armory={armory} armoryActions={armoryActions} performHomesteadAction={performHomesteadAction} onNavigate={onNavigate} onClassic={() => setClassic(true)} busy={busy} />}
+          {place === 'home' && homeBuild === 'ready' && !classicHome && <HomeRoom progress={progress} homeRooms={homeRooms} purchaseHomeRoom={purchaseHomeRoom} armory={armory} armoryActions={armoryActions} performHomesteadAction={performHomesteadAction} onNavigate={onNavigate} onClassic={() => setClassic(true)} busy={busy} />}
           {place === 'home' && homeBuild === 'ready' && classicHome && <div className="home-room-switch"><button type="button" onClick={() => setClassic(false)}>Back to the room</button></div>}
           {place === 'home' && (homeBuild !== 'ready' || classicHome) && <Homestead hunter={hunter} spendStatPoint={spendStatPoint} armory={armory} armoryActions={armoryActions} progress={progress} revision={revision} equipmentProjection={equipmentProjection} purchaseCosmetic={purchaseCosmetic} equipCosmetic={equipCosmetic} equipCampaignItem={equipCampaignItem} buildRoomUpgrade={buildRoomUpgrade} performHomesteadAction={performHomesteadAction} setAvatar={setAvatar} busy={busy} onNavigate={homeNavigate} />}
           {place === 'market' && <CampaignMarket progress={progress} hunter={hunter} hunterActions={hunterActions} armory={armory} armoryActions={armoryActions} purchaseMarketItem={purchaseMarketItem} busy={busy} onBackHome={() => setPlace('home')} />}
@@ -4808,7 +4867,7 @@ function SettingsScreen({ progress, hunter, preferences, setters, resetLayout, a
   )
 }
 
-export function GameScreen({ pyr, settingsAi, runtime, setAvatar, selectCampaign, hunter, spendStatPoint, hunterActions, campaignBoard, armory, armoryActions, sparRoster, sparActions, onDungeonApplyOil, onDungeonTravel, onDungeonAnswerOption, activeView, progress, revision, avatarDataUrl = '', encounter, codexProjection, practiceProjection, equipmentProjection, dungeon, dungeonEditorContent, onDungeonEditorChange, onSaveDungeon, onDungeonChoose, onDungeonRest, onDungeonCampAction, onDungeonRevealRisk, onDungeonEnterRisk, onDungeonMarketPurchase, onDungeonEquip, onDungeonLeave, onDungeonFinish, onDungeonReset, purchaseCosmetic, purchaseMarketItem, equipCosmetic, equipCampaignItem, buildRoomUpgrade, performHomesteadAction, saveCodexNote, busy, dungeonSaving, submitBattle, submitBoss, submitDungeon, onStartDungeon, onPracticePrompt, preferences, setters, resetLayout, account, accountBusy, accountNotice, onSignIn, onSignUp, onSignOut, onDeviceLabelSave, onResolveConflict, workspaceTransfer, workspaceTransferBusy, workspaceTransferNotice, onWorkspaceTransferRefresh, onWorkspaceTransferPush, onWorkspaceTransferPreviewPull, onWorkspaceTransferApplyPull, onNavigate, tutorCode, tutorDirty, tutorExternalChange, editorFontSize = 14, onTutorChange, onTutorSave, onTutorFormat, onTutorRun, onTutorReloadExternal, onTutorKeepEdits, campaignReady = true, showNavigation = true }) {
+export function GameScreen({ pyr, settingsAi, runtime, setAvatar, selectCampaign, hunter, spendStatPoint, hunterActions, campaignBoard, armory, armoryActions, sparRoster, sparActions, onDungeonApplyOil, onDungeonTravel, onDungeonAnswerOption, activeView, progress, homeRooms, purchaseHomeRoom, revision, avatarDataUrl = '', encounter, codexProjection, practiceProjection, equipmentProjection, dungeon, dungeonEditorContent, onDungeonEditorChange, onSaveDungeon, onDungeonChoose, onDungeonRest, onDungeonCampAction, onDungeonRevealRisk, onDungeonEnterRisk, onDungeonMarketPurchase, onDungeonEquip, onDungeonLeave, onDungeonFinish, onDungeonReset, purchaseCosmetic, purchaseMarketItem, equipCosmetic, equipCampaignItem, buildRoomUpgrade, performHomesteadAction, saveCodexNote, busy, dungeonSaving, submitBattle, submitBoss, submitDungeon, onStartDungeon, onPracticePrompt, preferences, setters, resetLayout, account, accountBusy, accountNotice, onSignIn, onSignUp, onSignOut, onDeviceLabelSave, onResolveConflict, workspaceTransfer, workspaceTransferBusy, workspaceTransferNotice, onWorkspaceTransferRefresh, onWorkspaceTransferPush, onWorkspaceTransferPreviewPull, onWorkspaceTransferApplyPull, onNavigate, tutorCode, tutorDirty, tutorExternalChange, editorFontSize = 14, onTutorChange, onTutorSave, onTutorFormat, onTutorRun, onTutorReloadExternal, onTutorKeepEdits, campaignReady = true, showNavigation = true }) {
   const wideRoute = ['hub', 'character', 'homestead', 'codex', 'tutor', 'settings'].includes(activeView)
   // Historical contract marker: const wideRoute = ['hub', 'character', 'homestead', 'codex', 'settings']
   const withWideNavigation = (screen) => wideRoute && showNavigation
@@ -4824,7 +4883,7 @@ export function GameScreen({ pyr, settingsAi, runtime, setAvatar, selectCampaign
       </div>
     )
   }
-  if (activeView === 'hub') return withWideNavigation(<CampaignSurface setAvatar={setAvatar} selectCampaign={selectCampaign} hunter={hunter} spendStatPoint={spendStatPoint} hunterActions={hunterActions} campaignBoard={campaignBoard} armory={armory} armoryActions={armoryActions} progress={progress} revision={revision} equipmentProjection={equipmentProjection} purchaseCosmetic={purchaseCosmetic} purchaseMarketItem={purchaseMarketItem} equipCosmetic={equipCosmetic} equipCampaignItem={equipCampaignItem} buildRoomUpgrade={buildRoomUpgrade} performHomesteadAction={performHomesteadAction} busy={busy} onNavigate={onNavigate} />)
+  if (activeView === 'hub') return withWideNavigation(<CampaignSurface setAvatar={setAvatar} selectCampaign={selectCampaign} hunter={hunter} spendStatPoint={spendStatPoint} hunterActions={hunterActions} campaignBoard={campaignBoard} armory={armory} armoryActions={armoryActions} progress={progress} homeRooms={homeRooms} purchaseHomeRoom={purchaseHomeRoom} revision={revision} equipmentProjection={equipmentProjection} purchaseCosmetic={purchaseCosmetic} purchaseMarketItem={purchaseMarketItem} equipCosmetic={equipCosmetic} equipCampaignItem={equipCampaignItem} buildRoomUpgrade={buildRoomUpgrade} performHomesteadAction={performHomesteadAction} busy={busy} onNavigate={onNavigate} />)
   if (activeView === 'quests' || activeView === 'codex' || activeView === 'tutor') return withWideNavigation(<ResourceTutorScreen pyr={pyr} hunter={hunter} sparRoster={sparRoster} sparActions={sparActions} avatar={equipmentProjection?.avatar} activeView={activeView} progress={progress} revision={revision} codexProjection={codexProjection} encounter={encounter} tutorCode={tutorCode} tutorDirty={tutorDirty} tutorExternalChange={tutorExternalChange} editorFontSize={editorFontSize} busy={busy} onTutorChange={onTutorChange} onTutorSave={onTutorSave} onTutorFormat={onTutorFormat} onTutorRun={onTutorRun} onPracticePrompt={onPracticePrompt} onTutorReloadExternal={onTutorReloadExternal} onTutorKeepEdits={onTutorKeepEdits} onNavigate={onNavigate} />)
   // Legacy render contract retained in source comments for downstream static
   // checks; the live route above owns the replacement surface.

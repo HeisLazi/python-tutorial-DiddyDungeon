@@ -167,5 +167,5 @@ Suggested ladder mapping (section 4): 1 clear (add `twigs` litter at level 0, re
 
 - The server has a seven-room ladder catalog in `ide/server/home_rooms.py`, with a contract test against `rooms.gd`. Its 62 steps total 2,028 Embers. The helper projects old hearth/armory visual tiers without spending currency; the old map tier was not persisted by the app.
 - Atomic room purchases and bounded cloud projection are implemented. Legacy levels are materialized on the first successful purchase without another charge; stale or concurrent retries are rejected. Local Postgres validation and the isolated backend/cloud tests pass. The hosted database must receive `20261027081725_home_room_levels.sql` before the new projection can sync.
-- Next: wire the Home upgrade panel and run isolated browser verification; the backend alone does not expose the buying controls.
+- The Home station panel now exposes the existing station action alongside the next room upgrade, completed steps, cost and Embers. It sends all room levels to Godot and refreshes state after a purchase. The frontend production build passes; isolated browser purchase verification is next.
 - Pyr's four eagle sheets are not present in `tools/home_art/sheets/pyr/`; prepare the loader and exact image prompts after the purchase workflow is complete.
