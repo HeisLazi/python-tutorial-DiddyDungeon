@@ -305,12 +305,12 @@ ground line and soft shadows (the slicer removes them); animated props need a fl
                     [Pyr's Den]
   ```
 
-  **Upgrades are a ladder of small steps, not four jumps.** Every room has ~10 levels (0 = neglected base, max = the
+  **Upgrades are a ladder of small steps, not four jumps.** Every room has 9-10 levels (0 = neglected base, max = the
   concept); each purchase adds or changes ONE visible thing, has a name and an Ember cost, and plays a flash plus a
   "BUILT: <name>" toast. The Great Hall's ladder (the template) lives in `rooms.gd` `LADDERS` (cost total 344 Embers,
   a proposal to tune against the ~2,100 total across seven rooms): Clear and mend the hall (18), Rebuild the hearth + second
-  torch (30), Hang crest banners (20), Lay the crimson runner (24), Reglaze the windows (28), Lay a marble aisle (32), Floor
-  the hall in marble (36), Hang the chandelier (44), Set the banquet (52), The grand finish (60). (Owner call: "mend the
+  torch (30), Hang crest banners (20), Lay the crimson runner (24), Reglaze the windows (28), Floor
+  the hall in marble (68), Hang the chandelier (44), Set the banquet (52), The grand finish (60). (Owner call: "mend the
   benches" and "light a second torch" are not steps of their own; they were folded into the first two.) Build a room as
   `_room(h, lv)` with named thresholds (`GH_*` constants), and ramp light and ambient with `lv`.
   Test every step: `tools/home_art/shots.sh great_hall 0 1 2 ... 10`. The app can send `levels: {great_hall: n}`; the older

@@ -279,7 +279,7 @@ func add_light(at: Vector2, radius: float, color: Color, energy := 1.0, flicker 
 	return l
 
 
-func add_embers(rect: Rect2, color: Color, amount := 10, rise := 14.0, life := 2.2) -> CPUParticles2D:
+func add_embers(rect: Rect2, color: Color, amount := 10, rise := 14.0, life := 2.2, size := 1.0) -> CPUParticles2D:
 	var p := CPUParticles2D.new()
 	p.position = rect.get_center()
 	p.emission_shape = CPUParticles2D.EMISSION_SHAPE_RECTANGLE
@@ -291,8 +291,8 @@ func add_embers(rect: Rect2, color: Color, amount := 10, rise := 14.0, life := 2
 	p.gravity = Vector2.ZERO
 	p.initial_velocity_min = rise * 0.5
 	p.initial_velocity_max = rise
-	p.scale_amount_min = 1.0
-	p.scale_amount_max = 1.0
+	p.scale_amount_min = size
+	p.scale_amount_max = size
 	p.color = color
 	var ramp := Gradient.new()
 	ramp.set_color(0, Color(color, 1.0))

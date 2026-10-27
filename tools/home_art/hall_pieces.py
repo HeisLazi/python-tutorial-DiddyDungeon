@@ -492,6 +492,24 @@ def add(pieces, Sprite, C, noise):
                 s.px(x, y, (10, 12, 26, 70 if y < 26 else 40))
         return s
 
+
+    def wood_floor(variant):
+        """Dark wooden planks (four 4 px boards per tile) with grain and seams."""
+        s = Sprite(16, 16)
+        r = rng(1300 + variant)
+        tones = ["wd1", "wd0", "wd1", "wd2"]
+        for row in range(4):
+            y0 = row * 4
+            base = tones[(row + variant) % 4]
+            s.rect(0, y0, 15, y0 + 3, base)
+            s.hline(0, 15, y0, "wd2" if base != "wd2" else "wd3")
+            s.hline(0, 15, y0 + 3, "wd0")
+            seam = (r.randrange(3, 13) + row * 5) % 16
+            s.vline(seam, y0, y0 + 3, "wd0")
+            for _ in range(3):
+                s.px(r.randrange(16), y0 + 1 + r.randrange(2), "wd0" if r.random() < 0.6 else "wd2")
+        return s
+
     pieces["floor_flag_0"] = flag(0)
     pieces["floor_flag_1"] = flag(1)
     pieces["floor_flag_2"] = flag(2)
@@ -524,6 +542,8 @@ def add(pieces, Sprite, C, noise):
         pieces[f"torch_{f}"] = torch(f)
     pieces["knight"] = knight()
     pieces["barrel"] = barrel()
+    for v in range(3):
+        pieces[f"floor_wood_{v}"] = wood_floor(v)
     pieces["pillar_s"] = pillar("stone")
     pieces["pillar_g"] = pillar("gold")
     pieces["rubble_0"] = rubble(0)

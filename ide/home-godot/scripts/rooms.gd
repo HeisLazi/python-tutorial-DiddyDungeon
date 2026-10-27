@@ -26,11 +26,21 @@ const LADDERS := {
 		{"name": "Hang crest banners", "cost": 20, "note": "the torn rags are replaced"},
 		{"name": "Lay the crimson runner", "cost": 24, "note": "a carpet from the door to the hearth"},
 		{"name": "Reglaze the windows", "cost": 28, "note": "stained glass, coloured light on the floor"},
-		{"name": "Lay a marble aisle", "cost": 32, "note": "polished marble down the middle"},
-		{"name": "Floor the hall in marble", "cost": 36, "note": "the whole floor, and columns on the walls"},
+		{"name": "Floor the hall in marble", "cost": 68, "note": "polished marble over the whole floor, and columns on the walls"},
 		{"name": "Hang the chandelier", "cost": 44, "note": "a chandelier and two guards"},
 		{"name": "Set the banquet", "cost": 52, "note": "a long table, chairs and a rug"},
 		{"name": "The grand finish", "cost": 60, "note": "blue-gold hearth, gold door, trim, urns, four guards"},
+	],
+	"library": [
+		{"name": "Dust and sort", "cost": 16, "note": "cobwebs and scattered papers cleared, scrolls stacked"},
+		{"name": "A proper desk", "cost": 20, "note": "a big oak desk, a quill and an open book"},
+		{"name": "Fill the shelves", "cost": 24, "note": "two full bookcases"},
+		{"name": "Light the reading lamps", "cost": 28, "note": "blue candelabra and wall sconces"},
+		{"name": "Hang the star chart", "cost": 30, "note": "a constellation chart and navy banners"},
+		{"name": "Lay the rugs", "cost": 34, "note": "a crimson rug under the desk"},
+		{"name": "The globe and orrery", "cost": 40, "note": "a globe and a brass orrery"},
+		{"name": "Enchant the shelves", "cost": 48, "note": "glowing tomes, crystals and a rolling ladder"},
+		{"name": "Open the skylight", "cost": 56, "note": "a skylight, moonlight and floating pages"},
 	],
 }
 
@@ -40,11 +50,21 @@ const GH_HEARTH := 2
 const GH_BANNERS := 3
 const GH_RUNNER := 4
 const GH_GLASS := 5
-const GH_AISLE := 6
-const GH_MARBLE := 7
-const GH_CHANDELIER := 8
-const GH_BANQUET := 9
-const GH_GRAND := 10
+const GH_MARBLE := 6
+const GH_CHANDELIER := 7
+const GH_BANQUET := 8
+const GH_GRAND := 9
+
+# The Library's steps by name.
+const LB_TIDY := 1
+const LB_DESK := 2
+const LB_SHELVES := 3
+const LB_LAMPS := 4
+const LB_CHART := 5
+const LB_RUGS := 6
+const LB_GLOBE := 7
+const LB_ENCHANT := 8
+const LB_SKY := 9
 
 
 static func max_level(id: String) -> int:
@@ -72,12 +92,15 @@ static func build(h, id: String, level: int) -> void:
 	match id:
 		"great_hall":
 			_great_hall(h, level)
+		"library":
+			_library(h, level)
 		_:
 			_great_hall(h, level)
 
 
 ## The shared shell: wall rows 0-3 and floor rows 4-11. `marble` is the range of columns paved in marble.
-static func _shell(h, marble_from: int, marble_to: int) -> void:
+## `left`/`right` are optional exits ({"to": room, "spawn": feet position in that room}): a doorway in the side wall.
+static func _shell(h, marble_from: int, marble_to: int, left := {}, right := {}, floor_kind := "stone") -> void:
 	for y in range(h.ROWS):
 		for x in range(h.COLS):
 			var piece := ""
@@ -89,17 +112,43 @@ static func _shell(h, marble_from: int, marble_to: int) -> void:
 				piece = "plinth_s"
 			elif x >= marble_from and x <= marble_to:
 				piece = "floor_chk_%d" % ((x + y) % 2)
+			elif floor_kind == "wood":
+				piece = "floor_wood_%d" % ((x * 5 + y * 3) % 3)
 			else:
 				piece = "floor_flag_%d" % ((x * 7 + y * 3) % 3)
 			h.tile(piece, x, y)
 	h.block(Rect2(0, 0, h.VIEW.x, 64))
-	h.block(Rect2(-16, 0, 20, 200))
-	h.block(Rect2(h.VIEW.x - 4, 0, 20, 200))
 	h.block(Rect2(0, 186, h.VIEW.x, 16))
+	# The side walls, with a gap where there is a doorway.
+	_side_wall(h, -16.0, left)
+	_side_wall(h, h.VIEW.x - 4.0, right)
 	# A shadow along the foot of the wall: it is what makes the wall feel upright.
 	h.add_tint(Rect2(0, 64, h.VIEW.x, 4), Color(0.02, 0.02, 0.07, 0.34))
 	h.add_tint(Rect2(0, 68, h.VIEW.x, 4), Color(0.02, 0.02, 0.07, 0.18))
 	h.add_tint(Rect2(0, 72, h.VIEW.x, 4), Color(0.02, 0.02, 0.07, 0.08))
+
+
+const DOOR_Y := 112.0
+const DOOR_H := 60.0
+
+
+static func _side_wall(h, x: float, exit: Dictionary) -> void:
+	if exit.is_empty():
+		h.block(Rect2(x, 0, 20, 200))
+		return
+	h.block(Rect2(x, 0, 20, DOOR_Y))
+	h.block(Rect2(x, DOOR_Y + DOOR_H, 20, 200.0 - DOOR_Y - DOOR_H))
+	var left: bool = x < 100.0
+	var edge: float = 0.0 if left else h.VIEW.x
+	# The doorway: a dark opening framed in stone, with a little light spilling out.
+	var open := Rect2(edge - (0.0 if left else 12.0), DOOR_Y, 12.0, DOOR_H)
+	h.add_tint(open, Color(0.02, 0.02, 0.06, 0.96))
+	h.add_tint(Rect2(open.position.x, DOOR_Y - 6.0, 12.0, 6.0), Color(0.34, 0.36, 0.48, 1.0))
+	h.add_tint(Rect2(open.position.x, DOOR_Y - 6.0, 12.0, 1.0), Color(0.55, 0.57, 0.7, 1.0))
+	h.add_tint(Rect2(edge + (12.0 if left else -14.0), DOOR_Y, 2.0, DOOR_H), Color(0.2, 0.2, 0.3, 1.0))
+	h.add_light(Vector2(edge + (14.0 if left else -14.0), DOOR_Y + 30.0), 40.0, Color(0.7, 0.8, 1.0), 0.35, 0.0)
+	var trigger := Rect2(-40.0, DOOR_Y, 44.0, DOOR_H) if left else Rect2(h.VIEW.x - 4.0, DOOR_Y, 44.0, DOOR_H)
+	h.door(trigger, str(exit["to"]), exit["spawn"])
 
 
 ## A prop with a contact shadow and a feet blocker.
@@ -114,11 +163,8 @@ static func _great_hall(h, lv: int) -> void:
 	if lv >= GH_MARBLE:
 		marble_from = 0
 		marble_to = 19
-	elif lv == GH_AISLE:
-		marble_from = 6
-		marble_to = 13
-	_shell(h, marble_from, marble_to)
-	var marble := lv >= GH_AISLE
+	_shell(h, marble_from, marble_to, {"to": "library", "spawn": Vector2(290, 142)}, {})
+	var marble := lv >= GH_MARBLE
 	var glass := lv >= GH_GLASS
 	# The ambient light brightens a little with every step.
 	h.set_ambient(Color(0.40, 0.41, 0.56).lerp(Color(0.52, 0.50, 0.66), lv / float(GH_GRAND)))
@@ -245,3 +291,93 @@ static func _great_hall(h, lv: int) -> void:
 	# ── The great door: a plain oak door until the grand finish ──
 	h.bg("door_gold" if lv >= GH_GRAND else "door_wood", Vector2(160, 186), true)
 	h.station("door", "Go to the Forge", Rect2(138, 158, 44, 24), Vector2(160, 134))
+
+
+static func _library(h, lv: int) -> void:
+	_shell(h, -1, -1, {}, {"to": "great_hall", "spawn": Vector2(30, 142)}, "wood")
+	h.set_ambient(Color(0.34, 0.37, 0.52).lerp(Color(0.46, 0.50, 0.72), lv / float(LB_SKY)))
+	h.add_tint(Rect2(0, 0, h.VIEW.x, 64), Color(0.10, 0.18, 0.45, 0.10))      # a cooler wall than the hall
+
+	# ── The wall: neglect, then a window, banners and the chart ──
+	if lv < LB_TIDY:
+		h.bg("cobweb_l", Vector2(2, 16))
+		h.bg("cobweb_r", Vector2(h.VIEW.x - 16, 16))
+		for x in [150.0, 210.0]:
+			h.bg("stain", Vector2(x, 18))
+	h.bg("window_lib", Vector2(100, 60), true)
+	h.add_shaft(Vector2(88, 40), 24.0, 90.0, 26.0, Color(0.5, 0.6, 0.95, 0.12 + 0.01 * lv))
+	h.add_light(Vector2(100, 66), 56.0, Color(0.45, 0.58, 0.95), 0.35 + 0.02 * lv, 0.0)
+	if lv >= LB_CHART:
+		h.bg("star_chart", Vector2(222, 60), true)
+		for x in [132.0, 188.0]:
+			var banner: Sprite2D = h.bg("banner_blue", Vector2(x, 56), true)
+			h.sway(banner, 0.8, 1.6, 36.0)
+
+	# ── Shelves: one half-empty case at first, two full cases, then enchanted ──
+	var shelf := "bookshelf_glow" if lv >= LB_ENCHANT else ("bookshelf_full" if lv >= LB_SHELVES else "bookshelf_sparse")
+	var shelf_spots: Array = [Vector2(272, 74)]
+	if lv >= LB_SHELVES:
+		shelf_spots = [Vector2(40, 74), Vector2(272, 74)]
+	for at in shelf_spots:
+		h.add_shadow(at, 38.0, 5.0, 0.3)
+		h.bg(shelf, at, true)
+		h.block(Rect2(at.x - 20, 66, 40, 8))
+		if lv >= LB_ENCHANT:
+			h.add_light(Vector2(at.x, 48), 40.0, Color(1.0, 0.45, 0.5), 0.5, 0.25)
+
+	# ── The rug under the desk: a worn grey one, then crimson ──
+	if lv >= LB_RUGS:
+		h.bg("rug_crimson", Vector2(86, 104))
+	else:
+		h.add_tint(Rect2(94, 110, 68, 28), Color(0.30, 0.29, 0.33, 1.0))
+		h.add_tint(Rect2(96, 112, 64, 24), Color(0.22, 0.21, 0.26, 1.0))
+
+	# ── The desk and the study station ──
+	if lv >= LB_DESK:
+		_prop(h, "desk_big", Vector2(128, 120), 40.0, 10.0)
+	else:
+		_prop(h, "desk_small", Vector2(128, 114), 24.0, 8.0)
+		_prop(h, "chair_lib", Vector2(128, 132), 12.0, 6.0)
+	h.add_light(Vector2(128, 100), 44.0, Color("ffcf8a"), 0.7, 0.25)
+	h.station("study", "Study at the desk", Rect2(98, 126, 64, 28), Vector2(128, 82))
+
+	# ── Papers: scattered at first, stacked once the room is sorted ──
+	if lv < LB_TIDY:
+		for at in [Vector2(70, 140), Vector2(210, 150), Vector2(180, 122), Vector2(40, 112)]:
+			h.bg("scrolls", at, true)
+	else:
+		_prop(h, "scrolls", Vector2(168, 118), 14.0, 5.0)
+
+	# ── Reading lamps: blue candelabra and sconces ──
+	if lv >= LB_LAMPS:
+		for at in [Vector2(76, 104), Vector2(232, 104)]:
+			h.add_shadow(at, 14.0, 4.0)
+			h.anim("candelabra_lib", at, Rect2(at.x - 6, at.y - 5, 12, 5))
+			h.add_light(at + Vector2(0, -22), 58.0, Color(0.5, 0.7, 1.0), 0.85, 0.3)
+		for x in [66.0, 304.0]:
+			h.anim("sconce_blue", Vector2(x, 54), Rect2(), true)
+			h.add_light(Vector2(x, 40), 44.0, Color(0.5, 0.7, 1.0), 0.7, 0.3)
+
+	# ── The globe and the orrery ──
+	if lv >= LB_GLOBE:
+		_prop(h, "globe", Vector2(184, 112), 14.0, 6.0)
+		_prop(h, "orrery", Vector2(214, 118), 18.0, 7.0)
+
+	# ── Enchanted: crystals and a rolling ladder ──
+	if lv >= LB_ENCHANT:
+		for at in [Vector2(52, 138), Vector2(256, 146)]:
+			_prop(h, "crystals", at, 14.0, 6.0)
+			h.add_light(at + Vector2(0, -10), 44.0, Color(0.5, 0.6, 1.0), 0.8, 0.3)
+		_prop(h, "ladder", Vector2(246, 92), 20.0, 6.0)
+
+	# ── The skylight: moonlight falls in a column, pages float up ──
+	if lv >= LB_SKY:
+		h.bg("skylight", Vector2(160, 46), true)
+		h.add_shaft(Vector2(146, 44), 28.0, 110.0, 0.0, Color(0.7, 0.85, 1.0, 0.30))
+		h.add_light(Vector2(160, 70), 90.0, Color(0.7, 0.85, 1.0), 0.9, 0.05)
+		h.add_patch(PackedVector2Array([Vector2(138, 150), Vector2(182, 150), Vector2(188, 160), Vector2(132, 160)]), Color(0.7, 0.85, 1.0, 0.18))
+		h.add_embers(Rect2(140, 60, 40, 80), Color(1.0, 1.0, 0.92, 0.95), 7, 5.0, 4.5, 2.0)
+		h.add_embers(Rect2(20, 70, 280, 100), Color(0.6, 0.8, 1.0, 0.8), 14, 4.0, 5.0)
+
+	# ── Dust in the beams ──
+	h.add_embers(Rect2(40, 74, 240, 90), Color(0.75, 0.80, 1.0, 0.5), maxi(4, 14 - lv), 3.0, 5.0)
