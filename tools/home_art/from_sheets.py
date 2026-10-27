@@ -9,8 +9,15 @@ this script slices the 8 frames, removes the background, scales every frame of a
 same factor so the character is `height` px tall, anchors the feet to the bottom, and
 snaps everything to ONE shared palette (so the three facings match).
 
-Output: out_dir/hunter_{front,side,back}.png (8 frames in a row, FW x FH each) and
+Then it cleans each frame: fills the cape's hollow inside (it is background grey in the source),
+paints the face one flat colour (no eyes), turns the brown hair black, recolours the skin to
+umber, and appends a 4-frame breathing idle (head and torso one pixel lower on half the loop,
+from the walk frame whose feet are closest together).
+
+Output: out_dir/hunter_{front,side,back}.png (8 walk frames then 4 idle frames, FW x FH each) and
 hunter_sheet.json (frame size, counts). The right-facing side view is the mirror of the left.
+
+    python3 tools/home_art/from_sheets.py tools/home_art/sheets tools/home_art/assets/hunter 40
 """
 
 from __future__ import annotations
@@ -180,6 +187,32 @@ def flatten_face(img):
                 px[x, y] = FACE + (255,)
 
 
+def blacken_hair(img):
+    """Hair is black: brown pixels in the head become near-black with a faint cool highlight."""
+    import colorsys
+    px = img.load()
+    top = next((y for y in range(img.height) if any(px[x, y][3] for x in range(img.width))), None)
+    if top is None:
+        return
+    for y in range(top, min(img.height, top + 14)):
+        for x in range(img.width):
+            r, g, b, a = px[x, y]
+            if not a or (r, g, b) == FACE:
+                continue
+            hh, ss, vv = colorsys.rgb_to_hsv(r / 255.0, g / 255.0, b / 255.0)
+            if 0.0 <= hh <= 0.15 and ss > 0.15 and 0.12 < vv < 0.62:
+                v = max(r, g, b)
+                px[x, y] = (int(v * 0.40), int(v * 0.38), int(v * 0.52), a)
+
+
+def feet_spread(img):
+    """How far apart the dark boot pixels are along the bottom rows (small = feet together)."""
+    px = img.load()
+    xs = [x for y in range(img.height - 7, img.height) for x in range(img.width)
+          if px[x, y][3] and max(px[x, y][:3]) < 90]
+    return (max(xs) - min(xs)) if xs else 99
+
+
 def darken_skin(img):
     """Recolour skin-hued pixels (warm, mid-saturation, bright) to deep umber, keeping the shading."""
     from from_reference import is_skin
@@ -226,10 +259,11 @@ def build(sheet_dir, out_dir, height=TARGET_H):
             q.putalpha(alpha)
             if name != "back":
                 flatten_face(q)
+            blacken_hair(q)
             darken_skin(q)
             lst[i] = q
         # idle: the same standing frame, torso and head one pixel lower on the second half of the loop
-        base = lst[0]
+        base = min(lst, key=feet_spread)             # the frame with the feet closest together
         split = FH - 17
         idle = []
         for k in (0, 0, 1, 1):

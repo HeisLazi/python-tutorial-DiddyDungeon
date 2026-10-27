@@ -4,17 +4,17 @@ Everything about the walkable **Home** (a Godot scene embedded in the app), the 
 art, the hunter skins, how it was built and tested, the gotchas, and what comes next.
 Written so another agent (or you in a month) can pick it up cold.
 
-Last updated 2026-10-27. Start with "Quick start", then "How it fits together".
+Last updated 2026-10-27 (new Alucard hunter from AI sheets). Start with "Quick start", then "How it fits together".
 
 ---
 
 ## 1. Quick start
 
 ```sh
-tools/build_home.sh                     # regenerate art, export the Godot web build to ide/frontend/public/home/
+tools/build_home.sh                     # regenerate the tiles, copy the hunter sheets, export the Godot web build to ide/frontend/public/home/
 npm --prefix ide/frontend run build     # rebuild the app (copies public/ into dist/)
 tools/home_art/shots.sh                 # screenshots of the room at several spots (ide/home-godot/shot_*.png)
-python3 tools/home_art/make_hunter.py   # regenerate only the hunter layers
+python3 tools/home_art/from_sheets.py tools/home_art/sheets tools/home_art/assets/hunter 40   # re-cut the hunter from the source sheets
 python3 tools/home_art/make_tiles.py    # regenerate only the tileset
 ```
 
@@ -72,7 +72,12 @@ Errors from the server ("No meals are packed") are shown as the toast.
   `art/` (generated PNGs + `tiles_data.gd`, font), `export_presets.cfg` (preset "Web", single-threaded).
 - `tools/home_art/make_tiles.py` the hall: tiles, objects, stations. Writes `tiles.png`, `tiles.json`,
   `tiles_data.gd` (a `TilesData.REGIONS` dictionary so exports never need a loose JSON).
-- `tools/home_art/make_hunter.py` the layered hunter and its skins.
+- `tools/home_art/from_sheets.py` cuts the hunter out of the AI-generated sheets in `tools/home_art/sheets/`
+  into `tools/home_art/assets/hunter/hunter_{front,side,back}.png` (committed; `build_home.sh` copies them into
+  `ide/home-godot/art/`). `sheets/` holds the source art: `front_idle.png`, `side_walk.png`, `back_walk.png`
+  (8-frame strips on grey), plus `actions.png` (crouch/jump/dash/slash) and `walk_hires.png` (big walk) for later.
+- `tools/home_art/make_hunter.py`, `rig_hunter.py`, `alucard.py`, `pixlib.py`, `from_reference.py` are the
+  **superseded** hand-drawn and cut-and-patch attempts (kept for history; see section 5).
 - `tools/home_art/hunter_blender.py` a headless Blender turnaround renderer (see "what failed").
 - `tools/home_art/shots.sh` screenshot harness. `tools/build_home.sh` full build.
 - `ide/frontend/src/RpgViews.jsx` `HomeRoom`, `homeRoomState`, `useHomeBuild` (+ `v2.css` `.home-room*`).
@@ -92,22 +97,47 @@ Pyr (2 flame frames), moonbeams. Animated pieces are `name_0` / `name_1`; `home.
 To add a piece: write a function returning a `Sprite`, add it to `pieces` in `build()`, run the script,
 place it in `_build_room()` with `_piece(...)` (top-left) or `_piece(..., true)` (bottom-centre).
 
-**The hunter** (`make_hunter.py`): **24x40** frames in **three layers** so cloth moves independently:
+**The hunter** is an Alucard-style vampire hunter (the owner's pick: "alucard should be our base hunter
+design"): black coat with gold trim, crimson-lined cape, white cravat, tall boots, a sword at the hip, a
+**black afro**, **deep umber skin**, and a flat, featureless face (features at this size read as floaty
+eyes). It is **one sprite per facing**, 48x46 px frames (the character is 40 px tall, feet on the bottom row),
+in `hunter_front.png` (down), `hunter_side.png` (left; right is the same sheet flipped) and
+`hunter_back.png` (up). Each sheet is 12 frames in a row: **8 walk frames** (cols 0-7, `WALK_FPS` 10) then
+**4 idle frames** (cols 8-11, `IDLE_FPS` 1.6, a breathing bob; the side idle uses the frame with the feet
+together so he does not look stuck mid-stride). The cape and sword motion is baked into the walk frames.
+`home.gd` `_refresh_hunter()` picks the texture by facing, flips for right, and the column by state.
 
-- `cape` behind the body (drawn in front when facing up); 4 sway frames; keeps breathing when idle.
-- `body` head, afro, collar, torso, arms, legs, boots; walk = stand, step A, stand, step B.
-- `gown` the long coat skirt over the legs; swings against the step.
+How it was made (this is the process that finally worked, see "what failed"): see **"How the hunter was
+made"** below. To change him, change the sheets and re-run `from_sheets.py`; the room code does not change.
 
-Sheets: rows are down, left, right, up (right = mirror of left); `hunter_<look>_{body,gown,cape}.png`.
-In Godot the layer order is the child order of the `Hunter` node (cape moved to the end when facing up;
-**do not use negative `z_index`**, it draws under the floor).
+**Skins**: the old palette looks (dracula, alucard, belmont) were removed with the layered hunter; the owner
+wants skins as **unlockable cosmetics, reworked**, each a distinct look (not a palette swap): e.g. the
+Dracula-gown look from the concept art, a Belmont, bosses. Do them the same way: generate one sheet set
+per skin, run it through `from_sheets.py` into its own folder, and load by name in `home.gd` (the app
+already sends `state.look`; `HUNTER_LOOKS` in `RpgViews.jsx` has one entry, so the Look button is hidden).
 
-**Looks (skins)**: palette + a few switches on one cut: `dracula` (crimson lining and sash, default),
-`alucard` (gold trim, silver lining, white cravat, leather belt), `belmont` (grey-green tunic and band,
-red tabard). Add one by adding a dict to `LOOKS` and preloading its three PNGs in `home.gd` `LOOKS`.
-The app picks one (button in the room bar, `localStorage questlab.hunterLook`; could move to Settings
-or become unlockable cosmetics). The avatar's own traits stay in all looks: umber skin, an afro, a goatee.
-Different cuts per skin (not just palette) are possible later by branching in the draw functions.
+**How the hunter was made**
+
+1. **Design reference.** A real image model draws the design; the sprite is never hand-pixelled. The first
+   reference was a Higgsfield `z_image` turnaround (prompt: "Pixel art game character sprite sheet, a gothic
+   vampire hunter in a long black coat with gold trim and a crimson-lined cape, tall collar, white cravat,
+   long wavy dark hair, umber brown skin, small goatee, tall black boots with silver cuffs, 16-bit Castlevania
+   Symphony of the Night style, front view, side view and back view in a row, flat plain background, crisp
+   pixels"). The owner then generated cleaner sheets with their own image models (Google), in the style of
+   the Grimoire-of-Souls roster sprites, with an afro and a sword.
+2. **Sheets.** What works is three strips of **8 frames each on a flat grey background**, same character:
+   front idle, side walk (facing left), back walk. Example prompt: "Pixel art sprite sheet, 8-frame side-view
+   walk cycle of a gothic vampire hunter facing left, dark umber skin, round black afro, long black coat with
+   gold trim, crimson-lined cape, white cravat, tall black boots, sword at the hip, Castlevania Symphony of
+   the Night style, clean crisp pixels, flat plain grey background, even spacing, same character in every
+   frame." Save them as `tools/home_art/sheets/{front_idle,side_walk,back_walk}.png`.
+3. **`from_sheets.py`.** Slices the frames into equal cells (side frames touch, so no gap finding), removes the
+   background, drops stray fragments of neighbouring frames (cape tips), **fills the cape's hollow interior**
+   (it is the same grey as the background, so it was deleted: found by flood-filling the outside and filling
+   what is enclosed), scales each sheet to one height, anchors the feet, lifts contrast and colour, quantizes
+   all three sheets to **one 56-colour palette**, flattens the face, blackens the hair, recolours the skin to
+   umber, and adds the idle loop.
+4. **Godot** loads the three PNGs; nothing else knows about the art.
 
 **Reference direction** (from the owner): FireRed overworld for tiles/feel, the Gen-5 trainer sheet layout
 for animation sets, Castlevania (Dracula concept art, Alucard, Trevor) for the character. The references
@@ -126,7 +156,17 @@ are for form and craft, not characters; the theme stays our dark arcade monster-
    cloak, bright folds) and keep crimson and gold punchy.
 4. **Integer scaling**: Godot scales in physical pixels; at browser zoom 125% a 720 px CSS frame showed
    2.4x with bars. Size the frame from `devicePixelRatio` (done).
-5. Godot `const` resources cannot be modified: the font's `antialiasing` is set at runtime on a `var`.
+5. **Hand-pixelled sprites** (`alucard.py`, `pixlib.py`) came out boxy and nothing like the references.
+6. **Cutting one AI turnaround into animated layers** (`from_reference.py` + `rig_hunter.py`): the front
+   view worked (clean source), but the AI **side view was noisy** (a 4 px face, a hidden skeleton, hair and
+   coat classes mixed), so the rig produced a flat wedge head, a stilt-legged walk and a speckled coat.
+   Patching it procedurally (drawn side head, arm and legs) was brute force and still looked wrong. Lesson:
+   get a **clean source image per view** (a real side walk strip), and only post-process it.
+7. **Quantizing to a small palette** merged skin into hair and dropped the gold trim; use ~56 colours after a
+   contrast/colour lift. **Median-cut on a dark sheet** biases to the dominant dark tones.
+8. The AI sheets had **the cape the same grey as the background** (fill enclosed hollows) and **eyes that moved
+   between frames** (flatten the face).
+9. Godot `const` resources cannot be modified: the font's `antialiasing` is set at runtime on a `var`.
 
 ## 6. Testing notes (for agents with a browser tool)
 
@@ -156,7 +196,7 @@ are for form and craft, not characters; the theme stays our dark arcade monster-
 
 ## 8. Roadmap and designs (agreed direction, not built)
 
-### 8a. Weapons: three playstyles; trinkets stay the build options (proposal, owner idea)
+### 8a. Weapons: three playstyles; trinkets stay the build options (owner confirmed: "yes i love this")
 
 Replace the long list of weapons with **three weapon types**, each a playstyle, each with tiers/looks:
 
@@ -176,8 +216,9 @@ The bottom-left panel where Pyr sits during the Forge and Infinite Dungeon quest
 **battle stage**: the hunter (current look and weapon) vs the mob. A correct answer plays the weapon's
 attack animation (whip lash, sword slash, spell cast) and hit reaction; a miss plays the counterattack;
 Guard Break, ward and loot get their own short effects. Pyr moves to the stage edge. The hunter layers
-are already split (cape / body / gown), so attack frames can add a `weapon` layer and an `arms` override.
-Draw at 24x40 or render bigger in Blender and clean up.
+are one sprite per facing now with the **sword baked into every frame**, so the whip and magic weapons need
+their own sheets (or a sword-less base plus a weapon layer). `tools/home_art/sheets/actions.png` already has
+crouch, jump, dash and slash frames to build attacks from. Generate them the same way as the walk sheets.
 
 ### 8c. Home next
 
@@ -186,6 +227,13 @@ Draw at 24x40 or render bigger in Blender and clean up.
   passives, boss relics), Pyr's perch (Pyr's stages and abilities).
 - **Ember upgrade tracks** per station with the economy target below; pre-run **loadout** pick
   (relic + Aid + boon); day/night and a hearth that dies without activity (`fire_lit` exists).
+- **Redesign (owner request): make Home more compact and the interior cooler and less bland.** Split the one
+  big hall into several smaller one-screen rooms joined by doors (great hall, library/study, armory and
+  training, pantry, trophy gallery, map room) with richer furniture; probably rescale the furniture so the
+  40 px hunter sits well (or use a 320x180 view). The HP and Embers text was removed from the room so it is
+  just the map.
+- **Pyr evolves** into a mythical beast (a Taurus-like flame bull or an original creature) as the player
+  progresses; draw each stage with the same image-model sheet process, then add it to `perch`.
 - Skins as unlockable cosmetics; a skin picker in Settings; weapon shown on the walking sprite.
 - A bigger hall built in Tiled; castle wings per campaign.
 
@@ -212,6 +260,6 @@ HTTP headers are needed. Re-install the same way if the templates disappear.
 ## 10. Open questions for the owner
 
 1. The three weapon mechanics above (whip combo / sword burst / magic utility): confirm or change.
-2. Skins: should looks be unlockable cosmetics (earned) or always selectable?
-3. Hunter art: anything to change after playing (bigger sprite, a sword in hand, lighter coat)?
+2. Skins: answered: unlockable cosmetics, reworked as distinct looks. What unlocks each one?
+3. Hunter art: the coat is nearly black on the dark floor; want a lighter coat, a rim light, or a lighter floor?
 4. Station depth order: which of Pantry / Study / Training / Trophy / Perch first?
