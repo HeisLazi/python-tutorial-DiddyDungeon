@@ -27,7 +27,7 @@ Update the "Status" and "Next steps" sections after every major step and commit.
 | Pantry | `pantry` | 8 steps, 238 Embers | E: library (W: gallery, add when the gallery exists) | pantry | DONE (all props sliced; `PN_*` constants; Library has a west exit to it) |
 | Trophy Gallery | `gallery` | 9 steps, 288 Embers | E: pantry (Pantry has a west exit to it) | trophy | DONE (`GL_*`; props sliced from gal_plinths, gal_wall, gal_floor; not yet walked in Chrome) |
 | War Room | `war_room` | designed below | W: armory, E: den | map | PROPS READY, ROOM CODE NOT WRITTEN (2 sheets sliced) |
-| Pyr's Den | `den` | designed below | W: war_room | perch | concepts saved only |
+| Pyr's Den | `den` | designed below | W: war_room | perch | PROPS READY (3 sheets saved and sliced), ROOM CODE NOT WRITTEN |
 
 Topology (a row; each room has only left/right doorways, `_shell(h, marble_from, marble_to, left, right, floor_kind)`):
 `gallery - pantry - library - great_hall - armory - war_room - den`. The Great Hall also has the bottom door to the Forge (station `door`).
@@ -143,3 +143,14 @@ a rock ledge, cave wall pieces, a torch), slice, write `_den` (ladder in section
 1. War Room code and exits. 2. Pyr's Den (sheets, code, exits). 3. Walk the whole chain `gallery - pantry - library - great_hall - armory - war_room - den` in Chrome (section 5) and use each station once.
 4. Only if the app should drive room levels, update `homeRoomState`/`HomeRoom` in `ide/frontend/src/RpgViews.jsx` (the old 0..3 `tiers` still work). 5. Merge procedure: section 7 step 4.
 6. Then: Pyr eagle redesign, unlockable skins, weapons and combat stage (`HOME_AND_ART.md` section 8).
+
+
+### Pyr's Den props (sheets saved by the owner, ALREADY SLICED into `tools/home_art/props/`; tileset rebuilt)
+Sheets: `tools/home_art/sheets/props/den_1.png`, `den_2.png`, `den_3.png`. Piece names for `rooms.gd` (use `h.bg/obj/anim/_prop`):
+- Perch and nest (den_1): `perch_bar` (bare wall bar, base), `twigs` (floor litter), `lamp_stone` (oil lamp on a block), `perch_eagle` (ornate blue-gold carved perch: the `perch` station, late levels),
+  `nest_gold_{0,1}` (glowing golden nest, 2-frame: `h.anim("nest_gold", feet)`; the max-level centrepiece with embers), `nest_straw` (plain nest, early level).
+- Light and nature (den_2): `lantern_warm`, `lantern_blue` (hanging; add a chain with `h.add_chain` and a light), `vine` (hanging, give it `h.sway`), `flowers_den` (glowing flowers on rock), `torch_den_{0,1}` (wall torch, animate), `window_den` (arched moon window).
+- Open aerie (den_3): `cave_arch` (77x74 rock arch with a dark hole), `sky_sunrise` (172x92 sunrise and mountains: place it BEHIND the arch on the back wall, i.e. add it with `h.bg` before the arch; the wall tiles must not cover it, so
+  either draw the arch area over the wall with the sky first, or skip the wall tiles under it), `ledge` (rock floor slab), `boulder`.
+Suggested ladder mapping (section 4): 1 clear (add `twigs` litter at level 0, remove), 2 `perch_bar` -> proper perch, 3 `nest_straw`, 4 lamps (`lamp_stone`, `lantern_warm`), 5 open the wall (`sky_sunrise` + `cave_arch`, window light),
+6 vines and `flowers_den`, 7 `perch_eagle`, 8 `nest_gold` with embers and `lantern_blue`. Use warm sunrise light (pink/orange) falling from the arch via `h.add_shaft` and `h.add_light`.
