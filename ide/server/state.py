@@ -24,6 +24,7 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from ide.server.beginner_codex import BEGINNER_CODEX
 from ide.server.home_rooms import HOME_ROOM_LABELS, HOME_ROOM_LADDERS, effective_room_levels, validate_room_levels
 
 MAX_EVENT_RECORDS = 100
@@ -1026,6 +1027,14 @@ CODEX_CONCEPT_PAGES: tuple[dict[str, Any], ...] = (
         "mistake_examples": ("rate = sum(play() for _ in range(10)) / 10  # far too few", "for _ in range(10_000):\n    play_round(verbose=True)  # floods the screen"),
         "check_prompt": "How many runs, what is counted, and how much would a second run differ?",
     },
+)
+
+# Add approachable, transferable patterns to the existing Tutor pages.
+CODEX_CONCEPT_PAGES = tuple(
+    {**page, "definition": page["definition"] + " " + BEGINNER_CODEX[page["id"]][0],
+     "examples": (*page["examples"], BEGINNER_CODEX[page["id"]][1])}
+    if page["id"] in BEGINNER_CODEX else page
+    for page in CODEX_CONCEPT_PAGES
 )
 
 SYNC_PLAYER_FIELDS = frozenset(

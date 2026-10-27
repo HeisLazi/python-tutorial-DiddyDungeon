@@ -1,0 +1,1121 @@
+{
+  "branch": "00-lantern-vale",
+  "name": "The Lantern Vale: Python Foundations",
+  "boss": "The Unwritten King",
+  "order": 0,
+  "catalog": true,
+  "entry_file": "lantern_vale/game.py",
+  "project_dir": "lantern_vale",
+  "multi_file": true,
+  "project_files": [
+    "game.py",
+    "rules.py",
+    "models.py",
+    "test_game.py",
+    "memory_check.py",
+    "market.py",
+    "README.md",
+    "save.json"
+  ],
+  "concept_focus": "A first software project: Python foundations, data structures, objects, tests and functional techniques",
+  "story": {
+    "title": "The Lantern Vale",
+    "client": "Mira, keeper of the road",
+    "hook": "The lanterns along the road have gone dark. Starting from your first Python file, build a little adventure to help a traveler carry light between places. Each new rule makes the world more alive and teaches a tool you can reuse elsewhere."
+  },
+  "acts": [
+    {
+      "id": 1,
+      "title": "Act I: First Light",
+      "goal": "Run your first program, name its state, accept input, choose paths and make a menu that ends."
+    },
+    {
+      "id": 2,
+      "title": "Act II: The Road",
+      "goal": "Use functions and collections to build a small playable delivery adventure."
+    },
+    {
+      "id": 3,
+      "title": "Act III: The Workshop",
+      "goal": "Read errors, test code, split modules, model a traveler and save progress."
+    },
+    {
+      "id": 4,
+      "title": "Act IV: The Living Vale",
+      "goal": "Separate rules from effects, transform collections, pass functions and transfer your skills to a different problem."
+    }
+  ],
+  "boss_lore": "The Unwritten King cannot be defeated by copying a recipe: the road changes and your rules must still make sense.",
+  "boss_brief": "Show the playable Lantern Vale project: a menu that quits, locations, inventory and a delivery, functions in a module, a Traveler object, a JSON save with a safe failure path, tests, and a README that explains how to run it. Demonstrate a successful delivery and a rejected one.",
+  "boss_twist": "Make a second delivery with a different destination and item using the same rules function (for example can_deliver()), and show a test for each. Explain what changed and what you reused. Describe the shared inputs and outputs before changing the code. Add a test for a wrong destination, a missing item and a completed delivery, then run the whole test file again. Explain how this same data-and-rules pattern could be used for a shop basket or an order in a later web application.",
+  "boss_gauntlet": [
+    "required_behavior",
+    "explanation",
+    "interview"
+  ],
+  "mobs": [
+    {
+      "name": "The First Spark",
+      "concept": "Running Python and output",
+      "encounter": "Print a welcome to Lantern Vale and a line describing the traveler.",
+      "act": 1,
+      "sign": "input-output",
+      "contract": "A program is instructions in a file; Python reads them in order. The terminal runs commands and the editor changes files. `print(\"Hello\")` displays text; quotation marks make a string.",
+      "objectives": [
+        {
+          "id": "make_folder",
+          "label": "Make the project folder",
+          "question_type": "setup_check",
+          "impact": 1,
+          "check": {
+            "dir": "."
+          },
+          "brief": "A project is a folder containing related files. In the Forge terminal type `mkdir lantern_vale`, press Enter, then `ls` to see it. Press Check."
+        },
+        {
+          "id": "make_file",
+          "label": "Create your Python file",
+          "question_type": "setup_check",
+          "impact": 1,
+          "check": {
+            "file": "game.py"
+          },
+          "brief": "Type `cd lantern_vale` to enter the folder, then `touch game.py` to create an empty file. Press Check to open it in the editor."
+        },
+        {
+          "id": "first_run",
+          "label": "Run your first program",
+          "question_type": "setup_check",
+          "impact": 3,
+          "check": {
+            "run": "game.py",
+            "expect": [
+              "Lantern Vale"
+            ]
+          },
+          "brief": "A program is instructions in a file; Python reads them in order. The terminal runs commands and the editor changes files. `print(\"Hello\")` displays text; quotation marks make a string.\n\nIn game.py write a line that prints Lantern Vale. Save (Ctrl+S), then run `python game.py` in the terminal inside lantern_vale. Press Check after it prints."
+        },
+        {
+          "id": "edit_run",
+          "label": "Change and run again",
+          "question_type": "code_checkpoint",
+          "impact": 2,
+          "brief": "Add a second print line about the traveler. Predict the order both lines will appear, save and run again. Change the text inside the quotes and run it once more to see the effect.",
+          "file": "game.py"
+        },
+        {
+          "id": "explain_run",
+          "label": "Explain your tools",
+          "question_type": "explanation",
+          "impact": 2,
+          "brief": "Explain what the editor, file, terminal and Python interpreter each do, and why you save before running."
+        }
+      ],
+      "kind": "workshop"
+    },
+    {
+      "name": "The Nameless Wraith",
+      "concept": "Variables and program state",
+      "encounter": "Give the traveler a name, starting location and 3 supplies as variables; print each value.",
+      "act": 1,
+      "sign": "variables",
+      "contract": "A variable names a value: `steps = 2`, then `steps = steps + 1` reads the old value and assigns the new one. An integer is a whole number; text inside quotes is a string.",
+      "objectives": [
+        {
+          "id": "build",
+          "label": "Build and run",
+          "question_type": "code_checkpoint",
+          "impact": 3,
+          "file": "game.py",
+          "brief": "A variable names a value: `steps = 2`, then `steps = steps + 1` reads the old value and assigns the new one. An integer is a whole number; text inside quotes is a string.\n\nGive the traveler a name, starting location and 3 supplies as variables; print each value.\n\nSpend one supply by updating the variable and print the new value. Change the starting amount and rerun."
+        },
+        {
+          "id": "explain",
+          "label": "Predict or explain",
+          "question_type": "explanation",
+          "impact": 2,
+          "brief": "Trace supplies starting at 3 through `supplies = supplies - 1` twice. Why does assigning a new value not change the original line?",
+          "file": "game.py"
+        }
+      ],
+      "tier": "quick"
+    },
+    {
+      "name": "The Whispering Gate",
+      "concept": "Input, strings and conversion",
+      "encounter": "Ask for a traveler name with input and greet that name; a blank name should become Traveler.",
+      "act": 1,
+      "sign": "input-output",
+      "contract": "`input()` returns text, even when someone types digits. An f-string such as `f\"Hello {name}\"` inserts a value. Use `int(text)` only when text really represents an integer.",
+      "objectives": [
+        {
+          "id": "build",
+          "label": "Build and run",
+          "question_type": "code_checkpoint",
+          "impact": 3,
+          "file": "game.py",
+          "brief": "`input()` returns text, even when someone types digits. An f-string such as `f\"Hello {name}\"` inserts a value. Use `int(text)` only when text really represents an integer.\n\nAsk for a traveler name with input and greet that name; a blank name should become Traveler."
+        },
+        {
+          "id": "experiment",
+          "label": "Change and test",
+          "question_type": "code_checkpoint",
+          "impact": 3,
+          "brief": "Ask how many supplies to start with; accept a whole number and show the number plus one. For now try valid numbers only.",
+          "file": "game.py",
+          "see": [
+            "rules.py",
+            "models.py",
+            "test_game.py"
+          ]
+        },
+        {
+          "id": "explain",
+          "label": "Predict or explain",
+          "question_type": "explanation",
+          "impact": 2,
+          "brief": "What type comes back from input? Predict what `\"3\" + \"1\"` produces and why it differs from `3 + 1`.",
+          "file": "game.py"
+        }
+      ]
+    },
+    {
+      "name": "The Forked Path",
+      "concept": "Comparisons and conditionals",
+      "encounter": "Ask whether the traveler goes north or south; print a different destination for each.",
+      "act": 1,
+      "sign": "conditionals",
+      "contract": "`if`, `elif` and `else` choose a path. `==` compares values; `=` assigns. Indentation groups the lines belonging to a branch.",
+      "objectives": [
+        {
+          "id": "build",
+          "label": "Build and run",
+          "question_type": "code_checkpoint",
+          "impact": 3,
+          "file": "game.py",
+          "brief": "`if`, `elif` and `else` choose a path. `==` compares values; `=` assigns. Indentation groups the lines belonging to a branch.\n\nAsk whether the traveler goes north or south; print a different destination for each."
+        },
+        {
+          "id": "experiment",
+          "label": "Change and test",
+          "question_type": "code_checkpoint",
+          "impact": 3,
+          "brief": "Handle any other answer with a helpful message. Try north, south and an unexpected answer.",
+          "file": "game.py",
+          "see": [
+            "rules.py",
+            "models.py",
+            "test_game.py"
+          ]
+        },
+        {
+          "id": "explain",
+          "label": "Predict or explain",
+          "question_type": "explanation",
+          "impact": 2,
+          "brief": "Trace each branch for north, south and west. Why is `else` useful for unexpected input?",
+          "file": "game.py"
+        }
+      ]
+    },
+    {
+      "name": "The Endless Echo",
+      "concept": "While loops and stopping",
+      "encounter": "Repeat a menu until the traveler types quit; offer look and quit and show an informative message for unknown actions.",
+      "act": 1,
+      "sign": "loops",
+      "contract": "A `while` loop repeats while its condition is true. A loop needs a route to stop: for example `while choice != \"quit\":` and updating choice inside the loop.",
+      "objectives": [
+        {
+          "id": "build",
+          "label": "Build and run",
+          "question_type": "code_checkpoint",
+          "impact": 3,
+          "file": "game.py",
+          "brief": "A `while` loop repeats while its condition is true. A loop needs a route to stop: for example `while choice != \"quit\":` and updating choice inside the loop.\n\nRepeat a menu until the traveler types quit; offer look and quit and show an informative message for unknown actions."
+        },
+        {
+          "id": "experiment",
+          "label": "Change and test",
+          "question_type": "bug_diagnosis",
+          "impact": 3,
+          "brief": "Make one menu action change supplies, and print the updated amount; make quit stop without running another action.",
+          "file": "game.py",
+          "see": [
+            "rules.py",
+            "models.py",
+            "test_game.py"
+          ]
+        },
+        {
+          "id": "explain",
+          "label": "Predict or explain",
+          "question_type": "explanation",
+          "impact": 2,
+          "brief": "Trace look then quit. Point to the update and the condition that make the loop end.",
+          "file": "game.py"
+        }
+      ],
+      "kind": "debug"
+    },
+    {
+      "name": "The Little Lantern",
+      "concept": "Functions, arguments and return",
+      "encounter": "Write a function that receives a traveler name and returns a greeting; call it and print the result.",
+      "act": 2,
+      "sign": "functions",
+      "contract": "A function groups a named operation. `def add_one(n): return n + 1` accepts an argument and returns a result; printing is a separate side effect.",
+      "objectives": [
+        {
+          "id": "build",
+          "label": "Build and run",
+          "question_type": "code_checkpoint",
+          "impact": 3,
+          "file": "game.py",
+          "brief": "A function groups a named operation. `def add_one(n): return n + 1` accepts an argument and returns a result; printing is a separate side effect.\n\nWrite a function that receives a traveler name and returns a greeting; call it and print the result."
+        },
+        {
+          "id": "experiment",
+          "label": "Change and test",
+          "question_type": "code_checkpoint",
+          "impact": 3,
+          "brief": "Write a function that receives supplies and an amount, returns the updated count, and use its result in the menu.",
+          "file": "game.py",
+          "see": [
+            "rules.py",
+            "models.py",
+            "test_game.py"
+          ]
+        },
+        {
+          "id": "explain",
+          "label": "Predict or explain",
+          "question_type": "explanation",
+          "impact": 2,
+          "brief": "Explain arguments, parameters and return using your function. What happens if a function only prints and its caller expects a value?",
+          "file": "game.py"
+        }
+      ],
+      "kind": "workshop"
+    },
+    {
+      "name": "The Inventory Drowner",
+      "concept": "Lists, indexing and changes",
+      "encounter": "Store at least three supplies in a list and display them with a numbered or readable inventory action.",
+      "act": 2,
+      "sign": "lists",
+      "contract": "A list is an ordered, mutable collection: `items = [\"key\", \"map\"]`; index 0 is the first item. `.append()` adds an item and `len()` reports its length.",
+      "objectives": [
+        {
+          "id": "build",
+          "label": "Build and run",
+          "question_type": "code_checkpoint",
+          "impact": 3,
+          "file": "game.py",
+          "brief": "A list is an ordered, mutable collection: `items = [\"key\", \"map\"]`; index 0 is the first item. `.append()` adds an item and `len()` reports its length.\n\nStore at least three supplies in a list and display them with a numbered or readable inventory action."
+        },
+        {
+          "id": "experiment",
+          "label": "Change and test",
+          "question_type": "code_checkpoint",
+          "impact": 3,
+          "brief": "Add an item and remove an existing item through actions. Handle an empty inventory without indexing it.",
+          "file": "game.py",
+          "see": [
+            "rules.py",
+            "models.py",
+            "test_game.py"
+          ]
+        },
+        {
+          "id": "explain",
+          "label": "Predict or explain",
+          "question_type": "explanation",
+          "impact": 2,
+          "brief": "Predict the first item and length after appending to [\"key\", \"map\"]. Why must you check before removing a missing item?",
+          "file": "game.py"
+        }
+      ]
+    },
+    {
+      "name": "The Counting Moth",
+      "concept": "For loops and accumulation",
+      "encounter": "Loop through the inventory and display each item. Show a clear message when it is empty.",
+      "act": 2,
+      "sign": "lists",
+      "contract": "A for loop visits each element: `total = 0;` followed by an indented `for n in numbers:` and `total += n` adds values one at a time.",
+      "objectives": [
+        {
+          "id": "build",
+          "label": "Build and run",
+          "question_type": "code_checkpoint",
+          "impact": 3,
+          "file": "game.py",
+          "brief": "A for loop visits each element: `total = 0;` followed by an indented `for n in numbers:` and `total += n` adds values one at a time.\n\nLoop through the inventory and display each item. Show a clear message when it is empty."
+        },
+        {
+          "id": "experiment",
+          "label": "Change and test",
+          "question_type": "code_checkpoint",
+          "impact": 3,
+          "brief": "Represent supply values with a small list of numbers and calculate their total with a loop, including the empty-list case.",
+          "file": "game.py",
+          "see": [
+            "rules.py",
+            "models.py",
+            "test_game.py"
+          ]
+        },
+        {
+          "id": "explain",
+          "label": "Predict or explain",
+          "question_type": "explanation",
+          "impact": 2,
+          "brief": "Trace a running total over [2, 4, 1]. Where must the update be indented and what is the total of an empty list?",
+          "file": "game.py"
+        }
+      ]
+    },
+    {
+      "name": "The Mapkeeper",
+      "concept": "Dictionaries and lookup",
+      "encounter": "Represent at least three locations and their descriptions using a dictionary, and show the description of the current location.",
+      "act": 2,
+      "sign": "dictionaries",
+      "contract": "A dictionary connects keys to values, such as `prices = {\"tea\": 3}`. A missing key needs a planned response; `prices.get(\"bread\")` returns None when absent.",
+      "objectives": [
+        {
+          "id": "build",
+          "label": "Build and run",
+          "question_type": "code_checkpoint",
+          "impact": 3,
+          "file": "game.py",
+          "brief": "A dictionary connects keys to values, such as `prices = {\"tea\": 3}`. A missing key needs a planned response; `prices.get(\"bread\")` returns None when absent.\n\nRepresent at least three locations and their descriptions using a dictionary, and show the description of the current location."
+        },
+        {
+          "id": "experiment",
+          "label": "Change and test",
+          "question_type": "code_checkpoint",
+          "impact": 3,
+          "brief": "Add a valid destination action and handle an unknown location without crashing. Change a description and verify the output.",
+          "file": "game.py",
+          "see": [
+            "rules.py",
+            "models.py",
+            "test_game.py"
+          ]
+        },
+        {
+          "id": "explain",
+          "label": "Predict or explain",
+          "question_type": "explanation",
+          "impact": 2,
+          "brief": "Explain keys and values using your map. Predict what happens when a requested key is missing.",
+          "file": "game.py"
+        }
+      ]
+    },
+    {
+      "name": "The Delivery Beast",
+      "concept": "Combining functions, lists and dictionaries",
+      "encounter": "Add a delivery item and a destination. Completing delivery succeeds only when both conditions are true and then updates the game state.",
+      "act": 2,
+      "sign": "dictionaries",
+      "contract": "Break a feature into inputs, rules and outputs: a delivery can check inventory and location without making the menu responsible for every detail.",
+      "objectives": [
+        {
+          "id": "build",
+          "label": "Build and run",
+          "question_type": "code_checkpoint",
+          "impact": 3,
+          "file": "game.py",
+          "brief": "Break a feature into inputs, rules and outputs: a delivery can check inventory and location without making the menu responsible for every detail.\n\nAdd a delivery item and a destination. Completing delivery succeeds only when both conditions are true and then updates the game state."
+        },
+        {
+          "id": "experiment",
+          "label": "Change and test",
+          "question_type": "code_checkpoint",
+          "impact": 3,
+          "brief": "Prevent the same delivery being rewarded twice; demonstrate success and both missing-item and wrong-location cases.",
+          "file": "game.py",
+          "see": [
+            "rules.py",
+            "models.py",
+            "test_game.py"
+          ]
+        },
+        {
+          "id": "check_edges",
+          "label": "Check the edge cases",
+          "question_type": "code_checkpoint",
+          "impact": 2,
+          "brief": "Add assertions or a small repeatable demonstration for success, wrong location, missing item and a repeated delivery. Keep the other menu actions working.",
+          "file": "game.py",
+          "see": [
+            "rules.py",
+            "models.py",
+            "test_game.py"
+          ]
+        },
+        {
+          "id": "explain",
+          "label": "Predict or explain",
+          "question_type": "explanation",
+          "impact": 2,
+          "brief": "Explain which variables change on a successful delivery and which remain unchanged on failure.",
+          "file": "game.py"
+        }
+      ],
+      "tier": "elite",
+      "kind": "creative"
+    },
+    {
+      "name": "The Broken Number",
+      "concept": "Errors, input validation and exceptions",
+      "encounter": "Fix your supply input so words and negative numbers do not crash or start an invalid game; ask again or choose a documented default.",
+      "act": 3,
+      "sign": "exceptions",
+      "contract": "A traceback identifies where an error occurred. `int(\"abc\")` raises ValueError; `try` and `except ValueError` can recover from invalid input. Validate numeric range separately.",
+      "objectives": [
+        {
+          "id": "build",
+          "label": "Build and run",
+          "question_type": "code_checkpoint",
+          "impact": 3,
+          "file": "game.py",
+          "brief": "A traceback identifies where an error occurred. `int(\"abc\")` raises ValueError; `try` and `except ValueError` can recover from invalid input. Validate numeric range separately.\n\nFix your supply input so words and negative numbers do not crash or start an invalid game; ask again or choose a documented default.\n\nTry a word, a negative number, zero and a valid number. Record what happens for each and correct any unexpected behavior."
+        },
+        {
+          "id": "experiment",
+          "label": "Predict the error",
+          "question_type": "prediction",
+          "impact": 3,
+          "brief": "Predict what int(\"ten\") does and whether int(\"-1\") raises the same error. Run both in a small scratch example and compare."
+        },
+        {
+          "id": "explain",
+          "label": "Predict or explain",
+          "question_type": "explanation",
+          "impact": 2,
+          "brief": "Explain the difference between a ValueError and a number that parses but is outside the allowed range.",
+          "file": "game.py"
+        }
+      ],
+      "kind": "debug",
+      "tier": "light"
+    },
+    {
+      "name": "The Test Lantern",
+      "concept": "Tests and edge cases",
+      "encounter": "Create test_game.py with at least three assertions for your functions, including a zero or empty case. Run it with python test_game.py.",
+      "act": 3,
+      "sign": "testing",
+      "contract": "A test compares actual behavior with an expected result. `assert add(2, 3) == 5` fails if the function does not return 5; test boundaries as well as ordinary inputs.",
+      "objectives": [
+        {
+          "id": "build",
+          "label": "Build and run",
+          "question_type": "code_checkpoint",
+          "impact": 3,
+          "file": "test_game.py",
+          "brief": "A test compares actual behavior with an expected result. `assert add(2, 3) == 5` fails if the function does not return 5; test boundaries as well as ordinary inputs.\n\nCreate test_game.py with at least three assertions for your functions, including a zero or empty case. Run it with python test_game.py."
+        },
+        {
+          "id": "experiment",
+          "label": "Change and test",
+          "question_type": "code_checkpoint",
+          "impact": 3,
+          "brief": "Add a failing test first for a missing-item or invalid-delivery case; fix the behavior and rerun all tests.",
+          "file": "test_game.py",
+          "see": [
+            "game.py",
+            "rules.py",
+            "models.py"
+          ]
+        },
+        {
+          "id": "explain",
+          "label": "Predict or explain",
+          "question_type": "explanation",
+          "impact": 2,
+          "brief": "Explain why a test must check the result and why you should run it again after changing code.",
+          "file": "test_game.py"
+        }
+      ],
+      "kind": "workshop"
+    },
+    {
+      "name": "The Module Mason",
+      "concept": "Modules and imports",
+      "encounter": "Move at least two non-interactive rules into rules.py; import and use them from game.py.",
+      "act": 3,
+      "sign": "functions",
+      "contract": "A module is a Python file. `from helpers import greet` imports a named function from helpers.py. A main guard prevents interactive code from running when its file is imported.",
+      "objectives": [
+        {
+          "id": "build",
+          "label": "Build and run",
+          "question_type": "code_checkpoint",
+          "impact": 3,
+          "file": "rules.py",
+          "brief": "A module is a Python file. `from helpers import greet` imports a named function from helpers.py. A main guard prevents interactive code from running when its file is imported.\n\nMove at least two non-interactive rules into rules.py; import and use them from game.py."
+        },
+        {
+          "id": "experiment",
+          "label": "Change and test",
+          "question_type": "code_checkpoint",
+          "impact": 3,
+          "brief": "Put the interactive menu behind `if __name__ == \"__main__\":` and make test_game.py import rules without starting the menu.",
+          "file": "rules.py",
+          "see": [
+            "game.py",
+            "models.py",
+            "test_game.py"
+          ]
+        },
+        {
+          "id": "explain",
+          "label": "Predict or explain",
+          "question_type": "explanation",
+          "impact": 2,
+          "brief": "Explain what importing a module does and why the main guard matters for tests.",
+          "file": "rules.py"
+        }
+      ]
+    },
+    {
+      "name": "The Selfless Golem",
+      "concept": "Classes, objects and state",
+      "encounter": "Create a Traveler class in models.py with a name, location and its own inventory; construct one in game.py.",
+      "act": 3,
+      "sign": "classes",
+      "contract": "A class defines a kind of object; an instance is one object created from it. `self` refers to the instance a method is operating on. Attributes hold each instance’s state.",
+      "objectives": [
+        {
+          "id": "build",
+          "label": "Build and run",
+          "question_type": "code_checkpoint",
+          "impact": 3,
+          "file": "models.py",
+          "brief": "A class defines a kind of object; an instance is one object created from it. `self` refers to the instance a method is operating on. Attributes hold each instance’s state.\n\nCreate a Traveler class in models.py with a name, location and its own inventory; construct one in game.py."
+        },
+        {
+          "id": "experiment",
+          "label": "Change and test",
+          "question_type": "code_checkpoint",
+          "impact": 3,
+          "brief": "Add a method that adds an item and use it from the game. Make two travelers in a test and verify changing one inventory leaves the other alone.",
+          "file": "models.py",
+          "see": [
+            "game.py",
+            "rules.py",
+            "test_game.py"
+          ]
+        },
+        {
+          "id": "explain",
+          "label": "Predict or explain",
+          "question_type": "explanation",
+          "impact": 2,
+          "brief": "Explain class versus instance, what self refers to and why sharing a mutable default inventory is a bug.",
+          "file": "models.py"
+        }
+      ]
+    },
+    {
+      "name": "The Clockwork Caravan",
+      "concept": "Methods and composition",
+      "encounter": "Give Traveler a method to move to an allowed location, reporting success or failure without silently accepting an unknown location.",
+      "act": 3,
+      "sign": "classes",
+      "contract": "A method is a function associated with an object. Composition means one object uses or contains another; it need not inherit from it.",
+      "objectives": [
+        {
+          "id": "build",
+          "label": "Build and run",
+          "question_type": "code_checkpoint",
+          "impact": 3,
+          "file": "models.py",
+          "brief": "A method is a function associated with an object. Composition means one object uses or contains another; it need not inherit from it.\n\nGive Traveler a method to move to an allowed location, reporting success or failure without silently accepting an unknown location."
+        },
+        {
+          "id": "experiment",
+          "label": "Change and test",
+          "question_type": "code_checkpoint",
+          "impact": 3,
+          "brief": "Represent a delivery as a separate object or data record and have the traveler complete it only when its conditions are met. Test both paths.",
+          "file": "models.py",
+          "see": [
+            "game.py",
+            "rules.py",
+            "test_game.py"
+          ]
+        },
+        {
+          "id": "explain",
+          "label": "Predict or explain",
+          "question_type": "explanation",
+          "impact": 2,
+          "brief": "Explain which object owns each piece of state and why a separate delivery record helps when adding more quests.",
+          "file": "models.py"
+        }
+      ]
+    },
+    {
+      "name": "The Memory Keeper",
+      "concept": "Files, JSON and exceptions",
+      "encounter": "Save the traveler name, location, inventory and delivery status as JSON in the project folder. Reload them in a fresh run.",
+      "act": 4,
+      "sign": "files-json",
+      "contract": "A file persists after a program exits. JSON encodes lists, dictionaries, strings, numbers, booleans and null as text; Python objects need conversion to ordinary data first.",
+      "objectives": [
+        {
+          "id": "build",
+          "label": "Build and run",
+          "question_type": "code_checkpoint",
+          "impact": 3,
+          "file": "game.py",
+          "brief": "A file persists after a program exits. JSON encodes lists, dictionaries, strings, numbers, booleans and null as text; Python objects need conversion to ordinary data first.\n\nSave the traveler name, location, inventory and delivery status as JSON in the project folder. Reload them in a fresh run."
+        },
+        {
+          "id": "experiment",
+          "label": "Change and test",
+          "question_type": "code_checkpoint",
+          "impact": 3,
+          "brief": "Handle a missing or malformed save with a clear message and safe new-game state. Test a round trip and a broken file without overwriting the only good save.",
+          "file": "game.py",
+          "see": [
+            "rules.py",
+            "models.py",
+            "test_game.py"
+          ]
+        },
+        {
+          "id": "explain",
+          "label": "Predict or explain",
+          "question_type": "explanation",
+          "impact": 2,
+          "brief": "Explain serialization and why loading untrusted or malformed data needs validation before using it.",
+          "file": "game.py"
+        }
+      ],
+      "kind": "workshop"
+    },
+    {
+      "name": "The Quiet Flame",
+      "concept": "Pure functions and side effects",
+      "encounter": "Extract a pure function that determines whether a delivery can be completed from explicit inputs. It must not print, read input, or change its arguments.",
+      "act": 4,
+      "sign": "functions",
+      "contract": "A pure function returns the same result for the same inputs and does not change outside state. Printing, reading input, writing files and mutating a passed-in list are side effects.",
+      "objectives": [
+        {
+          "id": "build",
+          "label": "Build and run",
+          "question_type": "code_checkpoint",
+          "impact": 3,
+          "file": "rules.py",
+          "brief": "A pure function returns the same result for the same inputs and does not change outside state. Printing, reading input, writing files and mutating a passed-in list are side effects.\n\nExtract a pure function that determines whether a delivery can be completed from explicit inputs. It must not print, read input, or change its arguments."
+        },
+        {
+          "id": "experiment",
+          "label": "Change and test",
+          "question_type": "code_checkpoint",
+          "impact": 3,
+          "brief": "Test both success and failure, and confirm the input inventory remains unchanged. Keep printing and menu input at the outer boundary.",
+          "file": "rules.py",
+          "see": [
+            "game.py",
+            "models.py",
+            "test_game.py"
+          ]
+        },
+        {
+          "id": "explain",
+          "label": "Predict or explain",
+          "question_type": "explanation",
+          "impact": 2,
+          "brief": "Explain how separating a rule from input/output makes tests and reuse easier; identify one side effect still needed by the game.",
+          "file": "rules.py"
+        }
+      ]
+    },
+    {
+      "name": "The Transformation Sprite",
+      "concept": "Comprehensions and data transformations",
+      "encounter": "Build a function that returns a new list of inventory names matching a search term, ignoring case, without changing the original list.",
+      "act": 4,
+      "sign": "lists",
+      "contract": "A comprehension creates a new collection from existing data: `[n * 2 for n in numbers if n > 0]`. Filtering chooses values; mapping transforms each chosen value.",
+      "objectives": [
+        {
+          "id": "build",
+          "label": "Build and run",
+          "question_type": "code_checkpoint",
+          "impact": 3,
+          "file": "rules.py",
+          "brief": "A comprehension creates a new collection from existing data: `[n * 2 for n in numbers if n > 0]`. Filtering chooses values; mapping transforms each chosen value.\n\nBuild a function that returns a new list of inventory names matching a search term, ignoring case, without changing the original list."
+        },
+        {
+          "id": "experiment",
+          "label": "Change and test",
+          "question_type": "code_checkpoint",
+          "impact": 3,
+          "brief": "Use a comprehension or an explicit loop to produce a display list of item labels. Test an empty list, no matches and mixed-case input.",
+          "file": "rules.py",
+          "see": [
+            "game.py",
+            "models.py",
+            "test_game.py"
+          ]
+        },
+        {
+          "id": "explain",
+          "label": "Predict or explain",
+          "question_type": "explanation",
+          "impact": 2,
+          "brief": "Trace the result for [\"Key\", \"map\", \"KEY\"] when searching for key. Explain filtering versus transforming.",
+          "file": "rules.py"
+        }
+      ]
+    },
+    {
+      "name": "The Remembering Shade",
+      "concept": "Callbacks and rebuilding from memory",
+      "encounter": "In memory_check.py, without copying your project code, write a small function that filters a list using a supplied predicate function. Test it on numbers.",
+      "act": 4,
+      "sign": "functions",
+      "contract": "Functions are values in Python: passing a function lets another function call it later. A callback is the function supplied; it must be called with the arguments its caller promises.",
+      "objectives": [
+        {
+          "id": "build",
+          "label": "Build and run",
+          "question_type": "code_checkpoint",
+          "impact": 3,
+          "file": "memory_check.py",
+          "brief": "Functions are values in Python: passing a function lets another function call it later. A callback is the function supplied; it must be called with the arguments its caller promises.\n\nIn memory_check.py, without copying your project code, write a small function that filters a list using a supplied predicate function. Test it on numbers."
+        },
+        {
+          "id": "experiment",
+          "label": "Change and test",
+          "question_type": "code_checkpoint",
+          "impact": 3,
+          "brief": "Use a second predicate on the same filtering function; check an empty list and confirm the input is unchanged.",
+          "file": "memory_check.py",
+          "see": [
+            "game.py",
+            "rules.py",
+            "models.py",
+            "test_game.py"
+          ]
+        },
+        {
+          "id": "explain",
+          "label": "Predict or explain",
+          "question_type": "explanation",
+          "impact": 2,
+          "brief": "Explain the difference between passing a function and calling it immediately, and name the inputs and output of your filter.",
+          "file": "memory_check.py"
+        }
+      ],
+      "kind": "memory"
+    },
+    {
+      "name": "The Unwritten Road",
+      "concept": "Transfer, documentation and creative extension",
+      "encounter": "In market.py build an unrelated shop basket: given item prices and a list of item names, return a total; define behavior for missing items and test empty and normal baskets.",
+      "act": 4,
+      "sign": "dictionaries",
+      "contract": "Transfer means using the same underlying idea in a new setting. Describe the goal, inputs, outputs, edge cases and tests before coding; iterate after observing a failure.",
+      "objectives": [
+        {
+          "id": "build",
+          "label": "Build and run",
+          "question_type": "code_checkpoint",
+          "impact": 3,
+          "file": "market.py",
+          "brief": "Transfer means using the same underlying idea in a new setting. Describe the goal, inputs, outputs, edge cases and tests before coding; iterate after observing a failure.\n\nIn market.py build an unrelated shop basket: given item prices and a list of item names, return a total; define behavior for missing items and test empty and normal baskets."
+        },
+        {
+          "id": "experiment",
+          "label": "Change and test",
+          "question_type": "code_checkpoint",
+          "impact": 3,
+          "brief": "Add a new location or delivery of your own to Lantern Vale without breaking existing tests. Write README.md with how to run the game, run tests, and one thing you changed.",
+          "file": "game.py",
+          "see": [
+            "market.py",
+            "README.md",
+            "rules.py",
+            "test_game.py"
+          ]
+        },
+        {
+          "id": "explain",
+          "label": "Predict or explain",
+          "question_type": "explanation",
+          "impact": 2,
+          "brief": "Explain how the basket reuses a pattern from the game, how you tested the extension, and where a similar idea could appear in Casino or a web app.",
+          "file": "market.py"
+        }
+      ],
+      "kind": "creative"
+    }
+  ],
+  "armory": [
+    {
+      "id": "lv-01",
+      "name": "Trailkeeper Blade",
+      "slot": "weapon",
+      "tier": "common",
+      "effect": {
+        "impact": 1,
+        "on": "code_checkpoint"
+      },
+      "flavour": "A keepsake from the roads of Lantern Vale.",
+      "price": 40
+    },
+    {
+      "id": "lv-02",
+      "name": "Lantern Guard Sword",
+      "slot": "weapon",
+      "tier": "uncommon",
+      "effect": {
+        "impact": 1,
+        "on": "any"
+      },
+      "flavour": "A keepsake from the roads of Lantern Vale.",
+      "price": 90
+    },
+    {
+      "id": "lv-03",
+      "name": "Wayfinder Hammer",
+      "slot": "weapon",
+      "tier": "rare",
+      "effect": {
+        "impact": 2,
+        "on": "bug_diagnosis"
+      },
+      "flavour": "A keepsake from the roads of Lantern Vale.",
+      "price": 180
+    },
+    {
+      "id": "lv-04",
+      "name": "Roadwarden Spear",
+      "slot": "weapon",
+      "tier": "epic",
+      "effect": {
+        "impact": 2,
+        "on": "any",
+        "break_coins": 3
+      },
+      "flavour": "A keepsake from the roads of Lantern Vale."
+    },
+    {
+      "id": "lv-05",
+      "name": "Dawnbringer",
+      "slot": "weapon",
+      "tier": "legendary",
+      "effect": {
+        "impact": 3,
+        "on": "any",
+        "break_coins": 6
+      },
+      "flavour": "A keepsake from the roads of Lantern Vale."
+    },
+    {
+      "id": "lv-06",
+      "name": "Patchwork Travel Coat",
+      "slot": "armor",
+      "tier": "common",
+      "effect": {
+        "reduction": 10
+      },
+      "flavour": "A keepsake from the roads of Lantern Vale.",
+      "price": 40
+    },
+    {
+      "id": "lv-07",
+      "name": "Pilgrim Leather",
+      "slot": "armor",
+      "tier": "uncommon",
+      "effect": {
+        "reduction": 18
+      },
+      "flavour": "A keepsake from the roads of Lantern Vale.",
+      "price": 90
+    },
+    {
+      "id": "lv-08",
+      "name": "Wayfarer Brigandine",
+      "slot": "armor",
+      "tier": "rare",
+      "effect": {
+        "reduction": 26
+      },
+      "flavour": "A keepsake from the roads of Lantern Vale.",
+      "price": 180
+    },
+    {
+      "id": "lv-09",
+      "name": "Lanternscale Vest",
+      "slot": "armor",
+      "tier": "epic",
+      "effect": {
+        "reduction": 35
+      },
+      "flavour": "A keepsake from the roads of Lantern Vale."
+    },
+    {
+      "id": "lv-10",
+      "name": "First Light Plate",
+      "slot": "armor",
+      "tier": "legendary",
+      "effect": {
+        "reduction": 45,
+        "first_miss_free": true
+      },
+      "flavour": "A keepsake from the roads of Lantern Vale."
+    },
+    {
+      "id": "lv-11",
+      "name": "Amber Seed",
+      "slot": "trinket",
+      "tier": "common",
+      "effect": {
+        "xp_bonus": 10
+      },
+      "flavour": "A keepsake from the roads of Lantern Vale.",
+      "price": 40
+    },
+    {
+      "id": "lv-12",
+      "name": "Traveler Compass",
+      "slot": "trinket",
+      "tier": "uncommon",
+      "effect": {
+        "heal_on_objective": 3
+      },
+      "flavour": "A keepsake from the roads of Lantern Vale.",
+      "price": 90
+    },
+    {
+      "id": "lv-13",
+      "name": "Little Beacon Charm",
+      "slot": "trinket",
+      "tier": "rare",
+      "effect": {
+        "start_guards": 1
+      },
+      "flavour": "A keepsake from the roads of Lantern Vale.",
+      "price": 180
+    },
+    {
+      "id": "lv-14",
+      "name": "Mira Road Badge",
+      "slot": "trinket",
+      "tier": "epic",
+      "effect": {
+        "block_first_miss": true,
+        "coin_bonus": 15
+      },
+      "flavour": "A keepsake from the roads of Lantern Vale."
+    },
+    {
+      "id": "lv-15",
+      "name": "Heart of the Vale",
+      "slot": "trinket",
+      "tier": "legendary",
+      "effect": {
+        "start_guards": 1,
+        "revive": true,
+        "loot_luck": 20
+      },
+      "flavour": "A keepsake from the roads of Lantern Vale."
+    },
+    {
+      "id": "lv-16",
+      "name": "Traveler Bread",
+      "slot": "food",
+      "tier": "common",
+      "effect": {
+        "heal": 20
+      },
+      "flavour": "A keepsake from the roads of Lantern Vale.",
+      "price": 15
+    },
+    {
+      "id": "lv-17",
+      "name": "Warm Berry Broth",
+      "slot": "food",
+      "tier": "uncommon",
+      "effect": {
+        "next_battle": {
+          "reduction": 20
+        }
+      },
+      "flavour": "A keepsake from the roads of Lantern Vale.",
+      "price": 30
+    },
+    {
+      "id": "lv-18",
+      "name": "Roadside Stew",
+      "slot": "food",
+      "tier": "rare",
+      "effect": {
+        "next_battle": {
+          "guards": 1
+        }
+      },
+      "flavour": "A keepsake from the roads of Lantern Vale.",
+      "price": 60
+    },
+    {
+      "id": "lv-19",
+      "name": "Mira Festival Loaf",
+      "slot": "food",
+      "tier": "epic",
+      "effect": {
+        "heal": 30,
+        "next_battle": {
+          "xp_bonus": 30
+        }
+      },
+      "flavour": "A keepsake from the roads of Lantern Vale.",
+      "price": 100
+    },
+    {
+      "id": "lv-20",
+      "name": "Lantern Dew Tonic",
+      "slot": "tonic",
+      "tier": "uncommon",
+      "effect": {
+        "heal": 45
+      },
+      "flavour": "A keepsake from the roads of Lantern Vale.",
+      "price": 50
+    },
+    {
+      "id": "lv-21",
+      "name": "Wayfarer Draught",
+      "slot": "tonic",
+      "tier": "rare",
+      "effect": {
+        "heal": 100
+      },
+      "flavour": "A keepsake from the roads of Lantern Vale.",
+      "price": 90
+    },
+    {
+      "id": "lv-22",
+      "name": "Unwritten Crown Fragment",
+      "slot": "relic",
+      "tier": "legendary",
+      "effect": {
+        "xp_bonus": 5,
+        "coin_bonus": 5
+      },
+      "flavour": "A keepsake from the roads of Lantern Vale."
+    }
+  ]
+}

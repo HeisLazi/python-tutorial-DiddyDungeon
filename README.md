@@ -129,17 +129,20 @@ Every project lives on its own branch and has a `HANDOFF.md` containing mobs, re
 
 | Order | Branch | Project | Focus | Boss |
 |---|---|---|---|---|
+| Start here | `00-lantern-vale` | The Lantern Vale (`lantern_vale/`) | first Python program, data structures, objects, tests and functional techniques | The Unwritten King |
 | 1 | `01-blackjack` | Blackjack | lists, functions, game state | The House |
 | 2 | `04-casino-slots` | The Silver Reels (`silver_reels/`) | random, probability, modules, tests, README | Ekse Ouens P Diddy |
 | 3 | `05-dungeon-crawler` | The Deep Crawler (`deep_crawler/`) | packages, classes, files/JSON, connected systems | Die Tozza van Zamalek |
 
 Next up: a Django campaign (The Guild Hall), then the backend projects (The Courier, The Vault) and the AI projects. The retired campaigns (RPS, Detective, Creature Battle, Gladiator, Football Manager, Game Agent, AI Familiar) are kept in `ide/server/campaigns_archive/` and no longer load.
 
-For now I am deliberately sharpening:
+The Lantern Vale is an optional starting point; existing campaign progress and selection stay intact. Its four acts teach a small terminal adventure from the first file through reusable rules, objects, persistence and a transfer exercise. The Tutor's Codex provides companion reference pages. See [`docs/BEGINNER_CAMPAIGN.md`](docs/BEGINNER_CAMPAIGN.md) for the learning route and limitations. Setup checks run locally; the later code and explanation checks use the configured PYR or classic grading flow.
+
+The foundations include:
 
 `variables` · `input/output` · `if/elif/else` · `for/while` · `functions` · `lists` · `dictionaries` · `strings` · `random`
 
-Files/JSON, exceptions, modules, testing, classes/OOP and APIs come after the foundation feels natural.
+The beginner campaign revisits those foundations while introducing files/JSON, exceptions, modules, testing and classes/OOP. APIs and Django need further study after it.
 
 ## Rival Mode
 

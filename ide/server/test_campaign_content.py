@@ -365,10 +365,10 @@ class CampaignExtensionTests(unittest.TestCase):
         self.service.apply_internal("campaign_extend", {})
         projects = self.read()["projects"]
         # Untouched retired campaigns leave; anything played or finished stays.
-        self.assertEqual([item["branch"] for item in projects], ["00-rps-tournament", "01-blackjack", "03-pokemon-battle", "04-casino-slots", "05-dungeon-crawler"])
+        self.assertEqual([item["branch"] for item in projects], ["00-rps-tournament", "01-blackjack", "03-pokemon-battle", "00-lantern-vale", "04-casino-slots", "05-dungeon-crawler"])
         self.assertEqual([mob["status"] for mob in projects[2]["mobs"]][:2], ["defeated", "locked"])
         current = {item["branch"]: item for item in projects if item["branch"] not in state.RETIRED_CAMPAIGNS}
-        self.assertEqual({branch: item["order"] for branch, item in current.items()}, {"01-blackjack": 1, "04-casino-slots": 2, "05-dungeon-crawler": 3})
+        self.assertEqual({branch: item["order"] for branch, item in current.items()}, {"00-lantern-vale": 0, "01-blackjack": 1, "04-casino-slots": 2, "05-dungeon-crawler": 3})
         self.assertTrue(set(current["05-dungeon-crawler"]) <= {"branch", "name", "status", "boss", "order", "progress", "mobs", "entry_file", "multi_file"})
         once = self.read()
         self.assertFalse(self.service.apply_internal("campaign_extend", {})["changed"])  # idempotent

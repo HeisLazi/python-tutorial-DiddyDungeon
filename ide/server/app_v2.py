@@ -3633,6 +3633,11 @@ def ai_battle_question(payload: BattleQuestionRequest):
     project = next((item for item in progress.get("projects", []) if isinstance(item, dict) and item.get("status") == "active"), {})
     code = ""
     entry = project.get("entry_file")
+    story = load_campaign_bounties().get(str(project.get("branch") or ""))
+    folder = project_dir_name(story.get("project_dir")) if isinstance(story, dict) else ""
+    target = project_file_name(objective.get("file"))
+    if folder and target:
+        entry = f"{folder}/{target}"
     if isinstance(entry, str) and entry.endswith(".py"):
         path = (WORKSPACE / entry).resolve()
         if path.is_file() and WORKSPACE.resolve() in path.parents:
