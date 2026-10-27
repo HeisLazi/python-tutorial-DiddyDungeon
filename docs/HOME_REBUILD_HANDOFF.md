@@ -26,7 +26,7 @@ Update the "Status" and "Next steps" sections after every major step and commit.
 | Hall of Arms | `armory` | 9 steps | W: great_hall | armory, training | DONE (needs east exit to war_room later) |
 | Pantry | `pantry` | 8 steps, 238 Embers | E: library (W: gallery, add when the gallery exists) | pantry | DONE (all props sliced; `PN_*` constants; Library has a west exit to it) |
 | Trophy Gallery | `gallery` | 9 steps, 288 Embers | E: pantry (Pantry has a west exit to it) | trophy | DONE (`GL_*`; props sliced from gal_plinths, gal_wall, gal_floor; not yet walked in Chrome) |
-| War Room | `war_room` | designed below | W: armory, E: den | map | concepts saved only |
+| War Room | `war_room` | designed below | W: armory, E: den | map | PROPS READY, ROOM CODE NOT WRITTEN (2 sheets sliced) |
 | Pyr's Den | `den` | designed below | W: war_room | perch | concepts saved only |
 
 Topology (a row; each room has only left/right doorways, `_shell(h, marble_from, marble_to, left, right, floor_kind)`):
@@ -108,3 +108,38 @@ Watch for: furniture blocking a doorway at some level; props overlapping the wal
 3. Station and bridge check across all rooms in the real app (`HomeRoom` in `ide/frontend/src/RpgViews.jsx` already forwards `use` events by station id). Update `homeRoomState` to send `levels` if the app should drive rooms directly.
 4. Merge: `ExitWorktree keep`, then from the main checkout `git merge --ff-only feature/tauri-arcade` (md5 of `progress.json` before and after), `sh tools/build_home.sh`, `npm --prefix ide/frontend run build`, run the backend tests (`ide/.venv` pytest) and `node --test ide/frontend/src/cloud/` (87 pass / 10 pre-existing failures is the baseline).
 5. Pyr's eagle redesign (4 stages), unlockable hunter skins, the three weapon types and the combat stage (`HOME_AND_ART.md` section 8).
+
+
+## 8. SAVE POINT (2026-10-27, written when the previous agent ran out of budget): exact state and how to reproduce
+
+Everything is committed on `feature/tauri-arcade` except the git-ignored `ide/home-godot/shot_*.png` screenshots. Main is untouched (still the old one-hall Home).
+
+### Done and committed
+Engine (`home.gd`, `rooms.gd`), doorways, 5 finished rooms (Great Hall 9 steps, Library 9, Hall of Arms 9, Pantry 8, Trophy Gallery 9), all prop sheets and sliced props for them,
+the War Room's props, concept images for all seven rooms, the hunter (Alucard sprite, `from_sheets.py`), docs.
+Exits wired: Library W->pantry, Library E->great_hall, Pantry W->gallery, Pantry E->library, Gallery E->pantry, Great Hall W->library, Great Hall E->armory, Armory W->great_hall.
+**Not wired**: Armory E -> war_room (give `_armory`'s `_shell` call a right exit `{"to": "war_room", "spawn": Vector2(30, 142)}`), War Room W -> armory, War Room E -> den, Den W -> war_room.
+
+### War Room: props already sliced into `tools/home_art/props/` (use these names in `rooms.gd`)
+`table_map_small` (bare table, parchment, candle: base), `table_map_big` (glowing map table with figures: level 7), `stool`, `chair_war`, `crystal_ball`, `chest`, `map_world`, `map_chart`,
+`banner_sun` (wide navy banner), `chandelier_war_{0,1}` (`h.anim("chandelier_war", feet)`), `window_war` (moon window), `shelf_war`.
+Reusable from earlier rooms: `bookshelf_sparse`, `globe`, `barrel`, `crate`, `rug_crimson`, `scrolls`, `torch_stand_{0,1}`, `cobweb_l/r`, `stain`, `rubble_0/1`, `banner_blue`.
+Write `_war_room(h, lv)` like `_pantry`/`_gallery` in `rooms.gd`: add `LADDERS["war_room"]` (the 9 steps in section 4), `WR_*` constants, a `match` case in `build()`,
+`_shell(h, -1, -1, <left exit armory>, <right exit den>, "stone")`, and the station `h.station("map", "Plan a Dungeon run", Rect2(...), Vector2(160, 14))` in front of the table.
+Targets: `tools/home_art/concepts/warroom_base.png` and `warroom_max.png`.
+
+### Pyr's Den: nothing built; concepts `den_base.png`, `den_max.png` exist
+Generate 3 prop sheets (a bare perch + twigs + oil lamp + stone block; an ornate blue-gold eagle perch, a glowing golden feather nest, lanterns, hanging vines with glowing flowers, a cave-opening arch with a sunrise sky;
+a rock ledge, cave wall pieces, a torch), slice, write `_den` (ladder in section 4), station `perch` ("Visit Pyr's perch") in front of the perch.
+
+### Reproducing the toolchain on a fresh machine
+- Godot 4.7.2 flatpak with a `godot` shim and the Web export templates (`HOME_AND_ART.md` section 9).
+- System `python3` with Pillow (not the repo `.venv`).
+- Images: the owner has Google AI Pro image models (preferred); the previous agent used Higgsfield `z_image` (free plan, about 3.5 credits left, one job at a time). Otherwise ask the owner to generate each
+  sheet using the prompt pattern in section 3 step 2 and save it in `tools/home_art/sheets/props/`.
+- No secrets are needed. Never touch `progress.json`; never push to main.
+
+### Remaining checklist to a mergeable state
+1. War Room code and exits. 2. Pyr's Den (sheets, code, exits). 3. Walk the whole chain `gallery - pantry - library - great_hall - armory - war_room - den` in Chrome (section 5) and use each station once.
+4. Only if the app should drive room levels, update `homeRoomState`/`HomeRoom` in `ide/frontend/src/RpgViews.jsx` (the old 0..3 `tiers` still work). 5. Merge procedure: section 7 step 4.
+6. Then: Pyr eagle redesign, unlockable skins, weapons and combat stage (`HOME_AND_ART.md` section 8).
