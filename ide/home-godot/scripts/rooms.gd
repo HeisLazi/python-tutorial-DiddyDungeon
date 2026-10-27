@@ -63,6 +63,17 @@ const LADDERS := {
 		{"name": "Glowing relics", "cost": 46, "note": "a glowing heart and a burning claw"},
 		{"name": "Portrait of the hunter", "cost": 54, "note": "a gold-framed portrait and stained glass"},
 	],
+	"den": [
+		{"name": "Clear the nook", "cost": 14, "note": "twigs and cobwebs cleared from Pyr's room"},
+		{"name": "A proper perch", "cost": 20, "note": "a stone ledge supports the perch"},
+		{"name": "Build a nest", "cost": 24, "note": "a straw nest for Pyr"},
+		{"name": "Light the lamps", "cost": 28, "note": "warm lantern light fills the nook"},
+		{"name": "Open the wall", "cost": 36, "note": "a cave arch opens onto a mountain sunrise"},
+		{"name": "Vines and glowing flowers", "cost": 40, "note": "vines and flowers bring the aerie to life"},
+		{"name": "Carve the eagle perch", "cost": 48, "note": "an ornate blue and gold perch"},
+		{"name": "The golden nest", "cost": 28, "note": "a glowing golden feather nest"},
+		{"name": "The phoenix aerie", "cost": 28, "note": "a blue lantern and drifting golden embers"},
+	],
 	"war_room": [
 		{"name": "Clear the war room", "cost": 16, "note": "cobwebs and rubble cleared"},
 		{"name": "Mend the table", "cost": 20, "note": "a repaired planning table and parchment"},
@@ -118,6 +129,17 @@ const GL_SPOT := 6
 const GL_BEASTS := 7
 const GL_GLOW := 8
 const GL_PORTRAIT := 9
+
+# Pyr's Den's steps by name.
+const DN_CLEAR := 1
+const DN_PERCH := 2
+const DN_NEST := 3
+const DN_LAMPS := 4
+const DN_OPEN := 5
+const DN_VINES := 6
+const DN_EAGLE := 7
+const DN_GOLD := 8
+const DN_AERIE := 9
 
 # The War Room's steps by name.
 const WR_CLEAR := 1
@@ -188,6 +210,8 @@ static func build(h, id: String, level: int) -> void:
 			_gallery(h, level)
 		"war_room":
 			_war_room(h, level)
+		"den":
+			_den(h, level)
 		_:
 			_great_hall(h, level)
 
@@ -813,3 +837,74 @@ static func _war_room(h, lv: int) -> void:
 		_prop(h, "crate", Vector2(290, 102), 16.0, 6.0)
 
 	h.add_embers(Rect2(40, 74, 240, 90), Color(0.85, 0.82, 0.85, 0.45), maxi(4, 14 - lv), 3.0, 5.0)
+
+
+static func _den(h, lv: int) -> void:
+	_shell(h, -1, -1, {"to": "war_room", "spawn": Vector2(290, 142)}, {}, "stone")
+	h.set_ambient(Color(0.47, 0.40, 0.48).lerp(Color(0.59, 0.50, 0.54), lv / float(DN_AERIE)))
+	h.add_tint(Rect2(0, 0, h.VIEW.x, 64), Color(0.30, 0.16, 0.22, 0.12))
+
+	# The discarded twigs and cobwebs disappear when the nook is cleared.
+	if lv < DN_CLEAR:
+		h.bg("cobweb_l", Vector2(2, 16))
+		h.bg("cobweb_r", Vector2(h.VIEW.x - 16, 16))
+		for at in [Vector2(90, 145), Vector2(205, 154), Vector2(255, 130)]:
+			h.bg("twigs", at, true)
+		h.bg("stain", Vector2(230, 20))
+
+	# The opening's transparent centre reveals the sunrise, drawn after the wall and before the arch.
+	if lv >= DN_OPEN:
+		var sky: Sprite2D = h.bg("sky_sunrise", Vector2(61, 20))
+		sky.scale = Vector2(0.22, 0.58)
+		h.bg("cave_arch", Vector2(80, 80), true)
+		h.block(Rect2(48, 68, 64, 8))
+		h.add_shaft(Vector2(65, 45), 30.0, 96.0, 30.0, Color(1.0, 0.54, 0.40, 0.22))
+		h.add_light(Vector2(80, 62), 78.0, Color(1.0, 0.61, 0.45), 0.80, 0.0)
+		h.add_patch(PackedVector2Array([Vector2(86, 104), Vector2(118, 104), Vector2(132, 146), Vector2(98, 146)]), Color(1.0, 0.54, 0.36, 0.12))
+	else:
+		h.bg("window_den", Vector2(80, 64), true)
+		h.add_shaft(Vector2(70, 40), 20.0, 90.0, 20.0, Color(0.55, 0.62, 1.0, 0.13))
+		h.add_light(Vector2(80, 62), 54.0, Color(0.48, 0.58, 0.95), 0.45, 0.0)
+
+	# The wall bar gains a stone support, then becomes Pyr's carved eagle perch.
+	if lv >= DN_EAGLE:
+		_prop(h, "perch_eagle", Vector2(160, 85), 38.0, 8.0)
+	else:
+		if lv >= DN_PERCH:
+			h.add_shadow(Vector2(160, 78), 54.0, 5.0, 0.25)
+			h.bg("ledge", Vector2(160, 78), true)
+			h.block(Rect2(134, 70, 52, 8))
+		h.bg("perch_bar", Vector2(160, 61), true)
+	h.add_light(Vector2(160, 70), 76.0, Color("eac39d"), 0.45, 0.0)
+	h.station("perch", "Visit Pyr's perch", Rect2(128, 88, 64, 30), Vector2(160, 14))
+
+	# A small lamp waits on its stone block; the hanging lantern is lit in its own step.
+	_prop(h, "lamp_stone", Vector2(270, 84), 14.0, 6.0)
+	h.add_light(Vector2(270, 74), 42.0, Color("ffb86b"), 0.30, 0.12)
+	if lv >= DN_LAMPS:
+		h.add_chain(238.0, 1.0, 26.0)
+		h.bg("lantern_warm", Vector2(238, 58), true)
+		h.add_light(Vector2(238, 46), 62.0, Color("ffc17d"), 0.85, 0.18)
+		h.add_light(Vector2(270, 74), 45.0, Color("ffb86b"), 0.65, 0.2)
+
+	# The nest grows from straw into a glowing golden aerie.
+	if lv >= DN_GOLD:
+		h.add_shadow(Vector2(235, 112), 42.0, 7.0)
+		h.anim("nest_gold", Vector2(235, 112), Rect2(216, 104, 38, 8))
+		h.add_light(Vector2(235, 96), 58.0, Color("ffd179"), 0.85, 0.18)
+	elif lv >= DN_NEST:
+		_prop(h, "nest_straw", Vector2(235, 112), 24.0, 7.0)
+
+	if lv >= DN_VINES:
+		for x in [24.0, 294.0]:
+			var vine: Sprite2D = h.bg("vine", Vector2(x, 48), true)
+			h.sway(vine, 0.7, 1.3, 38.0)
+		_prop(h, "flowers_den", Vector2(292, 100), 14.0, 6.0)
+		h.add_light(Vector2(292, 88), 38.0, Color(0.45, 0.75, 1.0), 0.55, 0.2)
+	if lv >= DN_AERIE:
+		h.add_chain(194.0, 1.0, 26.0)
+		h.bg("lantern_blue", Vector2(194, 58), true)
+		h.add_light(Vector2(194, 46), 58.0, Color(0.48, 0.72, 1.0), 0.8, 0.18)
+		h.add_embers(Rect2(218, 76, 34, 24), Color("ffd27a"), 12, 12.0, 3.0)
+
+	h.add_embers(Rect2(40, 74, 240, 90), Color(0.85, 0.78, 0.75, 0.45), maxi(4, 12 - lv), 3.0, 5.0)
