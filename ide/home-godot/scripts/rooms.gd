@@ -47,7 +47,7 @@ static func _foot_block(h, at: Vector2, w := 12.0, d := 6.0) -> void:
 
 static func _great_hall(h, tier: int) -> void:
 	_shell(h, "flag" if tier < 2 else "marble")
-	var ambient := [Color(0.30, 0.31, 0.44), Color(0.38, 0.38, 0.54), Color(0.50, 0.50, 0.70), Color(0.55, 0.54, 0.80)]
+	var ambient := [Color(0.40, 0.41, 0.56), Color(0.44, 0.44, 0.60), Color(0.50, 0.50, 0.70), Color(0.55, 0.54, 0.80)]
 	h.set_ambient(ambient[tier])
 
 	# Cobwebs in the corners of a neglected hall.
@@ -77,7 +77,7 @@ static func _great_hall(h, tier: int) -> void:
 	h.hearth_base = ["hearthb", "hearthm", "hearthm", "hearthg"][tier]
 	h.hearth_sprite = h.bg(h.hearth_base + "_0", Vector2(160, 76), true)
 	var hearth_color := Color("ff9a4a") if tier < 3 else Color(0.55, 0.72, 1.0)
-	h.add_light(Vector2(160, 66), [78.0, 92.0, 100.0, 112.0][tier], hearth_color, [0.95, 1.1, 1.2, 1.3][tier], 0.22)
+	h.add_light(Vector2(160, 66), [108.0, 100.0, 104.0, 112.0][tier], hearth_color, [1.25, 1.15, 1.2, 1.3][tier], 0.22)
 	h.block(Rect2(136, 66, 48, 12))
 	h.station("hearth", "Rest at the Hearth", Rect2(136, 78, 48, 22), Vector2(160, 8))
 	h.add_embers(Rect2(150, 60, 20, 6), Color("ffb347") if tier < 3 else Color("8cc8ff"), 6 + tier * 3, 16.0)
