@@ -106,7 +106,7 @@ static func _great_hall(h, lv: int) -> void:
 	var marble := lv >= 8
 	var glass := lv >= 7
 	# The ambient light brightens a little with every step.
-	h.set_ambient(Color(0.40, 0.41, 0.56).lerp(Color(0.48, 0.48, 0.72), lv / 12.0))
+	h.set_ambient(Color(0.40, 0.41, 0.56).lerp(Color(0.52, 0.50, 0.66), lv / 12.0))
 
 	# ── The wall: columns, damp stains, cobwebs ──
 	if lv < 1:
@@ -146,7 +146,7 @@ static func _great_hall(h, lv: int) -> void:
 		var dir := 1.0 if x < 160.0 else -1.0
 		h.bg(window_kind, Vector2(x, 60), true)
 		h.add_shaft(Vector2(x - 12, 40), 24.0, 96.0, 30.0 * dir, beam)
-		h.add_light(Vector2(x, 66), 56.0, Color(0.45, 0.58, 0.95), 0.35 + 0.05 * lv, 0.0)
+		h.add_light(Vector2(x, 66), 56.0, Color(0.45, 0.58, 0.95), 0.35 + 0.015 * lv, 0.0)
 		# The patch of window-light on the floor, shaped like the panes.
 		var fx: float = x + 34.0 * dir
 		var k := 0
@@ -168,7 +168,7 @@ static func _great_hall(h, lv: int) -> void:
 	h.hearth_sprite = h.bg(h.hearth_base + "_0", Vector2(160, 76), true)
 	var blue := lv >= 12
 	var hearth_color := Color(0.55, 0.72, 1.0) if blue else Color("ff9a4a")
-	h.add_light(Vector2(160, 66), 100.0 + 1.2 * lv, hearth_color, 1.1 + 0.015 * lv + (0.1 if lv >= 4 else 0.0), 0.22)
+	h.add_light(Vector2(160, 66), 100.0 + 1.2 * lv, hearth_color, (0.8 if blue else 1.1 + 0.015 * lv + (0.1 if lv >= 4 else 0.0)), 0.22)
 	h.add_shadow(Vector2(160, 78), 52.0, 6.0, 0.3)
 	h.block(Rect2(136, 66, 48, 12))
 	h.station("hearth", "Rest at the Hearth", Rect2(136, 78, 48, 22), Vector2(160, 8))
