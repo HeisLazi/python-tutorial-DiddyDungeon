@@ -42,6 +42,16 @@ const LADDERS := {
 		{"name": "Enchant the shelves", "cost": 48, "note": "glowing tomes, crystals and a rolling ladder"},
 		{"name": "Open the skylight", "cost": 56, "note": "a skylight, moonlight and floating pages"},
 	],
+	"pantry": [
+		{"name": "Sweep and clean", "cost": 16, "note": "cobwebs and scraps cleared"},
+		{"name": "Light the hearth", "cost": 20, "note": "the cold hearth burns again"},
+		{"name": "Hang the herbs", "cost": 22, "note": "herbs, garlic and sausages hung to dry"},
+		{"name": "Stock the shelves", "cost": 26, "note": "jars, bread and sacks on the shelves"},
+		{"name": "Fill the barrels and crates", "cost": 30, "note": "barrels, vegetable crates and sacks"},
+		{"name": "Fix the cooking range", "cost": 34, "note": "a range with steaming copper pots"},
+		{"name": "Set the table", "cost": 40, "note": "a roast ham, bread and bowls"},
+		{"name": "Stoke the feast", "cost": 50, "note": "a roaring fire, torches and steam everywhere"},
+	],
 	"armory": [
 		{"name": "Sweep and clear", "cost": 16, "note": "cobwebs and rubble cleared"},
 		{"name": "Stock the rack", "cost": 20, "note": "a few swords and spears on the rack, a barrel of spears"},
@@ -65,6 +75,16 @@ const GH_MARBLE := 6
 const GH_CHANDELIER := 7
 const GH_BANQUET := 8
 const GH_GRAND := 9
+
+# The Pantry's steps by name.
+const PN_CLEAN := 1
+const PN_HEARTH := 2
+const PN_HERBS := 3
+const PN_SHELVES := 4
+const PN_BARRELS := 5
+const PN_RANGE := 6
+const PN_TABLE := 7
+const PN_FEAST := 8
 
 # The Hall of Arms' steps by name.
 const HA_SWEEP := 1
@@ -118,6 +138,8 @@ static func build(h, id: String, level: int) -> void:
 			_library(h, level)
 		"armory":
 			_armory(h, level)
+		"pantry":
+			_pantry(h, level)
 		_:
 			_great_hall(h, level)
 
@@ -318,7 +340,7 @@ static func _great_hall(h, lv: int) -> void:
 
 
 static func _library(h, lv: int) -> void:
-	_shell(h, -1, -1, {}, {"to": "great_hall", "spawn": Vector2(30, 142)}, "wood")
+	_shell(h, -1, -1, {"to": "pantry", "spawn": Vector2(290, 142)}, {"to": "great_hall", "spawn": Vector2(30, 142)}, "wood")
 	h.set_ambient(Color(0.34, 0.37, 0.52).lerp(Color(0.46, 0.50, 0.72), lv / float(LB_SKY)))
 	h.add_tint(Rect2(0, 0, h.VIEW.x, 64), Color(0.10, 0.18, 0.45, 0.10))      # a cooler wall than the hall
 
@@ -507,3 +529,84 @@ static func _armory(h, lv: int) -> void:
 
 	# ── Dust and smoke in the torchlight ──
 	h.add_embers(Rect2(40, 74, 240, 90), Color(0.9, 0.8, 0.7, 0.45), maxi(4, 14 - lv), 3.0, 5.0)
+
+
+static func _pantry(h, lv: int) -> void:
+	_shell(h, -1, -1, {}, {"to": "library", "spawn": Vector2(30, 142)}, "stone")
+	h.set_ambient(Color(0.40, 0.36, 0.36).lerp(Color(0.56, 0.48, 0.44), lv / float(PN_FEAST)))
+	h.add_tint(Rect2(0, 0, h.VIEW.x, 64), Color(0.40, 0.25, 0.10, 0.10))       # warm, smoky stone
+
+	# ── Neglect: cobwebs and scraps ──
+	if lv < PN_CLEAN:
+		h.bg("cobweb_l", Vector2(2, 16))
+		h.bg("cobweb_r", Vector2(h.VIEW.x - 16, 16))
+		for at in [Vector2(150, 160), Vector2(80, 130), Vector2(230, 150)]:
+			h.bg("rubble_0", at, true)
+		for x in [60.0, 170.0]:
+			h.bg("stain", Vector2(x, 18))
+
+	# ── The wall: window, door, hanging food ──
+	h.bg("window_pantry", Vector2(40, 60), true)
+	h.add_light(Vector2(40, 66), 48.0, Color(1.0, 0.45, 0.4), 0.3, 0.0)
+	h.bg("door_pantry", Vector2(192, 74), true)
+	if lv >= PN_HERBS:
+		h.bg("hang_rack", Vector2(196, 22 + 26), true)
+		var herbs: Sprite2D = h.bg("herbs", Vector2(24, 52), true)
+		h.sway(herbs, 0.6, 1.4, 20.0)
+		var herbs2: Sprite2D = h.bg("herbs", Vector2(58, 52), true)
+		h.sway(herbs2, 0.6, 1.2, 20.0)
+
+	# ── The hearth: cold, then lit ──
+	if lv >= PN_HEARTH:
+		h.anim("hearthp", Vector2(122, 78), Rect2(104, 68, 36, 10), true)
+		h.add_light(Vector2(122, 64), 100.0 + 2.0 * lv, Color("ff9a4a"), 1.0 + 0.04 * lv, 0.25)
+		h.add_embers(Rect2(114, 62, 16, 6), Color("ffb347"), 5 + lv, 14.0)
+	else:
+		h.bg("hearthp_out", Vector2(122, 78), true)
+		h.block(Rect2(104, 68, 36, 10))
+	h.add_shadow(Vector2(122, 80), 44.0, 6.0, 0.3)
+
+	# ── The range (left): a cold cauldron on a pit, then a range of steaming pots ──
+	if lv >= PN_RANGE:
+		_prop(h, "range_pots", Vector2(52, 98), 50.0, 12.0)
+		h.add_light(Vector2(52, 84), 56.0, Color("ff8a3a"), 0.8, 0.3)
+		h.add_embers(Rect2(36, 66, 34, 10), Color(0.95, 0.95, 1.0, 0.55), 5 + (3 if lv >= PN_FEAST else 0), 7.0, 3.0, 2.0)
+	else:
+		h.add_shadow(Vector2(52, 98), 24.0, 6.0)
+		if lv >= PN_HEARTH:
+			h.anim("cauldron_p", Vector2(52, 98), Rect2(42, 92, 20, 6))
+		else:
+			h.obj("cauldron_p_out", Vector2(52, 98), Rect2(42, 92, 20, 6))
+
+	# ── Shelves (right): empty, then stocked ──
+	h.add_shadow(Vector2(262, 76), 30.0, 5.0, 0.3)
+	h.bg("shelf_stocked" if lv >= PN_SHELVES else "shelf_empty", Vector2(262, 76), true)
+	h.block(Rect2(246, 68, 32, 8))
+	if lv < PN_CLEAN:
+		h.bg("cobweb_l", Vector2(250, 30))
+
+	# ── Barrels, crates and sacks ──
+	if lv >= PN_BARRELS:
+		for at in [Vector2(236, 98), Vector2(296, 100)]:
+			_prop(h, "barrel_food", at, 14.0, 6.0)
+		_prop(h, "crate_veg", Vector2(276, 104), 20.0, 6.0)
+		_prop(h, "sacks", Vector2(300, 132), 26.0, 8.0)
+	else:
+		_prop(h, "barrel_food", Vector2(236, 98), 14.0, 6.0)
+
+	# ── The table and the pantry station ──
+	var table_piece := "table_roast" if lv >= PN_TABLE else "table_small"
+	_prop(h, table_piece, Vector2(210, 134), 24.0 if lv < PN_TABLE else 24.0, 8.0)
+	h.station("pantry", "Eat at the Pantry", Rect2(180, 138, 64, 28), Vector2(210, 100))
+	if lv >= PN_TABLE:
+		h.add_light(Vector2(210, 118), 40.0, Color("ffd27a"), 0.55, 0.15)
+
+	# ── The feast: torches blaze, steam everywhere ──
+	if lv >= PN_FEAST:
+		for x in [96.0, 152.0]:
+			h.anim("torch_stand", Vector2(x, 92), Rect2(x - 4, 88, 8, 4))
+			h.add_light(Vector2(x, 70), 64.0, Color("ff9a4a"), 0.95, 0.3)
+		h.add_embers(Rect2(190, 100, 40, 30), Color(0.95, 0.95, 1.0, 0.5), 5, 6.0, 3.0, 2.0)
+
+	# ── Smoke and dust ──
+	h.add_embers(Rect2(40, 74, 240, 90), Color(0.9, 0.8, 0.7, 0.4), maxi(4, 14 - lv), 3.0, 5.0)

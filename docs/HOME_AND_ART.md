@@ -4,6 +4,8 @@ Everything about the walkable **Home** (a Godot scene embedded in the app), the 
 art, the hunter skins, how it was built and tested, the gotchas, and what comes next.
 Written so another agent (or you in a month) can pick it up cold.
 
+**Current status of the room rebuild and the exact next steps: `docs/HOME_REBUILD_HANDOFF.md` (read it first).**
+
 Last updated 2026-10-27 (new Alucard hunter from AI sheets). Start with "Quick start", then "How it fits together".
 
 ---

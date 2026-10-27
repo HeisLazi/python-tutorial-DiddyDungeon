@@ -24,7 +24,7 @@ Update the "Status" and "Next steps" sections after every major step and commit.
 | Great Hall | `great_hall` | 9 steps | W: library, E: armory | hearth, door | DONE (image props) |
 | Library | `library` | 9 steps | E: great_hall | study | DONE |
 | Hall of Arms | `armory` | 9 steps | W: great_hall | armory, training | DONE (needs east exit to war_room later) |
-| Pantry | `pantry` | designed below | E: library, W: gallery | pantry | IN PROGRESS: concepts saved, 3 prop sheets generated, 2 sliced |
+| Pantry | `pantry` | 8 steps, 238 Embers | E: library (W: gallery, add when the gallery exists) | pantry | DONE (all props sliced; `PN_*` constants; Library has a west exit to it) |
 | Trophy Gallery | `gallery` | designed below | E: pantry | trophy | concepts saved only |
 | War Room | `war_room` | designed below | W: armory, E: den | map | concepts saved only |
 | Pyr's Den | `den` | designed below | W: war_room | perch | concepts saved only |
@@ -68,9 +68,7 @@ Palette and mood come from the concept images; each ladder step adds/changes ONE
 5 Fill the barrels and crates (30: `barrel_food`, `crate_veg`, `sacks`), 6 Fix the range (34: cold cauldron `cauldron_p_out` -> `range_pots` with steam particles),
 7 Set the table (40: plain table -> table with roast ham and bread), 8 Stoke the feast (50: roaring fire, steam, torches). Layout: big hearth centre-left of the back wall,
 arched door right of it, shelves on the right, range/pit on the left, table front right.
-**Pantry assets**: sliced already: `hearthp_{0,1,out}`, `range_pots`, `cauldron_p_{0,1,out}`, `shelf_stocked`, `barrel_food`, `herbs`, `crate_veg`, `hang_rack`, `sacks`.
-Sheet 3 (`d32b1327...`, empty shelf, plain table, banquet table, oak door, torch, barred window) was generated; download URL in the Higgsfield job result
-(`hf_20261027_022150_d32b1327-...png`) - if you cannot fetch it, regenerate with the prompt in step 2 (exactly six objects). Not yet sliced.
+**Pantry assets** (all sliced into `tools/home_art/props/`): `hearthp_{0,1,out}`, `range_pots`, `cauldron_p_{0,1,out}`, `shelf_stocked`, `shelf_empty`, `table_roast`, `door_pantry`, `torch_stand_{0,1}`, `window_pantry`, `barrel_food`, `herbs`, `crate_veg`, `hang_rack`, `sacks` (sheets: `pantry_fire`, `pantry_store`, `pantry_table`).
 
 **Trophy Gallery (`gallery`, station `trophy`)** 9 steps (288): 1 Dust and clear (16), 2 Mend the display case (20), 3 Hang the banners (22: torn -> crest),
 4 First relics (26: chalice on a plinth), 5 Lay the carpet and ropes (30: red carpet, stanchions), 6 Spotlights (34), 7 Mount the beasts (40: ram, wolf, bull, dragon heads),
@@ -105,7 +103,7 @@ Watch for: furniture blocking a doorway at some level; props overlapping the wal
 
 ## 7. Next steps (in order)
 
-1. Finish the Pantry: download pantry sheet 3, slice (empty shelf, plain table, roast table, door, torch, window), write `_pantry`, wire exits (Library west, Pantry east), shots, Chrome, commit.
+1. (done) Pantry. NOT yet checked in the real browser: do the Chrome walk Library -> Pantry -> Library once.
 2. Trophy Gallery (3 sheets), then War Room (+ Hall of Arms east exit), then Pyr's Den. Commit after each.
 3. Station and bridge check across all rooms in the real app (`HomeRoom` in `ide/frontend/src/RpgViews.jsx` already forwards `use` events by station id). Update `homeRoomState` to send `levels` if the app should drive rooms directly.
 4. Merge: `ExitWorktree keep`, then from the main checkout `git merge --ff-only feature/tauri-arcade` (md5 of `progress.json` before and after), `sh tools/build_home.sh`, `npm --prefix ide/frontend run build`, run the backend tests (`ide/.venv` pytest) and `node --test ide/frontend/src/cloud/` (87 pass / 10 pre-existing failures is the baseline).
