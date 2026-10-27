@@ -162,3 +162,9 @@ Sheets: `tools/home_art/sheets/props/den_1.png`, `den_2.png`, `den_3.png`. Piece
   either draw the arch area over the wall with the sky first, or skip the wall tiles under it), `ledge` (rock floor slab), `boulder`.
 Suggested ladder mapping (section 4): 1 clear (add `twigs` litter at level 0, remove), 2 `perch_bar` -> proper perch, 3 `nest_straw`, 4 lamps (`lamp_stone`, `lantern_warm`), 5 open the wall (`sky_sunrise` + `cave_arch`, window light),
 6 vines and `flowers_den`, 7 `perch_eagle`, 8 `nest_gold` with embers and `lantern_blue`. Use warm sunrise light (pink/orange) falling from the arch via `h.add_shaft` and `h.add_light`.
+
+## 9. Room upgrades and Pyr — implementation status (2026-10-27)
+
+- The server has a seven-room ladder catalog in `ide/server/home_rooms.py`, with a contract test against `rooms.gd`. Its 62 steps total 2,028 Embers. The helper projects old hearth/armory visual tiers without spending currency; the old map tier was not persisted by the app.
+- Next: wire atomic purchases and cloud projection, then the Home panel and isolated browser verification. The catalog alone does not enable buying upgrades.
+- Pyr's four eagle sheets are not present in `tools/home_art/sheets/pyr/`; prepare the loader and exact image prompts after the purchase workflow is complete.
