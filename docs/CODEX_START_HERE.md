@@ -14,9 +14,9 @@ YOUR TASKS, in order, committing after each (plain separate git commands; commit
 1. Write the War Room: add LADDERS["war_room"], WR_* constants, a match case in Rooms.build(), and _war_room(h, lv) in rooms.gd. All its props are already sliced in tools/home_art/props/
    (names listed in HOME_REBUILD_HANDOFF.md section 8). Station id "map" (label "Plan a Dungeon run"). Targets: tools/home_art/concepts/warroom_base.png and warroom_max.png.
    Wire exits: Armory east -> war_room, War Room west -> armory, War Room east -> den.
-2. Build Pyr's Den the same way. The owner will drop its prop sheets in tools/home_art/sheets/props/ (den_*.png, see the sheet list in HOME_REBUILD_HANDOFF.md section 4 and the prompts in this file's sibling message).
+2. Build Pyr's Den the same way. Its props are already in tools/home_art/props/ (see the handoff).
    Slice each with tools/home_art/from_props.py (probe the reading order first, see section 3 steps 3-4). Station id "perch" (label "Visit Pyr's perch"). Targets: den_base.png / den_max.png. Exit: west -> war_room.
-   If the sheets are not there yet, build the room with the code-drawn pieces and placeholders and mark it clearly, then swap in the sliced props later.
+   The den_1/2/3 sheets are ALREADY saved and sliced (piece names are in the handoff's "Pyr's Den props" block); the sunrise sky goes behind the cave arch.
 3. Screenshot every level of each new room (sh tools/home_art/shots.sh <room> 0 1 ... N), LOOK at them, fix what is wrong (dark, blocked doorway strip y 112-172, props overlapping the wall).
 4. Verify the whole chain in a real browser (HANDOFF section 5): gallery - pantry - library - great_hall - armory - war_room - den, and use every station once (hearth, door, study, armory, training, pantry, trophy, map, perch).
 5. Update the Status table and "Next steps" in docs/HOME_REBUILD_HANDOFF.md after every room. Do NOT merge to main or push; stop after the browser check and tell the owner what is ready to merge.
