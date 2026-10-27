@@ -22,12 +22,12 @@ Update the "Status" and "Next steps" sections after every major step and commit.
 | Room | id | Ladder | Exits | Stations | State |
 |---|---|---|---|---|---|
 | Great Hall | `great_hall` | 9 steps | W: library, E: armory | hearth, door | DONE (image props) |
-| Library | `library` | 9 steps | E: great_hall | study | DONE |
+| Library | `library` | 9 steps | W: pantry, E: great_hall | study | DONE |
 | Hall of Arms | `armory` | 9 steps | W: great_hall, E: war_room | armory, training | DONE (east exit connected; doorway braziers moved clear) |
-| Pantry | `pantry` | 8 steps, 238 Embers | E: library (W: gallery, add when the gallery exists) | pantry | DONE (all props sliced; `PN_*` constants; Library has a west exit to it) |
-| Trophy Gallery | `gallery` | 9 steps, 288 Embers | E: pantry (Pantry has a west exit to it) | trophy | DONE (`GL_*`; props sliced from gal_plinths, gal_wall, gal_floor; not yet walked in Chrome) |
-| War Room | `war_room` | 9 steps, 296 Embers | W: armory, E: den | map | DONE (levels 0–9 reviewed in Compatibility screenshots; browser walk pending) |
-| Pyr's Den | `den` | 9 steps, 266 Embers | W: war_room | perch | DONE (levels 0–9 reviewed in Compatibility screenshots; browser walk pending) |
+| Pantry | `pantry` | 8 steps, 238 Embers | W: gallery, E: library | pantry | DONE (browser walk and station event checked) |
+| Trophy Gallery | `gallery` | 9 steps, 288 Embers | E: pantry | trophy | DONE (browser walk and station event checked) |
+| War Room | `war_room` | 9 steps, 296 Embers | W: armory, E: den | map | DONE (levels 0–9 reviewed; browser walk and station event checked) |
+| Pyr's Den | `den` | 9 steps, 266 Embers | W: war_room | perch | DONE (levels 0–9 reviewed; browser walk and station event checked) |
 
 Topology (a row; each room has only left/right doorways, `_shell(h, marble_from, marble_to, left, right, floor_kind)`):
 `gallery - pantry - library - great_hall - armory - war_room - den`. The Great Hall also has the bottom door to the Forge (station `door`).
@@ -105,10 +105,16 @@ Watch for: furniture blocking a doorway at some level; props overlapping the wal
 
 1. War Room and its Armory exit are built; levels 0–9 have been reviewed in Compatibility screenshots.
 2. Pyr's Den is built and levels 0–9 have been reviewed in Compatibility screenshots. The sliced cave arch opening was made transparent so the sunrise behind it is visible; re-slicing that prop requires restoring the opening mask.
-3. Build the web export and walk the complete room chain in a real browser, using every station and checking the bridge events. The Pantry and Gallery have not yet been walked in the browser.
-4. Report what is ready for the owner to merge. Do not merge or push as part of this task.
+3. Done: built the web export and walked the complete room chain in Chromium, using every station and checking its bridge event. See the browser evidence below.
+4. The room commits and browser evidence are ready for the owner to review for merging. Do not merge or push as part of this task.
 5. Later: Pyr's eagle redesign (4 stages), unlockable hunter skins, the three weapon types and the combat stage (`HOME_AND_ART.md` section 8).
 
+
+## 7a. Browser evidence (2026-10-27)
+
+- Rebuilt the Godot Web export and the React production bundle. In standalone Chromium with the Compatibility renderer, set all rooms to their maximum levels via `diddyHomeReceive`, walked Gallery → Pantry → Library → Great Hall → Armory → War Room → Den, and walked back Den → War Room → Armory.
+- Pressing E emitted a `diddy-home` use event for every station: `hearth`, `door`, `study`, `armory`, `training`, `pantry`, `trophy`, `map`, and `perch`. Browser screenshots are retained in the ignored `ide/home-godot/shot_browser-*.png` files. The only browser console error was a missing favicon in the standalone server.
+- This verified the standalone Web scene and bridge messages. It did not execute React-side navigation or backend actions. `homeRoomState` still sends legacy tiers for hearth and armory; per-room ladder purchases and persisted room levels are not wired to the app.
 
 ## 8. SAVE POINT (2026-10-27, written when the previous agent ran out of budget): exact state and how to reproduce
 
