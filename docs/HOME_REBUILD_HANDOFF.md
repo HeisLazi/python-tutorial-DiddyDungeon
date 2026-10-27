@@ -23,16 +23,16 @@ Update the "Status" and "Next steps" sections after every major step and commit.
 |---|---|---|---|---|---|
 | Great Hall | `great_hall` | 9 steps | W: library, E: armory | hearth, door | DONE (image props) |
 | Library | `library` | 9 steps | E: great_hall | study | DONE |
-| Hall of Arms | `armory` | 9 steps | W: great_hall | armory, training | DONE (needs east exit to war_room later) |
+| Hall of Arms | `armory` | 9 steps | W: great_hall, E: war_room | armory, training | DONE (east exit connected; doorway braziers moved clear) |
 | Pantry | `pantry` | 8 steps, 238 Embers | E: library (W: gallery, add when the gallery exists) | pantry | DONE (all props sliced; `PN_*` constants; Library has a west exit to it) |
 | Trophy Gallery | `gallery` | 9 steps, 288 Embers | E: pantry (Pantry has a west exit to it) | trophy | DONE (`GL_*`; props sliced from gal_plinths, gal_wall, gal_floor; not yet walked in Chrome) |
-| War Room | `war_room` | designed below | W: armory, E: den | map | PROPS READY, ROOM CODE NOT WRITTEN (2 sheets sliced) |
+| War Room | `war_room` | 9 steps, 296 Embers | W: armory, E: den | map | DONE (levels 0–9 reviewed in Compatibility screenshots; browser walk pending) |
 | Pyr's Den | `den` | designed below | W: war_room | perch | PROPS READY (3 sheets saved and sliced), ROOM CODE NOT WRITTEN |
 
 Topology (a row; each room has only left/right doorways, `_shell(h, marble_from, marble_to, left, right, floor_kind)`):
 `gallery - pantry - library - great_hall - armory - war_room - den`. The Great Hall also has the bottom door to the Forge (station `door`).
 To wire a room: add `{"to": id, "spawn": Vector2(x, 142)}` to the neighbour's exit dict (spawn = just inside the opposite edge: 30 for a room
-entered from its west door, 290 for east). Today the Hall of Arms has no east exit and the Library has no west exit yet.
+entered from its west door, 290 for east). The War Room east exit leads to the Den, which is the next room to build.
 
 ### Station checklist (all must work before merging to main)
 hearth (rest), door (Forge), study (Tutor), armory (Armory panel), training (Tutor sparring), pantry (eat a meal), trophy (Settings > Player Stats),
@@ -103,14 +103,16 @@ Watch for: furniture blocking a doorway at some level; props overlapping the wal
 
 ## 7. Next steps (in order)
 
-1. (done) Pantry. NOT yet checked in the real browser: do the Chrome walk Library -> Pantry -> Library once.
-2. (Gallery done) War Room (+ Hall of Arms east exit), then Pyr's Den. Commit after each.
-3. Station and bridge check across all rooms in the real app (`HomeRoom` in `ide/frontend/src/RpgViews.jsx` already forwards `use` events by station id). Update `homeRoomState` to send `levels` if the app should drive rooms directly.
-4. Merge: `ExitWorktree keep`, then from the main checkout `git merge --ff-only feature/tauri-arcade` (md5 of `progress.json` before and after), `sh tools/build_home.sh`, `npm --prefix ide/frontend run build`, run the backend tests (`ide/.venv` pytest) and `node --test ide/frontend/src/cloud/` (87 pass / 10 pre-existing failures is the baseline).
-5. Pyr's eagle redesign (4 stages), unlockable hunter skins, the three weapon types and the combat stage (`HOME_AND_ART.md` section 8).
+1. War Room and its Armory exit are built; levels 0–9 have been reviewed in Compatibility screenshots.
+2. Build Pyr's Den, review every level, update this handoff, and commit it separately.
+3. Build the web export and walk the complete room chain in a real browser, using every station and checking the bridge events. The Pantry and Gallery have not yet been walked in the browser.
+4. Report what is ready for the owner to merge. Do not merge or push as part of this task.
+5. Later: Pyr's eagle redesign (4 stages), unlockable hunter skins, the three weapon types and the combat stage (`HOME_AND_ART.md` section 8).
 
 
 ## 8. SAVE POINT (2026-10-27, written when the previous agent ran out of budget): exact state and how to reproduce
+
+This is the earlier historical snapshot. The current status and next steps above supersede its War Room and exit notes.
 
 Everything is committed on `feature/tauri-arcade` except the git-ignored `ide/home-godot/shot_*.png` screenshots. Main is untouched (still the old one-hall Home).
 

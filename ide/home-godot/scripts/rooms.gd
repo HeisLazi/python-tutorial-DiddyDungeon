@@ -63,6 +63,17 @@ const LADDERS := {
 		{"name": "Glowing relics", "cost": 46, "note": "a glowing heart and a burning claw"},
 		{"name": "Portrait of the hunter", "cost": 54, "note": "a gold-framed portrait and stained glass"},
 	],
+	"war_room": [
+		{"name": "Clear the war room", "cost": 16, "note": "cobwebs and rubble cleared"},
+		{"name": "Mend the table", "cost": 20, "note": "a repaired planning table and parchment"},
+		{"name": "Light the candles", "cost": 24, "note": "candlelight illuminates the planning table"},
+		{"name": "Pin the maps", "cost": 28, "note": "maps and charts cover the wall"},
+		{"name": "Hang the banners", "cost": 30, "note": "the war room's banners are raised"},
+		{"name": "Lay the rug", "cost": 34, "note": "a crimson rug beneath the table"},
+		{"name": "The great map table", "cost": 42, "note": "an illuminated map with markers and seals"},
+		{"name": "Hang the chandelier", "cost": 48, "note": "a flickering chandelier lights the room"},
+		{"name": "Crystal ball and chests", "cost": 54, "note": "a glowing crystal ball and treasure chests"},
+	],
 	"armory": [
 		{"name": "Sweep and clear", "cost": 16, "note": "cobwebs and rubble cleared"},
 		{"name": "Stock the rack", "cost": 20, "note": "a few swords and spears on the rack, a barrel of spears"},
@@ -107,6 +118,17 @@ const GL_SPOT := 6
 const GL_BEASTS := 7
 const GL_GLOW := 8
 const GL_PORTRAIT := 9
+
+# The War Room's steps by name.
+const WR_CLEAR := 1
+const WR_TABLE := 2
+const WR_CANDLES := 3
+const WR_MAPS := 4
+const WR_BANNERS := 5
+const WR_RUG := 6
+const WR_GREAT_MAP := 7
+const WR_CHANDELIER := 8
+const WR_TREASURES := 9
 
 # The Hall of Arms' steps by name.
 const HA_SWEEP := 1
@@ -164,6 +186,8 @@ static func build(h, id: String, level: int) -> void:
 			_pantry(h, level)
 		"gallery":
 			_gallery(h, level)
+		"war_room":
+			_war_room(h, level)
 		_:
 			_great_hall(h, level)
 
@@ -462,7 +486,7 @@ static func _ellipse(cx: float, cy: float, rx: float, ry: float, n := 28) -> Pac
 
 
 static func _armory(h, lv: int) -> void:
-	_shell(h, -1, -1, {"to": "great_hall", "spawn": Vector2(290, 142)}, {}, "stone")
+	_shell(h, -1, -1, {"to": "great_hall", "spawn": Vector2(290, 142)}, {"to": "war_room", "spawn": Vector2(30, 142)}, "stone")
 	h.set_ambient(Color(0.48, 0.44, 0.50).lerp(Color(0.56, 0.49, 0.48), lv / float(HA_ENCHANT)))
 	h.add_tint(Rect2(0, 0, h.VIEW.x, 64), Color(0.35, 0.18, 0.10, 0.08))      # warm stone: torchlit
 
@@ -495,7 +519,7 @@ static func _armory(h, lv: int) -> void:
 		h.add_light(Vector2(x, 38), 64.0, Color("ff9a4a"), 0.95, 0.3)
 	var brazier_spots: Array = []
 	if lv >= HA_BRAZIERS:
-		brazier_spots = [Vector2(26, 138), Vector2(298, 138)]
+		brazier_spots = [Vector2(38, 104), Vector2(282, 104)]
 	if lv >= HA_ENCHANT:
 		brazier_spots.append_array([Vector2(26, 96), Vector2(298, 96)])
 	for at in brazier_spots:
@@ -716,3 +740,76 @@ static func _gallery(h, lv: int) -> void:
 
 	# ── Dust in the moonbeam ──
 	h.add_embers(Rect2(40, 74, 240, 90), Color(0.75, 0.80, 1.0, 0.5), maxi(4, 14 - lv), 3.0, 5.0)
+
+
+static func _war_room(h, lv: int) -> void:
+	_shell(h, -1, -1, {"to": "armory", "spawn": Vector2(290, 142)}, {"to": "den", "spawn": Vector2(30, 142)}, "stone")
+	h.set_ambient(Color(0.52, 0.48, 0.57).lerp(Color(0.62, 0.54, 0.58), lv / float(WR_TREASURES)))
+	h.add_tint(Rect2(0, 0, h.VIEW.x, 64), Color(0.20, 0.16, 0.30, 0.10))
+
+	# Neglect and moonlight frame the first planning table.
+	if lv < WR_CLEAR:
+		h.bg("cobweb_l", Vector2(2, 16))
+		h.bg("cobweb_r", Vector2(h.VIEW.x - 16, 16))
+		for at in [Vector2(85, 150), Vector2(214, 158), Vector2(265, 112)]:
+			h.bg("rubble_0", at, true)
+		for x in [142.0, 238.0]:
+			h.bg("stain", Vector2(x, 18))
+	h.bg("window_war", Vector2(72, 64), true)
+	h.add_shaft(Vector2(60, 34), 24.0, 100.0, 25.0, Color(0.50, 0.62, 1.0, 0.13))
+	h.add_light(Vector2(72, 62), 65.0, Color(0.48, 0.60, 1.0), 0.50, 0.0)
+
+	# Maps and banners grow on the back wall in separate upgrades.
+	if lv >= WR_MAPS:
+		h.bg("map_world", Vector2(143, 58), true)
+		h.bg("map_chart", Vector2(220, 58), true)
+	if lv >= WR_BANNERS:
+		for x in [108.0, 255.0]:
+			var banner: Sprite2D = h.bg("banner_sun", Vector2(x, 57), true)
+			h.sway(banner, 0.8, 1.5, 24.0)
+
+	# Floor decoration stays beneath the furniture and clear of both doors.
+	if lv >= WR_RUG:
+		h.bg("rug_crimson", Vector2(118, 105))
+
+	# Shelves and instruments sit against the wall, leaving a clear route across the room.
+	h.add_shadow(Vector2(30, 76), 38.0, 5.0, 0.3)
+	h.bg("bookshelf_sparse", Vector2(30, 76), true)
+	h.block(Rect2(12, 68, 36, 8))
+	h.add_shadow(Vector2(288, 76), 26.0, 5.0, 0.3)
+	h.bg("shelf_war", Vector2(288, 76), true)
+	h.block(Rect2(276, 68, 24, 8))
+	_prop(h, "globe", Vector2(94, 96), 16.0, 6.0)
+	_prop(h, "barrel", Vector2(40, 100), 14.0, 6.0)
+	_prop(h, "scrolls", Vector2(238, 96), 14.0, 5.0)
+	_prop(h, "stool", Vector2(222, 130), 12.0, 6.0)
+
+	# The map station remains reachable in front of every version of the table.
+	var table_piece := "table_small"
+	if lv >= WR_GREAT_MAP:
+		table_piece = "table_map_big"
+	elif lv >= WR_TABLE:
+		table_piece = "table_map_small"
+	_prop(h, table_piece, Vector2(160, 118), 48.0 if lv >= WR_GREAT_MAP else 24.0, 8.0)
+	h.station("map", "Plan a Dungeon run", Rect2(128, 122, 64, 28), Vector2(160, 14))
+	if lv >= WR_GREAT_MAP:
+		h.add_light(Vector2(160, 94), 58.0, Color("ffe2a0"), 0.95, 0.12)
+
+	if lv >= WR_CANDLES:
+		for at in [Vector2(118, 100), Vector2(212, 100)]:
+			h.add_shadow(at, 14.0, 4.0)
+			h.anim("candelabra_lib", at, Rect2(at.x - 6, at.y - 5, 12, 5))
+			h.add_light(at + Vector2(0, -20), 52.0, Color("ffce8a"), 0.75, 0.25)
+	if lv >= WR_CHANDELIER:
+		h.add_chain(180.0, 1.0, 31.0)
+		h.anim("chandelier_war", Vector2(180, 69), Rect2(), true)
+		h.add_light(Vector2(180, 48), 90.0, Color("ffce8a"), 0.95, 0.18)
+	if lv >= WR_TREASURES:
+		_prop(h, "crystal_ball", Vector2(265, 106), 14.0, 6.0)
+		_prop(h, "chest", Vector2(293, 104), 20.0, 7.0)
+		h.add_light(Vector2(265, 88), 48.0, Color("ffcd78"), 0.85, 0.22)
+		h.add_embers(Rect2(257, 78, 16, 12), Color("ffe19a"), 5, 6.0, 3.0)
+	else:
+		_prop(h, "crate", Vector2(290, 102), 16.0, 6.0)
+
+	h.add_embers(Rect2(40, 74, 240, 90), Color(0.85, 0.82, 0.85, 0.45), maxi(4, 14 - lv), 3.0, 5.0)
