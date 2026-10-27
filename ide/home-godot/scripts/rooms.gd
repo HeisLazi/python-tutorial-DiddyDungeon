@@ -42,6 +42,17 @@ const LADDERS := {
 		{"name": "Enchant the shelves", "cost": 48, "note": "glowing tomes, crystals and a rolling ladder"},
 		{"name": "Open the skylight", "cost": 56, "note": "a skylight, moonlight and floating pages"},
 	],
+	"armory": [
+		{"name": "Sweep and clear", "cost": 16, "note": "cobwebs and rubble cleared"},
+		{"name": "Stock the rack", "cost": 20, "note": "a few swords and spears on the rack, a barrel of spears"},
+		{"name": "Mend the dummy", "cost": 24, "note": "a new wooden training dummy"},
+		{"name": "Light the braziers", "cost": 28, "note": "two braziers and a second torch"},
+		{"name": "Hang the banners", "cost": 30, "note": "crossed-sword banners and shields"},
+		{"name": "Lay the ring in stone", "cost": 36, "note": "a stone-walled ring with a rope"},
+		{"name": "The weapon wall", "cost": 42, "note": "a full rack of axes, swords and shields"},
+		{"name": "Iron dummies", "cost": 48, "note": "armoured dummies and an archery target"},
+		{"name": "Enchant the arms", "cost": 56, "note": "glowing runes and floating blades on stone pedestals"},
+	],
 }
 
 # The Great Hall's steps by name (the level at which each thing appears).
@@ -54,6 +65,17 @@ const GH_MARBLE := 6
 const GH_CHANDELIER := 7
 const GH_BANQUET := 8
 const GH_GRAND := 9
+
+# The Hall of Arms' steps by name.
+const HA_SWEEP := 1
+const HA_RACK := 2
+const HA_DUMMY := 3
+const HA_BRAZIERS := 4
+const HA_BANNERS := 5
+const HA_RING := 6
+const HA_WALL := 7
+const HA_IRON := 8
+const HA_ENCHANT := 9
 
 # The Library's steps by name.
 const LB_TIDY := 1
@@ -94,6 +116,8 @@ static func build(h, id: String, level: int) -> void:
 			_great_hall(h, level)
 		"library":
 			_library(h, level)
+		"armory":
+			_armory(h, level)
 		_:
 			_great_hall(h, level)
 
@@ -163,7 +187,7 @@ static func _great_hall(h, lv: int) -> void:
 	if lv >= GH_MARBLE:
 		marble_from = 0
 		marble_to = 19
-	_shell(h, marble_from, marble_to, {"to": "library", "spawn": Vector2(290, 142)}, {})
+	_shell(h, marble_from, marble_to, {"to": "library", "spawn": Vector2(290, 142)}, {"to": "armory", "spawn": Vector2(30, 142)})
 	var marble := lv >= GH_MARBLE
 	var glass := lv >= GH_GLASS
 	# The ambient light brightens a little with every step.
@@ -196,7 +220,7 @@ static func _great_hall(h, lv: int) -> void:
 		for row in range(5, 12):
 			h.bg("carpet", Vector2(144, row * 16))
 	if lv >= GH_BANQUET:
-		h.bg("rug_table", Vector2(210, 104))
+		h.bg("rug_table", Vector2(210, 82))
 
 	# ── Windows: plain and cold, then stained glass throwing coloured light on the floor ──
 	var window_kind := "window_glass" if glass else "window_plain"
@@ -275,11 +299,11 @@ static func _great_hall(h, lv: int) -> void:
 		h.anim("chandelier", Vector2(92, 132))
 		h.add_light(Vector2(92, 110), 92.0, Color("ffcf8a"), 0.8 + 0.08 * (lv - GH_CHANDELIER), 0.2)
 	if lv >= GH_BANQUET:
-		_prop(h, "table_long", Vector2(252, 130), 64.0, 14.0)
+		_prop(h, "table_long", Vector2(252, 112), 64.0, 14.0)
 		for cx in [236.0, 268.0]:
-			_prop(h, "chair_l" if cx < 252.0 else "chair_r", Vector2(cx, 110), 12.0, 6.0)
-			_prop(h, "chair_l" if cx < 252.0 else "chair_r", Vector2(cx, 154), 12.0, 6.0)
-		h.add_light(Vector2(252, 120), 48.0, Color("ffd27a"), 0.7, 0.2)
+			_prop(h, "chair_l" if cx < 252.0 else "chair_r", Vector2(cx, 92), 12.0, 6.0)
+			_prop(h, "chair_l" if cx < 252.0 else "chair_r", Vector2(cx, 136), 12.0, 6.0)
+		h.add_light(Vector2(252, 102), 48.0, Color("ffd27a"), 0.7, 0.2)
 	if lv >= GH_GRAND:
 		for at in [Vector2(108, 86), Vector2(212, 86)]:
 			_prop(h, "knight", at, 14.0, 6.0, 16.0)
@@ -381,3 +405,105 @@ static func _library(h, lv: int) -> void:
 
 	# ── Dust in the beams ──
 	h.add_embers(Rect2(40, 74, 240, 90), Color(0.75, 0.80, 1.0, 0.5), maxi(4, 14 - lv), 3.0, 5.0)
+
+
+static func _ellipse(cx: float, cy: float, rx: float, ry: float, n := 28) -> PackedVector2Array:
+	var pts := PackedVector2Array()
+	for i in n:
+		var a := TAU * i / float(n)
+		pts.append(Vector2(cx + cos(a) * rx, cy + sin(a) * ry))
+	return pts
+
+
+static func _armory(h, lv: int) -> void:
+	_shell(h, -1, -1, {"to": "great_hall", "spawn": Vector2(290, 142)}, {}, "stone")
+	h.set_ambient(Color(0.48, 0.44, 0.50).lerp(Color(0.56, 0.49, 0.48), lv / float(HA_ENCHANT)))
+	h.add_tint(Rect2(0, 0, h.VIEW.x, 64), Color(0.35, 0.18, 0.10, 0.08))      # warm stone: torchlit
+
+	# ── The wall: cobwebs, barred windows, torn banner, shields ──
+	if lv < HA_SWEEP:
+		h.bg("cobweb_l", Vector2(2, 16))
+		h.bg("cobweb_r", Vector2(h.VIEW.x - 16, 16))
+		h.bg("rubble_1", Vector2(150, 176), true)
+		h.bg("rubble_0", Vector2(60, 168), true)
+		h.bg("rubble_0", Vector2(270, 98), true)
+	for x in [60.0, 150.0, 250.0]:
+		h.bg("window_arms", Vector2(x, 60), true)
+		h.add_shaft(Vector2(x - 12, 40), 24.0, 80.0, 20.0, Color(0.55, 0.6, 0.85, 0.08))
+	if lv >= HA_BANNERS:
+		for x in [105.0, 205.0]:
+			var banner: Sprite2D = h.bg("banner_swords", Vector2(x, 56), true)
+			h.sway(banner, 0.8, 1.6, 38.0)
+		for x in [128.0, 178.0]:
+			h.bg("shield_wall", Vector2(x, 50), true)
+	else:
+		var torn: Sprite2D = h.bg("banner_torn_red", Vector2(205, 56), true)
+		h.sway(torn, 0.8, 1.6, 38.0)
+
+	# ── Torches and braziers ──
+	var torch_x: Array = [40.0]
+	if lv >= HA_BRAZIERS:
+		torch_x = [40.0, 290.0]
+	for x in torch_x:
+		h.anim("torch_arms", Vector2(x, 54), Rect2(), true)
+		h.add_light(Vector2(x, 38), 64.0, Color("ff9a4a"), 0.95, 0.3)
+	var brazier_spots: Array = []
+	if lv >= HA_BRAZIERS:
+		brazier_spots = [Vector2(26, 138), Vector2(298, 138)]
+	if lv >= HA_ENCHANT:
+		brazier_spots.append_array([Vector2(26, 96), Vector2(298, 96)])
+	for at in brazier_spots:
+		h.add_shadow(at, 16.0, 5.0)
+		h.anim("brazier_img", at, Rect2(at.x - 7, at.y - 6, 14, 6))
+		h.add_light(at + Vector2(0, -16), 70.0, Color("ff8a3a"), 1.0, 0.3)
+
+	# ── The weapon rack and the armory station ──
+	var rack := "rack_empty"
+	if lv >= HA_WALL:
+		rack = "rack_full"
+	elif lv >= HA_RACK:
+		rack = "rack_few"
+	_prop(h, rack, Vector2(104, 80), 36.0 if lv >= HA_WALL else 26.0, 8.0)
+	h.station("armory", "Open the Armory", Rect2(78, 84, 52, 28), Vector2(104, 14))
+	if lv >= HA_RACK:
+		_prop(h, "barrel_spears", Vector2(140, 80), 12.0, 6.0)
+
+	# ── The sparring ring and its dummy ──
+	var ring_center := Vector2(240, 128)
+	if lv >= HA_RING:
+		h.add_shadow(Vector2(240, 150), 80.0, 8.0, 0.3)
+		h.bg("ring_stone", Vector2(240, 152), true)
+	else:
+		var dirt := Polygon2D.new()
+		dirt.polygon = _ellipse(ring_center.x, ring_center.y + 4.0, 38.0, 20.0)
+		dirt.color = Color(0.30, 0.21, 0.15, 1.0)
+		h.background.add_child(dirt)
+		var rope := Line2D.new()
+		rope.points = _ellipse(ring_center.x, ring_center.y + 4.0, 38.0, 20.0)
+		rope.closed = true
+		rope.width = 1.0
+		rope.default_color = Color(0.62, 0.5, 0.3, 1.0)
+		h.background.add_child(rope)
+	var dummy_piece := "dummy"
+	if lv >= HA_IRON:
+		dummy_piece = "dummy_iron"
+	elif lv >= HA_DUMMY:
+		dummy_piece = "dummy_wood"
+	h.add_shadow(Vector2(240, 134), 14.0, 5.0)
+	h.obj(dummy_piece, Vector2(240, 134), Rect2(234, 130, 12, 5))
+	h.station("training", "Train in the ring", Rect2(204, 108, 72, 44), Vector2(240, 82))
+	if lv >= HA_IRON:
+		_prop(h, "dummy_iron", Vector2(70, 152), 14.0, 6.0)
+		_prop(h, "target", Vector2(296, 108), 16.0, 6.0)
+
+	# ── Enchanted: glowing runes on the ring, blades floating over stone pedestals ──
+	if lv >= HA_ENCHANT:
+		h.add_patch(_ellipse(240.0, 132.0, 40.0, 21.0), Color(1.0, 0.55, 0.2, 0.12))
+		h.add_embers(Rect2(210, 120, 60, 20), Color("ffb347"), 10, 10.0, 2.5)
+		for at in [Vector2(54, 108), Vector2(54, 136), Vector2(86, 122)]:
+			_prop(h, "pedestal_glow", at, 12.0, 6.0)
+			h.add_light(at + Vector2(0, -26), 34.0, Color(0.55, 0.75, 1.0), 0.45, 0.2)
+		h.add_embers(Rect2(40, 90, 60, 60), Color(0.7, 0.85, 1.0, 0.9), 8, 6.0, 3.5)
+
+	# ── Dust and smoke in the torchlight ──
+	h.add_embers(Rect2(40, 74, 240, 90), Color(0.9, 0.8, 0.7, 0.45), maxi(4, 14 - lv), 3.0, 5.0)

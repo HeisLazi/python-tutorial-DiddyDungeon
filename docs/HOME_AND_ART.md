@@ -259,6 +259,19 @@ Home is being rebuilt as **seven one-screen rooms** (plan in 8c). The engine and
   window, an oak door and a carved gold door. 16-bit, chunky 1px dark outlines, crisp pixels, no text, no shadows on
   the floor."
 
+#### Rooms built so far (all on `feature/tauri-arcade`, not merged: Pantry, Trophy Gallery, War Room and Pyr's Den do not exist yet, so their stations are missing)
+
+| Room | Ladder (`rooms.gd` `LADDERS`) | Exits | Stations | Props from |
+|---|---|---|---|---|
+| Great Hall (`great_hall`) | 9 steps, 344 Embers | west to the Library, east to the Hall of Arms | hearth, door (Forge) | `hall_fire_decor`, `hall_furniture`, `hall_wall_clean` |
+| Library (`library`) | 9 steps, 296 Embers | east to the Great Hall | study | `lib_furniture`, `lib_decor`, `lib_wall` |
+| Hall of Arms (`armory`) | 9 steps, 300 Embers | west to the Great Hall | armory, training | `arms_racks`, `arms_rings`, `arms_wall` |
+
+Doorways: `_shell(h, marble_from, marble_to, left_exit, right_exit, floor_kind)` takes `{"to": room, "spawn": feet position in that room}` for
+each side and leaves a gap in the wall at y 112-172 (`DOOR_Y`, `DOOR_H`). Keep that strip free of furniture at every level (the max-level banquet
+once blocked the east door). Each room's step constants are `GH_*`, `LB_*`, `HA_*`. Sheets are 0.25 credit each; the three sheets per room took about
+five minutes; Higgsfield rate-limits parallel jobs, so submit one at a time.
+
 #### The Great Hall's image-sourced props (how they were made)
 
 Three Higgsfield `z_image` prop sheets (0.25 credit each; Google image models are better if you have them) were saved in
