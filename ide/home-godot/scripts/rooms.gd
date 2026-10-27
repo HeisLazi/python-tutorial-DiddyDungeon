@@ -47,7 +47,7 @@ static func _foot_block(h, at: Vector2, w := 12.0, d := 6.0) -> void:
 
 static func _great_hall(h, tier: int) -> void:
 	_shell(h, "flag" if tier < 2 else "marble")
-	var ambient := [Color(0.40, 0.41, 0.56), Color(0.44, 0.44, 0.60), Color(0.50, 0.50, 0.70), Color(0.55, 0.54, 0.80)]
+	var ambient := [Color(0.40, 0.41, 0.56), Color(0.44, 0.44, 0.60), Color(0.44, 0.44, 0.64), Color(0.48, 0.48, 0.72)]
 	h.set_ambient(ambient[tier])
 
 	# Cobwebs in the corners of a neglected hall.

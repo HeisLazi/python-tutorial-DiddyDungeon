@@ -41,6 +41,7 @@ var state := {
 }
 
 var room_id := "great_hall"
+var built_tier := -1                    # the tier the current room was built at
 var cli_tier := -1                      # testing: force every room to this tier
 var blockers: Array[Rect2] = []
 var stations: Array[Dictionary] = []
@@ -148,7 +149,8 @@ func go_room(id: String, spawn: Vector2, instant := false) -> void:
 		await out.finished
 	_clear_room()
 	room_id = id
-	Rooms.build(self, id, room_tier(id))
+	built_tier = room_tier(id)
+	Rooms.build(self, id, built_tier)
 	pos = spawn
 	pyr_pos = spawn + Vector2(-18, -14)
 	held.clear()
@@ -427,6 +429,8 @@ func _apply_state() -> void:
 		state["toast"] = ""
 	crt_rect.visible = bool(state["crt"])
 	pips.queue_redraw()
+	if not changing and built_tier >= 0 and room_tier(room_id) != built_tier:
+		go_room(room_id, pos, true)     # an upgrade was bought: rebuild this room at its new tier
 
 
 func _draw_pips() -> void:
