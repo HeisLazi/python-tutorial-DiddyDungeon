@@ -269,6 +269,31 @@ static func _side_wall(h, x: float, exit: Dictionary) -> void:
 	h.door(trigger, str(exit["to"]), exit["spawn"])
 
 
+## North and south passages: walk into the threshold to enter the adjoining room.
+## North triggers sit just in front of the existing wall blocker; south triggers sit
+## inside the viewport. Spawn points stay clear of reciprocal thresholds.
+static func _vertical_door(h, north: bool, x: float, to: String, spawn: Vector2) -> void:
+	if north:
+		# A stepped stone arch, open onto the passage beyond.
+		h.add_tint(Rect2(x - 18, 32, 36, 35), Color("77717d"))
+		h.add_tint(Rect2(x - 15, 26, 30, 8), Color("77717d"))
+		h.add_tint(Rect2(x - 11, 21, 22, 7), Color("77717d"))
+		h.add_tint(Rect2(x - 6, 18, 12, 5), Color("8c8791"))
+		h.add_tint(Rect2(x - 14, 34, 28, 32), Color("100e1a"))
+		h.add_tint(Rect2(x - 11, 28, 22, 8), Color("100e1a"))
+		h.add_tint(Rect2(x - 7, 24, 14, 6), Color("100e1a"))
+		h.add_tint(Rect2(x - 3, 21, 6, 5), Color("100e1a"))
+		h.add_tint(Rect2(x - 14, 66, 28, 4), Color("968068"))
+		h.add_shaft(Vector2(x - 11, 69), 22.0, 24.0, 0.0, Color(0.72, 0.64, 0.48, 0.13))
+		h.door(Rect2(x - 12, 68, 24, 5), to, spawn)
+	else:
+		h.add_tint(Rect2(x - 18, 175, 36, 11), Color("100e1a"))
+		h.add_tint(Rect2(x - 18, 175, 4, 11), Color("77717d"))
+		h.add_tint(Rect2(x + 14, 175, 4, 11), Color("77717d"))
+		h.add_tint(Rect2(x - 14, 175, 28, 2), Color("a38b6a"))
+		h.door(Rect2(x - 12, 180, 24, 6), to, spawn)
+
+
 ## A prop with a contact shadow and a feet blocker.
 static func _prop(h, piece: String, feet: Vector2, w: float, d: float, shadow_w := 0.0) -> Sprite2D:
 	h.add_shadow(feet, shadow_w if shadow_w > 0.0 else w, maxf(4.0, d + 1.0))
@@ -412,7 +437,7 @@ static func _great_hall(h, lv: int) -> void:
 
 
 static func _library(h, lv: int) -> void:
-	_shell(h, -1, -1, {"to": "pantry", "spawn": Vector2(290, 142)}, {"to": "great_hall", "spawn": Vector2(30, 142)}, "wood")
+	_shell(h, -1, -1, {}, {"to": "great_hall", "spawn": Vector2(30, 142)}, "wood")
 	h.set_ambient(Color(0.34, 0.37, 0.52).lerp(Color(0.46, 0.50, 0.72), lv / float(LB_SKY)))
 	h.add_tint(Rect2(0, 0, h.VIEW.x, 64), Color(0.10, 0.18, 0.45, 0.10))      # a cooler wall than the hall
 
@@ -426,7 +451,7 @@ static func _library(h, lv: int) -> void:
 	h.add_shaft(Vector2(88, 40), 24.0, 90.0, 26.0, Color(0.5, 0.6, 0.95, 0.12 + 0.01 * lv))
 	h.add_light(Vector2(100, 66), 56.0, Color(0.45, 0.58, 0.95), 0.35 + 0.02 * lv, 0.0)
 	if lv >= LB_CHART:
-		h.bg("star_chart", Vector2(222, 60), true)
+		h.bg("star_chart", Vector2(158, 60), true)
 		for x in [132.0, 188.0]:
 			var banner: Sprite2D = h.bg("banner_blue", Vector2(x, 56), true)
 			h.sway(banner, 0.8, 1.6, 36.0)
@@ -500,6 +525,9 @@ static func _library(h, lv: int) -> void:
 	# ── Dust in the beams ──
 	h.add_embers(Rect2(40, 74, 240, 90), Color(0.75, 0.80, 1.0, 0.5), maxi(4, 14 - lv), 3.0, 5.0)
 
+	_vertical_door(h, true, 220.0, "gallery", Vector2(160, 170))
+	_vertical_door(h, false, 160.0, "pantry", Vector2(192, 80))
+
 
 static func _ellipse(cx: float, cy: float, rx: float, ry: float, n := 28) -> PackedVector2Array:
 	var pts := PackedVector2Array()
@@ -510,7 +538,7 @@ static func _ellipse(cx: float, cy: float, rx: float, ry: float, n := 28) -> Pac
 
 
 static func _armory(h, lv: int) -> void:
-	_shell(h, -1, -1, {"to": "great_hall", "spawn": Vector2(290, 142)}, {"to": "war_room", "spawn": Vector2(30, 142)}, "stone")
+	_shell(h, -1, -1, {"to": "great_hall", "spawn": Vector2(290, 142)}, {}, "stone")
 	h.set_ambient(Color(0.48, 0.44, 0.50).lerp(Color(0.56, 0.49, 0.48), lv / float(HA_ENCHANT)))
 	h.add_tint(Rect2(0, 0, h.VIEW.x, 64), Color(0.35, 0.18, 0.10, 0.08))      # warm stone: torchlit
 
@@ -602,9 +630,11 @@ static func _armory(h, lv: int) -> void:
 	# ── Dust and smoke in the torchlight ──
 	h.add_embers(Rect2(40, 74, 240, 90), Color(0.9, 0.8, 0.7, 0.45), maxi(4, 14 - lv), 3.0, 5.0)
 
+	_vertical_door(h, true, 190.0, "war_room", Vector2(160, 170))
+
 
 static func _pantry(h, lv: int) -> void:
-	_shell(h, -1, -1, {"to": "gallery", "spawn": Vector2(290, 142)}, {"to": "library", "spawn": Vector2(30, 142)}, "stone")
+	_shell(h, -1, -1, {}, {}, "stone")
 	h.set_ambient(Color(0.40, 0.36, 0.36).lerp(Color(0.56, 0.48, 0.44), lv / float(PN_FEAST)))
 	h.add_tint(Rect2(0, 0, h.VIEW.x, 64), Color(0.40, 0.25, 0.10, 0.10))       # warm, smoky stone
 
@@ -620,7 +650,6 @@ static func _pantry(h, lv: int) -> void:
 	# ── The wall: window, door, hanging food ──
 	h.bg("window_pantry", Vector2(40, 60), true)
 	h.add_light(Vector2(40, 66), 48.0, Color(1.0, 0.45, 0.4), 0.3, 0.0)
-	h.bg("door_pantry", Vector2(192, 74), true)
 	if lv >= PN_HERBS:
 		h.bg("hang_rack", Vector2(196, 22 + 26), true)
 		var herbs: Sprite2D = h.bg("herbs", Vector2(24, 52), true)
@@ -683,9 +712,11 @@ static func _pantry(h, lv: int) -> void:
 	# ── Smoke and dust ──
 	h.add_embers(Rect2(40, 74, 240, 90), Color(0.9, 0.8, 0.7, 0.4), maxi(4, 14 - lv), 3.0, 5.0)
 
+	_vertical_door(h, true, 192.0, "library", Vector2(160, 170))
+
 
 static func _gallery(h, lv: int) -> void:
-	_shell(h, -1, -1, {}, {"to": "pantry", "spawn": Vector2(30, 142)}, "stone")
+	_shell(h, -1, -1, {}, {}, "stone")
 	h.set_ambient(Color(0.36, 0.40, 0.56).lerp(Color(0.52, 0.48, 0.56), lv / float(GL_PORTRAIT)))
 	h.add_tint(Rect2(0, 0, h.VIEW.x, 64), Color(0.10, 0.15, 0.40, 0.10))        # a cold, museum-blue wall
 
@@ -765,9 +796,11 @@ static func _gallery(h, lv: int) -> void:
 	# ── Dust in the moonbeam ──
 	h.add_embers(Rect2(40, 74, 240, 90), Color(0.75, 0.80, 1.0, 0.5), maxi(4, 14 - lv), 3.0, 5.0)
 
+	_vertical_door(h, false, 160.0, "library", Vector2(220, 80))
+
 
 static func _war_room(h, lv: int) -> void:
-	_shell(h, -1, -1, {"to": "armory", "spawn": Vector2(290, 142)}, {"to": "den", "spawn": Vector2(30, 142)}, "stone")
+	_shell(h, -1, -1, {}, {"to": "den", "spawn": Vector2(30, 142)}, "stone")
 	h.set_ambient(Color(0.52, 0.48, 0.57).lerp(Color(0.62, 0.54, 0.58), lv / float(WR_TREASURES)))
 	h.add_tint(Rect2(0, 0, h.VIEW.x, 64), Color(0.20, 0.16, 0.30, 0.10))
 
@@ -837,6 +870,8 @@ static func _war_room(h, lv: int) -> void:
 		_prop(h, "crate", Vector2(290, 102), 16.0, 6.0)
 
 	h.add_embers(Rect2(40, 74, 240, 90), Color(0.85, 0.82, 0.85, 0.45), maxi(4, 14 - lv), 3.0, 5.0)
+
+	_vertical_door(h, false, 160.0, "armory", Vector2(190, 80))
 
 
 static func _den(h, lv: int) -> void:

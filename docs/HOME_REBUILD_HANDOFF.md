@@ -4,6 +4,8 @@ Written 2026-10-27 for whoever continues (Codex, another Claude, or the owner). 
 (architecture, art history, bridge protocol). This file is the **current state, the recipe, and the exact next steps**.
 Update the "Status" and "Next steps" sections after every major step and commit.
 
+> **Current layout update:** The historical room-chain and merge notes below predate the later castle floor-plan work. Home now branches Gallery–Library–Pantry vertically, with Library east to Great Hall, Great Hall east to Hall of Arms, Hall of Arms north to War Room, and War Room east to Pyr's Den. The in-game minimap reflects these actual doors. See `CASTLE_REDESIGN_PLAN.md` for what is implemented and the remaining art and hunter work. Never edit the real save for testing.
+
 ## 1. Where things live
 
 - Branch: `feature/tauri-arcade`, worktree `/home/lazi/projects/python-tutorial-DiddyDungeon/.claude/worktrees/tauri-arcade`.

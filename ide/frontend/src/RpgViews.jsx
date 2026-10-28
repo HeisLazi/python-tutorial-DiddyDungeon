@@ -12,6 +12,7 @@ import { AVATAR_LABELS, AVATAR_PALETTES, AVATAR_STYLE_LABELS, AVATAR_VIEWBOX, CH
 import { PORTRAIT_SIZE, portraitRects } from './portraitSprite.js'
 import { homePyrStage } from './homePyr.js'
 import { HOME_DIRECTORY } from './homeDirectory.js'
+import CastleFloorPlan from './CastleFloorPlan.jsx'
 
 export const viewItems = [
   { id: 'hub', label: 'Campaign' },
@@ -3068,17 +3069,10 @@ function HomeRoom({ progress, homeRooms, purchaseHomeRoom, armory, armoryActions
   const [frameKey, setFrameKey] = useState(0)
   const [currentRoom, setCurrentRoom] = useState('great_hall')
   const [mapOpen, setMapOpen] = useState(false)
-  const currentRoomIndex = Math.max(0, HOME_DIRECTORY.findIndex((room) => room.id === currentRoom))
-  const currentRoomInfo = HOME_DIRECTORY[currentRoomIndex]
-  const westRoom = HOME_DIRECTORY[currentRoomIndex - 1]
-  const eastRoom = HOME_DIRECTORY[currentRoomIndex + 1]
-  useEffect(() => {
-    const path = directoryRef.current
-    const active = path?.querySelector('[aria-current="location"]')
-    if (!mapOpen || !path || !active || path.scrollWidth <= path.clientWidth) return
-    const offset = active.getBoundingClientRect().left - path.getBoundingClientRect().left + path.scrollLeft
-    path.scrollLeft = offset - (path.clientWidth - active.clientWidth) / 2
-  }, [mapOpen, currentRoom])
+  const [roomPosition, setRoomPosition] = useState({ x: 160, y: 150 })
+  const currentRoomInfo = HOME_DIRECTORY.find((room) => room.id === currentRoom) || HOME_DIRECTORY.find((room) => room.id === 'great_hall')
+  const connectedRooms = Object.entries(currentRoomInfo.exits).map(([direction, id]) => ({ direction, room: HOME_DIRECTORY.find((room) => room.id === id) })).filter((entry) => entry.room)
+  const exitsLabel = connectedRooms.map(({ direction, room }) => `${direction}: ${room.name}`).join('; ')
   useEffect(() => {
     const timer = window.setTimeout(() => {
       if (!readyRef.current) setHomeStatus('slow')
@@ -3204,6 +3198,9 @@ function HomeRoom({ progress, homeRooms, purchaseHomeRoom, armory, armoryActions
         focusRoom()
       } else if (data.type === 'room' && HOME_DIRECTORY.some((room) => room.id === data.room)) {
         setCurrentRoom(data.room)
+        if (Number.isFinite(data.x) && Number.isFinite(data.y)) setRoomPosition({ x: data.x, y: data.y })
+      } else if (data.type === 'position' && typeof data.room === 'string' && Number.isFinite(data.x) && Number.isFinite(data.y)) {
+        if (HOME_DIRECTORY.some((room) => room.id === data.room)) { setCurrentRoom(data.room); setRoomPosition({ x: data.x, y: data.y }) }
       } else if (data.type === 'use' && typeof data.station === 'string') {
         void useStationRef.current(data.station)
       }
@@ -3221,36 +3218,16 @@ function HomeRoom({ progress, homeRooms, purchaseHomeRoom, armory, armoryActions
       <div className="home-room-frame" style={{ width: frameSize.width, height: frameSize.height }}>
         <iframe key={frameKey} ref={frameRef} title="Home" src="/home/index.html" allow="autoplay" />
         {homeStatus === 'ready' && <div className="home-map-hud" onKeyDown={(event) => { if (event.key === 'Escape' && mapOpen) { setMapOpen(false); focusRoom() } }}>
-          <button type="button" className="home-map-toggle" aria-expanded={mapOpen} aria-controls="home-directory" aria-label={`Castle map: ${currentRoomInfo.name}; west: ${westRoom?.name || 'no room'}; east: ${eastRoom?.name || 'no room'}`} onClick={() => { if (mapOpen) focusRoom(); setMapOpen((open) => !open) }}>
+          <button type="button" className="home-map-toggle" aria-expanded={mapOpen} aria-controls="home-directory" aria-label={`Castle map: ${currentRoomInfo.name}; ${exitsLabel}`} onClick={() => { if (mapOpen) focusRoom(); setMapOpen((open) => !open) }}>
             <span className="home-map-top"><span className="home-map-label">CASTLE MAP</span><span className="home-map-caret" aria-hidden="true">{mapOpen ? '×' : '▾'}</span></span>
-            <svg className="home-map-plan" viewBox="0 0 290 58" aria-hidden="true">
-              {HOME_DIRECTORY.map((room, index) => {
-                const x = 3 + index * 41
-                const adjacent = Math.abs(index - currentRoomIndex) === 1
-                return <g key={room.id} className={index === currentRoomIndex ? 'current' : adjacent ? 'adjacent' : ''}>
-                  {index > 0 && <path className="home-map-door" d={`M ${x - 7} 22 H ${x}`} />}
-                  <rect className="home-map-chamber" x={x} y="8" width="34" height="28" rx="1" />
-                  <g className="home-map-detail" transform={`translate(${x}, 8)`}>
-                    {room.id === 'gallery' && <><path d="M8 22h18 M11 20h12 M14 20v-6h6v6" /><path d="M17 6l4 4-4 4-4-4z" /></>}
-                    {room.id === 'pantry' && <><path d="M6 10h22 M8 10l2 7h14l2-7 M12 20h10" /><path d="M10 7v3 M17 6v4 M24 7v3" /></>}
-                    {room.id === 'library' && <><path d="M7 6h20v17H7z M7 14h20" /><path d="M11 7v6 M15 7v6 M20 7v6 M24 15v7 M18 15v7 M12 15v7" /></>}
-                    {room.id === 'great_hall' && <><path d="M8 22h18 M10 21V9h14v12 M13 18h8" /><path d="M17 10l-3 5 3 2 3-2z" /></>}
-                    {room.id === 'armory' && <><path d="M9 6l16 17 M25 6L9 23 M7 8l4-4 M23 4l4 4 M6 21l5 4 M23 25l5-4" /></>}
-                    {room.id === 'war_room' && <><path d="M7 8h20v12H7z M11 20v4 M23 20v4" /><path d="M10 15l5-4 4 4 4-4" /></>}
-                    {room.id === 'den' && <><path d="M7 18q10 10 20 0 M9 20q8 5 16 0 M17 5v11 M12 13h10" /></>}
-                  </g>
-                  {index === currentRoomIndex && <circle className="home-map-player" cx={x + 17} cy="22" r="3" />}
-                  <text className="home-map-room-name" x={x + 17} y="49" textAnchor="middle">{room.short === 'Hall' || room.short === 'Arms' ? room.short.toUpperCase() : room.short.slice(0, 3).toUpperCase()}</text>
-                </g>
-              })}
-            </svg>
+            <CastleFloorPlan currentRoom={currentRoom} position={roomPosition} />
             <span className="home-map-current">{currentRoomInfo.name}</span>
-            <span className="home-map-exits">← {westRoom?.short || 'End'} <span>·</span> {eastRoom?.short || 'End'} →</span>
+            <span className="home-map-exits">{connectedRooms.map(({ direction, room }) => `${{ north: '↑', south: '↓', west: '←', east: '→' }[direction]} ${room.short}`).join(' · ')}</span>
           </button>
           {mapOpen && <nav id="home-directory" className="home-directory" aria-label="Home room map">
-            <div className="home-directory-heading"><span>CASTLE MAP</span><small>← {westRoom?.name || 'End'} · {eastRoom?.name || 'End'} →</small></div>
+            <div className="home-directory-heading"><span>CASTLE MAP</span><small>{exitsLabel}</small></div>
             <ol ref={directoryRef} className="home-directory-path">
-              {HOME_DIRECTORY.map((room, index) => <li key={room.id} className={room.id === currentRoom ? 'current' : Math.abs(index - currentRoomIndex) === 1 ? 'adjacent' : ''} aria-current={room.id === currentRoom ? 'location' : undefined}>
+              {HOME_DIRECTORY.map((room) => <li key={room.id} className={room.id === currentRoom ? 'current' : Object.values(currentRoomInfo.exits).includes(room.id) ? 'adjacent' : ''} aria-current={room.id === currentRoom ? 'location' : undefined}>
                 <strong>{room.name}</strong><small>{room.places}</small>{room.id === currentRoom && <span>YOU ARE HERE</span>}
               </li>)}
             </ol>

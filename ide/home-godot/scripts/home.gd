@@ -81,6 +81,8 @@ var pos := Vector2(160, 150)   # the hunter's feet, in float
 var facing := "up"
 var anim_t := 0.0
 var clock := 0.0
+var map_update_time := 0.0
+var map_last_pos := Vector2.INF
 var pyr_pos := Vector2(142, 136)
 var near: Dictionary = {}
 var toast_time := 0.0
@@ -179,7 +181,7 @@ func go_room(id: String, spawn: Vector2, instant := false) -> void:
 		back.tween_property(fade, "color:a", 0.0, 0.18)
 		await back.finished
 	changing = false
-	_send_app({"type": "room", "room": room_id})
+	_send_app({"type": "room", "room": room_id, "x": pos.x, "y": pos.y})
 
 
 func _celebrate(what: String) -> void:
@@ -574,6 +576,13 @@ func _process(delta: float) -> void:
 			anim_t = 0.0
 		_check_doors()
 	_refresh_hunter()
+	if OS.has_feature("web") and not changing:
+		map_update_time -= delta
+		if map_update_time <= 0.0:
+			map_update_time = 0.15
+			if pos.distance_to(map_last_pos) > 0.5:
+				map_last_pos = pos
+				_send_app({"type": "position", "room": room_id, "x": pos.x, "y": pos.y})
 	_follow_pyr(delta)
 	_animate_room(delta)
 	_update_prompt(delta)

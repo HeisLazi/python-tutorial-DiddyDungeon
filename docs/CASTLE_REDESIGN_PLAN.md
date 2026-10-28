@@ -1,6 +1,6 @@
 # Castle redesign direction
 
-Status: design proposal, not implemented. The current playable Home is still the seven-room east–west chain. This plan preserves the unfinished Tutor rebuild as separate work.
+Status: the seven-room branching layout and floor-plan map are implemented in Home. The more overhead room art and redesigned hunter remain future work. The isolated three-room prototype remains available for comparison. The unfinished Tutor rebuild is separate work.
 
 ## Goal
 
@@ -29,7 +29,7 @@ The compact top-right map should be a small floor plan: room shapes, their conne
 
 The hunter needs a coherent four-direction idle/walk set in the same scale and perspective as the new rooms. Use the existing Alucard-inspired identity, afro and dark skin as a starting point, and keep the home sprite free of the sword. Produce and inspect a turnaround and animation in context before replacing the current sheets. Do not assume existing combat sprites or weapon displays should change.
 
-## Implementation order
+## Implementation order and remaining work
 
 1. Establish one authoritative floor-plan graph shared by the Godot build and the React map, including directional exits, destination spawn positions and room labels. Validate that every edge has a reciprocal edge and that all rooms are reachable. Keep station IDs and save data unchanged.
 2. Prototype the Great Hall and Library in the chosen perspective with a working doorway and hunter turnaround. Test movement, collision, scale, legibility and Pyr in the actual browser before committing to the other rooms. Include at least one vertical doorway in the prototype.

@@ -1713,3 +1713,21 @@
 .home-directory-path small { margin-top: 4px; color: #c0b49d; font-size: 11px; }
 .home-directory-path span { margin-top: 5px; color: #f5c86f; font-size: 9px; letter-spacing: .04em; }
 .home-room-switch { display: flex; justify-content: flex-end; padding: 6px 0; }
+
+/* Castle floor plan: furniture and thresholds match the walkable rooms. */
+.home-map-toggle { width: min(230px, 100%); }
+.castle-map-corridors { fill: none; stroke: #93836f; stroke-width: 7; }
+.castle-map-shadow { fill: #15121a; }
+.castle-map-walls { fill: #8d867f; }
+.castle-map-floor { fill: #39414b; }
+.floor-library { fill: #674a37; }
+.floor-pantry { fill: #59473d; }
+.floor-armory { fill: #51454a; }
+.floor-war_room { fill: #49404b; }
+.floor-den { fill: #574343; }
+.castle-map-room.adjacent .castle-map-walls { fill: #abb7b1; }
+.castle-map-room.current .castle-map-walls { fill: #e4bd77; }
+.castle-map-marker-edge { fill: #291b10; }
+.castle-map-marker { fill: #ffe89a; }
+.castle-map-thresholds { fill: none; stroke: #c9b497; stroke-width: 3; }
+.home-directory-path { grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); }
