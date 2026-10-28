@@ -1,6 +1,8 @@
 import { Fragment, useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import Editor from '@monaco-editor/react'
+import '@fontsource/vt323/400.css'
+import '@fontsource/press-start-2p/400.css'
 import './homestead.css'
 import './campaign.css'
 import './hunterCodex.css'
@@ -11,6 +13,7 @@ import { merchantPixelSprite } from './campaignMerchant.js'
 import { AVATAR_LABELS, AVATAR_PALETTES, AVATAR_STYLE_LABELS, AVATAR_VIEWBOX, CHARACTER_NAME, DEFAULT_APPEARANCE, avatarRects } from './avatarSprite.js'
 import { PORTRAIT_SIZE, portraitRects } from './portraitSprite.js'
 import { homePyrStage } from './homePyr.js'
+import { campaignBossTrophies } from './homeTrophies.js'
 import { HOME_DIRECTORY } from './homeDirectory.js'
 import CastleFloorPlan from './CastleFloorPlan.jsx'
 import TutorLearningPath from './TutorLearningPath.jsx'
@@ -3069,6 +3072,17 @@ function useHomeBuild() {
   return status
 }
 
+function HomeBossTrophies({ progress }) {
+  const trophies = campaignBossTrophies(progress)
+  return <section className="home-trophy-room" aria-label="Boss trophies" data-testid="home-boss-trophies">
+    <div className="home-trophy-intro"><span className="home-trophy-mark" aria-hidden="true">✦</span><div><h2>THE HUNTER’S TROPHIES</h2><p>Bosses you have defeated on your campaigns.</p></div><strong>{trophies.length} CLAIMED</strong></div>
+    {trophies.length ? <div className="home-trophy-grid">{trophies.map((trophy) => <article className="home-trophy-plaque" key={trophy.id}>
+      <svg viewBox="0 0 32 32" aria-hidden="true" shapeRendering="crispEdges"><path fill="#60402b" d="M4 4h24v3H4zm0 0h3v21H4zm21 0h3v21h-3zM7 25h18v3H7z"/><path fill="#edbf69" d="M10 7h12v3h4v7h-3v3h-3v3h4v3H8v-3h4v-3H9v-3H6v-7h4zm0 5H8v3h2zm12 0v3h2v-3z"/><path fill="#fff1aa" d="M12 9h3v6h-3zm1 14h7v1h-7z"/></svg>
+      <div><small>CAMPAIGN BOSS · DEFEATED</small><h3>{trophy.boss}</h3><p>{trophy.campaign}</p></div><span className="home-trophy-seal">✦</span></article>)}</div> : <div className="home-trophy-empty"><span aria-hidden="true">♜</span><div><h3>YOUR FIRST TROPHY AWAITS</h3><p>Defeat a campaign boss and their trophy will appear here.</p></div></div>}
+    <p className="home-trophy-footnote">Dungeon boss trophies aren’t recorded by name yet.</p>
+  </section>
+}
+
 function HomeRoom({ progress, homeRooms, purchaseHomeRoom, buildRoomUpgrade, armory, armoryActions, hunter, spendStatPoint, performHomesteadAction, onNavigate, onClassic, busy }) {
   const frameRef = useRef(null)
   const panelRef = useRef(null)
@@ -3110,6 +3124,7 @@ function HomeRoom({ progress, homeRooms, purchaseHomeRoom, buildRoomUpgrade, arm
     try { return window.localStorage.getItem('questlab.homeCrt') !== 'false' } catch { return true }
   })
   const [panel, setPanel] = useState('')
+  const [hunterTab, setHunterTab] = useState('stats')
   const [station, setStation] = useState('')
   const [upgradeError, setUpgradeError] = useState('')
   const [homeMessage, setHomeMessage] = useState('')
@@ -3180,8 +3195,6 @@ function HomeRoom({ progress, homeRooms, purchaseHomeRoom, buildRoomUpgrade, arm
   }
   useEffect(() => {
     if (!panel) return undefined
-    const previousOverflow = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
     const onKey = (event) => {
       if (event.key === 'Escape') { event.preventDefault(); closePanel(); return }
       if (event.key !== 'Tab') return
@@ -3192,7 +3205,7 @@ function HomeRoom({ progress, homeRooms, purchaseHomeRoom, buildRoomUpgrade, arm
       else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus() }
     }
     document.addEventListener('keydown', onKey)
-    return () => { document.body.style.overflow = previousOverflow; document.removeEventListener('keydown', onKey) }
+    return () => document.removeEventListener('keydown', onKey)
   }, [panel])
   const roomId = HOME_STATION_ROOMS[station]
   const ladder = homeRooms?.ladders?.[roomId]
@@ -3277,24 +3290,24 @@ function HomeRoom({ progress, homeRooms, purchaseHomeRoom, buildRoomUpgrade, arm
           {homeStatus === 'slow' && <div className="home-loading-actions"><button type="button" onClick={() => { readyRef.current = false; setHomeStatus('loading'); setFrameKey((key) => key + 1) }}>Try again</button><button type="button" onClick={onClassic}>Classic Home</button></div>}
         </div>}
 
-      </div>
-      {panel && createPortal(
+      {panel && (
         <div className="home-station-screen" role="dialog" aria-modal="true" aria-labelledby="home-station-title" ref={panelRef}>
           <div className="home-station-page">
             <header className="home-station-topbar"><button type="button" className="home-station-back" onClick={closePanel} autoFocus>← Back to Home</button><span>YOUR CASTLE <b>/</b> {currentRoomInfo.name.toUpperCase()}</span><span className="home-station-wallet">✦ {embers} EMBERS</span></header>
             <main className="home-station-content">
-              <div className="home-station-heading"><span className="home-station-kicker">{panel === 'pyr' || roomId === 'den' && panel === 'room' ? 'PYR’S DEN' : 'THE GREAT HALL'} · HOME</span><h1 id="home-station-title">{panel === 'room' ? (roomId === 'den' ? 'Pyr’s perch' : 'The hearth') : ({ hunter: 'Prepare your hunter', armory: 'The armory', trophy: 'Your trophies', pyr: 'Spend time with Pyr' }[panel])}</h1><p>{panel === 'room' ? (roomId === 'den' ? 'Make a home for your companion, one improvement at a time.' : 'Rest between adventures and restore your hall.') : ({ hunter: 'Strengthen your hunter and build permanent bonuses for the road ahead.', armory: 'Choose the equipment and supplies you will carry into your next fight.', trophy: 'A record of your adventures and everything you have learned along the way.', pyr: 'Care for your companion and grow together.' }[panel])}</p></div>
+              <div className="home-station-heading"><span className="home-station-kicker">{panel === 'pyr' || roomId === 'den' && panel === 'room' ? 'PYR’S DEN' : 'THE GREAT HALL'} · HOME</span><h1 id="home-station-title">{panel === 'room' ? (roomId === 'den' ? 'Pyr’s perch' : 'The hearth') : ({ hunter: 'Prepare your hunter', armory: 'The armory', trophy: 'Your trophies', pyr: 'Spend time with Pyr' }[panel])}</h1><p>{panel === 'room' ? (roomId === 'den' ? 'Make a home for your companion, one improvement at a time.' : 'Rest between adventures and restore your hall.') : ({ hunter: 'Strengthen your hunter and build permanent bonuses for the road ahead.', armory: 'Choose the equipment and supplies you will carry into your next fight.', trophy: 'A place for the bosses you have brought down.', pyr: 'Care for your companion and grow together.' }[panel])}</p></div>
               {panel === 'room' && <div className="home-station-columns home-upgrades">
                 <section className="home-station-card home-station-action"><span className="home-station-kicker">{station === 'hearth' ? 'TAKE A BREATHER' : 'YOUR COMPANION'}</span><h2>{station === 'hearth' ? 'Rest by the fire' : 'Visit Pyr'}</h2><p>{station === 'hearth' ? `Health: ${progress?.player?.hp ?? 0} / ${progress?.player?.max_hp ?? 100}. Rest here to recover fully.` : 'Spend time with Pyr, feed them and train together.'}</p><button type="button" disabled={busy} onClick={runRoomAction}>{HOME_STATION_ACTIONS[station]} →</button>{homeMessage && <p role="status" className="home-station-message">{homeMessage}</p>}</section>
                 <section className="home-station-card home-station-renovation"><span className="home-station-kicker">ROOM IMPROVEMENTS · {level} / {ladder?.length ?? '—'}</span>{!ladder ? <p role="status">Loading room upgrades…</p> : nextStep ? <><h2>{nextStep.name}</h2><p>{nextStep.note}</p><button type="button" disabled={busy || !purchaseHomeRoom || embers < nextStep.cost} onClick={buyNextStep}>{busy ? 'Building…' : `Build · ${nextStep.cost} Embers`}</button>{embers < nextStep.cost && <small>Need {nextStep.cost - embers} more Embers.</small>}</> : <><h2>Fully restored</h2><p>Every improvement in this room has been built.</p></>}{upgradeError && <p role="alert" className="home-upgrades-error">{upgradeError}</p>}{ladder && <details className="home-station-built"><summary>Built improvements · {level}</summary>{level === 0 ? <p>No improvements built yet.</p> : <ol>{ladder.slice(0, level).map((step, index) => <li key={`${index}-${step.name}`}>{step.name}</li>)}</ol>}</details>}</section>
               </div>}
-              {panel === 'hunter' && <><HunterSheet hunter={hunter} spendStatPoint={spendStatPoint} busy={busy} /><section className="home-passives"><h3>Permanent upgrades</h3><p>Spend Embers on bonuses that stay with your hunter.</p><div className="home-passive-grid">{HOME_ROOM_UPGRADES.map((upgrade) => { const owned = (progress?.homestead?.room_upgrades || []).includes(upgrade.id); const canBuild = embers >= upgrade.cost; return <article key={upgrade.id}><strong>{upgrade.name}</strong><small>{upgrade.effect} · {upgrade.detail}</small>{owned ? <span>Built · active</span> : <button type="button" onClick={() => buildRoomUpgrade?.(upgrade.id)} disabled={busy || !canBuild || !buildRoomUpgrade}>Build · {upgrade.cost} Embers</button>}</article> })}</div></section></>}
+              {panel === 'hunter' && <><div className="home-hunter-tabs" role="tablist" aria-label="Hunter preparation"><button type="button" role="tab" aria-selected={hunterTab === 'stats'} onClick={() => setHunterTab('stats')}>HUNTER STATS</button><button type="button" role="tab" aria-selected={hunterTab === 'upgrades'} onClick={() => setHunterTab('upgrades')}>PERMANENT UPGRADES</button></div>{hunterTab === 'stats' ? <HunterSheet hunter={hunter} spendStatPoint={spendStatPoint} busy={busy} /> : <section className="home-passives"><h3>Permanent upgrades</h3><p>Spend Embers on bonuses that stay with your hunter.</p><div className="home-passive-grid">{HOME_ROOM_UPGRADES.map((upgrade) => { const owned = (progress?.homestead?.room_upgrades || []).includes(upgrade.id); const canBuild = embers >= upgrade.cost; return <article key={upgrade.id}><strong>{upgrade.name}</strong><small>{upgrade.effect} · {upgrade.detail}</small>{owned ? <span>Built · active</span> : <button type="button" onClick={() => buildRoomUpgrade?.(upgrade.id)} disabled={busy || !canBuild || !buildRoomUpgrade}>Build · {upgrade.cost} Embers</button>}</article> })}</div></section>}</>}
               {panel === 'armory' && <ArmoryPanel armory={armory} actions={armoryActions} busy={busy} />}
-              {panel === 'trophy' && <div className="settings-v2 home-station-stats"><PlayerStatsPanel progress={progress} hunter={hunter} /></div>}
+              {panel === 'trophy' && <HomeBossTrophies progress={progress} />}
               {panel === 'pyr' && <div className="home-station-columns"><section className="home-station-card home-station-action"><span className="home-station-kicker">YOUR COMPANION</span><h2>{([...HOME_PYR_STAGES].reverse().find((stage) => Number(progress?.companion?.bond ?? 0) >= stage.threshold) || HOME_PYR_STAGES[0]).label}</h2><p>Feed Pyr a meal to restore energy, or train together to grow your bond.</p><div className="home-station-facts"><span><small>BOND</small><strong>{progress?.companion?.bond ?? 0}</strong></span><span><small>ENERGY</small><strong>{progress?.companion?.energy ?? progress?.companion?.max_energy ?? 2} / {progress?.companion?.max_energy ?? 2}</strong></span><span><small>MEALS</small><strong>{progress?.supplies?.meals ?? 0}</strong></span></div><div className="home-station-actions"><button type="button" disabled={busy || !(progress?.supplies?.meals > 0) || !performHomesteadAction} onClick={() => homeAction('feed_pyr', () => 'Pyr is fed and glows brighter.')}>Feed Pyr</button><button type="button" disabled={busy || (progress?.companion?.energy ?? progress?.companion?.max_energy ?? 2) <= 0 || !performHomesteadAction} onClick={() => homeAction('train_pyr', () => 'You trained together.')}>Train with Pyr</button></div>{homeMessage && <p role="status" className="home-station-message">{homeMessage}</p>}</section><section className="home-station-card"><span className="home-station-kicker">A PLACE OF THEIR OWN</span><h2>Pyr’s perch</h2><p>Improve the den at the perch to make it feel like home.</p><button type="button" onClick={() => { setStation('perch'); setPanel('room'); setHomeMessage('') }}>View den improvements →</button></section></div>}
             </main>
           </div>
-        </div>, document.body)}
+        </div>)}
+      </div>
       <div className="home-room-bar" style={{ width: frameSize.width + 6 }}>
         <small>WASD or arrows walk · Shift runs · E interacts</small>
         <span>

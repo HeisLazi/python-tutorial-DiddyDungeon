@@ -4,7 +4,7 @@ These observations come from an agent-driven Chromium playthrough with a disposa
 
 ## What changed
 
-- Home stations now open full-window screens with a zoom transition and a return to the room. The hearth separates resting from room improvements, and Pyr has feeding and training controls. The redundant Forge door has been removed; the main Forge navigation remains.
+- Home stations open pixel-styled screens inside the game frame, with a zoom transition and a return to the room. The trophy station displays named defeated campaign bosses from saved project records; Dungeon boss names are not yet retained. The hearth separates resting from room improvements, and Pyr has feeding and training controls. The redundant Forge door has been removed; the main Forge navigation remains.
 
 - Home has one Great Hall for the hearth, equipment, hunter stats and permanent bonuses, and trophies. A labelled, visible door leads to Pyr's Den. Pyr moves independently in the den and can be approached for care. The map reflects the two walkable rooms. A dismissible guide explains what Home is for, and Shift speeds movement.
 - Five formerly walkable rooms are no longer connected. Their saved cosmetic upgrade levels are retained; they are not displayed in the new two-room layout. No save migration, refund, or automatic spending is performed.

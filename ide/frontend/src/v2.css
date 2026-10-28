@@ -1808,50 +1808,66 @@
 .home-map-toggle { width: min(150px, 100%); }
 .home-map-toggle { width: min(120px, 100%); }
 
-/* Full-window castle stations: the room recedes as its details come forward. */
+/* Castle station menus live inside the same frame as the walkable room. */
 .home-room-frame { overflow: hidden; }
 .home-room-frame iframe { transition: transform 400ms ease, filter 400ms ease; }
-.home-room-frame.is-engaged iframe { transform: scale(1.1); filter: brightness(.55); }
-.home-station-screen { position: fixed; inset: 0; z-index: 10000; overflow: auto; color: #eee1cd; background: radial-gradient(ellipse at 20% 0%, #342538 0, #171421 48%, #0d0c15 100%); animation: home-station-fade 380ms both; }
-.home-station-page { min-height: 100%; animation: home-station-zoom 420ms cubic-bezier(.2,.7,.2,1) both; }
-.home-station-topbar { position: sticky; top: 0; z-index: 2; display: flex; align-items: center; gap: 24px; min-height: 70px; padding: 12px clamp(20px, 5vw, 72px); border-bottom: 1px solid #514252; background: rgba(18, 15, 26, .96); color: #ab9b92; font-size: 11px; letter-spacing: .12em; }
-.home-station-topbar b { padding: 0 6px; color: #6f5a53; }
-.home-station-wallet { margin-left: auto; color: #e6bd79; white-space: nowrap; }
-.home-station-screen button { cursor: pointer; color: #201725; background: #edc581; border: 1px solid #f2d49d; padding: 11px 17px; font: inherit; font-weight: 700; }
-.home-station-screen button:hover:not(:disabled) { background: #ffe0a4; }
+.home-room-frame.is-engaged iframe { transform: scale(1.1); filter: brightness(.5); }
+.home-station-screen { position: absolute; inset: 0; z-index: 6; overflow: auto; color: #eee0bd; background: repeating-linear-gradient(0deg, #171322 0 27px, #201a2c 27px 29px, #100e19 29px 30px); border: 4px solid #80633b; box-shadow: inset 0 0 0 3px #211727; font: 19px/1.15 'VT323', monospace; animation: home-station-fade 350ms both; }
+.home-station-page { min-height: 100%; animation: home-station-zoom 400ms cubic-bezier(.2,.7,.2,1) both; }
+.home-station-topbar { position: sticky; top: 0; z-index: 2; display: flex; align-items: center; gap: 12px; min-height: 48px; padding: 7px 14px; border-bottom: 3px solid #80633b; background: #201a29; box-shadow: 0 3px #100d19; color: #aa9b91; font: 8px/1.5 'Press Start 2P', monospace; }
+.home-station-topbar b { padding: 0 5px; color: #745341; }
+.home-station-wallet { margin-left: auto; color: #eac679; white-space: nowrap; }
+.home-station-screen button { cursor: pointer; color: #f8dfa3; background: #383047; border: 2px solid #8a7046; border-radius: 0; padding: 7px 11px; font: 17px/1 'VT323', monospace; box-shadow: inset 1px 1px #62536b, 2px 2px #0d0b13; }
+.home-station-screen button:hover:not(:disabled) { background: #574057; color: #fff2bf; border-color: #edc878; }
 .home-station-screen button:disabled { cursor: not-allowed; opacity: .48; }
-.home-station-screen button:focus-visible, .home-station-screen summary:focus-visible { outline: 3px solid #ffd783; outline-offset: 3px; }
-.home-station-screen .home-station-back { color: #f5dfb9; background: #302536; border-color: #78604e; white-space: nowrap; }
-.home-station-screen .home-station-back:hover { background: #4a3644; }
-.home-station-content { width: min(1160px, calc(100% - 48px)); margin: 0 auto; padding: clamp(32px, 5vw, 64px) 0 80px; }
-.home-station-heading { max-width: 720px; margin-bottom: 38px; }
-.home-station-kicker { display: block; color: #dbab6d; font-size: 11px; font-weight: 700; letter-spacing: .16em; }
-.home-station-heading h1 { margin: 12px 0; color: #fff0d6; font-family: Georgia, serif; font-size: clamp(34px, 5vw, 60px); font-weight: 500; letter-spacing: -.03em; line-height: 1.05; }
-.home-station-heading p, .home-station-card p { color: #c5b8ac; line-height: 1.6; }
-.home-station-columns { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+.home-station-screen button:focus-visible, .home-station-screen summary:focus-visible { outline: 2px solid #ffe39e; outline-offset: 2px; }
+.home-station-screen .home-station-back { color: #fff0c2; background: #554032; border-color: #c29b56; white-space: nowrap; }
+.home-station-content { width: calc(100% - 36px); margin: 0 auto; padding: 20px 0 35px; }
+.home-station-heading { margin-bottom: 18px; border-bottom: 2px solid #594539; padding-bottom: 11px; }
+.home-station-kicker { display: block; color: #d5aa69; font: 8px/1.6 'Press Start 2P', monospace; }
+.home-station-heading h1 { margin: 8px 0 6px; color: #ffdfa0; font: 14px/1.5 'Press Start 2P', monospace; text-shadow: 2px 2px #140e16; }
+.home-station-heading p, .home-station-card p { margin: 0; color: #c8bba8; line-height: 1.2; }
+.home-station-columns { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .home-station-screen .home-upgrades { padding: 0; }
-.home-station-card { padding: clamp(22px, 3vw, 34px); border: 1px solid #62505a; background: linear-gradient(145deg, #2a2330, #1b1925); box-shadow: 0 12px 30px #08060c55; }
-.home-station-action { border-top: 3px solid #dfaa65; background: linear-gradient(145deg, #3a2930, #211b29 70%); }
-.home-station-card h2 { margin: 12px 0 8px; color: #f8e8d0; font-family: Georgia, serif; font-size: 26px; font-weight: 500; }
-.home-station-card p { margin: 0 0 22px; }
-.home-station-card > small { display: block; margin-top: 12px; color: #d1ad82; }
-.home-station-built { margin-top: 24px; border-top: 1px solid #584650; padding-top: 16px; color: #d5c6b5; }
+.home-station-card, .home-station-screen .character-panel, .home-station-screen .home-passives, .home-trophy-room { padding: 15px; border: 3px solid #68503a; background: #292233; box-shadow: inset 0 0 0 2px #171321, 3px 3px #0d0b13; }
+.home-station-action { border-color: #ad814c; background: #332632; }
+.home-station-card h2 { margin: 10px 0 8px; color: #f5dfae; font: 10px/1.6 'Press Start 2P', monospace; }
+.home-station-card p { margin: 0 0 12px; }
+.home-station-card > small { display: block; margin-top: 8px; color: #d1ad82; }
+.home-station-built { margin-top: 15px; border-top: 2px solid #594539; padding-top: 10px; color: #d5c6b5; }
 .home-station-built summary { cursor: pointer; color: #e3bd83; }
-.home-station-built ol { padding-left: 20px; line-height: 1.7; }
-.home-station-facts { display: flex; gap: 36px; margin: 24px 0; }
-.home-station-facts span { display: grid; gap: 6px; }
-.home-station-facts small { color: #b9a696; font-size: 10px; letter-spacing: .1em; }
-.home-station-facts strong { color: #f5d9a7; font-size: 20px; }
-.home-station-actions { display: flex; flex-wrap: wrap; gap: 10px; }
-.home-station-screen .home-station-message { margin: 18px 0 0; color: #d7e6ba; }
-.home-station-screen .character-panel, .home-station-screen .home-passives, .home-station-stats .settings-group { padding: 24px; border: 1px solid #62505a; background: #201b29; }
-.home-station-screen .home-passives { margin-top: 18px; }
-.home-station-screen .home-passive-grid article { padding: 16px; }
-.home-station-screen .character-panel h3, .home-station-screen .settings-group h3 { color: #f7e1bb; }
-.home-station-stats { color: #e8d8c4; }
+.home-station-built ol { padding-left: 20px; }
+.home-station-facts { display: flex; gap: 28px; margin: 14px 0; }
+.home-station-facts span { display: grid; gap: 3px; }
+.home-station-facts small { color: #b9a696; }
+.home-station-facts strong { color: #f5d9a7; font-size: 22px; }
+.home-station-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.home-station-screen .home-station-message { margin: 10px 0 0; color: #c9e9ad; }
+.home-station-screen .home-passives { margin-top: 0; }
+.home-hunter-tabs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+.home-station-screen .home-hunter-tabs button[aria-selected="true"] { background: #80603e; color: #fff0bb; border-color: #e3b66c; }
+.home-station-screen .home-passive-grid article, .home-station-screen .hunter-stat, .home-station-screen .armory-slots > div, .home-station-screen .armory-item { background: #191723; border-color: #5f5360; }
+.home-station-screen .character-panel h3, .home-station-screen .home-passives h3 { color: #f5dfae; font: 10px/1.6 'Press Start 2P', monospace; }
+.home-station-screen .character-panel small, .home-station-screen .home-passives small { color: #c6b8ac; font-size: 16px; }
+.home-station-screen .bench-tabs { display: flex; flex-wrap: wrap; gap: 6px; }
+.home-station-screen .bench-tabs button { background: #211c2d; color: #d9cbb5; border-color: #665446; }
+.home-station-screen .bench-tabs button[aria-selected="true"] { background: #80603e; color: #fff0bb; border-color: #e3b66c; }
+.home-trophy-intro { display: flex; align-items: center; gap: 12px; border-bottom: 2px solid #68503a; padding-bottom: 12px; }
+.home-trophy-intro h2, .home-trophy-empty h3 { margin: 0 0 6px; font: 9px/1.5 'Press Start 2P', monospace; color: #ffe0a1; }
+.home-trophy-intro p, .home-trophy-empty p { margin: 0; color: #c6b9a7; }
+.home-trophy-intro > strong { margin-left: auto; white-space: nowrap; color: #e6c17f; font: 8px/1.4 'Press Start 2P', monospace; }
+.home-trophy-mark { font-size: 34px; color: #e9b65e; text-shadow: 2px 2px #624231; }
+.home-trophy-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; padding-top: 14px; }
+.home-trophy-plaque { display: flex; align-items: center; gap: 10px; min-height: 90px; padding: 10px; background: #37272b; border: 3px solid #8b633c; box-shadow: inset 0 0 0 2px #1a1420; }
+.home-trophy-plaque svg { width: 52px; height: 52px; flex: 0 0 52px; image-rendering: pixelated; }
+.home-trophy-plaque small { color: #d9aa67; font: 7px/1.5 'Press Start 2P', monospace; }
+.home-trophy-plaque h3 { margin: 7px 0 3px; color: #fff0ca; font: 9px/1.5 'Press Start 2P', monospace; }
+.home-trophy-plaque p { margin: 0; color: #c9b5a1; }
+.home-trophy-seal { margin-left: auto; color: #dcb36c; }
+.home-trophy-empty { display: flex; align-items: center; gap: 18px; margin-top: 14px; padding: 22px; border: 2px dashed #68503a; background: #1e1928; }
+.home-trophy-empty > span { font-size: 42px; color: #79604d; }
+.home-trophy-footnote { color: #a4968c; margin: 14px 0 0; font-size: 16px; }
 @keyframes home-station-fade { from { opacity: 0; } to { opacity: 1; } }
 @keyframes home-station-zoom { from { transform: scale(.94); } to { transform: scale(1); } }
-@media (max-width: 700px) { .home-station-topbar { gap: 10px; padding: 10px 16px; } .home-station-topbar > span:not(.home-station-wallet) { display: none; } .home-station-content { width: calc(100% - 32px); } .home-station-columns { grid-template-columns: 1fr; } }
+@media (max-width: 700px) { .home-station-topbar > span:not(.home-station-wallet) { display: none; } .home-station-content { width: calc(100% - 20px); } .home-station-columns { grid-template-columns: 1fr; } .home-trophy-intro > strong { display: none; } }
 @media (prefers-reduced-motion: reduce) { .home-room-frame iframe { transition: none; } .home-station-screen, .home-station-page { animation: none; } }
-.home-station-screen .bench-tabs button { background: #302834; color: #dfcfba; border-color: #60505a; }
-.home-station-screen .bench-tabs button[aria-selected="true"] { background: #edc581; color: #241925; border-color: #f2d49d; }
