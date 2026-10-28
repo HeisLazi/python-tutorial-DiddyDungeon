@@ -179,6 +179,7 @@ func go_room(id: String, spawn: Vector2, instant := false) -> void:
 		back.tween_property(fade, "color:a", 0.0, 0.18)
 		await back.finished
 	changing = false
+	_send_app({"type": "room", "room": room_id})
 
 
 func _celebrate(what: String) -> void:

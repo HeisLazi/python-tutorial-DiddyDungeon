@@ -11,6 +11,7 @@ import { merchantPixelSprite } from './campaignMerchant.js'
 import { AVATAR_LABELS, AVATAR_PALETTES, AVATAR_STYLE_LABELS, AVATAR_VIEWBOX, CHARACTER_NAME, DEFAULT_APPEARANCE, avatarRects } from './avatarSprite.js'
 import { PORTRAIT_SIZE, portraitRects } from './portraitSprite.js'
 import { homePyrStage } from './homePyr.js'
+import { HOME_DIRECTORY } from './homeDirectory.js'
 
 export const viewItems = [
   { id: 'hub', label: 'Campaign' },
@@ -3011,6 +3012,7 @@ const HOME_STATION_ACTIONS = {
   pantry: 'Eat a meal', trophy: 'View player stats', map: 'Enter the Dungeon', perch: 'Feed Pyr',
 }
 
+
 const HUNTER_LOOKS = ['alucard']
 
 function homeRoomState(progress, crt, look, homeRooms) {
@@ -3059,6 +3061,16 @@ function HomeRoom({ progress, homeRooms, purchaseHomeRoom, armory, armoryActions
   const frameRef = useRef(null)
   const sectionRef = useRef(null)
   const readyRef = useRef(false)
+  const [homeStatus, setHomeStatus] = useState('loading')
+  const [frameKey, setFrameKey] = useState(0)
+  const [currentRoom, setCurrentRoom] = useState('great_hall')
+  const [mapOpen, setMapOpen] = useState(false)
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      if (!readyRef.current) setHomeStatus('slow')
+    }, 30000)
+    return () => window.clearTimeout(timer)
+  }, [frameKey])
   // The room is 320x180 and Godot scales it by whole *device* pixels, so the
   // frame is sized to the largest whole multiple that fits (any zoom level).
   const [frameSize, setFrameSize] = useState({ width: 960, height: 540 })
@@ -3091,6 +3103,11 @@ function HomeRoom({ progress, homeRooms, purchaseHomeRoom, armory, armoryActions
   })
   const stateRef = useRef(null)
   stateRef.current = homeRoomState(progress, crt, look, homeRooms)
+
+  const focusRoom = () => {
+    const frame = frameRef.current
+    try { (frame?.contentDocument?.querySelector('canvas') || frame)?.focus() } catch { frame?.focus() }
+  }
 
   const send = (extra = {}) => {
     const target = frameRef.current?.contentWindow
@@ -3128,6 +3145,7 @@ function HomeRoom({ progress, homeRooms, purchaseHomeRoom, armory, armoryActions
     if (id === 'perch') return homeAction('feed_pyr', () => 'Pyr is fed and glows brighter.')
   }
   const useStation = (id) => {
+    setMapOpen(false)
     if (!HOME_STATION_ROOMS[id]) return performStationAction(id)
     setStation(id)
     setUpgradeError('')
@@ -3135,7 +3153,7 @@ function HomeRoom({ progress, homeRooms, purchaseHomeRoom, armory, armoryActions
   }
   const closePanel = () => {
     setPanel('')
-    frameRef.current?.focus()
+    focusRoom()
   }
   const roomId = HOME_STATION_ROOMS[station]
   const ladder = homeRooms?.ladders?.[roomId]
@@ -3167,7 +3185,11 @@ function HomeRoom({ progress, homeRooms, purchaseHomeRoom, armory, armoryActions
       if (!data || data.source !== 'diddy-home') return
       if (data.type === 'ready') {
         readyRef.current = true
+        setHomeStatus('ready')
         send()
+        focusRoom()
+      } else if (data.type === 'room' && HOME_DIRECTORY.some((room) => room.id === data.room)) {
+        setCurrentRoom(data.room)
       } else if (data.type === 'use' && typeof data.station === 'string') {
         void useStationRef.current(data.station)
       }
@@ -3183,7 +3205,30 @@ function HomeRoom({ progress, homeRooms, purchaseHomeRoom, armory, armoryActions
   return (
     <section className="home-room" data-testid="home-room" aria-label="Your home" ref={sectionRef}>
       <div className="home-room-frame" style={{ width: frameSize.width, height: frameSize.height }}>
-        <iframe ref={frameRef} title="Home" src="/home/index.html" allow="autoplay" onLoad={() => frameRef.current?.focus()} />
+        <iframe key={frameKey} ref={frameRef} title="Home" src="/home/index.html" allow="autoplay" />
+        {homeStatus === 'ready' && <div className="home-map-hud" onKeyDown={(event) => { if (event.key === 'Escape' && mapOpen) { setMapOpen(false); focusRoom() } }}>
+          <button type="button" className="home-map-toggle" aria-expanded={mapOpen} aria-controls="home-directory" onClick={() => { if (mapOpen) focusRoom(); setMapOpen((open) => !open) }}>
+            <span className="home-map-label">MAP</span>
+            <span className="home-map-route" aria-label={`Current room: ${HOME_DIRECTORY.find((room) => room.id === currentRoom)?.name || 'Great Hall'}`}>
+              {HOME_DIRECTORY.map((room) => <span key={room.id} className={room.id === currentRoom ? 'current' : ''} aria-hidden="true">{room.short}</span>)}
+            </span>
+            <span className="home-map-caret" aria-hidden="true">{mapOpen ? '×' : '▾'}</span>
+          </button>
+          {mapOpen && <nav id="home-directory" className="home-directory" aria-label="Home room map">
+            <div className="home-directory-heading"><span>CASTLE MAP</span><small>Walk west ← or east →</small></div>
+            <ol className="home-directory-path">
+              {HOME_DIRECTORY.map((room) => <li key={room.id} className={room.id === currentRoom ? 'current' : ''} aria-current={room.id === currentRoom ? 'location' : undefined}>
+                <strong>{room.name}</strong><small>{room.places}</small>{room.id === currentRoom && <span>YOU ARE HERE</span>}
+              </li>)}
+            </ol>
+          </nav>}
+        </div>}
+        {homeStatus !== 'ready' && <div className="home-loading" role="status" aria-live="polite">
+          <span className="home-loading-flame" aria-hidden="true">✦</span>
+          <strong>{homeStatus === 'slow' ? 'The castle is taking a while' : 'Opening the castle'}</strong>
+          <span>{homeStatus === 'slow' ? 'Try again or visit classic Home.' : 'Pyr is lighting the way…'}</span>
+          {homeStatus === 'slow' && <div className="home-loading-actions"><button type="button" onClick={() => { readyRef.current = false; setHomeStatus('loading'); setFrameKey((key) => key + 1) }}>Try again</button><button type="button" onClick={onClassic}>Classic Home</button></div>}
+        </div>}
         {panel === 'room' && (
           <div className="home-room-panel home-upgrades" role="dialog" aria-modal="true" aria-label={`${homeRooms?.labels?.[roomId] || 'Home'} upgrades`}>
             <button type="button" className="home-room-close" onClick={closePanel} aria-label="Close room upgrades" autoFocus>Close</button>
@@ -3209,7 +3254,7 @@ function HomeRoom({ progress, homeRooms, purchaseHomeRoom, armory, armoryActions
         )}
       </div>
       <div className="home-room-bar" style={{ width: frameSize.width + 6 }}>
-        <small>WASD or arrows walk · E uses a station: trophies, armory, hearth, pantry, study, map, ring, perch, door</small>
+        <small>WASD or arrows walk · E uses a station</small>
         <span>
           {HUNTER_LOOKS.length > 1 && <button type="button" onClick={cycleLook} title="Change the hunter's look">Look: {look}</button>}
           <button type="button" onClick={toggleCrt} aria-pressed={crt}>Scanlines {crt ? 'on' : 'off'}</button>

@@ -206,3 +206,7 @@ rebuild the Godot web export after adding them. Missing or incorrectly sized str
 ## Home hunter weapon visibility
 
 Home hides the sword baked into the hunter sheets with `shaders/home_unarmed.gdshader`; it does not change the shared source sprites. The mask uses 48×46 frame coordinates for the current front, side and back sheets, so recheck all four directions and walking frames if those sheets are replaced. Forge and Dungeon do not use this Home shader.
+
+## Home loading and navigation map
+
+The app covers the embedded scene until Godot sends `ready`, so its export splash is not shown. If Home has not started after 30 seconds, the cover offers retry and Classic Home. `go_room` posts a `room` bridge event after each transition; the compact map highlights that room and expands to a station directory. `homeDirectory.test.js` compares the directory order with the room exit definitions. Chromium verification covered a failed load and retry, map opening/closing, keyboard focus, and walking between Great Hall and Library.
