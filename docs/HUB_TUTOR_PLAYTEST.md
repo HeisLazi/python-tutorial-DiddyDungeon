@@ -4,6 +4,8 @@ These observations come from an agent-driven Chromium playthrough with a disposa
 
 ## What changed
 
+- The Great Hall now has separate gear and hunter areas, a roped trophy alcove, and an open route to the hearth and Pyr’s door. Benches and banquet furniture were removed; the existing eighth hall upgrade now decorates the trophy alcove. Saved levels and upgrade prices are unchanged.
+
 - Hearth rest costs 1 coin per 10 missing HP, rounded up. If the player cannot afford full recovery, emergency rest brings them to 30% HP for free. Boss fights begin explicitly; retreat resets their phases, and lessons and bestiary stay available while practice and sparring are locked.
 
 - Home stations open pixel-styled screens inside the game frame, with a zoom transition and a return to the room. The trophy station displays named defeated campaign bosses from saved project records; Dungeon boss names are not yet retained. The hearth separates resting from room improvements, and Pyr has feeding and training controls. The redundant Forge door has been removed; the main Forge navigation remains.
@@ -35,3 +37,7 @@ The Home hunter turnaround and walk sheet were generated with the built-in image
 ## Boss and hearth playtest
 
 With a disposable save, Chromium entered a boss, visited Lessons and Bestiary, confirmed practice and sparring stayed locked after reload, and chose both stay and retreat. A trusted test phase reduced Resolve from 15 to 10; after retreat and starting again it returned to 15. A 40/100 HP rest cost 6 coins, and a zero-coin emergency rest raised 10/100 HP to 30/100. Direct recovery and practice requests during the fight returned 409. The phase verdict was injected by the test service, not graded by PYR; the full boss fight still needs learner playtesting.
+
+## Great Hall layout playtest
+
+In a disposable browser save, walked to the hearth, hunter, gear and trophy stations and opened each screen, then walked through Pyr’s door and back. Godot reachability checks passed for every hall and den upgrade level. Compatibility screenshots were reviewed across the hall ladder. These are agent-driven checks, not a new-player usability study.

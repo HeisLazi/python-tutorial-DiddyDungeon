@@ -21,15 +21,15 @@ extends RefCounted
 # The upgrade ladders. cost = Embers for that step (a proposal: tune against the economy table in the README).
 const LADDERS := {
 	"great_hall": [
-		{"name": "Clear and mend the hall", "cost": 18, "note": "rubble, puddles and cobwebs cleared, benches and barrels mended"},
+		{"name": "Clear and mend the hall", "cost": 18, "note": "rubble, puddles and cobwebs cleared; a sword plaque is hung"},
 		{"name": "Rebuild the hearth", "cost": 30, "note": "a proper fire, warmer light, and a second torch lit"},
 		{"name": "Hang crest banners", "cost": 20, "note": "the torn rags are replaced"},
-		{"name": "Lay the crimson runner", "cost": 24, "note": "a carpet from the door to the hearth"},
+		{"name": "Lay the crimson runner", "cost": 24, "note": "a crimson runner leads through the hall"},
 		{"name": "Reglaze the windows", "cost": 28, "note": "stained glass, coloured light on the floor"},
 		{"name": "Floor the hall in marble", "cost": 68, "note": "polished marble over the whole floor, and columns on the walls"},
-		{"name": "Hang the chandelier", "cost": 44, "note": "a chandelier and two guards"},
-		{"name": "Set the banquet", "cost": 52, "note": "a long table, chairs and a rug"},
-		{"name": "The grand finish", "cost": 60, "note": "blue-gold hearth, trim, urns, four guards"},
+		{"name": "Hang the chandelier", "cost": 44, "note": "a chandelier lights the central hall"},
+		{"name": "Adorn the trophy alcove", "cost": 52, "note": "a portrait, sword plaque and warm trophy lighting"},
+		{"name": "The grand finish", "cost": 60, "note": "blue-gold hearth, gold trim and blue accent lights"},
 	],
 	"library": [
 		{"name": "Dust and sort", "cost": 16, "note": "cobwebs and scattered papers cleared, scrolls stacked"},
@@ -106,7 +106,7 @@ const GH_RUNNER := 4
 const GH_GLASS := 5
 const GH_MARBLE := 6
 const GH_CHANDELIER := 7
-const GH_BANQUET := 8
+const GH_TROPHIES := 8
 const GH_GRAND := 9
 
 # The Pantry's steps by name.
@@ -326,6 +326,25 @@ static func _prop(h, piece: String, feet: Vector2, w: float, d: float, shadow_w 
 	return h.obj(piece, feet, Rect2(feet.x - w / 2.0, feet.y - d, w, d))
 
 
+## Floor inlays frame a station without blocking the hunter's path.
+static func _hall_inlay(h, rect: Rect2, fill: Color, edge: Color) -> void:
+	h.add_tint(rect, fill)
+	h.add_tint(Rect2(rect.position, Vector2(rect.size.x, 2)), edge)
+	h.add_tint(Rect2(rect.position + Vector2(0, rect.size.y - 2), Vector2(rect.size.x, 2)), edge)
+	h.add_tint(Rect2(rect.position, Vector2(2, rect.size.y)), edge)
+	h.add_tint(Rect2(rect.position + Vector2(rect.size.x - 2, 0), Vector2(2, rect.size.y)), edge)
+
+
+## Short stone partitions give the alcoves depth while leaving both ends open.
+static func _hall_divider(h, x: float, y: float, length: float) -> void:
+	h.add_tint(Rect2(x + 5, y + 4, 2, length), Color(0.05, 0.04, 0.08, 0.5))
+	h.add_tint(Rect2(x, y, 5, length), Color("3d394d"))
+	h.add_tint(Rect2(x, y, 2, length), Color("777285"))
+	for offset in range(0, int(length), 7):
+		h.add_tint(Rect2(x, y + float(offset), 5, 1), Color("211e30"))
+	h.block(Rect2(x, y + 2, 5, length - 4))
+
+
 static func _great_hall(h, lv: int) -> void:
 	var marble_from := -1
 	var marble_to := -1
@@ -355,23 +374,20 @@ static func _great_hall(h, lv: int) -> void:
 	if lv >= GH_GRAND:
 		h.add_tint(Rect2(0, 62, h.VIEW.x, 2), Color(0.95, 0.74, 0.25, 0.9))     # gold trim along the wall base
 
-	# ── Floor: wear at the start, a runner once laid, a rug under the banquet ──
+	# ── Floor: a clear central route, with small distinct station alcoves ──
 	if lv < GH_CLEAN:
-		h.bg("rubble_1", Vector2(56, 152), true)
+		h.bg("rubble_1", Vector2(205, 152), true)
 		h.bg("rubble_0", Vector2(250, 104), true)
-		h.bg("rubble_0", Vector2(124, 170), true)
-		h.bg("puddle", Vector2(214, 156), true)
+		h.bg("puddle", Vector2(210, 135), true)
 	if lv >= GH_RUNNER:
 		for row in range(5, 12):
 			h.bg("carpet", Vector2(144, row * 16))
-	if lv >= GH_BANQUET:
-		h.bg("rug_table", Vector2(210, 82))
-
-	# Two distinct work areas flank the central route to the hearth.
-	h.add_tint(Rect2(18, 108, 102, 56), Color(0.35, 0.24, 0.18, 0.22))
-	h.add_tint(Rect2(18, 108, 102, 2), Color(0.72, 0.54, 0.32, 0.55))
-	h.add_tint(Rect2(232, 126, 72, 48), Color(0.22, 0.30, 0.42, 0.24))
-	h.add_tint(Rect2(232, 126, 72, 2), Color(0.52, 0.62, 0.77, 0.55))
+	# Low floor borders define each station without creating dead ends.
+	_hall_inlay(h, Rect2(14, 106, 62, 55), Color(0.31, 0.26, 0.25, 0.58), Color("826c54"))
+	_hall_inlay(h, Rect2(82, 124, 48, 43), Color(0.28, 0.25, 0.34, 0.58), Color("777184"))
+	_hall_inlay(h, Rect2(222, 103, 86, 62), Color(0.26, 0.20, 0.29, 0.62), Color("8f7253"))
+	_hall_divider(h, 68, 110, 28)
+	_hall_divider(h, 132, 108, 18)
 
 	# ── Windows: plain and cold, then stained glass throwing coloured light on the floor ──
 	var window_kind := "window_glass" if glass else "window_plain"
@@ -421,59 +437,46 @@ static func _great_hall(h, lv: int) -> void:
 		h.anim("torch", Vector2(x, 52), Rect2(), true)
 		h.add_light(Vector2(x, 38), 52.0, Color("ffb36b"), 0.8 + 0.03 * lv, 0.3)
 
-	# ── Furniture and clutter ──
-	var benches_fixed := lv >= GH_CLEAN
-	var bench_kind := "bench" if benches_fixed else "bench_broken"
-	# Keep the preparation and trophy areas clear at every upgrade level.
-	var bench_spots: Array = [Vector2(202, 155)]
-	if lv < GH_BANQUET:
-		bench_spots.append(Vector2(244, 142))
-	for at in bench_spots:
-		_prop(h, bench_kind, at, 30.0, 8.0)
-	if lv < GH_BANQUET:
-		_prop(h, "table_small", Vector2(238, 118) if lv < GH_CLEAN else Vector2(238, 96), 24.0, 10.0)
-	if lv < GH_CLEAN:
-		_prop(h, "crate_broken", Vector2(34, 100), 18.0, 8.0)
-		_prop(h, "barrel", Vector2(288, 96), 14.0, 7.0)
-	elif lv < GH_CHANDELIER:
-		_prop(h, "barrel", Vector2(30, 98), 14.0, 7.0)
-		_prop(h, "barrel", Vector2(30, 154), 14.0, 7.0)
-		_prop(h, "crate", Vector2(292, 100), 18.0, 8.0)
+	# ── The hall is built around its stations, not dining furniture. ──
+	# The rack and armour are kept apart, with walking room between them.
+	_prop(h, "rack_few", Vector2(45, 128), 22.0, 6.0)
+	if lv >= GH_CLEAN:
+		h.bg("plaque_swords", Vector2(42, 76), true)
+	h.station("armory", "Prepare your equipment", Rect2(25, 130, 40, 24), Vector2(45, 98))
+	_prop(h, "knight", Vector2(106, 148), 12.0, 5.0)
+	h.station("hunter", "Improve your hunter", Rect2(90, 150, 32, 22), Vector2(106, 116))
+
+	# A small roped alcove frames the trophy display; its front stays open.
+	h.bg("shield_wall", Vector2(236, 67))
+	if lv < GH_TROPHIES:
+		h.bg("shield_wall", Vector2(285, 67))
+	_prop(h, "plinth_chalice", Vector2(267, 138), 20.0, 6.0)
+	h.station("trophy", "View your trophies", Rect2(251, 140, 32, 22), Vector2(267, 106))
+	_prop(h, "stanchion", Vector2(226, 157), 22.0, 4.0)
+	_prop(h, "stanchion", Vector2(301, 157), 22.0, 4.0)
+	h.add_light(Vector2(267, 105), 58.0, Color("f5c57e"), 0.42 + 0.03 * lv, 0.05)
 	if lv >= GH_CHANDELIER:
-		for at in [Vector2(32, 100), Vector2(288, 100)]:
-			_prop(h, "knight", at, 14.0, 6.0, 16.0)
-		for x in [100.0, 220.0]:
-			_prop(h, "urn_gold" if lv >= GH_GRAND else "urn", Vector2(x, 178), 12.0, 6.0)
-		h.add_chain(92.0, 2.0, 96.0)
-		h.add_shadow(Vector2(92, 160), 40.0, 10.0, 0.22)
-		h.anim("chandelier", Vector2(92, 132))
-		h.add_light(Vector2(92, 110), 92.0, Color("ffcf8a"), 0.8 + 0.08 * (lv - GH_CHANDELIER), 0.2)
-	if lv >= GH_BANQUET:
-		_prop(h, "table_long", Vector2(252, 112), 64.0, 14.0)
-		for cx in [236.0, 268.0]:
-			_prop(h, "chair_l" if cx < 252.0 else "chair_r", Vector2(cx, 92), 12.0, 6.0)
-			_prop(h, "chair_l" if cx < 252.0 else "chair_r", Vector2(cx, 136), 12.0, 6.0)
-		h.add_light(Vector2(252, 102), 48.0, Color("ffd27a"), 0.7, 0.2)
+		h.add_chain(212.0, 2.0, 50.0)
+		h.anim("chandelier", Vector2(212, 74))
+		h.add_light(Vector2(212, 70), 86.0, Color("ffcf8a"), 0.8 + 0.08 * (lv - GH_CHANDELIER), 0.2)
+	if lv >= GH_TROPHIES:
+		h.bg("plaque_swords", Vector2(260, 76), true)
+		h.bg("portrait", Vector2(291, 70), true)
+		h.add_light(Vector2(265, 100), 58.0, Color("ffd27a"), 0.7, 0.15)
 	if lv >= GH_GRAND:
-		for at in [Vector2(108, 86), Vector2(212, 86)]:
-			_prop(h, "knight", at, 14.0, 6.0, 16.0)
-		h.add_embers(Rect2(40, 90, 240, 80), Color("ffd27a"), 14, 6.0, 4.5)
+		for at in [Vector2(48, 108), Vector2(267, 108)]:
+			h.add_light(at, 42.0, Color("8cc8ff"), 0.4, 0.1)
+		h.add_embers(Rect2(45, 90, 230, 70), Color("ffd27a"), 14, 6.0, 4.5)
 
 	# ── Dust drifting in the beams: thick in a neglected hall, thin in a kept one ──
 	h.add_embers(Rect2(40, 74, 240, 90), Color(0.75, 0.80, 1.0, 0.55), maxi(4, 16 - lv), 3.0, 5.0)
 
 
-	# The hall is a useful home base: core hunter, equipment and trophy actions
-	# remain close to the hearth while the older rooms keep their upgrades.
-	_prop(h, "rack_few", Vector2(50, 130), 22.0, 6.0)
-	h.station("armory", "Prepare your equipment", Rect2(30, 132, 40, 24), Vector2(50, 96))
-	_prop(h, "knight", Vector2(105, 151), 12.0, 5.0)
-	h.station("hunter", "Improve your hunter", Rect2(89, 153, 32, 22), Vector2(105, 118))
-	_prop(h, "plinth_chalice", Vector2(288, 154), 20.0, 6.0)
-	h.station("trophy", "View your trophies", Rect2(272, 156, 32, 20), Vector2(288, 122))
 	_front_door(h, 80.0, "den", Vector2(160, 170))
-	_zone_label(h, "PREPARE", Vector2(20, 76))
-	_zone_label(h, "TROPHIES", Vector2(242, 104))
+	_zone_label(h, "GEAR", Vector2(26, 84))
+	_zone_label(h, "HUNTER", Vector2(88, 105))
+	_zone_label(h, "TROPHIES", Vector2(246, 84))
+
 
 
 static func _library(h, lv: int) -> void:
