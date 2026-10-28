@@ -1651,6 +1651,8 @@
 .study-at-home-button svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.6; }
 
 /* Home as a walkable room: the embedded Godot scene, a pixel-crisp frame. */
+.campaign-v1.home-active { padding: 10px 12px; }
+.campaign-v1.home-active .campaign-place-panel { padding: 10px; }
 .home-room { display: grid; gap: 8px; justify-items: center; }
 .home-room-frame { position: relative; box-sizing: content-box;  border: 3px solid var(--gold, #f5c542); background: #0c0a14; box-shadow: 4px 4px 0 #05040c; }
 .home-room-frame iframe { width: 100%; height: 100%; border: 0; display: block; image-rendering: pixelated; }
@@ -1681,15 +1683,17 @@
 .home-upgrades button:focus-visible { outline: 3px solid #ffd783; outline-offset: 3px; }
 .home-room-bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between; color: var(--muted, #9da59a); }
 .home-room-bar span { display: inline-flex; gap: 6px; }
-.home-map-hud { position: absolute; z-index: 2; top: 6px; left: 50%; width: min(96%, 640px); transform: translateX(-50%); }
-.home-map-toggle { display: flex; align-items: center; gap: 7px; width: 100%; min-width: 0; padding: 5px 7px; color: #c9bda6; background: rgba(17, 13, 23, .92); border: 1px solid #776143; cursor: pointer; }
+.home-map-hud { position: absolute; z-index: 2; top: 8px; right: 8px; display: flex; flex-direction: column; align-items: flex-end; width: min(480px, calc(100% - 16px)); pointer-events: none; }
+.home-map-toggle { display: grid; gap: 5px; width: min(210px, 100%); padding: 7px 9px; color: #c9bda6; background: rgba(17, 13, 23, .92); border: 1px solid #776143; cursor: pointer; pointer-events: auto; text-align: left; }
 .home-map-toggle:focus-visible { outline: 3px solid #ffd783; outline-offset: 2px; }
+.home-map-top { display: flex; justify-content: space-between; align-items: center; }
 .home-map-label { color: #f2cc7d; font-size: 10px; }
-.home-map-route { display: flex; flex: 1; justify-content: space-between; gap: 2px; min-width: 0; }
-.home-map-route span { color: #a99c88; font-size: clamp(8px, 1vw, 10px); white-space: nowrap; }
-.home-map-route span.current { color: #ffda87; text-decoration: underline; text-underline-offset: 3px; }
+.home-map-route { display: flex; align-items: center; gap: 3px; }
+.home-map-route span { flex: 1; height: 7px; border: 1px solid #76654f; background: #3d3440; }
+.home-map-route span.current { border-color: #ffd782; background: #f2b958; box-shadow: 0 0 6px #f2b95880; }
+.home-map-current { color: #f4e5c6; font-size: 11px; }
 .home-map-caret { color: #f2cc7d; }
-.home-directory { box-sizing: border-box; max-height: min(245px, 65vh); overflow: auto; padding: 10px 12px 12px; color: #ddcfae; background: rgba(24, 20, 30, .97); border: 1px solid #6f593e; }
+.home-directory { box-sizing: border-box; width: 100%; max-height: min(245px, 65vh); overflow: auto; padding: 10px 12px 12px; color: #ddcfae; background: rgba(24, 20, 30, .97); border: 1px solid #6f593e; pointer-events: auto; }
 .home-directory-heading { display: flex; justify-content: space-between; gap: 8px; margin-bottom: 8px; color: #eec978; font-size: 11px; letter-spacing: .06em; }
 .home-directory-heading small { color: #b2a48c; letter-spacing: 0; }
 .home-directory-path { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 3px; list-style: none; padding: 0; margin: 0; }

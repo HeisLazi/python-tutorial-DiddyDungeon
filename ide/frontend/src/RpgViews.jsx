@@ -3071,21 +3071,21 @@ function HomeRoom({ progress, homeRooms, purchaseHomeRoom, armory, armoryActions
     }, 30000)
     return () => window.clearTimeout(timer)
   }, [frameKey])
-  // The room is 320x180 and Godot scales it by whole *device* pixels, so the
-  // frame is sized to the largest whole multiple that fits (any zoom level).
+  // Fit the complete room into the available space while keeping its 16:9 shape.
   const [frameSize, setFrameSize] = useState({ width: 960, height: 540 })
   useEffect(() => {
     const fit = () => {
-      const ratio = window.devicePixelRatio || 1
       const room = sectionRef.current?.parentElement?.clientWidth || 960
-      // Fit the width of the panel and the height of the window (the prompt bar is at the bottom).
-      const widest = Math.min(room - 12, 960, Math.max(320, window.innerHeight - 250) * (16 / 9))
-      const scale = Math.max(2, Math.floor((widest * ratio) / 320))
-      setFrameSize({ width: (320 * scale) / ratio, height: (180 * scale) / ratio })
+      const top = sectionRef.current?.getBoundingClientRect().top || 180
+      const height = Math.max(180, window.innerHeight - top - 55)
+      const widest = Math.max(280, Math.min(room - 12, 1200, height * (16 / 9)))
+      setFrameSize({ width: widest, height: widest * 9 / 16 })
     }
     fit()
+    const observer = new ResizeObserver(fit)
+    if (sectionRef.current?.parentElement) observer.observe(sectionRef.current.parentElement)
     window.addEventListener('resize', fit)
-    return () => window.removeEventListener('resize', fit)
+    return () => { observer.disconnect(); window.removeEventListener('resize', fit) }
   }, [])
   const [crt, setCrt] = useState(() => {
     try { return window.localStorage.getItem('questlab.homeCrt') !== 'false' } catch { return true }
@@ -3208,11 +3208,11 @@ function HomeRoom({ progress, homeRooms, purchaseHomeRoom, armory, armoryActions
         <iframe key={frameKey} ref={frameRef} title="Home" src="/home/index.html" allow="autoplay" />
         {homeStatus === 'ready' && <div className="home-map-hud" onKeyDown={(event) => { if (event.key === 'Escape' && mapOpen) { setMapOpen(false); focusRoom() } }}>
           <button type="button" className="home-map-toggle" aria-expanded={mapOpen} aria-controls="home-directory" onClick={() => { if (mapOpen) focusRoom(); setMapOpen((open) => !open) }}>
-            <span className="home-map-label">MAP</span>
+            <span className="home-map-top"><span className="home-map-label">CASTLE MAP</span><span className="home-map-caret" aria-hidden="true">{mapOpen ? '×' : '▾'}</span></span>
             <span className="home-map-route" aria-label={`Current room: ${HOME_DIRECTORY.find((room) => room.id === currentRoom)?.name || 'Great Hall'}`}>
-              {HOME_DIRECTORY.map((room) => <span key={room.id} className={room.id === currentRoom ? 'current' : ''} aria-hidden="true">{room.short}</span>)}
+              {HOME_DIRECTORY.map((room) => <span key={room.id} className={room.id === currentRoom ? 'current' : ''} aria-hidden="true" />)}
             </span>
-            <span className="home-map-caret" aria-hidden="true">{mapOpen ? '×' : '▾'}</span>
+            <span className="home-map-current">{HOME_DIRECTORY.find((room) => room.id === currentRoom)?.name || 'Great Hall'}</span>
           </button>
           {mapOpen && <nav id="home-directory" className="home-directory" aria-label="Home room map">
             <div className="home-directory-heading"><span>CASTLE MAP</span><small>Walk west ← or east →</small></div>
@@ -3277,7 +3277,7 @@ function CampaignSurface({ progress, homeRooms, purchaseHomeRoom, revision, equi
     try { window.localStorage.setItem('questlab.classicHome', String(value)) } catch { /* storage unavailable */ }
   }
   const openForge = () => onNavigate?.('forge')
-  const selectPlace = (next) => setPlace(next)
+  const selectPlace = (next) => { setPlace(next); if (next === 'home') setMapCollapsed(true) }
   const homeNavigate = (next) => {
     if (next === 'forge') {
       setPlace('office')
@@ -3287,7 +3287,7 @@ function CampaignSurface({ progress, homeRooms, purchaseHomeRoom, revision, equi
     else onNavigate?.(next)
   }
   return (
-    <div className="campaign-v1 game-screen-scroll" data-testid="campaign-surface" data-campaign-revision={revision}>
+    <div className={`campaign-v1 game-screen-scroll ${place === 'home' ? 'home-active' : ''}`} data-testid="campaign-surface" data-campaign-revision={revision}>
       <div className={`campaign-layout ${mapCollapsed ? 'map-rail-is-collapsed' : ''}`}>
         <CampaignMapRail progress={progress} place={place} onSelect={selectPlace} onSelectCampaign={selectCampaign} busy={busy} collapsed={mapCollapsed} onToggle={() => setMapCollapsed((value) => !value)} />
         <main className="campaign-place-panel" data-place={place}>
