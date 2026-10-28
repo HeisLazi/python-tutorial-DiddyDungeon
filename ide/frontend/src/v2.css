@@ -1683,25 +1683,33 @@
 .home-upgrades button:focus-visible { outline: 3px solid #ffd783; outline-offset: 3px; }
 .home-room-bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between; color: var(--muted, #9da59a); }
 .home-room-bar span { display: inline-flex; gap: 6px; }
-.home-map-hud { position: absolute; z-index: 2; top: 8px; right: 8px; display: flex; flex-direction: column; align-items: flex-end; width: min(480px, calc(100% - 16px)); pointer-events: none; }
-.home-map-toggle { display: grid; gap: 5px; width: min(210px, 100%); padding: 7px 9px; color: #c9bda6; background: rgba(17, 13, 23, .92); border: 1px solid #776143; cursor: pointer; pointer-events: auto; text-align: left; }
+.home-map-hud { position: absolute; z-index: 2; top: 8px; right: 8px; display: flex; flex-direction: column; align-items: flex-end; width: min(600px, calc(100% - 16px)); pointer-events: none; }
+.home-map-toggle { display: grid; gap: 4px; width: min(300px, 100%); padding: 7px 9px; color: #c9bda6; background: rgba(17, 13, 23, .94); border: 1px solid #776143; cursor: pointer; pointer-events: auto; text-align: left; }
 .home-map-toggle:focus-visible { outline: 3px solid #ffd783; outline-offset: 2px; }
 .home-map-top { display: flex; justify-content: space-between; align-items: center; }
 .home-map-label { color: #f2cc7d; font-size: 10px; }
-.home-map-route { display: flex; align-items: center; gap: 3px; }
-.home-map-route span { flex: 1; height: 7px; border: 1px solid #76654f; background: #3d3440; }
-.home-map-route span.current { border-color: #ffd782; background: #f2b958; box-shadow: 0 0 6px #f2b95880; }
+.home-map-plan { display: block; width: 100%; height: auto; overflow: visible; }
+.home-map-chamber { fill: #302b38; stroke: #81705b; stroke-width: 1.5; }
+.home-map-detail { fill: none; stroke: #c6b18d; stroke-width: 1.3; opacity: .85; }
+.home-map-door { fill: none; stroke: #c5a875; stroke-width: 3; }
+.home-map-plan .adjacent .home-map-chamber { fill: #273b43; stroke: #9cc6c5; }
+.home-map-plan .current .home-map-chamber { fill: #694b2c; stroke: #ffd47f; stroke-width: 2; }
+.home-map-player { fill: #ffdf94; stroke: #29190d; stroke-width: 1; }
+.home-map-room-name { fill: #d9c7a3; font: 6px sans-serif; }
+.home-map-plan .current .home-map-room-name { fill: #ffe09b; font-weight: bold; }
 .home-map-current { color: #f4e5c6; font-size: 11px; }
+.home-map-exits { color: #bdd7d2; font-size: 10px; }
+.home-map-exits > span { color: #776d61; }
 .home-map-caret { color: #f2cc7d; }
 .home-directory { box-sizing: border-box; width: 100%; max-height: min(245px, 65vh); overflow: auto; padding: 10px 12px 12px; color: #ddcfae; background: rgba(24, 20, 30, .97); border: 1px solid #6f593e; pointer-events: auto; }
 .home-directory-heading { display: flex; justify-content: space-between; gap: 8px; margin-bottom: 8px; color: #eec978; font-size: 11px; letter-spacing: .06em; }
 .home-directory-heading small { color: #b2a48c; letter-spacing: 0; }
-.home-directory-path { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 3px; list-style: none; padding: 0; margin: 0; }
+.home-directory-path { display: grid; grid-template-columns: repeat(7, minmax(75px, 1fr)); gap: 3px; overflow-x: auto; list-style: none; padding: 0 0 3px; margin: 0; }
 .home-directory-path li { position: relative; min-height: 66px; padding: 8px; border: 1px solid #51483c; background: #24202a; }
 .home-directory-path li.current { border-color: #e3b663; background: #403127; box-shadow: inset 0 2px #e3b663; }
+.home-directory-path li.adjacent { border-color: #8fb4b2; background: #1d3035; }
 .home-directory-path strong, .home-directory-path small, .home-directory-path span { display: block; }
 .home-directory-path strong { color: #f2e5c8; font-size: 12px; }
 .home-directory-path small { margin-top: 4px; color: #c0b49d; font-size: 11px; }
 .home-directory-path span { margin-top: 5px; color: #f5c86f; font-size: 9px; letter-spacing: .04em; }
-@media (max-width: 600px) { .home-directory-path { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 .home-room-switch { display: flex; justify-content: flex-end; padding: 6px 0; }

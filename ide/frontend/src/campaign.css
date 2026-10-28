@@ -37,6 +37,10 @@
 .campaign-v1 .poi-rail.map-rail-collapsed .map-rail-toggle { position: static; }
 .campaign-v1 .campaign-panel-copy { margin: 0; color: var(--campaign-muted); font-size: 11px; line-height: 1.5; }
 .campaign-v1 .poi-rail.map-rail-collapsed { align-items: center; padding-inline: 8px; }.campaign-v1 .poi-rail.map-rail-collapsed .panel-heading { display: grid; justify-items: center; gap: 7px; }.campaign-v1 .poi-rail.map-rail-collapsed .panel-heading > div, .campaign-v1 .poi-rail.map-rail-collapsed .campaign-tag { display: none; }.campaign-v1 .map-rail-collapsed-summary { display: grid; justify-items: center; gap: 6px; margin-top: auto; color: var(--campaign-gold); }.campaign-v1 .map-rail-collapsed-summary strong { font: 800 8px ui-monospace, monospace; letter-spacing: .08em; }.campaign-v1 .map-rail-collapsed-summary small { color: var(--campaign-dim); font: 800 7px ui-monospace, monospace; }
+.campaign-v1 .collapsed-poi-list { display: grid; justify-items: center; gap: 8px; }
+.campaign-v1 .collapsed-poi { display: grid; place-items: center; width: 36px; height: 36px; padding: 0; border: 1px solid var(--campaign-line); background: var(--campaign-panel); font: 19px ui-monospace, monospace; cursor: pointer; }
+.campaign-v1 .collapsed-poi:hover, .campaign-v1 .collapsed-poi:focus-visible, .campaign-v1 .collapsed-poi.active { border-color: var(--campaign-gold); background: #403127; outline: none; }
+.campaign-v1 .collapsed-poi:focus-visible { outline: 2px solid #ffd783; outline-offset: 2px; }
 .campaign-v1 .poi-list { display: grid; gap: 8px; }
 .campaign-v1 .poi-card { display: grid; grid-template-columns: 34px minmax(0, 1fr) 18px; align-items: center; gap: 9px; padding: 11px; border: 1px solid var(--campaign-line); border-radius: 9px; color: var(--campaign-muted); background: #0d120e; text-align: left; cursor: pointer; transition: border-color .16s ease, transform .16s ease, background .16s ease; }
 .campaign-v1 .poi-card:hover, .campaign-v1 .poi-card:focus-visible, .campaign-v1 .poi-card.active { border-color: var(--campaign-gold); outline: none; transform: translateY(-1px); background: color-mix(in srgb, var(--campaign-gold) 8%, #111611); }
