@@ -1532,6 +1532,16 @@ function AppV2() {
       const result = await api('/api/ai/spar-question', { method: 'POST', body: JSON.stringify({ target_id: targetId, round }) })
       return result.question
     }),
+    answerCode: async (targetId, code) => {
+      setBusy(true)
+      try {
+        const result = await api('/api/spar/answer-code', { method: 'POST', body: JSON.stringify({ target_id: targetId, code }) })
+        await refreshCampaign({ silent: true })
+        return result
+      } finally {
+        setBusy(false)
+      }
+    },
     answer: async (targetId, index) => {
       setBusy(true)
       try {

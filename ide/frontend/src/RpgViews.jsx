@@ -13,6 +13,8 @@ import { PORTRAIT_SIZE, portraitRects } from './portraitSprite.js'
 import { homePyrStage } from './homePyr.js'
 import { HOME_DIRECTORY } from './homeDirectory.js'
 import CastleFloorPlan from './CastleFloorPlan.jsx'
+import TutorLearningPath from './TutorLearningPath.jsx'
+import { lessonFor, TUTOR_TRUE_FALSE } from './tutorLessons.js'
 
 export const viewItems = [
   { id: 'hub', label: 'Campaign' },
@@ -177,7 +179,7 @@ function DungeonEditorSurface({ value, onChange, onSave, onSubmit, busy, saving 
         />
       </div>
       <div className={`dungeon-editor-terminal ${terminal.status}`} role="status" aria-label="Dungeon self-check output">
-        <div className="dungeon-editor-terminal-heading"><span>LOCAL TERMINAL · SELF-CHECK</span><b>{terminal.status.toUpperCase()}</b></div>
+        <div className="dungeon-editor-terminal-heading"><span>PRACTICE FEEDBACK</span><b>{terminal.status.toUpperCase()}</b></div>
         <pre>{terminal.output.join('\n')}</pre>
       </div>
       <div className="dungeon-editor-actions">
@@ -729,7 +731,7 @@ export function ContextPanel({ activeView, campaign, files = [], activePath, com
             {encounter.mob_name ? <>
               <div className="panel-title"><span>ACTIVE BATTLE</span><b>{encounter.resolve ?? 0}/{encounter.max_resolve ?? 0}</b></div>
               {encounter.special_mechanic && <div className="campaign-special-mechanic" data-testid="campaign-special-mechanic"><strong>{encounter.special_mechanic.label}</strong><p>{encounter.special_mechanic.detail}</p><small>{encounter.special_mechanic.triggered ? 'REWARD CLAIMED' : 'REWARD AVAILABLE'}</small></div>}
-              <BattleBrief encounter={encounter} board={campaign?.campaign_board} charges={campaign?.armory?.charges} questions={battleQuestions} feedback={battleFeedback} onAsk={onAskBattleQuestion} onAnswer={onAnswerBattleOption} onCheckSetup={onCheckSetup} busy={busy} />
+              <BattleBrief encounter={encounter} board={campaign?.campaign_board} charges={campaign?.armory?.charges} questions={battleQuestions} feedback={battleFeedback} onAsk={onAskBattleQuestion} onAnswer={onAnswerBattleOption} onCheckSetup={onCheckSetup} onStudy={(objective, sign) => { try { window.sessionStorage.setItem('questlab.tutor.request', JSON.stringify({ conceptId: sign || encounter?.mob?.sign_id || '', concept: encounter?.mob?.concept || encounter?.concept || '', objective: { id: objective?.id, label: objective?.label } })) } catch { /* storage unavailable */ } setActiveView('tutor') }} busy={busy} />
               <div className="campaign-battle-resolve" data-testid="forge-encounter-resolve" hidden>
                 <ProgressBar value={encounter.resolve ?? 0} max={encounter.max_resolve ?? 1} label="Enemy Resolve" className="resolve" />
               </div>
@@ -1513,9 +1515,9 @@ function Codex({ progress, revision, codexProjection, encounter, saveCodexNote, 
 const PRACTICE_TYPE_BY_LENS = { predict: 'code_trace', trace: 'code_trace', bug: 'bug_hunt', explain: 'short_explanation', transfer: 'short_explanation' }
 
 const RESOURCE_PRACTICE_MODES = [
-  { id: 'predict', label: 'Predict output', prompt: 'Predict what the example should produce before you run it.' },
-  { id: 'trace', label: 'Trace variables', prompt: 'Trace how the important values change from line to line.' },
-  { id: 'bug', label: 'Find a bug', prompt: 'Find the signal that would reveal a bug without rewriting the answer.' },
+  { id: 'predict', label: 'Predict output', prompt: 'Read the example and write your prediction as a Python comment in tutor.py.' },
+  { id: 'trace', label: 'Trace variables', prompt: 'Trace values line by line; record your reasoning as Python comments in tutor.py.' },
+  { id: 'bug', label: 'Find a bug', prompt: 'Study the example mistake and explain the problem in a Python comment.' },
   { id: 'explain', label: 'Explain the idea', prompt: 'Teach the concept back in your own words.' },
   { id: 'transfer', label: 'Tiny transfer challenge', prompt: 'Describe one small new program where this idea would help.' },
 ]
@@ -2032,7 +2034,7 @@ function HunterCodex({ view, hunter, pages, entries, progress, encounter, pyr, b
             </div>
             <pre className="hunt-code">{info.code}</pre>
             <div className="hunt-actions">
-              <button type="button" className="primary" onClick={() => onView('contracts')}>Take the contract</button>
+              <button type="button" className="primary" onClick={() => onRead?.(current.id)}>Read this concept</button>
               <button type="button" onClick={() => onView('signs')}>Study the sign</button>
             </div>
             {askBox}
@@ -2086,22 +2088,23 @@ function HunterCodex({ view, hunter, pages, entries, progress, encounter, pyr, b
 function ResourceTutorScreen({ pyr, hunter, sparRoster = [], sparActions, avatar, activeView, progress, revision, codexProjection, encounter, tutorCode, tutorDirty, tutorExternalChange, editorFontSize = 14, busy, onTutorChange, onTutorSave, onTutorFormat, onTutorRun, onPracticePrompt, onTutorReloadExternal, onTutorKeepEdits, onNavigate }) {
   const pages = Array.isArray(codexProjection?.pages) && codexProjection.pages.length ? codexProjection.pages : resourceFallbackPages(encounter)
   const entries = Array.isArray(codexProjection?.entries) ? codexProjection.entries : []
-  // Tutor opens on the Hunter's Codex contract board; Bestiary and Signs sit
-  // beside it, and all three lead into the Codex reader and IDE practice.
-  const [surface, setSurface] = useSessionState('surface', 'contracts')
-  const huntView = ['contracts', 'bestiary', 'signs'].includes(surface)
+  // Lessons lead into focused practice; the bounty board owns campaign contracts.
+  const [surface, setSurface] = useSessionState('surface', 'learn')
+  const huntView = ['bestiary', 'signs'].includes(surface)
   // The beast picked in the codex; empty means "the current hunt".
   const [huntPick, setHuntPick] = useSessionState('huntPick', '')
   const [selectedId, setSelectedId] = useSessionState('codexPage', pages[0]?.id || '')
-  const [readPage, setReadPage] = useSessionState('readPage', 0)
   const [practiceMode, setPracticeMode] = useSessionState('practiceMode', 'predict')
   const [practiceDifficulty, setPracticeDifficulty] = useSessionState('practiceDifficulty', 1)
-  const [terminal, setTerminal] = useState({ status: 'ready', output: ['Tutor shell ready.', 'Run is a safe local self-check; Submit is the feedback boundary.'] })
+  const [terminal, setTerminal] = useState({ status: 'ready', output: ['Run your notebook in the terminal; submit it for PYR feedback.'] })
+  const [practiceFormat, setPracticeFormat] = useSessionState('practiceFormat', 'code')
+  const [quizPick, setQuizPick] = useState(null)
+  const [studyObjective, setStudyObjective] = useState(null)
+  const editorActions = useRef({})
   const [aiPrompt, setAiPrompt] = useState('')
   const [aiMessages, setAiMessages] = useState([{ role: 'pyr', text: 'PYR channel ready. Ask for a hint when you need a nudge, not a finished answer.' }])
   // A practice question PYR wrote for the chosen lens (null = use the lens's generic prompt).
   const [practiceQuestion, setPracticeQuestion] = useState(null)
-  const [query, setQuery] = useSessionState('codexQuery', '')
   const selectedPage = pages.find((page) => page.id === selectedId) || pages[0]
   const selectedEntries = entries.filter((entry) => entry.page_id === selectedPage?.id)
   const codexLoaded = Array.isArray(codexProjection?.pages) && codexProjection.pages.length > 0
@@ -2109,30 +2112,35 @@ function ResourceTutorScreen({ pyr, hunter, sparRoster = [], sparActions, avatar
     if (codexLoaded && !pages.some((page) => page.id === selectedId)) setSelectedId(pages[0]?.id || '')
   }, [codexLoaded, pages, selectedId])
   useEffect(() => {
-    if (activeView === 'codex') setSurface('codex')
+    if (activeView === 'codex') setSurface('learn')
   }, [activeView])
-  const filteredPages = pages.filter((page) => !query.trim() || `${page.title} ${page.definition}`.toLowerCase().includes(query.trim().toLowerCase()))
+  useEffect(() => {
+    if (surface === 'contracts' || surface === 'codex') setSurface('learn')
+  }, [surface])
+  useEffect(() => {
+    if (!codexLoaded) return
+    try {
+      const request = JSON.parse(window.sessionStorage.getItem('questlab.tutor.request') || 'null')
+      if (request) {
+        setStudyObjective(request.objective || null)
+        const concept = String(request.concept || '').toLowerCase()
+        const match = pages.find((page) => page.id === request.conceptId) || pages.find((page) => concept && (page.title.toLowerCase().includes(concept) || (page.aliases || []).some((alias) => concept.includes(String(alias).toLowerCase()))))
+        if (match) setSelectedId(match.id)
+        setSurface('learn')
+        window.sessionStorage.removeItem('questlab.tutor.request')
+      }
+    } catch { /* storage unavailable */ }
+  }, [codexLoaded])
   const conceptLabel = selectedPage?.title || encounter?.concept || 'Python foundations'
-  const runSelfCheck = () => {
-    const source = String(tutorCode || '')
-    if (!source.trim()) {
-      setTerminal({ status: 'empty', output: ['No tutor.py content to check.', 'Write an attempt, then run this safe preview.'] })
+  const runPractice = async () => {
+    if (!String(tutorCode || '').trim()) {
+      setTerminal({ status: 'empty', output: ['Write some Python in tutor.py before running it.'] })
       return
     }
-    const pairs = [['(', ')'], ['[', ']'], ['{', '}']]
-    const stack = []
-    const openers = new Map(pairs)
-    for (const char of source) {
-      if (openers.has(char)) stack.push(char)
-      else if (pairs.some((pair) => pair[1] === char)) {
-        const opener = stack.pop()
-        if (!opener || openers.get(opener) !== char) {
-          setTerminal({ status: 'failed', output: ['SyntaxError: unbalanced delimiter in tutor.py', 'Run is local only; no campaign state changed.', 'Repair the notebook, then submit for bounded feedback.'] })
-          return
-        }
-      }
+    setTerminal({ status: 'running', output: ['Run requested. Check the terminal below for Python output or errors.', 'Running code does not grade your answer.'] })
+    try { await onTutorRun?.() } catch (error) {
+      setTerminal({ status: 'failed', output: [`Could not run tutor.py: ${error.message}`] })
     }
-    setTerminal({ status: 'passed', output: ['[PASS] Python-shaped source: delimiters are balanced.', '[INFO] Concepts stay in the learner notebook until submission.', 'Run is safe and local; Submit is the feedback boundary.'] })
   }
   const submit = async () => {
     setTerminal({ status: 'submitted', output: ['[SUBMIT] tutor.py sent for bounded Tutor feedback.', 'No campaign reward, Resolve, HP or project mutation occurs here.'] })
@@ -2162,6 +2170,7 @@ function ResourceTutorScreen({ pyr, hunter, sparRoster = [], sparActions, avatar
     }
     setAiMessages((current) => current.map((message) => (message.pending ? { role: 'pyr', text: reply } : message)))
   }
+  editorActions.current = { run: runPractice, submit, save: onTutorSave }
   const practiceModes = RESOURCE_PRACTICE_MODES
   const choosePyrLens = async () => {
     try {
@@ -2174,15 +2183,16 @@ function ResourceTutorScreen({ pyr, hunter, sparRoster = [], sparActions, avatar
   }
   return (
     <div className="resource-tutor-screen" data-testid="resource-tutor" data-campaign-revision={revision}>
-      <header className="resource-tutor-header"><div><span className="screen-kicker">TUTOR NOTEBOOK</span><h2>{huntView ? 'Study the beast. Train the sign. Hunt.' : 'Learn it, then make it yours.'}</h2><p>{huntView ? 'Every bug is a beast and every concept a sign that beats it. Contracts lead you from reading to a drill to the hunt.' : 'Reference pages, a writable tutor.py and bounded PYR guidance share one calm workspace.'}</p></div><div className="resource-tutor-header-actions"><button type="button" onClick={() => onNavigate?.('forge')}>Resume Forge</button><span>REV {revision ?? 0}</span></div></header>
-      <nav className="resource-tutor-tabs" aria-label="Tutor sections"><button type="button" className={surface === 'contracts' ? 'active' : ''} onClick={() => setSurface('contracts')}>Contracts</button><button type="button" className={surface === 'bestiary' ? 'active' : ''} onClick={() => setSurface('bestiary')}>Bestiary</button><button type="button" className={surface === 'signs' ? 'active' : ''} onClick={() => setSurface('signs')}>Signs</button><button type="button" className={surface === 'codex' ? 'active' : ''} onClick={() => setSurface('codex')}>▣ Codex</button><button type="button" className={surface === 'ide' || surface === 'notes' ? 'active' : ''} onClick={() => setSurface('ide')}>↗ IDE practice</button><button type="button" className={surface === 'spar' ? 'active' : ''} onClick={() => setSurface('spar')}>⚔ Sparring</button></nav>
+      <header className="resource-tutor-header"><div><span className="screen-kicker">TUTOR NOTEBOOK</span><h2>{huntView ? 'Study the beast. Train the sign. Hunt.' : 'Learn it, then make it yours.'}</h2><p>{huntView ? 'Explore the beasts and signs, then read a concept or practise it.' : 'Reference pages, a writable tutor.py and bounded PYR guidance share one calm workspace.'}</p></div><div className="resource-tutor-header-actions"><button type="button" onClick={() => onNavigate?.('forge')}>Resume Forge</button><span>REV {revision ?? 0}</span></div></header>
+      <nav className="resource-tutor-tabs" aria-label="Tutor sections"><button type="button" className={surface === 'learn' ? 'active' : ''} onClick={() => setSurface('learn')}>Lessons</button><button type="button" className={surface === 'bestiary' ? 'active' : ''} onClick={() => setSurface('bestiary')}>Bestiary</button><button type="button" className={surface === 'signs' ? 'active' : ''} onClick={() => setSurface('signs')}>Signs</button><button type="button" className={surface === 'ide' || surface === 'notes' ? 'active' : ''} onClick={() => setSurface('ide')}>↗ IDE practice</button><button type="button" className={surface === 'spar' ? 'active' : ''} onClick={() => setSurface('spar')}>⚔ Sparring</button></nav>
+      {surface === 'learn' && <TutorLearningPath pages={pages} selectedPage={selectedPage} onSelect={setSelectedId} onPractice={(mode) => { setPracticeMode(mode); setPracticeFormat('code'); setPracticeQuestion(null); setSurface('ide') }} reference={<><ResourceCodexExamples page={selectedPage} /><ResourceCodexMistakes page={selectedPage} entries={selectedEntries} /><ResourceEncounterRecords entries={selectedEntries} /><StudiedAtHome concept={selectedPage?.title} /><StudyAtHomeButton topic={selectedPage?.title} context="studying a concept between bounties" label="Study more at home" /></>} onResume={() => onNavigate?.('forge')} encounter={encounter} studyObjective={studyObjective} />}
       {surface === 'spar' && <SparringArena roster={sparRoster} actions={sparActions} busy={busy} />}
       {huntView && <HunterCodex view={surface} hunter={hunter} pages={pages} entries={entries} progress={progress} encounter={encounter} pyr={pyr} busy={busy}
         selectedId={huntPick} onSelect={(pageId) => { setHuntPick(pageId); setSelectedId(pageId) }} onView={setSurface}
-        onRead={(pageId) => { setHuntPick(pageId); setSelectedId(pageId); setReadPage(0); setSurface('codex') }}
-        onPractice={(pageId, mode, difficulty) => { if (pageId) { setHuntPick(pageId); setSelectedId(pageId) } setPracticeMode(mode); setPracticeDifficulty(difficulty || 1); setPracticeQuestion(null); setSurface('ide') }} />}
-      {surface === 'codex' && <section className="resource-codex-layout"><aside className="resource-codex-index"><div className="resource-index-heading"><span className="screen-kicker">FIELD LIBRARY</span><strong>{pages.length} concepts</strong></div><label className="resource-search"><span>SEARCH</span><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Find a concept" /></label><div className="resource-page-list">{filteredPages.map((page) => <button key={page.id} type="button" className={page.id === selectedPage?.id ? 'active' : ''} onClick={() => { setSelectedId(page.id); setReadPage(0) }}><span>{page.title.slice(0, 1).toUpperCase()}</span><div><strong>{page.title}</strong><small>{page.encounter_ids?.length || 0} encounter records</small></div></button>)}</div><div className="resource-review-queue"><span className="screen-kicker">REVIEW QUEUE</span><strong>{entries.filter((entry) => entry.weaknesses?.length).length || 0} signals</strong><p>PYR can suggest concepts here when your attempts show a pattern.</p></div></aside><article className="resource-codex-reader"><div className="resource-breadcrumb"><span>CODEX</span><span>/</span><strong>{selectedPage?.title?.toUpperCase() || 'REFERENCE'}</strong></div><header className="resource-reader-heading"><div><span className="screen-kicker">REFERENCE ENTRY</span><h3>{selectedPage?.title || 'Concept page'}</h3><p>{selectedPage?.definition || 'A canonical learning reference.'}</p></div><span className="resource-reader-actions"><button type="button" className="primary" onClick={() => setSurface('ide')}>Practice this →</button><StudyAtHomeButton topic={selectedPage?.title} context="reading the Codex between bounties" label="Study at home" /></span></header><StudiedAtHome concept={selectedPage?.title} /><div className="resource-folio-controls"><button type="button" className={readPage === 0 ? 'active' : ''} onClick={() => setReadPage(0)}>01 · Definition</button><button type="button" className={readPage === 1 ? 'active' : ''} onClick={() => setReadPage(1)}>02 · Examples</button><button type="button" className={readPage === 2 ? 'active' : ''} onClick={() => setReadPage(2)}>03 · Mistakes &amp; signals</button><span>PAGE {readPage + 1} / 3</span></div>{readPage === 0 && <div className="resource-folio-copy"><section className="resource-definition"><span className="screen-kicker">THE IDEA</span><p>{selectedPage?.definition}</p></section><ResourceEncounterRecords entries={selectedEntries} /></div>}{readPage === 1 && <ResourceCodexExamples page={selectedPage} />}{readPage === 2 && <ResourceCodexMistakes page={selectedPage} entries={selectedEntries} />}</article></section>}
-      {surface === 'ide' && <section className="resource-ide-layout"><aside className="resource-ide-rail"><button type="button" className="resource-rail-file active" onClick={() => setSurface('ide')}><ForgeFileGlyph kind="python" /><small>tutor.py</small></button><button type="button" className="resource-rail-file" onClick={() => setSurface('notes')}><ForgeFileGlyph kind="markdown" /><small>notes.md</small></button><div className="resource-ide-context"><span className="screen-kicker">CONCEPT</span><strong>{conceptLabel}</strong><small>tutor.py is writable</small></div></aside><main className="resource-ide-main"><div className="resource-breadcrumb"><span>TUTOR</span><span>/</span><strong>IDE PRACTICE</strong></div><header className="resource-ide-heading"><div><span className="screen-kicker">{practiceModes.find((mode) => mode.id === practiceMode)?.label.toUpperCase()}</span><h3>{conceptLabel}</h3>{practiceQuestion ? <div className="pyr-practice-question"><span className="screen-kicker">PYR'S QUESTION</span><p>{practiceQuestion.text}</p>{practiceQuestion.why && <small>{practiceQuestion.why}</small>}</div> : <p>{practiceModes.find((mode) => mode.id === practiceMode)?.prompt} PYR can point at your reasoning without writing the finished response.</p>}</div><label><span>QUESTION LENS</span>{pyr?.chooseLensEnabled && <button type="button" className="pyr-choose-lens" onClick={choosePyrLens} disabled={busy}>✦ Let PYR choose</button>}<select value={practiceMode} onChange={(event) => { setPracticeMode(event.target.value); setPracticeQuestion(null) }}>{practiceModes.map((mode) => <option key={mode.id} value={mode.id}>{mode.label}</option>)}</select></label></header><div className="resource-mode-strip">{practiceModes.map((mode, index) => <button type="button" key={mode.id} className={practiceMode === mode.id ? 'active' : ''} onClick={() => { setPracticeMode(mode.id); setPracticeQuestion(null) }}><span>0{index + 1}</span>{mode.label}</button>)}</div><div className="resource-editor-card"><div className="resource-editor-toolbar"><span><b className="safe-badge">PYR WRITABLE</b> tutor.py{tutorDirty ? ' · unsaved' : ''}</span><span>MONACO · PYTHON · LOCAL COMPLETION</span></div><div className="resource-monaco"><Editor height="100%" path="tutor.py" language="python" value={tutorCode || ''} onChange={(value) => onTutorChange?.(value ?? '')} onMount={(editor, monaco) => { const provider = monaco.languages.registerCompletionItemProvider('python', { triggerCharacters: ['.', '_'], provideCompletionItems: (model) => ({ suggestions: resourceIdentifierSuggestions(model.getValue()).map((label) => ({ label, kind: monaco.languages.CompletionItemKind.Keyword, insertText: label })) }) }); editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter, runSelfCheck); editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => onTutorSave?.()); editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyMod.Shift | monaco.KeyCode.Enter, submit); editor.onDidDispose(() => provider.dispose()) }} theme="vs-dark" options={{ minimap: { enabled: false }, acceptSuggestionOnEnter: 'off', fontSize: editorFontSize, fontFamily: 'JetBrains Mono, ui-monospace, monospace', lineHeight: Math.round(editorFontSize * 1.55), padding: { top: 14, bottom: 14 }, automaticLayout: true, smoothScrolling: true, tabSize: 4, suggestOnTriggerCharacters: true }} /></div><div className="resource-editor-actions"><span>Ctrl/Cmd ↵ run · Ctrl/Cmd S save · Ctrl/Cmd ⇧ ↵ submit</span><div><button type="button" onClick={onTutorSave} disabled={busy}>Save Tutor</button><button type="button" onClick={onTutorFormat} disabled={busy}>Pretty</button><button type="button" data-tutor-run onClick={() => { runSelfCheck(); onTutorRun?.() }} disabled={busy}>▶ Run Tutor</button><button type="button" className="primary" data-tutor-submit onClick={submit} disabled={busy || !String(tutorCode || '').trim()}>Submit for feedback</button></div></div></div><section className={`resource-ide-terminal ${terminal.status}`} aria-live="polite"><div><span>LOCAL TERMINAL · SELF-CHECK</span><b>{terminal.status.toUpperCase()}</b></div><pre>{terminal.output.join('\n')}</pre></section>{tutorExternalChange && <div className="tutor-conflict-banner" role="alert"><strong>External tutor.py change detected.</strong><span>Your unsaved edits are preserved.</span><button type="button" onClick={onTutorReloadExternal}>Reload external version</button><button type="button" onClick={onTutorKeepEdits}>Keep my edits</button></div>}</main><aside className="resource-ai-panel"><div className="resource-ai-heading"><div><span className="screen-kicker">PYR / AI</span><strong>Tutor channel</strong></div><span className="connection-pill">{pyr?.ready ? 'OPENCODE' : 'OFFLINE'}</span></div><p>Bounded guidance only. PYR will not paste a campaign answer or project-specific snippet.</p><div className="resource-ai-messages">{aiMessages.map((message, index) => <div key={`${message.role}-${index}`} className={`resource-ai-message ${message.role}`}><span>{message.role === 'learner' ? 'YOU' : 'PYR'}</span><p>{message.text}</p></div>)}</div><textarea value={aiPrompt} onChange={(event) => setAiPrompt(event.target.value)} rows={3} placeholder="Ask for a hint, not a finished answer…" /><div><button type="button" onClick={() => setAiMessages([])}>Clear</button><button type="button" className="primary" onClick={askPyr} disabled={busy}>Ask PYR</button></div></aside></section>}
+        onRead={(pageId) => { setHuntPick(pageId); setSelectedId(pageId); setSurface('learn') }}
+        onPractice={(pageId, mode, difficulty) => { if (pageId) { setHuntPick(pageId); setSelectedId(pageId) } setPracticeMode(mode); setPracticeFormat('code'); setPracticeDifficulty(difficulty || 1); setPracticeQuestion(null); setSurface('ide') }} />}
+
+      {surface === 'ide' && <section className="resource-ide-layout"><aside className="resource-ide-rail tutor-practice-picker"><span className="screen-kicker">PRACTICE SETUP</span><label>Topic<select aria-label="Practice topic" value={selectedPage?.id || ''} onChange={(event) => { setSelectedId(event.target.value); setPracticeQuestion(null); setQuizPick(null) }}>{pages.map((page) => <option key={page.id} value={page.id}>{page.title}</option>)}</select></label><label>Activity<select aria-label="Practice activity" value={practiceFormat === 'quiz' || practiceFormat === 'true_false' ? practiceFormat : practiceMode} onChange={(event) => { const value = event.target.value; setQuizPick(null); setPracticeQuestion(null); if (value === 'quiz' || value === 'true_false') setPracticeFormat(value); else { setPracticeFormat('code'); setPracticeMode(value) } }}><option value="quiz">Multiple choice</option><option value="true_false">True or false</option>{practiceModes.map((mode) => <option key={mode.id} value={mode.id}>{mode.label}</option>)}</select></label><button type="button" onClick={() => setSurface('learn')}>Read this lesson</button><button type="button" onClick={() => setSurface('notes')}>Open notes</button><small>Practice is separate from your campaign files.</small></aside><main className="resource-ide-main">{practiceFormat === 'quiz' || practiceFormat === 'true_false' ? (() => { const base = lessonFor(selectedPage); const truth = TUTOR_TRUE_FALSE[selectedPage?.id]; const lesson = practiceFormat === 'true_false' ? (truth ? { ...base, ...truth, options: ['True', 'False'], example: null } : null) : base; return <section className="tutor-quiz"><span className="screen-kicker">{practiceFormat === 'true_false' ? 'TRUE OR FALSE' : 'MULTIPLE CHOICE'} · {conceptLabel.toUpperCase()}</span>{lesson?.options ? <><h3>{lesson.question}</h3>{lesson.example && <div className="tutor-question-editor"><div className="resource-editor-toolbar">example.py · read only</div><Editor height="180px" language="python" value={lesson.example} theme="vs-dark" options={{ readOnly: true, minimap: { enabled: false }, fontSize: editorFontSize, automaticLayout: true, scrollBeyondLastLine: false }} /></div>}<div className="tutor-lesson-options">{lesson.options.map((option, index) => <button key={option} type="button" className={quizPick === index ? 'selected' : ''} onClick={() => setQuizPick(index)}>{option}</button>)}</div>{quizPick !== null && <p className={`tutor-answer ${quizPick === lesson.answer ? 'correct' : 'incorrect'}`} role="status">{quizPick === lesson.answer ? lesson.why : 'Not quite. Read the example and try again.'}</p>}</> : <><h3>Read and practice this topic</h3><p>A written check for this topic is still being prepared. You can use the lesson and code practice now.</p><button type="button" onClick={() => setPracticeFormat('code')}>Open code practice</button></>}</section> })() : <><div className="resource-breadcrumb"><span>TUTOR</span><span>/</span><strong>IDE PRACTICE</strong></div><header className="resource-ide-heading"><div><span className="screen-kicker">{practiceModes.find((mode) => mode.id === practiceMode)?.label.toUpperCase()}</span><h3>{conceptLabel}</h3>{practiceQuestion ? <div className="pyr-practice-question"><span className="screen-kicker">PYR'S QUESTION</span><p>{practiceQuestion.text}</p>{practiceQuestion.why && <small>{practiceQuestion.why}</small>}</div> : <p>{practiceModes.find((mode) => mode.id === practiceMode)?.prompt} PYR can point at your reasoning without writing the finished response.</p>}</div><label><span>QUESTION LENS</span>{pyr?.chooseLensEnabled && <button type="button" className="pyr-choose-lens" onClick={choosePyrLens} disabled={busy}>✦ Let PYR choose</button>}<select value={practiceMode} onChange={(event) => { setPracticeMode(event.target.value); setPracticeQuestion(null) }}>{practiceModes.map((mode) => <option key={mode.id} value={mode.id}>{mode.label}</option>)}</select></label></header>{!practiceQuestion && ['predict', 'trace', 'bug'].includes(practiceMode) && <div className="tutor-reference-code"><div className="resource-editor-toolbar">{practiceMode === 'bug' ? 'example mistake' : 'example.py'} · read only</div><Editor height="140px" language="python" value={practiceMode === 'bug' ? (selectedPage?.mistake_examples?.[0] || selectedPage?.examples?.[0] || '# Open the lesson to see an example.') : (lessonFor(selectedPage)?.example || '')} theme="vs-dark" options={{ readOnly: true, minimap: { enabled: false }, fontSize: editorFontSize, automaticLayout: true, scrollBeyondLastLine: false }} /></div>}<div className="resource-mode-strip">{practiceModes.map((mode, index) => <button type="button" key={mode.id} className={practiceMode === mode.id ? 'active' : ''} onClick={() => { setPracticeMode(mode.id); setPracticeQuestion(null) }}><span>0{index + 1}</span>{mode.label}</button>)}</div><div className="resource-editor-card"><div className="resource-editor-toolbar"><span><b className="safe-badge">PYR WRITABLE</b> tutor.py{tutorDirty ? ' · unsaved' : ''}</span><span>MONACO · PYTHON · LOCAL COMPLETION</span></div><div className="resource-monaco"><Editor height="100%" path="tutor.py" language="python" value={tutorCode || ''} onChange={(value) => onTutorChange?.(value ?? '')} onMount={(editor, monaco) => { const provider = monaco.languages.registerCompletionItemProvider('python', { triggerCharacters: ['.', '_'], provideCompletionItems: (model) => ({ suggestions: resourceIdentifierSuggestions(model.getValue()).map((label) => ({ label, kind: monaco.languages.CompletionItemKind.Keyword, insertText: label })) }) }); editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter, () => editorActions.current.run?.()); editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => editorActions.current.save?.()); editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyMod.Shift | monaco.KeyCode.Enter, () => editorActions.current.submit?.()); editor.onDidDispose(() => provider.dispose()) }} theme="vs-dark" options={{ minimap: { enabled: false }, acceptSuggestionOnEnter: 'off', fontSize: editorFontSize, fontFamily: 'JetBrains Mono, ui-monospace, monospace', lineHeight: Math.round(editorFontSize * 1.55), padding: { top: 14, bottom: 14 }, automaticLayout: true, smoothScrolling: true, tabSize: 4, suggestOnTriggerCharacters: true }} /></div><div className="resource-editor-actions"><span>Ctrl/Cmd ↵ run · Ctrl/Cmd S save · Ctrl/Cmd ⇧ ↵ submit</span><div><button type="button" onClick={onTutorSave} disabled={busy}>Save Tutor</button><button type="button" onClick={onTutorFormat} disabled={busy}>Pretty</button><button type="button" data-tutor-run onClick={runPractice} disabled={busy}>▶ Run Tutor</button><button type="button" className="primary" data-tutor-submit onClick={submit} disabled={busy || !String(tutorCode || '').trim()}>Submit for feedback</button></div></div></div><section className={`resource-ide-terminal ${terminal.status}`} aria-live="polite"><div><span>PRACTICE FEEDBACK</span><b>{terminal.status.toUpperCase()}</b></div><pre>{terminal.output.join('\n')}</pre></section></>}{tutorExternalChange && <div className="tutor-conflict-banner" role="alert"><strong>External tutor.py change detected.</strong><span>Your unsaved edits are preserved.</span><button type="button" onClick={onTutorReloadExternal}>Reload external version</button><button type="button" onClick={onTutorKeepEdits}>Keep my edits</button></div>}</main><aside className="resource-ai-panel"><div className="resource-ai-heading"><div><span className="screen-kicker">PYR / AI</span><strong>Tutor channel</strong></div><span className="connection-pill">{pyr?.ready ? 'OPENCODE' : 'OFFLINE'}</span></div><p>Bounded guidance only. PYR will not paste a campaign answer or project-specific snippet.</p><div className="resource-ai-messages">{aiMessages.map((message, index) => <div key={`${message.role}-${index}`} className={`resource-ai-message ${message.role}`}><span>{message.role === 'learner' ? 'YOU' : 'PYR'}</span><p>{message.text}</p></div>)}</div><textarea value={aiPrompt} onChange={(event) => setAiPrompt(event.target.value)} rows={3} placeholder="Ask for a hint, not a finished answer…" /><div><button type="button" onClick={() => setAiMessages([])}>Clear</button><button type="button" className="primary" onClick={askPyr} disabled={busy}>Ask PYR</button></div></aside></section>}
       {surface === 'notes' && <section className="resource-notes-layout"><aside className="resource-ide-rail resource-notes-rail"><button type="button" className="resource-rail-file" onClick={() => setSurface('ide')}><ForgeFileGlyph kind="python" /><small>tutor.py</small></button><button type="button" className="resource-rail-file active" onClick={() => setSurface('notes')}><ForgeFileGlyph kind="markdown" /><small>notes.md</small></button><div className="resource-ide-context"><span className="screen-kicker">CONCEPT</span><strong>{conceptLabel}</strong><small>notes.md · learner workspace</small></div></aside><main className="resource-notes-main"><ResourceNotebook pages={pages} selectedPage={selectedPage} entries={entries} onSelectPage={setSelectedId} /></main></section>}
     </div>
   )
@@ -3007,8 +3017,7 @@ const HOME_STATION_UPGRADES = {
 }
 
 const HOME_STATION_ROOMS = {
-  hearth: 'great_hall', study: 'library', armory: 'armory', pantry: 'pantry',
-  trophy: 'gallery', map: 'war_room', perch: 'den',
+  hearth: 'great_hall', perch: 'den',
 }
 const HOME_STATION_ACTIONS = {
   hearth: 'Rest at the hearth', study: 'Open Tutor', armory: 'Open the Armory',
@@ -3060,7 +3069,7 @@ function useHomeBuild() {
   return status
 }
 
-function HomeRoom({ progress, homeRooms, purchaseHomeRoom, armory, armoryActions, performHomesteadAction, onNavigate, onClassic, busy }) {
+function HomeRoom({ progress, homeRooms, purchaseHomeRoom, buildRoomUpgrade, armory, armoryActions, hunter, spendStatPoint, performHomesteadAction, onNavigate, onClassic, busy }) {
   const frameRef = useRef(null)
   const sectionRef = useRef(null)
   const directoryRef = useRef(null)
@@ -3069,6 +3078,7 @@ function HomeRoom({ progress, homeRooms, purchaseHomeRoom, armory, armoryActions
   const [frameKey, setFrameKey] = useState(0)
   const [currentRoom, setCurrentRoom] = useState('great_hall')
   const [mapOpen, setMapOpen] = useState(false)
+  const [homeHelp, setHomeHelp] = useState(() => { try { return window.localStorage.getItem('questlab.homeGuideSeen') !== 'true' } catch { return true } })
   const [roomPosition, setRoomPosition] = useState({ x: 160, y: 150 })
   const currentRoomInfo = HOME_DIRECTORY.find((room) => room.id === currentRoom) || HOME_DIRECTORY.find((room) => room.id === 'great_hall')
   const connectedRooms = Object.entries(currentRoomInfo.exits).map(([direction, id]) => ({ direction, room: HOME_DIRECTORY.find((room) => room.id === id) })).filter((entry) => entry.room)
@@ -3139,6 +3149,7 @@ function HomeRoom({ progress, homeRooms, purchaseHomeRoom, armory, armoryActions
     if (id === 'door') return onNavigate?.('forge')
     if (id === 'map') return onNavigate?.('dungeon')
     if (id === 'armory') return setPanel('armory')
+    if (id === 'hunter') return setPanel('hunter')
     if (id === 'study') return onNavigate?.('tutor')
     if (id === 'trophy') {
       try { window.localStorage.setItem('questlab.settingsSection', 'stats') } catch { /* storage unavailable */ }
@@ -3150,7 +3161,7 @@ function HomeRoom({ progress, homeRooms, purchaseHomeRoom, armory, armoryActions
     }
     if (id === 'hearth') return homeAction('recover', (healed) => (healed > 0 ? `You rest by the fire: +${healed} HP` : 'You are fully rested.'))
     if (id === 'pantry') return homeAction('meal', (healed) => `You eat a hot meal: +${healed} HP`)
-    if (id === 'perch') return homeAction('feed_pyr', () => 'Pyr is fed and glows brighter.')
+    if (id === 'perch' || id === 'pyr') return homeAction('feed_pyr', () => 'Pyr is fed and glows brighter.')
   }
   const useStation = (id) => {
     setMapOpen(false)
@@ -3233,6 +3244,12 @@ function HomeRoom({ progress, homeRooms, purchaseHomeRoom, armory, armoryActions
             </ol>
           </nav>}
         </div>}
+        {homeStatus === 'ready' && homeHelp && <section className="home-guide" aria-label="Welcome home">
+          <span className="screen-kicker">WELCOME HOME</span><h3>Your place between runs</h3>
+          <p>Rest at the hearth to restore health. Prepare equipment, spend hunter points, build permanent upgrades and view trophies here. Walk up to the door marked Pyr’s Den to visit Pyr.</p>
+          <p>Walk with WASD or the arrow keys; hold Shift to move faster. Press E near an object or Pyr. Use the navigation above to reach the Forge, Tutor and Dungeon.</p>
+          <button type="button" onClick={() => { try { window.localStorage.setItem('questlab.homeGuideSeen', 'true') } catch { /* storage unavailable */ } setHomeHelp(false); focusRoom() }}>Explore Home →</button>
+        </section>}
         {homeStatus !== 'ready' && <div className="home-loading" role="status" aria-live="polite">
           <span className="home-loading-flame" aria-hidden="true">✦</span>
           <strong>{homeStatus === 'slow' ? 'The castle is taking a while' : 'Opening the castle'}</strong>
@@ -3256,17 +3273,25 @@ function HomeRoom({ progress, homeRooms, purchaseHomeRoom, armory, armoryActions
             {ladder && <section className="home-upgrades-built"><h3>Built steps</h3>{level === 0 ? <p>No upgrades built yet.</p> : <ol>{ladder.slice(0, level).map((step, index) => <li key={`${index}-${step.name}`}>{step.name}</li>)}</ol>}</section>}
           </div>
         )}
+        {panel === 'hunter' && (
+          <div className="home-room-panel" role="dialog" aria-modal="true" aria-label="Improve your hunter">
+            <button type="button" className="home-room-close" onClick={closePanel}>Close</button>
+            <section className="home-passives"><h3>Hunter upgrades</h3><p>Build permanent bonuses with Embers. Available: {progress?.homestead?.upgrade_tokens ?? 0}.</p><div className="home-passive-grid">{HOME_ROOM_UPGRADES.map((upgrade) => { const owned = (progress?.homestead?.room_upgrades || []).includes(upgrade.id); const canBuild = (progress?.homestead?.upgrade_tokens || 0) >= upgrade.cost; return <article key={upgrade.id}><strong>{upgrade.name}</strong><small>{upgrade.effect} · {upgrade.detail}</small>{owned ? <span>Built · active</span> : <button type="button" onClick={() => buildRoomUpgrade?.(upgrade.id)} disabled={busy || !canBuild || !buildRoomUpgrade}>Build · {upgrade.cost} Embers</button>}</article> })}</div></section>
+            <HunterSheet hunter={hunter} spendStatPoint={spendStatPoint} busy={busy} />
+          </div>
+        )}
         {panel === 'armory' && (
           <div className="home-room-panel" role="dialog" aria-label="Armory">
-            <button type="button" className="home-room-close" onClick={() => setPanel('')} aria-label="Close the Armory">Close</button>
+            <button type="button" className="home-room-close" onClick={closePanel} aria-label="Close the Armory">Close</button>
             <ArmoryPanel armory={armory} actions={armoryActions} busy={busy} />
           </div>
         )}
       </div>
       <div className="home-room-bar" style={{ width: frameSize.width + 6 }}>
-        <small>WASD or arrows walk · E uses a station</small>
+        <small>WASD or arrows walk · Shift runs · E interacts</small>
         <span>
           {HUNTER_LOOKS.length > 1 && <button type="button" onClick={cycleLook} title="Change the hunter's look">Look: {look}</button>}
+          <button type="button" onClick={() => setHomeHelp(true)}>Home guide</button>
           <button type="button" onClick={toggleCrt} aria-pressed={crt}>Scanlines {crt ? 'on' : 'off'}</button>
           <button type="button" onClick={onClassic}>Classic home</button>
         </span>
@@ -3301,7 +3326,7 @@ function CampaignSurface({ progress, homeRooms, purchaseHomeRoom, revision, equi
       <div className={`campaign-layout ${mapCollapsed ? 'map-rail-is-collapsed' : ''}`}>
         <CampaignMapRail progress={progress} place={place} onSelect={selectPlace} onSelectCampaign={selectCampaign} busy={busy} collapsed={mapCollapsed} onToggle={() => setMapCollapsed((value) => !value)} />
         <main className="campaign-place-panel" data-place={place}>
-          {place === 'home' && homeBuild === 'ready' && !classicHome && <HomeRoom progress={progress} homeRooms={homeRooms} purchaseHomeRoom={purchaseHomeRoom} armory={armory} armoryActions={armoryActions} performHomesteadAction={performHomesteadAction} onNavigate={onNavigate} onClassic={() => setClassic(true)} busy={busy} />}
+          {place === 'home' && homeBuild === 'ready' && !classicHome && <HomeRoom progress={progress} homeRooms={homeRooms} purchaseHomeRoom={purchaseHomeRoom} buildRoomUpgrade={buildRoomUpgrade} hunter={hunter} spendStatPoint={spendStatPoint} armory={armory} armoryActions={armoryActions} performHomesteadAction={performHomesteadAction} onNavigate={onNavigate} onClassic={() => setClassic(true)} busy={busy} />}
           {place === 'home' && homeBuild === 'ready' && classicHome && <div className="home-room-switch"><button type="button" onClick={() => setClassic(false)}>Back to the room</button></div>}
           {place === 'home' && (homeBuild !== 'ready' || classicHome) && <Homestead hunter={hunter} spendStatPoint={spendStatPoint} armory={armory} armoryActions={armoryActions} progress={progress} revision={revision} equipmentProjection={equipmentProjection} purchaseCosmetic={purchaseCosmetic} equipCosmetic={equipCosmetic} equipCampaignItem={equipCampaignItem} buildRoomUpgrade={buildRoomUpgrade} performHomesteadAction={performHomesteadAction} setAvatar={setAvatar} busy={busy} onNavigate={homeNavigate} />}
           {place === 'market' && <CampaignMarket progress={progress} hunter={hunter} hunterActions={hunterActions} armory={armory} armoryActions={armoryActions} purchaseMarketItem={purchaseMarketItem} busy={busy} onBackHome={() => setPlace('home')} />}
@@ -3663,6 +3688,7 @@ function SparringArena({ roster = [], actions, busy }) {
   const [feedback, setFeedback] = useState(null)
   const [score, setScore] = useState(0)
   const [error, setError] = useState('')
+  const [sparCode, setSparCode] = useState('')
   const foe = roster.find((item) => item.id === foeId)
   const contracts = roster.filter((item) => item.kind === 'contract')
   const beasts = roster.filter((item) => item.kind === 'beast')
@@ -3670,7 +3696,9 @@ function SparringArena({ roster = [], actions, busy }) {
     setError('')
     setQuestion(null)
     try {
-      setQuestion(await actions?.ask?.(target, number))
+      const nextQuestion = await actions?.ask?.(target, number)
+      setQuestion(nextQuestion)
+      setSparCode(nextQuestion?.starter_code || '')
     } catch (failure) {
       setError(failure?.message || 'PYR could not write this round.')
     }
@@ -3691,6 +3719,15 @@ function SparringArena({ roster = [], actions, busy }) {
     } catch (failure) {
       setError(failure?.message || 'That answer could not be checked.')
     }
+  }
+  const submitCode = async () => {
+    if (!question || busy || feedback || !sparCode.trim()) return
+    setError('')
+    try {
+      const result = await actions?.answerCode?.(foeId, sparCode)
+      setFeedback(result)
+      if (result?.verdict === 'correct') setScore((value) => value + 1)
+    } catch (failure) { setError(failure?.message || 'The code could not be reviewed. Try again.') }
   }
   const next = () => {
     setFeedback(null)
@@ -3719,7 +3756,7 @@ function SparringArena({ roster = [], actions, busy }) {
       </aside>
       <div className="spar-ring">
         {!foe ? (
-          <div className="spar-intro"><span className="screen-kicker">THE SPARRING RING</span><h3>Train against what you have fought.</h3><p>A simulated fight: five quick rounds of clickable questions, theory and code reading both fair game. Nothing here can hurt you, and every right first answer still sharpens your signs.</p></div>
+          <div className="spar-intro"><span className="screen-kicker">THE SPARRING RING</span><h3>Train against what you have fought.</h3><p>A simulated fight: five rounds of questions and a coding exercise, with room to think. Nothing here can hurt you, and every right first answer still sharpens your signs.</p></div>
         ) : (
           <>
             <div className="dungeon-brief-strip spar-strip">
@@ -3733,8 +3770,11 @@ function SparringArena({ roster = [], actions, busy }) {
                 <div className="spar-result"><h3>{score >= 4 ? 'A clean win.' : score >= 3 ? 'You held your own.' : 'Back to the notebook.'}</h3><p>You answered {score} of {SPAR_ROUNDS} rounds right against {foe.name}.</p><button type="button" className="campaign-button" onClick={() => start(foe.id)} disabled={busy}>Spar again</button></div>
               ) : question ? (
                 <>
-                  <DungeonPromptText text={question.prompt} />
-                  {!feedback && <ChoicePanel options={question.options || []} onChoose={choose} busy={busy} label="PICK ONE" />}
+                  <div className={question.question_type === 'code' ? 'spar-code-layout' : 'spar-choice-layout'}>
+                  <div className="spar-prompt"><DungeonPromptText text={question.prompt} /></div>
+                  {question.question_type === 'code' ? <div className="spar-code-workspace"><div className="resource-editor-toolbar"><span>sparring.py · scratch workspace</span>{!feedback && <button type="button" className="campaign-button" onClick={submitCode} disabled={busy || !sparCode.trim()}>Submit for feedback</button>}</div><Editor height="260px" language="python" value={sparCode} onChange={(value) => setSparCode(value ?? '')} theme="vs-dark" options={{ minimap: { enabled: false }, fontSize: 14, automaticLayout: true, readOnly: Boolean(feedback), scrollBeyondLastLine: false }} /><p>This scratch answer is reviewed by PYR; it is not run or saved to your project.</p></div> : !feedback && <ChoicePanel options={question.options || []} onChoose={choose} busy={busy} label="PICK ONE" />}
+                  </div>
+                  {error && <p role="alert">{error}</p>}
                   {feedback && (
                     <div className={`battle-feedback ${feedback.verdict}`} role="status">
                       <strong>{feedback.verdict === 'correct' ? '✔ Hit. ' : '✘ Parried. '}</strong>{feedback.reason}
@@ -3763,7 +3803,7 @@ const BATTLE_CHOICE_KINDS = new Set(['prediction', 'explanation'])
 
 // The campaign battle sidebar, laid out like the Dungeon brief: the question
 // first, then what you are fighting, then every objective.
-function BattleBrief({ encounter, board, charges = {}, questions = {}, feedback, onAsk, onAnswer, onCheckSetup, busy }) {
+function BattleBrief({ encounter, board, charges = {}, questions = {}, feedback, onAsk, onAnswer, onCheckSetup, onStudy, busy }) {
   const open = encounter.available_objectives || []
   const contract = (board?.contracts || []).find((item) => item.name === encounter.mob_name)
   // Beginner lessons and workshops follow their written teaching order;
@@ -3814,6 +3854,7 @@ function BattleBrief({ encounter, board, charges = {}, questions = {}, feedback,
         )}
         {feedback && !String(feedback.objectiveId || '').startsWith('boss:') && <div className={`battle-feedback ${feedback.verdict}`} role="status">{feedback.verdict === 'correct' ? '✔ ' : feedback.verdict === 'not_yet' ? 'Not yet. ' : '✘ '}{feedback.reason}</div>}
         {choice && codeLeft.length > 0 && <small className="battle-brief-also">Also open: {codeLeft.map((item) => item.label).join(', ')} (Submit run).</small>}
+        {current && <button type="button" className="campaign-button ghost" onClick={() => onStudy?.(current, contract?.sign)}>Study this in Tutor →</button>}
         {current && <StudyAtHomeButton topic={encounter.mob?.concept || contract?.concept || current.label} context={`fighting ${encounter.mob_name}: ${current.label.toLowerCase()} in ${entry}`} />}
       </section>
       <section className="battle-brief-enemy">

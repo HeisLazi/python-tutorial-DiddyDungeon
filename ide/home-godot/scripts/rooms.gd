@@ -267,6 +267,15 @@ static func _side_wall(h, x: float, exit: Dictionary) -> void:
 	h.add_light(Vector2(edge + (14.0 if left else -14.0), DOOR_Y + 30.0), 40.0, Color(0.7, 0.8, 1.0), 0.35, 0.0)
 	var trigger := Rect2(-40.0, DOOR_Y, 44.0, DOOR_H) if left else Rect2(h.VIEW.x - 4.0, DOOR_Y, 44.0, DOOR_H)
 	h.door(trigger, str(exit["to"]), exit["spawn"])
+	var names := {"gallery": "GALLERY", "pantry": "PANTRY", "library": "LIBRARY", "great_hall": "HOME", "armory": "ARMS", "war_room": "WAR ROOM", "den": "PYR'S DEN"}
+	var sign := Label.new()
+	sign.text = ("< " if left else "") + str(names.get(str(exit["to"]), "ROOM")) + ("" if left else " >")
+	h._style(sign, 5, Color("f4d9a2"))
+	sign.position = Vector2(3 if left else h.VIEW.x - 76, DOOR_Y - 15)
+	sign.size = Vector2(73, 10)
+	sign.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT if left else HORIZONTAL_ALIGNMENT_RIGHT
+	sign.z_index = 10
+	h.background.add_child(sign)
 
 
 ## North and south passages: walk into the threshold to enter the adjoining room.
@@ -294,6 +303,23 @@ static func _vertical_door(h, north: bool, x: float, to: String, spawn: Vector2)
 		h.door(Rect2(x - 12, 180, 24, 6), to, spawn)
 
 
+## A visible, labelled door to another room, approached from in front.
+static func _front_door(h, x: float, to: String, spawn: Vector2) -> void:
+	h.bg("door_wood", Vector2(x, 68), true)
+	h.add_light(Vector2(x, 62), 44.0, Color("e3c38a"), 0.36, 0.0)
+	h.door(Rect2(x - 12, 68, 24, 5), to, spawn)
+	_zone_label(h, "PYR'S DEN", Vector2(x - 25, 7))
+
+
+static func _zone_label(h, text: String, at: Vector2) -> void:
+	var label := Label.new()
+	label.text = text
+	h._style(label, 5, Color("f4d9a2"))
+	label.position = at
+	label.z_index = 10
+	h.background.add_child(label)
+
+
 ## A prop with a contact shadow and a feet blocker.
 static func _prop(h, piece: String, feet: Vector2, w: float, d: float, shadow_w := 0.0) -> Sprite2D:
 	h.add_shadow(feet, shadow_w if shadow_w > 0.0 else w, maxf(4.0, d + 1.0))
@@ -306,7 +332,7 @@ static func _great_hall(h, lv: int) -> void:
 	if lv >= GH_MARBLE:
 		marble_from = 0
 		marble_to = 19
-	_shell(h, marble_from, marble_to, {"to": "library", "spawn": Vector2(290, 142)}, {"to": "armory", "spawn": Vector2(30, 142)})
+	_shell(h, marble_from, marble_to, {}, {})
 	var marble := lv >= GH_MARBLE
 	var glass := lv >= GH_GLASS
 	# The ambient light brightens a little with every step.
@@ -323,7 +349,7 @@ static func _great_hall(h, lv: int) -> void:
 	var pillar_piece := "pillar_g" if lv >= GH_GRAND else "pillar_s"
 	var pillar_xs: Array = [10.0, 310.0]
 	if lv >= GH_MARBLE:
-		pillar_xs = [10.0, 60.0, 260.0, 310.0]
+		pillar_xs = [10.0, 260.0, 310.0]
 	for x in pillar_xs:
 		h.bg(pillar_piece, Vector2(x, 66), true)
 	if lv >= GH_GRAND:
@@ -341,12 +367,18 @@ static func _great_hall(h, lv: int) -> void:
 	if lv >= GH_BANQUET:
 		h.bg("rug_table", Vector2(210, 82))
 
+	# Two distinct work areas flank the central route to the hearth.
+	h.add_tint(Rect2(18, 108, 102, 56), Color(0.35, 0.24, 0.18, 0.22))
+	h.add_tint(Rect2(18, 108, 102, 2), Color(0.72, 0.54, 0.32, 0.55))
+	h.add_tint(Rect2(232, 126, 72, 48), Color(0.22, 0.30, 0.42, 0.24))
+	h.add_tint(Rect2(232, 126, 72, 2), Color(0.52, 0.62, 0.77, 0.55))
+
 	# ── Windows: plain and cold, then stained glass throwing coloured light on the floor ──
 	var window_kind := "window_glass" if glass else "window_plain"
 	var beam := Color(0.50, 0.60, 0.95, 0.10 + (0.19 if glass else 0.0) * minf(1.0, (lv - GH_GLASS) / float(GH_GRAND - GH_GLASS)))
 	var panes: Array = [Color(0.95, 0.25, 0.30, 0.30), Color(0.30, 0.45, 1.0, 0.32), Color(1.0, 0.78, 0.28, 0.30),
 		Color(0.65, 0.35, 0.95, 0.30), Color(0.35, 0.65, 1.0, 0.30), Color(0.95, 0.35, 0.40, 0.28)]
-	for x in [84.0, 236.0]:
+	for x in [120.0, 236.0]:
 		var dir := 1.0 if x < 160.0 else -1.0
 		h.bg(window_kind, Vector2(x, 60), true)
 		h.add_shaft(Vector2(x - 12, 40), 24.0, 96.0, 30.0 * dir, beam)
@@ -363,7 +395,7 @@ static func _great_hall(h, lv: int) -> void:
 				k += 1
 
 	# ── Banners: torn rags at the start, crimson crests after (they sway) ──
-	for x in [122.0, 198.0]:
+	for x in [38.0, 198.0]:
 		var banner: Sprite2D = h.bg("banner_crest" if lv >= GH_BANNERS else "banner_torn", Vector2(x, 56), true)
 		h.sway(banner, 0.9, 1.7, 36.0)
 
@@ -392,11 +424,10 @@ static func _great_hall(h, lv: int) -> void:
 	# ── Furniture and clutter ──
 	var benches_fixed := lv >= GH_CLEAN
 	var bench_kind := "bench" if benches_fixed else "bench_broken"
-	var bench_spots: Array = [Vector2(108, 112), Vector2(74, 142)]
+	# Keep the preparation and trophy areas clear at every upgrade level.
+	var bench_spots: Array = [Vector2(202, 155)]
 	if lv < GH_BANQUET:
-		bench_spots.append_array([Vector2(212, 112), Vector2(246, 142)])
-	if not benches_fixed:
-		bench_spots = [Vector2(104, 112), Vector2(74, 140), Vector2(232, 150)]
+		bench_spots.append(Vector2(244, 142))
 	for at in bench_spots:
 		_prop(h, bench_kind, at, 30.0, 8.0)
 	if lv < GH_BANQUET:
@@ -406,12 +437,12 @@ static func _great_hall(h, lv: int) -> void:
 		_prop(h, "barrel", Vector2(288, 96), 14.0, 7.0)
 	elif lv < GH_CHANDELIER:
 		_prop(h, "barrel", Vector2(30, 98), 14.0, 7.0)
-		_prop(h, "barrel", Vector2(48, 102), 14.0, 7.0)
+		_prop(h, "barrel", Vector2(30, 154), 14.0, 7.0)
 		_prop(h, "crate", Vector2(292, 100), 18.0, 8.0)
 	if lv >= GH_CHANDELIER:
 		for at in [Vector2(32, 100), Vector2(288, 100)]:
 			_prop(h, "knight", at, 14.0, 6.0, 16.0)
-		for x in [124.0, 196.0]:
+		for x in [100.0, 220.0]:
 			_prop(h, "urn_gold" if lv >= GH_GRAND else "urn", Vector2(x, 178), 12.0, 6.0)
 		h.add_chain(92.0, 2.0, 96.0)
 		h.add_shadow(Vector2(92, 160), 40.0, 10.0, 0.22)
@@ -434,6 +465,18 @@ static func _great_hall(h, lv: int) -> void:
 	# ── The great door: a plain oak door until the grand finish ──
 	h.bg("door_gold" if lv >= GH_GRAND else "door_wood", Vector2(160, 186), true)
 	h.station("door", "Go to the Forge", Rect2(138, 158, 44, 24), Vector2(160, 134))
+
+	# The hall is a useful home base: core hunter, equipment and trophy actions
+	# remain close to the hearth while the older rooms keep their upgrades.
+	_prop(h, "rack_few", Vector2(50, 130), 22.0, 6.0)
+	h.station("armory", "Prepare your equipment", Rect2(30, 132, 40, 24), Vector2(50, 96))
+	_prop(h, "knight", Vector2(105, 151), 12.0, 5.0)
+	h.station("hunter", "Improve your hunter", Rect2(89, 153, 32, 22), Vector2(105, 118))
+	_prop(h, "plinth_chalice", Vector2(288, 154), 20.0, 6.0)
+	h.station("trophy", "View your trophies", Rect2(272, 156, 32, 20), Vector2(288, 122))
+	_front_door(h, 80.0, "den", Vector2(160, 170))
+	_zone_label(h, "PREPARE", Vector2(20, 76))
+	_zone_label(h, "TROPHIES", Vector2(242, 104))
 
 
 static func _library(h, lv: int) -> void:
@@ -875,7 +918,7 @@ static func _war_room(h, lv: int) -> void:
 
 
 static func _den(h, lv: int) -> void:
-	_shell(h, -1, -1, {"to": "war_room", "spawn": Vector2(290, 142)}, {}, "stone")
+	_shell(h, -1, -1, {}, {}, "stone")
 	h.set_ambient(Color(0.47, 0.40, 0.48).lerp(Color(0.59, 0.50, 0.54), lv / float(DN_AERIE)))
 	h.add_tint(Rect2(0, 0, h.VIEW.x, 64), Color(0.30, 0.16, 0.22, 0.12))
 
@@ -943,3 +986,5 @@ static func _den(h, lv: int) -> void:
 		h.add_embers(Rect2(218, 76, 34, 24), Color("ffd27a"), 12, 12.0, 3.0)
 
 	h.add_embers(Rect2(40, 74, 240, 90), Color(0.85, 0.78, 0.75, 0.45), maxi(4, 12 - lv), 3.0, 5.0)
+
+	_vertical_door(h, false, 160.0, "great_hall", Vector2(80, 80))

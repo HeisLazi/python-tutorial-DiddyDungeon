@@ -25,7 +25,7 @@ test('the map destinations match the actual Godot doorways', () => {
     const match = source.match(new RegExp(`static func _${room.id}\\(h, lv: int\\)[\\s\\S]*?(?=\\n\\nstatic func |$)`))
     assert.ok(match, `missing room ${room.id}`)
     const side = [...match[0].matchAll(/\{"to": "([^"]+)"/g)].map((result) => result[1])
-    const vertical = [...match[0].matchAll(/_vertical_door\(h, (?:true|false), [^,]+, "([^"]+)"/g)].map((result) => result[1])
+    const vertical = [...match[0].matchAll(/_(?:vertical_door\(h, (?:true|false),|front_door\(h,) [^,]+, "([^"]+)"/g)].map((result) => result[1])
     assert.deepEqual([...side, ...vertical].sort(), Object.values(room.exits).sort(), room.id)
   }
 })

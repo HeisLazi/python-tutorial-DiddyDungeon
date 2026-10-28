@@ -4,7 +4,7 @@ Written 2026-10-27 for whoever continues (Codex, another Claude, or the owner). 
 (architecture, art history, bridge protocol). This file is the **current state, the recipe, and the exact next steps**.
 Update the "Status" and "Next steps" sections after every major step and commit.
 
-> **Current layout update:** The historical room-chain and merge notes below predate the later castle floor-plan work. Home now branches Gallery–Library–Pantry vertically, with Library east to Great Hall, Great Hall east to Hall of Arms, Hall of Arms north to War Room, and War Room east to Pyr's Den. The in-game minimap reflects these actual doors. See `CASTLE_REDESIGN_PLAN.md` for what is implemented and the remaining art and hunter work. Never edit the real save for testing.
+> **Current layout update:** Home now has the Great Hall and Pyr's Den only. A visible door on the hall's back wall leads north to the den, and the south threshold returns to the hall. The hall contains healing, equipment, hunter stats and permanent upgrades, and trophies. Pyr roams in the den. The previous rooms' saved upgrade levels are retained, but those rooms are no longer playable. The room-chain and merge notes below are historical. Never edit the real save for testing.
 
 ## 1. Where things live
 

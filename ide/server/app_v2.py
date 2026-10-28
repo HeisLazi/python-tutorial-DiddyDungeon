@@ -3780,6 +3780,13 @@ class SparQuestionRequest(BaseModel):
     round: int = Field(default=1, ge=1, le=SPAR_ROUNDS)
 
 
+class SparCodeRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    target_id: str = Field(min_length=1, max_length=MAX_IDENTIFIER_LENGTH)
+    code: str = Field(min_length=1, max_length=20_000)
+
+
 class SparOptionRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -3803,6 +3810,15 @@ def ai_spar_question(payload: SparQuestionRequest):
     """PYR writes the next sparring question (a simulated fight: no damage)."""
 
     foe = _spar_foe(payload.target_id)
+    if payload.round == 4:
+        written = _ai_call(ai_tutor.write_spar_code_question, concept=foe["concept"] or foe["name"],
+                           foe=foe["name"], studied=_studied_ideas(f"{foe['concept']} {foe['name']}"))
+        key = f"spar:{payload.target_id}"
+        question = {"prompt": written["prompt"], "starter_code": written["starter_code"], "question_type": "code", "question_id": uuid.uuid4().hex}
+        with PROGRESS_LOCK:
+            CHOICE_ANSWER_KEYS.pop(key, None)
+            SPAR_QUESTIONS[key] = question
+        return {"ok": True, "question": {"target_id": payload.target_id, "round": payload.round, **question}}
     question_type = "true_false" if payload.round % 3 == 0 else "multiple_choice"
     written = _ai_call(
         ai_tutor.write_spar_question,
@@ -3827,13 +3843,15 @@ def answer_spar_option(payload: SparOptionRequest):
     foe = _spar_foe(payload.target_id)
     key = f"spar:{payload.target_id}"
     with PROGRESS_LOCK:
-        question = SPAR_QUESTIONS.pop(key, None)
-        answer = CHOICE_ANSWER_KEYS.pop(key, None)
-        if not question or not answer:
+        question = SPAR_QUESTIONS.get(key)
+        answer = CHOICE_ANSWER_KEYS.get(key)
+        if not question or not answer or question.get("question_type") == "code":
             raise HTTPException(status_code=409, detail="That sparring question is no longer open")
         options = list(question.get("options") or [])
         if payload.option_index >= len(options):
             raise HTTPException(status_code=422, detail="That question has no such option")
+        SPAR_QUESTIONS.pop(key, None)
+        CHOICE_ANSWER_KEYS.pop(key, None)
         correct_text = options[int(answer["answer"])]
         verdict = "correct" if payload.option_index == int(answer["answer"]) else "incorrect"
         why = str(answer.get("why") or "")
@@ -3849,6 +3867,45 @@ def answer_spar_option(payload: SparOptionRequest):
         except StateCommandError as exc:
             raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
     return {"ok": True, "verdict": verdict, "reason": reason, "correct_index": int(answer["answer"]), "hunter_gain": recorded["result"].get("hunter_gain")}
+
+
+@app.post("/api/spar/answer-code")
+def answer_spar_code(payload: SparCodeRequest):
+    """Review the current scratch answer without executing or saving it."""
+    foe = _spar_foe(payload.target_id)
+    if not payload.code.strip():
+        raise HTTPException(status_code=422, detail="Write some code before submitting")
+    key = f"spar:{payload.target_id}"
+    with PROGRESS_LOCK:
+        question = SPAR_QUESTIONS.get(key)
+        if not question or question.get("question_type") != "code" or question.get("grading"):
+            raise HTTPException(status_code=409, detail="That coding round is no longer available")
+        question["grading"] = True
+        question_id = question["question_id"]
+        prompt = str(question["prompt"])
+    try:
+        result = _ai_call(ai_tutor.judge, "practice", context={"concept": foe["concept"], "execution": "not run"},
+                          answer=payload.code, question=prompt)
+    except Exception:
+        with PROGRESS_LOCK:
+            current = SPAR_QUESTIONS.get(key)
+            if current and current.get("question_id") == question_id:
+                current.pop("grading", None)
+        raise
+    with PROGRESS_LOCK:
+        current = SPAR_QUESTIONS.get(key)
+        if not current or current.get("question_id") != question_id:
+            raise HTTPException(status_code=409, detail="The sparring round changed during feedback")
+        concept = HUNTER_SIGN_CONCEPTS.get(foe.get("sign") or "", foe["concept"] or foe["name"])
+        try:
+            started = STATE_SERVICE.apply("practice_session_started", {"concept": concept[:120], "question_type": "code_trace", "difficulty": 2}, "player")
+            session_id = started["result"]["session"]["session_id"]
+            recorded = STATE_SERVICE.apply_internal("practice_record_attempt", {"session_id": session_id, "outcome": result["verdict"], "evidence_id": f"sp-code-{uuid.uuid4().hex[:16]}", "reason": result["reason"]})
+        except StateCommandError as exc:
+            current.pop("grading", None)
+            raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
+        SPAR_QUESTIONS.pop(key, None)
+    return {"ok": True, **result, "hunter_gain": recorded["result"].get("hunter_gain")}
 
 
 class DungeonOptionRequest(BaseModel):

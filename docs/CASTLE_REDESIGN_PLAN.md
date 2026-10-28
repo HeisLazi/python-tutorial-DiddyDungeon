@@ -1,6 +1,6 @@
 # Castle redesign direction
 
-Status: the seven-room branching layout and floor-plan map are implemented in Home. The more overhead room art and redesigned hunter remain future work. The isolated three-room prototype remains available for comparison. The unfinished Tutor rebuild is separate work.
+Status: superseded by the two-room Home requested later. The Great Hall now holds player preparation, recovery and trophies, and a visible back-wall door leads to Pyr’s Den. The older seven-room proposal below is historical; its saved upgrade levels remain stored. The isolated three-room prototype remains available for comparison.
 
 ## Goal
 

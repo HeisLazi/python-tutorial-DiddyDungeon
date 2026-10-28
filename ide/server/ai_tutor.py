@@ -420,7 +420,9 @@ def judge(kind: str, *, context: Any, answer: str, question: str = "") -> dict[s
             (
                 f"Task: decide whether the learner's submission satisfies {JUDGE_TASKS[kind]}. "
                 "Be fair to beginners: correct-but-unpolished work passes; work that misses the "
-                "objective, does not run, or answers a different question fails. When the context lists "
+                "objective, has a demonstrated error, or answers a different question fails. Source code alone does not prove execution; "
+                "never claim a run, input, result or experiment happened unless the supplied evidence shows it. "
+                "When the context lists "
                 "project_files and related_files, judge the goal against the whole project: a file the "
                 "objective names must exist and do its job."
             ),
@@ -552,9 +554,10 @@ def write_battle_question(*, concept: str, project: str, contract: str, objectiv
             "Task: write one multiple-choice question for a campaign battle in a Python learning game.",
             f"Project: {project}\nContract: {contract}\nConcept: {concept}\nObjective: {objective} ({brief})",
             (
-                "Make it practical code reading, not theory: show a short snippet (ideally adapted from the learner's "
-                "own file below) and ask what it prints, which change fixes it, or which line is wrong. "
-                "Give 4 short SINGLE-LINE options with exactly one correct."
+                "Assess the exact objective and its brief. Ask a conceptual question when the objective is conceptual; "
+                "use a short relevant code snippet when it helps assess the named skill. For output questions, specify "
+                "whether the answer is the complete output or a named line, include any inputs, and make the options "
+                "consistent with all visible output. Give 4 short SINGLE-LINE options with exactly one correct."
             ),
             f"The learner's current project file:\n```python\n{code[:6000]}\n```" if code.strip() else "",
             _studied_part(studied),
@@ -612,6 +615,26 @@ def write_spar_question(*, concept: str, foe: str, question_type: str, round_num
     if not key:
         raise AiTutorError("PYR's question had no valid answer", kind="unparseable")
     return {"prompt": text.strip(), "options": options, **key}
+
+
+def write_spar_code_question(*, concept: str, foe: str, studied: list[str] | tuple[str, ...] = ()) -> dict[str, str]:
+    """Create a small standalone coding exercise, never a campaign solution."""
+    prompt = "\n\n".join((
+        TUTOR_RULES,
+        "Write a small beginner-friendly Python coding exercise for a Tutor sparring round.",
+        f"Concept: {concept}\nFoe: {foe}",
+        "Use a generic setting unrelated to the learner's campaign. State the required behavior and one example. "
+        "Provide an optional incomplete starter, never the solution. Do not require external files or packages.",
+        _studied_part(studied),
+        'Reply ONLY as JSON: {"prompt":"the exercise", "starter_code":"optional incomplete Python starter"}',
+    ))
+    reply = extract_json_object(run_prompt(prompt, title="Quest Lab · sparring code exercise"))
+    text, starter = reply.get("prompt"), reply.get("starter_code", "")
+    if not isinstance(text, str) or not text.strip() or len(text) > 4000:
+        raise AiTutorError("PYR's coding exercise had no usable prompt", kind="unparseable")
+    if not isinstance(starter, str) or len(starter) > 4000:
+        raise AiTutorError("PYR's starter code was not usable", kind="unparseable")
+    return {"prompt": text.strip(), "starter_code": starter}
 
 
 def choose_practice_lens(*, concept: str, lenses: list[dict[str, str]], learner: Any) -> dict[str, str]:

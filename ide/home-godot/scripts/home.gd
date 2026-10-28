@@ -11,13 +11,12 @@ const ROWS := 12
 const VIEW := Vector2(320, 180)
 const SPEED := 62.0
 const FEET := Vector2(8, 4)
-const FRAME := Vector2i(48, 46)   # one hunter frame (tools/home_art/from_sheets.py), feet on the bottom row
+const FRAME := Vector2i(38, 38)   # the unarmed 32px Home hunter, feet on the bottom row
 
 const TILES: Texture2D = preload("res://art/tiles.png")
 var FONT_FILE: FontFile = preload("res://art/PressStart2P.woff2")
 const CRT_SHADER: Shader = preload("res://shaders/crt.gdshader")
 const SWAY_SHADER: Shader = preload("res://shaders/sway.gdshader")
-const UNARMED_SHADER: Shader = preload("res://shaders/home_unarmed.gdshader")
 
 # The hunter: one sheet per facing, 8 walk frames then 4 idle frames. Right is the side sheet flipped.
 const SHEET_FRONT: Texture2D = preload("res://art/hunter_front.png")
@@ -84,6 +83,9 @@ var clock := 0.0
 var map_update_time := 0.0
 var map_last_pos := Vector2.INF
 var pyr_pos := Vector2(142, 136)
+var pyr_target := Vector2(142, 136)
+var pyr_wander_wait := 1.0
+var pyr_facing_left := false
 var near: Dictionary = {}
 var toast_time := 0.0
 var hint_time := 7.0
@@ -167,10 +169,18 @@ func go_room(id: String, spawn: Vector2, instant := false) -> void:
 		await out.finished
 	_clear_room()
 	room_id = id
+	pyr.visible = id == "den"
+	pyr_light.enabled = id == "den"
 	built_level = room_level(id)
 	Rooms.build(self, id, built_level)
 	pos = spawn
 	pyr_pos = spawn + Vector2(-18, -14)
+	for candidate in [Vector2(235, 148), Vector2(75, 148), Vector2(160, 110)]:
+		if not _hits(candidate) and candidate.distance_to(spawn) > 40.0:
+			pyr_pos = candidate
+			break
+	pyr_target = pyr_pos
+	pyr_wander_wait = 0.7
 	held.clear()
 	tap_ttl.clear()
 	anim_t = 0.0
@@ -411,12 +421,10 @@ func _build_hunter() -> void:
 	var shadow := _piece(hunter, "shadow", Vector2(0, 2), true)
 	shadow.name = "Shadow"
 	body_sprite.name = "Body"
+	body_sprite.self_modulate = Color(1.18, 1.18, 1.18, 1.0)
 	body_sprite.region_enabled = true
 	body_sprite.centered = false
 	body_sprite.offset = Vector2(-FRAME.x / 2.0, -FRAME.y + 1)
-	var unarmed_material := ShaderMaterial.new()
-	unarmed_material.shader = UNARMED_SHADER
-	body_sprite.material = unarmed_material
 	hunter.add_child(body_sprite)
 	world.add_child(hunter)
 	# Pyr, the little code-flame, follows along (and lights the way).
@@ -571,7 +579,7 @@ func _process(delta: float) -> void:
 			else:
 				facing = "down" if dir.y > 0 else "up"
 			anim_t += delta * WALK_FPS
-			_move(dir * SPEED * delta)
+			_move(dir * SPEED * (1.45 if Input.is_key_pressed(KEY_SHIFT) else 1.0) * delta)
 		else:
 			anim_t = 0.0
 		_check_doors()
@@ -583,7 +591,8 @@ func _process(delta: float) -> void:
 			if pos.distance_to(map_last_pos) > 0.5:
 				map_last_pos = pos
 				_send_app({"type": "position", "room": room_id, "x": pos.x, "y": pos.y})
-	_follow_pyr(delta)
+	if room_id == "den":
+		_wander_pyr(delta)
 	_animate_room(delta)
 	_update_prompt(delta)
 
@@ -613,17 +622,13 @@ func _check_doors() -> void:
 
 func _refresh_hunter() -> void:
 	hunter.position = pos.round()
-	var material: ShaderMaterial = body_sprite.material as ShaderMaterial
 	match facing:
 		"up":
 			body_sprite.texture = SHEET_BACK
-			material.set_shader_parameter("facing", 2)
 		"down":
 			body_sprite.texture = SHEET_FRONT
-			material.set_shader_parameter("facing", 0)
 		_:
 			body_sprite.texture = SHEET_SIDE
-			material.set_shader_parameter("facing", 1)
 	body_sprite.flip_h = facing == "right"
 	var col: int
 	if anim_t > 0.0:
@@ -652,29 +657,42 @@ func _configure_pyr_sheet(stage: int) -> void:
 		pyr.region_rect = TilesData.REGIONS["pyr_0"]
 
 
-func _follow_pyr(delta: float) -> void:
-	# The eagle strips are wider than the old flame: leave room beside the hunter.
-	var distance := 28 if pyr_custom_sheet else 18
-	var behind := {"down": Vector2(-distance, -14), "up": Vector2(distance, -10), "left": Vector2(distance, -14), "right": Vector2(-distance, -14)}[facing] as Vector2
-	var target := pos + behind
-	pyr_pos = pyr_pos.lerp(target, 1.0 - exp(-5.0 * delta))
+func _wander_pyr(delta: float) -> void:
+	# Pyr explores the current room independently, pausing between short flights.
+	pyr_wander_wait -= delta
+	if pyr_pose_time <= 0.0 and pyr_wander_wait <= 0.0 and pyr_pos.distance_to(pyr_target) < 3.0:
+		for attempt in 12:
+			var candidate := Vector2(randf_range(38.0, VIEW.x - 38.0), randf_range(92.0, 164.0))
+			if not _hits(candidate) and candidate.distance_to(pyr_pos) > 25.0:
+				pyr_target = candidate
+				break
+		pyr_wander_wait = randf_range(2.5, 5.0)
+	var moving := pyr_pose_time <= 0.0 and pyr_pos.distance_to(pyr_target) > 2.0
+	if moving:
+		var step := (pyr_target - pyr_pos).limit_length(24.0 * delta)
+		if _hits(pyr_pos + step):
+			pyr_target = pyr_pos
+			pyr_wander_wait = 0.3
+		else:
+			if absf(step.x) > 0.01: pyr_facing_left = step.x < 0.0
+			pyr_pos += step
+			if pyr_pos.distance_to(pyr_target) < 3.0:
+				pyr_wander_wait = randf_range(1.0, 3.0)
 	var bob := sin(clock * 3.0) * 1.5
 	pyr.position = (pyr_pos + Vector2(0, bob)).round()
 	if pyr_custom_sheet:
-		if facing == "left" or facing == "right":
-			pyr.flip_h = (facing == "left") if pyr_sheet_stage == 1 else (facing == "right")
+		pyr.flip_h = pyr_facing_left if pyr_sheet_stage == 1 else not pyr_facing_left
 		var frame: int
 		if pyr_pose_time > 0.0:
 			frame = 5 if pyr_pose == 3 else 4
-		elif pyr_pos.distance_to(target) > 3.0:
+		elif moving:
 			frame = 2 + int(clock * 6.0) % 2
 		else:
 			frame = int(clock * 2.0) % 2
 		pyr.region_rect = Rect2(frame * PYR_CELL, 0, PYR_CELL, PYR_CELL)
 	else:
 		pyr.flip_h = false
-		var flame := "pyr_%d" % (int(clock * 3.0) % 2)
-		pyr.region_rect = TilesData.REGIONS[flame]
+		_set_piece(pyr, "pyr_%d" % (int(clock * 3.0) % 2))
 
 
 func _animate_room(delta: float) -> void:
@@ -700,6 +718,8 @@ func _update_prompt(delta: float) -> void:
 		if (st["area"] as Rect2).intersects(feet):
 			near = st
 			break
+	if room_id == "den" and near.is_empty() and pos.distance_to(pyr_pos) < 25.0:
+		near = {"id": "pyr", "label": "Feed Pyr"}
 	if near.is_empty() and hint_time > 0.0:
 		hint_time -= delta
 		prompt_label.text = "WASD / ARROWS WALK     E USE"

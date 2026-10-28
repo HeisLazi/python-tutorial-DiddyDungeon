@@ -1731,3 +1731,79 @@
 .castle-map-marker { fill: #ffe89a; }
 .castle-map-thresholds { fill: none; stroke: #c9b497; stroke-width: 3; }
 .home-directory-path { grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); }
+
+/* Tutor: one choice of topic, then a lesson or a focused practice workspace. */
+.forge-v2 .tutor-path { display: grid; grid-template-columns: minmax(200px, 260px) minmax(0, 1fr); gap: 18px; max-width: 1320px; margin: auto; }
+.forge-v2 .tutor-path-index, .forge-v2 .tutor-path-main { min-width: 0; border: 1px solid #494067; background: #17142a; padding: 20px; }
+.forge-v2 .tutor-path-index h3 { margin: 10px 0; color: #f4dfac; }
+.forge-v2 .tutor-path-index p, .forge-v2 .tutor-path-main p { color: #c6bfd5; line-height: 1.55; }
+.forge-v2 .tutor-path-list { display: grid; gap: 4px; max-height: 60vh; overflow-y: auto; }
+.forge-v2 .tutor-path-list button { padding: 10px; border: 1px solid transparent; background: transparent; color: #c6bfd5; text-align: left; }
+.forge-v2 .tutor-path-list button.active { border-color: #c9a765; background: #31283a; color: #ffe0a1; }
+.forge-v2 .tutor-current-task { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 20px; padding: 12px; border-left: 3px solid #e5b762; background: #292239; }
+.forge-v2 .tutor-current-task span, .forge-v2 .tutor-step { color: #e5b762; font: 11px ui-monospace, monospace; }
+.forge-v2 .tutor-current-task button { margin-left: auto; }
+.forge-v2 .tutor-lesson-heading { display: flex; justify-content: space-between; align-items: start; gap: 16px; }
+.forge-v2 .tutor-lesson-heading h3 { margin: 8px 0; color: #f7e6bf; font-size: 28px; }
+.forge-v2 .tutor-lesson-section { display: grid; grid-template-columns: 95px minmax(0, 1fr); gap: 18px; padding: 20px 0; border-top: 1px solid #4a405c; }
+.forge-v2 .tutor-lesson-section h4 { margin: 0 0 10px; font-size: 19px; color: #f3e8ce; }
+.forge-v2 .tutor-lesson-section pre, .forge-v2 .tutor-quiz pre { overflow: auto; padding: 16px; color: #e7d7bb; background: #0e101c; border: 1px solid #453d5c; font: 14px/1.5 ui-monospace, monospace; }
+.forge-v2 .tutor-lesson-options { display: grid; gap: 8px; margin: 12px 0; }
+.forge-v2 .tutor-lesson-options button { padding: 12px; text-align: left; border: 1px solid #5e5273; color: #e9ddc8; background: #211c34; }
+.forge-v2 .tutor-lesson-options button:hover, .forge-v2 .tutor-lesson-options button.selected { border-color: #e9c477; background: #3b3040; }
+.forge-v2 .tutor-answer { padding: 12px; border-left: 3px solid #d09a65; background: #2b2434; }
+.forge-v2 .tutor-answer.correct { border-color: #74c8a6; }
+.forge-v2 .tutor-reflection { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+.forge-v2 .tutor-reflection section { padding: 12px; background: #211c32; }
+.forge-v2 .resource-ide-layout { grid-template-columns: minmax(200px, 240px) minmax(0, 1fr) minmax(220px, 270px); }
+.forge-v2 .resource-ide-rail.tutor-practice-picker { align-items: stretch; gap: 15px; padding: 16px; }
+.forge-v2 .tutor-practice-picker label { display: grid; gap: 7px; color: #d6c7aa; }
+.forge-v2 .tutor-practice-picker select { width: 100%; min-width: 0; }
+.forge-v2 .tutor-practice-picker small { color: #ada5bd; line-height: 1.4; }
+.forge-v2 .tutor-quiz { padding: 24px; border: 1px solid #8d704a; background: #17142a; }
+.forge-v2 .tutor-quiz h3 { color: #f4e4c2; font-size: 24px; }
+@media (max-width: 1050px) { .forge-v2 .resource-ide-layout { grid-template-columns: minmax(170px, 220px) minmax(0, 1fr); } .forge-v2 .resource-ai-panel { grid-column: 1 / -1; } }
+@media (max-width: 700px) { .forge-v2 .tutor-path, .forge-v2 .resource-ide-layout { grid-template-columns: 1fr; } .forge-v2 .tutor-reflection { grid-template-columns: 1fr; } .forge-v2 .tutor-lesson-section { grid-template-columns: 1fr; gap: 8px; } .forge-v2 .tutor-path-list { max-height: 200px; } }
+.forge-v2 .resource-ide-layout:has(.tutor-quiz) { grid-template-columns: minmax(200px, 240px) minmax(0, 1fr); }
+.forge-v2 .resource-ide-layout:has(.tutor-quiz) .resource-ai-panel { display: none; }
+.forge-v2 .tutor-question-editor { margin: 18px 0; border: 1px solid #514665; background: #1e1e1e; }
+@media (max-width: 700px) { .forge-v2 .resource-ide-layout:has(.tutor-quiz) { grid-template-columns: 1fr; } }
+.forge-v2 .tutor-reference-code { margin: 0 0 12px; border: 1px solid #514665; background: #1e1e1e; }
+.forge-v2 .resource-tutor-screen:has(.tutor-path) .resource-tutor-header { margin-bottom: 10px; }
+.forge-v2 .resource-tutor-screen:has(.tutor-path) .resource-tutor-header p { display: none; }
+.forge-v2 .resource-tutor-screen:has(.tutor-path) .resource-tutor-tabs { margin-bottom: 12px; }
+.spar-arena { max-width: 1380px; margin: auto; grid-template-columns: minmax(210px, 260px) minmax(0, 1fr); }
+.spar-roster { padding: 15px; border: 1px solid #50445f; background: #17142a; }
+.spar-foe { min-height: 62px; padding: 12px; background: #211b32; }
+.spar-foe.active { border-color: #e5bd73; background: #382b36; }
+.spar-question { min-height: 300px; padding: 24px; background: #17142a; }
+.spar-question .dungeon-prompt-text { font-size: 18px; line-height: 1.5; }
+.spar-code-workspace { border: 1px solid #514665; background: #1e1e1e; }
+.spar-code-workspace > p, .spar-code-workspace > button { margin: 12px; }
+@media (max-width: 760px) { .spar-arena { grid-template-columns: 1fr; } }
+.home-guide { position: absolute; z-index: 5; left: 16px; bottom: 16px; width: min(410px, calc(100% - 32px)); box-sizing: border-box; padding: 18px; border: 1px solid #d6ad68; background: rgba(24, 19, 34, .97); color: #e8dbc3; box-shadow: 0 8px 25px #0009; }
+.home-guide h3 { margin: 8px 0; color: #f6d998; }
+.home-guide p { margin: 8px 0; font-size: 14px; line-height: 1.45; }
+.home-guide button { margin-top: 8px; }
+.spar-code-layout { display: grid; grid-template-columns: minmax(230px, .8fr) minmax(0, 1.2fr); gap: 18px; align-items: start; }
+.spar-code-layout .spar-prompt { max-height: 340px; overflow: auto; padding: 0 12px 0 0; }
+.spar-code-layout .dungeon-prompt-text { font-size: 15px; }
+@media (max-width: 1050px) { .spar-code-layout { grid-template-columns: 1fr; } .spar-code-layout .spar-prompt { max-height: none; } }
+.forge-v2 .resource-tutor-screen:has(.spar-arena) .resource-tutor-header { display: none; }
+.forge-v2 .resource-tutor-screen:has(.spar-arena) .resource-tutor-tabs { margin-bottom: 8px; }
+.forge-v2 .resource-tutor-screen:has(.spar-arena) .spar-arena { padding-top: 4px; }
+.forge-v2 .tutor-deeper { margin: 16px 0; padding: 14px; border: 1px solid #554765; background: #211c32; }
+.forge-v2 .tutor-deeper summary { color: #f0d297; cursor: pointer; font-weight: bold; }
+.forge-v2 .tutor-deeper > div { display: grid; gap: 20px; padding-top: 16px; }
+.forge-v2 .tutor-topic-search { display: grid; gap: 6px; margin: 14px 0; color: #d6c7aa; }
+.forge-v2 .tutor-topic-search input { width: 100%; box-sizing: border-box; }
+.home-passives { margin: 12px 0 24px; padding: 16px; border: 1px solid #806940; background: #1e192b; }
+.home-passives h3 { margin: 0 0 8px; color: #f4d79f; }
+.home-passive-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 8px; }
+.home-passive-grid article { display: grid; gap: 8px; padding: 10px; border: 1px solid #50455a; background: #282135; }
+.home-passive-grid small { color: #c8bfd1; line-height: 1.4; }
+.home-passive-grid span { color: #99d3b4; }
+/* A two-room home only needs a compact map. */
+.home-map-toggle { width: min(180px, 100%); }
+.home-map-toggle { width: min(150px, 100%); }
+.home-map-toggle { width: min(120px, 100%); }

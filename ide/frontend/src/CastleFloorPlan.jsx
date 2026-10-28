@@ -19,8 +19,8 @@ export default function CastleFloorPlan({ currentRoom, position }) {
   const adjacent = new Set(Object.values(current.exits))
   const px = Math.max(0, Math.min(1, Number(position?.x ?? 160) / 320))
   const py = Math.max(0, Math.min(1, (Number(position?.y ?? 142) - 64) / 122))
-  return <svg className="home-map-plan" viewBox="0 0 225 130" aria-hidden="true">
-    <g className="castle-map-corridors"><path d="M30 35v15 M30 80v15 M50 65h15 M105 65h15 M140 35v15 M160 20h15" /></g>
+  return <svg className="home-map-plan" viewBox="0 0 90 85" aria-hidden="true">
+    <g className="castle-map-corridors"><path d="M45 35v15" /></g>
     {HOME_DIRECTORY.map((entry) => <g key={entry.id} className={`castle-map-room ${entry.id === current.id ? 'current' : adjacent.has(entry.id) ? 'adjacent' : ''}`} transform={`translate(${entry.x} ${entry.y})`}>
       <rect className="castle-map-shadow" x="-2" y="-2" width="44" height="34" />
       <rect className="castle-map-walls" width="40" height="30" />
@@ -28,6 +28,6 @@ export default function CastleFloorPlan({ currentRoom, position }) {
       <Furniture id={entry.id} />
       {entry.id === current.id && <><circle className="castle-map-marker-edge" cx={5 + px * 30} cy={5 + py * 20} r="3.6"/><circle className="castle-map-marker" cx={5 + px * 30} cy={5 + py * 20} r="2.4"/></>}
     </g>)}
-    <g className="castle-map-thresholds"><path d="M27 34h6 M27 50h6 M27 80h6 M27 95h6 M49 62v6 M65 62v6 M104 62v6 M120 62v6 M137 34h6 M137 50h6 M159 17v6 M175 17v6" /></g>
+    <g className="castle-map-thresholds"><path d="M42 34h6 M42 50h6" /></g>
   </svg>
 }

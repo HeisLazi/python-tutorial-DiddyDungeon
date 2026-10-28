@@ -224,7 +224,7 @@ def darken_skin(img):
                 px[x, y] = (int(r * 0.50), int(g * 0.42), int(b * 0.42), a)
 
 
-def build(sheet_dir, out_dir, height=TARGET_H):
+def build(sheet_dir, out_dir, height=TARGET_H, preserve_colors=False):
     sheet_dir, out_dir = Path(sheet_dir), Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
     cells = {}
@@ -237,9 +237,10 @@ def build(sheet_dir, out_dir, height=TARGET_H):
     for name in cells:
         for i, c in enumerate(cells[name]):
             rgb = c.convert("RGB")
-            rgb = ImageEnhance.Contrast(rgb).enhance(1.25)
-            rgb = ImageEnhance.Color(rgb).enhance(1.12)
-            rgb = ImageEnhance.Brightness(rgb).enhance(1.25)
+            if not preserve_colors:
+                rgb = ImageEnhance.Contrast(rgb).enhance(1.25)
+                rgb = ImageEnhance.Color(rgb).enhance(1.12)
+                rgb = ImageEnhance.Brightness(rgb).enhance(1.25)
             lifted = rgb.convert("RGBA")
             lifted.putalpha(c.getchannel("A"))
             cells[name][i] = lifted
@@ -257,10 +258,11 @@ def build(sheet_dir, out_dir, height=TARGET_H):
             q = c.convert("RGB").quantize(palette=pal, dither=Image.NONE).convert("RGB")
             q = q.convert("RGBA")
             q.putalpha(alpha)
-            if name != "back":
-                flatten_face(q)
-            blacken_hair(q)
-            darken_skin(q)
+            if not preserve_colors:
+                if name != "back":
+                    flatten_face(q)
+                blacken_hair(q)
+                darken_skin(q)
             lst[i] = q
         # idle: the same standing frame, torso and head one pixel lower on the second half of the loop
         base = min(lst, key=feet_spread)             # the frame with the feet closest together

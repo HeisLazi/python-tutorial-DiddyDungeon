@@ -401,6 +401,29 @@ class AiTutorEndpointTests(AiTutorTestCase):
         self.assertFalse((wrong["hunter_gain"] or {}).get("signs"))
         self.assertEqual(json.loads(self.canonical.read_text(encoding="utf-8"))["player"]["hp"], hp_before)  # sparring never hurts
 
+    def test_sparring_code_round_is_bound_to_question_and_preserves_health(self):
+        foe = self.client.get("/api/campaign", headers=self.headers).json()["spar_roster"][0]
+        before = json.loads(self.canonical.read_text(encoding="utf-8"))["player"]["hp"]
+        self.reply({"prompt": "Write double(n) that returns twice n.", "starter_code": "def double(n):\n    pass"})
+        generated = self.client.post("/api/ai/spar-question", headers=self.headers, json={"target_id": foe["id"], "round": 4})
+        self.assertEqual(generated.status_code, 200, generated.text)
+        self.assertEqual(generated.json()["question"]["question_type"], "code")
+        wrong_route = self.client.post("/api/spar/answer-option", headers=self.headers, json={"target_id": foe["id"], "option_index": 0})
+        self.assertEqual(wrong_route.status_code, 409)
+        empty = self.client.post("/api/spar/answer-code", headers=self.headers, json={"target_id": foe["id"], "code": "   "})
+        self.assertEqual(empty.status_code, 422)
+        self.reply({"verdict": "uncertain", "reason": "No result."})
+        failed = self.client.post("/api/spar/answer-code", headers=self.headers, json={"target_id": foe["id"], "code": "def double(n):\n    return n * 2"})
+        self.assertEqual(failed.status_code, 502)
+        self.reply({"verdict": "correct", "reason": "Your function returns twice the input."})
+        answer = self.client.post("/api/spar/answer-code", headers=self.headers, json={"target_id": foe["id"], "code": "def double(n):\n    return n * 2"})
+        self.assertEqual(answer.status_code, 200, answer.text)
+        self.assertEqual(answer.json()["verdict"], "correct")
+        replay = self.client.post("/api/spar/answer-code", headers=self.headers, json={"target_id": foe["id"], "code": "return 2"})
+        self.assertEqual(replay.status_code, 409)
+        self.assertEqual(json.loads(self.canonical.read_text(encoding="utf-8"))["player"]["hp"], before)
+
+
 
 if __name__ == "__main__":
     unittest.main()
