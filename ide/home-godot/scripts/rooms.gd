@@ -29,7 +29,7 @@ const LADDERS := {
 		{"name": "Floor the hall in marble", "cost": 68, "note": "polished marble over the whole floor, and columns on the walls"},
 		{"name": "Hang the chandelier", "cost": 44, "note": "a chandelier and two guards"},
 		{"name": "Set the banquet", "cost": 52, "note": "a long table, chairs and a rug"},
-		{"name": "The grand finish", "cost": 60, "note": "blue-gold hearth, gold door, trim, urns, four guards"},
+		{"name": "The grand finish", "cost": 60, "note": "blue-gold hearth, trim, urns, four guards"},
 	],
 	"library": [
 		{"name": "Dust and sort", "cost": 16, "note": "cobwebs and scattered papers cleared, scrolls stacked"},
@@ -462,9 +462,6 @@ static func _great_hall(h, lv: int) -> void:
 	# ── Dust drifting in the beams: thick in a neglected hall, thin in a kept one ──
 	h.add_embers(Rect2(40, 74, 240, 90), Color(0.75, 0.80, 1.0, 0.55), maxi(4, 16 - lv), 3.0, 5.0)
 
-	# ── The great door: a plain oak door until the grand finish ──
-	h.bg("door_gold" if lv >= GH_GRAND else "door_wood", Vector2(160, 186), true)
-	h.station("door", "Go to the Forge", Rect2(138, 158, 44, 24), Vector2(160, 134))
 
 	# The hall is a useful home base: core hunter, equipment and trophy actions
 	# remain close to the hearth while the older rooms keep their upgrades.

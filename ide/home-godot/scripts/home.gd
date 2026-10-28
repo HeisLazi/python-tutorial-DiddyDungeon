@@ -719,7 +719,7 @@ func _update_prompt(delta: float) -> void:
 			near = st
 			break
 	if room_id == "den" and near.is_empty() and pos.distance_to(pyr_pos) < 25.0:
-		near = {"id": "pyr", "label": "Feed Pyr"}
+		near = {"id": "pyr", "label": "Visit Pyr"}
 	if near.is_empty() and hint_time > 0.0:
 		hint_time -= delta
 		prompt_label.text = "WASD / ARROWS WALK     E USE"

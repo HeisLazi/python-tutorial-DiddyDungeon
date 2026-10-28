@@ -1807,3 +1807,51 @@
 .home-map-toggle { width: min(180px, 100%); }
 .home-map-toggle { width: min(150px, 100%); }
 .home-map-toggle { width: min(120px, 100%); }
+
+/* Full-window castle stations: the room recedes as its details come forward. */
+.home-room-frame { overflow: hidden; }
+.home-room-frame iframe { transition: transform 400ms ease, filter 400ms ease; }
+.home-room-frame.is-engaged iframe { transform: scale(1.1); filter: brightness(.55); }
+.home-station-screen { position: fixed; inset: 0; z-index: 10000; overflow: auto; color: #eee1cd; background: radial-gradient(ellipse at 20% 0%, #342538 0, #171421 48%, #0d0c15 100%); animation: home-station-fade 380ms both; }
+.home-station-page { min-height: 100%; animation: home-station-zoom 420ms cubic-bezier(.2,.7,.2,1) both; }
+.home-station-topbar { position: sticky; top: 0; z-index: 2; display: flex; align-items: center; gap: 24px; min-height: 70px; padding: 12px clamp(20px, 5vw, 72px); border-bottom: 1px solid #514252; background: rgba(18, 15, 26, .96); color: #ab9b92; font-size: 11px; letter-spacing: .12em; }
+.home-station-topbar b { padding: 0 6px; color: #6f5a53; }
+.home-station-wallet { margin-left: auto; color: #e6bd79; white-space: nowrap; }
+.home-station-screen button { cursor: pointer; color: #201725; background: #edc581; border: 1px solid #f2d49d; padding: 11px 17px; font: inherit; font-weight: 700; }
+.home-station-screen button:hover:not(:disabled) { background: #ffe0a4; }
+.home-station-screen button:disabled { cursor: not-allowed; opacity: .48; }
+.home-station-screen button:focus-visible, .home-station-screen summary:focus-visible { outline: 3px solid #ffd783; outline-offset: 3px; }
+.home-station-screen .home-station-back { color: #f5dfb9; background: #302536; border-color: #78604e; white-space: nowrap; }
+.home-station-screen .home-station-back:hover { background: #4a3644; }
+.home-station-content { width: min(1160px, calc(100% - 48px)); margin: 0 auto; padding: clamp(32px, 5vw, 64px) 0 80px; }
+.home-station-heading { max-width: 720px; margin-bottom: 38px; }
+.home-station-kicker { display: block; color: #dbab6d; font-size: 11px; font-weight: 700; letter-spacing: .16em; }
+.home-station-heading h1 { margin: 12px 0; color: #fff0d6; font-family: Georgia, serif; font-size: clamp(34px, 5vw, 60px); font-weight: 500; letter-spacing: -.03em; line-height: 1.05; }
+.home-station-heading p, .home-station-card p { color: #c5b8ac; line-height: 1.6; }
+.home-station-columns { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+.home-station-screen .home-upgrades { padding: 0; }
+.home-station-card { padding: clamp(22px, 3vw, 34px); border: 1px solid #62505a; background: linear-gradient(145deg, #2a2330, #1b1925); box-shadow: 0 12px 30px #08060c55; }
+.home-station-action { border-top: 3px solid #dfaa65; background: linear-gradient(145deg, #3a2930, #211b29 70%); }
+.home-station-card h2 { margin: 12px 0 8px; color: #f8e8d0; font-family: Georgia, serif; font-size: 26px; font-weight: 500; }
+.home-station-card p { margin: 0 0 22px; }
+.home-station-card > small { display: block; margin-top: 12px; color: #d1ad82; }
+.home-station-built { margin-top: 24px; border-top: 1px solid #584650; padding-top: 16px; color: #d5c6b5; }
+.home-station-built summary { cursor: pointer; color: #e3bd83; }
+.home-station-built ol { padding-left: 20px; line-height: 1.7; }
+.home-station-facts { display: flex; gap: 36px; margin: 24px 0; }
+.home-station-facts span { display: grid; gap: 6px; }
+.home-station-facts small { color: #b9a696; font-size: 10px; letter-spacing: .1em; }
+.home-station-facts strong { color: #f5d9a7; font-size: 20px; }
+.home-station-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+.home-station-screen .home-station-message { margin: 18px 0 0; color: #d7e6ba; }
+.home-station-screen .character-panel, .home-station-screen .home-passives, .home-station-stats .settings-group { padding: 24px; border: 1px solid #62505a; background: #201b29; }
+.home-station-screen .home-passives { margin-top: 18px; }
+.home-station-screen .home-passive-grid article { padding: 16px; }
+.home-station-screen .character-panel h3, .home-station-screen .settings-group h3 { color: #f7e1bb; }
+.home-station-stats { color: #e8d8c4; }
+@keyframes home-station-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes home-station-zoom { from { transform: scale(.94); } to { transform: scale(1); } }
+@media (max-width: 700px) { .home-station-topbar { gap: 10px; padding: 10px 16px; } .home-station-topbar > span:not(.home-station-wallet) { display: none; } .home-station-content { width: calc(100% - 32px); } .home-station-columns { grid-template-columns: 1fr; } }
+@media (prefers-reduced-motion: reduce) { .home-room-frame iframe { transition: none; } .home-station-screen, .home-station-page { animation: none; } }
+.home-station-screen .bench-tabs button { background: #302834; color: #dfcfba; border-color: #60505a; }
+.home-station-screen .bench-tabs button[aria-selected="true"] { background: #edc581; color: #241925; border-color: #f2d49d; }

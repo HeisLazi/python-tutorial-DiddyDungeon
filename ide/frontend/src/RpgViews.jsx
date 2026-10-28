@@ -3021,7 +3021,7 @@ const HOME_STATION_ROOMS = {
 }
 const HOME_STATION_ACTIONS = {
   hearth: 'Rest at the hearth', study: 'Open Tutor', armory: 'Open the Armory',
-  pantry: 'Eat a meal', trophy: 'View player stats', map: 'Enter the Dungeon', perch: 'Feed Pyr',
+  pantry: 'Eat a meal', trophy: 'View player stats', map: 'Enter the Dungeon', perch: 'Visit Pyr',
 }
 
 
@@ -3071,6 +3071,7 @@ function useHomeBuild() {
 
 function HomeRoom({ progress, homeRooms, purchaseHomeRoom, buildRoomUpgrade, armory, armoryActions, hunter, spendStatPoint, performHomesteadAction, onNavigate, onClassic, busy }) {
   const frameRef = useRef(null)
+  const panelRef = useRef(null)
   const sectionRef = useRef(null)
   const directoryRef = useRef(null)
   const readyRef = useRef(false)
@@ -3111,6 +3112,7 @@ function HomeRoom({ progress, homeRooms, purchaseHomeRoom, buildRoomUpgrade, arm
   const [panel, setPanel] = useState('')
   const [station, setStation] = useState('')
   const [upgradeError, setUpgradeError] = useState('')
+  const [homeMessage, setHomeMessage] = useState('')
   const [look, setLook] = useState(() => {
     try { return HUNTER_LOOKS.includes(window.localStorage.getItem('questlab.hunterLook')) ? window.localStorage.getItem('questlab.hunterLook') : 'alucard' } catch { return 'alucard' }
   })
@@ -3139,32 +3141,33 @@ function HomeRoom({ progress, homeRooms, purchaseHomeRoom, buildRoomUpgrade, arm
     try {
       const result = await performHomesteadAction?.(action)
       const healed = Number(result?.event?.healed || 0)
-      send({ toast: done(healed, result), ...(action === 'feed_pyr' ? { pyr_action: 'feed' } : {}) })
+      const message = done(healed, result)
+      setHomeMessage(message)
+      send({ toast: message, ...(action === 'feed_pyr' ? { pyr_action: 'feed' } : {}) })
     } catch (error) {
-      send({ toast: String(error?.message || 'That did not work').slice(0, 60) })
+      const message = String(error?.message || 'That did not work')
+      setHomeMessage(message)
+      send({ toast: message.slice(0, 60) })
     }
   }
 
   const performStationAction = async (id) => {
-    if (id === 'door') return onNavigate?.('forge')
     if (id === 'map') return onNavigate?.('dungeon')
     if (id === 'armory') return setPanel('armory')
     if (id === 'hunter') return setPanel('hunter')
     if (id === 'study') return onNavigate?.('tutor')
-    if (id === 'trophy') {
-      try { window.localStorage.setItem('questlab.settingsSection', 'stats') } catch { /* storage unavailable */ }
-      return onNavigate?.('settings')
-    }
+    if (id === 'trophy') return setPanel('trophy')
     if (id === 'training') {
       try { window.sessionStorage.setItem('questlab.tutor.surface', JSON.stringify('spar')) } catch { /* storage unavailable */ }
       return onNavigate?.('tutor')
     }
     if (id === 'hearth') return homeAction('recover', (healed) => (healed > 0 ? `You rest by the fire: +${healed} HP` : 'You are fully rested.'))
     if (id === 'pantry') return homeAction('meal', (healed) => `You eat a hot meal: +${healed} HP`)
-    if (id === 'perch' || id === 'pyr') return homeAction('feed_pyr', () => 'Pyr is fed and glows brighter.')
+    if (id === 'perch' || id === 'pyr') return setPanel('pyr')
   }
   const useStation = (id) => {
     setMapOpen(false)
+    setHomeMessage('')
     if (!HOME_STATION_ROOMS[id]) return performStationAction(id)
     setStation(id)
     setUpgradeError('')
@@ -3172,8 +3175,25 @@ function HomeRoom({ progress, homeRooms, purchaseHomeRoom, buildRoomUpgrade, arm
   }
   const closePanel = () => {
     setPanel('')
-    focusRoom()
+    setHomeMessage('')
+    window.requestAnimationFrame(focusRoom)
   }
+  useEffect(() => {
+    if (!panel) return undefined
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    const onKey = (event) => {
+      if (event.key === 'Escape') { event.preventDefault(); closePanel(); return }
+      if (event.key !== 'Tab') return
+      const focusable = [...(panelRef.current?.querySelectorAll('button:not(:disabled), a[href], input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex]:not([tabindex="-1"])') || [])]
+      if (!focusable.length) { event.preventDefault(); return }
+      const first = focusable[0], last = focusable[focusable.length - 1]
+      if (event.shiftKey && (document.activeElement === first || !panelRef.current?.contains(document.activeElement))) { event.preventDefault(); last.focus() }
+      else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus() }
+    }
+    document.addEventListener('keydown', onKey)
+    return () => { document.body.style.overflow = previousOverflow; document.removeEventListener('keydown', onKey) }
+  }, [panel])
   const roomId = HOME_STATION_ROOMS[station]
   const ladder = homeRooms?.ladders?.[roomId]
   const level = homeRooms?.levels?.[roomId] ?? 0
@@ -3191,7 +3211,7 @@ function HomeRoom({ progress, homeRooms, purchaseHomeRoom, buildRoomUpgrade, arm
     }
   }
   const runRoomAction = async () => {
-    if (station !== 'armory') closePanel()
+    if (station === 'perch') { setHomeMessage(''); setPanel('pyr'); return }
     await performStationAction(station)
   }
   const useStationRef = useRef(useStation)
@@ -3226,7 +3246,7 @@ function HomeRoom({ progress, homeRooms, purchaseHomeRoom, buildRoomUpgrade, arm
   })
   return (
     <section className="home-room" data-testid="home-room" aria-label="Your home" ref={sectionRef}>
-      <div className="home-room-frame" style={{ width: frameSize.width, height: frameSize.height }}>
+      <div className={`home-room-frame ${panel ? 'is-engaged' : ''}`} style={{ width: frameSize.width, height: frameSize.height }}>
         <iframe key={frameKey} ref={frameRef} title="Home" src="/home/index.html" allow="autoplay" />
         {homeStatus === 'ready' && <div className="home-map-hud" onKeyDown={(event) => { if (event.key === 'Escape' && mapOpen) { setMapOpen(false); focusRoom() } }}>
           <button type="button" className="home-map-toggle" aria-expanded={mapOpen} aria-controls="home-directory" aria-label={`Castle map: ${currentRoomInfo.name}; ${exitsLabel}`} onClick={() => { if (mapOpen) focusRoom(); setMapOpen((open) => !open) }}>
@@ -3256,37 +3276,25 @@ function HomeRoom({ progress, homeRooms, purchaseHomeRoom, buildRoomUpgrade, arm
           <span>{homeStatus === 'slow' ? 'Try again or visit classic Home.' : 'Pyr is lighting the way…'}</span>
           {homeStatus === 'slow' && <div className="home-loading-actions"><button type="button" onClick={() => { readyRef.current = false; setHomeStatus('loading'); setFrameKey((key) => key + 1) }}>Try again</button><button type="button" onClick={onClassic}>Classic Home</button></div>}
         </div>}
-        {panel === 'room' && (
-          <div className="home-room-panel home-upgrades" role="dialog" aria-modal="true" aria-label={`${homeRooms?.labels?.[roomId] || 'Home'} upgrades`}>
-            <button type="button" className="home-room-close" onClick={closePanel} aria-label="Close room upgrades" autoFocus>Close</button>
-            <div className="home-upgrades-heading"><span>HOME · {level} / {ladder?.length ?? '—'} BUILT</span><h2>{homeRooms?.labels?.[roomId] || 'Room upgrades'}</h2><p>{embers} Embers available</p></div>
-            <button type="button" className="home-upgrades-action" disabled={busy} onClick={runRoomAction}>{HOME_STATION_ACTIONS[station]}</button>
-            {!ladder ? <p role="status">Loading room upgrades…</p> : nextStep ? (
-              <section className="home-upgrades-next" aria-label="Next upgrade">
-                <small>NEXT UPGRADE · {level + 1} / {ladder.length}</small>
-                <h3>{nextStep.name}</h3><p>{nextStep.note}</p>
-                <button type="button" disabled={busy || !purchaseHomeRoom || embers < nextStep.cost} onClick={buyNextStep}>{busy ? 'Building…' : `Build · ${nextStep.cost} Embers`}</button>
-                {embers < nextStep.cost && <small>Need {nextStep.cost - embers} more Embers.</small>}
-              </section>
-            ) : <p className="home-upgrades-complete">This room is fully upgraded.</p>}
-            {upgradeError && <p role="alert" className="home-upgrades-error">{upgradeError}</p>}
-            {ladder && <section className="home-upgrades-built"><h3>Built steps</h3>{level === 0 ? <p>No upgrades built yet.</p> : <ol>{ladder.slice(0, level).map((step, index) => <li key={`${index}-${step.name}`}>{step.name}</li>)}</ol>}</section>}
-          </div>
-        )}
-        {panel === 'hunter' && (
-          <div className="home-room-panel" role="dialog" aria-modal="true" aria-label="Improve your hunter">
-            <button type="button" className="home-room-close" onClick={closePanel}>Close</button>
-            <section className="home-passives"><h3>Hunter upgrades</h3><p>Build permanent bonuses with Embers. Available: {progress?.homestead?.upgrade_tokens ?? 0}.</p><div className="home-passive-grid">{HOME_ROOM_UPGRADES.map((upgrade) => { const owned = (progress?.homestead?.room_upgrades || []).includes(upgrade.id); const canBuild = (progress?.homestead?.upgrade_tokens || 0) >= upgrade.cost; return <article key={upgrade.id}><strong>{upgrade.name}</strong><small>{upgrade.effect} · {upgrade.detail}</small>{owned ? <span>Built · active</span> : <button type="button" onClick={() => buildRoomUpgrade?.(upgrade.id)} disabled={busy || !canBuild || !buildRoomUpgrade}>Build · {upgrade.cost} Embers</button>}</article> })}</div></section>
-            <HunterSheet hunter={hunter} spendStatPoint={spendStatPoint} busy={busy} />
-          </div>
-        )}
-        {panel === 'armory' && (
-          <div className="home-room-panel" role="dialog" aria-label="Armory">
-            <button type="button" className="home-room-close" onClick={closePanel} aria-label="Close the Armory">Close</button>
-            <ArmoryPanel armory={armory} actions={armoryActions} busy={busy} />
-          </div>
-        )}
+
       </div>
+      {panel && createPortal(
+        <div className="home-station-screen" role="dialog" aria-modal="true" aria-labelledby="home-station-title" ref={panelRef}>
+          <div className="home-station-page">
+            <header className="home-station-topbar"><button type="button" className="home-station-back" onClick={closePanel} autoFocus>← Back to Home</button><span>YOUR CASTLE <b>/</b> {currentRoomInfo.name.toUpperCase()}</span><span className="home-station-wallet">✦ {embers} EMBERS</span></header>
+            <main className="home-station-content">
+              <div className="home-station-heading"><span className="home-station-kicker">{panel === 'pyr' || roomId === 'den' && panel === 'room' ? 'PYR’S DEN' : 'THE GREAT HALL'} · HOME</span><h1 id="home-station-title">{panel === 'room' ? (roomId === 'den' ? 'Pyr’s perch' : 'The hearth') : ({ hunter: 'Prepare your hunter', armory: 'The armory', trophy: 'Your trophies', pyr: 'Spend time with Pyr' }[panel])}</h1><p>{panel === 'room' ? (roomId === 'den' ? 'Make a home for your companion, one improvement at a time.' : 'Rest between adventures and restore your hall.') : ({ hunter: 'Strengthen your hunter and build permanent bonuses for the road ahead.', armory: 'Choose the equipment and supplies you will carry into your next fight.', trophy: 'A record of your adventures and everything you have learned along the way.', pyr: 'Care for your companion and grow together.' }[panel])}</p></div>
+              {panel === 'room' && <div className="home-station-columns home-upgrades">
+                <section className="home-station-card home-station-action"><span className="home-station-kicker">{station === 'hearth' ? 'TAKE A BREATHER' : 'YOUR COMPANION'}</span><h2>{station === 'hearth' ? 'Rest by the fire' : 'Visit Pyr'}</h2><p>{station === 'hearth' ? `Health: ${progress?.player?.hp ?? 0} / ${progress?.player?.max_hp ?? 100}. Rest here to recover fully.` : 'Spend time with Pyr, feed them and train together.'}</p><button type="button" disabled={busy} onClick={runRoomAction}>{HOME_STATION_ACTIONS[station]} →</button>{homeMessage && <p role="status" className="home-station-message">{homeMessage}</p>}</section>
+                <section className="home-station-card home-station-renovation"><span className="home-station-kicker">ROOM IMPROVEMENTS · {level} / {ladder?.length ?? '—'}</span>{!ladder ? <p role="status">Loading room upgrades…</p> : nextStep ? <><h2>{nextStep.name}</h2><p>{nextStep.note}</p><button type="button" disabled={busy || !purchaseHomeRoom || embers < nextStep.cost} onClick={buyNextStep}>{busy ? 'Building…' : `Build · ${nextStep.cost} Embers`}</button>{embers < nextStep.cost && <small>Need {nextStep.cost - embers} more Embers.</small>}</> : <><h2>Fully restored</h2><p>Every improvement in this room has been built.</p></>}{upgradeError && <p role="alert" className="home-upgrades-error">{upgradeError}</p>}{ladder && <details className="home-station-built"><summary>Built improvements · {level}</summary>{level === 0 ? <p>No improvements built yet.</p> : <ol>{ladder.slice(0, level).map((step, index) => <li key={`${index}-${step.name}`}>{step.name}</li>)}</ol>}</details>}</section>
+              </div>}
+              {panel === 'hunter' && <><HunterSheet hunter={hunter} spendStatPoint={spendStatPoint} busy={busy} /><section className="home-passives"><h3>Permanent upgrades</h3><p>Spend Embers on bonuses that stay with your hunter.</p><div className="home-passive-grid">{HOME_ROOM_UPGRADES.map((upgrade) => { const owned = (progress?.homestead?.room_upgrades || []).includes(upgrade.id); const canBuild = embers >= upgrade.cost; return <article key={upgrade.id}><strong>{upgrade.name}</strong><small>{upgrade.effect} · {upgrade.detail}</small>{owned ? <span>Built · active</span> : <button type="button" onClick={() => buildRoomUpgrade?.(upgrade.id)} disabled={busy || !canBuild || !buildRoomUpgrade}>Build · {upgrade.cost} Embers</button>}</article> })}</div></section></>}
+              {panel === 'armory' && <ArmoryPanel armory={armory} actions={armoryActions} busy={busy} />}
+              {panel === 'trophy' && <div className="settings-v2 home-station-stats"><PlayerStatsPanel progress={progress} hunter={hunter} /></div>}
+              {panel === 'pyr' && <div className="home-station-columns"><section className="home-station-card home-station-action"><span className="home-station-kicker">YOUR COMPANION</span><h2>{([...HOME_PYR_STAGES].reverse().find((stage) => Number(progress?.companion?.bond ?? 0) >= stage.threshold) || HOME_PYR_STAGES[0]).label}</h2><p>Feed Pyr a meal to restore energy, or train together to grow your bond.</p><div className="home-station-facts"><span><small>BOND</small><strong>{progress?.companion?.bond ?? 0}</strong></span><span><small>ENERGY</small><strong>{progress?.companion?.energy ?? progress?.companion?.max_energy ?? 2} / {progress?.companion?.max_energy ?? 2}</strong></span><span><small>MEALS</small><strong>{progress?.supplies?.meals ?? 0}</strong></span></div><div className="home-station-actions"><button type="button" disabled={busy || !(progress?.supplies?.meals > 0) || !performHomesteadAction} onClick={() => homeAction('feed_pyr', () => 'Pyr is fed and glows brighter.')}>Feed Pyr</button><button type="button" disabled={busy || (progress?.companion?.energy ?? progress?.companion?.max_energy ?? 2) <= 0 || !performHomesteadAction} onClick={() => homeAction('train_pyr', () => 'You trained together.')}>Train with Pyr</button></div>{homeMessage && <p role="status" className="home-station-message">{homeMessage}</p>}</section><section className="home-station-card"><span className="home-station-kicker">A PLACE OF THEIR OWN</span><h2>Pyr’s perch</h2><p>Improve the den at the perch to make it feel like home.</p><button type="button" onClick={() => { setStation('perch'); setPanel('room'); setHomeMessage('') }}>View den improvements →</button></section></div>}
+            </main>
+          </div>
+        </div>, document.body)}
       <div className="home-room-bar" style={{ width: frameSize.width + 6 }}>
         <small>WASD or arrows walk · Shift runs · E interacts</small>
         <span>

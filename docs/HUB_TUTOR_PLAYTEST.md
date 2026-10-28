@@ -4,7 +4,9 @@ These observations come from an agent-driven Chromium playthrough with a disposa
 
 ## What changed
 
-- Home has one Great Hall for the hearth, equipment, hunter stats and permanent bonuses, and trophies. A labelled, visible door leads to Pyr's Den. Pyr moves independently in the den and can be approached to feed. The map reflects the two walkable rooms. A dismissible guide explains what Home is for, and Shift speeds movement.
+- Home stations now open full-window screens with a zoom transition and a return to the room. The hearth separates resting from room improvements, and Pyr has feeding and training controls. The redundant Forge door has been removed; the main Forge navigation remains.
+
+- Home has one Great Hall for the hearth, equipment, hunter stats and permanent bonuses, and trophies. A labelled, visible door leads to Pyr's Den. Pyr moves independently in the den and can be approached for care. The map reflects the two walkable rooms. A dismissible guide explains what Home is for, and Shift speeds movement.
 - Five formerly walkable rooms are no longer connected. Their saved cosmetic upgrade levels are retained; they are not displayed in the new two-room layout. No save migration, refund, or automatic spending is performed.
 - Lessons and the former Codex have one searchable topic page. Deeper reference examples, mistakes and validated encounter notes remain available inside each topic. A Forge bounty can open its relevant concept and return to the same task. Contracts remain in the Bounty Office.
 - Practice has a topic and activity selector. Multiple choice and true/false use the main workspace; reading and writing exercises use code editors. Ten foundational topics have authored lessons and local checks. Other topics use their existing reference material and do not yet have authored multiple-choice/true/false checks.
