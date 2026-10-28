@@ -1,198 +1,154 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-09-17T20:36:36.380195+00:00",
+  "generated_at": "2026-10-28T04:53:29.316057+00:00",
   "source": "github-commit-history",
   "repository": "HeisLazi/python-tutorial-DiddyDungeon",
   "player_login": "HeisLazi",
   "competition_started_at": "2026-09-14T00:00:00+02:00",
-  "current_streak": 4,
-  "longest_streak": 4,
-  "commits_7d": 396,
-  "commits_30d": 396,
-  "active_days_7d": 4,
-  "active_days_30d": 4,
-  "active_branches_30d": 13,
-  "activity_score": 152,
-  "effective_commits_30d": 16,
-  "total_unique_commits_scanned": 396,
-  "last_active_day": "2026-09-17",
+  "current_streak": 7,
+  "longest_streak": 7,
+  "commits_7d": 121,
+  "commits_30d": 121,
+  "active_days_7d": 7,
+  "active_days_30d": 7,
+  "active_branches_30d": 2,
+  "activity_score": 212,
+  "effective_commits_30d": 31,
+  "total_unique_commits_scanned": 525,
+  "last_active_day": "2026-10-28",
   "most_active_day_30d": {
-    "date": "2026-09-17",
-    "commits": 262
+    "date": "2026-10-27",
+    "commits": 43
   },
   "daily_30d": [
     {
-      "date": "2026-08-19",
+      "date": "2026-09-29",
       "commits": 0
     },
     {
-      "date": "2026-08-20",
+      "date": "2026-09-30",
       "commits": 0
     },
     {
-      "date": "2026-08-21",
+      "date": "2026-10-01",
       "commits": 0
     },
     {
-      "date": "2026-08-22",
+      "date": "2026-10-02",
       "commits": 0
     },
     {
-      "date": "2026-08-23",
+      "date": "2026-10-03",
       "commits": 0
     },
     {
-      "date": "2026-08-24",
+      "date": "2026-10-04",
       "commits": 0
     },
     {
-      "date": "2026-08-25",
+      "date": "2026-10-05",
       "commits": 0
     },
     {
-      "date": "2026-08-26",
+      "date": "2026-10-06",
       "commits": 0
     },
     {
-      "date": "2026-08-27",
+      "date": "2026-10-07",
       "commits": 0
     },
     {
-      "date": "2026-08-28",
+      "date": "2026-10-08",
       "commits": 0
     },
     {
-      "date": "2026-08-29",
+      "date": "2026-10-09",
       "commits": 0
     },
     {
-      "date": "2026-08-30",
+      "date": "2026-10-10",
       "commits": 0
     },
     {
-      "date": "2026-08-31",
+      "date": "2026-10-11",
       "commits": 0
     },
     {
-      "date": "2026-09-01",
+      "date": "2026-10-12",
       "commits": 0
     },
     {
-      "date": "2026-09-02",
+      "date": "2026-10-13",
       "commits": 0
     },
     {
-      "date": "2026-09-03",
+      "date": "2026-10-14",
       "commits": 0
     },
     {
-      "date": "2026-09-04",
+      "date": "2026-10-15",
       "commits": 0
     },
     {
-      "date": "2026-09-05",
+      "date": "2026-10-16",
       "commits": 0
     },
     {
-      "date": "2026-09-06",
+      "date": "2026-10-17",
       "commits": 0
     },
     {
-      "date": "2026-09-07",
+      "date": "2026-10-18",
       "commits": 0
     },
     {
-      "date": "2026-09-08",
+      "date": "2026-10-19",
       "commits": 0
     },
     {
-      "date": "2026-09-09",
+      "date": "2026-10-20",
       "commits": 0
     },
     {
-      "date": "2026-09-10",
+      "date": "2026-10-21",
       "commits": 0
     },
     {
-      "date": "2026-09-11",
-      "commits": 0
+      "date": "2026-10-22",
+      "commits": 30
     },
     {
-      "date": "2026-09-12",
-      "commits": 0
+      "date": "2026-10-23",
+      "commits": 9
     },
     {
-      "date": "2026-09-13",
-      "commits": 0
+      "date": "2026-10-24",
+      "commits": 13
     },
     {
-      "date": "2026-09-14",
-      "commits": 98
+      "date": "2026-10-25",
+      "commits": 9
     },
     {
-      "date": "2026-09-15",
+      "date": "2026-10-26",
+      "commits": 16
+    },
+    {
+      "date": "2026-10-27",
+      "commits": 43
+    },
+    {
+      "date": "2026-10-28",
       "commits": 1
-    },
-    {
-      "date": "2026-09-16",
-      "commits": 35
-    },
-    {
-      "date": "2026-09-17",
-      "commits": 262
     }
   ],
   "branch_activity_30d": [
     {
-      "branch": "main",
-      "commits": 290
-    },
-    {
-      "branch": "feature/quest-lab-ide",
-      "commits": 76
-    },
-    {
-      "branch": "01-blackjack",
-      "commits": 27
-    },
-    {
-      "branch": "02-detective-game",
-      "commits": 10
-    },
-    {
-      "branch": "03-pokemon-battle",
-      "commits": 10
-    },
-    {
-      "branch": "04-casino-slots",
-      "commits": 10
-    },
-    {
-      "branch": "05-dungeon-crawler",
-      "commits": 10
-    },
-    {
-      "branch": "06-gladiator-arena",
-      "commits": 10
-    },
-    {
-      "branch": "07-football-manager",
-      "commits": 10
-    },
-    {
-      "branch": "00-rps-tournament",
-      "commits": 6
+      "branch": "feature/tauri-arcade",
+      "commits": 120
     },
     {
       "branch": "questlab-files/01-blackjack",
-      "commits": 3
-    },
-    {
-      "branch": "feature/cloud-sync-desktop",
-      "commits": 2
-    },
-    {
-      "branch": "legacy-before-python-quest-lab",
       "commits": 1
     }
   ]
