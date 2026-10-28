@@ -131,15 +131,8 @@ func _draw() -> void:
 	draw_ellipse(pos + Vector2(0, 1), 7.0, 3.0, Color(0, 0, 0, .45))
 	var pyr_frame := int(time * 2.0) % 2
 	draw_texture_rect_region(PYR, Rect2(pyr_pos.x - 9, pyr_pos.y - 18, 18, 18), Rect2(pyr_frame * 32, 0, 32, 32))
-	# A restrained prototype map, showing only doors which exist in this slice.
-	draw_rect(Rect2(215, 5, 100, 54), Color(0.06, 0.06, 0.10, .93))
-	draw_rect(Rect2(215, 5, 100, 54), Color("b99c6d"), false, 1.0)
-	label("CASTLE", Vector2(222, 14), 6, Color("e6d09d"))
-	draw_line(Vector2(240, 25), Vector2(240, 34), Color("bca77f"), 2)
-	draw_line(Vector2(253, 40), Vector2(270, 40), Color("bca77f"), 2)
-	map_room(Rect2(228, 17, 24, 11), "GAL", room == "gallery")
-	map_room(Rect2(228, 34, 24, 11), "LIB", room == "library")
-	map_room(Rect2(270, 34, 28, 11), "HALL", room == "hall")
+	# Miniature floor plan: only the three walkable rooms are shown here.
+	draw_castle_map()
 	label("prototype · arrows / WASD", Vector2(9, 174), 7, Color("ece3ca"))
 	label(("GREAT HALL" if room == "hall" else "LIBRARY" if room == "library" else "GALLERY"), Vector2(9, 13), 8, Color("ece3ca"))
 
@@ -158,7 +151,57 @@ func vertical_door(north: bool) -> void:
 func label(s: String, at: Vector2, size: int, color: Color) -> void:
 	draw_string(font, at, s, HORIZONTAL_ALIGNMENT_LEFT, -1, size, color)
 
-func map_room(r: Rect2, s: String, active: bool) -> void:
-	draw_rect(r, Color("805d35") if active else Color("39474b"))
-	draw_rect(r, Color("f5d28e") if active else Color("9aaba5"), false, 1.0)
-	label(s, r.position + Vector2(3, 8), 6, Color("fff1cf"))
+func draw_castle_map() -> void:
+	# Keep the floor plan compact in the upper-right corner.
+	draw_set_transform(Vector2(75, 0), 0.0, Vector2(0.76, 0.76))
+	# Dark frame and inset stone trim evoke an in-world map rather than a menu.
+	draw_rect(Rect2(205, 4, 111, 78), Color(0.04, 0.04, 0.07, .94))
+	draw_rect(Rect2(205, 4, 111, 78), Color("8e795a"), false, 1.0)
+	draw_rect(Rect2(207, 6, 107, 74), Color("423a3a"), false, 1.0)
+	label("CASTLE", Vector2(211, 14), 6, Color("e6d09d"))
+	label("GALLERY" if room == "gallery" else "LIBRARY" if room == "library" else "GREAT HALL", Vector2(252, 14), 6, Color("e6d09d"))
+
+	var gallery := Rect2(218, 19, 34, 21)
+	var library := Rect2(218, 48, 34, 23)
+	var hall := Rect2(268, 48, 38, 23)
+	# Corridors are drawn before walls; thresholds below cut through the walls.
+	draw_rect(Rect2(232, 39, 6, 10), Color("8e806a"))
+	draw_rect(Rect2(251, 56, 18, 6), Color("8e806a"))
+	map_chamber(gallery, Color("353e4b"))
+	map_chamber(library, Color("624734"))
+	map_chamber(hall, Color("3d444f"))
+	# Visible door gaps match the real exits.
+	draw_rect(Rect2(232, 38, 6, 3), Color("cbb69a"))
+	draw_rect(Rect2(232, 47, 6, 3), Color("cbb69a"))
+	draw_rect(Rect2(250, 56, 3, 6), Color("cbb69a"))
+	draw_rect(Rect2(267, 56, 3, 6), Color("cbb69a"))
+
+	# Tiny furniture gives each room an immediately recognizable purpose.
+	for x in [224, 235, 246]:
+		draw_rect(Rect2(x, 24, 3, 3), Color("bfc5c5"))
+		draw_rect(Rect2(x - 1, 27, 5, 2), Color("777c85"))
+	draw_rect(Rect2(221, 51, 7, 3), Color("b69a6d"))
+	draw_rect(Rect2(242, 51, 7, 3), Color("b69a6d"))
+	draw_rect(Rect2(226, 59, 8, 4), Color("b78658"))
+	draw_rect(Rect2(243, 59, 3, 3), Color("6bb2ba"))
+	draw_rect(Rect2(282, 50, 10, 4), Color("ac8d6b"))
+	draw_rect(Rect2(285, 52, 4, 2), Color("f7a54c"))
+	draw_rect(Rect2(284, 57, 6, 11), Color("9a3540"))
+	draw_rect(Rect2(273, 57, 6, 3), Color("aa8660"))
+	draw_rect(Rect2(295, 57, 6, 3), Color("aa8660"))
+
+	# The marker moves within the current room, so it is a map of your position.
+	var active := hall if room == "hall" else library if room == "library" else gallery
+	var marker := Vector2(active.position.x + 4.0 + clampf(pos.x / 320.0, 0.0, 1.0) * (active.size.x - 8.0), active.position.y + 4.0 + clampf((pos.y - 20.0) / 155.0, 0.0, 1.0) * (active.size.y - 8.0))
+	draw_circle(marker, 3.0, Color("33200e"))
+	draw_circle(marker, 2.0, Color("ffe287"))
+	draw_circle(marker + Vector2(-0.5, -0.5), 0.7, Color("fffbe6"))
+	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+
+func map_chamber(r: Rect2, floor_color: Color) -> void:
+	draw_rect(r.grow(2), Color("1b1923"))
+	draw_rect(r, Color("a19784"))
+	draw_rect(r.grow(-2), floor_color)
+	# Sparse seams suggest a miniature room surface without filling it with noise.
+	for y in range(int(r.position.y + 5), int(r.end.y - 2), 5):
+		draw_line(Vector2(r.position.x + 2, y), Vector2(r.end.x - 2, y), Color(1, 1, 1, .06))
