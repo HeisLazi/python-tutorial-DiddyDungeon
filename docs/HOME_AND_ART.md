@@ -10,7 +10,7 @@ Last updated 2026-10-27 (new Alucard hunter from AI sheets). Start with "Quick s
 
 ---
 
-> **Current update:** The playable home now consists of the Great Hall and Pyr's Den. Home uses an unarmed 32px hunter in 38×38 cells from `tools/home_art/assets/hunter_gothic`, built from the source strips by `tools/home_art/build_hunter_v2.py`. The old room-chain, follower behavior and 48×46 hunter descriptions below are historical. Pyr roams independently in the den; the main hall hosts the practical character stations.
+> **Current update:** The playable home now consists of the Great Hall and Pyr's Den. Home uses an unarmed 32px hunter in 38×38 cells from `tools/home_art/assets/hunter_v3`, built from the source turnaround and walk sheet by `tools/home_art/build_hunter_v3.py`. The old room-chain, follower behavior and 48×46 hunter descriptions below are historical. Pyr roams independently in the den; the main hall hosts the practical character stations.
 
 ## 1. Quick start
 

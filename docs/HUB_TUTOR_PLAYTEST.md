@@ -24,4 +24,8 @@ These observations come from an agent-driven Chromium playthrough with a disposa
 - Have a new player try the hall without instructions and check whether the physical station affordances and door are clear. The starter den remains deliberately sparse until upgraded.
 - Expand the remaining reference-only concepts into authored checks and have an actual beginner test the teaching sequence. More practice formats and AI output still need pedagogical review.
 - Test a complete sparring bout with a learner writing code. The scratch answer is currently reviewed, not executed, and is not saved on leaving the bout.
-- The generated hunter was cut and previewed in-game; detailed frame-by-frame art polish in Pixelorama is still outstanding. The old combat hunter is unchanged.
+- The Home hunter uses a revised unarmed black-and-gold pixel-art turnaround and a four-pose walk cycle in each direction; the right side mirrors the left. The combat hunter is unchanged. The source remains AI-generated and has not had frame-by-frame manual Pixelorama polish.
+
+## Hunter artwork source
+
+The Home hunter turnaround and walk sheet were generated with the built-in image-generation tool from the supplied Alucard and gothic pixel-art references. Prompt: original dark-skinned gothic hunter with a short black afro, ivory cravat, black coat and cape, charcoal armour, antique gold trim, tall boots, no weapon; consistent front, side and back RPG views with a four-pose walk cycle, crisp limited-palette pixel art on neutral grey. The source images live in `tools/home_art/sheets/hunter_v3/`; `python3 tools/home_art/build_hunter_v3.py` cuts and aligns the 38×38 game frames.

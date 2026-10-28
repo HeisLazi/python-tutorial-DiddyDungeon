@@ -1,0 +1,15 @@
+{
+ "frame": [
+  38,
+  38
+ ],
+ "frames": 8,
+ "idle_start": 8,
+ "idle_frames": 4,
+ "facings": {
+  "down": "front",
+  "left": "side",
+  "right": "side(mirrored)",
+  "up": "back"
+ }
+}
