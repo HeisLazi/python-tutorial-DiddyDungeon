@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { lessonFor } from './tutorLessons.js'
 
-export default function TutorLearningPath({ pages, selectedPage, onSelect, onPractice, onResume, encounter, studyObjective, reference }) {
+export default function TutorLearningPath({ pages, selectedPage, onSelect, onPractice, onResume, encounter, studyObjective, reference, practiceLocked = false }) {
   const [attempts, setAttempts] = useState({})
   const [search, setSearch] = useState('')
   const visiblePages = pages.filter((page) => `${page.title} ${page.definition || ''}`.toLowerCase().includes(search.trim().toLowerCase()))
@@ -21,7 +21,7 @@ export default function TutorLearningPath({ pages, selectedPage, onSelect, onPra
       <div className="tutor-lesson-heading"><div><span className="screen-kicker">LEARN · {selectedPage.title.toUpperCase()}</span><h3>{lesson.title}</h3><p>{lesson.intro}</p></div></div>
       <section className="tutor-lesson-section"><span className="tutor-step">01 <b>READ</b></span><div><h4>See it in action</h4><pre><code>{lesson.example}</code></pre><p>{lesson.explain}</p></div></section>
       {lesson.options && <section className="tutor-lesson-section"><span className="tutor-step">02 <b>PREDICT</b></span><div><h4>{lesson.question}</h4><div className="tutor-lesson-options">{lesson.options.map((option, index) => <button type="button" key={option} className={picked === index ? 'selected' : ''} onClick={() => setAttempts((current) => ({ ...current, [selectedPage.id]: index }))}>{option}</button>)}</div>{picked !== undefined && <p className={`tutor-answer ${picked === lesson.answer ? 'correct' : 'incorrect'}`} role="status"><strong>{picked === lesson.answer ? 'That’s right. ' : 'Not quite. '}</strong>{picked === lesson.answer ? lesson.why : 'Look at the example again and try another answer.'}</p>}</div></section>}
-      <section className="tutor-lesson-section"><span className="tutor-step">03 <b>TRY</b></span><div><h4>Make your own example</h4><p>{lesson.try}</p><button type="button" className="tutor-primary" onClick={() => onPractice('predict')}>Open practice →</button></div></section>
+      <section className="tutor-lesson-section"><span className="tutor-step">03 <b>TRY</b></span><div><h4>Make your own example</h4><p>{lesson.try}</p><button type="button" className="tutor-primary" disabled={practiceLocked} onClick={() => onPractice('predict')}>{practiceLocked ? 'Practice locked during boss fight' : 'Open practice →'}</button></div></section>
       <details className="tutor-deeper"><summary>More examples, mistakes and your encounter notes</summary><div>{reference}</div></details>
       <div className="tutor-reflection"><section><span className="screen-kicker">EXPLAIN IT</span><p>{lesson.teachback}</p></section><section><span className="screen-kicker">TAKE IT FURTHER</span><p>{lesson.transfer}</p></section><section><span className="screen-kicker">WATCH OUT FOR</span><p>{lesson.mistake}</p></section></div>
     </main>

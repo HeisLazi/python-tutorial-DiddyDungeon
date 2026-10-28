@@ -485,10 +485,16 @@ function AppV2() {
     return value
   }
   const activeView = normalizeView(storedActiveView)
-  const setActiveView = (next) => setStoredActiveView((current) => {
-    const candidate = typeof next === 'function' ? next(current) : next
-    return normalizeView(candidate)
-  })
+  const [bossRetreatTarget, setBossRetreatTarget] = useState('')
+  const [bossTransitionBusy, setBossTransitionBusy] = useState(false)
+  const setActiveView = (next) => {
+    const candidate = normalizeView(typeof next === 'function' ? next(storedActiveView) : next)
+    if (campaign?.encounter?.boss_active && !['forge', 'tutor', 'codex', 'settings'].includes(candidate)) {
+      setBossRetreatTarget(candidate)
+      return
+    }
+    setStoredActiveView(candidate)
+  }
   const [leftWidth, setLeftWidth] = usePersistentState('questlab.leftWidth', 300)
   const [leftPanelCollapsed, setLeftPanelCollapsed] = usePersistentState('questlab.leftPanelCollapsed', false)
   const [rightWidth, setRightWidth] = usePersistentState('questlab.rightWidth', 410)
@@ -500,7 +506,6 @@ function AppV2() {
   const [showAiTerminal, setShowAiTerminal] = usePersistentState('questlab.showAiTerminal', true)
   const [zenMode, setZenMode] = usePersistentState('questlab.zenMode', false)
   const [gameMode, setGameMode] = usePersistentState('questlab.gameMode', false)
-  const [bossIntroSeen, setBossIntroSeen] = usePersistentState('questlab.bossIntroSeen', '')
   // OpenCode-backed PYR (ide/server/ai_tutor.py). `pyrThinking` is the label
   // shown while a model call runs; state writes pause until it clears.
   const [aiTutor, setAiTutor] = useState({ loaded: false, settings: null, opencode: null })
@@ -642,10 +647,35 @@ function AppV2() {
     campaign?.encounter?.status === 'boss_available'
     || campaign?.encounter?.boss_status === 'available'
   )
+  useEffect(() => {
+    if (campaign?.encounter?.boss_active && !['forge', 'tutor', 'codex', 'settings'].includes(activeView)) setStoredActiveView('forge')
+  }, [campaign?.encounter?.boss_active, activeView])
+
   // The boss intro is a one-time announcement per boss, not a wall in front
   // of the editor the player needs to fight it from.
-  const bossIntroKey = `${campaign?.encounter?.project_id || progress.current_project || 'project'}:${campaign?.encounter?.boss || 'boss'}`
-  const showBossIntro = bossGateActive && bossIntroSeen !== bossIntroKey
+  const showBossIntro = bossGateActive && !campaign?.encounter?.boss_active
+  const beginBossFight = async () => {
+    setBossTransitionBusy(true)
+    try {
+      await api('/api/boss/start', { method: 'POST', body: '{}' })
+      const next = await refreshCampaign()
+      if (!next) throw new Error('Could not refresh the fight')
+    } catch (error) { setNotice(`Could not start the boss: ${error.message}`) }
+    finally { setBossTransitionBusy(false) }
+  }
+  const retreatBossFight = async () => {
+    if (!bossRetreatTarget) return
+    setBossTransitionBusy(true)
+    try {
+      await api('/api/boss/retreat', { method: 'POST', body: '{}' })
+      const next = await refreshCampaign()
+      if (!next) throw new Error('Could not refresh after retreat')
+      setStoredActiveView(bossRetreatTarget)
+      setBossRetreatTarget('')
+      setNotice('You retreated. The boss will start again from the first phase.')
+    } catch (error) { setNotice(`Could not leave the fight: ${error.message}`) }
+    finally { setBossTransitionBusy(false) }
+  }
   const welcomeName = cloudState.profile?.display_name || player.name || cloudState.user?.email?.split('@')?.[0] || 'Adventurer'
   const runtimeBranch = runtime?.repo_git?.branch || 'checking branch…'
   const runtimeMismatch = Boolean(runtime?.expected_branch && runtimeBranch !== runtime.expected_branch)
@@ -2836,10 +2866,15 @@ function AppV2() {
             <span className="screen-kicker">BOSS GATE OPEN</span>
             <h2>⚔ {campaign?.encounter?.boss || 'The boss'} awaits</h2>
             <p>Every bounty on this board is cleared. This boss has its own gauntlet: coding phases you Submit run in the Forge, and questions about your own code you answer in the left sidebar. Watch its phases on the left.</p>
-            <button className="primary" type="button" onClick={() => setBossIntroSeen(bossIntroKey)} autoFocus>Fight</button>
+            <p>During the fight you can read lessons and the bestiary. Leaving for Home or another activity resets the boss to its first phase.</p>
+            <button className="primary" type="button" onClick={beginBossFight} disabled={bossTransitionBusy} autoFocus>{bossTransitionBusy ? 'Entering…' : 'Fight'}</button>
+            <button type="button" onClick={() => setActiveView('hub')} disabled={bossTransitionBusy}>Prepare at Home first</button>
           </div>
         </div>
       )}
+      {bossRetreatTarget && <div className="boss-overlay" role="dialog" aria-modal="true" aria-label="Leave the boss fight">
+        <div className="boss-card"><span className="screen-kicker">RETREAT FROM THE BOSS</span><h2>Leave the fight?</h2><p>The boss will recover all Resolve and restart at its first phase. Your code, health and earned rewards stay as they are.</p><button className="primary" type="button" onClick={() => setBossRetreatTarget('')} disabled={bossTransitionBusy} autoFocus>Stay in the fight</button><button type="button" onClick={retreatBossFight} disabled={bossTransitionBusy}>{bossTransitionBusy ? 'Leaving…' : 'Retreat and reset boss'}</button></div>
+      </div>}
       {celebration && (
         <div className="celebration-overlay" role="dialog" aria-modal="true">
           <div className="celebration-card">

@@ -4,6 +4,8 @@ These observations come from an agent-driven Chromium playthrough with a disposa
 
 ## What changed
 
+- Hearth rest costs 1 coin per 10 missing HP, rounded up. If the player cannot afford full recovery, emergency rest brings them to 30% HP for free. Boss fights begin explicitly; retreat resets their phases, and lessons and bestiary stay available while practice and sparring are locked.
+
 - Home stations open pixel-styled screens inside the game frame, with a zoom transition and a return to the room. The trophy station displays named defeated campaign bosses from saved project records; Dungeon boss names are not yet retained. The hearth separates resting from room improvements, and Pyr has feeding and training controls. The redundant Forge door has been removed; the main Forge navigation remains.
 
 - Home has one Great Hall for the hearth, equipment, hunter stats and permanent bonuses, and trophies. A labelled, visible door leads to Pyr's Den. Pyr moves independently in the den and can be approached for care. The map reflects the two walkable rooms. A dismissible guide explains what Home is for, and Shift speeds movement.
@@ -29,3 +31,7 @@ These observations come from an agent-driven Chromium playthrough with a disposa
 ## Hunter artwork source
 
 The Home hunter turnaround and walk sheet were generated with the built-in image-generation tool from the supplied Alucard and gothic pixel-art references. Prompt: original dark-skinned gothic hunter with a short black afro, ivory cravat, black coat and cape, charcoal armour, antique gold trim, tall boots, no weapon; consistent front, side and back RPG views with a four-pose walk cycle, crisp limited-palette pixel art on neutral grey. The source images live in `tools/home_art/sheets/hunter_v3/`; `python3 tools/home_art/build_hunter_v3.py` cuts and aligns the 38×38 game frames.
+
+## Boss and hearth playtest
+
+With a disposable save, Chromium entered a boss, visited Lessons and Bestiary, confirmed practice and sparring stayed locked after reload, and chose both stay and retreat. A trusted test phase reduced Resolve from 15 to 10; after retreat and starting again it returned to 15. A 40/100 HP rest cost 6 coins, and a zero-coin emergency rest raised 10/100 HP to 30/100. Direct recovery and practice requests during the fight returned 409. The phase verdict was injected by the test service, not graded by PYR; the full boss fight still needs learner playtesting.

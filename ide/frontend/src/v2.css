@@ -1871,3 +1871,4 @@
 @keyframes home-station-zoom { from { transform: scale(.94); } to { transform: scale(1); } }
 @media (max-width: 700px) { .home-station-topbar > span:not(.home-station-wallet) { display: none; } .home-station-content { width: calc(100% - 20px); } .home-station-columns { grid-template-columns: 1fr; } .home-trophy-intro > strong { display: none; } }
 @media (prefers-reduced-motion: reduce) { .home-room-frame iframe { transition: none; } .home-station-screen, .home-station-page { animation: none; } }
+.resource-boss-lock { margin: 8px 0; padding: 9px 12px; color: #ffdf9c; background: #35251f; border: 1px solid #a47b4a; }

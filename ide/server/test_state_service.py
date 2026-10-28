@@ -6,6 +6,7 @@ import threading
 import unittest
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
+from unittest.mock import patch
 
 from fastapi.testclient import TestClient
 
@@ -1206,6 +1207,74 @@ class StateServiceBehaviorTests(unittest.TestCase):
         self.assertEqual(self.read(path)["companion"]["energy"], 1)
         self.assertEqual(self.read(path)["state_events"][-1]["action"], "homestead_action")
 
+    def test_hearth_cost_and_emergency_recovery(self):
+        service, path = self.make_service()
+        state = self.read(path)
+        state["player"].update({"hp": 40, "max_hp": 100, "coins": 6})
+        path.write_text(json.dumps(state), encoding="utf-8")
+        result = service.apply("homestead_action", {"action": "recover"}, "player")
+        self.assertEqual((self.read(path)["player"]["hp"], self.read(path)["player"]["coins"]), (100, 0))
+        self.assertEqual(result["result"]["coins_spent"], 6)
+        state = self.read(path)
+        state["player"].update({"hp": 10, "max_hp": 101, "coins": 0})
+        path.write_text(json.dumps(state), encoding="utf-8")
+        free = service.apply("homestead_action", {"action": "recover"}, "player")
+        self.assertEqual((free["result"]["hp"], free["result"]["coins_spent"]), (31, 0))
+        with self.assertRaises(StateCommandError):
+            service.apply("homestead_action", {"action": "recover"}, "player")
+        self.assertEqual(self.read(path)["player"]["hp"], 31)
+
+    def test_boss_retreat_resets_progress_and_locks_home_and_practice(self):
+        service, path = self.make_service()
+        state = self.read(path)
+        project = state["projects"][0]
+        service._extend_campaign(state)
+        for mob in project["mobs"]:
+            mob["status"] = "defeated"
+        project.update({"boss_status": "available", "progress": 100})
+        path.write_text(json.dumps(state), encoding="utf-8")
+        service.apply("boss_start", {}, "player")
+        self.assertTrue(service.encounter_projection(self.read(path))["boss_active"])
+        active_projection, _ = service.sync_snapshot()
+        active_validated = service._validate_sync_projection(active_projection)
+        self.assertTrue(service._boss_is_active({"projects": active_validated["campaign"]["projects"]}))
+        with self.assertRaises(StateCommandError):
+            service.apply("homestead_action", {"action": "recover"}, "player")
+        with self.assertRaises(StateCommandError):
+            service.apply("practice_session_started", {"concept": "Loops", "question_type": "code_trace", "difficulty": 1}, "player")
+        phase = service.encounter_projection(self.read(path))["boss_phase"]
+        service.apply_internal("record_boss_requirement", {"requirement_id": phase, "evidence_id": "test-evidence", "reason": "valid"})
+        damaged = service.encounter_projection(self.read(path))
+        self.assertLess(damaged["boss_resolve"], damaged["boss_max_resolve"])
+        service.apply("boss_retreat", {}, "player")
+        reset = service.encounter_projection(self.read(path))
+        self.assertFalse(reset["boss_active"])
+        self.assertEqual(reset["boss_resolve"], reset["boss_max_resolve"])
+        self.assertEqual(reset["verified_boss_requirements"], [])
+        # The marker uses the existing bounded sync schema and survives projection.
+        projection, _ = service.sync_snapshot()
+        validated = service._validate_sync_projection(projection)
+        self.assertTrue(validated["campaign"]["projects"][0]["boss_validation"]["history"])
+        service.apply("boss_start", {}, "player")
+        self.assertTrue(service.encounter_projection(self.read(path))["boss_active"])
+
+    def test_boss_retreat_cannot_farm_the_phase_heal(self):
+        service, path = self.make_service()
+        state = self.read(path)
+        project = state["projects"][0]
+        project.update({"branch": "00-lantern-vale", "boss": "The Unwritten King", "boss_status": "available", "progress": 100})
+        service._extend_campaign(state)
+        for mob in project["mobs"]:
+            mob["status"] = "defeated"
+        state["player"]["hp"] = 50
+        path.write_text(json.dumps(state), encoding="utf-8")
+        for attempt in range(2):
+            service.apply("boss_start", {}, "player")
+            for phase in ("required_behavior", "explanation", "edge_cases"):
+                service.apply_internal("record_boss_requirement", {"requirement_id": phase, "evidence_id": f"heal-{attempt}-{phase}", "reason": "verified"})
+            self.assertEqual(self.read(path)["player"]["hp"], 58)
+            service.apply("boss_retreat", {}, "player")
+
     def test_avatar_appearance_is_validated_projected_and_synced(self):
         service, path = self.make_service()
         self.assertEqual(service.equipment_projection(self.read(path))["avatar"]["hair_style"], "hooded")
@@ -1873,6 +1942,19 @@ class StateServiceBehaviorTests(unittest.TestCase):
 
 
 class StateGatewayHttpTests(unittest.TestCase):
+    def test_boss_question_from_abandoned_attempt_is_not_cached(self):
+        project = {"name": "Test"}
+        goal = {"id": "explanation", "question_type": "snippet_check"}
+        before = {"project_id": "test", "boss_attempt_id": "attempt-1"}
+        after = {"project_id": "test", "boss_attempt_id": "attempt-2"}
+        key = "boss:test:explanation"
+        written = {"prompt": "Question?", "options": ["a", "b"], "answer": 0}
+        with patch.object(app_v2, "_boss_choice_goal", side_effect=[(project, before, goal, key), (project, after, goal, key)]), patch.object(app_v2, "_ai_call", return_value=written), patch.object(app_v2, "_studied_ideas", return_value=[]):
+            with self.assertRaises(app_v2.HTTPException) as rejected:
+                app_v2.ai_boss_question()
+        self.assertEqual(rejected.exception.status_code, 409)
+        self.assertNotIn(key, app_v2.BOSS_QUESTIONS)
+
     def with_temp_progress(self):
         directory = tempfile.TemporaryDirectory()
         path = Path(directory.name) / "progress.json"

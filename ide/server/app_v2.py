@@ -1980,6 +1980,7 @@ def apply_pyr_dungeon_verdict(payload: PyrDungeonVerdictRequest):
 
 @app.post("/api/pyr/practice-submission")
 def create_pyr_practice_submission(payload: PyrPracticeSubmissionRequest):
+    _ensure_no_active_boss()
     """Bind an optional Practice answer without storing its raw text."""
 
     session_id = payload.session_id.strip()
@@ -2037,6 +2038,7 @@ def create_pyr_practice_submission(payload: PyrPracticeSubmissionRequest):
 
 @app.post("/api/pyr/practice-verdict")
 def apply_pyr_practice_verdict(payload: PyrPracticeVerdictRequest):
+    _ensure_no_active_boss()
     """Record a provider-validated Practice outcome with no game reward."""
 
     global PYR_PRACTICE_CHALLENGES
@@ -2124,7 +2126,7 @@ def create_pyr_boss_submission(payload: PyrBossSubmissionRequest):
                     if client_id == "default":
                         PYR_CONTEXT_CHALLENGE = None
                     raise HTTPException(status_code=409, detail="Campaign changed; capture fresh boss context")
-                if encounter.get("status") != "boss_available" or encounter.get("project_id") != challenge.get("project_id"):
+                if encounter.get("status") != "boss_available" or not encounter.get("boss_active") or encounter.get("project_id") != challenge.get("project_id"):
                     _clear_challenge(PYR_CONTEXT_CHALLENGES, client_id)
                     if client_id == "default":
                         PYR_CONTEXT_CHALLENGE = None
@@ -2263,7 +2265,7 @@ def apply_pyr_boss_verdict(payload: PyrBossVerdictRequest):
             try:
                 progress, metadata = STATE_SERVICE.snapshot_with_metadata()
                 encounter = STATE_SERVICE.encounter_projection(progress)
-                if metadata["revision"] != challenge.get("revision") or not isinstance(encounter, dict) or encounter.get("status") != "boss_available":
+                if metadata["revision"] != challenge.get("revision") or not isinstance(encounter, dict) or encounter.get("status") != "boss_available" or not encounter.get("boss_active"):
                     _clear_challenge(PYR_CONTEXT_CHALLENGES, client_id)
                     if client_id == "default":
                         PYR_CONTEXT_CHALLENGE = None
@@ -2824,6 +2826,36 @@ def purchase_home_room(payload: HomeRoomPurchase):
 def build_homestead_room_upgrade(payload: HomesteadRoomUpgrade):
     envelope = _apply_state_or_http("homestead_room_upgrade", payload.model_dump(), "player")
     return _flatten_state_result(envelope)
+
+
+class BossSessionRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+
+@app.post("/api/boss/start")
+def start_boss_session(payload: BossSessionRequest):
+    return _flatten_state_result(_apply_state_or_http("boss_start", payload.model_dump(), "player"))
+
+
+@app.post("/api/boss/retreat")
+def retreat_boss_session(payload: BossSessionRequest):
+    with PROGRESS_LOCK:
+        result = _flatten_state_result(_apply_state_or_http("boss_retreat", payload.model_dump(), "player"))
+        # A cached question belongs to the abandoned attempt, even if its
+        # phase identifier happens to match the next attempt.
+        for key in list(BOSS_QUESTIONS):
+            BOSS_QUESTIONS.pop(key, None)
+            CHOICE_ANSWER_KEYS.pop(key, None)
+    return result
+
+
+def _ensure_no_active_boss():
+    try:
+        progress, _ = STATE_SERVICE.snapshot_with_metadata()
+        if STATE_SERVICE._boss_is_active(progress):
+            raise HTTPException(status_code=409, detail="Practice and sparring are unavailable during a boss fight")
+    except StateCommandError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
 
 
 @app.post("/api/homestead/action")
@@ -3428,8 +3460,8 @@ def _boss_choice_goal() -> tuple[dict, dict, dict, str]:
         encounter = STATE_SERVICE.encounter_projection(progress)
     except StateCommandError as exc:
         raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
-    if not isinstance(encounter, dict) or encounter.get("status") != "boss_available":
-        raise HTTPException(status_code=409, detail="There is no boss fight right now")
+    if not isinstance(encounter, dict) or encounter.get("status") != "boss_available" or not encounter.get("boss_active"):
+        raise HTTPException(status_code=409, detail="Start the boss fight first")
     goal = encounter.get("boss_current_requirement")
     if not isinstance(goal, dict) or goal.get("question_type") not in BOSS_CHOICE_TYPES:
         raise HTTPException(status_code=409, detail="The current boss goal is not a clickable question")
@@ -3463,9 +3495,13 @@ def ai_boss_question():
         code=code,
         studied=_studied_ideas(f"{project.get('name') or ''} {encounter.get('boss') or ''} {goal.get('label') or ''}"),
     )
-    BOSS_QUESTIONS[key] = {"prompt": written["prompt"], "options": written["options"]}
-    CHOICE_ANSWER_KEYS[key] = {"answer": written["answer"], "why": written.get("why", ""), "options": written["options"]}
-    return {"ok": True, "question": {"requirement_id": goal["id"], **BOSS_QUESTIONS[key]}}
+    with PROGRESS_LOCK:
+        _project, current, current_goal, current_key = _boss_choice_goal()
+        if current_key != key or current.get("boss_attempt_id") != encounter.get("boss_attempt_id"):
+            raise HTTPException(status_code=409, detail="The boss fight changed while the question was prepared")
+        BOSS_QUESTIONS[key] = {"prompt": written["prompt"], "options": written["options"]}
+        CHOICE_ANSWER_KEYS[key] = {"answer": written["answer"], "why": written.get("why", ""), "options": written["options"]}
+        return {"ok": True, "question": {"requirement_id": current_goal["id"], **BOSS_QUESTIONS[key]}}
 
 
 @app.post("/api/boss/answer-option")
@@ -3807,6 +3843,7 @@ def _spar_foe(target_id: str) -> dict:
 
 @app.post("/api/ai/spar-question")
 def ai_spar_question(payload: SparQuestionRequest):
+    _ensure_no_active_boss()
     """PYR writes the next sparring question (a simulated fight: no damage)."""
 
     foe = _spar_foe(payload.target_id)
@@ -3837,6 +3874,7 @@ def ai_spar_question(payload: SparQuestionRequest):
 
 @app.post("/api/spar/answer-option")
 def answer_spar_option(payload: SparOptionRequest):
+    _ensure_no_active_boss()
     """Grade a sparring click. Each question is its own practice drill, so a
     right first click earns sign XP exactly like Tutor practice; nothing hurts."""
 
@@ -3871,6 +3909,7 @@ def answer_spar_option(payload: SparOptionRequest):
 
 @app.post("/api/spar/answer-code")
 def answer_spar_code(payload: SparCodeRequest):
+    _ensure_no_active_boss()
     """Review the current scratch answer without executing or saving it."""
     foe = _spar_foe(payload.target_id)
     if not payload.code.strip():
@@ -3961,6 +4000,7 @@ def answer_dungeon_option(payload: DungeonOptionRequest):
 
 @app.post("/api/ai/practice-lens")
 def ai_practice_lens(payload: AiPracticeLensRequest):
+    _ensure_no_active_boss()
     lenses = [
         {"id": str(item.get("id", ""))[:40], "label": str(item.get("label", ""))[:80], "prompt": str(item.get("prompt", ""))[:300]}
         for item in payload.lenses

@@ -491,6 +491,8 @@ ACTION_DEFINITIONS: dict[str, ActionDefinition] = {
     "homestead_room_upgrade": ActionDefinition(frozenset({"player"})),
     "home_room_purchase": ActionDefinition(frozenset({"player"})),
     "homestead_action": ActionDefinition(frozenset({"player"})),
+    "boss_start": ActionDefinition(frozenset({"player"})),
+    "boss_retreat": ActionDefinition(frozenset({"player"})),
     "equip_equipment": ActionDefinition(frozenset({"player"})),
     "set_avatar": ActionDefinition(frozenset({"player"})),
     "select_campaign": ActionDefinition(frozenset({"player"})),
@@ -3304,6 +3306,8 @@ class LocalStateService:
         reward_envelope = dict(BOSS_REWARD_ENVELOPE)
         special = campaign_special_mechanic(project)
         return {
+            "boss_active": LocalStateService._boss_is_active({"projects": [{**project, "status": "active"}]}),
+            "boss_attempt_id": next((entry.get("evidence_id") for entry in reversed(raw.get("history", [])) if isinstance(entry, Mapping) and entry.get("requirement_id") == "boss_begin"), None) if isinstance(raw, Mapping) and isinstance(raw.get("history"), list) else None,
             "verified_boss_requirements": verified_ids,
             "remaining_boss_requirements": remaining,
             "boss_phase": phase,
@@ -5619,6 +5623,13 @@ class LocalStateService:
                 # Every action sees the authored campaign; campaign_extend
                 # itself does (and persists) the same work.
                 self._extend_campaign(progress)
+            if self._boss_is_active(progress) and (normalized_action.startswith("dungeon_") or normalized_action in {
+                "homestead_action", "home_room_purchase", "homestead_room_upgrade", "homestead_purchase", "homestead_equip",
+                "campaign_market_purchase", "equip_equipment", "set_avatar", "select_campaign", "hunter_spend_point",
+                "hunter_craft_oil", "hunter_upgrade_kit", "hunter_identify_start", "hunter_identify_answer",
+                "practice_session_started", "practice_record_attempt", "armory_equip", "armory_unequip", "armory_use", "armory_buy",
+            }):
+                raise StateCommandError("Leave the boss fight first; retreat resets its progress", status_code=409)
             mutation = self._dispatch(normalized_action, payload, progress)
             if mutation.changed:
                 # A cloud pull can bring back a shorter board; re-extend it.
@@ -5962,6 +5973,8 @@ class LocalStateService:
             "homestead_room_upgrade": self._homestead_room_upgrade,
             "home_room_purchase": self._home_room_purchase,
             "homestead_action": self._homestead_action,
+            "boss_start": self._boss_start,
+            "boss_retreat": self._boss_retreat,
             "equip_equipment": self._equip_equipment,
             "set_avatar": self._set_avatar,
             "select_campaign": self._select_campaign,
@@ -7153,8 +7166,21 @@ class LocalStateService:
         if action == "recover":
             if hp >= max_hp:
                 return Mutation(False, {"action": action, "already_full": True, "hp": hp, "max_hp": max_hp})
-            player["hp"] = max_hp
-            return Mutation(True, {"action": action, "hp": max_hp, "max_hp": max_hp}, {"home_action": action, "healed": max_hp - hp, "reason": "homestead_recover"})
+            missing = max_hp - hp
+            cost = (missing + 9) // 10
+            coins = self._counter(player, "coins")
+            if coins >= cost:
+                player["coins"] = coins - cost
+                target = max_hp
+                paid = cost
+            else:
+                target = max(1, (max_hp * 30 + 99) // 100)
+                paid = 0
+                if hp >= target:
+                    raise StateCommandError(f"Full rest costs {cost} coins; free emergency rest is only available below {target} HP", status_code=409)
+            player["hp"] = target
+            healed = target - hp
+            return Mutation(True, {"action": action, "healed": healed, "hp": target, "max_hp": max_hp, "coins_spent": paid, "emergency": paid == 0}, {"home_action": action, "healed": healed, "coins_spent": paid, "emergency": paid == 0, "reason": "homestead_recover"})
 
         if action == "bandage":
             count = self._counter(supplies, "bandages")
@@ -8564,6 +8590,70 @@ class LocalStateService:
         return Mutation(True, {"project": summary}, event)
 
     @staticmethod
+    def _boss_is_active(progress: Mapping[str, Any]) -> bool:
+        projects = progress.get("projects")
+        if not isinstance(projects, list):
+            return False
+        project = next((p for p in projects if isinstance(p, Mapping) and p.get("status") == "active"), None)
+        if not project or project.get("completed") is True or project.get("boss_status") == "defeated":
+            return False
+        validation = project.get("boss_validation")
+        history = validation.get("history", []) if isinstance(validation, Mapping) else []
+        if not isinstance(history, list):
+            return False
+        marker = next((entry.get("requirement_id") for entry in reversed(history) if isinstance(entry, Mapping) and entry.get("requirement_id") in {"boss_begin", "boss_retreat"}), None)
+        return marker == "boss_begin"
+
+    @staticmethod
+    def _boss_history(project: dict[str, Any]) -> tuple[dict[str, Any], list[dict[str, Any]]]:
+        validation = project.get("boss_validation")
+        if not isinstance(validation, dict):
+            validation = {"verified": [], "history": []}
+            project["boss_validation"] = validation
+        history = validation.setdefault("history", [])
+        validation.setdefault("verified", [])
+        if not isinstance(history, list) or not isinstance(validation.get("verified"), list):
+            raise StateCommandError("Existing boss validation state is invalid", status_code=500)
+        return validation, history
+
+    def _boss_start(self, payload: Mapping[str, Any], progress: dict[str, Any]) -> Mutation:
+        self._payload(payload, set(), set())
+        project = next((p for p in progress.get("projects", []) if isinstance(p, dict) and p.get("status") == "active"), None)
+        if not project or project.get("completed") is True or project.get("boss_status") == "defeated":
+            raise StateCommandError("No boss is available", status_code=409)
+        mobs = project.get("mobs")
+        if not isinstance(mobs, list) or not mobs or any(not isinstance(m, dict) or m.get("status") not in {"defeated", "cleared"} for m in mobs):
+            raise StateCommandError("Clear the bounties before fighting the boss", status_code=409)
+        self._unlock_boss_if_cleared(project)
+        if project.get("boss_status") != "available":
+            raise StateCommandError("The boss is not available", status_code=409)
+        if self._boss_is_active(progress):
+            return Mutation(False, {"boss_active": True})
+        validation, history = self._boss_history(project)
+        history.append({"requirement_id": "boss_begin", "evidence_id": uuid.uuid4().hex, "recorded_at": _utc_now()})
+        self._trim_boss_history(project, validation, history)
+        return Mutation(True, {"boss_active": True}, {"project_id": self._project_id(project), "boss_name": str(project.get("boss") or "")})
+
+    @staticmethod
+    def _trim_boss_history(project: Mapping[str, Any], validation: dict[str, Any], history: list[dict[str, Any]]) -> None:
+        # Keep the first special-mechanic award across retreats so it cannot be farmed.
+        special = campaign_special_mechanic(project)
+        first_award = next((entry for entry in history if isinstance(entry, dict) and special and entry.get("requirement_id") == special["trigger"]), None)
+        tail = history[-19:] if first_award and first_award not in history[-20:] else history[-20:]
+        validation["history"] = ([first_award] + tail) if first_award and first_award not in tail else tail
+
+    def _boss_retreat(self, payload: Mapping[str, Any], progress: dict[str, Any]) -> Mutation:
+        self._payload(payload, set(), set())
+        if not self._boss_is_active(progress):
+            return Mutation(False, {"boss_active": False, "reset": False})
+        project = next(p for p in progress["projects"] if isinstance(p, dict) and p.get("status") == "active")
+        validation, history = self._boss_history(project)
+        validation["verified"] = []
+        history.append({"requirement_id": "boss_retreat", "recorded_at": _utc_now()})
+        self._trim_boss_history(project, validation, history)
+        return Mutation(True, {"boss_active": False, "reset": True}, {"project_id": self._project_id(project), "boss_name": str(project.get("boss") or "")})
+
+    @staticmethod
     def _unlock_boss_if_cleared(project: dict[str, Any]) -> None:
         """Match the encounter projection: a cleared board with no stored boss
         status (for example after a cloud sync dropped it) means the boss is
@@ -8631,7 +8721,8 @@ class LocalStateService:
 
         verified.append(requirement_id)
         special = campaign_special_mechanic(project)
-        mechanic_reward = apply_campaign_mechanic(progress, None, special) if special and special["trigger"] == requirement_id else None
+        already_awarded = any(isinstance(entry, dict) and entry.get("requirement_id") == requirement_id for entry in history)
+        mechanic_reward = apply_campaign_mechanic(progress, None, special) if special and special["trigger"] == requirement_id and not already_awarded else None
         validation["verified"] = [item for item in gauntlet if item in verified]
         history.append(
             {
@@ -8641,7 +8732,7 @@ class LocalStateService:
                 "recorded_at": _utc_now(),
             }
         )
-        validation["history"] = history[-20:]
+        self._trim_boss_history(project, validation, history)
         projection = self._boss_validation_projection(project)
         current_spec = BOSS_REQUIREMENT_SPECS.get(requirement_id, {})
         try:
