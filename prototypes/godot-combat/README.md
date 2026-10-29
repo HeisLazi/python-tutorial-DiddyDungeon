@@ -1,20 +1,22 @@
-# Godot combat scene prototype
+# Godot sword combat study
 
-Standalone 320×180 Godot 4.7 scene for evaluating a combat-specific Tate, an
-articulated arm with weapon attachment, and a simulated sparring environment.
-It is not connected to the app, a real encounter, or save data.
+Standalone Godot 4.7 scene for evaluating a redesigned Tate and a sword held in
+his hand. It is a visual study; it has no connection to the app or save data.
 
-- **HIT / MISS** play an illustrative attack or retaliation and update demo bars.
-- **WEAPON** cycles sword, magic staff, whip and greatsword; each has a different
-  rigged action. **MODE** switches between a blue projected sparring hollow and
-  a solid Dungeon mimic. **RESET** restores the demo bars.
-- The background, torch sprites, Godot lights, projected grid, characters and
-  arm are separate scene elements. The hollow shader affects Sparring only.
-- Tate is an original image-generated combat concept using the supplied style
-  reference. His body currently uses one idle frame with a procedural arm; this
-  is a rig prototype, not a finished set of hand-drawn attack frames. Weapon
-  art, two-handed poses, hit timing, accessibility and game integration need
-  further design before this replaces the live combat scene.
+- **HIT** plays three whole-character sword poses, including the hand and blade.
+  **MISS** shows a counterattack. **MODE** switches between a blue projected
+  sparring hollow and a solid Dungeon mimic. **RESET** restores demo bars.
+- `source-art/tate-sword-concept.png` contains the original generated concept,
+  guided by the supplied Alucard and character references. The fourth pose is
+  not used because its sword faces backward. `source-art/slice_sword.py` uses
+  the first three connected silhouettes to produce the consistent 96×72 cell
+  sheet. `source-art/tate-sword-sheet.aseprite` is an editable LibreSprite sheet.
+- The character uses complete poses, not a separate procedural weapon overlay.
+  Three frames are a rough animation study; in-between drawings and polish are
+  still needed. Magic, whip and greatsword are not included in this revision;
+  they need their own complete poses rather than the previous crude rig.
+- The backdrop, Godot lights, projected grid and actors are scene elements. The
+  hollow shader applies to Sparring only.
 
 To build the disposable web preview, create `../godot-combat-web`, run
 `godot --headless --path prototypes/godot-combat --import`, then

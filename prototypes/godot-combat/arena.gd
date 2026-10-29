@@ -1,15 +1,14 @@
 extends Node2D
 
-const ArmScript = preload("res://weapon_arm.gd")
 const HOLLOW_SHADER = preload("res://hollow.gdshader")
 const ATLAS: Texture2D = preload("res://art/tiles.png")
-const HUNTER: Texture2D = preload("res://art/hunter-combat.png")
+const HUNTER: Texture2D = preload("res://art/tate-sword-sheet.png")
 const CRYPT: Texture2D = preload("res://art/crypt.png")
 const MIMIC: Texture2D = preload("res://art/string-mimic.png")
 const HOLLOW: Texture2D = preload("res://art/wraith-pixel.png")
 
 var hunter: Node2D
-var arm: Node2D
+var body: Sprite2D
 var enemy: Sprite2D
 var hp_bar: ColorRect
 var resolve_bar: ColorRect
@@ -18,21 +17,24 @@ var mode_label: Label
 var enemy_label: Label
 var health_label: Label
 var weapon_label: Label
-var weapon_index := 0
-var weapons := ["sword", "magic", "whip", "greatsword"]
 var hp := 5
 var resolve := 5
 var simulated := true
 var acting := false
 var elapsed := 0.0
 var shot_path := ""
+var shot_pose := -1
 
 func _ready() -> void:
 	for arg in OS.get_cmdline_user_args():
 		if arg.begins_with("--shot="):
 			shot_path = arg.trim_prefix("--shot=")
+		if arg.begins_with("--pose="):
+			shot_pose = int(arg.trim_prefix("--pose="))
 	build_scene()
 	if not shot_path.is_empty():
+		if shot_pose >= 0:
+			body.frame = clampi(shot_pose, 0, 2)
 		await get_tree().create_timer(0.8).timeout
 		await RenderingServer.frame_post_draw
 		get_viewport().get_texture().get_image().save_png(shot_path)
@@ -88,17 +90,15 @@ func build_scene() -> void:
 	hunter = Node2D.new()
 	hunter.position = Vector2(83, 146)
 	add_child(hunter)
-	var body := Sprite2D.new()
+	body = Sprite2D.new()
 	body.texture = HUNTER
-	body.scale = Vector2(1.35, 1.35)
-	body.position = Vector2(0, -32.4)
+	body.hframes = 3
+	body.frame = 0
+	body.scale = Vector2(1.5, 1.5)
+	# Frame cells share a 35px foot anchor and a 68px baseline.
+	body.offset = Vector2(13, 0)
+	body.position = Vector2(0, -48)
 	hunter.add_child(body)
-	arm = Node2D.new()
-	arm.set_script(ArmScript)
-	# Position corresponds to the front shoulder in the combat sprite.
-	arm.position = Vector2(5, -50)
-	arm.scale = Vector2(1.35, 1.35)
-	hunter.add_child(arm)
 	enemy = Sprite2D.new()
 	enemy.texture = HOLLOW
 	enemy.position = Vector2(237, 117)
@@ -125,7 +125,6 @@ func build_hud() -> void:
 	button(ui, "MISS", Vector2(142, 151), Vector2(38, 22), _miss)
 	button(ui, "RESET", Vector2(183, 151), Vector2(39, 22), _reset)
 	button(ui, "MODE", Vector2(225, 151), Vector2(36, 22), _toggle_mode)
-	button(ui, "WEAPON", Vector2(264, 151), Vector2(51, 22), _next_weapon)
 
 func panel(parent: Node, rect: Rect2, color: Color) -> ColorRect:
 	var item := ColorRect.new()
@@ -173,13 +172,6 @@ func set_mode(is_simulated: bool) -> void:
 		enemy_label.text = "HOLLOW  ·  RESOLVE" if simulated else "MIMIC  ·  RESOLVE"
 		health_label.text = "TATE  ·  PRACTICE HP" if simulated else "TATE  ·  DEMO HP"
 
-func _next_weapon() -> void:
-	if acting: return
-	weapon_index = (weapon_index + 1) % weapons.size()
-	arm.set("weapon_kind", weapons[weapon_index])
-	arm.set("whip_extension", 0.0)
-	weapon_label.text = weapons[weapon_index].to_upper()
-
 func _toggle_mode() -> void:
 	if acting: return
 	set_mode(not simulated)
@@ -190,39 +182,15 @@ func _attack() -> void:
 	acting = true
 	status_label.text = "TATE ATTACKS"
 	var t := create_tween()
-	var kind: String = weapons[weapon_index]
-	if kind == "magic":
-		t.tween_property(arm, "rotation_degrees", -45.0, 0.20)
-		t.tween_callback(_magic_shot)
-		t.tween_interval(0.28)
-	elif kind == "whip":
-		t.tween_property(arm, "rotation_degrees", -30.0, 0.15)
-		t.tween_property(arm, "whip_extension", 1.0, 0.20)
-		t.parallel().tween_property(arm, "rotation_degrees", 15.0, 0.20)
-		t.parallel().tween_property(hunter, "position:x", 104.0, 0.20)
-	elif kind == "greatsword":
-		t.tween_property(arm, "rotation_degrees", -65.0, 0.28)
-		t.tween_property(hunter, "position:x", 112.0, 0.18)
-		t.parallel().tween_property(arm, "rotation_degrees", 45.0, 0.18)
-	else:
-		t.tween_property(arm, "rotation_degrees", -35.0, 0.14)
-		t.tween_property(hunter, "position:x", 116.0, 0.18)
-		t.parallel().tween_property(arm, "rotation_degrees", 30.0, 0.18)
+	t.tween_callback(func(): body.frame = 1)
+	t.tween_interval(0.16)
+	t.tween_callback(func(): body.frame = 2)
+	t.tween_property(hunter, "position:x", 140.0, 0.14).set_trans(Tween.TRANS_QUAD)
 	t.tween_callback(_enemy_hit)
-	t.tween_property(hunter, "position:x", 83.0, 0.25)
-	t.parallel().tween_property(arm, "rotation_degrees", 0.0, 0.25)
-	t.parallel().tween_property(arm, "whip_extension", 0.0, 0.25)
-	t.chain().tween_callback(_finish_turn)
-
-func _magic_shot() -> void:
-	var orb := Polygon2D.new()
-	orb.polygon = PackedVector2Array([Vector2(-4, 0), Vector2(0, -4), Vector2(4, 0), Vector2(0, 4)])
-	orb.color = Color("80e6ff")
-	orb.position = Vector2(110, 99)
-	add_child(orb)
-	var t := create_tween()
-	t.tween_property(orb, "position:x", 225.0, 0.26)
-	t.tween_callback(orb.queue_free)
+	t.tween_interval(0.14)
+	t.tween_callback(func(): body.frame = 0)
+	t.tween_property(hunter, "position:x", 83.0, 0.20)
+	t.tween_callback(_finish_turn)
 
 func _enemy_hit() -> void:
 	resolve = maxi(0, resolve - 1)
