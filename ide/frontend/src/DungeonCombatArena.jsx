@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import crypt from './assets/dungeon-combat/crypt-v2.png'
+import simulation from './assets/dungeon-combat/spar-simulation.png'
 import wraith from './assets/dungeon-combat/wraith-pixel.png'
 import mimic from './assets/dungeon-combat/string-mimic.png'
 import fork from './assets/dungeon-combat/forked-path.png'
@@ -14,8 +15,9 @@ const ENEMY_SPRITES = { wraith, 'string-mimic': mimic, 'forked-path': fork, 'mim
 
 function EquippedWeapon({ name }) {
   const kind = weaponKind(name)
-  return <svg className={`combat-weapon ${kind}`} viewBox="0 0 22 52" shapeRendering="crispEdges" aria-hidden="true">
-    {kind === 'lantern' ? <><path fill="#161321" d="M8 13h6v4h3v16h-3v3H7v-3H5V17h3zm2-5h2v5h-2z"/><path fill="#be9051" d="M7 17h10v16H7z"/><path fill="#ffdc7b" d="M9 19h6v11H9z"/><path fill="#fff1bd" d="M11 21h2v7h-2z"/></> : kind === 'compass' ? <><path fill="#171320" d="M11 17l9 9-9 9-9-9z"/><path fill="#b69055" d="M11 20l6 6-6 6-6-6z"/><path fill="#b8dbea" d="M11 22l3 4-3 4-3-4z"/><path fill="#ac513e" d="M11 23l2 3-2 1z"/></> : <><path fill="#171320" d="M9 0h4v35h5v4h-5v9H9v-9H4v-4h5z"/><path fill="#e1e6e8" d="M10 2h2v33h-2z"/><path fill="#8da6be" d="M12 6h1v28h-1z"/><path fill="#e9b75f" d="M5 35h12v3H5z"/><path fill="#744a30" d="M10 39h2v9h-2z"/></>}
+  // Match Tate's 38×38 sprite coordinates: grip and pivot meet his hand.
+  return <svg className={`combat-weapon ${kind}`} viewBox="0 0 38 38" preserveAspectRatio="none" shapeRendering="crispEdges" aria-hidden="true">
+    {kind === 'lantern' ? <><path fill="#161321" d="M22 20h4v4h2v7h-8v-7h2zm1 1v3h2v-3z"/><path fill="#be9051" d="M21 25h6v5h-6z"/><path fill="#ffdc7b" d="M23 25h3v4h-3z"/></> : kind === 'compass' ? <><path fill="#171320" d="M27 18l5 5-5 5-5-5z"/><path fill="#b69055" d="M27 19l4 4-4 4-4-4z"/><path fill="#b8dbea" d="M27 20l3 3-3 3-3-3z"/><path fill="#ac513e" d="M27 21l1 2-1 1z"/></> : <><path fill="#161321" d="M33 10h3v3L26 23l-2-2zM22 20l5 5-2 2-5-5zM21 23l3 2-3 4-3-2z"/><path fill="#e1e6e8" d="M34 11h1v2L25 23l-1-1z"/><path fill="#8da6be" d="M33 13h1l-9 10-1-1z"/><path fill="#e9b75f" d="M22 20l5 5-1 1-5-5z"/><path fill="#a5743a" d="M21 24l2 1-2 3-2-1z"/></>}
   </svg>
 }
 
@@ -46,7 +48,7 @@ export default function DungeonCombatArena({ run, loadout, turn, simulated = fal
       : `The attack is guarded${blast ? `; blast costs ${blast} HP` : ''}.`
   return <section ref={arenaRef} className="dungeon-combat-panel" aria-label="Combat scene">
     <div className="combat-panel-title"><span>{simulated ? 'SPARRING · SIMULATED' : 'COMBAT'}</span><span>{simulated ? 'PRACTICE ONLY' : 'YOUR HP / ENEMY RESOLVE'}</span></div>
-    <div className={`combat-scene ${result ? isCorrect ? 'attack' : 'retaliate' : ''}`} data-kind={run.room_type} data-enemy={enemyArt} data-weapon={weaponKind(loadout.weapon || '')} style={{ backgroundImage: `url(${crypt})` }}>
+    <div className={`combat-scene ${result ? isCorrect ? 'attack' : 'retaliate' : ''}`} data-kind={run.room_type} data-enemy={enemyArt} data-weapon={weaponKind(loadout.weapon || '')} data-simulated={simulated || undefined} style={{ backgroundImage: `url(${simulated ? simulation : crypt})` }}>
       <div className="combat-scene-shade" />
       <div className="combat-vitals hunter-vitals"><div><span>TATE BUTI</span><b>{hp} / {maxHp}</b></div><div className="combat-bar"><i style={{ width: percent(hp, maxHp) }} /></div><small>{simulated ? 'PRACTICE HP' : 'HP'}</small></div>
       <div className="combat-vitals enemy-vitals"><div><span>{encounter.name || 'ENEMY'}</span><b>{resolve} / {maxResolve}</b></div><div className="combat-bar enemy-bar"><i style={{ width: percent(resolve, maxResolve) }} /></div><small>RESOLVE</small></div>

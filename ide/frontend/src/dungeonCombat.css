@@ -6,13 +6,15 @@
 .combat-panel-title span:last-child { color: #cbb9b7; font-size: 6px; }
 .combat-scene { position: relative; isolation: isolate; overflow: hidden; width: 100%; aspect-ratio: 1.73; min-height: 165px; background-position: center 70%; background-size: cover; image-rendering: pixelated; }
 .combat-scene-shade { position: absolute; inset: 0; background: linear-gradient(#090a1655, #0e0c1d0a 45%, #08091555); }
+.combat-scene[data-simulated=true]::after { content: ''; position: absolute; z-index: 4; inset: 0; pointer-events: none; background: repeating-linear-gradient(to bottom, transparent 0 3px, #86e4ff0a 3px 4px); }
+.combat-scene[data-simulated=true] .combat-enemy img { opacity: .88; filter: drop-shadow(0 0 4px #5bc7e8); }
 .combat-vitals { position: absolute; top: 8px; z-index: 5; width: 43%; color: #f7e8ca; text-shadow: 1px 1px #000; font: 7px/1.4 'Press Start 2P', monospace; }
 .combat-vitals.hunter-vitals { left: 8px; } .combat-vitals.enemy-vitals { right: 8px; text-align: right; }
 .combat-vitals > div:first-child { display: flex; justify-content: space-between; gap: 4px; } .combat-vitals span { max-width: 64%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .combat-vitals b { white-space: nowrap; }
 .combat-vitals small { font-size: 6px; } .combat-bar { height: 8px; margin-top: 5px; background: #130e17; border: 1px solid #a38e7c; } .combat-bar i { display: block; height: 100%; background: #e76056; transition: width .5s steps(10,end); } .combat-bar.enemy-bar i { background: #ae78db; }
 .combat-fighter { position: absolute; z-index: 3; bottom: 14%; image-rendering: pixelated; filter: drop-shadow(2px 3px 1px #09060c); }
 .combat-hunter { left: 11%; width: 31%; height: 54%; } .combat-hunter-sprite { width: 100%; height: 100%; background-position: 72.727% 0; background-size: 1200% 100%; background-repeat: no-repeat; transform: scaleX(-1); image-rendering: pixelated; }
-.combat-weapon { position: absolute; width: 31%; height: 75%; left: 65%; bottom: 3%; transform: rotate(-28deg); transform-origin: 50% 83%; filter: drop-shadow(1px 1px #100b10); }
+.combat-weapon { position: absolute; inset: 0; width: 100%; height: 100%; transform-origin: 60.5% 58%; filter: drop-shadow(1px 1px #100b10); }
 .combat-enemy { right: 8%; width: 38%; height: 76%; display: flex; align-items: end; } .combat-enemy img { width: 100%; height: 100%; object-fit: contain; object-position: bottom; image-rendering: pixelated; }
 .combat-scene[data-kind=encounter] .combat-enemy { width: 31%; height: 61%; right: 11%; } .combat-scene[data-kind=boss] .combat-enemy { width: 48%; height: 90%; right: 4%; }
 .combat-scene[data-enemy=string-mimic] .combat-enemy { width: 34%; height: 43%; right: 9%; }
@@ -33,8 +35,8 @@
 .combat-scene.attack[data-weapon=lantern] .combat-projectile { background: #ffcd60; box-shadow: 0 0 0 3px #e67831, 0 0 13px 5px #f88b44; animation: combat-cast-shot .75s steps(7,end); }
 .combat-scene.attack[data-weapon=compass] .combat-projectile { background: #9bdfe8; border: 2px solid #f3d48d; box-shadow: 0 0 0 2px #7657a3, 0 0 12px #99dcea; transform: rotate(45deg); animation: combat-cast-shot .75s steps(7,end); }
 @keyframes combat-cast { 0%,100% { transform:translateX(0) } 35% { transform:translateX(4px) } }
-@keyframes combat-raise { 0%,100% { transform:rotate(0) } 35%,60% { transform:rotate(-35deg) translateY(-9px) } }
-@keyframes combat-spin { 0%,100% { transform:rotate(0) } 60% { transform:rotate(360deg) translateY(-5px) } }
+@keyframes combat-raise { 0%,100% { transform:rotate(0) } 35%,60% { transform:rotate(-35deg) } }
+@keyframes combat-spin { 0%,100% { transform:rotate(0) } 60% { transform:rotate(360deg) } }
 @keyframes combat-cast-shot { 0%,20%,65%,100% { opacity:0 } 25% { opacity:1; left:32% } 40% { opacity:1; left:70% } }
-@keyframes combat-lunge { 0%,100% { transform:translateX(0) } 38% { transform:translateX(38px) } } @keyframes combat-counter { 0%,100% { transform:translateX(0) } 38% { transform:translateX(-38px) } } @keyframes combat-hurt { 0%,36%,100% { filter:drop-shadow(2px 3px 1px #09060c) } 42%,55% { filter:brightness(2) } } @keyframes combat-swing { 0%,100% { transform:rotate(-28deg) } 35% { transform:rotate(40deg) } 50% { transform:rotate(-70deg) } } @keyframes combat-slash { 0%,32%,65%,100% { opacity:0 } 39%,54% { opacity:1 } } @keyframes combat-float { 0%,34% { opacity:0; transform:translateY(0) } 42% { opacity:1 } 100% { opacity:0; transform:translateY(-32px) } }
+@keyframes combat-lunge { 0%,100% { transform:translateX(0) } 38% { transform:translateX(38px) } } @keyframes combat-counter { 0%,100% { transform:translateX(0) } 38% { transform:translateX(-38px) } } @keyframes combat-hurt { 0%,36%,100% { filter:drop-shadow(2px 3px 1px #09060c) } 42%,55% { filter:brightness(2) } } @keyframes combat-swing { 0%,100% { transform:rotate(0) } 30% { transform:rotate(-35deg) } 48% { transform:rotate(50deg) } } @keyframes combat-slash { 0%,32%,65%,100% { opacity:0 } 39%,54% { opacity:1 } } @keyframes combat-float { 0%,34% { opacity:0; transform:translateY(0) } 42% { opacity:1 } 100% { opacity:0; transform:translateY(-32px) } }
 @media (prefers-reduced-motion: reduce) { .combat-scene *, .combat-bar i { animation: none !important; transition: none !important; } }

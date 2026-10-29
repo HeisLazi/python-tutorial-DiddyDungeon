@@ -11,3 +11,5 @@ nearest-neighbor scaled to 36, 44 and 56 pixels tall, respectively.
 The crypt was generated using the actual Home screenshot and concept for
 palette and architecture, then reduced to 320×180. Enemies without dedicated
 art still use the wraith placeholder, and every location uses the same crypt.
+The Sparring version is an original image-generated simulation of that crypt,
+with projected grid lines; its source is in `tools/home_art/concepts/combat/`.
