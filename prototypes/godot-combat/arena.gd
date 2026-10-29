@@ -6,6 +6,12 @@ const HUNTER_SWORD: Texture2D = preload("res://art/tate-sword-v2-sheet.png")
 const HUNTER_IDLE: Texture2D = preload("res://art/tate-idle-sheet.png")
 const HUNTER_FOLLOW: Texture2D = preload("res://art/tate-followthrough-sheet.png")
 const HUNTER_HURT: Texture2D = preload("res://art/tate-hurt-sheet.png")
+const STAFF: Texture2D = preload("res://art/tate-staff-sheet.png")
+const STAFF_HURT: Texture2D = preload("res://art/tate-staff-hurt-sheet.png")
+const WHIP: Texture2D = preload("res://art/tate-whip-sheet.png")
+const WHIP_HURT: Texture2D = preload("res://art/tate-whip-hurt-sheet.png")
+const GREATSWORD: Texture2D = preload("res://art/tate-greatsword-sheet.png")
+const GREATSWORD_HURT: Texture2D = preload("res://art/tate-greatsword-hurt-sheet.png")
 const CRYPT: Texture2D = preload("res://art/crypt.png")
 const MIMIC: Texture2D = preload("res://art/mimic-action-sheet.png")
 const MIMIC_HURT: Texture2D = preload("res://art/mimic-hurt-sheet.png")
@@ -22,6 +28,13 @@ var mode_label: Label
 var enemy_label: Label
 var health_label: Label
 var weapon_label: Label
+var weapon_index := 0
+var weapons := [
+	{"name": "SWORD", "action": HUNTER_SWORD, "hurt": HUNTER_HURT},
+	{"name": "STAFF", "action": STAFF, "hurt": STAFF_HURT},
+	{"name": "WHIP", "action": WHIP, "hurt": WHIP_HURT},
+	{"name": "GREATSWORD", "action": GREATSWORD, "hurt": GREATSWORD_HURT},
+]
 var hp := 5
 var resolve := 5
 var simulated := true
@@ -127,12 +140,13 @@ func build_hud() -> void:
 	hp_bar = panel(ui, Rect2(9, 19, 128, 5), Color("e05e62"))
 	resolve_bar = panel(ui, Rect2(183, 19, 128, 5), Color("69cdea"))
 	mode_label = label(ui, "SPARRING  /  HOLLOW SIMULATION", Vector2(9, 31), 8, Color("7bd7ed"))
-	weapon_label = label(ui, "SWORD", Vector2(250, 31), 8, Color("f6d287"))
+	weapon_label = label(ui, "SWORD", Vector2(240, 31), 8, Color("f6d287"))
 	status_label = label(ui, "YOUR TURN", Vector2(9, 154), 7, Color("ead7b5"))
 	button(ui, "HIT", Vector2(104, 151), Vector2(35, 22), _attack)
 	button(ui, "MISS", Vector2(142, 151), Vector2(38, 22), _miss)
 	button(ui, "RESET", Vector2(183, 151), Vector2(39, 22), _reset)
 	button(ui, "MODE", Vector2(225, 151), Vector2(36, 22), _toggle_mode)
+	button(ui, "WEAPON", Vector2(264, 151), Vector2(51, 22), _next_weapon)
 
 func panel(parent: Node, rect: Rect2, color: Color) -> ColorRect:
 	var item := ColorRect.new()
@@ -186,10 +200,38 @@ func _toggle_mode() -> void:
 	set_mode(not simulated)
 	_reset()
 
+func _idle_texture() -> Texture2D:
+	return HUNTER_IDLE if weapon_index == 0 else weapons[weapon_index]["action"]
+
+func _set_idle() -> void:
+	body.texture = _idle_texture()
+	body.offset = Vector2(13, 0) if weapon_index == 0 else Vector2(19, 0)
+	body.frame = 0
+
+func _next_weapon() -> void:
+	if acting: return
+	weapon_index = (weapon_index + 1) % weapons.size()
+	weapon_label.text = weapons[weapon_index]["name"]
+	_set_idle()
+
+func _magic_projectile() -> void:
+	var bolt := Polygon2D.new()
+	bolt.polygon = PackedVector2Array([Vector2(-6, 0), Vector2(-2, -4), Vector2(4, -3), Vector2(7, 0), Vector2(4, 3), Vector2(-2, 4)])
+	bolt.color = Color("8ceeff")
+	bolt.position = Vector2(125, 94)
+	add_child(bolt)
+	var t := create_tween()
+	t.tween_property(bolt, "position:x", 222.0, 0.22)
+	t.tween_callback(bolt.queue_free)
+	t.tween_callback(_enemy_hit)
+
 func _attack() -> void:
 	if acting or resolve <= 0 or hp <= 0: return
 	acting = true
 	status_label.text = "TATE ATTACKS"
+	if weapon_index != 0:
+		_weapon_attack()
+		return
 	body.texture = HUNTER_SWORD
 	var t := create_tween()
 	t.tween_callback(func(): body.frame = 1)
@@ -205,6 +247,25 @@ func _attack() -> void:
 	t.tween_interval(0.13)
 	t.tween_callback(func(): body.frame = 3)
 	t.tween_property(hunter, "position:x", 83.0, 0.20)
+	t.tween_callback(_finish_turn)
+
+func _weapon_attack() -> void:
+	body.texture = weapons[weapon_index]["action"]
+	body.frame = 1
+	var t := create_tween()
+	var windup := 0.25 if weapon_index == 3 else 0.16
+	t.tween_interval(windup)
+	t.tween_callback(func(): body.frame = 2)
+	if weapon_index == 1:
+		t.tween_callback(_magic_projectile)
+		t.tween_interval(0.32)
+	else:
+		var reach := 105.0 if weapon_index == 2 else 128.0
+		t.tween_property(hunter, "position:x", reach, 0.13 if weapon_index == 2 else 0.20).set_trans(Tween.TRANS_QUAD)
+		t.tween_callback(_enemy_hit)
+		t.tween_interval(0.16)
+	t.tween_callback(func(): body.frame = 3)
+	t.tween_property(hunter, "position:x", 83.0, 0.22)
 	t.tween_callback(_finish_turn)
 
 func _enemy_hit() -> void:
@@ -241,7 +302,7 @@ func _miss() -> void:
 func _hunter_hit() -> void:
 	hp = maxi(0, hp - 1)
 	hp_bar.size.x = 128.0 * hp / 5.0
-	body.texture = HUNTER_HURT
+	body.texture = weapons[weapon_index]["hurt"]
 	body.frame = 0
 	var t := create_tween()
 	t.tween_interval(0.08)
@@ -251,12 +312,11 @@ func _hunter_hit() -> void:
 	t.tween_interval(0.1)
 	t.tween_callback(func(): body.frame = 3)
 	t.tween_interval(0.1)
-	t.tween_callback(func(): body.texture = HUNTER_IDLE; body.frame = 0)
+	t.tween_callback(_set_idle)
 
 func _finish_turn() -> void:
 	acting = false
-	body.texture = HUNTER_IDLE
-	body.frame = 0
+	_set_idle()
 	status_label.text = "FOE BROKEN" if resolve == 0 else ("HUNTER DOWN" if hp == 0 else "YOUR TURN")
 
 func _reset() -> void:
@@ -271,7 +331,11 @@ func _process(delta: float) -> void:
 	elapsed += delta
 	if not acting and body and enemy and shot_pose < 0:
 		var idle_cycle := [0, 1, 2, 3, 2, 1]
-		body.frame = idle_cycle[int(elapsed * 4.0) % idle_cycle.size()]
+		body.frame = idle_cycle[int(elapsed * 4.0) % idle_cycle.size()] if weapon_index == 0 else 0
+		if weapon_index != 0:
+			body.position.y = -48.0 + sin(elapsed * 3.0) * 0.7
+		else:
+			body.position.y = -48.0
 		enemy.frame = int(elapsed * 3.0) % 2
 	queue_redraw()
 

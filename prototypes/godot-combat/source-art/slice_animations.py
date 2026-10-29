@@ -12,6 +12,12 @@ HERE = Path(__file__).resolve().parent
 # A horizontal anchor near the hips for each pose. Relative to 96x72 cells,
 # Tate's anchor is at x=35; the left-facing hollow's anchor is at x=55.
 SHEETS = {
+    'tate-staff': ((230, 790, 1250, 1900), 45, 128, -5),
+    'tate-staff-hurt': ((245, 800, 1300, 1900), 45, 128, -35),
+    'tate-whip': ((220, 685, 1140, 1945), 45, 128, -40),
+    'tate-whip-hurt': ((250, 800, 1300, 1900), 45, 128, -45),
+    'tate-greatsword': ((215, 745, 1200, 1860), 45, 128, -20),
+    'tate-greatsword-hurt': ((260, 780, 1290, 1870), 45, 128, -35),
     'tate-idle': ((240, 785, 1300, 1870), 35),
     'tate-hurt': ((240, 740, 1305, 1900), 35),
     'tate-followthrough': ((240, 755, 1255, 1900), 35),
@@ -49,13 +55,16 @@ def components_of(source):
                 components.append(points)
     return sorted(components, key=lambda points: min(x for x, _ in points))
 
-for name, (anchors, target_x) in SHEETS.items():
+for name, config in SHEETS.items():
+    anchors, target_x = config[:2]
+    cell_width = config[2] if len(config) > 2 else 96
+    configured_top = config[3] if len(config) > 3 else None
     source = Image.open(HERE / (name + '-concept.png')).convert('RGBA')
     w, h = source.size
     components = components_of(source)
     if len(components) != 4:
         raise RuntimeError(f'{name}: expected 4 main poses, found {len(components)}')
-    sheet = Image.new('RGBA', (96 * 4, 72))
+    sheet = Image.new('RGBA', (cell_width * 4, 72))
     for frame, (points, anchor) in enumerate(zip(components, anchors)):
         mask = Image.new('L', (w, h))
         pix = mask.load()
@@ -64,7 +73,7 @@ for name, (anchors, target_x) in SHEETS.items():
         clean = Image.new('RGBA', (w, h))
         clean.paste(source, (0, 0), mask)
         left = anchor - target_x * 10
-        top = {'tate-followthrough': -23, 'mimic-action': -70, 'mimic-hurt': -80}.get(name, -10)
-        crop = clean.crop((left, top, left + 960, top + 720))
-        sheet.alpha_composite(crop.resize((96, 72), Image.Resampling.NEAREST), (frame * 96, 0))
+        top = configured_top if configured_top is not None else {'tate-followthrough': -23, 'mimic-action': -70, 'mimic-hurt': -80}.get(name, -10)
+        crop = clean.crop((left, top, left + cell_width * 10, top + 720))
+        sheet.alpha_composite(crop.resize((cell_width, 72), Image.Resampling.NEAREST), (frame * cell_width, 0))
     sheet.save(HERE.parent / 'art' / (name + '-sheet.png'))
