@@ -2,24 +2,16 @@ extends Node2D
 
 const HOLLOW_SHADER = preload("res://hollow.gdshader")
 const ATLAS: Texture2D = preload("res://art/tiles.png")
-const HUNTER_SWORD: Texture2D = preload("res://art/tate-sword-v2-sheet.png")
-const HUNTER_IDLE: Texture2D = preload("res://art/tate-idle-sheet.png")
-const HUNTER_FOLLOW: Texture2D = preload("res://art/tate-followthrough-sheet.png")
-const HUNTER_HURT: Texture2D = preload("res://art/tate-hurt-sheet.png")
-const STAFF: Texture2D = preload("res://art/tate-staff-sheet.png")
-const STAFF_HURT: Texture2D = preload("res://art/tate-staff-hurt-sheet.png")
-const WHIP: Texture2D = preload("res://art/tate-whip-sheet.png")
-const WHIP_HURT: Texture2D = preload("res://art/tate-whip-hurt-sheet.png")
-const GREATSWORD: Texture2D = preload("res://art/tate-greatsword-sheet.png")
-const GREATSWORD_HURT: Texture2D = preload("res://art/tate-greatsword-hurt-sheet.png")
-const HANDMAGIC: Texture2D = preload("res://art/tate-handmagic-sheet.png")
-const HANDMAGIC_HURT: Texture2D = preload("res://art/tate-handmagic-hurt-sheet.png")
+const CATALOG = preload("res://combat_catalog.gd")
+const SIMULATION: Texture2D = preload("res://art/simulation.png")
 const CRYPT: Texture2D = preload("res://art/crypt.png")
 const MIMIC: Texture2D = preload("res://art/mimic-action-sheet.png")
 const MIMIC_HURT: Texture2D = preload("res://art/mimic-hurt-sheet.png")
 const HOLLOW: Texture2D = preload("res://art/hollow-action-sheet.png")
 const HOLLOW_HURT: Texture2D = preload("res://art/hollow-hurt-sheet.png")
 
+var backdrop: Sprite2D
+var dungeon_decor: Array[CanvasItem] = []
 var hunter: Node2D
 var body: Sprite2D
 var enemy: Sprite2D
@@ -31,13 +23,9 @@ var enemy_label: Label
 var health_label: Label
 var weapon_label: Label
 var weapon_index := 0
-var weapons := [
-	{"name": "SWORD", "action": HUNTER_SWORD, "hurt": HUNTER_HURT},
-	{"name": "STAFF", "action": STAFF, "hurt": STAFF_HURT},
-	{"name": "WHIP", "action": WHIP, "hurt": WHIP_HURT},
-	{"name": "GREATSWORD", "action": GREATSWORD, "hurt": GREATSWORD_HURT},
-	{"name": "HAND MAGIC", "action": HANDMAGIC, "hurt": HANDMAGIC_HURT},
-]
+var weapons: Array = CATALOG.STYLES
+var skins: Dictionary = {"tate": CATALOG.tate()}
+var skin_id := "tate"
 var hp := 5
 var resolve := 5
 var simulated := true
@@ -55,7 +43,7 @@ func _ready() -> void:
 	build_scene()
 	if not shot_path.is_empty():
 		if shot_pose >= 0:
-			body.texture = HUNTER_SWORD
+			body.texture = _poses()["action"]
 			body.frame = clampi(shot_pose, 0, 3)
 		await get_tree().create_timer(0.8).timeout
 		await RenderingServer.frame_post_draw
@@ -76,13 +64,13 @@ func tile(rect: Rect2, at: Vector2, scale_value := 1.0) -> Sprite2D:
 
 func build_scene() -> void:
 	# A painted backdrop sits behind independent scene lights, props and actors.
-	var backdrop := Sprite2D.new()
+	backdrop = Sprite2D.new()
 	backdrop.texture = CRYPT
 	backdrop.centered = false
 	add_child(backdrop)
 	# Separate flames and light nodes let the environment move and react.
 	for x in [32, 275]:
-		tile(Rect2(70, 269, 13, 30), Vector2(x, 61), 0.8)
+		dungeon_decor.append(tile(Rect2(70, 269, 13, 30), Vector2(x, 61), 0.8))
 	# Light is an actual Godot canvas light, not baked into the tiles.
 	for p in [Vector2(35, 76), Vector2(282, 76)]:
 		var gradient := Gradient.new()
@@ -100,6 +88,7 @@ func build_scene() -> void:
 		light.position = p
 		light.energy = 0.65
 		add_child(light)
+		dungeon_decor.append(light)
 	# A drawn grid and particles are separate transparent geometry layers.
 	var overlay := SimulationOverlay.new()
 	overlay.owner_scene = self
@@ -113,12 +102,12 @@ func build_scene() -> void:
 	hunter.position = Vector2(83, 146)
 	add_child(hunter)
 	body = Sprite2D.new()
-	body.texture = HUNTER_IDLE
+	body.texture = _idle_texture()
 	body.hframes = 4
 	body.frame = 0
 	body.scale = Vector2(1.5, 1.5)
-	# Frame cells share a 35px foot anchor and a 68px baseline.
-	body.offset = Vector2(13, 0)
+	# Each skin/style aligns its art to the shared foot baseline via its offset.
+	body.offset = _poses()["offset"]
 	body.position = Vector2(0, -48)
 	hunter.add_child(body)
 	enemy = Sprite2D.new()
@@ -136,7 +125,7 @@ func build_hud() -> void:
 	add_child(ui)
 	panel(ui, Rect2(5, 5, 137, 23), Color("101324"))
 	panel(ui, Rect2(178, 5, 137, 23), Color("101324"))
-	health_label = label(ui, "TATE  ·  PRACTICE HP", Vector2(9, 7), 8, Color("f5dfb8"))
+	health_label = label(ui, skins[skin_id]["name"] + ("  ·  PRACTICE HP" if simulated else "  ·  DEMO HP"), Vector2(9, 7), 8, Color("f5dfb8"))
 	enemy_label = label(ui, "HOLLOW  ·  RESOLVE", Vector2(183, 7), 8, Color("b9eaff"))
 	panel(ui, Rect2(9, 19, 128, 5), Color("382638"))
 	panel(ui, Rect2(183, 19, 128, 5), Color("263044"))
@@ -180,6 +169,9 @@ func button(parent: Node, text: String, at: Vector2, dimensions: Vector2, action
 
 func set_mode(is_simulated: bool) -> void:
 	simulated = is_simulated
+	backdrop.texture = SIMULATION if simulated else CRYPT
+	for decor in dungeon_decor:
+		decor.visible = not simulated
 	if simulated:
 		enemy.texture = HOLLOW
 		enemy.scale = Vector2(1.5, 1.5)
@@ -196,19 +188,41 @@ func set_mode(is_simulated: bool) -> void:
 	if mode_label:
 		mode_label.text = "SPARRING  /  HOLLOW SIMULATION" if simulated else "DUNGEON  /  STRING MIMIC"
 		enemy_label.text = "HOLLOW  ·  RESOLVE" if simulated else "MIMIC  ·  RESOLVE"
-		health_label.text = "TATE  ·  PRACTICE HP" if simulated else "TATE  ·  DEMO HP"
+		health_label.text = skins[skin_id]["name"] + ("  ·  PRACTICE HP" if simulated else "  ·  DEMO HP")
 
 func _toggle_mode() -> void:
 	if acting: return
 	set_mode(not simulated)
 	_reset()
 
+# Skins are registered separately from reusable combat styles. Reject incomplete
+# sets rather than silently rendering a different character for some attacks.
+func register_skin(skin: Dictionary) -> bool:
+	var error: String = CATALOG.validate_skin(skin)
+	if not error.is_empty() or skins.has(skin.get("id")):
+		return false
+	skins[skin.id] = skin.duplicate(true)
+	return true
+
+func select_skin(id: String) -> bool:
+	if acting or not skins.has(id): return false
+	skin_id = id
+	if body:
+		_set_idle()
+	if health_label:
+		health_label.text = skins[id]["name"] + ("  ·  PRACTICE HP" if simulated else "  ·  DEMO HP")
+	return true
+
+func _poses() -> Dictionary:
+	return skins[skin_id]["styles"][weapons[weapon_index]["id"]]
+
 func _idle_texture() -> Texture2D:
-	return HUNTER_IDLE if weapon_index == 0 else weapons[weapon_index]["action"]
+	var poses := _poses()
+	return poses.get("idle", poses["action"])
 
 func _set_idle() -> void:
 	body.texture = _idle_texture()
-	body.offset = Vector2(13, 0) if weapon_index == 0 else Vector2(19, 0)
+	body.offset = _poses()["offset"]
 	body.frame = 0
 
 func _next_weapon() -> void:
@@ -219,15 +233,16 @@ func _next_weapon() -> void:
 
 func _magic_projectile() -> void:
 	var bolt := Polygon2D.new()
+	bolt.name = "SpellBolt"
 	bolt.polygon = PackedVector2Array([Vector2(-6, 0), Vector2(-2, -4), Vector2(4, -3), Vector2(7, 0), Vector2(4, 3), Vector2(-2, 4)])
-	bolt.color = Color("d188ff") if weapon_index == 4 else Color("8ceeff")
-	if weapon_index == 4:
+	bolt.color = weapons[weapon_index]["color"]
+	if weapons[weapon_index]["id"] == "handmagic":
 		bolt.scale = Vector2(1.6, 1.6)
 		var core := Polygon2D.new()
 		core.polygon = PackedVector2Array([Vector2(-2, 0), Vector2(0, -2), Vector2(3, 0), Vector2(0, 2)])
 		core.color = Color("fff2ff")
 		bolt.add_child(core)
-	bolt.position = Vector2(125, 94)
+	bolt.position = hunter.position + _poses()["cast_origin"]
 	add_child(bolt)
 	var t := create_tween()
 	t.tween_property(bolt, "position:x", 222.0, 0.22)
@@ -237,17 +252,17 @@ func _magic_projectile() -> void:
 func _attack() -> void:
 	if acting or resolve <= 0 or hp <= 0: return
 	acting = true
-	status_label.text = "TATE ATTACKS"
-	if weapon_index != 0:
+	status_label.text = skins[skin_id]["name"] + " ATTACKS"
+	if weapons[weapon_index]["kind"] != "sword":
 		_weapon_attack()
 		return
-	body.texture = HUNTER_SWORD
+	body.texture = _poses()["action"]
 	var t := create_tween()
 	t.tween_callback(func(): body.frame = 1)
 	t.tween_interval(0.12)
 	t.tween_callback(func(): body.frame = 2)
 	t.tween_interval(0.08)
-	t.tween_callback(func(): body.texture = HUNTER_FOLLOW; body.frame = 0)
+	t.tween_callback(func(): body.texture = _poses()["follow"]; body.frame = 0)
 	t.tween_interval(0.08)
 	t.tween_callback(func(): body.frame = 1)
 	t.tween_property(hunter, "position:x", 140.0, 0.14).set_trans(Tween.TRANS_QUAD)
@@ -259,18 +274,19 @@ func _attack() -> void:
 	t.tween_callback(_finish_turn)
 
 func _weapon_attack() -> void:
-	body.texture = weapons[weapon_index]["action"]
+	body.texture = _poses()["action"]
 	body.frame = 1
 	var t := create_tween()
-	var windup := 0.25 if weapon_index == 3 else 0.16
+	var kind: String = weapons[weapon_index]["kind"]
+	var windup := 0.25 if kind == "heavy" else 0.16
 	t.tween_interval(windup)
 	t.tween_callback(func(): body.frame = 2)
-	if weapon_index == 1 or weapon_index == 4:
+	if kind == "projectile":
 		t.tween_callback(_magic_projectile)
 		t.tween_interval(0.32)
 	else:
-		var reach := 105.0 if weapon_index == 2 else 128.0
-		t.tween_property(hunter, "position:x", reach, 0.13 if weapon_index == 2 else 0.20).set_trans(Tween.TRANS_QUAD)
+		var reach := 105.0 if kind == "whip" else 128.0
+		t.tween_property(hunter, "position:x", reach, 0.13 if kind == "whip" else 0.20).set_trans(Tween.TRANS_QUAD)
 		t.tween_callback(_enemy_hit)
 		t.tween_interval(0.16)
 	t.tween_callback(func(): body.frame = 3)
@@ -311,7 +327,7 @@ func _miss() -> void:
 func _hunter_hit() -> void:
 	hp = maxi(0, hp - 1)
 	hp_bar.size.x = 128.0 * hp / 5.0
-	body.texture = weapons[weapon_index]["hurt"]
+	body.texture = _poses()["hurt"]
 	body.frame = 0
 	var t := create_tween()
 	t.tween_interval(0.08)
@@ -339,9 +355,9 @@ func _reset() -> void:
 func _process(delta: float) -> void:
 	elapsed += delta
 	if not acting and body and enemy and shot_pose < 0:
-		var idle_cycle := [0, 1, 2, 3, 2, 1]
-		body.frame = idle_cycle[int(elapsed * 4.0) % idle_cycle.size()] if weapon_index == 0 else 0
-		if weapon_index != 0:
+		var idle_cycle: Array = _poses().get("idle_frames", [0])
+		body.frame = idle_cycle[int(elapsed * 4.0) % idle_cycle.size()]
+		if idle_cycle.size() == 1:
 			body.position.y = -48.0 + sin(elapsed * 3.0) * 0.7
 		else:
 			body.position.y = -48.0

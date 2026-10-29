@@ -1,4 +1,23 @@
-# Codex: start here (paste the prompt below as your first message)
+# Codex: start here
+
+## Current combat work — 2026-10-29
+
+The active combat study lives in `prototypes/godot-combat/`. It is a standalone
+Godot prototype, not yet connected to live Infinite Dungeon or Sparring saves.
+Tate has sword, staff, whip, greatsword, and hand-magic poses. Sparring uses a blue
+simulated arena and Hollow opponent; dungeon mode uses the crypt and Mimic.
+
+Read [the combat skin workflow](../prototypes/godot-combat/SKIN_WORKFLOW.md)
+before adding characters or skins. Shared combat behavior is separate from each
+skin's complete weapon-specific pose sheets. New skins still require their own
+artwork. The preview has no skin picker yet.
+
+The local web preview is exported to `prototypes/godot-combat-web/` and served
+at `http://127.0.0.1:17532/`. The workflow document contains validation commands.
+The old Home rebuild prompt below is historical; follow the current user task
+and repository evidence rather than restarting those room tasks.
+
+## Historical Home rebuild handoff
 
 ```
 You are continuing a game-dev task in the repo at /home/lazi/projects/python-tutorial-DiddyDungeon, in the git worktree
