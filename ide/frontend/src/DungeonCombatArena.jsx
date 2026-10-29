@@ -13,7 +13,7 @@ function EquippedWeapon({ name }) {
   </svg>
 }
 
-export default function DungeonCombatArena({ run, loadout, turn }) {
+export default function DungeonCombatArena({ run, loadout, turn, simulated = false }) {
   const arenaRef = useRef(null)
   const [landed, setLanded] = useState(false)
   const encounter = run.encounter || {}
@@ -23,7 +23,7 @@ export default function DungeonCombatArena({ run, loadout, turn }) {
   useEffect(() => {
     setLanded(false)
     if (!result) return undefined
-    arenaRef.current?.scrollIntoView({ block: 'nearest', inline: 'nearest' })
+    if (!simulated) arenaRef.current?.scrollIntoView({ block: 'nearest', inline: 'nearest' })
     const timer = setTimeout(() => setLanded(true), 350)
     return () => clearTimeout(timer)
   }, [result?.evidence_id])
@@ -35,21 +35,21 @@ export default function DungeonCombatArena({ run, loadout, turn }) {
   const blast = Number(fight.blast) || 0
   const summary = !result ? 'Awaiting your answer' : isCorrect
     ? `Tate strikes for ${Number(fight.chip) || 0} Resolve${blast ? `; blast costs ${blast} HP` : ''}.`
-    : damage ? `${encounter.name || 'Enemy'} strikes for ${damage} HP${blast ? `; blast costs ${blast} more` : ''}.`
+    : damage ? `${encounter.name || 'Enemy'} strikes for ${damage} ${simulated ? 'practice HP' : 'HP'}${blast ? `; blast costs ${blast} more` : ''}.`
       : `The attack is guarded${blast ? `; blast costs ${blast} HP` : ''}.`
   return <section ref={arenaRef} className="dungeon-combat-panel" aria-label="Combat scene">
-    <div className="combat-panel-title"><span>COMBAT</span><span>YOUR HP / ENEMY RESOLVE</span></div>
+    <div className="combat-panel-title"><span>{simulated ? 'SPARRING · SIMULATED' : 'COMBAT'}</span><span>{simulated ? 'PRACTICE ONLY' : 'YOUR HP / ENEMY RESOLVE'}</span></div>
     <div className={`combat-scene ${result ? isCorrect ? 'attack' : 'retaliate' : ''}`} data-kind={run.room_type} style={{ backgroundImage: `url(${crypt})` }}>
       <div className="combat-scene-shade" />
-      <div className="combat-vitals hunter-vitals"><div><span>TATE BUTI</span><b>{hp} / {maxHp}</b></div><div className="combat-bar"><i style={{ width: percent(hp, maxHp) }} /></div><small>HP</small></div>
+      <div className="combat-vitals hunter-vitals"><div><span>TATE BUTI</span><b>{hp} / {maxHp}</b></div><div className="combat-bar"><i style={{ width: percent(hp, maxHp) }} /></div><small>{simulated ? 'PRACTICE HP' : 'HP'}</small></div>
       <div className="combat-vitals enemy-vitals"><div><span>{encounter.name || 'ENEMY'}</span><b>{resolve} / {maxResolve}</b></div><div className="combat-bar enemy-bar"><i style={{ width: percent(resolve, maxResolve) }} /></div><small>RESOLVE</small></div>
       <div className="combat-shadow hunter-shadow"/><div className="combat-shadow enemy-shadow"/>
       <div className="combat-fighter combat-hunter"><div className="combat-hunter-sprite" style={{ backgroundImage: `url(${tate})` }} /><EquippedWeapon name={loadout.weapon || ''} /></div>
       <div className="combat-fighter combat-enemy"><img src={wraith} alt="" draggable="false" /></div>
       {result && <><div className="combat-strike"/><span className={`combat-damage ${isCorrect ? 'enemy-hit' : 'hunter-hit'}`} aria-hidden="true">{isCorrect ? `−${Number(fight.chip) || 0}` : damage ? `−${damage}` : 'GUARD'}</span></>}
-      <div className="combat-scene-footer"><span>{result ? isCorrect ? 'TATE ATTACKS' : 'ENEMY ATTACKS' : 'AWAITING YOUR ANSWER'}</span><span>FLOOR {run.floor ?? 1}</span></div>
+      <div className="combat-scene-footer"><span>{result ? isCorrect ? 'TATE ATTACKS' : 'ENEMY ATTACKS' : 'AWAITING YOUR ANSWER'}</span><span>{simulated ? 'PRACTICE BOUT' : `FLOOR ${run.floor ?? 1}`}</span></div>
     </div>
-    <div className="combat-equipment"><span>EQUIPPED</span><strong>{loadout.weapon || 'Unarmed'}</strong><small>{[run.class?.name, loadout.armor, loadout.trinket].filter(Boolean).join(' · ')}</small></div>
+    <div className="combat-equipment"><span>{simulated ? 'TRAINING WEAPON' : 'EQUIPPED'}</span><strong>{loadout.weapon || 'Unarmed'}</strong><small>{simulated ? 'Practice HP and Resolve reset after this bout.' : [run.class?.name, loadout.armor, loadout.trinket].filter(Boolean).join(' · ')}</small></div>
     <p className="combat-status" role="status">{summary}</p>
   </section>
 }

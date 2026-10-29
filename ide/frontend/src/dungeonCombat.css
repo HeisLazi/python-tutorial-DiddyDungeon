@@ -1,4 +1,7 @@
-.dungeon-brief-v2 > .dungeon-combat-panel { flex: 0 0 auto; padding: 0; overflow: hidden; border: 2px solid #8d704f; background: #100d19; }
+.dungeon-combat-panel { min-width: 0; padding: 0; overflow: hidden; border: 2px solid #8d704f; background: #100d19; }
+.dungeon-brief-v2 > .dungeon-combat-panel { flex: 0 0 auto; padding: 0; }
+.spar-bout-layout { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(275px, .85fr); gap: 12px; align-items: start; }
+@media (max-width: 1050px) { .spar-bout-layout { grid-template-columns: 1fr; } }
 .combat-panel-title { display: flex; justify-content: space-between; gap: 5px; padding: 7px 8px; background: #322339; border-bottom: 1px solid #8d704f; color: #eac788; font: 7px/1.4 'Press Start 2P', monospace; }
 .combat-panel-title span:last-child { color: #cbb9b7; font-size: 6px; }
 .combat-scene { position: relative; isolation: isolate; overflow: hidden; width: 100%; aspect-ratio: 1.73; min-height: 165px; background-position: center 70%; background-size: cover; image-rendering: pixelated; }

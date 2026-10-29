@@ -3774,6 +3774,21 @@ function SparringArena({ roster = [], actions, busy }) {
     void ask(foeId, round + 1)
   }
   const finished = round > SPAR_ROUNDS
+  // These bars exist only for this five-round bout. The practice endpoints
+  // remain responsible for sign progress; neither bar touches Dungeon state.
+  const wasCorrect = feedback?.verdict === 'correct'
+  const scoreBefore = Math.max(0, score - (wasCorrect ? 1 : 0))
+  const completedBefore = Math.min(SPAR_ROUNDS, Math.max(0, round - 1))
+  const practiceHpBefore = Math.max(0, SPAR_ROUNDS - (completedBefore - scoreBefore))
+  const practiceResolveBefore = Math.max(0, SPAR_ROUNDS - scoreBefore)
+  const practiceLoadout = { hp: practiceHpBefore, max_hp: SPAR_ROUNDS, weapon: 'Training blade' }
+  const practiceRun = { room_type: 'elite', encounter: { name: foe?.name, resolve: practiceResolveBefore, max_resolve: SPAR_ROUNDS } }
+  const practiceTurn = feedback ? {
+    hpAfter: Math.max(0, practiceHpBefore - (wasCorrect ? 0 : 1)),
+    result: { evidence_id: `${foeId}-${round}`, outcome: feedback.verdict, damage: wasCorrect ? 0 : 1,
+      fight: { chip: wasCorrect ? 1 : 0, max_resolve: SPAR_ROUNDS, resolve_before: practiceResolveBefore,
+        resolve_after: Math.max(0, practiceResolveBefore - (wasCorrect ? 1 : 0)) } },
+  } : null
   const foeButton = (item) => (
     <button key={item.id} type="button" className={`spar-foe ${item.id === foeId ? 'active' : ''}`} onClick={() => start(item.id)} disabled={busy}>
       {item.sign && <HuntSigil pageId={item.sign} size={18} />}
@@ -3798,7 +3813,7 @@ function SparringArena({ roster = [], actions, busy }) {
               <span>Round {Math.min(round, SPAR_ROUNDS)} / {SPAR_ROUNDS}</span>
               <span>Score {score}</span>
             </div>
-            <section className="spar-question">
+            <div className="spar-bout-layout"><section className="spar-question">
               <span className="dungeon-eyebrow">{finished ? 'BOUT OVER' : 'THE QUESTION'}</span>
               {finished ? (
                 <div className="spar-result"><h3>{score >= 4 ? 'A clean win.' : score >= 3 ? 'You held your own.' : 'Back to the notebook.'}</h3><p>You answered {score} of {SPAR_ROUNDS} rounds right against {foe.name}.</p><button type="button" className="campaign-button" onClick={() => start(foe.id)} disabled={busy}>Spar again</button></div>
@@ -3820,12 +3835,8 @@ function SparringArena({ roster = [], actions, busy }) {
                 <p className="spar-empty">{error} <button type="button" className="campaign-button ghost" onClick={() => ask(foeId, round)}>Try again</button></p>
               ) : <p className="spar-empty">PYR is writing round {round}…</p>}
             </section>
-            <section className="spar-foe-card">
-              <span className="dungeon-eyebrow">WHAT YOU'RE SPARRING</span>
-              <strong>{foe.name}</strong>
-              <small>{foe.concept}{foe.campaign ? ` · ${foe.campaign}` : ''}</small>
-              <div className="hunter-bar spar-bar" aria-hidden="true"><i style={{ width: `${Math.max(0, 100 - Math.round((Math.min(round - 1 + (feedback ? 1 : 0), SPAR_ROUNDS) / SPAR_ROUNDS) * 100))}%` }} /></div>
-            </section>
+            <DungeonCombatArena key={foe.id} run={practiceRun} loadout={practiceLoadout} turn={practiceTurn} simulated />
+            </div>
           </>
         )}
       </div>
