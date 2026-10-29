@@ -12,6 +12,8 @@ const WHIP: Texture2D = preload("res://art/tate-whip-sheet.png")
 const WHIP_HURT: Texture2D = preload("res://art/tate-whip-hurt-sheet.png")
 const GREATSWORD: Texture2D = preload("res://art/tate-greatsword-sheet.png")
 const GREATSWORD_HURT: Texture2D = preload("res://art/tate-greatsword-hurt-sheet.png")
+const HANDMAGIC: Texture2D = preload("res://art/tate-handmagic-sheet.png")
+const HANDMAGIC_HURT: Texture2D = preload("res://art/tate-handmagic-hurt-sheet.png")
 const CRYPT: Texture2D = preload("res://art/crypt.png")
 const MIMIC: Texture2D = preload("res://art/mimic-action-sheet.png")
 const MIMIC_HURT: Texture2D = preload("res://art/mimic-hurt-sheet.png")
@@ -34,6 +36,7 @@ var weapons := [
 	{"name": "STAFF", "action": STAFF, "hurt": STAFF_HURT},
 	{"name": "WHIP", "action": WHIP, "hurt": WHIP_HURT},
 	{"name": "GREATSWORD", "action": GREATSWORD, "hurt": GREATSWORD_HURT},
+	{"name": "HAND MAGIC", "action": HANDMAGIC, "hurt": HANDMAGIC_HURT},
 ]
 var hp := 5
 var resolve := 5
@@ -217,7 +220,13 @@ func _next_weapon() -> void:
 func _magic_projectile() -> void:
 	var bolt := Polygon2D.new()
 	bolt.polygon = PackedVector2Array([Vector2(-6, 0), Vector2(-2, -4), Vector2(4, -3), Vector2(7, 0), Vector2(4, 3), Vector2(-2, 4)])
-	bolt.color = Color("8ceeff")
+	bolt.color = Color("d188ff") if weapon_index == 4 else Color("8ceeff")
+	if weapon_index == 4:
+		bolt.scale = Vector2(1.6, 1.6)
+		var core := Polygon2D.new()
+		core.polygon = PackedVector2Array([Vector2(-2, 0), Vector2(0, -2), Vector2(3, 0), Vector2(0, 2)])
+		core.color = Color("fff2ff")
+		bolt.add_child(core)
 	bolt.position = Vector2(125, 94)
 	add_child(bolt)
 	var t := create_tween()
@@ -256,7 +265,7 @@ func _weapon_attack() -> void:
 	var windup := 0.25 if weapon_index == 3 else 0.16
 	t.tween_interval(windup)
 	t.tween_callback(func(): body.frame = 2)
-	if weapon_index == 1:
+	if weapon_index == 1 or weapon_index == 4:
 		t.tween_callback(_magic_projectile)
 		t.tween_interval(0.32)
 	else:

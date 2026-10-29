@@ -12,6 +12,8 @@ HERE = Path(__file__).resolve().parent
 # A horizontal anchor near the hips for each pose. Relative to 96x72 cells,
 # Tate's anchor is at x=35; the left-facing hollow's anchor is at x=55.
 SHEETS = {
+    'tate-handmagic': ((220, 765, 1280, 1930), 45, 128, -35),
+    'tate-handmagic-hurt': ((250, 780, 1320, 1920), 45, 128, -12),
     'tate-staff': ((230, 790, 1250, 1900), 45, 128, -5),
     'tate-staff-hurt': ((245, 800, 1300, 1900), 45, 128, -35),
     'tate-whip': ((220, 685, 1140, 1945), 45, 128, -40),

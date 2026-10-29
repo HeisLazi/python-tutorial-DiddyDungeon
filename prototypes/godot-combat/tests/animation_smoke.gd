@@ -45,10 +45,10 @@ func run_checks() -> void:
 	scene._miss()
 	var mimic_miss: Dictionary = await sample(scene, 1.4)
 	require(mimic_miss.enemy.has("mimic-action-sheet.png:3"), "Mimic attack pose missing")
-	for weapon in ["staff", "whip", "greatsword"]:
+	for weapon in ["staff", "whip", "greatsword", "handmagic"]:
 		scene._reset()
 		scene._next_weapon()
-		require(scene.weapon_label.text.to_lower() == weapon, "Weapon selection failed: " + weapon)
+		require(scene.weapon_label.text.to_lower().replace(" ", "") == weapon, "Weapon selection failed: " + weapon)
 		scene._attack()
 		var action: Dictionary = await sample(scene, 1.4)
 		require(scene.resolve == 4 and not scene.acting, weapon + " attack did not complete")
@@ -57,5 +57,5 @@ func run_checks() -> void:
 		var reaction: Dictionary = await sample(scene, 1.4)
 		require(scene.hp == 4 and not scene.acting, weapon + " counter did not complete")
 		require(reaction.hunter.has("tate-" + weapon + "-hurt-sheet.png:2"), weapon + " hurt pose missing")
-	print("PASS: idle, four weapons, hit reactions, counters and both modes")
+	print("PASS: idle, five weapons, hit reactions, counters and both modes")
 	quit(0)
