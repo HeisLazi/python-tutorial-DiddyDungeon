@@ -2,7 +2,7 @@ extends Node2D
 
 const HOLLOW_SHADER = preload("res://hollow.gdshader")
 const ATLAS: Texture2D = preload("res://art/tiles.png")
-const HUNTER: Texture2D = preload("res://art/tate-sword-sheet.png")
+const HUNTER: Texture2D = preload("res://art/tate-sword-v2-sheet.png")
 const CRYPT: Texture2D = preload("res://art/crypt.png")
 const MIMIC: Texture2D = preload("res://art/string-mimic.png")
 const HOLLOW: Texture2D = preload("res://art/wraith-pixel.png")
@@ -34,7 +34,7 @@ func _ready() -> void:
 	build_scene()
 	if not shot_path.is_empty():
 		if shot_pose >= 0:
-			body.frame = clampi(shot_pose, 0, 2)
+			body.frame = clampi(shot_pose, 0, 3)
 		await get_tree().create_timer(0.8).timeout
 		await RenderingServer.frame_post_draw
 		get_viewport().get_texture().get_image().save_png(shot_path)
@@ -92,7 +92,7 @@ func build_scene() -> void:
 	add_child(hunter)
 	body = Sprite2D.new()
 	body.texture = HUNTER
-	body.hframes = 3
+	body.hframes = 4
 	body.frame = 0
 	body.scale = Vector2(1.5, 1.5)
 	# Frame cells share a 35px foot anchor and a 68px baseline.
@@ -185,9 +185,13 @@ func _attack() -> void:
 	t.tween_callback(func(): body.frame = 1)
 	t.tween_interval(0.16)
 	t.tween_callback(func(): body.frame = 2)
+	t.tween_interval(0.09)
+	t.tween_callback(func(): body.frame = 3)
 	t.tween_property(hunter, "position:x", 140.0, 0.14).set_trans(Tween.TRANS_QUAD)
 	t.tween_callback(_enemy_hit)
 	t.tween_interval(0.14)
+	t.tween_callback(func(): body.frame = 2)
+	t.tween_interval(0.09)
 	t.tween_callback(func(): body.frame = 0)
 	t.tween_property(hunter, "position:x", 83.0, 0.20)
 	t.tween_callback(_finish_turn)

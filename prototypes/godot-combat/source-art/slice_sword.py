@@ -9,7 +9,7 @@ from pathlib import Path
 from PIL import Image
 
 HERE = Path(__file__).resolve().parent
-source = Image.open(HERE / 'tate-sword-concept.png').convert('RGBA')
+source = Image.open(HERE / 'tate-sword-v2-concept.png').convert('RGBA')
 w, h = source.size
 alpha = source.getchannel('A')
 pixels = alpha.load()
@@ -39,11 +39,12 @@ for y in range(h):
 components.sort(key=lambda points: min(x for x, _ in points))
 if len(components) != 4:
     raise RuntimeError(f'Expected four whole poses, found {len(components)}')
-# The fourth follows through behind Tate and does not meet the desired pose;
-# retain it in source art but use idle, wind-up and forward strike here.
-anchors = (240, 755, 1255)
-sheet = Image.new('RGBA', (96*3, 72))
-for frame, (points, anchor) in enumerate(zip(components[:3], anchors)):
+# Source order is idle, wind-up, strike, in-between. Reorder the complete
+# silhouettes into their animation sequence, retaining one uniform scale.
+anchors = (240, 755, 1830, 1255)
+ordered = [components[i] for i in (0, 1, 3, 2)]
+sheet = Image.new('RGBA', (96*4, 72))
+for frame, (points, anchor) in enumerate(zip(ordered, anchors)):
     mask = Image.new('L', (w,h))
     mask.putdata([0]*(w*h))
     mp = mask.load()
@@ -55,4 +56,4 @@ for frame, (points, anchor) in enumerate(zip(components[:3], anchors)):
     crop = clean.crop((anchor - 350, -10, anchor + 610, 710))
     cell = crop.resize((96,72), Image.Resampling.NEAREST)
     sheet.alpha_composite(cell, (frame*96,0))
-sheet.save(HERE.parent / 'art' / 'tate-sword-sheet.png')
+sheet.save(HERE.parent / 'art' / 'tate-sword-v2-sheet.png')
