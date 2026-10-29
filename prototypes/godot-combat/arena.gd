@@ -2,10 +2,15 @@ extends Node2D
 
 const HOLLOW_SHADER = preload("res://hollow.gdshader")
 const ATLAS: Texture2D = preload("res://art/tiles.png")
-const HUNTER: Texture2D = preload("res://art/tate-sword-v2-sheet.png")
+const HUNTER_SWORD: Texture2D = preload("res://art/tate-sword-v2-sheet.png")
+const HUNTER_IDLE: Texture2D = preload("res://art/tate-idle-sheet.png")
+const HUNTER_FOLLOW: Texture2D = preload("res://art/tate-followthrough-sheet.png")
+const HUNTER_HURT: Texture2D = preload("res://art/tate-hurt-sheet.png")
 const CRYPT: Texture2D = preload("res://art/crypt.png")
-const MIMIC: Texture2D = preload("res://art/string-mimic.png")
-const HOLLOW: Texture2D = preload("res://art/wraith-pixel.png")
+const MIMIC: Texture2D = preload("res://art/mimic-action-sheet.png")
+const MIMIC_HURT: Texture2D = preload("res://art/mimic-hurt-sheet.png")
+const HOLLOW: Texture2D = preload("res://art/hollow-action-sheet.png")
+const HOLLOW_HURT: Texture2D = preload("res://art/hollow-hurt-sheet.png")
 
 var hunter: Node2D
 var body: Sprite2D
@@ -34,6 +39,7 @@ func _ready() -> void:
 	build_scene()
 	if not shot_path.is_empty():
 		if shot_pose >= 0:
+			body.texture = HUNTER_SWORD
 			body.frame = clampi(shot_pose, 0, 3)
 		await get_tree().create_timer(0.8).timeout
 		await RenderingServer.frame_post_draw
@@ -91,7 +97,7 @@ func build_scene() -> void:
 	hunter.position = Vector2(83, 146)
 	add_child(hunter)
 	body = Sprite2D.new()
-	body.texture = HUNTER
+	body.texture = HUNTER_IDLE
 	body.hframes = 4
 	body.frame = 0
 	body.scale = Vector2(1.5, 1.5)
@@ -101,8 +107,10 @@ func build_scene() -> void:
 	hunter.add_child(body)
 	enemy = Sprite2D.new()
 	enemy.texture = HOLLOW
-	enemy.position = Vector2(237, 117)
-	enemy.scale = Vector2(1.65, 1.65)
+	enemy.hframes = 4
+	enemy.offset = Vector2(-7, 0)
+	enemy.position = Vector2(237, 96)
+	enemy.scale = Vector2(1.5, 1.5)
 	add_child(enemy)
 	set_mode(true)
 	build_hud()
@@ -157,8 +165,8 @@ func set_mode(is_simulated: bool) -> void:
 	simulated = is_simulated
 	if simulated:
 		enemy.texture = HOLLOW
-		enemy.scale = Vector2(1.65, 1.65)
-		enemy.position = Vector2(237, 117)
+		enemy.scale = Vector2(1.5, 1.5)
+		enemy.position = Vector2(237, 96)
 		var material := ShaderMaterial.new()
 		material.shader = HOLLOW_SHADER
 		enemy.material = material
@@ -166,7 +174,8 @@ func set_mode(is_simulated: bool) -> void:
 		enemy.texture = MIMIC
 		enemy.material = null
 		enemy.scale = Vector2(1.5, 1.5)
-		enemy.position = Vector2(237, 120)
+		enemy.position = Vector2(237, 96)
+	enemy.frame = 0
 	if mode_label:
 		mode_label.text = "SPARRING  /  HOLLOW SIMULATION" if simulated else "DUNGEON  /  STRING MIMIC"
 		enemy_label.text = "HOLLOW  ·  RESOLVE" if simulated else "MIMIC  ·  RESOLVE"
@@ -181,27 +190,37 @@ func _attack() -> void:
 	if acting or resolve <= 0 or hp <= 0: return
 	acting = true
 	status_label.text = "TATE ATTACKS"
+	body.texture = HUNTER_SWORD
 	var t := create_tween()
 	t.tween_callback(func(): body.frame = 1)
-	t.tween_interval(0.16)
+	t.tween_interval(0.12)
 	t.tween_callback(func(): body.frame = 2)
-	t.tween_interval(0.09)
-	t.tween_callback(func(): body.frame = 3)
+	t.tween_interval(0.08)
+	t.tween_callback(func(): body.texture = HUNTER_FOLLOW; body.frame = 0)
+	t.tween_interval(0.08)
+	t.tween_callback(func(): body.frame = 1)
 	t.tween_property(hunter, "position:x", 140.0, 0.14).set_trans(Tween.TRANS_QUAD)
-	t.tween_callback(_enemy_hit)
-	t.tween_interval(0.14)
 	t.tween_callback(func(): body.frame = 2)
-	t.tween_interval(0.09)
-	t.tween_callback(func(): body.frame = 0)
+	t.tween_callback(_enemy_hit)
+	t.tween_interval(0.13)
+	t.tween_callback(func(): body.frame = 3)
 	t.tween_property(hunter, "position:x", 83.0, 0.20)
 	t.tween_callback(_finish_turn)
 
 func _enemy_hit() -> void:
 	resolve = maxi(0, resolve - 1)
 	resolve_bar.size.x = 128.0 * resolve / 5.0
+	enemy.texture = HOLLOW_HURT if simulated else MIMIC_HURT
+	enemy.frame = 0
 	var t := create_tween()
-	t.tween_property(enemy, "modulate", Color(2, 2, 2), 0.08)
-	t.tween_property(enemy, "modulate", Color.WHITE, 0.12)
+	t.tween_interval(0.07)
+	t.tween_callback(func(): enemy.frame = 1)
+	t.tween_interval(0.09)
+	t.tween_callback(func(): enemy.frame = 2)
+	t.tween_interval(0.09)
+	t.tween_callback(func(): enemy.frame = 3)
+	t.tween_interval(0.08)
+	t.tween_callback(func(): enemy.texture = HOLLOW if simulated else MIMIC; enemy.frame = 0)
 
 func _miss() -> void:
 	if acting or resolve <= 0 or hp <= 0: return
@@ -209,20 +228,35 @@ func _miss() -> void:
 	status_label.text = "HOLLOW STRIKES" if simulated else "MIMIC STRIKES"
 	var original := enemy.position
 	var t := create_tween()
+	t.tween_callback(func(): enemy.frame = 2)
+	t.tween_interval(0.15)
+	t.tween_callback(func(): enemy.frame = 3)
 	t.tween_property(enemy, "position:x", 196.0, 0.25)
 	t.tween_callback(_hunter_hit)
 	t.tween_property(enemy, "position", original, 0.25)
+	t.tween_callback(func(): enemy.frame = 0)
+	t.tween_interval(0.2)
 	t.tween_callback(_finish_turn)
 
 func _hunter_hit() -> void:
 	hp = maxi(0, hp - 1)
 	hp_bar.size.x = 128.0 * hp / 5.0
+	body.texture = HUNTER_HURT
+	body.frame = 0
 	var t := create_tween()
-	t.tween_property(hunter, "modulate", Color(2, 0.6, 0.6), 0.08)
-	t.tween_property(hunter, "modulate", Color.WHITE, 0.12)
+	t.tween_interval(0.08)
+	t.tween_callback(func(): body.frame = 1)
+	t.tween_interval(0.1)
+	t.tween_callback(func(): body.frame = 2)
+	t.tween_interval(0.1)
+	t.tween_callback(func(): body.frame = 3)
+	t.tween_interval(0.1)
+	t.tween_callback(func(): body.texture = HUNTER_IDLE; body.frame = 0)
 
 func _finish_turn() -> void:
 	acting = false
+	body.texture = HUNTER_IDLE
+	body.frame = 0
 	status_label.text = "FOE BROKEN" if resolve == 0 else ("HUNTER DOWN" if hp == 0 else "YOUR TURN")
 
 func _reset() -> void:
@@ -235,6 +269,10 @@ func _reset() -> void:
 
 func _process(delta: float) -> void:
 	elapsed += delta
+	if not acting and body and enemy and shot_pose < 0:
+		var idle_cycle := [0, 1, 2, 3, 2, 1]
+		body.frame = idle_cycle[int(elapsed * 4.0) % idle_cycle.size()]
+		enemy.frame = int(elapsed * 3.0) % 2
 	queue_redraw()
 
 class SimulationOverlay extends Node2D:
