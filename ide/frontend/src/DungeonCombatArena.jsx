@@ -3,10 +3,9 @@ import { combatEnemyArt } from './combatEnemyArt.js'
 import './dungeonCombat.css'
 
 const percent = (value, max) => `${Math.max(0, Math.min(100, 100 * value / Math.max(1, max)))}%`
-// Only map named combat styles; existing lantern and compass equipment still
-// keeps its gameplay effects and uses the default sword visual until its art exists.
+// Saved runs predating weapon_style use their known equipment name.
 const combatStyle = (name = '') => {
-  if (/hand\s*magic/i.test(name)) return 'handmagic'
+  if (/hand\s*magic|runic casting/i.test(name)) return 'handmagic'
   if (/greatsword|two.hand/i.test(name)) return 'greatsword'
   if (/whip/i.test(name)) return 'whip'
   if (/staff/i.test(name)) return 'staff'
@@ -43,7 +42,7 @@ export default function DungeonCombatArena({ run, loadout, turn, simulated = fal
     ? `Tate strikes for ${Number(fight.chip) || 0} Resolve${blast ? `; blast costs ${blast} HP` : ''}.`
     : damage ? `${encounter.name || 'Enemy'} strikes for ${damage} ${simulated ? 'practice HP' : 'HP'}${blast ? `; blast costs ${blast} more` : ''}.`
       : `The attack is guarded${blast ? `; blast costs ${blast} HP` : ''}.`
-  payloadRef.current = { simulated, enemy: combatEnemyArt(encounter.name), style: combatStyle(loadout.weapon), turn_id: result?.evidence_id || '', outcome: result?.outcome || '' }
+  payloadRef.current = { simulated, enemy: combatEnemyArt(encounter.name), style: loadout.weapon_style || combatStyle(loadout.weapon), turn_id: result?.evidence_id || '', outcome: result?.outcome || '' }
   const send = () => {
     if (!readyRef.current) return
     try { frameRef.current?.contentWindow?.diddyCombatReceive?.(JSON.stringify(payloadRef.current)) } catch { /* scene is still loading */ }
@@ -68,7 +67,7 @@ export default function DungeonCombatArena({ run, loadout, turn, simulated = fal
       pendingRef.current.push({ ...payloadRef.current })
     }
     send()
-  }, [simulated, encounter.name, loadout.weapon, result?.evidence_id, result?.outcome])
+  }, [simulated, encounter.name, loadout.weapon, loadout.weapon_style, result?.evidence_id, result?.outcome])
 
   return <section ref={arenaRef} className="dungeon-combat-panel" aria-label="Combat scene">
     <div className="combat-panel-title"><span>{simulated ? 'SPARRING · SIMULATED' : 'COMBAT'}</span><span>{simulated ? 'PRACTICE ONLY' : 'YOUR HP / ENEMY RESOLVE'}</span></div>

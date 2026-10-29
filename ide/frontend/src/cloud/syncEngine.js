@@ -29,8 +29,8 @@ const SYNC_HOMESTEAD_EQUIPPED_FIELDS = ['theme', 'cursor', 'hud', 'terminal']
 const SYNC_PROJECT_FIELDS = ['order', 'branch', 'name', 'status', 'progress', 'boss', 'boss_status', 'clean_clear_eligible', 'completed', 'completed_at', 'clean_clear', 'mob_sequence_complete', 'creative_discoveries', 'boss_validation']
 const SYNC_MOB_FIELDS = ['name', 'status', 'assist', 'concept', 'encounter', 'max_resolve', 'resolve', 'impact_applied', 'objective_attempts']
 const SYNC_CODEX_FIELDS = ['id', 'project_id', 'mob_name', 'concept', 'status', 'question_types', 'weaknesses', 'notes', 'player_notes', 'attempts', 'results', 'interview_history', 'mastery']
-const SYNC_DUNGEON_FIELDS = ['status', 'run_id', 'seed', 'concept_id', 'floor', 'room', 'room_type', 'score', 'run_coins', 'started_at', 'updated_at', 'ended_at', 'loadout', 'inventory', 'question', 'question_number', 'room_choices', 'editor_content', 'last_result', 'history', 'attempts']
-const SYNC_DUNGEON_INVENTORY_FIELDS = ['id', 'name', 'kind', 'armor', 'trinket', 'description']
+const SYNC_DUNGEON_FIELDS = ['status', 'run_id', 'seed', 'class_id', 'concept_id', 'floor', 'room', 'room_type', 'score', 'run_coins', 'started_at', 'updated_at', 'ended_at', 'loadout', 'inventory', 'question', 'question_number', 'room_choices', 'editor_content', 'last_result', 'history', 'attempts']
+const SYNC_DUNGEON_INVENTORY_FIELDS = ['id', 'name', 'kind', 'weapon', 'armor', 'trinket', 'description']
 
 const isRecord = (value) => value !== null && typeof value === 'object' && !Array.isArray(value)
 
@@ -102,7 +102,7 @@ const projectCampaignState = (progress = {}) => {
     else if (isRecord(run)) {
       campaign.dungeon_run = {
         ...copyFields(run, SYNC_DUNGEON_FIELDS.filter((field) => !['loadout', 'inventory', 'question', 'room_choices', 'last_result', 'history'].includes(field))),
-        ...(isRecord(run.loadout) ? { loadout: copyFields(run.loadout, ['armor', 'trinket', 'hp', 'max_hp', 'heals', 'coins']) } : {}),
+        ...(isRecord(run.loadout) ? { loadout: copyFields(run.loadout, ['weapon', 'armor', 'trinket', 'hp', 'max_hp', 'heals', 'coins']) } : {}),
         ...(Array.isArray(run.inventory) ? { inventory: boundedRecords(run.inventory, SYNC_DUNGEON_INVENTORY_FIELDS, 24) } : {}),
         ...(run.question === null ? { question: null } : isRecord(run.question) ? { question: copyFields(run.question, ['id', 'question_type', 'concept_id', 'difficulty', 'prompt', 'options']) } : {}),
         ...(Array.isArray(run.room_choices) ? { room_choices: boundedRecords(run.room_choices, ['id', 'kind', 'label', 'description'], 3) } : {}),

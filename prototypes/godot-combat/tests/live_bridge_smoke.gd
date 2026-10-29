@@ -21,9 +21,11 @@ func run_checks() -> void:
 	scene._apply_live_state({"simulated": false, "enemy": "wraith", "style": "sword", "turn_id": "miss", "outcome": "incorrect"})
 	scene._apply_live_state({"simulated": false, "enemy": "wraith", "style": "sword", "turn_id": "miss", "outcome": "incorrect"})
 	require(scene.pending_live_turns.size() == 1, "Repeated turn was not deduplicated")
+	scene._apply_live_state({"simulated": false, "enemy": "wraith", "style": "whip"})
 	await create_timer(1.9).timeout
 	require(not scene.acting and scene.last_turn_id == "miss", "Queued live counterattack did not complete")
 	require(scene.hp == 5 and scene.resolve == 5, "Live scene changed demo health")
+	require(scene.weapons[scene.weapon_index].id == "whip", "Style change during an action was lost")
 	scene._apply_live_state({"simulated": true, "enemy": "wraith", "style": "handmagic"})
 	require(scene.enemy.hframes == 4 and scene.enemy.texture.resource_path.ends_with("hollow-action-sheet.png"), "Simulation did not restore hollow")
 	require(scene.weapon_index == 4, "Live weapon style did not change")

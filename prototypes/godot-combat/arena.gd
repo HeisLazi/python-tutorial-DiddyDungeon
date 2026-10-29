@@ -20,6 +20,7 @@ var live_enemy_id := "string-mimic"
 var bridge_callback: JavaScriptObject
 var last_turn_id := ""
 var pending_live_turns: Array[Dictionary] = []
+var pending_live_state: Dictionary = {}
 var backdrop: Sprite2D
 var dungeon_decor: Array[CanvasItem] = []
 var hunter: Node2D
@@ -216,6 +217,7 @@ func _receive_live_state(args: Array) -> void:
 func _apply_live_state(payload: Dictionary) -> void:
 	var incoming_id: String = str(payload.get("turn_id", ""))
 	if acting:
+		pending_live_state = payload.duplicate(true)
 		if not incoming_id.is_empty() and incoming_id != last_turn_id:
 			for queued in pending_live_turns:
 				if str(queued.get("turn_id", "")) == incoming_id: return
@@ -411,6 +413,10 @@ func _finish_turn() -> void:
 	if status_label: status_label.text = "FOE BROKEN" if resolve == 0 else ("HUNTER DOWN" if hp == 0 else "YOUR TURN")
 	if embedded and not pending_live_turns.is_empty():
 		_apply_live_state(pending_live_turns.pop_front())
+	elif embedded and not pending_live_state.is_empty():
+		var latest := pending_live_state
+		pending_live_state = {}
+		_apply_live_state(latest)
 
 func _reset() -> void:
 	if acting: return

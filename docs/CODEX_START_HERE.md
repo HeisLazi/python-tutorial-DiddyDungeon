@@ -4,7 +4,7 @@
 
 The active combat study lives in `prototypes/godot-combat/`. It provides the embedded Godot combat scene used by Infinite Dungeon and Sparring.
 The scene is presentation-only: the game remains authoritative for health and results.
-Tate has sword, staff, whip, greatsword, and hand-magic poses. Sparring uses a blue
+Tate has sword, staff, whip, greatsword, and hand-magic poses. Dungeon equipment projects its style from the state-service catalog; staff, sword, and whip are class starters, while the market sells the remaining styles. Sparring has a separate practice-weapon selector. Sparring uses a blue
 simulated arena and Hollow opponent; dungeon mode uses the crypt and Mimic.
 
 Read [the combat skin workflow](../prototypes/godot-combat/SKIN_WORKFLOW.md)

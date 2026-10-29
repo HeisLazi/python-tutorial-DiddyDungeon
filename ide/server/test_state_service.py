@@ -322,6 +322,37 @@ class StateServiceBehaviorTests(unittest.TestCase):
         self.assertEqual(after["projects"], before["projects"])
         self.assertEqual(after["state_events"][-1]["action"], "dungeon_reset_run")
 
+    def test_dungeon_weapons_select_combat_styles_and_survive_reload(self):
+        starters = [("syntax-warden", "Aether Staff", "staff"), ("resolve-duelist", "Loopblade", "sword"), ("route-merchant", "Pathfinder Whip", "whip")]
+        for class_id, weapon, style in starters:
+            service, _ = self.make_service()
+            run = service.apply("dungeon_start_run", {"concept_id": "lists", "class_id": class_id}, "player")["result"]["run"]
+            self.assertEqual((run["loadout"]["weapon"], run["loadout"]["weapon_style"]), (weapon, style))
+
+        service, path = self.make_service()
+        run = service.apply("dungeon_start_run", {"concept_id": "lists", "class_id": "resolve-duelist"}, "player")["result"]["run"]
+        state = self.read(path)
+        state["dungeon_run"]["room_type"] = "market"
+        state["dungeon_run"]["run_coins"] = 1000
+        path.write_text(json.dumps(state), encoding="utf-8")
+        weapons = [("dungeon-aether-staff", "staff"), ("dungeon-pathfinder-whip", "whip"), ("dungeon-iron-greatsword", "greatsword"), ("dungeon-runic-casting", "handmagic")]
+        for item_id, style in weapons:
+            run = service.apply("dungeon_market_purchase", {"run_id": run["run_id"], "item_id": item_id}, "player")["result"]["run"]
+            self.assertEqual(run["loadout"]["weapon_style"], style)
+        reloaded = LocalStateService(path, threading.RLock()).dungeon_projection(service.snapshot())
+        self.assertEqual(reloaded["loadout"]["weapon_style"], "handmagic")
+        for item_id, style in weapons + [("dungeon-loopblade", "sword")]:
+            result = service.apply("dungeon_equip_item", {"run_id": run["run_id"], "item_id": item_id}, "player")
+            self.assertEqual(result["result"]["run"]["loadout"]["weapon_style"], style)
+        coins = service.dungeon_projection(service.snapshot())["run_coins"]
+        with self.assertRaises(StateCommandError):
+            service.apply("dungeon_market_purchase", {"run_id": run["run_id"], "item_id": "dungeon-aether-staff"}, "player")
+        self.assertEqual(service.dungeon_projection(service.snapshot())["run_coins"], coins)
+        old = self.read(path)
+        old["dungeon_run"]["loadout"]["weapon"] = "Lint Lantern"
+        path.write_text(json.dumps(old), encoding="utf-8")
+        self.assertEqual(service.dungeon_projection(service.snapshot())["loadout"]["weapon_style"], "sword")
+
     def test_dungeon_questions_reject_hidden_fields_and_active_runs_cannot_reset(self):
         service, _ = self.make_service()
         started = service.apply("dungeon_start_run", {"concept_id": "lists"}, "player")

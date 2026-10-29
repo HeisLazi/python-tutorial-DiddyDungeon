@@ -48,6 +48,4 @@ The local preview server uses port 17532. The simulation backdrop belongs to
 sparring; the crypt, torches and amber lighting belong to dungeon mode. The game uses the scene in both Dungeon and Sparring, with combat state owned by the app. A player-facing skin picker and new finished skins remain separate work.
 
 For the game export, run `sh tools/build_combat.sh` from the worktree root.
-The game uses the sword art for equipment without a matching animated style;
-existing lantern and compass mechanics are unchanged. Non-Mimic dungeon enemy
-art remains static pending dedicated animated sprites.
+Dungeon derives the visual style from the equipped weapon in the state-service catalog. New runs start with a staff, sword or whip; the market also sells a greatsword and hand casting. Sparring selects a practice style separately. Weapon styles currently change animations, not damage rules. Legacy lantern and compass remain valid and use the sword fallback until they receive matching art. Non-Mimic dungeon enemy art remains static pending dedicated animated sprites.

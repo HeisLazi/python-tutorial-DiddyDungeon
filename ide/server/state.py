@@ -213,9 +213,21 @@ DUNGEON_MARKET_CATALOG: tuple[dict[str, Any], ...] = (
     {"id": "dungeon-lens", "name": "Scholar Lens", "price": 30, "kind": "trinket", "trinket": "Scholar Lens", "description": "A cosmetic run trophy for careful reasoning."},
     {"id": "dungeon-syntax-sabre", "name": "Syntax Sabre", "price": 70, "kind": "weapon", "weapon": "Syntax Sabre", "description": "+1 run Resolve damage when the objective is explained."},
     {"id": "dungeon-loopblade", "name": "Loopblade", "price": 78, "kind": "weapon", "weapon": "Loopblade", "description": "+1 run Resolve damage against elite challenges."},
+    {"id": "dungeon-aether-staff", "name": "Aether Staff", "price": 65, "kind": "weapon", "weapon": "Aether Staff", "description": "Cast with a crystal-tipped staff. Changes your combat style."},
+    {"id": "dungeon-pathfinder-whip", "name": "Pathfinder Whip", "price": 65, "kind": "weapon", "weapon": "Pathfinder Whip", "description": "Fight from range with a whip. Changes your combat style."},
+    {"id": "dungeon-iron-greatsword", "name": "Iron Greatsword", "price": 80, "kind": "weapon", "weapon": "Iron Greatsword", "description": "Swing a heavy two-handed sword. Changes your combat style."},
+    {"id": "dungeon-runic-casting", "name": "Runic Casting", "price": 80, "kind": "weapon", "weapon": "Runic Casting", "description": "Cast directly from your hands. Changes your combat style."},
     {"id": "dungeon-field-jacket", "name": "Field Jacket", "price": 72, "kind": "armor", "armor": "Field Jacket", "description": "Reduce failed-run damage by 6."},
     {"id": "dungeon-syntax-cuirass", "name": "Syntax Cuirass", "price": 88, "kind": "armor", "armor": "Syntax Cuirass", "description": "The first failed submission each floor costs less HP."},
 )
+
+# Visual styles are projected from canonical equipped item names. They are not
+# stored in saves or used to calculate damage. Legacy equipment remains valid.
+DUNGEON_WEAPON_STYLES: dict[str, str] = {
+    "Loopblade": "sword", "Syntax Sabre": "sword",
+    "Aether Staff": "staff", "Pathfinder Whip": "whip",
+    "Iron Greatsword": "greatsword", "Runic Casting": "handmagic",
+}
 
 # Campaign equipment is a separate, validated loadout from Homestead
 # cosmetics.  The browser only receives items that are already present in the
@@ -377,8 +389,8 @@ DUNGEON_CLASS_CATALOG: tuple[dict[str, Any], ...] = (
         "name": "Syntax Warden",
         "role": "The guarded opener",
         "passive": "The first syntax-error submission each floor deals no HP damage.",
-        "starter_weapon": "Lint Lantern",
-        "starter_weapon_id": "dungeon-lint-lantern",
+        "starter_weapon": "Aether Staff",
+        "starter_weapon_id": "dungeon-aether-staff",
         "starting_coins": 0,
         "extra_heals": 0,
         "resolve_bonus": 0,
@@ -401,8 +413,8 @@ DUNGEON_CLASS_CATALOG: tuple[dict[str, Any], ...] = (
         "name": "Route Merchant",
         "role": "The prepared wayfarer",
         "passive": "Start with +20 run coins and one extra heal charge.",
-        "starter_weapon": "Branch Compass",
-        "starter_weapon_id": "dungeon-branch-compass",
+        "starter_weapon": "Pathfinder Whip",
+        "starter_weapon_id": "dungeon-pathfinder-whip",
         "starting_coins": 20,
         "extra_heals": 1,
         "resolve_bonus": 0,
@@ -4610,6 +4622,7 @@ class LocalStateService:
             field: loadout.get(field, loadout_defaults[field])
             for field in ("weapon", "armor", "trinket", "hp", "max_hp", "heals", "coins", "bandages", "rations", "vision_scrolls", "tonics", "edge_charges", "armor_guard")
         }
+        projection["loadout"]["weapon_style"] = DUNGEON_WEAPON_STYLES.get(str(projection["loadout"].get("weapon") or ""), "sword")
         selected_class = DUNGEON_CLASSES_BY_ID.get(str(projection["class_id"]))
         if selected_class is not None:
             projection["class"] = {
@@ -5388,6 +5401,9 @@ class LocalStateService:
         item = next((candidate for candidate in DUNGEON_MARKET_CATALOG if candidate["id"] == item_id), None)
         if item is None:
             raise StateCommandError("Unknown Dungeon market item", status_code=404)
+        if item["kind"] in {"weapon", "armor", "trinket"}:
+            if any(candidate.get("id") == item_id for candidate in self._dungeon_inventory_entries(run)):
+                raise StateCommandError("That item is already in your run inventory", status_code=409)
         coins = self._counter(run, "run_coins")
         base_price = self._integer(item["price"], "market.price", minimum=0, maximum=MAX_SYNC_COUNTER)
         discount = min(90, self._counter(run, "market_discount"))

@@ -38,8 +38,8 @@ const DUNGEON_CLASSES = [
     role: 'The guarded opener',
     iconId: 'target',
     passive: 'The first syntax-error submission each floor deals no HP damage.',
-    weapon: 'Lint Lantern',
-    weaponDetail: 'The first failed submission each floor earns a second bounded hint.',
+    weapon: 'Aether Staff',
+    weaponDetail: 'A crystal staff for ranged casting.',
   },
   {
     id: 'resolve-duelist',
@@ -56,8 +56,8 @@ const DUNGEON_CLASSES = [
     role: 'The prepared wayfarer',
     iconId: 'spark',
     passive: 'Start with +20 run coins and one extra heal charge.',
-    weapon: 'Branch Compass',
-    weaponDetail: 'Read one risk profile per floor without spending a scroll.',
+    weapon: 'Pathfinder Whip',
+    weaponDetail: 'A long-reaching whip for the journey.',
   },
 ]
 
@@ -3571,7 +3571,7 @@ function DungeonRoomPanel({ run, question, loadout, onRest, onCampAction, onReve
       {type === 'selector' && <div className="dungeon-room-action"><strong>Choose a route on the map.</strong><span>Room types are visible; future questions and answers are not.</span></div>}
       {type === 'rest' && (run.last_banked || []).length > 0 && <div className="dungeon-camp-banked" role="status"><span className="dungeon-eyebrow">PACK BANKED AT CAMP</span><strong>{lootText(run.last_banked)}</strong><span>Safe in your hunter's stores, whatever happens next.</span></div>}
       {type === 'rest' && <><div className="dungeon-room-supplies"><div><span className="dungeon-eyebrow">RUN SUPPLIES</span><strong>{loadout.heals ?? 0} rests · {loadout.bandages ?? 0} bandages · {loadout.rations ?? 0} rations · {loadout.tonics ?? 0} tonics</strong></div><span>{loadout.hp ?? 0}/{loadout.max_hp ?? 0} HP</span></div><div className="dungeon-camp-rule"><span className="dungeon-eyebrow">ONE ACTION PER CAMPSITE VISIT</span><span>{run.camp_action_used ? 'Action used. Leave when you are ready.' : 'Choose one preparation, then the route opens again.'}</span></div><div className="dungeon-action-grid"><button className="dungeon-action-card" type="button" onClick={() => (onCampAction || onRest)?.(run.run_id, 'rest')} disabled={busy || run.camp_action_used || (!onCampAction && !onRest) || (loadout.heals ?? 0) <= 0 || fullHealth}><RouteIcon id="plus" /><span><strong>Rest by the fire</strong><small>Recover up to 30 HP · {loadout.heals ?? 0} charge(s)</small></span><b>REST</b></button><button className="dungeon-action-card" type="button" onClick={() => onCampAction?.(run.run_id, 'bandage')} disabled={busy || run.camp_action_used || !onCampAction || (loadout.bandages ?? 0) <= 0 || fullHealth}><RouteIcon id="plus" /><span><strong>Use a bandage</strong><small>Recover up to 22 HP · {loadout.bandages ?? 0} left</small></span><b>HEAL</b></button><button className="dungeon-action-card" type="button" onClick={() => onCampAction?.(run.run_id, 'cook')} disabled={busy || run.camp_action_used || !onCampAction || (loadout.rations ?? 0) <= 0}><RouteIcon id="spark" /><span><strong>Cook a ration</strong><small>Increase maximum HP by 10 · {loadout.rations ?? 0} left</small></span><b>COOK</b></button><button className="dungeon-action-card" type="button" onClick={() => onCampAction?.(run.run_id, 'sharpen')} disabled={busy || run.camp_action_used || !onCampAction || (loadout.edge_charges ?? 0) > 0}><RouteIcon id="sword" /><span><strong>Sharpen your edge</strong><small>Next clean submission deals +1 Resolve</small></span><b>PREP</b></button><button className="dungeon-action-card" type="button" onClick={() => onCampAction?.(run.run_id, 'fortify')} disabled={busy || run.camp_action_used || !onCampAction || (loadout.armor_guard ?? 0) > 0}><RouteIcon id="shield" /><span><strong>Fortify your armor</strong><small>Absorb one failed-submission hit</small></span><b>BRACE</b></button><button className="dungeon-action-card" type="button" onClick={() => onCampAction?.(run.run_id, 'tonic')} disabled={busy || run.camp_action_used || !onCampAction || (loadout.tonics ?? 0) <= 0 || fullHealth}><RouteIcon id="spark" /><span><strong>Drink an ember tonic</strong><small>Recover up to 30 HP · {loadout.tonics ?? 0} left</small></span><b>TONIC</b></button></div><button className="dungeon-primary-wide" type="button" onClick={() => onLeave?.(run.run_id)} disabled={busy || !onLeave}>Leave campsite →</button></>}
-      {type === 'market' && <><div className="dungeon-market-wallet"><div><span className="dungeon-eyebrow">RUN PURSE</span><strong>{run.run_coins ?? 0} coins</strong></div><div className="dungeon-market-stock"><span>Heals <b>{loadout.heals ?? 0}</b></span><span>Bandages <b>{loadout.bandages ?? 0}</b></span><span>Rations <b>{loadout.rations ?? 0}</b></span><span>Scrolls <b>{loadout.vision_scrolls ?? 0}</b></span></div></div><div className="dungeon-shelf-note"><span className="dungeon-eyebrow">ROTATING SHELF</span><span>Run supplies and gear · run coins only</span></div><div className="dungeon-market-list">{(run.market_catalog || []).map((item) => <div key={item.id} className="dungeon-market-item"><RouteIcon id={item.kind === 'weapon' ? 'sword' : item.kind === 'armor' ? 'shield' : 'spark'} /><span><strong>{item.name}</strong><small>{item.description}</small></span><button type="button" onClick={() => onMarketPurchase?.(run.run_id, item.id)} disabled={busy || !onMarketPurchase || (run.run_coins ?? 0) < (item.price ?? 0)}>{item.price}c</button></div>)}</div><button className="dungeon-primary-wide" type="button" onClick={() => onLeave?.(run.run_id)} disabled={busy || !onLeave}>Leave market →</button></>}
+      {type === 'market' && <><div className="dungeon-market-wallet"><div><span className="dungeon-eyebrow">RUN PURSE</span><strong>{run.run_coins ?? 0} coins</strong></div><div className="dungeon-market-stock"><span>Heals <b>{loadout.heals ?? 0}</b></span><span>Bandages <b>{loadout.bandages ?? 0}</b></span><span>Rations <b>{loadout.rations ?? 0}</b></span><span>Scrolls <b>{loadout.vision_scrolls ?? 0}</b></span></div></div><div className="dungeon-shelf-note"><span className="dungeon-eyebrow">ROTATING SHELF</span><span>Run supplies and gear · run coins only</span></div><div className="dungeon-market-list">{(run.market_catalog || []).map((item) => { const owned = ['weapon', 'armor', 'trinket'].includes(item.kind) && (run.inventory || []).some((entry) => entry.id === item.id); return <div key={item.id} className="dungeon-market-item"><RouteIcon id={item.kind === 'weapon' ? 'sword' : item.kind === 'armor' ? 'shield' : 'spark'} /><span><strong>{item.name}</strong><small>{item.description}</small></span><button type="button" aria-label={owned ? `${item.name}, owned` : `Buy ${item.name} for ${item.price} coins`} onClick={() => onMarketPurchase?.(run.run_id, item.id)} disabled={owned || busy || !onMarketPurchase || (run.run_coins ?? 0) < (item.price ?? 0)}>{owned ? 'Owned' : `${item.price}c`}</button></div> })}</div><button className="dungeon-primary-wide" type="button" onClick={() => onLeave?.(run.run_id)} disabled={busy || !onLeave}>Leave market →</button></>}
       {(type === 'encounter' || type === 'elite' || type === 'boss') && <><div className="dungeon-encounter-preview"><RouteIcon id={type === 'boss' ? 'boss' : type === 'elite' ? 'target' : 'sword'} /><div><span className="dungeon-eyebrow">{type === 'boss' ? 'FINAL DESTINATION' : type === 'elite' ? 'ELITE QUESTION ROOM · TRINKET DROP' : 'LOCKED QUESTION ROOM'}</span><strong>{encounterName}</strong><p>{type === 'boss' ? 'The final destination is state-owned. A verified file unlocks the next floor.' : type === 'elite' ? 'A harder question room with a bounded trinket reward.' : `${question.prompt || 'Build the answer in dungeon.py.'} The editor stays the single answer surface.`}</p></div></div><button className="dungeon-danger-wide" type="button" onClick={onOpenCode} disabled={busy || !onOpenCode}>Open code editor →</button></>}
       {type === 'mystery' && <div className="dungeon-risk-card"><RouteIcon id="question" /><div><span className="dungeon-eyebrow">{run.risk_status === 'revealed' ? 'SCOUTED RISK' : 'UNSCOUTED RISK'}</span><strong>{run.risk_profile?.title || 'Something is watching the route.'}</strong><p>{run.risk_profile?.preview || 'A vision scroll previews one risk. Entering never requires a scroll.'}</p></div><div className="dungeon-risk-actions"><button className="dungeon-ghost-button" type="button" onClick={() => onRevealRisk?.(run.run_id)} disabled={busy || run.risk_status === 'revealed' || run.risk_status === 'entered' || !onRevealRisk || (loadout.vision_scrolls ?? 0) <= 0}>Use vision scroll · {loadout.vision_scrolls ?? 0}</button><button className="dungeon-danger-wide" type="button" onClick={() => onEnterRisk?.(run.run_id)} disabled={busy || run.risk_status === 'entered' || !onEnterRisk}>Enter the risk →</button></div></div>}
       <div className="dungeon-room-note"><span>DESIGN RULE</span><p>No challenge is generated until you commit to an encounter node.</p></div>
@@ -3724,6 +3724,7 @@ function SparringArena({ roster = [], actions, busy }) {
   const [score, setScore] = useState(0)
   const [error, setError] = useState('')
   const [sparCode, setSparCode] = useState('')
+  const [practiceWeapon, setPracticeWeapon] = useState('sword')
   const foe = roster.find((item) => item.id === foeId)
   const contracts = roster.filter((item) => item.kind === 'contract')
   const beasts = roster.filter((item) => item.kind === 'beast')
@@ -3783,7 +3784,8 @@ function SparringArena({ roster = [], actions, busy }) {
   const completedBefore = Math.min(SPAR_ROUNDS, Math.max(0, round - 1))
   const practiceHpBefore = Math.max(0, SPAR_ROUNDS - (completedBefore - scoreBefore))
   const practiceResolveBefore = Math.max(0, SPAR_ROUNDS - scoreBefore)
-  const practiceLoadout = { hp: practiceHpBefore, max_hp: SPAR_ROUNDS, weapon: 'Training blade' }
+  const practiceWeapons = { sword: 'Training sword', staff: 'Training staff', whip: 'Training whip', greatsword: 'Training greatsword', handmagic: 'Hand magic' }
+  const practiceLoadout = { hp: practiceHpBefore, max_hp: SPAR_ROUNDS, weapon: practiceWeapons[practiceWeapon], weapon_style: practiceWeapon }
   const practiceRun = { room_type: 'elite', encounter: { name: foe?.name, resolve: practiceResolveBefore, max_resolve: SPAR_ROUNDS } }
   const practiceTurn = feedback ? {
     hpAfter: Math.max(0, practiceHpBefore - (wasCorrect ? 0 : 1)),
@@ -3814,6 +3816,7 @@ function SparringArena({ roster = [], actions, busy }) {
               <span className="dungeon-brief-kind">SIMULATED · NO DAMAGE</span>
               <span>Round {Math.min(round, SPAR_ROUNDS)} / {SPAR_ROUNDS}</span>
               <span>Score {score}</span>
+              <label className="spar-weapon-select">Practice weapon <select value={practiceWeapon} onChange={(event) => setPracticeWeapon(event.target.value)}>{Object.entries(practiceWeapons).map(([id, name]) => <option key={id} value={id}>{name}</option>)}</select></label>
             </div>
             <div className="spar-bout-layout"><section className="spar-question">
               <span className="dungeon-eyebrow">{finished ? 'BOUT OVER' : 'THE QUESTION'}</span>

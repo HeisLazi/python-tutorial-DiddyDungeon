@@ -423,7 +423,8 @@ test('campaign evidence and a Dungeon checkpoint travel through the same cloud r
   source.codex = { encounters: [{ id: 'blackjack-empty-table', project_id: '01-blackjack', mob_name: 'The Empty Table', concept: 'Variables', status: 'defeated', player_notes: ['Review indexing before the next encounter.'], results: [{ outcome: 'defeated', evidence_id: 'legacy-1' }] }] }
   source.dungeon_run = {
     status: 'active', run_id: 'dungeon-1', floor: 2, room: 4, room_type: 'encounter', editor_content: 'answer = 1',
-    inventory: [{ id: 'run-lantern', name: 'Run Lantern', kind: 'trinket', description: 'A temporary run aid.' }],
+    class_id: 'resolve-duelist', loadout: { weapon: 'Runic Casting', hp: 80, max_hp: 100 },
+    inventory: [{ id: 'run-lantern', name: 'Run Lantern', kind: 'trinket', description: 'A temporary run aid.' }, { id: 'dungeon-runic-casting', name: 'Runic Casting', kind: 'weapon', weapon: 'Runic Casting', description: 'Hand casting.' }],
     question: { id: 'question-1', question_type: 'code_checkpoint', concept_id: 'variables', difficulty: 2, prompt: 'Use a variable.', options: [], answer_key: 'must-not-travel' },
   }
   const localA = fakeLocalApi(source, 4)
@@ -442,7 +443,9 @@ test('campaign evidence and a Dungeon checkpoint travel through the same cloud r
   assert.equal(cloudCampaign.codex.encounters[0].mob_name, 'The Empty Table')
   assert.deepEqual(cloudCampaign.codex.encounters[0].player_notes, ['Review indexing before the next encounter.'])
   assert.equal(cloudCampaign.dungeon_run.run_id, 'dungeon-1')
-  assert.deepEqual(cloudCampaign.dungeon_run.inventory, [{ id: 'run-lantern', name: 'Run Lantern', kind: 'trinket', description: 'A temporary run aid.' }])
+  assert.equal(cloudCampaign.dungeon_run.class_id, 'resolve-duelist')
+  assert.equal(cloudCampaign.dungeon_run.loadout.weapon, 'Runic Casting')
+  assert.equal(cloudCampaign.dungeon_run.inventory[1].weapon, 'Runic Casting')
   assert.equal(Object.prototype.hasOwnProperty.call(cloudCampaign.dungeon_run.question, 'answer_key'), false)
 
   engineB.initialize()
@@ -452,7 +455,9 @@ test('campaign evidence and a Dungeon checkpoint travel through the same cloud r
   assert.equal(localB.getProgress().codex.encounters[0].mob_name, 'The Empty Table')
   assert.deepEqual(localB.getProgress().codex.encounters[0].player_notes, ['Review indexing before the next encounter.'])
   assert.equal(localB.getProgress().dungeon_run.run_id, 'dungeon-1')
-  assert.deepEqual(localB.getProgress().dungeon_run.inventory, [{ id: 'run-lantern', name: 'Run Lantern', kind: 'trinket', description: 'A temporary run aid.' }])
+  assert.equal(localB.getProgress().dungeon_run.class_id, 'resolve-duelist')
+  assert.equal(localB.getProgress().dungeon_run.loadout.weapon, 'Runic Casting')
+  assert.equal(localB.getProgress().dungeon_run.inventory[1].weapon, 'Runic Casting')
   engineA.dispose()
   engineB.dispose()
 })
