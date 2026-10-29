@@ -78,7 +78,7 @@ export default function DungeonCombatArena({ run, loadout, turn, simulated = fal
       <div className="combat-vitals enemy-vitals"><div><span>{simulated ? 'HOLLOW' : encounter.name || 'ENEMY'}</span><b>{resolve} / {maxResolve}</b></div><div className="combat-bar enemy-bar"><i style={{ width: percent(resolve, maxResolve) }} /></div><small>RESOLVE</small></div>
       <div className="combat-scene-footer"><span>{result ? isCorrect ? 'TATE ATTACKS' : 'ENEMY ATTACKS' : 'AWAITING YOUR ANSWER'}</span><span>{simulated ? 'PRACTICE BOUT' : `FLOOR ${run.floor ?? 1}`}</span></div>
     </div>
-    <div className="combat-equipment"><span>{simulated ? 'TRAINING WEAPON' : 'EQUIPPED'}</span><strong>{loadout.weapon || 'Unarmed'}</strong><small>{simulated ? 'Practice HP and Resolve reset after this bout.' : [run.class?.name, loadout.armor, loadout.trinket].filter(Boolean).join(' · ')}</small></div>
+    <div className="combat-equipment"><span>{simulated ? 'EQUIPPED AT HOME' : 'EQUIPPED'}</span><strong>{loadout.weapon || 'Unarmed'}</strong><small>{simulated ? (loadout.visual_unavailable ? 'Weapon animation not yet available; showing bare hands. Practice HP and Resolve reset after this bout.' : 'Equipped in Prepare. Practice HP and Resolve reset after this bout.') : [run.class?.name, loadout.armor, loadout.trinket].filter(Boolean).join(' · ')}</small></div>
     <p className="combat-status" role="status">{summary}</p>
   </section>
 }

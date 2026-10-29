@@ -2089,7 +2089,7 @@ function HunterCodex({ view, hunter, pages, entries, progress, encounter, pyr, b
   )
 }
 
-function ResourceTutorScreen({ pyr, hunter, sparRoster = [], sparActions, avatar, activeView, progress, revision, codexProjection, encounter, tutorCode, tutorDirty, tutorExternalChange, editorFontSize = 14, busy, onTutorChange, onTutorSave, onTutorFormat, onTutorRun, onPracticePrompt, onTutorReloadExternal, onTutorKeepEdits, onNavigate }) {
+function ResourceTutorScreen({ pyr, hunter, sparRoster = [], sparActions, armory, avatar, activeView, progress, revision, codexProjection, encounter, tutorCode, tutorDirty, tutorExternalChange, editorFontSize = 14, busy, onTutorChange, onTutorSave, onTutorFormat, onTutorRun, onPracticePrompt, onTutorReloadExternal, onTutorKeepEdits, onNavigate }) {
   const pages = Array.isArray(codexProjection?.pages) && codexProjection.pages.length ? codexProjection.pages : resourceFallbackPages(encounter)
   const entries = Array.isArray(codexProjection?.entries) ? codexProjection.entries : []
   // Lessons lead into focused practice; the bounty board owns campaign contracts.
@@ -2193,7 +2193,7 @@ function ResourceTutorScreen({ pyr, hunter, sparRoster = [], sparActions, avatar
       <nav className="resource-tutor-tabs" aria-label="Tutor sections"><button type="button" className={surface === 'learn' ? 'active' : ''} onClick={() => setSurface('learn')}>Lessons</button><button type="button" className={surface === 'bestiary' ? 'active' : ''} onClick={() => setSurface('bestiary')}>Bestiary</button><button type="button" className={surface === 'signs' ? 'active' : ''} onClick={() => setSurface('signs')}>Signs</button><button type="button" className={surface === 'ide' || surface === 'notes' ? 'active' : ''} disabled={practiceLocked} title={practiceLocked ? 'Unavailable during a boss fight' : undefined} onClick={() => setSurface('ide')}>↗ IDE practice</button><button type="button" className={surface === 'spar' ? 'active' : ''} disabled={practiceLocked} title={practiceLocked ? 'Unavailable during a boss fight' : undefined} onClick={() => setSurface('spar')}>⚔ Sparring</button></nav>
       {practiceLocked && <p className="resource-boss-lock" role="status">Boss fight active · Lessons and the bestiary are open. Practice and sparring unlock after the fight or retreat.</p>}
       {surface === 'learn' && <TutorLearningPath practiceLocked={practiceLocked} pages={pages} selectedPage={selectedPage} onSelect={setSelectedId} onPractice={(mode) => { setPracticeMode(mode); setPracticeFormat('code'); setPracticeQuestion(null); setSurface('ide') }} reference={<><ResourceCodexExamples page={selectedPage} /><ResourceCodexMistakes page={selectedPage} entries={selectedEntries} /><ResourceEncounterRecords entries={selectedEntries} /><StudiedAtHome concept={selectedPage?.title} /><StudyAtHomeButton topic={selectedPage?.title} context="studying a concept between bounties" label="Study more at home" /></>} onResume={() => onNavigate?.('forge')} encounter={encounter} studyObjective={studyObjective} />}
-      {!practiceLocked && surface === 'spar' && <SparringArena roster={sparRoster} actions={sparActions} busy={busy} />}
+      {!practiceLocked && surface === 'spar' && <SparringArena roster={sparRoster} actions={sparActions} armory={armory} busy={busy} />}
       {huntView && <HunterCodex practiceLocked={practiceLocked} view={surface} hunter={hunter} pages={pages} entries={entries} progress={progress} encounter={encounter} pyr={pyr} busy={busy}
         selectedId={huntPick} onSelect={(pageId) => { setHuntPick(pageId); setSelectedId(pageId) }} onView={setSurface}
         onRead={(pageId) => { setHuntPick(pageId); setSelectedId(pageId); setSurface('learn') }}
@@ -2851,7 +2851,7 @@ function ArmouryLots({ armory, coins, actions, busy, onBack }) {
       <div className="bench-tabs" role="tablist" aria-label="Lots"><button type="button" className={filter === 'open' ? 'active' : ''} onClick={() => setFilter('open')}>Open lots</button><button type="button" className={filter === 'all' ? 'active' : ''} onClick={() => setFilter('all')}>All lots</button></div>
       {campaigns.length ? campaigns.map((branch) => (
         <section key={branch} className="alchemy-region">
-          <h4>{branch === 'aid' ? 'Aid · one-time help' : names[branch] || branch}</h4>
+          <h4>{branch === 'aid' ? 'Aid · one-time help' : branch === 'hunter' ? 'Hunter weapons' : names[branch] || branch}</h4>
           <div className="armory-grid">{lots.filter((lot) => lot.campaign === branch).map((lot) => (
             <ArmoryItem key={lot.id} item={lot}>
               <button type="button" className="campaign-button" onClick={() => actions?.buy?.(lot.id)} disabled={busy || !lot.affordable}>{lot.affordable || lot.locked ? `Buy · ${lot.price} coins` : `Need ${Math.max(1, lot.price - (coins || 0))} more coins`}</button>
@@ -3715,7 +3715,7 @@ const SPAR_ROUNDS = 5
 
 // Simulated fights in the Tutor notebook: only foes already met, five
 // clickable rounds, no damage. Right first clicks still grow your signs.
-function SparringArena({ roster = [], actions, busy }) {
+function SparringArena({ roster = [], actions, armory, busy }) {
   const [foeId, setFoeId] = useSessionState('sparFoe', '')
   const [round, setRound] = useState(0)
   const [boutId, setBoutId] = useState(0)
@@ -3724,7 +3724,6 @@ function SparringArena({ roster = [], actions, busy }) {
   const [score, setScore] = useState(0)
   const [error, setError] = useState('')
   const [sparCode, setSparCode] = useState('')
-  const [practiceWeapon, setPracticeWeapon] = useState('sword')
   const foe = roster.find((item) => item.id === foeId)
   const contracts = roster.filter((item) => item.kind === 'contract')
   const beasts = roster.filter((item) => item.kind === 'beast')
@@ -3784,8 +3783,8 @@ function SparringArena({ roster = [], actions, busy }) {
   const completedBefore = Math.min(SPAR_ROUNDS, Math.max(0, round - 1))
   const practiceHpBefore = Math.max(0, SPAR_ROUNDS - (completedBefore - scoreBefore))
   const practiceResolveBefore = Math.max(0, SPAR_ROUNDS - scoreBefore)
-  const practiceWeapons = { sword: 'Training sword', staff: 'Training staff', whip: 'Training whip', greatsword: 'Training greatsword', handmagic: 'Hand magic' }
-  const practiceLoadout = { hp: practiceHpBefore, max_hp: SPAR_ROUNDS, weapon: practiceWeapons[practiceWeapon], weapon_style: practiceWeapon }
+  const equippedWeapon = armory?.weapon
+  const practiceLoadout = { hp: practiceHpBefore, max_hp: SPAR_ROUNDS, weapon: equippedWeapon?.name || 'Bare hands', weapon_style: equippedWeapon?.combat_style || 'unarmed', visual_unavailable: Boolean(equippedWeapon && !equippedWeapon.combat_style) }
   const practiceRun = { room_type: 'elite', encounter: { name: foe?.name, resolve: practiceResolveBefore, max_resolve: SPAR_ROUNDS } }
   const practiceTurn = feedback ? {
     hpAfter: Math.max(0, practiceHpBefore - (wasCorrect ? 0 : 1)),
@@ -3816,7 +3815,6 @@ function SparringArena({ roster = [], actions, busy }) {
               <span className="dungeon-brief-kind">SIMULATED · NO DAMAGE</span>
               <span>Round {Math.min(round, SPAR_ROUNDS)} / {SPAR_ROUNDS}</span>
               <span>Score {score}</span>
-              <label className="spar-weapon-select">Practice weapon <select value={practiceWeapon} onChange={(event) => setPracticeWeapon(event.target.value)}>{Object.entries(practiceWeapons).map(([id, name]) => <option key={id} value={id}>{name}</option>)}</select></label>
             </div>
             <div className="spar-bout-layout"><section className="spar-question">
               <span className="dungeon-eyebrow">{finished ? 'BOUT OVER' : 'THE QUESTION'}</span>
@@ -5039,7 +5037,7 @@ export function GameScreen({ pyr, settingsAi, runtime, setAvatar, selectCampaign
     )
   }
   if (activeView === 'hub') return withWideNavigation(<CampaignSurface setAvatar={setAvatar} selectCampaign={selectCampaign} hunter={hunter} spendStatPoint={spendStatPoint} hunterActions={hunterActions} campaignBoard={campaignBoard} armory={armory} armoryActions={armoryActions} progress={progress} homeRooms={homeRooms} purchaseHomeRoom={purchaseHomeRoom} revision={revision} equipmentProjection={equipmentProjection} purchaseCosmetic={purchaseCosmetic} purchaseMarketItem={purchaseMarketItem} equipCosmetic={equipCosmetic} equipCampaignItem={equipCampaignItem} buildRoomUpgrade={buildRoomUpgrade} performHomesteadAction={performHomesteadAction} busy={busy} onNavigate={onNavigate} />)
-  if (activeView === 'quests' || activeView === 'codex' || activeView === 'tutor') return withWideNavigation(<ResourceTutorScreen pyr={pyr} hunter={hunter} sparRoster={sparRoster} sparActions={sparActions} avatar={equipmentProjection?.avatar} activeView={activeView} progress={progress} revision={revision} codexProjection={codexProjection} encounter={encounter} tutorCode={tutorCode} tutorDirty={tutorDirty} tutorExternalChange={tutorExternalChange} editorFontSize={editorFontSize} busy={busy} onTutorChange={onTutorChange} onTutorSave={onTutorSave} onTutorFormat={onTutorFormat} onTutorRun={onTutorRun} onPracticePrompt={onPracticePrompt} onTutorReloadExternal={onTutorReloadExternal} onTutorKeepEdits={onTutorKeepEdits} onNavigate={onNavigate} />)
+  if (activeView === 'quests' || activeView === 'codex' || activeView === 'tutor') return withWideNavigation(<ResourceTutorScreen pyr={pyr} hunter={hunter} sparRoster={sparRoster} sparActions={sparActions} armory={armory} avatar={equipmentProjection?.avatar} activeView={activeView} progress={progress} revision={revision} codexProjection={codexProjection} encounter={encounter} tutorCode={tutorCode} tutorDirty={tutorDirty} tutorExternalChange={tutorExternalChange} editorFontSize={editorFontSize} busy={busy} onTutorChange={onTutorChange} onTutorSave={onTutorSave} onTutorFormat={onTutorFormat} onTutorRun={onTutorRun} onPracticePrompt={onPracticePrompt} onTutorReloadExternal={onTutorReloadExternal} onTutorKeepEdits={onTutorKeepEdits} onNavigate={onNavigate} />)
   // Legacy render contract retained in source comments for downstream static
   // checks; the live route above owns the replacement surface.
   // withWideNavigation(<Codex progress={progress} revision={revision} codexProjection={codexProjection} showNavigation={false} />)

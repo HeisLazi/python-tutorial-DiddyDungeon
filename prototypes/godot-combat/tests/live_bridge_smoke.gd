@@ -29,5 +29,10 @@ func run_checks() -> void:
 	scene._apply_live_state({"simulated": true, "enemy": "wraith", "style": "handmagic"})
 	require(scene.enemy.hframes == 4 and scene.enemy.texture.resource_path.ends_with("hollow-action-sheet.png"), "Simulation did not restore hollow")
 	require(scene.weapon_index == 4, "Live weapon style did not change")
-	print("PASS: live enemy identity, turn queue, simulation and presentation-only state")
+	scene._apply_live_state({"simulated": true, "enemy": "wraith", "style": "unarmed", "turn_id": "bare-hit", "outcome": "correct"})
+	require(scene.unarmed and scene.acting, "Unarmed attack did not begin")
+	require(scene.body.texture.resource_path.ends_with("tate-handmagic-hurt-sheet.png"), "Unarmed pose missing")
+	await create_timer(1.0).timeout
+	require(not scene.acting and not scene.has_node("SpellBolt"), "Unarmed attack fired a spell or did not finish")
+	print("PASS: live enemy identity, turn queue, simulation, unarmed and presentation-only state")
 	quit(0)

@@ -16,6 +16,7 @@ const HOLLOW: Texture2D = preload("res://art/hollow-action-sheet.png")
 const HOLLOW_HURT: Texture2D = preload("res://art/hollow-hurt-sheet.png")
 
 var embedded := false
+var unarmed := false
 var live_enemy_id := "string-mimic"
 var bridge_callback: JavaScriptObject
 var last_turn_id := ""
@@ -239,6 +240,8 @@ func _apply_live_state(payload: Dictionary) -> void:
 			enemy.position = Vector2(237, 96)
 	var style: String = payload.get("style", "sword")
 	if not acting:
+		unarmed = style == "unarmed"
+		if unarmed: style = "handmagic"
 		for i in range(weapons.size()):
 			if weapons[i].id == style:
 				weapon_index = i
@@ -334,6 +337,20 @@ func _attack() -> void:
 	t.tween_callback(_finish_turn)
 
 func _weapon_attack() -> void:
+	if unarmed:
+		# Use empty-handed poses; do not fire a spell or draw a weapon.
+		body.texture = _poses()["hurt"]
+		body.frame = 3
+		var unarmed_tween := create_tween()
+		unarmed_tween.tween_interval(0.12)
+		unarmed_tween.tween_callback(func(): body.frame = 2)
+		unarmed_tween.tween_property(hunter, "position:x", 140.0, 0.18)
+		unarmed_tween.tween_callback(_enemy_hit)
+		unarmed_tween.tween_interval(0.12)
+		unarmed_tween.tween_callback(func(): body.frame = 3)
+		unarmed_tween.tween_property(hunter, "position:x", 83.0, 0.2)
+		unarmed_tween.tween_callback(_finish_turn)
+		return
 	body.texture = _poses()["action"]
 	body.frame = 1
 	var t := create_tween()

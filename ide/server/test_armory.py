@@ -93,6 +93,30 @@ class ArmoryBehaviourTests(unittest.TestCase):
     def miss(self, objective_id):
         return self.service.apply_internal("record_battle_miss", {"objective_id": objective_id, "encounter_id": "enc", "evidence_id": f"miss-{objective_id}", "reason": "Wrong"})["result"]
 
+    def test_equipped_weapon_projects_its_combat_style(self):
+        self.give("bj-ace-of-spades-blade", "cas-jackpot-hammer")
+        self.assertIsNone(self.service.armory_projection(self.read())["weapon"])
+        self.service.apply("armory_equip", {"item_id": "bj-ace-of-spades-blade"}, "player")
+        weapon = self.service.armory_projection(self.service.snapshot())["weapon"]
+        self.assertEqual((weapon["name"], weapon["combat_style"]), ("Ace of Spades Blade", "sword"))
+        self.service.apply("armory_equip", {"item_id": "cas-jackpot-hammer"}, "player")
+        weapon = self.service.armory_projection(self.service.snapshot())["weapon"]
+        self.assertIsNone(weapon["combat_style"])
+        self.service.apply("armory_unequip", {"slot": "weapon"}, "player")
+        self.assertIsNone(self.service.armory_projection(self.service.snapshot())["weapon"])
+
+    def test_hunter_style_weapons_are_buyable_and_equippable_in_prepare(self):
+        self.give(coins=1000)
+        weapons = [("hunter-sparring-staff", "staff"), ("hunter-sparring-whip", "whip"), ("hunter-sparring-greatsword", "greatsword"), ("hunter-sparring-focus", "handmagic")]
+        for item_id, style in weapons:
+            market = self.service.armory_projection(self.service.snapshot())["market"]
+            self.assertTrue(any(item["id"] == item_id and item["affordable"] for item in market))
+            self.service.apply("armory_buy", {"item_id": item_id}, "player")
+            equipped = self.service.apply("armory_equip", {"item_id": item_id}, "player")["result"]["armory"]["weapon"]
+            self.assertEqual(equipped["combat_style"], style)
+            self.assertIn("no bonus", equipped["effect"].lower())
+            self.assertFalse(any(item["id"] == item_id for item in self.service.armory_projection(self.service.snapshot())["market"]))
+
     def test_a_weapon_breaks_the_guard_but_the_fight_still_takes_every_objective(self):
         self.give("bj-the-house-cutter")  # legendary: +3 impact on every objective, +6 break coins
         self.service.apply("armory_equip", {"item_id": "bj-the-house-cutter"}, "player")

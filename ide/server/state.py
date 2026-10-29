@@ -1359,6 +1359,15 @@ AID_ITEMS = (
      "flavour": "For the bounties where you will need two more tries."},
 )
 AID_DROP_CHANCE = 30  # % per cleared bounty
+# Simple weapons let the Home loadout use the authored combat styles. Their
+# animations are cosmetic; they do not replace campaign weapon bonuses.
+HUNTER_STYLE_WEAPONS = (
+    {"id": "hunter-sparring-staff", "name": "Hunter's Staff", "slot": "weapon", "tier": "common", "effect": {}, "price": 65, "combat_style": "staff", "flavour": "A crystal-tipped staff for ranged casting."},
+    {"id": "hunter-sparring-whip", "name": "Hunter's Whip", "slot": "weapon", "tier": "common", "effect": {}, "price": 65, "combat_style": "whip", "flavour": "A leather whip for a long reach."},
+    {"id": "hunter-sparring-greatsword", "name": "Hunter's Greatsword", "slot": "weapon", "tier": "common", "effect": {}, "price": 80, "combat_style": "greatsword", "flavour": "A heavy blade held in both hands."},
+    {"id": "hunter-sparring-focus", "name": "Hunter's Casting Focus", "slot": "weapon", "tier": "common", "effect": {}, "price": 80, "combat_style": "handmagic", "flavour": "A focus for casting directly from the hands."},
+)
+
 # The local activity log behind the Settings activity graph: one entry per
 # (local) day. Never synced; old days fall off after a bit over a year.
 ACTIVITY_LOG_DAYS = 400
@@ -1380,6 +1389,16 @@ LEGACY_TRINKET_EFFECTS = {
     "Scimitar of Momentum": {"coin_bonus": 15},
     "Vision Scroll": {"loot_luck": 10},
 }
+# Animations are authored per weapon type; unsupported equipment gets an
+# explicit unarmed placeholder instead of pretending it is a sword.
+ARMORY_WEAPON_COMBAT_STYLES: dict[str, str] = {
+    "lv-01": "sword", "lv-02": "sword",
+    "bj-card-edge-dagger": "sword", "bj-ace-of-spades-blade": "sword",
+    "bj-the-shoe-splitter": "greatsword", "bj-the-house-cutter": "sword",
+    "dc-lantern-lit-shortsword": "sword",
+}
+ARMORY_COMBAT_STYLES = frozenset({"sword", "staff", "whip", "greatsword", "handmagic"})
+
 _ARMORY_CACHE: dict[str, Any] = {"source": None, "by_id": {}, "by_name": {}}
 _OBJECTIVE_WORDS = {"code_checkpoint": "BUILD", "bug_diagnosis": "FIX", "prediction": "PREDICT", "explanation": "EXPLAIN"}
 
@@ -1396,6 +1415,8 @@ def armory_catalog() -> dict[str, dict[str, Any]]:
                     by_id[item["id"]] = {**item, "campaign": branch}
         for item in AID_ITEMS:
             by_id[item["id"]] = {**item, "campaign": AID_CAMPAIGN}
+        for item in HUNTER_STYLE_WEAPONS:
+            by_id[item["id"]] = {**item, "campaign": "hunter"}
         _ARMORY_CACHE.update(source=data, by_id=by_id, by_name={item["name"]: item for item in by_id.values()})
     return _ARMORY_CACHE["by_id"]
 
@@ -6452,7 +6473,13 @@ class LocalStateService:
         equipped = {"weapon": armory.get("weapon"), "armor": str(equipment.get("armor") or "Apprentice Coat"), "trinket": str(equipment.get("trinket") or "None")}
 
         def view(item: Mapping[str, Any], **extra: Any) -> dict[str, Any]:
-            return {key: item[key] for key in ("id", "name", "slot", "tier", "flavour", "campaign") if key in item} | {"effect": armory_effect_text(item["effect"])} | extra
+            projected = {key: item[key] for key in ("id", "name", "slot", "tier", "flavour", "campaign") if key in item} | {"effect": armory_effect_text(item["effect"])} | extra
+            if item.get("slot") == "weapon":
+                style = item.get("combat_style") or ARMORY_WEAPON_COMBAT_STYLES.get(str(item.get("id")))
+                projected["combat_style"] = style if isinstance(style, str) and style in ARMORY_COMBAT_STYLES else None
+                if item.get("campaign") == "hunter":
+                    projected["effect"] = "Changes combat animation; no bonus to damage."
+            return projected
 
         items = [view(catalog[item], equipped=(catalog[item]["slot"] == "weapon" and equipped["weapon"] == item) or catalog[item]["name"] in {equipped["armor"], equipped["trinket"]}) for item in owned]
         items += [view(catalog[item], count=int(count)) for item, count in stack.items() if item in catalog and isinstance(count, int) and count > 0]
@@ -6479,6 +6506,9 @@ class LocalStateService:
                 market.append(view(item, price=item["price"], locked=need, affordable=need is None and coins >= item["price"]))
         for item in AID_ITEMS:
             market.append(view(catalog[item["id"]], price=item["price"], locked=None, affordable=coins >= item["price"]))
+        for item in HUNTER_STYLE_WEAPONS:
+            if item["id"] not in owned:
+                market.append(view(catalog[item["id"]], price=item["price"], locked=None, affordable=coins >= item["price"]))
         tier_rank = {tier: index for index, tier in enumerate(ARMORY_TIERS)}
         market.sort(key=lambda item: (item["locked"] is not None, item["campaign"], ARMORY_SLOTS.index(item["slot"]), tier_rank[item["tier"]]))
         effects = self._gear_effects(progress)
