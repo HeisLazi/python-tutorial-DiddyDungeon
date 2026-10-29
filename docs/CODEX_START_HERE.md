@@ -2,8 +2,8 @@
 
 ## Current combat work — 2026-10-29
 
-The active combat study lives in `prototypes/godot-combat/`. It is a standalone
-Godot prototype, not yet connected to live Infinite Dungeon or Sparring saves.
+The active combat study lives in `prototypes/godot-combat/`. It provides the embedded Godot combat scene used by Infinite Dungeon and Sparring.
+The scene is presentation-only: the game remains authoritative for health and results.
 Tate has sword, staff, whip, greatsword, and hand-magic poses. Sparring uses a blue
 simulated arena and Hollow opponent; dungeon mode uses the crypt and Mimic.
 
@@ -12,8 +12,9 @@ before adding characters or skins. Shared combat behavior is separate from each
 skin's complete weapon-specific pose sheets. New skins still require their own
 artwork. The preview has no skin picker yet.
 
-The local web preview is exported to `prototypes/godot-combat-web/` and served
-at `http://127.0.0.1:17532/`. The workflow document contains validation commands.
+The checked-in game export lives in `ide/frontend/public/combat/`; rebuild it
+with `sh tools/build_combat.sh`. The standalone preview is exported to
+`prototypes/godot-combat-web/`. The workflow document contains validation commands.
 The old Home rebuild prompt below is historical; follow the current user task
 and repository evidence rather than restarting those room tasks.
 

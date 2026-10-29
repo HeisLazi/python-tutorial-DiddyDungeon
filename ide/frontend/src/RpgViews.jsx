@@ -3718,6 +3718,7 @@ const SPAR_ROUNDS = 5
 function SparringArena({ roster = [], actions, busy }) {
   const [foeId, setFoeId] = useSessionState('sparFoe', '')
   const [round, setRound] = useState(0)
+  const [boutId, setBoutId] = useState(0)
   const [question, setQuestion] = useState(null)
   const [feedback, setFeedback] = useState(null)
   const [score, setScore] = useState(0)
@@ -3739,6 +3740,7 @@ function SparringArena({ roster = [], actions, busy }) {
   }
   const start = (id) => {
     setFoeId(id)
+    setBoutId((value) => value + 1)
     setRound(1)
     setScore(0)
     setFeedback(null)
@@ -3785,7 +3787,7 @@ function SparringArena({ roster = [], actions, busy }) {
   const practiceRun = { room_type: 'elite', encounter: { name: foe?.name, resolve: practiceResolveBefore, max_resolve: SPAR_ROUNDS } }
   const practiceTurn = feedback ? {
     hpAfter: Math.max(0, practiceHpBefore - (wasCorrect ? 0 : 1)),
-    result: { evidence_id: `${foeId}-${round}`, outcome: feedback.verdict, damage: wasCorrect ? 0 : 1,
+    result: { evidence_id: `${foeId}-${boutId}-${round}`, outcome: feedback.verdict, damage: wasCorrect ? 0 : 1,
       fight: { chip: wasCorrect ? 1 : 0, max_resolve: SPAR_ROUNDS, resolve_before: practiceResolveBefore,
         resolve_after: Math.max(0, practiceResolveBefore - (wasCorrect ? 1 : 0)) } },
   } : null

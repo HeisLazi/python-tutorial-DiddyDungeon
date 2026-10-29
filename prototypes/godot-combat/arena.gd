@@ -4,12 +4,22 @@ const HOLLOW_SHADER = preload("res://hollow.gdshader")
 const ATLAS: Texture2D = preload("res://art/tiles.png")
 const CATALOG = preload("res://combat_catalog.gd")
 const SIMULATION: Texture2D = preload("res://art/simulation.png")
+const LIVE_ENEMIES := {
+ "wraith": preload("res://art/live-wraith.png"),
+ "forked-path": preload("res://art/live-fork.png"),
+ "mimic-matriarch": preload("res://art/live-matriarch.png"),
+}
 const CRYPT: Texture2D = preload("res://art/crypt.png")
 const MIMIC: Texture2D = preload("res://art/mimic-action-sheet.png")
 const MIMIC_HURT: Texture2D = preload("res://art/mimic-hurt-sheet.png")
 const HOLLOW: Texture2D = preload("res://art/hollow-action-sheet.png")
 const HOLLOW_HURT: Texture2D = preload("res://art/hollow-hurt-sheet.png")
 
+var embedded := false
+var live_enemy_id := "string-mimic"
+var bridge_callback: JavaScriptObject
+var last_turn_id := ""
+var pending_live_turns: Array[Dictionary] = []
 var backdrop: Sprite2D
 var dungeon_decor: Array[CanvasItem] = []
 var hunter: Node2D
@@ -40,7 +50,13 @@ func _ready() -> void:
 			shot_path = arg.trim_prefix("--shot=")
 		if arg.begins_with("--pose="):
 			shot_pose = int(arg.trim_prefix("--pose="))
+	if OS.has_feature("web"):
+		embedded = bool(JavaScriptBridge.eval("new URLSearchParams(window.location.search).has('embed')", true))
 	build_scene()
+	if embedded:
+		bridge_callback = JavaScriptBridge.create_callback(_receive_live_state)
+		JavaScriptBridge.get_interface("window").diddyCombatReceive = bridge_callback
+		JavaScriptBridge.eval("window.parent.postMessage({source:'diddy-combat',type:'ready'},window.location.origin)", true)
 	if not shot_path.is_empty():
 		if shot_pose >= 0:
 			body.texture = _poses()["action"]
@@ -118,7 +134,8 @@ func build_scene() -> void:
 	enemy.scale = Vector2(1.5, 1.5)
 	add_child(enemy)
 	set_mode(true)
-	build_hud()
+	if not embedded:
+		build_hud()
 
 func build_hud() -> void:
 	var ui := CanvasLayer.new()
@@ -190,6 +207,47 @@ func set_mode(is_simulated: bool) -> void:
 		enemy_label.text = "HOLLOW  ·  RESOLVE" if simulated else "MIMIC  ·  RESOLVE"
 		health_label.text = skins[skin_id]["name"] + ("  ·  PRACTICE HP" if simulated else "  ·  DEMO HP")
 
+func _receive_live_state(args: Array) -> void:
+	if args.is_empty(): return
+	var payload: Variant = JSON.parse_string(str(args[0]))
+	if not payload is Dictionary: return
+	_apply_live_state(payload)
+
+func _apply_live_state(payload: Dictionary) -> void:
+	var incoming_id: String = str(payload.get("turn_id", ""))
+	if acting:
+		if not incoming_id.is_empty() and incoming_id != last_turn_id:
+			for queued in pending_live_turns:
+				if str(queued.get("turn_id", "")) == incoming_id: return
+			pending_live_turns.append(payload.duplicate(true))
+		return
+	var new_simulated: bool = payload.get("simulated", false)
+	var new_enemy: String = payload.get("enemy", "wraith")
+	if new_simulated != simulated or new_enemy != live_enemy_id:
+		live_enemy_id = new_enemy
+		set_mode(new_simulated)
+		if not simulated and LIVE_ENEMIES.has(live_enemy_id):
+			enemy.texture = LIVE_ENEMIES[live_enemy_id]
+			enemy.hframes = 1
+			enemy.offset = Vector2.ZERO
+			enemy.position = Vector2(237, 117)
+		else:
+			enemy.hframes = 4
+			enemy.offset = Vector2(-7, 0)
+			enemy.position = Vector2(237, 96)
+	var style: String = payload.get("style", "sword")
+	if not acting:
+		for i in range(weapons.size()):
+			if weapons[i].id == style:
+				weapon_index = i
+				_set_idle()
+				break
+	var turn_id: String = str(payload.get("turn_id", ""))
+	if not turn_id.is_empty() and turn_id != last_turn_id:
+		last_turn_id = turn_id
+		if payload.get("outcome") == "correct": _attack()
+		elif payload.get("outcome") == "incorrect": _miss()
+
 func _toggle_mode() -> void:
 	if acting: return
 	set_mode(not simulated)
@@ -250,9 +308,9 @@ func _magic_projectile() -> void:
 	t.tween_callback(_enemy_hit)
 
 func _attack() -> void:
-	if acting or resolve <= 0 or hp <= 0: return
+	if acting or (not embedded and (resolve <= 0 or hp <= 0)): return
 	acting = true
-	status_label.text = skins[skin_id]["name"] + " ATTACKS"
+	if status_label: status_label.text = skins[skin_id]["name"] + " ATTACKS"
 	if weapons[weapon_index]["kind"] != "sword":
 		_weapon_attack()
 		return
@@ -294,8 +352,15 @@ func _weapon_attack() -> void:
 	t.tween_callback(_finish_turn)
 
 func _enemy_hit() -> void:
-	resolve = maxi(0, resolve - 1)
-	resolve_bar.size.x = 128.0 * resolve / 5.0
+	if embedded:
+		if not simulated and LIVE_ENEMIES.has(live_enemy_id):
+			var flash := create_tween()
+			flash.tween_property(enemy, "modulate", Color(2, 2, 2), 0.05)
+			flash.tween_property(enemy, "modulate", Color.WHITE, 0.25)
+			return
+	else:
+		resolve = maxi(0, resolve - 1)
+		resolve_bar.size.x = 128.0 * resolve / 5.0
 	enemy.texture = HOLLOW_HURT if simulated else MIMIC_HURT
 	enemy.frame = 0
 	var t := create_tween()
@@ -309,14 +374,14 @@ func _enemy_hit() -> void:
 	t.tween_callback(func(): enemy.texture = HOLLOW if simulated else MIMIC; enemy.frame = 0)
 
 func _miss() -> void:
-	if acting or resolve <= 0 or hp <= 0: return
+	if acting or (not embedded and (resolve <= 0 or hp <= 0)): return
 	acting = true
-	status_label.text = "HOLLOW STRIKES" if simulated else "MIMIC STRIKES"
+	if status_label: status_label.text = "HOLLOW STRIKES" if simulated else "MIMIC STRIKES"
 	var original := enemy.position
 	var t := create_tween()
-	t.tween_callback(func(): enemy.frame = 2)
+	t.tween_callback(func(): enemy.frame = 2 if enemy.hframes > 1 else 0)
 	t.tween_interval(0.15)
-	t.tween_callback(func(): enemy.frame = 3)
+	t.tween_callback(func(): enemy.frame = 3 if enemy.hframes > 1 else 0)
 	t.tween_property(enemy, "position:x", 196.0, 0.25)
 	t.tween_callback(_hunter_hit)
 	t.tween_property(enemy, "position", original, 0.25)
@@ -325,8 +390,9 @@ func _miss() -> void:
 	t.tween_callback(_finish_turn)
 
 func _hunter_hit() -> void:
-	hp = maxi(0, hp - 1)
-	hp_bar.size.x = 128.0 * hp / 5.0
+	if not embedded:
+		hp = maxi(0, hp - 1)
+		hp_bar.size.x = 128.0 * hp / 5.0
 	body.texture = _poses()["hurt"]
 	body.frame = 0
 	var t := create_tween()
@@ -342,7 +408,9 @@ func _hunter_hit() -> void:
 func _finish_turn() -> void:
 	acting = false
 	_set_idle()
-	status_label.text = "FOE BROKEN" if resolve == 0 else ("HUNTER DOWN" if hp == 0 else "YOUR TURN")
+	if status_label: status_label.text = "FOE BROKEN" if resolve == 0 else ("HUNTER DOWN" if hp == 0 else "YOUR TURN")
+	if embedded and not pending_live_turns.is_empty():
+		_apply_live_state(pending_live_turns.pop_front())
 
 func _reset() -> void:
 	if acting: return
@@ -361,7 +429,7 @@ func _process(delta: float) -> void:
 			body.position.y = -48.0 + sin(elapsed * 3.0) * 0.7
 		else:
 			body.position.y = -48.0
-		enemy.frame = int(elapsed * 3.0) % 2
+		enemy.frame = int(elapsed * 3.0) % 2 if enemy.hframes > 1 else 0
 	queue_redraw()
 
 class SimulationOverlay extends Node2D:

@@ -4,7 +4,7 @@ This prototype separates shared combat styles/timings from each hunter's sprite 
 
 1. Prepare right-facing, transparent sprite sheets for `sword`, `staff`, `whip`, `greatsword`, and `handmagic`. Each sheet has exactly four equal horizontal cells, 72 pixels high. A style's sheets must have the same cell width and align its feet consistently. The sprite offset positions the foot anchor; Tate uses `(13, 0)` for 96px sword cells and `(19, 0)` for 128px cells. Tune the offset to the new art.
 2. Supply `action` and `hurt` textures and an `offset` for each style. The staff and handmagic styles also require `cast_origin`, a `Vector2` relative to the hunter root where the projectile begins (Tate uses `(42, -52)`). Align it with the hand or staff tip in the casting pose. Action poses 0–3 are idle, windup, strike, recovery; hurt poses 0–3 are flinch, recoil, stagger, recovery. Sword additionally uses an `idle` sheet and a `follow` sheet (poses 0–3 are the follow-through). `idle_frames` is an optional nonempty list of frame indices 0–3; without it the first pose bobs. Supply an `idle` texture for any style if its idle frames live elsewhere.
-3. Create a skin dictionary shaped like `tate()` in `combat_catalog.gd`, with a unique `id`, display `name`, and `styles` keyed by style IDs. Load/import all textures and call `register_skin(skin)`, then `select_skin(id)` when no turn is running. Registration rejects missing styles, missing textures, mismatched sheet sizes, and invalid idle frames, so unsupported combinations cannot silently use another character's art. The preview currently has no skin-picker UI or live-game integration.
+3. Create a skin dictionary shaped like `tate()` in `combat_catalog.gd`, with a unique `id`, display `name`, and `styles` keyed by style IDs. Load/import all textures and call `register_skin(skin)`, then `select_skin(id)` when no turn is running. Registration rejects missing styles, missing textures, mismatched sheet sizes, and invalid idle frames, so unsupported combinations cannot silently use another character's art. The game currently has no skin-picker UI; Tate is the only available skin.
 4. Review every style's idle, hit, and miss in both modes at actual render scale, checking grip, clipping and foot alignment. Run `godot --headless --path prototypes/godot-combat --script res://tests/animation_smoke.gd` after importing the project.
 
 Styles currently share fixed frame order, attack timing, movement, and spell effects. A skin that needs a materially different animation choreography will require extending the style controller rather than changing only the artwork.
@@ -45,5 +45,9 @@ godot --headless --path prototypes/godot-combat --export-release Web ../godot-co
 ```
 
 The local preview server uses port 17532. The simulation backdrop belongs to
-sparring; the crypt, torches and amber lighting belong to dungeon mode. Live
-game integration and a player-facing skin picker remain separate work.
+sparring; the crypt, torches and amber lighting belong to dungeon mode. The game uses the scene in both Dungeon and Sparring, with combat state owned by the app. A player-facing skin picker and new finished skins remain separate work.
+
+For the game export, run `sh tools/build_combat.sh` from the worktree root.
+The game uses the sword art for equipment without a matching animated style;
+existing lantern and compass mechanics are unchanged. Non-Mimic dungeon enemy
+art remains static pending dedicated animated sprites.

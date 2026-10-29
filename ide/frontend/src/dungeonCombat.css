@@ -40,3 +40,6 @@
 @keyframes combat-cast-shot { 0%,20%,65%,100% { opacity:0 } 25% { opacity:1; left:32% } 40% { opacity:1; left:70% } }
 @keyframes combat-lunge { 0%,100% { transform:translateX(0) } 38% { transform:translateX(38px) } } @keyframes combat-counter { 0%,100% { transform:translateX(0) } 38% { transform:translateX(-38px) } } @keyframes combat-hurt { 0%,36%,100% { filter:drop-shadow(2px 3px 1px #09060c) } 42%,55% { filter:brightness(2) } } @keyframes combat-swing { 0%,100% { transform:rotate(0) } 30% { transform:rotate(-35deg) } 48% { transform:rotate(50deg) } } @keyframes combat-slash { 0%,32%,65%,100% { opacity:0 } 39%,54% { opacity:1 } } @keyframes combat-float { 0%,34% { opacity:0; transform:translateY(0) } 42% { opacity:1 } 100% { opacity:0; transform:translateY(-32px) } }
 @media (prefers-reduced-motion: reduce) { .combat-scene *, .combat-bar i { animation: none !important; transition: none !important; } }
+
+.combat-godot-scene iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; pointer-events: none; }
+.combat-loading { position: absolute; z-index: 4; inset: 0; display: grid; place-items: center; background: #100d19; color: #eac788; font: 8px/1.6 'Press Start 2P', monospace; text-align: center; }
