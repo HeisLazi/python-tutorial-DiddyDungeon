@@ -6,6 +6,8 @@ const STYLES := [
 	{"id": "whip", "name": "WHIP", "kind": "whip"},
 	{"id": "greatsword", "name": "GREATSWORD", "kind": "heavy"},
 	{"id": "handmagic", "name": "HAND MAGIC", "kind": "projectile", "color": Color("d188ff")},
+	{"id": "scythe", "name": "SCYTHE", "kind": "heavy"},
+	{"id": "oil", "name": "OIL", "kind": "heavy"},
 ]
 
 static func tate() -> Dictionary:
@@ -14,6 +16,8 @@ static func tate() -> Dictionary:
 		"staff": {"cast_origin": Vector2(42, -52), "action": preload("res://art/tate-staff-sheet.png"), "hurt": preload("res://art/tate-staff-hurt-sheet.png"), "offset": Vector2(19, 0)},
 		"whip": {"action": preload("res://art/tate-whip-sheet.png"), "hurt": preload("res://art/tate-whip-hurt-sheet.png"), "offset": Vector2(19, 0)},
 		"greatsword": {"action": preload("res://art/tate-greatsword-sheet.png"), "hurt": preload("res://art/tate-greatsword-hurt-sheet.png"), "offset": Vector2(19, 0)},
+		"oil": {"action": preload("res://art/tate-oil-sheet.png"), "hurt": preload("res://art/tate-oil-hurt-sheet.png"), "offset": Vector2(19, 0)},
+		"scythe": {"action": preload("res://art/tate-scythe-sheet.png"), "hurt": preload("res://art/tate-scythe-hurt-sheet.png"), "offset": Vector2(19, 0)},
 		"handmagic": {"cast_origin": Vector2(42, -52), "action": preload("res://art/tate-handmagic-sheet.png"), "hurt": preload("res://art/tate-handmagic-hurt-sheet.png"), "offset": Vector2(19, 0)},
 	}}
 

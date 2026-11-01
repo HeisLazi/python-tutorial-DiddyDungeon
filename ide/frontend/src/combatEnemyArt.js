@@ -7,5 +7,9 @@ export function combatEnemyArt(name) {
     'string mimic': 'string-mimic',
     'forked path': 'forked-path',
     'mimic matriarch': 'mimic-matriarch',
+    'indexerror drowner': 'drowner',
+    'keyerror ghoul': 'ghoul',
+    'loaded die': 'loaded-die',
+    'drowned hoard': 'drowned-hoard',
   })[normal] || 'wraith'
 }

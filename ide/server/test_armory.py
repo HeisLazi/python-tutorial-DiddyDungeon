@@ -107,14 +107,14 @@ class ArmoryBehaviourTests(unittest.TestCase):
 
     def test_hunter_style_weapons_are_buyable_and_equippable_in_prepare(self):
         self.give(coins=1000)
-        weapons = [("hunter-sparring-staff", "staff"), ("hunter-sparring-whip", "whip"), ("hunter-sparring-greatsword", "greatsword"), ("hunter-sparring-focus", "handmagic")]
+        weapons = [("hunter-sparring-staff", "staff"), ("hunter-sparring-whip", "whip"), ("hunter-sparring-greatsword", "greatsword"), ("hunter-sparring-scythe", "scythe"), ("hunter-sparring-focus", "handmagic")]
         for item_id, style in weapons:
             market = self.service.armory_projection(self.service.snapshot())["market"]
             self.assertTrue(any(item["id"] == item_id and item["affordable"] for item in market))
             self.service.apply("armory_buy", {"item_id": item_id}, "player")
             equipped = self.service.apply("armory_equip", {"item_id": item_id}, "player")["result"]["armory"]["weapon"]
             self.assertEqual(equipped["combat_style"], style)
-            self.assertIn("no bonus", equipped["effect"].lower())
+            self.assertNotIn("keepsake", equipped["effect"].lower())
             self.assertFalse(any(item["id"] == item_id for item in self.service.armory_projection(self.service.snapshot())["market"]))
 
     def test_a_weapon_breaks_the_guard_but_the_fight_still_takes_every_objective(self):
@@ -133,6 +133,19 @@ class ArmoryBehaviourTests(unittest.TestCase):
         three = self.objective("ace_bug")
         self.assertTrue(three["mob_defeated"])
         self.assertGreaterEqual(self.read()["player"]["coins"], coins + 9)
+
+    def test_hunter_and_delver_weapons_change_real_campaign_impact(self):
+        self.give('hunter-sparring-greatsword')
+        self.service.apply('armory_equip', {'item_id': 'hunter-sparring-greatsword'}, 'player')
+        result = self.objective('ace_rule')
+        self.assertEqual(result['resolve_before'] - result['resolve_after'], 4)  # base 3 + weapon 1
+
+    def test_delver_trinket_bonuses_apply_to_objectives(self):
+        self.give('campaign-dungeon-village-lantern')
+        self.service.apply('armory_equip', {'item_id': 'campaign-dungeon-village-lantern'}, 'player')
+        self.objective('ace_rule')
+        result = self.objective('multi_ace_trace')
+        self.assertEqual(result['resolve_before'] - result['resolve_after'], 3)  # base 2 + prediction bonus
 
     def test_armour_trinkets_food_and_relics_apply_in_battle(self):
         self.give("bj-the-high-roller-s-mail", "bj-counting-abacus", "bj-midnight-club-sandwich", "bj-the-house-s-broken-shoe")

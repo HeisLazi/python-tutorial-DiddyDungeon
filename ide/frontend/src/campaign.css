@@ -144,3 +144,13 @@
 .campaign-special-mechanic strong { display: block; color: #ffd772; }
 .campaign-special-mechanic p { margin: 5px 0; }
 .campaign-special-mechanic small { color: #cbb785; }
+
+/* Keep the map toggle in the heading alongside Switch, like the Forge rail. */
+.campaign-v1 .poi-rail .panel-heading > div:first-child { flex: 1 1 auto; min-width: 0; }
+.campaign-v1 .poi-rail .panel-heading { gap: 6px; }
+.campaign-v1 .poi-rail .map-rail-toggle { position: static; flex: 0 0 26px; width: 26px; height: 26px; }
+.campaign-v1 .poi-rail .map-rail-toggle svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; }
+
+/* Keep the full campaign map reachable when the workspace is short. */
+.campaign-v1 .poi-rail { min-height: 0; overflow-y: auto; overflow-x: hidden; scrollbar-width: thin; scrollbar-color: #8d704f #17142a; }
+.campaign-v1 .poi-rail > * { flex-shrink: 0; }

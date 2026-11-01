@@ -1872,3 +1872,215 @@
 @media (max-width: 700px) { .home-station-topbar > span:not(.home-station-wallet) { display: none; } .home-station-content { width: calc(100% - 20px); } .home-station-columns { grid-template-columns: 1fr; } .home-trophy-intro > strong { display: none; } }
 @media (prefers-reduced-motion: reduce) { .home-room-frame iframe { transition: none; } .home-station-screen, .home-station-page { animation: none; } }
 .resource-boss-lock { margin: 8px 0; padding: 9px 12px; color: #ffdf9c; background: #35251f; border: 1px solid #a47b4a; }
+
+/* Small animated encounter portraits keep the Forge's question readable. */
+.lantern-encounter-stage {
+  display: grid;
+  place-items: end center;
+  height: 120px;
+  overflow: hidden;
+  background: radial-gradient(ellipse at 50% 100%, #80603966, transparent 70%), #211b24;
+  border: 1px solid #715136;
+  background-size: cover;
+  background-position: center 63%;
+  image-rendering: pixelated;
+}
+.lantern-encounter-sprite {
+  display: block;
+  width: 64px;
+  height: 72px;
+  background-size: 128px 72px;
+  image-rendering: pixelated;
+  transform: scale(1.65);
+  transform-origin: bottom center;
+  filter: drop-shadow(1px 1px 1px #08060a) drop-shadow(-1px -1px 1px #08060a);
+  animation: lantern-encounter-idle 1.5s steps(1) infinite;
+}
+@keyframes lantern-encounter-idle { 50% { background-position-x: -64px; } }
+@media (prefers-reduced-motion: reduce) { .lantern-encounter-sprite { animation: none; } }
+.armory-item-icon { float: right; width: 48px; height: 48px; object-fit: contain; image-rendering: pixelated; grid-row: span 2; grid-column: 2; }
+.item-art-icon, .character-item-art { display: block; width: 100%; height: 100%; object-fit: contain; image-rendering: pixelated; }
+.character-item-art { width: 56px; height: 56px; }
+.dungeon-inventory-icon { flex: 0 0 32px; width: 32px; height: 32px; object-fit: contain; image-rendering: pixelated; }
+
+/* Sparring shares the dungeon's fight-left / answer-right layout. */
+.forge-v2 .spar-arena.spar-dungeon-layout { max-width: none; grid-template-columns: minmax(340px, 1fr) minmax(420px, 1.25fr); align-items: start; gap: 12px; padding: 4px 0 16px; }
+.spar-fight-column { display: grid; align-content: start; gap: 8px; min-width: 0; }
+.spar-selector { display: grid; gap: 6px; padding: 10px; border: 1px solid #50445f; background: #17142a; }
+.spar-selector select { width: 100%; min-height: 38px; padding: 7px; border: 1px solid #8d704f; color: #f5e8cf; background: #211b32; font: inherit; }
+.spar-selector small { color: #c8b8b3; }
+.spar-question.spar-question-brief { min-height: 0; padding: 12px; }
+.spar-question-brief .dungeon-prompt-text { font-size: 15px; }
+.spar-answer-workbench { min-width: 0; min-height: 420px; padding: 12px; border: 1px solid #50445f; background: #17142a; }
+.spar-answer-workbench .choice-panel { height: auto; padding: 0; }
+.spar-answer-workbench .battle-feedback { display: grid; gap: 8px; margin-top: 12px; }
+.spar-answer-workbench .battle-feedback button { justify-self: start; }
+.spar-answer-empty { color: #c8b8b3; }
+@media (max-width: 900px) { .forge-v2 .spar-arena.spar-dungeon-layout { grid-template-columns: minmax(0, 1fr); } .spar-answer-workbench { min-height: 200px; } }
+
+/* Keep the fight brief independently scrollable while the answer stays put. */
+@media (min-width: 901px) {
+  .forge-v2 .resource-tutor-screen:has(.spar-dungeon-layout) { display: flex; flex-direction: column; height: 100%; min-height: 0; overflow: hidden; padding-bottom: 12px; }
+  .forge-v2 .resource-tutor-screen:has(.spar-dungeon-layout) .resource-tutor-tabs { flex: 0 0 auto; }
+  .forge-v2 .spar-arena.spar-dungeon-layout { flex: 1 1 auto; height: 0; min-height: 0; align-items: stretch; padding-bottom: 0; }
+  .spar-dungeon-layout .spar-fight-column { grid-auto-rows: max-content; min-height: 0; overflow-y: auto; overflow-x: hidden; padding-right: 5px; scrollbar-width: thin; scrollbar-color: #8d704f #17142a; }
+  .spar-dungeon-layout .spar-answer-workbench { display: flex; flex-direction: column; height: 100%; min-height: 0; overflow-y: auto; }
+  .spar-dungeon-layout .spar-code-workspace { display: flex; flex: 1 1 auto; flex-direction: column; min-height: 0; }
+  .spar-dungeon-layout .spar-code-workspace > section { flex: 1 1 auto; min-height: 0; }
+  .spar-dungeon-layout .spar-code-workspace > p { flex: 0 0 auto; }
+}
+@media (max-width: 900px) { .spar-dungeon-layout .spar-code-workspace > section { min-height: 320px; } }
+
+/* Sparring is a full workspace, like Forge, rather than a centered folio. */
+@media (min-width: 901px) {
+  .forge-v2 .resource-tutor-screen:has(.spar-dungeon-layout) { padding: 4px 4px 8px; }
+  .forge-v2 .spar-arena.spar-dungeon-layout { width: 100%; margin: 0; }
+}
+.spar-interview-workspace { display: flex; flex: 1 1 auto; flex-direction: column; gap: 10px; min-height: 0; }
+.spar-interview-workspace textarea { flex: 1 1 auto; min-height: 180px; width: 100%; resize: vertical; padding: 12px; border: 1px solid #514665; background: #1e1e1e; color: #f5e8cf; font: 16px/1.5 ui-monospace, monospace; }
+.spar-interview-workspace textarea:focus-visible { outline: 2px solid #e5bd73; outline-offset: 2px; }
+.spar-interview-workspace small { color: #c8b8b3; }
+.spar-interview-workspace button { align-self: flex-start; }
+
+/* A bounded, three-pane practice desk matching the Forge workspace. */
+.forge-v2 .resource-tutor-screen:has(.resource-ide-layout) .resource-tutor-header { display: none; }
+.forge-v2 .resource-ide-layout:has(.tutor-quiz) .resource-ai-panel { display: flex; }
+.forge-v2 .resource-ide-layout:has(.tutor-quiz) { grid-template-columns: minmax(190px, 240px) minmax(0, 1fr) minmax(240px, 290px); }
+.tutor-interview { display: flex; flex-direction: column; flex: 1 1 auto; gap: 10px; min-height: 0; padding: 16px; border: 1px solid #8d704a; background: #17142a; }
+.tutor-interview h3 { margin: 0; color: #f4e4c2; font-size: 20px; line-height: 1.4; }
+.tutor-interview label { color: #eac788; }
+.tutor-interview textarea { width: 100%; flex: 1 1 auto; min-height: 180px; padding: 12px; border: 1px solid #514665; background: #1e1e1e; color: #f5e8cf; font: 16px/1.5 ui-monospace, monospace; resize: vertical; }
+.tutor-interview textarea:focus-visible { outline: 2px solid #e5bd73; outline-offset: 2px; }
+.tutor-interview-actions { display: flex; justify-content: flex-end; }
+@media (min-width: 1101px) {
+  .forge-v2 .resource-tutor-screen:has(.resource-ide-layout) { display: flex; flex-direction: column; height: 100%; min-height: 0; overflow: hidden; padding: 4px 4px 8px; }
+  .forge-v2 .resource-tutor-screen:has(.resource-ide-layout) .resource-tutor-tabs { flex: 0 0 auto; margin-bottom: 8px; }
+  .forge-v2 .resource-ide-layout, .forge-v2 .resource-ide-layout:has(.tutor-quiz) { flex: 1 1 auto; width: 100%; height: 0; min-height: 0; max-width: none; margin: 0; gap: 8px; grid-template-columns: minmax(190px, 240px) minmax(0, 1fr) minmax(240px, 290px); }
+  .forge-v2 .resource-ide-layout > .resource-ide-rail, .forge-v2 .resource-ide-layout > .resource-ide-main { min-height: 0; overflow-y: auto; scrollbar-width: thin; scrollbar-color: #8d704f #17142a; }
+  .forge-v2 .resource-ide-layout .resource-editor-card { flex: 1 0 260px; }
+  .forge-v2 .resource-ide-layout .resource-monaco { flex: 1 1 auto; height: auto; min-height: 160px; }
+  .forge-v2 .resource-ide-layout .resource-monaco > div { height: 100% !important; min-height: 0 !important; }
+  .forge-v2 .resource-ide-layout .tutor-quiz { flex: 1 0 auto; }
+}
+@media (max-width: 1100px) { .forge-v2 .resource-ide-layout:has(.tutor-quiz) { grid-template-columns: minmax(170px, 220px) minmax(0, 1fr); } }
+@media (max-width: 700px) { .forge-v2 .resource-ide-layout:has(.tutor-quiz) { grid-template-columns: 1fr; } .tutor-interview textarea { min-height: 240px; } }
+.tutor-interview-question { align-self: flex-start; padding: 7px 10px; border: 1px solid #8d704f; color: #eac788; background: #211b32; font: inherit; }
+.tutor-interview-question:disabled { opacity: .55; }
+/* Keep every activity visible when reference code shares the practice pane. */
+.forge-v2 .resource-ide-main > .resource-mode-strip { flex: 0 0 auto; min-height: 40px; align-items: flex-start; }
+.forge-v2 .resource-ide-main > .tutor-reference-code { flex: 0 0 auto; }
+.forge-v2 .resource-ide-heading { flex: 0 0 auto; gap: 16px; padding: 12px 14px; border: 1px solid #715a50; border-left: 3px solid #e5bd73; background: #211b32; }
+.forge-v2 .resource-ide-heading h3 { margin: 5px 0; font-family: inherit; font-size: clamp(18px, 1.5vw, 23px); letter-spacing: 0; }
+.forge-v2 .resource-ide-heading p { line-height: 1.4; }
+
+/* A quiet study loop for the practice setup rail. */
+.forge-v2 .tutor-study-scene { margin: 12px 0 2px; border: 1px solid #695344; background: #171422; overflow: hidden; }
+.forge-v2 .tutor-study-animation { width: 100%; aspect-ratio: 272 / 362; background: url('/tutor/study-scene.png') 0% 0 / 400% 100% no-repeat; image-rendering: pixelated; animation: tutor-study-loop 24s steps(1, end) infinite; }
+.forge-v2 .tutor-study-scene figcaption { padding: 7px 9px; color: #d4b887; font: 700 9px ui-monospace, monospace; letter-spacing: .12em; }
+@keyframes tutor-study-loop {
+  0%, 12%, 24%, 36%, 96%, 100% { background-position: 0% 0; }
+  6%, 18%, 30%, 42% { background-position: 33.3333% 0; }
+  48%, 84%, 90% { background-position: 66.6667% 0; }
+  60%, 72%, 78% { background-position: 100% 0; }
+}
+@media (prefers-reduced-motion: reduce) { .forge-v2 .tutor-study-animation { animation: none; } }
+
+/* Keep the prompt in the editor without changing the learner's file. */
+.forge-v2 .tutor-editor-prompt { box-sizing: border-box; padding: 8px 16px; color: #83aa7a; background: #1e1e1e; font-family: 'JetBrains Mono', ui-monospace, monospace; white-space: pre-wrap; overflow: auto; }
+@media (max-width: 1099px) {
+  .forge-v2 .resource-ide-layout .resource-monaco, .forge-v2 .resource-ide-layout .resource-monaco > div { height: 380px !important; min-height: 380px !important; }
+}
+
+/* The Codex fills the same workspace as practice, with independent panes. */
+@media (min-width: 701px) {
+  .forge-v2 .resource-tutor-screen:has(.tutor-path) { box-sizing: border-box; display: flex; flex-direction: column; height: 100%; min-height: 0; overflow: hidden; padding: 4px 4px 8px; }
+  .forge-v2 .resource-tutor-screen:has(.tutor-path) .resource-tutor-header { display: none; }
+  .forge-v2 .resource-tutor-screen:has(.tutor-path) .resource-tutor-tabs { flex: 0 0 auto; margin-bottom: 8px; }
+  .forge-v2 .tutor-path { flex: 1 1 auto; width: 100%; height: 0; min-height: 0; max-width: none; margin: 0; gap: 8px; }
+  .forge-v2 .tutor-path-index { display: flex; flex-direction: column; min-height: 0; }
+  .forge-v2 .tutor-path-list { flex: 1 1 auto; min-height: 0; max-height: none; align-content: start; scrollbar-width: thin; scrollbar-color: #8d704f #17142a; }
+  .forge-v2 .tutor-path-main { min-height: 0; overflow-y: auto; scrollbar-width: thin; scrollbar-color: #8d704f #17142a; }
+}
+
+/* Match the Hunter's Study field guide to the Bestiary and Signs folios. */
+@media (min-width: 1051px) {
+  .forge-v2 .tutor-path { grid-template-columns: minmax(300px, .85fr) minmax(0, 1.15fr); }
+}
+.forge-v2 .tutor-path { padding: 14px; border: 3px solid #3a332b; background: #11100e; box-sizing: border-box; }
+.forge-v2 .tutor-path-index { border: 3px solid #3a332b; background: #1b1916; color: #e8dcc0; }
+.forge-v2 .tutor-path-index h3 { color: #e6c46a; }
+.forge-v2 .tutor-path-index p { color: #bdb09c; }
+.forge-v2 .tutor-topic-search { color: #d8c49c; }
+.forge-v2 .tutor-topic-search input { background: #11100e; color: #f3e6c8; border-color: #6b5536; }
+.forge-v2 .tutor-path-list button { margin-bottom: 3px; padding: 12px; border: 2px solid #39332d; background: #151412; color: #d8cbb5; }
+.forge-v2 .tutor-path-list button:hover, .forge-v2 .tutor-path-list button.active { border-color: #c9a24a; background: #30291e; color: #f3e6c8; }
+.forge-v2 .tutor-path-main { border: 4px solid #6b5536; background: #e8dcc0; color: #2a2118; }
+.forge-v2 .tutor-path-main p { color: #3d3022; }
+.forge-v2 .tutor-lesson-heading h3, .forge-v2 .tutor-lesson-section h4 { color: #4a1010; }
+.forge-v2 .tutor-path-main .screen-kicker, .forge-v2 .tutor-step { color: #8b2924; }
+.forge-v2 .tutor-current-task { background: #d7c7a7; border-color: #8f6833; }
+.forge-v2 .tutor-current-task span { color: #704c25; }
+.forge-v2 .tutor-current-task strong { color: #3d291c; }
+.forge-v2 .tutor-lesson-section { border-color: #b39a70; }
+.forge-v2 .tutor-lesson-options button { background: #f4e8d0; border-color: #b39a70; color: #33251b; }
+.forge-v2 .tutor-lesson-options button:hover, .forge-v2 .tutor-lesson-options button.selected { border-color: #895d22; background: #dcccaa; }
+.forge-v2 .tutor-path-main .tutor-answer { background: #d8c9ac; color: #30251c; }
+.forge-v2 .tutor-reflection section { background: #d6c6a7; }
+.forge-v2 .tutor-path-main .tutor-deeper { background: #d9c9aa; border-color: #ae946a; color: #4a3020; }
+.forge-v2 .tutor-path-main h3, .forge-v2 .tutor-path-main h4 { text-shadow: none; }
+.forge-v2 .tutor-path-main .tutor-lesson-heading .screen-kicker { color: #8b2924; }
+
+/* Give the Codex the same introduction and breathing room as the Bestiary. */
+@media (min-width: 701px) {
+  .forge-v2 .resource-tutor-screen:has(.tutor-path) { padding: 24px 28px 34px; }
+  .forge-v2 .resource-tutor-screen:has(.tutor-path) .resource-tutor-header { display: flex; width: 100%; flex: 0 0 auto; margin-bottom: 18px; }
+  .forge-v2 .resource-tutor-screen:has(.tutor-path) .resource-tutor-header p { display: block; }
+  .forge-v2 .resource-tutor-screen:has(.tutor-path) .resource-tutor-tabs { margin-bottom: 16px; }
+}
+
+/* Match the Bestiary folio's height and allow the study page to scroll. */
+@media (min-width: 701px) {
+  .forge-v2 .resource-tutor-screen:has(.tutor-path) { display: block; overflow-y: auto; }
+  .forge-v2 .tutor-path { height: calc(clamp(300px, 100vh - 330px, 900px) + 124px); }
+}
+
+/* A compact crafting desk: select one region and beast at a time. */
+.alchemy-workspace { display: grid; grid-template-columns: minmax(200px, 270px) minmax(0, 1fr); gap: 12px; min-width: 0; }
+.alchemy-picker, .alchemy-selection { min-width: 0; padding: 14px; border: 1px solid var(--line, #514665); background: #171420; }
+.alchemy-picker { display: grid; align-content: start; gap: 12px; }
+.alchemy-picker label { display: grid; gap: 6px; color: #d6c7aa; }
+.alchemy-picker select { width: 100%; min-width: 0; }
+.alchemy-beast-list { display: grid; gap: 6px; }
+.alchemy-beast-list button { display: flex; align-items: center; gap: 10px; padding: 10px; text-align: left; border: 1px solid #514665; background: #211b2b; color: #e4d5be; }
+.alchemy-beast-list button.active { border-color: #e2ba6e; background: #392b28; }
+.alchemy-beast-list button svg, .alchemy-selection .alchemy-sign-head svg { flex: none; fill: none; stroke: currentColor; stroke-width: 1.6; }
+.alchemy-beast-list button span { display: grid; gap: 4px; min-width: 0; }
+.alchemy-beast-list button small { color: #b8aa9d; }
+.alchemy-selection .alchemy-sign-head { margin-bottom: 14px; color: #e5bf79; }
+.alchemy-selection .alchemy-sign-head h4 { margin: 5px 0; }
+.alchemy-selection .alchemy-recipes { grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr)); }
+.alchemy-selection .alchemy-recipe { background: #211b2b; }
+@media (max-width: 700px) { .alchemy-workspace { grid-template-columns: 1fr; } }
+
+/* Region choices stay inside the alchemy desk rather than a system menu. */
+.alchemy-region-select { display: grid; gap: 6px; color: #d6c7aa; }
+.alchemy-region-select details { position: relative; }
+.alchemy-region-select summary { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 10px; list-style: none; cursor: pointer; border: 1px solid #8d704f; background: #211b2b; color: #f2dfbd; }
+.alchemy-region-select summary::-webkit-details-marker { display: none; }
+.alchemy-region-select summary:focus-visible { outline: 2px solid #e5bd73; outline-offset: 2px; }
+.alchemy-region-menu { position: absolute; z-index: 20; top: calc(100% + 4px); left: 0; right: 0; display: grid; gap: 3px; max-height: 300px; overflow-y: auto; padding: 6px; border: 2px solid #8d704f; background: #16121d; box-shadow: 4px 4px 0 #080609; }
+.alchemy-region-menu button { padding: 9px; text-align: left; border: 1px solid transparent; background: #211b2b; color: #eadac3; }
+.alchemy-region-menu button:hover, .alchemy-region-menu button:focus-visible, .alchemy-region-menu button.active { border-color: #e2ba6e; background: #392b28; color: #fff0c8; }
+/* Native menus elsewhere inherit the dark game palette where supported. */
+.forge-v2 select { color-scheme: dark; }
+.forge-v2 select option { background: #211b2b; color: #f2dfbd; }
+/* Match the scouting item artwork to the other loadout slots. */
+.forge-v2 .dungeon-supply-item { grid-template-columns: 34px minmax(0, 1fr) auto; gap: 8px; }
+.dungeon-floor-scout { display: flex; align-items: center; gap: 9px; margin: 10px 0; padding: 8px; border: 1px solid #806940; background: #211b2b; }
+.dungeon-floor-scout img { width: 36px; height: 36px; object-fit: contain; image-rendering: pixelated; }
+.dungeon-floor-scout > div { display: grid; gap: 3px; flex: 1; min-width: 0; }
+.dungeon-floor-scout strong { color: #f1cf7c; font-size: 11px; }
+.dungeon-floor-scout small { color: #c7b9c8; font-size: 11px; }
+.dungeon-floor-scout button { flex: none; }
+.dungeon-item-art.empty-trinket { border-style: dashed; }
+.dungeon-item-art.empty-trinket img { opacity: .3; filter: grayscale(1); }

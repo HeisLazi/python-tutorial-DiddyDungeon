@@ -21,7 +21,7 @@ def parse_args():
     parser = argparse.ArgumentParser(description="Launch the local Python Quest Lab IDE")
     parser.add_argument(
         "--workspace",
-        default=str(REPO_ROOT),
+        default=os.environ.get("QUESTLAB_WORKSPACE") or str(REPO_ROOT),
         help="Folder the editor/terminal may access. A git worktree for the active quest is recommended.",
     )
     parser.add_argument("--no-browser", action="store_true", help="Do not automatically open the browser")
@@ -306,9 +306,11 @@ def main():
 
     env = os.environ.copy()
     env["QUESTLAB_REPO_ROOT"] = str(REPO_ROOT)
-    # State is always anchored to the platform checkout; PYR/CLI processes do
-    # not infer a save path from their terminal cwd.
-    env["QUESTLAB_STATE_PATH"] = str(REPO_ROOT / "progress.json")
+    # An explicit absolute override lets a desktop launcher retain its existing
+    # save while the application code lives in another checkout.
+    configured_state = os.environ.get("QUESTLAB_STATE_PATH", "").strip()
+    state_path = Path(configured_state).expanduser() if configured_state else REPO_ROOT / "progress.json"
+    env["QUESTLAB_STATE_PATH"] = str(state_path if state_path.is_absolute() else REPO_ROOT / state_path)
     env["QUESTLAB_WORKSPACE"] = str(workspace)
     env["QUESTLAB_BACKEND_PORT"] = str(backend_port)
     env["QUESTLAB_FRONTEND_PORT"] = str(frontend_port)

@@ -179,3 +179,23 @@
 @media (prefers-reduced-motion: reduce) { .hunt-contract { transition: none; } }
 .hunt-level { color: var(--hunt-gold); font-size: 13px; font-style: normal; }
 .hunt-gate { padding: 6px 8px; border: 1px dashed var(--hunt-gold); color: var(--hunt-gold-hi); font-size: 16px; }
+
+/* Bound the lists and details independently so their controls stay nearby. */
+.hunt-layout.bestiary > .hunt-list,
+.hunt-layout.bestiary > .hunt-entry,
+.hunt-layout.signs > .hunt-signs,
+.hunt-layout.signs > .hunt-steel {
+  box-sizing: border-box;
+  max-height: clamp(300px, calc(100vh - 330px), 900px);
+  min-width: 0;
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+  scrollbar-color: var(--hunt-gold) #211d1a;
+}
+.hunt-layout.bestiary > :focus-visible, .hunt-layout.signs > :focus-visible { outline: 2px solid var(--hunt-gold-hi); outline-offset: 2px; }
+
+/* Give bestiary entries and sign descriptions more reading room. */
+@media (min-width: 1051px) {
+  .hunt-layout.bestiary, .hunt-layout.signs { grid-template-columns: minmax(260px, 0.85fr) minmax(0, 1.15fr); }
+}

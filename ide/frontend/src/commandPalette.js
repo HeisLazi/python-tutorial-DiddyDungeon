@@ -19,19 +19,19 @@ const commands = [
   { label: 'Save current file', keys: 'Ctrl+S', run: () => (byText('Save Tutor') || byText('Save'))?.click() },
   { label: 'Pretty / format', keys: 'Shift+Alt+F', run: () => clickText('Pretty') },
   { label: 'Submit recent run to PYR', keys: 'Ctrl+Shift+Enter', run: () => document.querySelector('[data-qol-submit]')?.click() },
-  { label: 'Open Forge', run: () => clickRail('Forge') },
-  { label: 'Open Tutor Notebook', run: () => clickRail('Tutor Notebook') },
+  { label: 'Open Hunt', run: () => clickRail('Hunt') },
+  { label: 'Open Hunter’s Study', run: () => clickRail('Hunter’s Study') },
   { label: 'Open Codex', run: () => clickRail('Codex') },
   { label: 'Open Character', run: () => clickRail('Character') },
   { label: 'Open Homestead', run: () => clickRail('Homestead') },
   { label: 'Open Settings', run: () => clickRail('Settings') },
-  { label: 'Focus Forge terminal', keys: 'Ctrl+`', run: () => focusXterm('.terminal-panel') },
+  { label: 'Focus Hunt terminal', keys: 'Ctrl+`', run: () => focusXterm('.terminal-panel') },
   { label: 'Focus AI terminal', keys: 'Ctrl+Shift+`', run: () => focusXterm('.ai-panel') },
   { label: 'Launch Codex CLI', run: () => clickText('Codex') },
   { label: 'Launch Claude CLI', run: () => clickText('Claude') },
   { label: 'Launch AGY CLI', run: () => clickText('AGY') },
   { label: 'Launch Copilot CLI', run: () => clickText('Copilot') },
-  { label: 'Reconnect Forge terminal', run: () => {
+  { label: 'Reconnect Hunt terminal', run: () => {
       const button = buttons().find((candidate) => isVisible(candidate) && /reconnect/i.test(candidate.textContent) && candidate.closest('.terminal-panel'))
       button?.click()
     }
@@ -85,8 +85,8 @@ function openPalette() {
   palette = document.createElement('div')
   palette.className = 'command-palette-backdrop'
   palette.innerHTML = `
-    <div class="command-palette" role="dialog" aria-label="Forge command palette">
-      <div class="command-palette-title"><span>FORGE COMMANDS</span><kbd>Esc</kbd></div>
+    <div class="command-palette" role="dialog" aria-label="Hunt command palette">
+      <div class="command-palette-title"><span>HUNT COMMANDS</span><kbd>Esc</kbd></div>
       <input type="text" placeholder="Type a command…" autocomplete="off" spellcheck="false" />
       <div class="command-palette-list"></div>
     </div>

@@ -335,7 +335,7 @@ class StateServiceBehaviorTests(unittest.TestCase):
         state["dungeon_run"]["room_type"] = "market"
         state["dungeon_run"]["run_coins"] = 1000
         path.write_text(json.dumps(state), encoding="utf-8")
-        weapons = [("dungeon-aether-staff", "staff"), ("dungeon-pathfinder-whip", "whip"), ("dungeon-iron-greatsword", "greatsword"), ("dungeon-runic-casting", "handmagic")]
+        weapons = [("dungeon-aether-staff", "staff"), ("dungeon-pathfinder-whip", "whip"), ("dungeon-iron-greatsword", "greatsword"), ("dungeon-grave-scythe", "scythe"), ("dungeon-runic-casting", "handmagic")]
         for item_id, style in weapons:
             run = service.apply("dungeon_market_purchase", {"run_id": run["run_id"], "item_id": item_id}, "player")["result"]["run"]
             self.assertEqual(run["loadout"]["weapon_style"], style)
@@ -709,7 +709,9 @@ class StateServiceBehaviorTests(unittest.TestCase):
         second = self.answer_room(service, path, "incorrect", "e2")
         self.assertEqual(second["fight"]["mechanic_fired"], "enrage")
         third = self.answer_room(service, path, "incorrect", "e3")
-        self.assertEqual(third["damage"], first["damage"] * 2)
+        # Aether Staff reduces the first miss; enrage doubles the normal second miss.
+        self.assertEqual(first["damage"], second["damage"] - 2)
+        self.assertEqual(third["damage"], second["damage"] * 2)
         service2, path2 = self.make_service()
         run = self.enter_dungeon_room(service2, path2, "elite", insight=4)
         self.assertEqual(run["encounter"]["fight"]["mechanic"]["every"], 3)
@@ -752,8 +754,8 @@ class StateServiceBehaviorTests(unittest.TestCase):
         self.assertTrue(three["fight"]["fight_done"])
         parts = next(item for item in three["loot"]["items"] if item["id"] != "unmarked-vial")
         self.assertEqual(parts["count"], 3)  # 2 parts + clean bonus
-        self.assertEqual(three["loot"]["trinket"]["name"], "Warden Sigil")
-        self.assertEqual(three["run"]["loadout"]["trinket"], "Warden Sigil")
+        self.assertEqual(three["loot"]["trinket"]["name"], "Tidal Pearl")
+        self.assertEqual(three["run"]["loadout"]["trinket"], "Tidal Pearl")
         self.assertEqual({item["id"]: item["count"] for item in three["run"]["pack"]}, {parts["id"]: 3, "unmarked-vial": 1})
 
     def test_delve_pack_banks_on_finish_survives_and_is_lost_on_death(self):

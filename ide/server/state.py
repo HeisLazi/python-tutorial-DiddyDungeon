@@ -25,6 +25,7 @@ from typing import Any, Literal
 from pydantic import BaseModel, ConfigDict, Field
 
 from ide.server.beginner_codex import BEGINNER_CODEX
+from ide.server.dungeon_items import GEAR_BY_NAME, REGIONAL_ARMOURS, REGIONAL_TRINKETS, SIGNATURE_WEAPONS
 from ide.server.home_rooms import HOME_ROOM_LABELS, HOME_ROOM_LADDERS, effective_room_levels, validate_room_levels
 
 MAX_EVENT_RECORDS = 100
@@ -178,7 +179,7 @@ PRACTICE_DIFFICULTY_MIN = 1
 PRACTICE_DIFFICULTY_MAX = 5
 CODEX_NOTES_DIRECTORY = "notes"
 MAX_DUNGEON_LEADERBOARD = 50
-MAX_DUNGEON_INVENTORY = 24
+MAX_DUNGEON_INVENTORY = 64
 MAX_SYNC_LIST_ITEMS = 100
 MAX_SYNC_TEXT_LENGTH = 120
 MAX_SYNC_LEVEL = 1000
@@ -207,18 +208,29 @@ DUNGEON_MARKET_CATALOG: tuple[dict[str, Any], ...] = (
     {"id": "dungeon-heal", "name": "Field Ration", "price": 12, "kind": "heal", "description": "Restore 20 run HP."},
     {"id": "dungeon-bandage", "name": "Field Bandage", "price": 18, "kind": "supply", "supply": "bandages", "description": "+22 HP at a campsite."},
     {"id": "dungeon-ration", "name": "Trail Ration", "price": 14, "kind": "supply", "supply": "rations", "description": "+10 maximum HP at a campsite."},
-    {"id": "dungeon-vision-scroll", "name": "Vision Scroll", "price": 80, "kind": "supply", "supply": "vision_scrolls", "description": "Reveal one unknown risk room."},
+    {"id": "dungeon-vision-scroll", "name": "Vision Scroll", "price": 200, "kind": "supply", "supply": "vision_scrolls", "description": "Reveal the current floor map."},
     {"id": "dungeon-tonic", "name": "Ember Tonic", "price": 32, "kind": "supply", "supply": "tonics", "description": "+30 HP at a campsite."},
     {"id": "dungeon-ward", "name": "Ember Ward", "price": 24, "kind": "armor", "armor": "Ember Ward", "description": "Reduce the next counterattack."},
     {"id": "dungeon-lens", "name": "Scholar Lens", "price": 30, "kind": "trinket", "trinket": "Scholar Lens", "description": "A cosmetic run trophy for careful reasoning."},
     {"id": "dungeon-syntax-sabre", "name": "Syntax Sabre", "price": 70, "kind": "weapon", "weapon": "Syntax Sabre", "description": "+1 run Resolve damage when the objective is explained."},
     {"id": "dungeon-loopblade", "name": "Loopblade", "price": 78, "kind": "weapon", "weapon": "Loopblade", "description": "+1 run Resolve damage against elite challenges."},
-    {"id": "dungeon-aether-staff", "name": "Aether Staff", "price": 65, "kind": "weapon", "weapon": "Aether Staff", "description": "Cast with a crystal-tipped staff. Changes your combat style."},
-    {"id": "dungeon-pathfinder-whip", "name": "Pathfinder Whip", "price": 65, "kind": "weapon", "weapon": "Pathfinder Whip", "description": "Fight from range with a whip. Changes your combat style."},
-    {"id": "dungeon-iron-greatsword", "name": "Iron Greatsword", "price": 80, "kind": "weapon", "weapon": "Iron Greatsword", "description": "Swing a heavy two-handed sword. Changes your combat style."},
-    {"id": "dungeon-runic-casting", "name": "Runic Casting", "price": 80, "kind": "weapon", "weapon": "Runic Casting", "description": "Cast directly from your hands. Changes your combat style."},
+    {"id": "dungeon-aether-staff", "name": "Aether Staff", "price": 65, "kind": "weapon", "weapon": "Aether Staff", "description": "The first mistake in each fight deals 2 less damage."},
+    {"id": "dungeon-pathfinder-whip", "name": "Pathfinder Whip", "price": 65, "kind": "weapon", "weapon": "Pathfinder Whip", "description": "+1 Resolve damage on the first correct answer in each fight."},
+    {"id": "dungeon-iron-greatsword", "name": "Iron Greatsword", "price": 80, "kind": "weapon", "weapon": "Iron Greatsword", "description": "+2 Resolve damage when you correct an answer after a mistake."},
+    {"id": "dungeon-grave-scythe", "name": "Grave Scythe", "price": 80, "kind": "weapon", "weapon": "Grave Scythe", "description": "Recover 3 HP whenever you break enemy Resolve."},
+    {"id": "dungeon-runic-casting", "name": "Runic Casting", "price": 80, "kind": "weapon", "weapon": "Runic Casting", "description": "+1 Resolve damage on clean answers after the first in a fight."},
     {"id": "dungeon-field-jacket", "name": "Field Jacket", "price": 72, "kind": "armor", "armor": "Field Jacket", "description": "Reduce failed-run damage by 6."},
     {"id": "dungeon-syntax-cuirass", "name": "Syntax Cuirass", "price": 88, "kind": "armor", "armor": "Syntax Cuirass", "description": "The first failed submission each floor costs less HP."},
+)
+
+# Each region sells one modest trinket; the remaining regional pieces are elite drops.
+DUNGEON_MARKET_CATALOG += REGIONAL_ARMOURS + tuple(
+    {**item, "price": 110}
+    for item in REGIONAL_TRINKETS
+    if item["id"] in {
+        "dungeon-village-lantern", "dungeon-tidal-pearl", "dungeon-loop-thread", "dungeon-ink-seal",
+        "dungeon-thread-spool", "dungeon-copper-spring", "dungeon-oracle-lens", "dungeon-ash-talisman",
+    }
 )
 
 # Visual styles are projected from canonical equipped item names. They are not
@@ -226,7 +238,8 @@ DUNGEON_MARKET_CATALOG: tuple[dict[str, Any], ...] = (
 DUNGEON_WEAPON_STYLES: dict[str, str] = {
     "Loopblade": "sword", "Syntax Sabre": "sword",
     "Aether Staff": "staff", "Pathfinder Whip": "whip",
-    "Iron Greatsword": "greatsword", "Runic Casting": "handmagic",
+    "Iron Greatsword": "greatsword", "Runic Casting": "handmagic", "Grave Scythe": "scythe",
+    **{item["name"]: item["style"] for item in SIGNATURE_WEAPONS},
 }
 
 # Campaign equipment is a separate, validated loadout from Homestead
@@ -1294,6 +1307,16 @@ DUNGEON_TRINKETS = (
 )
 DUNGEON_TRINKET_FALLBACK_COINS = 10
 
+
+def dungeon_equipped_effects(loadout: Mapping[str, Any]) -> dict[str, int]:
+    """Sum equipped run-only effects; a revive is shared, never stacked."""
+    result: dict[str, int] = {}
+    for slot in ("weapon", "armor", "trinket"):
+        item = GEAR_BY_NAME.get(str(loadout.get(slot) or ""))
+        for key, value in (item.get("effects", {}) if item else {}).items():
+            result[key] = max(result.get(key, 0), value) if key in {"revive_once", "damage_bank"} else result.get(key, 0) + value
+    return result
+
 # ── Beast oils (crafting) ────────────────────────────────────────────────
 # Crafted at the Merchant from banked parts and coins, one sign each; a
 # stronger oil needs a higher sign rank. Applied in a fight against that
@@ -1362,11 +1385,59 @@ AID_DROP_CHANCE = 30  # % per cleared bounty
 # Simple weapons let the Home loadout use the authored combat styles. Their
 # animations are cosmetic; they do not replace campaign weapon bonuses.
 HUNTER_STYLE_WEAPONS = (
-    {"id": "hunter-sparring-staff", "name": "Hunter's Staff", "slot": "weapon", "tier": "common", "effect": {}, "price": 65, "combat_style": "staff", "flavour": "A crystal-tipped staff for ranged casting."},
-    {"id": "hunter-sparring-whip", "name": "Hunter's Whip", "slot": "weapon", "tier": "common", "effect": {}, "price": 65, "combat_style": "whip", "flavour": "A leather whip for a long reach."},
-    {"id": "hunter-sparring-greatsword", "name": "Hunter's Greatsword", "slot": "weapon", "tier": "common", "effect": {}, "price": 80, "combat_style": "greatsword", "flavour": "A heavy blade held in both hands."},
-    {"id": "hunter-sparring-focus", "name": "Hunter's Casting Focus", "slot": "weapon", "tier": "common", "effect": {}, "price": 80, "combat_style": "handmagic", "flavour": "A focus for casting directly from the hands."},
+    {"id": "hunter-sparring-staff", "name": "Hunter's Staff", "slot": "weapon", "tier": "common", "effect": {"impact": 1, "on": "prediction"}, "price": 65, "combat_style": "staff", "flavour": "A crystal-tipped staff for ranged casting."},
+    {"id": "hunter-sparring-whip", "name": "Hunter's Whip", "slot": "weapon", "tier": "common", "effect": {"break_coins": 2}, "price": 65, "combat_style": "whip", "flavour": "A leather whip for a long reach."},
+    {"id": "hunter-sparring-greatsword", "name": "Hunter's Greatsword", "slot": "weapon", "tier": "common", "effect": {"impact": 1, "on": "code_checkpoint"}, "price": 80, "combat_style": "greatsword", "flavour": "A heavy blade held in both hands."},
+    {"id": "hunter-sparring-scythe", "name": "Hunter's Scythe", "slot": "weapon", "tier": "common", "effect": {"impact": 1, "on": "bug_diagnosis"}, "price": 80, "combat_style": "scythe", "flavour": "A long steel scythe wielded in both hands."},
+    {"id": "hunter-sparring-focus", "name": "Hunter's Casting Focus", "slot": "weapon", "tier": "common", "effect": {"impact": 1, "on": "explanation"}, "price": 80, "combat_style": "handmagic", "flavour": "A focus for casting directly from the hands."},
 )
+
+# Campaign versions are distinct permanent items. Run gear keeps its own rules.
+CAMPAIGN_WEAPON_EFFECTS = {
+    'dungeon-syntax-sabre': {'impact': 1, 'on': 'explanation'}, 'dungeon-loopblade': {'impact': 1, 'on': 'code_checkpoint'},
+    'dungeon-aether-staff': {'impact': 1, 'on': 'prediction'}, 'dungeon-pathfinder-whip': {'break_coins': 3},
+    'dungeon-iron-greatsword': {'impact': 2, 'on': 'bug_diagnosis'}, 'dungeon-grave-scythe': {'impact': 1, 'on': 'bug_diagnosis', 'break_coins': 2},
+    'dungeon-runic-casting': {'impact': 1, 'on': 'explanation'},
+    'dungeon-dawn-lantern': {'impact': 2, 'on': 'prediction'}, 'dungeon-undertow-scythe': {'impact': 2, 'on': 'bug_diagnosis'},
+    'dungeon-warden-chain': {'impact': 1, 'on': 'any', 'break_coins': 2}, 'dungeon-last-page': {'revive': True},
+    'dungeon-minotaur-edge': {'impact': 2, 'on': 'code_checkpoint'}, 'dungeon-clockwork-greatblade': {'impact': 2, 'on': 'bug_diagnosis'},
+    'dungeon-oracle-staff': {'impact': 2, 'on': 'explanation'}, 'dungeon-hollow-fang': {'impact': 1, 'on': 'any', 'break_coins': 4},
+}
+CAMPAIGN_WEAPON_NAMES = {
+    'dungeon-syntax-sabre': 'Oathkeeper Sabre', 'dungeon-loopblade': 'Roundkeeper Blade',
+    'dungeon-aether-staff': 'Seeker’s Aether Staff', 'dungeon-pathfinder-whip': 'Bounty Hunter’s Lash',
+    'dungeon-iron-greatsword': 'Faultbreaker', 'dungeon-grave-scythe': 'Gravekeeper’s Scythe',
+    'dungeon-runic-casting': 'Scribe’s Rune Focus', 'dungeon-dawn-lantern': 'Matriarch’s Dawnlight',
+    'dungeon-undertow-scythe': 'Hoardbreaker Scythe', 'dungeon-warden-chain': 'Warden’s Oathchain',
+    'dungeon-last-page': 'Lich’s Last Page', 'dungeon-minotaur-edge': 'Minotaur’s Judgment',
+    'dungeon-clockwork-greatblade': 'Automaton’s Greatblade', 'dungeon-oracle-staff': 'Oracle’s Verdict',
+    'dungeon-hollow-fang': 'Hollow King’s Fang',
+}
+CAMPAIGN_DUNGEON_SOURCES = tuple(item for item in DUNGEON_MARKET_CATALOG if item['id'] in CAMPAIGN_WEAPON_EFFECTS) + SIGNATURE_WEAPONS
+
+def campaign_dungeon_trinket_effect(item: Mapping[str, Any]) -> dict[str, Any]:
+    effects = item['effects']
+    if effects.get('revive_once'): return {'revive': True}
+    if effects.get('mechanic_delay') or effects.get('damage_first_fight'): return {'start_guards': 1}
+    if effects.get('damage_flat') or effects.get('damage_low') or effects.get('damage_first_floor'): return {'block_first_miss': True}
+    if effects.get('heal_clean') or effects.get('heal_break'): return {'heal_on_objective': 2}
+    if effects.get('break_coins'): return {'coin_bonus': 10}
+    return {'impact': 1, 'on': 'prediction' if effects.get('chip_first') else 'bug_diagnosis' if effects.get('chip_retry') else 'explanation'}
+
+CAMPAIGN_DELVE_GEAR = tuple(
+    {'id': 'campaign-' + item['id'], 'name': CAMPAIGN_WEAPON_NAMES[item['id']], 'slot': 'weapon', 'tier': 'epic',
+     'effect': CAMPAIGN_WEAPON_EFFECTS[item['id']], 'combat_style': item.get('style') or DUNGEON_WEAPON_STYLES.get(item['name'], 'sword'),
+     'flavour': 'A campaign-forged version of a Dungeon weapon.', 'source_id': item['id'], 'region': item.get('region')}
+    for item in CAMPAIGN_DUNGEON_SOURCES
+) + tuple(
+    {'id': 'campaign-' + item['id'], 'name': "Delver's " + item['name'], 'slot': 'trinket', 'tier': 'rare',
+     'effect': campaign_dungeon_trinket_effect(item), 'flavour': 'A keepsake earned from a dangerous elite.',
+     'source_id': item['id'], 'region': item['region']}
+    for item in REGIONAL_TRINKETS
+)
+OIL_OF_DOOM = {'id': 'cas-oil-of-doom', 'name': 'Oil of Doom and Despair', 'slot': 'weapon', 'tier': 'legendary',
+    'effect': {'impact': 2, 'on': 'any', 'break_coins': 5}, 'combat_style': 'oil',
+    'flavour': 'A giant baby oil bottle gripped by its lid and swung in both hands.', 'campaign': '04-casino-slots'}
 
 # The local activity log behind the Settings activity graph: one entry per
 # (local) day. Never synced; old days fall off after a bit over a year.
@@ -1397,7 +1468,7 @@ ARMORY_WEAPON_COMBAT_STYLES: dict[str, str] = {
     "bj-the-shoe-splitter": "greatsword", "bj-the-house-cutter": "sword",
     "dc-lantern-lit-shortsword": "sword",
 }
-ARMORY_COMBAT_STYLES = frozenset({"sword", "staff", "whip", "greatsword", "handmagic"})
+ARMORY_COMBAT_STYLES = frozenset({"sword", "staff", "whip", "greatsword", "handmagic", "scythe", "oil"})
 
 _ARMORY_CACHE: dict[str, Any] = {"source": None, "by_id": {}, "by_name": {}}
 _OBJECTIVE_WORDS = {"code_checkpoint": "BUILD", "bug_diagnosis": "FIX", "prediction": "PREDICT", "explanation": "EXPLAIN"}
@@ -1417,6 +1488,9 @@ def armory_catalog() -> dict[str, dict[str, Any]]:
             by_id[item["id"]] = {**item, "campaign": AID_CAMPAIGN}
         for item in HUNTER_STYLE_WEAPONS:
             by_id[item["id"]] = {**item, "campaign": "hunter"}
+        for item in CAMPAIGN_DELVE_GEAR:
+            by_id[item['id']] = {**item, 'campaign': 'dungeon'}
+        by_id[OIL_OF_DOOM['id']] = dict(OIL_OF_DOOM)
         _ARMORY_CACHE.update(source=data, by_id=by_id, by_name={item["name"]: item for item in by_id.values()})
     return _ARMORY_CACHE["by_id"]
 
@@ -2633,8 +2707,20 @@ class LocalStateService:
 
         dungeon = campaign.get("dungeon_run")
         if dungeon is not None:
-            raw = cls._campaign_mapping(dungeon, "campaign.dungeon_run", {"status", "run_id", "seed", "class_id", "concept_id", "floor", "room", "room_type", "score", "run_coins", "started_at", "updated_at", "ended_at", "loadout", "inventory", "question", "question_number", "room_choices", "map", "risk_profile", "risk_status", "editor_content", "last_result", "history", "attempts"})
+            raw = cls._campaign_mapping(dungeon, "campaign.dungeon_run", {"status", "run_id", "seed", "class_id", "concept_id", "floor", "room", "room_type", "score", "run_coins", "started_at", "updated_at", "ended_at", "loadout", "inventory", "question", "question_number", "room_choices", "map", "floor_layout", "gear_charge", "gear_charge_weapon", "gear_revive_used", "gear_first_miss_floor", "risk_profile", "risk_status", "editor_content", "last_result", "history", "attempts"})
             item: dict[str, Any] = {}
+            if "floor_layout" in raw:
+                if not isinstance(raw["floor_layout"], str) or raw["floor_layout"] not in {"grid", "lanes"}:
+                    raise StateCommandError("campaign.dungeon_run.floor_layout is invalid")
+                item["floor_layout"] = raw["floor_layout"]
+            if "gear_revive_used" in raw:
+                item["gear_revive_used"] = cls._campaign_bool(raw["gear_revive_used"], "campaign.dungeon_run.gear_revive_used")
+            if "gear_charge" in raw:
+                item["gear_charge"] = cls._campaign_int(raw["gear_charge"], "campaign.dungeon_run.gear_charge", maximum=10)
+            if "gear_first_miss_floor" in raw:
+                item["gear_first_miss_floor"] = cls._campaign_int(raw["gear_first_miss_floor"], "campaign.dungeon_run.gear_first_miss_floor", maximum=MAX_DUNGEON_FLOOR)
+            if raw.get("gear_charge_weapon") is not None:
+                item["gear_charge_weapon"] = cls._campaign_text(raw["gear_charge_weapon"], "campaign.dungeon_run.gear_charge_weapon", max_length=MAX_IDENTIFIER_LENGTH)
             for field in ("status", "run_id", "seed", "class_id", "concept_id", "room_type"):
                 if field in raw:
                     item[field] = cls._campaign_text(raw[field], f"campaign.dungeon_run.{field}", max_length=MAX_IDENTIFIER_LENGTH)
@@ -2707,8 +2793,10 @@ class LocalStateService:
                     clean_choices.append(clean_choice)
                 item["room_choices"] = clean_choices
             if "map" in raw and raw["map"] is not None:
-                raw_map = cls._campaign_mapping(raw["map"], "campaign.dungeon_run.map", {"floor", "nodes", "edges", "current_node_id", "visited_node_ids"})
+                raw_map = cls._campaign_mapping(raw["map"], "campaign.dungeon_run.map", {"floor", "nodes", "edges", "current_node_id", "visited_node_ids", "revealed"})
                 clean_map: dict[str, Any] = {}
+                if "revealed" in raw_map:
+                    clean_map["revealed"] = cls._campaign_bool(raw_map["revealed"], "campaign.dungeon_run.map.revealed")
                 if "floor" in raw_map:
                     clean_map["floor"] = cls._campaign_int(raw_map["floor"], "campaign.dungeon_run.map.floor", maximum=MAX_DUNGEON_FLOOR)
                 for field in ("current_node_id",):
@@ -2942,7 +3030,7 @@ class LocalStateService:
             if raw_run is None:
                 campaign["dungeon_run"] = None
             elif isinstance(raw_run, Mapping):
-                run_fields = {"status", "run_id", "seed", "class_id", "concept_id", "floor", "room", "room_type", "score", "run_coins", "started_at", "updated_at", "ended_at", "question_number", "editor_content", "attempts", "risk_profile", "risk_status"}
+                run_fields = {"status", "run_id", "seed", "class_id", "concept_id", "floor", "room", "room_type", "score", "run_coins", "started_at", "updated_at", "ended_at", "question_number", "editor_content", "attempts", "risk_profile", "risk_status", "floor_layout", "gear_charge", "gear_charge_weapon", "gear_revive_used", "gear_first_miss_floor"}
                 item = pick(raw_run, run_fields)
                 if isinstance(raw_run.get("loadout"), Mapping):
                     item["loadout"] = pick(raw_run["loadout"], {"weapon", "armor", "trinket", "hp", "max_hp", "heals", "coins", "bandages", "rations", "vision_scrolls", "tonics", "edge_charges", "armor_guard"})
@@ -2958,6 +3046,7 @@ class LocalStateService:
                     raw_map = raw_run["map"]
                     item["map"] = {
                         "floor": raw_map.get("floor"),
+                        "revealed": raw_map.get("revealed") is True,
                         "current_node_id": raw_map.get("current_node_id"),
                         "visited_node_ids": list(raw_map.get("visited_node_ids") or []),
                         "nodes": [pick(node, {"id", "type", "row", "column", "label", "note"}) for node in raw_map.get("nodes", []) if isinstance(node, Mapping)],
@@ -3579,8 +3668,8 @@ class LocalStateService:
         }
 
     @staticmethod
-    def _dungeon_market_catalog() -> list[dict[str, Any]]:
-        return [dict(item) for item in DUNGEON_MARKET_CATALOG]
+    def _dungeon_market_catalog(region_id: object = None) -> list[dict[str, Any]]:
+        return [dict(item) for item in DUNGEON_MARKET_CATALOG if not item.get("region") or item["region"] == region_id]
 
     @classmethod
     def _dungeon_inventory_entries(cls, run: dict[str, Any], *, mutate: bool = False) -> list[dict[str, Any]]:
@@ -3609,7 +3698,7 @@ class LocalStateService:
                     "name": str(loadout.get("weapon")),
                     "kind": "weapon",
                     "weapon": str(loadout.get("weapon")),
-                    "description": "Starter weapon for this Dungeon run.",
+                    "description": next((item["description"] for item in DUNGEON_MARKET_CATALOG if item.get("weapon") == loadout.get("weapon")), "Starter weapon for this Dungeon run."),
                 })
             if mutate:
                 run["inventory"] = items
@@ -3722,12 +3811,17 @@ class LocalStateService:
             pack[gear] = self._counter(pack, gear) + 1
             drops[gear] = 1
         loot: dict[str, Any] = {"items": self._dungeon_pack_items(drops), "clean": clean, "trinket": None, "coins": 0}
+        inventory = self._dungeon_inventory_entries(run, mutate=True)
+        owned = {item.get("id") for item in inventory}
         if room_type == "elite":
-            inventory = self._dungeon_inventory_entries(run, mutate=True)
-            owned = {item.get("id") for item in inventory}
-            trinket = next((dict(item) for item in DUNGEON_TRINKETS if item["id"] not in owned), None)
+            # Regional finds come first; generic trinkets remain available once
+            # that region's unique pieces have been collected.
+            pool = [item for item in REGIONAL_TRINKETS if item["region"] == run.get("region_id")]
+            pool += list(DUNGEON_TRINKETS)
+            trinket = next((dict(item) for item in pool if item["id"] not in owned), None)
             if trinket and len(inventory) < MAX_DUNGEON_INVENTORY:
-                inventory.append(trinket)
+                entry = {key: trinket[key] for key in ("id", "name", "kind", "trinket", "description") if key in trinket}
+                inventory.append(entry)
                 loadout = self._dungeon_ensure_loadout_defaults(run)
                 equipped = not loadout.get("trinket")
                 if equipped:
@@ -3736,6 +3830,25 @@ class LocalStateService:
             else:
                 run["run_coins"] = self._counter(run, "run_coins") + DUNGEON_TRINKET_FALLBACK_COINS
                 loot["coins"] = DUNGEON_TRINKET_FALLBACK_COINS
+        elif room_type == "boss":
+            signature = next((item for item in SIGNATURE_WEAPONS if item["region"] == run.get("region_id") and item["id"] not in owned), None)
+            if signature and len(inventory) < MAX_DUNGEON_INVENTORY:
+                inventory.append({key: signature[key] for key in ("id", "name", "kind", "weapon", "description")})
+                loot["weapon"] = {"id": signature["id"], "name": signature["name"], "description": signature["description"]}
+        # Permanent campaign versions go into the at-risk pack; only a camp
+        # or a safe exit banks them into the Hunter's armory.
+        if progress is not None and room_type in {'elite', 'boss'}:
+            hunter = progress.get('hunter') if isinstance(progress.get('hunter'), Mapping) else {}
+            armory = hunter.get('armory') if isinstance(hunter.get('armory'), Mapping) else {}
+            banked_owned = set(armory.get('owned', [])) if isinstance(armory.get('owned'), list) else set()
+            region_id = run.get('region_id')
+            slot = 'trinket' if room_type == 'elite' else 'weapon'
+            pool = [item for item in CAMPAIGN_DELVE_GEAR if item['slot'] == slot and item.get('region') == region_id and item['id'] not in banked_owned and item['id'] not in pack]
+            if pool:
+                item = pool[0]
+                pack[item['id']] = 1
+                drops[item['id']] = 1
+                loot['items'] = self._dungeon_pack_items(drops)
         return loot
 
     @classmethod
@@ -3822,10 +3935,11 @@ class LocalStateService:
         insight = self.hunter_projection(progress)["stats"]["insight"]["value"]
         loadout = run.get("loadout") if isinstance(run.get("loadout"), Mapping) else {}
         trinket = loadout.get("trinket")
+        gear_effects = dungeon_equipped_effects(loadout)
         mechanic = None
         definition = DUNGEON_MECHANICS.get(room_type)
         if definition:
-            span = definition["every"] + max(0, insight - 1) // 3 + (1 if trinket == "Hunting Bell" else 0)
+            span = definition["every"] + max(0, insight - 1) // 3 + (1 if trinket == "Hunting Bell" else 0) + gear_effects.get("mechanic_delay", 0)
             mechanic = {
                 "kind": definition["kind"],
                 "label": definition["label"],
@@ -4356,6 +4470,7 @@ class LocalStateService:
             "nodes": [dict(item) for item in nodes if isinstance(item, Mapping)],
             "edges": {str(key): list(value) for key, value in edges.items() if isinstance(value, list)},
             "current_node_id": raw.get("current_node_id"),
+            "revealed": raw.get("revealed") is True,
             "visited_node_ids": [str(item) for item in raw.get("visited_node_ids", []) if isinstance(item, str)],
         }
 
@@ -4618,7 +4733,7 @@ class LocalStateService:
             discount = min(90, self._counter(run, "market_discount"))
             projection["market_catalog"] = [
                 {**item, "price": max(0, (int(item["price"]) * (100 - discount) + 99) // 100) if discount else item["price"]}
-                for item in self._dungeon_market_catalog()
+                for item in self._dungeon_market_catalog(run.get("region_id"))
             ]
         loadout = run.get("loadout")
         if not isinstance(loadout, Mapping):
@@ -4664,9 +4779,11 @@ class LocalStateService:
         equipped_weapon = projection["loadout"].get("weapon")
         equipped_armor = projection["loadout"].get("armor")
         equipped_trinket = projection["loadout"].get("trinket")
+        weapon_descriptions = {item["id"]: item["description"] for item in (*DUNGEON_MARKET_CATALOG, *SIGNATURE_WEAPONS) if item.get("kind") == "weapon"}
         projection["inventory"] = [
             {
                 **item,
+                "description": weapon_descriptions.get(item.get("id"), item.get("description", "")),
                 "equipped": (
                     item.get("kind") == "weapon" and item.get("weapon") == equipped_weapon
                 ) or (
@@ -4713,12 +4830,13 @@ class LocalStateService:
         if route:
             layout = "grid" if run.get("floor_layout") == "grid" else "lanes"
             visible = None
-            if layout == "grid":
+            if layout == "grid" and not route.get("revealed"):
                 insight = self.hunter_projection(progress)["stats"]["insight"]["value"]
                 visible = self._dungeon_grid_visible(route, far_sight=insight >= DUNGEON_GRID_FAR_SIGHT_INSIGHT)
             projection["map"] = {
                 "floor": route.get("floor", projection.get("floor", 1)),
                 "layout": layout,
+                "revealed": bool(route.get("revealed")),
                 "columns": DUNGEON_GRID_COLUMNS if layout == "grid" else 5,
                 "rows": DUNGEON_GRID_ROWS if layout == "grid" else DUNGEON_MAP_ROWS,
                 "modifier": run.get("floor_modifier"),
@@ -4896,7 +5014,7 @@ class LocalStateService:
                     "name": starter_class["starter_weapon"],
                     "kind": "weapon",
                     "weapon": starter_class["starter_weapon"],
-                    "description": f"Starter weapon for the {starter_class['name']} class.",
+                    "description": next((item["description"] for item in DUNGEON_MARKET_CATALOG if item["id"] == starter_class["starter_weapon_id"]), f"Starter weapon for the {starter_class['name']} class."),
                 },
             ],
             "question": None,
@@ -4913,6 +5031,19 @@ class LocalStateService:
             "last_result": None,
             "history": [],
         }
+        # Opt-in sandbox for local playtesting. Normal saves and servers never
+        # receive these items; the test launcher points to a separate save.
+        if os.environ.get('QUESTLAB_TEST_UNLOCKS') == '1':
+            test_items = [item for item in DUNGEON_MARKET_CATALOG if item.get('kind') in {'weapon', 'armor', 'trinket'}]
+            test_items += list(SIGNATURE_WEAPONS) + list(REGIONAL_TRINKETS) + list(DUNGEON_TRINKETS)
+            seen = {item['id'] for item in run['inventory']}
+            for item in test_items:
+                if item['id'] in seen or len(run['inventory']) >= MAX_DUNGEON_INVENTORY:
+                    continue
+                run['inventory'].append({key: item[key] for key in ('id', 'name', 'kind', 'weapon', 'armor', 'trinket', 'description') if key in item})
+                seen.add(item['id'])
+            run['run_coins'] = 100000
+            run['loadout'].update(heals=50, bandages=50, rations=50, vision_scrolls=50, tonics=50)
         progress["dungeon_run"] = run
         self._dungeon_prepare_room_choices(run, progress, advance=False)
         projection = self.dungeon_projection(progress)
@@ -5054,6 +5185,7 @@ class LocalStateService:
         fight_done = False
         loot = None
         pack_lost: list[dict[str, Any]] = []
+        weapon_effect = None
         if verdict == "correct":
             clean_cast = not any(
                 isinstance(item, Mapping) and item.get("question_id") == question_id and item.get("outcome") == "incorrect"
@@ -5063,6 +5195,7 @@ class LocalStateService:
             score_delta = DUNGEON_SCORE_BY_DIFFICULTY[min(difficulty, len(DUNGEON_SCORE_BY_DIFFICULTY) - 1)]
             coins_delta = DUNGEON_COIN_BY_DIFFICULTY[min(difficulty, len(DUNGEON_COIN_BY_DIFFICULTY) - 1)]
             loadout = self._dungeon_ensure_loadout_defaults(run)
+            gear_effects = dungeon_equipped_effects(loadout)
             class_data = DUNGEON_CLASSES_BY_ID.get(str(run.get("class_id") or ""), {})
             score_delta += max(0, int(class_data.get("resolve_bonus", 0) or 0))
             if self._counter(loadout, "edge_charges") > 0:
@@ -5085,6 +5218,50 @@ class LocalStateService:
             focus_multiplier = 1 + max(0, hunter["stats"]["focus"]["value"] - 1) // 3
             base_chip = DUNGEON_FIGHT_CHIP.get(str(run.get("room_type")), 3)
             chip = (base_chip if clean_cast else max(1, base_chip // 2)) + (hunter["stats"]["strength"]["value"] - 1) + (sign_level // 3) * focus_multiplier
+            weapon = loadout.get("weapon")
+            question_type = str(question.get("question_type") or "")
+            if weapon == "Syntax Sabre" and question_type in {"explanation", "short_explanation"}:
+                chip += 1
+                weapon_effect = "Syntax Sabre · +1 Resolve for explaining"
+            elif weapon == "Loopblade" and run.get("room_type") == "elite":
+                chip += 1
+                weapon_effect = "Loopblade · +1 Resolve against elites"
+            elif weapon == "Pathfinder Whip" and int(fight["questions_cleared"]) == 1:
+                chip += 1
+                weapon_effect = "Pathfinder Whip · +1 Resolve on the opening answer"
+            elif weapon == "Iron Greatsword" and not clean_cast:
+                chip += 2
+                weapon_effect = "Iron Greatsword · +2 Resolve on a corrected answer"
+            elif weapon == "Runic Casting" and clean_cast and int(fight["questions_cleared"]) > 1:
+                chip += 1
+                weapon_effect = "Runic Casting · +1 Resolve for a clean follow-up"
+            gear_bonus = 0
+            if int(fight["questions_cleared"]) == 1:
+                gear_bonus += gear_effects.get("chip_first", 0)
+            if clean_cast:
+                gear_bonus += gear_effects.get("chip_clean", 0)
+                if int(fight["questions_cleared"]) > 1:
+                    gear_bonus += gear_effects.get("chip_follow", 0)
+            else:
+                gear_bonus += gear_effects.get("chip_retry", 0)
+            if self._counter(loadout, "hp") * 2 <= self._counter(loadout, "max_hp"):
+                gear_bonus += gear_effects.get("chip_low", 0)
+            if run.get("room_type") == "elite":
+                gear_bonus += gear_effects.get("chip_elite", 0)
+            if run.get("room_type") == "boss":
+                gear_bonus += gear_effects.get("chip_boss", 0)
+            if gear_effects.get("damage_bank") and run.get("gear_charge_weapon") == loadout.get("weapon"):
+                gear_bonus += min(gear_effects["damage_bank"], self._counter(run, "gear_charge"))
+                run["gear_charge"] = 0
+            chip += gear_bonus
+            if gear_bonus:
+                weapon_effect = "; ".join(filter(None, [weapon_effect, f"Gear · +{gear_bonus} Resolve"]))
+            if clean_cast and gear_effects.get("heal_clean"):
+                before_heal = self._counter(loadout, "hp")
+                loadout["hp"] = min(self._counter(loadout, "max_hp"), before_heal + gear_effects["heal_clean"])
+                healed = loadout["hp"] - before_heal
+                if healed:
+                    weapon_effect = "; ".join(filter(None, [weapon_effect, f"Gear · +{healed} HP"]))
             if loadout.get("trinket") == "Whetstone Charm":
                 chip += 1
             chip += int(fight.get("bane", 0) or 0) + self._hunter_kit_levels(progress)["blade"]
@@ -5094,15 +5271,36 @@ class LocalStateService:
                 broke = True
                 fight["breaks"] = int(fight["breaks"]) + 1
                 fight["guards"] = int(fight["guards"]) + 1
+                if loadout.get("weapon") == "Grave Scythe":
+                    before_heal = self._counter(loadout, "hp")
+                    loadout["hp"] = min(self._counter(loadout, "max_hp"), before_heal + 3)
+                    healed = loadout["hp"] - before_heal
+                    if healed:
+                        weapon_effect = f"Grave Scythe · +{healed} HP on Resolve break"
+                if gear_effects.get("heal_break"):
+                    before_heal = self._counter(loadout, "hp")
+                    loadout["hp"] = min(self._counter(loadout, "max_hp"), before_heal + gear_effects["heal_break"])
+                    healed = loadout["hp"] - before_heal
+                    if healed:
+                        weapon_effect = "; ".join(filter(None, [weapon_effect, f"Gear · +{healed} HP on break"]))
                 fight["resolve"] = int(fight["max_resolve"])
-                run["run_coins"] = self._counter(run, "run_coins") + DUNGEON_BREAK_COINS
-                coins_delta += DUNGEON_BREAK_COINS
+                break_coins = DUNGEON_BREAK_COINS + gear_effects.get("break_coins", 0)
+                run["run_coins"] = self._counter(run, "run_coins") + break_coins
+                coins_delta += break_coins
                 if mechanic:
                     mechanic["countdown"] = int(mechanic["every"])
                     mechanic["enraged"] = False
         else:
             raw_damage = min(28, 4 + difficulty * 2)
             loadout = self._dungeon_ensure_loadout_defaults(run)
+            gear_effects = dungeon_equipped_effects(loadout)
+            floor = self._counter(run, "floor")
+            recorded_floor = run.get("gear_first_miss_floor")
+            if recorded_floor is None:
+                first_miss_floor = not any(isinstance(entry, Mapping) and entry.get("outcome") == "incorrect" and entry.get("floor") == floor for entry in (run.get("history") or []))
+            else:
+                first_miss_floor = recorded_floor != floor
+            run["gear_first_miss_floor"] = floor
             fight["misses"] = int(fight.get("misses", 0) or 0) + 1
             if int(fight["guards"]) > 0:
                 # A banked free mistake absorbs this miss entirely.
@@ -5119,11 +5317,34 @@ class LocalStateService:
                     damage = 0
                 else:
                     damage = max(1, (raw_damage * multiplier * (100 - armor_reduction) + 99) // 100)
+                before_gear = damage
+                if loadout.get("armor") == "Field Jacket":
+                    damage = max(0, damage - 6)
+                if first_miss_floor and loadout.get("armor") == "Syntax Cuirass":
+                    damage = (damage + 1) // 2
+                damage = max(0, damage - gear_effects.get("damage_flat", 0))
+                if int(fight["misses"]) == 1:
+                    damage = max(0, damage - gear_effects.get("damage_first_fight", 0))
+                if first_miss_floor and gear_effects.get("damage_first_floor"):
+                    damage = (damage * max(0, 100 - gear_effects["damage_first_floor"]) + 99) // 100
+                if self._counter(loadout, "hp") * 2 <= self._counter(loadout, "max_hp"):
+                    damage = max(0, damage - gear_effects.get("damage_low", 0))
+                if before_gear > damage:
+                    weapon_effect = f"Gear · blocked {before_gear - damage} damage"
+                if loadout.get("weapon") == "Aether Staff" and int(fight["misses"]) == 1 and damage > 0:
+                    reduced = min(2, damage)
+                    damage -= reduced
+                    weapon_effect = "; ".join(filter(None, [weapon_effect, f"Aether Staff · blocked {reduced} damage on the first mistake"]))
                 if loadout["armor"] == "Ember Ward":
                     loadout["armor"] = "Apprentice Coat"
                 run["next_failure_multiplier"] = 1
             current_hp = self._counter(loadout, "hp")
             loadout["hp"] = max(0, current_hp - damage)
+            if damage > 0 and gear_effects.get("damage_bank"):
+                if run.get("gear_charge_weapon") != loadout.get("weapon"):
+                    run["gear_charge"] = 0
+                run["gear_charge_weapon"] = loadout.get("weapon")
+                run["gear_charge"] = min(gear_effects["damage_bank"], self._counter(run, "gear_charge") + min(current_hp, damage))
         # The mechanic ticks on every answer, unless this answer broke it or
         # ended the fight.
         if mechanic and not broke and not fight_done:
@@ -5139,6 +5360,13 @@ class LocalStateService:
                     loadout = self._dungeon_ensure_loadout_defaults(run)
                     loadout["hp"] = max(0, self._counter(loadout, "hp") - blast)
 
+        # One shared revival per run, regardless of how many revival items are owned.
+        current_loadout = self._dungeon_ensure_loadout_defaults(run)
+        revive = dungeon_equipped_effects(current_loadout).get("revive_once", 0)
+        if self._counter(current_loadout, "hp") <= 0 and revive and not run.get("gear_revive_used"):
+            current_loadout["hp"] = max(1, (self._counter(current_loadout, "max_hp") * revive + 99) // 100)
+            run["gear_revive_used"] = True
+            weapon_effect = "; ".join(filter(None, [weapon_effect, f"Gear revived you · {current_loadout['hp']} HP"]))
         result_record = {
             "outcome": verdict,
             "question_id": question_id,
@@ -5152,6 +5380,7 @@ class LocalStateService:
         fight_record = {
             "room_type": str(run.get("room_type") or "encounter"),
             "chip": chip,
+            "weapon_effect": weapon_effect,
             "resolve_before": resolve_before,
             "resolve_after": max(0, resolve_before - chip) if verdict == "correct" else resolve_before,
             "max_resolve": int(fight["max_resolve"]),
@@ -5339,23 +5568,27 @@ class LocalStateService:
         return Mutation(True, result, event)
 
     def _dungeon_reveal_risk(self, payload: Mapping[str, Any], progress: dict[str, Any]) -> Mutation:
+        """Spend a scroll to reveal the current floor, without entering rooms."""
         data = self._payload(payload, {"run_id"}, {"run_id"})
         run = self._active_dungeon_run(progress)
         run_id = self._text(data["run_id"], "run_id", max_length=MAX_IDENTIFIER_LENGTH, identifier=True)
         if run.get("run_id") != run_id:
             raise StateCommandError("Dungeon run changed; reload the current run", status_code=409)
-        if run.get("room_type") != "mystery" or not isinstance(run.get("risk_profile"), Mapping):
-            raise StateCommandError("An unrevealed risk room is not currently available", status_code=409)
-        if run.get("risk_status") in {"revealed", "entered"}:
+        if run.get("room_type") != "selector":
+            raise StateCommandError("Use a vision scroll while choosing a route", status_code=409)
+        route = self._dungeon_map_for_run(run)
+        if not route or run.get("floor_layout") != "grid":
+            raise StateCommandError("A hidden floor map is not available", status_code=409)
+        if route.get("revealed"):
             return Mutation(False, {"run": self.dungeon_projection(progress), "revealed": False})
         loadout = self._dungeon_ensure_loadout_defaults(run)
-        scrolls = self._counter(loadout, "vision_scrolls")
-        if scrolls <= 0:
-            raise StateCommandError("You need a vision scroll to scout this risk", status_code=409)
-        loadout["vision_scrolls"] = scrolls - 1
-        run["risk_status"] = "revealed"
-        run["last_result"] = {"outcome": "risk_revealed", "score_delta": 0, "coins_delta": 0, "damage": 0, "reason": "vision_scroll"}
-        return Mutation(True, {"run": self.dungeon_projection(progress), "revealed": True}, {"run_id": run_id, "reason": "dungeon_risk_revealed"})
+        if self._counter(loadout, "vision_scrolls") <= 0:
+            raise StateCommandError("You need a vision scroll to reveal the floor", status_code=409)
+        loadout["vision_scrolls"] -= 1
+        route["revealed"] = True
+        run["map"] = route
+        run["updated_at"] = _utc_now()
+        return Mutation(True, {"run": self.dungeon_projection(progress), "revealed": True}, {"run_id": run_id, "reason": "dungeon_floor_revealed"})
 
     def _dungeon_enter_risk(self, payload: Mapping[str, Any], progress: dict[str, Any]) -> Mutation:
         data = self._payload(payload, {"run_id"}, {"run_id"})
@@ -5419,9 +5652,9 @@ class LocalStateService:
             raise StateCommandError("Dungeon run changed; reload the current run", status_code=409)
         if run.get("room_type") != "market":
             raise StateCommandError("A market room is not currently available", status_code=409)
-        item = next((candidate for candidate in DUNGEON_MARKET_CATALOG if candidate["id"] == item_id), None)
+        item = next((candidate for candidate in self._dungeon_market_catalog(run.get("region_id")) if candidate["id"] == item_id), None)
         if item is None:
-            raise StateCommandError("Unknown Dungeon market item", status_code=404)
+            raise StateCommandError("That item is not available in this region", status_code=404)
         if item["kind"] in {"weapon", "armor", "trinket"}:
             if any(candidate.get("id") == item_id for candidate in self._dungeon_inventory_entries(run)):
                 raise StateCommandError("That item is already in your run inventory", status_code=409)
@@ -5443,6 +5676,8 @@ class LocalStateService:
         elif item["kind"] in {"weapon", "armor", "trinket"}:
             inventory = self._dungeon_inventory_entries(run, mutate=True)
             if not any(candidate.get("id") == item["id"] for candidate in inventory):
+                if len(inventory) >= MAX_DUNGEON_INVENTORY:
+                    raise StateCommandError("Your run inventory is full", status_code=409)
                 inventory.append(
                     {
                         key: item[key]
@@ -5450,7 +5685,7 @@ class LocalStateService:
                         if key in item
                     }
                 )
-                run["inventory"] = inventory[-MAX_DUNGEON_INVENTORY:]
+                run["inventory"] = inventory
             # Preserve the previous market behavior while making the choice
             # reversible from the run inventory menu.
             slot = "weapon" if item["kind"] == "weapon" else item["kind"]
@@ -5479,6 +5714,9 @@ class LocalStateService:
             raise StateCommandError("That Dungeon item cannot be equipped", status_code=422)
         if loadout.get(field) == value:
             return Mutation(False, {"run": self.dungeon_projection(progress), "equipped": value, "slot": field})
+        if field == "weapon":
+            run["gear_charge"] = 0
+            run.pop("gear_charge_weapon", None)
         loadout[field] = value
         run["updated_at"] = _utc_now()
         return Mutation(
@@ -6123,6 +6361,13 @@ class LocalStateService:
                 armory[key] = {}
         return hunter
 
+    @staticmethod
+    def _oil_boss_already_defeated(progress: Mapping[str, Any]) -> bool:
+        projects = progress.get('projects') if isinstance(progress.get('projects'), list) else []
+        return any(isinstance(project, Mapping) and project.get('branch') == '04-casino-slots' and
+                   (project.get('boss_status') == 'defeated' or isinstance(project.get('boss_clear'), Mapping))
+                   for project in projects)
+
     def _hunter_record(
         self,
         progress: dict[str, Any],
@@ -6360,7 +6605,10 @@ class LocalStateService:
             "first_miss_free": bool(armor_effect.get("first_miss_free")),
             "block_first_miss": bool(trinket_effect.get("block_first_miss")),
             "first_miss_source": armor["name"] if armor_effect.get("first_miss_free") else trinket["name"] if trinket else None,
-            "revive": bool(trinket_effect.get("revive")),
+            "revive": bool(trinket_effect.get("revive") or (weapon and weapon['effect'].get('revive'))),
+            "revive_source": trinket['name'] if trinket and trinket_effect.get('revive') else weapon['name'] if weapon and weapon['effect'].get('revive') else None,
+            "trinket_impact": capped('impact', trinket_effect.get('impact')),
+            "trinket_on": trinket_effect.get('on'),
             "start_guards": capped("start_guards", trinket_effect.get("start_guards")),
             "heal_on_objective": capped("heal_on_objective", trinket_effect.get("heal_on_objective")),
             "loot_luck": capped("loot_luck", trinket_effect.get("loot_luck")),
@@ -6392,6 +6640,17 @@ class LocalStateService:
         """Every cleared contract drops something from its campaign's armory,
         rarer the further into the campaign it is."""
 
+        contract = campaign_contract(project.get('branch'), mob.get('name')) or {}
+        if contract.get('tier') == 'elite':
+            hunter = self._hunter_state(progress)
+            owned = set(hunter['armory']['owned'])
+            sign = contract.get('sign')
+            regions = [key for key, value in DUNGEON_REGIONS.items() if sign in value.get('signs', [])]
+            pool = [item for item in CAMPAIGN_DELVE_GEAR if item['slot'] == 'trinket' and item['id'] not in owned and (not regions or item['region'] in regions)]
+            if pool:
+                item = random.Random(f"{project.get('branch')}:{mob.get('name')}:elite").choice(pool)
+                self._armory_add(hunter, item['id'])
+                return {'id': item['id'], 'name': item['name'], 'slot': item['slot'], 'tier': item['tier'], 'effect': armory_effect_text(item['effect'])}
         pool = [item for item in armory_catalog().values() if item["campaign"] == project.get("branch") and item["slot"] not in {"relic"} and item["tier"] != "legendary"]
         if not pool:
             return None
@@ -6421,11 +6680,19 @@ class LocalStateService:
         branch = project.get("branch")
         loot = []
         relic = next((item for item in catalog.values() if item["campaign"] == branch and item["slot"] == "relic"), None)
-        legendaries = [item for item in catalog.values() if item["campaign"] == branch and item["tier"] == "legendary" and item["slot"] in ARMORY_GEAR_SLOTS and item["id"] not in owned]
+        legendaries = [item for item in catalog.values() if item["campaign"] == branch and item["tier"] == "legendary" and item["slot"] in ARMORY_GEAR_SLOTS and item["id"] not in owned and item['id'] != OIL_OF_DOOM['id']]
         rng = random.Random(f"{self.device_id()}:{branch}:boss")
         for item in ([relic] if relic and relic["id"] not in owned else []) + ([rng.choice(legendaries)] if legendaries else []):
             self._armory_add(hunter, item["id"])
             loot.append({"id": item["id"], "name": item["name"], "slot": item["slot"], "tier": item["tier"], "effect": armory_effect_text(item["effect"])})
+        if branch == '04-casino-slots' and OIL_OF_DOOM['id'] not in owned:
+            self._armory_add(hunter, OIL_OF_DOOM['id'])
+            loot.append({'id': OIL_OF_DOOM['id'], 'name': OIL_OF_DOOM['name'], 'slot': 'weapon', 'tier': OIL_OF_DOOM['tier'], 'effect': armory_effect_text(OIL_OF_DOOM['effect'])})
+        campaign_weapons = [item for item in CAMPAIGN_DELVE_GEAR if item['slot'] == 'weapon' and not item.get('region') and item['id'] not in owned]
+        if campaign_weapons:
+            item = rng.choice(campaign_weapons)
+            self._armory_add(hunter, item['id'])
+            loot.append({'id': item['id'], 'name': item['name'], 'slot': 'weapon', 'tier': item['tier'], 'effect': armory_effect_text(item['effect'])})
         # And a PYR's Blessing for the next campaign.
         blessing = catalog.get("aid-pyrs-blessing")
         if blessing:
@@ -6468,6 +6735,8 @@ class LocalStateService:
         hunter = progress.get("hunter") if isinstance(progress.get("hunter"), Mapping) else {}
         armory = hunter.get("armory") if isinstance(hunter.get("armory"), Mapping) else {}
         owned = [item for item in armory.get("owned", []) if isinstance(item, str) and item in catalog] if isinstance(armory.get("owned"), list) else []
+        if self._oil_boss_already_defeated(progress) and OIL_OF_DOOM['id'] not in owned:
+            owned.append(OIL_OF_DOOM['id'])
         stack = armory.get("stack") if isinstance(armory.get("stack"), Mapping) else {}
         equipment = progress.get("equipment") if isinstance(progress.get("equipment"), Mapping) else {}
         equipped = {"weapon": armory.get("weapon"), "armor": str(equipment.get("armor") or "Apprentice Coat"), "trinket": str(equipment.get("trinket") or "None")}
@@ -6477,8 +6746,6 @@ class LocalStateService:
             if item.get("slot") == "weapon":
                 style = item.get("combat_style") or ARMORY_WEAPON_COMBAT_STYLES.get(str(item.get("id")))
                 projected["combat_style"] = style if isinstance(style, str) and style in ARMORY_COMBAT_STYLES else None
-                if item.get("campaign") == "hunter":
-                    projected["effect"] = "Changes combat animation; no bonus to damage."
             return projected
 
         items = [view(catalog[item], equipped=(catalog[item]["slot"] == "weapon" and equipped["weapon"] == item) or catalog[item]["name"] in {equipped["armor"], equipped["trinket"]}) for item in owned]
@@ -6532,6 +6799,8 @@ class LocalStateService:
         if item is None or item["slot"] not in ARMORY_GEAR_SLOTS:
             raise StateCommandError("That is not gear you can equip", status_code=404)
         hunter = self._hunter_state(progress)
+        if item_id == OIL_OF_DOOM['id'] and self._oil_boss_already_defeated(progress) and item_id not in hunter['armory']['owned']:
+            hunter['armory']['owned'].append(item_id)
         if item_id not in hunter["armory"]["owned"]:
             raise StateCommandError("You do not own that item yet", status_code=409)
         if item["slot"] == "weapon":
@@ -7729,7 +7998,7 @@ class LocalStateService:
                 if not isinstance(mob, Mapping) or not isinstance(mob.get("name"), str):
                     continue
                 fighting = encounter.get("mob_name") == mob["name"] and (encounter.get("completed_objectives") or self._counter(encounter, "attempts"))
-                if mob.get("status") not in {"defeated", "cleared"} and not fighting:
+                if mob.get("status") not in {"defeated", "cleared"} and not fighting and os.environ.get('QUESTLAB_TEST_UNLOCKS') != '1':
                     continue
                 contract = campaign_contract(project.get("branch"), mob["name"]) or {}
                 sign = contract.get("sign") if isinstance(contract.get("sign"), str) else None
@@ -8192,6 +8461,8 @@ class LocalStateService:
         weapon = effects["weapon"]
         if weapon and weapon.get("on") in {"any", objective["question_type"]}:
             impact = min(MAX_IMPACT + ARMORY_EFFECT_CAPS["impact"], impact + int(weapon.get("impact", 0)))
+        if effects['trinket_on'] in {'any', objective['question_type']}:
+            impact = min(MAX_IMPACT + ARMORY_EFFECT_CAPS['impact'], impact + effects['trinket_impact'])
         special = campaign_special_mechanic(project, str(mob.get("name") or ""))
         if special and special["reward"] == "focus" and special["trigger"] in completed:
             impact = min(MAX_IMPACT + ARMORY_EFFECT_CAPS["impact"], impact + 1)
@@ -9112,7 +9383,7 @@ class LocalStateService:
             updated = 1
             trinket_triggers.append("armory:revive")
             revived = True
-            trinket_trigger = trinket_name
+            trinket_trigger = effects['revive_source']
         player["hp"] = updated
         return Mutation(
             True,

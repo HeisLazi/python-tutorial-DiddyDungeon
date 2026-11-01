@@ -566,3 +566,152 @@
   border-color: var(--gold);
 }
 .app-shell[data-theme="arcade"] .homestead-v2 .pyr-bond-meter > i { background: var(--px-ink); }
+
+/* Readable ink on the parchment Codex, including expanded reference notes. */
+.app-shell[data-theme="arcade"] .tutor-path-main :is(h1, h2, h3, h4) { text-shadow: none; }
+.app-shell[data-theme="arcade"] .tutor-path-main [class*="kicker"] { color: #872b25; }
+.app-shell[data-theme="arcade"] .tutor-path-main .tutor-deeper summary { color: #57331e; }
+.app-shell[data-theme="arcade"] .tutor-path-main .resource-mistake-item strong,
+.app-shell[data-theme="arcade"] .tutor-path-main .resource-encounter-heading strong,
+.app-shell[data-theme="arcade"] .tutor-path-main .resource-encounter-record header strong { color: #34251a; }
+.app-shell[data-theme="arcade"] .tutor-path-main .resource-mistake-item span,
+.app-shell[data-theme="arcade"] .tutor-path-main .resource-tags span,
+.app-shell[data-theme="arcade"] .tutor-path-main .resource-encounter-record header span,
+.app-shell[data-theme="arcade"] .tutor-path-main .resource-examples article > span { color: #674626; }
+.app-shell[data-theme="arcade"] .tutor-path-main .resource-encounter-record { background: #e4d4b6; border-color: #a88d63; }
+
+/* Combat workspaces keep navigation and settings without the duplicate HUD. */
+.forge-v2:is([data-view="forge"], [data-view="dungeon"]) { grid-template-rows: 0 40px 52px minmax(0, 1fr) 28px; }
+.forge-v2:is([data-view="forge"], [data-view="dungeon"]) > .topbar { display: none; }
+.forge-v2 > .surface-nav .surface-nav-tools { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); display: flex; align-items: center; gap: 6px; }
+.forge-v2 .surface-nav-tool { display: inline-grid; place-items: center; min-height: 34px; padding: 6px 9px; border: 2px solid var(--line2); background: var(--panel3); color: var(--muted); }
+.forge-v2 .surface-nav-tool:hover, .forge-v2 .surface-nav-tool:focus-visible { color: var(--gold); border-color: var(--gold); }
+.forge-v2 .surface-nav-settings { width: 34px; padding: 5px; }
+.forge-v2 .surface-nav-settings svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.6; }
+@media (max-width: 760px) { .forge-v2 > .surface-nav:has(.surface-nav-tools) { justify-content: flex-start; padding-right: 100px; } }
+.forge-v2:is([data-view="forge"], [data-view="dungeon"]) > .quest-banner { grid-row: 2; }
+
+/* Keep the HUD compact; detailed progress lives in Player Stats. */
+.forge-v2 .topbar { grid-template-columns: minmax(0, 1fr) auto; }
+.forge-v2 .topbar .hud-xp,
+.forge-v2 .topbar .top-stats > [data-stat-label]:not([data-stat-label="HP"]):not([data-stat-label="GOLD"]),
+.forge-v2 .topbar .top-stats > .rank-stat { display: none; }
+.forge-v2 .topbar .top-stats { display: flex; align-items: center; justify-content: flex-end; gap: 6px; }
+
+/* Bounty portraits use the existing encounter sprites, one animation frame. */
+.campaign-v1 .bounty-poster .poster-art { height: 110px; overflow: hidden; background: #302b30; }
+.campaign-v1 .bounty-poster .poster-mob-visual { position: absolute; inset: 0; display: grid; place-items: center; pointer-events: none; }
+.campaign-v1 .bounty-poster .poster-mob-sprite { display: block; height: 100%; aspect-ratio: 64 / 72; background-position: left center; background-size: 200% 100%; background-repeat: no-repeat; image-rendering: pixelated; }
+.campaign-v1 .bounty-poster .poster-mob-visual.silhouette { filter: brightness(0); opacity: .8; }
+.campaign-v1 .bounty-poster .poster-mob-fallback { height: 84%; fill: #685c5b; stroke: #302a29; stroke-width: 2; }
+.campaign-v1 .bounty-poster .poster-rank { z-index: 2; }
+.app-shell[data-theme="arcade"] .campaign-v1 .bounty-poster .poster-captured-stamp, .campaign-v1 .bounty-poster .poster-captured-stamp { position: absolute; z-index: 3; top: 42%; left: 50%; transform: translate(-50%, -50%) rotate(-13deg); padding: 5px 8px; border: 3px solid #e4524e; color: #ff7770; background: #40100dd9; box-shadow: 0 0 0 1px #4d1313; font: 900 clamp(11px, 1vw, 16px)/1 ui-monospace, monospace; letter-spacing: .08em; white-space: nowrap; pointer-events: none; }
+.app-shell[data-theme="arcade"] .campaign-v1 .bounty-poster.locked { opacity: .82; }
+.campaign-v1 .bounty-poster .poster-mob-visual.silhouette { filter: brightness(0) drop-shadow(0 0 2px #aa9c8c); opacity: 1; }
+
+/* Market controls share the game's pixel geometry and clear spacing. */
+.app-shell[data-theme="arcade"] [data-place="market"] :is(.campaign-button, .bench-tabs button, .market-category, .alchemy-beast-list button, .alchemy-region-menu button) {
+  border-radius: 0;
+  border-width: 2px;
+  font-family: var(--font-display);
+  font-size: 9px;
+  line-height: 1.6;
+  box-shadow: 3px 3px 0 var(--px-ink);
+}
+.app-shell[data-theme="arcade"] [data-place="market"] .campaign-button { min-height: 38px; padding: 9px 12px; border-color: var(--line2); background: var(--panel2); color: var(--text); }
+.app-shell[data-theme="arcade"] [data-place="market"] .campaign-button:not(.ghost):not(:disabled) { border-color: #fff1b8; background: var(--gold); color: #1d1240; }
+.app-shell[data-theme="arcade"] [data-place="market"] :is(.campaign-button, .bench-tabs button, .market-category, .alchemy-beast-list button, .alchemy-region-menu button):not(:disabled):hover { border-color: var(--gold); filter: brightness(1.08); }
+.app-shell[data-theme="arcade"] [data-place="market"] button:focus-visible { outline: 2px solid var(--gold); outline-offset: 3px; }
+.app-shell[data-theme="arcade"] [data-place="market"] :is(.bench-tabs button.active, .market-category.active, .alchemy-beast-list button.active, .alchemy-region-menu button.active) { border-color: var(--gold); color: var(--gold2); }
+.app-shell[data-theme="arcade"] [data-place="market"] :is(.market-greeting-copy, .market-greeting-purse, .market-category-rail, .market-lot-list, .market-item-detail, .market-purse-pill, .alchemy-picker, .alchemy-selection, .alchemy-recipe) { border-radius: 0; }
+.app-shell[data-theme="arcade"] [data-place="market"] .alchemy-region-select summary { border-radius: 0; border-width: 2px; box-shadow: 3px 3px 0 var(--px-ink); }
+.app-shell[data-theme="arcade"] [data-place="market"] .market-lot-row { border-radius: 0; }
+.app-shell[data-theme="arcade"] [data-place="market"] .market-bottom { display: grid; justify-items: start; gap: 16px; margin-top: 18px; padding-bottom: 6px; }
+.app-shell[data-theme="arcade"] [data-place="market"] .market-bottom .campaign-stat-row { width: 100%; margin: 0; }
+.app-shell[data-theme="arcade"] [data-place="market"] .market-greeting-doors, .app-shell[data-theme="arcade"] [data-place="market"] .market-browser-actions { gap: 10px; }
+.app-shell[data-theme="arcade"] [data-place="market"] .bench-tabs { gap: 10px; padding-bottom: 4px; }
+
+/* Market lots: visual inventory on the left, one readable detail on the right. */
+.app-shell[data-theme="arcade"] [data-place="market"] :is(.campaign-place-panel, .campaign-stat-row > span, .market-vendor-scene, .vendor-counter, .vendor-nameplate, .market-greeting-purse, .market-greeting-copy, .market-purse-pill, .market-category-rail, .market-lot-list, .market-item-detail, .market-detail-facts span, .campaign-market-footer, .alchemy-region-menu, .alchemy-recipe, .armoury-lot-card, .armoury-lot-detail) { border-radius: 0; }
+.market-coin-icon { display: inline-block; width: 15px; height: 15px; vertical-align: -.2em; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.armoury-controls { display: flex; flex-wrap: wrap; align-items: start; justify-content: space-between; gap: 12px; }
+.armoury-lots-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(250px, 330px); gap: 12px; min-width: 0; }
+.armoury-lot-catalog { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); align-content: start; gap: 10px; max-height: 580px; overflow-y: auto; padding: 10px; border: 2px solid var(--line2); background: #110e1b; scrollbar-width: thin; scrollbar-color: #b69a63 #17142a; }
+.app-shell[data-theme="arcade"] [data-place="market"] .armoury-lot-card { display: grid; align-content: start; gap: 8px; min-width: 0; padding: 10px; text-align: left; border: 2px solid var(--line2); background: var(--panel2); color: var(--text); cursor: pointer; }
+.app-shell[data-theme="arcade"] [data-place="market"] .armoury-lot-card.active, .app-shell[data-theme="arcade"] [data-place="market"] .armoury-lot-card:hover { border-color: var(--gold); }
+.armoury-lot-card.locked { opacity: .65; }
+.armoury-lot-art { display: grid; place-items: center; width: 100%; height: 100px; border: 1px solid #65557b; background: #171323; color: #c7ad78; }
+.armoury-lot-art img { max-width: 90%; max-height: 94%; object-fit: contain; image-rendering: pixelated; }
+.armoury-lot-art svg { width: 48px; height: 48px; fill: none; stroke: currentColor; stroke-width: 1.5; }
+.armoury-lot-copy { display: grid; gap: 5px; min-width: 0; }
+.armoury-lot-copy strong { color: #f0e4d2; line-height: 1.3; }
+.armoury-lot-copy small, .armoury-lot-detail > small { color: #b9a9bd; }
+.armoury-lot-price, .armoury-detail-price strong { color: #f1cf7c; }
+.armoury-lot-detail { display: grid; align-content: start; gap: 12px; min-width: 0; padding: 16px; border: 2px solid #80683d; background: #1d1827; }
+.armoury-lot-detail .armoury-lot-art { height: 150px; }
+.armoury-lot-detail h3, .armoury-lot-detail p { margin: 0; }
+.armoury-lot-flavour { color: #b9a9bd; font-style: italic; }
+.armoury-detail-price { display: flex; justify-content: space-between; padding: 10px; border: 1px solid #66536d; }
+@media (max-width: 900px) { .armoury-lots-layout { grid-template-columns: 1fr; } .armoury-lot-catalog { max-height: 360px; } }
+.app-shell[data-theme="arcade"] .campaign-v1 .campaign-place-panel[data-place="market"] { border-radius: 0; }
+.app-shell[data-theme="arcade"] [data-place="market"] :is(.vendor-nameplate, .market-detail-icon, .market-lot-icon, .market-greeting-copy, .market-greeting-purse, .market-detail-facts span, .market-category, .market-lot-row, .alchemy-beast-list button) { border-radius: 0; }
+
+/* The hands-on Study workspaces use the same unobstructed HUD as combat. */
+.forge-v2:has(.resource-tutor-screen[data-study-surface="ide"]),
+.forge-v2:has(.resource-tutor-screen[data-study-surface="spar"]),
+.forge-v2[data-view="practice"] { grid-template-rows: 0 40px 52px minmax(0, 1fr) 28px; }
+.forge-v2:has(.resource-tutor-screen[data-study-surface="ide"]) > .topbar,
+.forge-v2:has(.resource-tutor-screen[data-study-surface="spar"]) > .topbar,
+.forge-v2[data-view="practice"] > .topbar { display: none; }
+
+/* Map artwork is not a 16px interface icon, and its pins have their own frame. */
+.app-shell[data-theme="arcade"] .delve-world-map svg.delve-map-terrain { width: 100%; height: 100%; }
+.app-shell[data-theme="arcade"] .delve-world-map button.delve-map-node { box-shadow: none; border: 0; background: transparent; }
+@media (max-width: 520px) {
+  .app-shell[data-theme="arcade"] .delve-world-map button.delve-map-node { font-size: 10px; max-width: 62px; line-height: 1; }
+  .app-shell[data-theme="arcade"] .delve-world-map button.delve-map-node:nth-of-type(8) { left: 86% !important; }
+  .app-shell[data-theme="arcade"] .delve-map-caption small { display: none; }
+}
+/* Keep map pins centered on their geographic point during hover and press. */
+.app-shell[data-theme="arcade"] .delve-world-map button.delve-map-node,
+.app-shell[data-theme="arcade"] .delve-world-map button.delve-map-node:hover,
+.app-shell[data-theme="arcade"] .delve-world-map button.delve-map-node:active { transform: translate(-50%, -50%); }
+/* Illustrated world chart with an independent, accessible marker layer. */
+.app-shell .delve-world-map { background: #10192b url('/campaign-art/maps/dungeon-world.png') center / 100% 100% no-repeat; }
+.app-shell .delve-map-node > span:last-child { padding: 2px 4px; background: #100e18d9; }
+.app-shell .delve-map-caption { padding: 6px 8px; background: #100e18c9; }
+@media (max-width: 520px) { .app-shell .delve-world-map { min-height: 300px; } }
+
+/* Landmark pins reveal a small name only when inspected; details stay in the side panel. */
+.app-shell[data-theme="arcade"] .delve-world-map button.delve-map-node { z-index: 1; width: 34px; height: 34px; max-width: none; padding: 0; overflow: visible; }
+.app-shell[data-theme="arcade"] .delve-world-map button.delve-map-node:is(:hover, :focus-visible) { z-index: 3; }
+.app-shell .delve-map-marker { width: 30px; height: 30px; border: 2px solid #dfbf76; background: #1b1b27e8; box-shadow: 2px 2px #110e18; }
+.app-shell .delve-map-marker svg { width: 20px; height: 20px; fill: none; stroke: #f7dfa4; stroke-width: 1.7; stroke-linecap: square; stroke-linejoin: miter; }
+.app-shell .delve-map-node > .delve-map-label { position: absolute; top: calc(100% + 5px); left: 50%; width: max-content; max-width: 145px; padding: 4px 7px; transform: translateX(-50%); background: #100e18ee; border: 1px solid #ad9160; color: #fff0cc; opacity: 0; visibility: hidden; pointer-events: none; }
+.app-shell .delve-map-node:is(:hover, :focus-visible) > .delve-map-label { opacity: 1; visibility: visible; }
+.app-shell .delve-map-node:nth-of-type(8) > .delve-map-label { left: auto; right: 0; transform: none; }
+/* Keep the quest strip in its own row when the Study HUD is hidden. */
+.forge-v2:has(.resource-tutor-screen[data-study-surface="ide"]) > .quest-banner,
+.forge-v2:has(.resource-tutor-screen[data-study-surface="spar"]) > .quest-banner,
+.forge-v2[data-view="practice"] > .quest-banner { grid-row: 2; }
+
+/* Regional art sets the place without competing with the actionable route. */
+.forge-v2.dungeon-mode .dungeon-map-panel:has(.grid-floor) .grid-floor { background-image: linear-gradient(#100e20d9, #100e20e8), var(--dungeon-region-art, none); background-size: cover; background-position: center; }
+.forge-v2.dungeon-mode .dungeon-room-illustration.has-region-art { display: block; height: 180px; border: 2px solid var(--dungeon-line-bright); background-image: linear-gradient(0deg, #100e20ed, transparent 62%), var(--dungeon-region-art); background-size: cover; background-position: center; }
+.forge-v2.dungeon-mode .dungeon-room-illustration.has-region-art .dungeon-room-orbit { display: none; }
+.forge-v2.dungeon-mode .dungeon-room-illustration.has-region-art > svg:not(.dungeon-region-scene) { position: absolute; top: 12px; left: 12px; width: 25px; height: 25px; padding: 5px; background: #100e20d9; border: 1px solid #ac955d; }
+.forge-v2.dungeon-mode .dungeon-room-illustration.has-region-art small { left: 12px; right: 12px; bottom: 10px; color: #fff0cc; line-height: 1.5; text-shadow: 1px 1px #08070e; }
+/* The eight matching landscape panels share one source atlas. */
+.forge-v2.dungeon-mode .dungeon-map-panel:has(.grid-floor) .grid-floor { background-size: cover, 400% 200%; background-position: center, var(--dungeon-region-position, center); background-repeat: no-repeat; }
+.forge-v2.dungeon-mode .dungeon-room-illustration.has-region-art { background-size: cover, 400% 200%; background-position: center, var(--dungeon-region-position, center); background-repeat: no-repeat; }
+
+/* Render atlas panels through an SVG viewport so neither axis is stretched. */
+.forge-v2.dungeon-mode .dungeon-map-panel:has(.grid-floor) .grid-floor { background-image: none; overflow: hidden; }
+.forge-v2.dungeon-mode .dungeon-room-illustration.has-region-art { background-image: none; isolation: isolate; }
+.forge-v2.dungeon-mode .dungeon-room-illustration.has-region-art > svg.dungeon-region-scene,
+.forge-v2.dungeon-mode .dungeon-proto-map.grid-floor > svg.dungeon-region-scene { position: absolute; inset: 0; width: 100%; height: 100%; padding: 0; border: 0; background: none; filter: none; pointer-events: none; }
+.forge-v2.dungeon-mode .dungeon-proto-map.grid-floor > svg.dungeon-region-scene { z-index: 0; opacity: .19; }
+.forge-v2.dungeon-mode .dungeon-room-illustration.has-region-art > svg.dungeon-region-scene { z-index: 0; }
+.forge-v2.dungeon-mode .dungeon-room-illustration.has-region-art::after { content: ''; position: absolute; inset: 0; z-index: 0; background: linear-gradient(0deg, #100e20ed, transparent 62%); pointer-events: none; }
+.forge-v2.dungeon-mode .dungeon-room-illustration.has-region-art > svg:not(.dungeon-region-scene),
+.forge-v2.dungeon-mode .dungeon-room-illustration.has-region-art small { z-index: 1; }

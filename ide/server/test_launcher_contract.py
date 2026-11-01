@@ -94,7 +94,12 @@ class LauncherContractTests(unittest.TestCase):
         source = ROOT / "progress.json"
         before = source.read_bytes()
 
-        result = simulator.run_simulation(source)
+        # The source is a real authored save, so its bounded projection must
+        # use the shipped campaign definitions, not the legacy test fixture.
+        from ide.server import state
+        with patch.object(state, 'CAMPAIGN_BOUNTIES_PATH', None), patch.object(state, 'CAMPAIGN_CONTENT_DIR', ROOT / 'ide' / 'server' / 'campaigns'):
+            state._CAMPAIGN_CACHE.update(key=None, data={})
+            result = simulator.run_simulation(source)
 
         self.assertTrue(result["ok"])
         self.assertEqual(result["source_digest_before"], result["source_digest_after"])

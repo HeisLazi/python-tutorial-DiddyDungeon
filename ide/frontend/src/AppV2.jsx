@@ -387,7 +387,7 @@ function questLine(progress) {
   const mobs = Array.isArray(project?.mobs) ? project.mobs : []
   const next = mobs.find((mob) => mob?.status === 'available')
   if (project && next && project.boss_status !== 'available') return `${project.name || project.branch}: next bounty, ${next.name}. Then face ${project.boss || 'the boss'}.`
-  if (project && !project.completed && mobs.length && mobs.every((mob) => mob?.status === 'defeated' || mob?.status === 'cleared')) return `${project.name || project.branch}: the board is clear. Face ${project.boss || 'the boss'} in the Forge.`
+  if (project && !project.completed && mobs.length && mobs.every((mob) => mob?.status === 'defeated' || mob?.status === 'cleared')) return `${project.name || project.branch}: the board is clear. Face ${project.boss || 'the boss'} in the Hunt.`
   return progress?.current_quest || 'Choose a quest.'
 }
 
@@ -510,7 +510,7 @@ function AppV2() {
   // shown while a model call runs; state writes pause until it clears.
   const [aiTutor, setAiTutor] = useState({ loaded: false, settings: null, opencode: null })
   const [pyrThinking, setPyrThinking] = useState('')
-  // Forge PYR panel log (OpenCode mode): questions, replies and verdicts.
+  // Hunt PYR panel log (OpenCode mode): questions, replies and verdicts.
   const [pyrLog, setPyrLog] = useState([])
   const pushPyrLog = (entry) => setPyrLog((current) => [...current, { id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`, ...entry }].slice(-40))
   const [themeChoice, setThemeChoice] = usePersistentState('questlab.themeChoice', '')
@@ -572,7 +572,7 @@ function AppV2() {
   }, [])
   const progress = campaign?.progress || {}
   const player = progress.player || {}
-  // The active campaign project decides which file the Forge opens; a boss
+  // The active campaign project decides which file the Hunt opens; a boss
   // clear moves the campaign on to the next project and its entry file.
   const activeProjectInfo = (progress.projects || []).find((project) => project.status === 'active') || {}
   const activeEntryFile = typeof activeProjectInfo.entry_file === 'string' ? activeProjectInfo.entry_file : ''
@@ -624,7 +624,7 @@ function AppV2() {
     : (themeChoice || 'arcade')
   const terminalSkin = equipped.terminal || 'terminal-charcoal'
   // Tutor is now a self-contained resource surface (Codex → IDE → notes).
-  // Forge remains the only route that owns the outer editor grid; keeping the
+  // Hunt remains the only route that owns the outer editor grid; keeping the
   // tutor editor mounted here would render the old duplicate surface beside
   // the new prototype port.
   const showEditor = activeView === 'forge'
@@ -633,13 +633,13 @@ function AppV2() {
   const aiRouteHidden = ['hub', 'character', 'codex', 'tutor', 'homestead', 'settings', 'dungeon'].includes(activeView)
   const hubMode = activeView === 'hub'
   // Codex is a reading room, not another editor-column panel. Keep its
-  // active-quest rail inside the folio while giving the book the full Forge
+  // active-quest rail inside the folio while giving the book the full Hunt
   // viewport so the page cannot collapse into a narrow infinite-feed shape.
   const wideSurface = ['hub', 'character', 'homestead', 'codex', 'tutor', 'settings'].includes(activeView)
   // Historical contract marker: the original wide route set was
   // const wideSurface = ['hub', 'character', 'homestead', 'codex', 'settings']
   // Tutor is intentionally included now because it owns the full resource
-  // reader/IDE surface rather than the legacy Forge editor grid.
+  // reader/IDE surface rather than the legacy Hunt editor grid.
   const dungeonSurface = activeView === 'dungeon'
   const aiGridVisible = showAiTerminal && !aiRouteHidden && !zenMode
   const aiVisible = showAiTerminal && (!aiRouteHidden || aiPopoverOpen)
@@ -1273,7 +1273,7 @@ function AppV2() {
   }
 
   // Files made in the terminal (touch notes.md, mkdir tests) show up on
-  // their own: while the Forge is open the tree is re-read every few
+  // their own: while the Hunt is open the tree is re-read every few
   // seconds and when the window regains focus. It only replaces the list
   // when something changed and never switches the open file.
   const filesSignatureRef = useRef('')
@@ -1396,7 +1396,7 @@ function AppV2() {
     if (!/\.(py|md)$/i.test(path) || filename === 'tutor.py' || filename === 'dungeon.py') {
       throw new Error('Open the campaign .py or README .md file this goal is graded on, then submit it.')
     }
-    if (!String(code || '').trim()) throw new Error('Save or write evidence in the active Forge file before submitting it.')
+    if (!String(code || '').trim()) throw new Error('Save or write evidence in the active Hunt file before submitting it.')
     return { path, answer: String(code) }
   }
 
@@ -1429,7 +1429,7 @@ function AppV2() {
       `Evidence ID: ${submission.evidence_id}`,
       `Answer digest: ${submission.answer_digest}`,
       '',
-      `Active Forge file (${forge.path}) — submit this file as the player evidence:`,
+      `Active Hunt file (${forge.path}) — submit this file as the player evidence:`,
       '```text',
       forge.answer.trim(),
       '```',
@@ -1497,7 +1497,7 @@ function AppV2() {
       `Evidence ID: ${submission.evidence_id}`,
       `Answer digest: ${submission.answer_digest}`,
       '',
-      `Active Forge file (${forge.path}) — submit this file as the player evidence:`,
+      `Active Hunt file (${forge.path}) — submit this file as the player evidence:`,
       '```text',
       forge.answer.trim(),
       '```',
@@ -1532,7 +1532,7 @@ function AppV2() {
   }
 
   const submitCampaignRun = async () => {
-    if (activeView !== 'forge') throw new Error('Open Forge before submitting the campaign file.')
+    if (activeView !== 'forge') throw new Error('Open Hunt before submitting the campaign file.')
     const encounter = campaign?.encounter || {}
     const bossMode = encounter.status === 'boss_available' || encounter.boss_status === 'available'
     if (bossMode) return submitBoss()
@@ -1566,6 +1566,16 @@ function AppV2() {
       setBusy(true)
       try {
         const result = await api('/api/spar/answer-code', { method: 'POST', body: JSON.stringify({ target_id: targetId, code }) })
+        await refreshCampaign({ silent: true })
+        return result
+      } finally {
+        setBusy(false)
+      }
+    },
+    answerText: async (targetId, answer) => {
+      setBusy(true)
+      try {
+        const result = await api('/api/spar/answer-text', { method: 'POST', body: JSON.stringify({ target_id: targetId, answer }) })
         await refreshCampaign({ silent: true })
         return result
       } finally {
@@ -1739,7 +1749,7 @@ function AppV2() {
         window.localStorage.setItem('questlab.hasLaunched', '1')
         window.localStorage.setItem('questlab.lastSeenAt', String(Date.now()))
       } catch {
-        // Preferences are best-effort and must not block the Forge.
+        // Preferences are best-effort and must not block the Hunt.
       }
     }
     touch()
@@ -1860,7 +1870,7 @@ function AppV2() {
     const previousQuestionId = dungeonQuestionRef.current
     const questionRotated = Boolean(previousQuestionId && questionId && previousQuestionId !== questionId)
     dungeonQuestionRef.current = questionId
-    if (questionRotated || !dungeonDirtyRef.current || !snapshot?.active) {
+    if (questionRotated || !questionId || !dungeonDirtyRef.current || !snapshot?.active) {
       const nextContent = snapshot?.active ? snapshot.editor_content || '' : ''
       dungeonCodeRef.current = nextContent
       setDungeonCode(nextContent)
@@ -2026,7 +2036,7 @@ function AppV2() {
   }
 
   const openQuestDocument = () => {
-    if (dirty && !window.confirm('Discard unsaved Forge edits before opening the state-owned quest view?')) return
+    if (dirty && !window.confirm('Discard unsaved Hunt edits before opening the state-owned quest view?')) return
     setEditorMode('quest')
     editorSelectionRef.current = ''
     setDirty(false)
@@ -2140,7 +2150,7 @@ function AppV2() {
     const labels = { rest: 'Rest', bandage: 'Bandage', tonic: 'Tonic', cook: 'Cooked ration', sharpen: 'Sharpened edge', fortify: 'Fortified armor' }
     return `${labels[action] || action} complete${result.healed ? ` · +${result.healed} HP` : ''}. One campsite action used.`
   })
-  const revealDungeonRisk = (runId) => dungeonAction('/api/dungeon/risk/reveal', { run_id: runId }, () => 'Vision scroll consumed. The risk profile is now visible.')
+  const revealDungeonRisk = (runId) => dungeonAction('/api/dungeon/map/reveal', { run_id: runId }, (result) => result.revealed ? 'Vision scroll consumed. The floor map is revealed.' : 'This floor is already revealed.')
   const enterDungeonRisk = (runId) => dungeonAction('/api/dungeon/risk/enter', { run_id: runId }, (result) => DUNGEON_RISK_OUTCOMES[result.risk_kind] || 'The fate is sealed. Choose your next room.')
   const buyDungeonItem = (runId, itemId) => dungeonAction('/api/dungeon/market', { run_id: runId, item_id: itemId }, (result) => `Bought ${result.item?.name || itemId} for run currency.`)
   // A clicked option is graded instantly by the server's hidden key; a
@@ -2262,7 +2272,7 @@ function AppV2() {
   }
 
   useEffect(() => {
-    if (activeView !== 'dungeon' || !dungeon.active || !dungeonDirty || dungeonSaving || pyrThinking) return undefined
+    if (activeView !== 'dungeon' || !dungeon.active || !dungeon.question?.id || !dungeonDirty || dungeonSaving || pyrThinking) return undefined
     const timer = window.setTimeout(() => {
       void saveDungeon()
     }, 1000)
@@ -2654,7 +2664,7 @@ function AppV2() {
     setLeftWidth(300)
     setRightWidth(410)
     setTerminalHeight(245)
-    setNotice('Forge panel layout reset.')
+    setNotice('Hunt panel layout reset.')
   }
 
   const dismissSplash = () => {
@@ -2763,7 +2773,7 @@ function AppV2() {
 
   const signIn = ({ email, password }) => accountAction(() => syncEngine.signIn(email, password), 'Signed in. This device is registered.')
   const signUp = ({ email, password, displayName }) => accountAction(() => syncEngine.signUp(email, password, displayName), 'Account created. Check your email if confirmation is required.')
-  const signOut = () => accountAction(() => syncEngine.signOut(), 'Signed out. Forge stays available locally.')
+  const signOut = () => accountAction(() => syncEngine.signOut(), 'Signed out. Hunt stays available locally.')
   const saveDeviceLabel = (label) => accountAction(() => syncEngine.setDeviceLabel(label), 'Device name saved.')
   const resolveCloudConflict = (choice) => accountAction(() => syncEngine.resolveConflict(choice), choice === 'cloud' ? 'Cloud campaign copy applied.' : 'This device campaign copy published.')
 
@@ -2847,9 +2857,9 @@ function AppV2() {
         <div className={`launch-splash ${splashClosing ? 'is-closing' : ''}`} role="dialog" aria-modal="true" aria-label="Welcome to Python Quest Lab">
           <div className="launch-splash-mark" aria-hidden="true"><StatIcon name="flame" /></div>
           <span className="screen-kicker">PYTHON QUEST LAB</span>
-          <h2>{initialLaunch.returning ? `Welcome back, ${welcomeName}` : 'Welcome to the Forge'}</h2>
+          <h2>{initialLaunch.returning ? `Welcome back, ${welcomeName}` : 'Welcome to the Hunt'}</h2>
           <p>{initialLaunch.returning ? 'Your campaign, notes and checkpoint are waiting. Resume exactly where you left off.' : 'Your campaign, notes and checkpoint are ready. The shell and AI sessions stay connected while this welcome screen is open.'}</p>
-          <button className="primary" type="button" onClick={dismissSplash} disabled={splashClosing}>{splashClosing ? 'Opening…' : 'Enter Forge'}</button>
+          <button className="primary" type="button" onClick={dismissSplash} disabled={splashClosing}>{splashClosing ? 'Opening…' : 'Enter Hunt'}</button>
         </div>
       )}
       <RewardQueue items={rewardQueue} />
@@ -2865,7 +2875,7 @@ function AppV2() {
           <div className="boss-card">
             <span className="screen-kicker">BOSS GATE OPEN</span>
             <h2>⚔ {campaign?.encounter?.boss || 'The boss'} awaits</h2>
-            <p>Every bounty on this board is cleared. This boss has its own gauntlet: coding phases you Submit run in the Forge, and questions about your own code you answer in the left sidebar. Watch its phases on the left.</p>
+            <p>Every bounty on this board is cleared. This boss has its own gauntlet: coding phases you Submit run in the Hunt, and questions about your own code you answer in the left sidebar. Watch its phases on the left.</p>
             <p>During the fight you can read lessons and the bestiary. Leaving for Home or another activity resets the boss to its first phase.</p>
             <button className="primary" type="button" onClick={beginBossFight} disabled={bossTransitionBusy} autoFocus>{bossTransitionBusy ? 'Entering…' : 'Fight'}</button>
             <button type="button" onClick={() => setActiveView('hub')} disabled={bossTransitionBusy}>Prepare at Home first</button>
@@ -2885,7 +2895,7 @@ function AppV2() {
       )}      <header className="topbar">
         <div className="brand-lockup">
           <div className="eyebrow">PYTHON QUEST LAB</div>
-          <h1>Forge</h1>
+          <h1>Hunt</h1>
         </div>
         <div className="hud-xp">
           <div><strong>{campaignReady ? `LV ${player.level ?? 1}` : 'SYNCING'}</strong><span>{campaignReady ? (player.title || 'Apprentice Coder') : 'Campaign state'}</span></div>
@@ -2932,7 +2942,7 @@ function AppV2() {
         <div className="git-pill">{campaignReady ? `${git.branch || 'no branch'} · ${git.dirty_count ?? 0} changes` : 'campaign unavailable'}</div>
       </div>
 
-      <SurfaceNavigation activeView={activeView} onNavigate={setActiveView} />
+      <SurfaceNavigation activeView={activeView} onNavigate={setActiveView} showSettings={['forge', 'dungeon'].includes(activeView)} showAiToggle={['forge', 'dungeon'].includes(activeView) && showAiTerminal && aiRouteHidden} aiOpen={aiPopoverOpen} onToggleAi={() => setAiPopoverOpen((open) => !open)} zenMode={['forge', 'dungeon'].includes(activeView) && zenMode} onExitZen={() => setZenMode(false)} />
 
       <main className="workspace-grid" style={gridStyle}>
         {!wideSurface && !dungeonSurface && !zenMode && <aside className={`left-panel panel ${leftPanelCollapsed ? 'left-panel-compact' : ''}`}>
@@ -3064,7 +3074,7 @@ function AppV2() {
           <TerminalPane
             ref={shellTerminalRef}
             role="shell"
-            banner="Forge shell connected."
+            banner="Hunt shell connected."
             fontSize={terminalFontSize}
             skin={terminalSkin}
             onStateChange={setShellState}
@@ -3086,6 +3096,7 @@ function AppV2() {
               dungeonEditorContent={dungeonCode}
               onDungeonEditorChange={(value) => {
                 const nextContent = value ?? ''
+                if (!dungeon.question?.id || nextContent === dungeonCodeRef.current) return
                 dungeonCodeRef.current = nextContent
                 setDungeonCode(nextContent)
                 setDungeonDirty(true)
@@ -3131,7 +3142,7 @@ function AppV2() {
               selectCampaign={selectCampaign}
               hunter={campaign?.hunter_projection}
               spendStatPoint={spendStatPoint}
-              settingsAi={{ aiTutor, refreshAiTutor, saveAiSettings }}
+              settingsAi={{ aiTutor, refreshAiTutor, saveAiSettings, activity }}
               runtime={runtime}
               busy={busy || Boolean(pyrThinking)}
               preferences={preferences}
@@ -3223,6 +3234,7 @@ function AppV2() {
       </main>
 
       <footer className="statusbar">
+        {import.meta.env.VITE_QUESTLAB_TEST_UNLOCKS === '1' && <strong style={{ color: '#ffcd4b' }}>TEST SAVE · ALL GEAR UNLOCKED</strong>}
         <span>{notice || `Runtime: ${runtime?.shell || 'checking shell…'}`}</span>
         <span className={`runtime-identity ${runtimeContractMissing || runtimeMismatch || runtimeStale || runtimeBuildMismatch ? 'warning' : ''}`} title={runtime?.repo_root || ''}>
           {runtimeContractMissing

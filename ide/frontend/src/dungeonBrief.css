@@ -265,3 +265,54 @@
 /* The shell column never grows to a child's min-content (Monaco keeps a pixel width). */
 .app-shell { grid-template-columns: minmax(0, 1fr); }
 .app-shell > .workspace-grid { min-width: 0; }
+
+/* A hunter's chart: select the destination on the map, inspect it alongside. */
+.delve-map-screen { width: min(1320px, calc(100% - 32px)); margin: 20px auto; gap: 16px; }
+.delve-map-heading { display: flex; align-items: end; justify-content: space-between; gap: 20px; }
+.delve-map-heading h2 { margin: 8px 0; color: var(--dungeon-text); font-size: 25px; }
+.delve-map-heading p { color: var(--dungeon-muted); margin: 0; }
+.delve-map-layout { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 14px; align-items: stretch; }
+.delve-world-map { position: relative; min-height: 480px; overflow: hidden; border: 3px solid #7e653d; box-shadow: inset 0 0 0 3px #241b1a, 4px 4px 0 #100e18; background: #242738; }
+.delve-map-terrain { position: absolute; inset: 0; width: 100%; height: 100%; }
+.delve-land { fill: #514b3f; stroke: #92805a; stroke-width: 4; }
+.delve-water { fill: none; stroke: #363d4a; stroke-width: 5; opacity: .7; }
+.delve-roads { fill: none; stroke: #b7a174; stroke-width: 3; stroke-dasharray: 7 7; opacity: .65; }
+.delve-map-caption { position: absolute; z-index: 1; top: 14px; left: 17px; display: grid; gap: 5px; color: #f1d493; font: 9px/1.5 'Press Start 2P', monospace; text-shadow: 2px 2px #171319; }
+.delve-map-caption small { color: #bcb19a; font: 14px var(--font-body, monospace); }
+.delve-map-node { position: absolute; z-index: 1; display: grid; justify-items: center; gap: 4px; max-width: 125px; padding: 2px; transform: translate(-50%, -50%); border: 0; background: transparent; color: #f2e3bd; font: 13px/1.05 var(--font-body, monospace); text-shadow: 2px 2px #171319, -1px -1px #171319; cursor: pointer; }
+.delve-map-marker { display: grid; place-items: center; width: 28px; height: 28px; border: 2px solid #bba06c; background: #2c2530; color: #eed08c; box-shadow: 2px 2px #16121a; font-size: 17px; }
+.delve-map-node:hover .delve-map-marker, .delve-map-node.selected .delve-map-marker, .delve-map-node:focus-visible .delve-map-marker { border-color: #fff0ae; background: #805538; color: #fff6c6; box-shadow: 0 0 0 3px #dfad52, 2px 2px #16121a; }
+.delve-map-node:focus-visible, .delve-open-route:focus-visible { outline: 2px solid #fff0ae; outline-offset: 4px; }
+.delve-open-route { position: absolute; right: 12px; bottom: 12px; padding: 8px 11px; border: 2px solid #9e8555; background: #201b25; color: #f2d69a; font: inherit; cursor: pointer; }
+.delve-open-route.selected { border-color: #ffdc74; background: #57402d; }
+.delve-map-detail { display: flex; flex-direction: column; gap: 13px; padding: 20px; border: 2px solid var(--dungeon-line-bright); background: var(--dungeon-panel); color: var(--dungeon-text); }
+.delve-map-detail h3 { margin: 0; font-size: 22px; }
+.delve-map-detail p { margin: 0; color: var(--dungeon-muted); line-height: 1.4; }
+.delve-danger { display: flex; justify-content: space-between; border-block: 1px solid var(--dungeon-line); padding: 10px 0; }
+.delve-danger strong { color: var(--dungeon-gold); letter-spacing: 3px; }
+.delve-detail-label { color: var(--dungeon-muted); font-size: 11px; letter-spacing: .08em; }
+.delve-map-detail ul { display: grid; gap: 9px; margin: 0; padding: 0; list-style: none; }
+.delve-map-detail li { display: flex; justify-content: space-between; gap: 8px; }
+.delve-map-detail li strong { flex: none; color: var(--dungeon-gold); font-size: 12px; }
+.delve-detail-boss { display: grid; gap: 5px; padding-top: 12px; border-top: 1px solid var(--dungeon-line); }
+.delve-detail-footer { display: grid; gap: 10px; margin-top: auto; padding-top: 16px; border-top: 1px solid var(--dungeon-line); }
+.delve-detail-footer small { color: var(--dungeon-gold); }
+.delve-detail-footer p { font-size: 13px; }
+@media (max-width: 800px) { .delve-map-layout { grid-template-columns: 1fr; } .delve-world-map { min-height: 400px; } .delve-map-detail { min-height: 280px; } }
+@media (max-width: 520px) { .delve-map-heading { align-items: start; flex-direction: column; } .delve-world-map { min-height: 360px; } .delve-map-node { font-size: 10px; max-width: 68px; } .delve-map-marker { width: 24px; height: 24px; } }
+
+/* Keep long inventories inside the character panel while tabs stay in place. */
+.dungeon-screen-shell .dungeon-inventory-list {
+  max-height: clamp(240px, 43vh, 540px);
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+  align-content: start;
+  padding-right: 8px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--dungeon-line-bright) var(--dungeon-panel-3);
+}
+.dungeon-screen-shell .dungeon-inventory-list:focus-visible { outline: 2px solid var(--dungeon-gold); outline-offset: 2px; }
+.dungeon-screen-shell .dungeon-inventory-list::-webkit-scrollbar { width: 9px; }
+.dungeon-screen-shell .dungeon-inventory-list::-webkit-scrollbar-track { background: var(--dungeon-panel-3); }
+.dungeon-screen-shell .dungeon-inventory-list::-webkit-scrollbar-thumb { background: var(--dungeon-line-bright); border: 2px solid var(--dungeon-panel-3); }

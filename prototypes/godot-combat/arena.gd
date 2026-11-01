@@ -9,6 +9,19 @@ const LIVE_ENEMIES := {
  "forked-path": preload("res://art/live-fork.png"),
  "mimic-matriarch": preload("res://art/live-matriarch.png"),
 }
+const REGION_BACKDROPS := {
+	"basics": preload("res://art/basics-village.png"),
+	"collections": preload("res://art/collection-caves.png"),
+}
+const ANIMATED_ENEMIES := {
+	"wraith": {"action": preload("res://art/wraith-v2-sheet.png"), "hurt": preload("res://art/wraith-v2-hurt-sheet.png"), "scale": 1.5},
+	"drowner": {"action": preload("res://art/drowner-sheet.png"), "hurt": preload("res://art/drowner-hurt-sheet.png"), "scale": 1.5},
+	"ghoul": {"action": preload("res://art/ghoul-sheet.png"), "hurt": preload("res://art/ghoul-hurt-sheet.png"), "scale": 1.5},
+	"loaded-die": {"action": preload("res://art/loaded-die-sheet.png"), "hurt": preload("res://art/loaded-die-hurt-sheet.png"), "scale": 1.4},
+	"forked-path": {"action": preload("res://art/forked-path-sheet.png"), "hurt": preload("res://art/forked-path-hurt-sheet.png"), "scale": 1.5},
+	"mimic-matriarch": {"action": preload("res://art/matriarch-sheet.png"), "hurt": preload("res://art/matriarch-hurt-sheet.png"), "scale": 1.9},
+	"drowned-hoard": {"action": preload("res://art/drowned-hoard-sheet.png"), "hurt": preload("res://art/drowned-hoard-hurt-sheet.png"), "scale": 1.9},
+}
 const CRYPT: Texture2D = preload("res://art/crypt.png")
 const MIMIC: Texture2D = preload("res://art/mimic-action-sheet.png")
 const MIMIC_HURT: Texture2D = preload("res://art/mimic-hurt-sheet.png")
@@ -18,6 +31,8 @@ const HOLLOW_HURT: Texture2D = preload("res://art/hollow-hurt-sheet.png")
 var embedded := false
 var unarmed := false
 var live_enemy_id := "string-mimic"
+var live_region_id := ""
+var region_lights: Array[PointLight2D] = []
 var bridge_callback: JavaScriptObject
 var last_turn_id := ""
 var pending_live_turns: Array[Dictionary] = []
@@ -107,6 +122,24 @@ func build_scene() -> void:
 		light.energy = 0.65
 		add_child(light)
 		dungeon_decor.append(light)
+	# Location lights are separate Godot nodes, gently breathing over the art.
+	for p in [Vector2(58, 70), Vector2(260, 70)]:
+		var gradient := Gradient.new()
+		gradient.set_color(0, Color(1.0, 0.65, 0.32, 0.6))
+		gradient.set_color(1, Color(1.0, 0.4, 0.15, 0.0))
+		var texture := GradientTexture2D.new()
+		texture.width = 128
+		texture.height = 128
+		texture.fill = GradientTexture2D.FILL_RADIAL
+		texture.fill_from = Vector2(0.5, 0.5)
+		texture.fill_to = Vector2(1.0, 0.5)
+		texture.gradient = gradient
+		var light := PointLight2D.new()
+		light.texture = texture
+		light.position = p
+		light.energy = 0.35
+		add_child(light)
+		region_lights.append(light)
 	# A drawn grid and particles are separate transparent geometry layers.
 	var overlay := SimulationOverlay.new()
 	overlay.owner_scene = self
@@ -188,9 +221,11 @@ func button(parent: Node, text: String, at: Vector2, dimensions: Vector2, action
 
 func set_mode(is_simulated: bool) -> void:
 	simulated = is_simulated
-	backdrop.texture = SIMULATION if simulated else CRYPT
+	backdrop.texture = SIMULATION if simulated else REGION_BACKDROPS.get(live_region_id, CRYPT)
 	for decor in dungeon_decor:
-		decor.visible = not simulated
+		decor.visible = not simulated and not REGION_BACKDROPS.has(live_region_id)
+	for light in region_lights:
+		light.visible = not simulated and REGION_BACKDROPS.has(live_region_id)
 	if simulated:
 		enemy.texture = HOLLOW
 		enemy.scale = Vector2(1.5, 1.5)
@@ -226,10 +261,20 @@ func _apply_live_state(payload: Dictionary) -> void:
 		return
 	var new_simulated: bool = payload.get("simulated", false)
 	var new_enemy: String = payload.get("enemy", "wraith")
-	if new_simulated != simulated or new_enemy != live_enemy_id:
+	var new_region: String = str(payload.get("region", ""))
+	if new_simulated != simulated or new_enemy != live_enemy_id or new_region != live_region_id:
+		live_region_id = new_region
 		live_enemy_id = new_enemy
 		set_mode(new_simulated)
-		if not simulated and LIVE_ENEMIES.has(live_enemy_id):
+		if not simulated and ANIMATED_ENEMIES.has(live_enemy_id):
+			var visual: Dictionary = ANIMATED_ENEMIES[live_enemy_id]
+			var size: float = visual["scale"]
+			enemy.texture = visual["action"]
+			enemy.hframes = 4
+			enemy.offset = Vector2(-19, 0)
+			enemy.scale = Vector2.ONE * size
+			enemy.position = Vector2(237, 146 - 32 * size)
+		elif not simulated and LIVE_ENEMIES.has(live_enemy_id):
 			enemy.texture = LIVE_ENEMIES[live_enemy_id]
 			enemy.hframes = 1
 			enemy.offset = Vector2.ZERO
@@ -372,6 +417,20 @@ func _weapon_attack() -> void:
 
 func _enemy_hit() -> void:
 	if embedded:
+		if not simulated and ANIMATED_ENEMIES.has(live_enemy_id):
+			var visual: Dictionary = ANIMATED_ENEMIES[live_enemy_id]
+			enemy.texture = visual["hurt"]
+			enemy.frame = 0
+			var reaction := create_tween()
+			reaction.tween_interval(0.07)
+			reaction.tween_callback(func(): enemy.frame = 1)
+			reaction.tween_interval(0.09)
+			reaction.tween_callback(func(): enemy.frame = 2)
+			reaction.tween_interval(0.09)
+			reaction.tween_callback(func(): enemy.frame = 3)
+			reaction.tween_interval(0.08)
+			reaction.tween_callback(func(): enemy.texture = visual["action"]; enemy.frame = 0)
+			return
 		if not simulated and LIVE_ENEMIES.has(live_enemy_id):
 			var flash := create_tween()
 			flash.tween_property(enemy, "modulate", Color(2, 2, 2), 0.05)
@@ -445,6 +504,8 @@ func _reset() -> void:
 
 func _process(delta: float) -> void:
 	elapsed += delta
+	for light in region_lights:
+		light.energy = 0.32 + 0.04 * sin(elapsed * 2.4 + light.position.x)
 	if not acting and body and enemy and shot_pose < 0:
 		var idle_cycle: Array = _poses().get("idle_frames", [0])
 		body.frame = idle_cycle[int(elapsed * 4.0) % idle_cycle.size()]

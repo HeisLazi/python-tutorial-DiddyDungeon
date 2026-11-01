@@ -424,6 +424,28 @@ class AiTutorEndpointTests(AiTutorTestCase):
         self.assertEqual(json.loads(self.canonical.read_text(encoding="utf-8"))["player"]["hp"], before)
 
 
+    def test_sparring_interview_uses_written_answer_and_rejects_replay(self):
+        foe = self.client.get("/api/campaign", headers=self.headers).json()["spar_roster"][0]
+        before = json.loads(self.canonical.read_text(encoding="utf-8"))["player"]["hp"]
+        self.reply({"prompt": "Why would you use a loop to process a list?"})
+        response = self.client.post("/api/ai/spar-question", headers=self.headers, json={"target_id": foe["id"], "round": 5})
+        self.assertEqual(response.status_code, 200, response.text)
+        question = response.json()["question"]
+        self.assertEqual(question["question_type"], "interview")
+        self.assertNotIn("answer", question)
+        self.assertEqual(self.client.post("/api/spar/answer-option", headers=self.headers, json={"target_id": foe["id"], "option_index": 0}).status_code, 409)
+        self.assertEqual(self.client.post("/api/spar/answer-code", headers=self.headers, json={"target_id": foe["id"], "code": "pass"}).status_code, 409)
+        self.assertEqual(self.client.post("/api/spar/answer-text", headers=self.headers, json={"target_id": foe["id"], "answer": "   "}).status_code, 422)
+        self.reply({"verdict": "uncertain", "reason": "No result."})
+        self.assertEqual(self.client.post("/api/spar/answer-text", headers=self.headers, json={"target_id": foe["id"], "answer": "A loop handles each item."}).status_code, 502)
+        self.reply({"verdict": "correct", "reason": "A loop handles each item."})
+        answer = self.client.post("/api/spar/answer-text", headers=self.headers, json={"target_id": foe["id"], "answer": "A loop handles each item."})
+        self.assertEqual(answer.status_code, 200, answer.text)
+        self.assertEqual(answer.json()["verdict"], "correct")
+        self.assertEqual(self.client.post("/api/spar/answer-text", headers=self.headers, json={"target_id": foe["id"], "answer": "Again"}).status_code, 409)
+        self.assertEqual(json.loads(self.canonical.read_text(encoding="utf-8"))["player"]["hp"], before)
+
+
 
 if __name__ == "__main__":
     unittest.main()

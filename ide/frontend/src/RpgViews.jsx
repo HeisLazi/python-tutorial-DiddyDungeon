@@ -1,3 +1,7 @@
+import { merchantItemArt } from './merchantItemArt.js'
+import { merchantLots } from './merchantShop.js'
+import { lanternEncounterArt } from './lanternEncounterArt'
+import { lanternItemArt } from './lanternItemArt'
 import { Fragment, useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import Editor from '@monaco-editor/react'
@@ -22,7 +26,7 @@ import { lessonFor, TUTOR_TRUE_FALSE } from './tutorLessons.js'
 
 export const viewItems = [
   { id: 'hub', label: 'Campaign' },
-  { id: 'tutor', label: 'Tutor Notebook' },
+  { id: 'tutor', label: 'Hunter’s Study' },
   { id: 'dungeon', label: 'Infinite Dungeon' },
   { id: 'codex', label: 'Codex' },
   { id: 'settings', label: 'Settings' },
@@ -39,7 +43,7 @@ const DUNGEON_CLASSES = [
     iconId: 'target',
     passive: 'The first syntax-error submission each floor deals no HP damage.',
     weapon: 'Aether Staff',
-    weaponDetail: 'A crystal staff for ranged casting.',
+    weaponDetail: 'First mistake each fight deals 2 less damage.',
   },
   {
     id: 'resolve-duelist',
@@ -57,7 +61,7 @@ const DUNGEON_CLASSES = [
     iconId: 'spark',
     passive: 'Start with +20 run coins and one extra heal charge.',
     weapon: 'Pathfinder Whip',
-    weaponDetail: 'A long-reaching whip for the journey.',
+    weaponDetail: '+1 Resolve on the first correct answer each fight.',
   },
 ]
 
@@ -228,7 +232,7 @@ export function buildQuestDocument(campaign) {
     '## Current quest',
     '',
     currentQuest
-      ? `**${currentQuest.label || currentQuest.id || 'Current goal'}** · ${currentQuest.question_type || 'validated goal'} · ${currentQuest.damage ?? currentQuest.impact ?? 0} Resolve damage\n\n${currentQuest.quest || currentQuest.brief || 'Complete the current state-owned goal in the active Forge file.'}`
+      ? `**${currentQuest.label || currentQuest.id || 'Current goal'}** · ${currentQuest.question_type || 'validated goal'} · ${currentQuest.damage ?? currentQuest.impact ?? 0} Resolve damage\n\n${currentQuest.quest || currentQuest.brief || 'Complete the current state-owned goal in the active Hunt file.'}`
       : 'The state service has not published a current goal yet.',
     '',
     '## Boss / mob mechanics',
@@ -247,30 +251,9 @@ export function buildQuestDocument(campaign) {
   return lines.join('\n')
 }
 
-function PyrCompanion() {
-  return (
-    <div className="pyr-sidebar-companion" data-testid="pyr-sidebar-companion" data-pyr-motion="idle" role="img" aria-label="PYR companion keeping watch">
-      <div className="pyr-pixel-character" aria-hidden="true">
-        <svg viewBox="0 0 32 32" role="presentation" shapeRendering="crispEdges">
-          <rect x="11" y="3" width="10" height="3" fill="currentColor" />
-          <rect x="8" y="6" width="16" height="4" fill="currentColor" />
-          <rect x="6" y="10" width="20" height="11" rx="2" fill="currentColor" />
-          <rect className="pyr-eye pyr-eye-left" x="10" y="12" width="3" height="3" fill="var(--panel)" />
-          <rect className="pyr-eye pyr-eye-right" x="19" y="12" width="3" height="3" fill="var(--panel)" />
-          <rect x="13" y="17" width="6" height="2" fill="var(--panel)" />
-          <rect x="9" y="21" width="14" height="5" fill="currentColor" />
-          <rect x="6" y="26" width="7" height="3" fill="currentColor" />
-          <rect x="19" y="26" width="7" height="3" fill="currentColor" />
-        </svg>
-      </div>
-      <div><strong>PYR</strong><span>keeping watch</span></div>
-    </div>
-  )
-}
-
 function ForgeDocumentTabs({ activePath, editorMode, openFile, openQuestDocument }) {
   return (
-    <div className="forge-document-tabs" role="tablist" aria-label="Forge documents">
+    <div className="forge-document-tabs" role="tablist" aria-label="Hunt documents">
       <button
         type="button"
         role="tab"
@@ -307,13 +290,13 @@ function ForgeFileGlyph({ kind }) {
 function ForgeCompactPanel({ activePath, editorMode, files = [], openFile, openQuestDocument, onToggleCompact }) {
   const campaignPath = activePath || files.find((item) => item?.type === 'file' && /\.py$/i.test(String(item.path || '')))?.path || 'campaign.py'
   return (
-    <div className="forge-compact-panel" data-testid="forge-compact-panel" aria-label="Compact Forge file rail">
+    <div className="forge-compact-panel" data-testid="forge-compact-panel" aria-label="Compact Hunt file rail">
       <button
         type="button"
         className="forge-compact-expand"
         onClick={onToggleCompact}
-        title="Expand Forge sidebar"
-        aria-label="Expand Forge sidebar"
+        title="Expand Hunt sidebar"
+        aria-label="Expand Hunt sidebar"
       >
         <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="m9 5 7 7-7 7" /><path d="M4 5v14" /></svg>
       </button>
@@ -644,7 +627,7 @@ export function ContextPanel({ activeView, campaign, files = [], activePath, com
       <>
         <div className="panel-title">
           <span>QUEST HUB</span>
-          <button onClick={() => setActiveView('forge')} title="Open Forge" aria-label="Open Forge"><RouteIcon id="forge" /></button>
+          <button onClick={() => setActiveView('forge')} title="Open Hunt" aria-label="Open Hunt"><RouteIcon id="forge" /></button>
         </div>
         <div className="context-scroll">
           <div className="context-kicker">CAMPAIGN BRIEF</div>
@@ -675,8 +658,8 @@ export function ContextPanel({ activeView, campaign, files = [], activePath, com
               </>}
               <button type="button" onClick={() => setShowFiles((current) => !current)} title={showFiles ? 'Hide project files' : 'Show project files'} aria-label={showFiles ? 'Hide project files' : 'Show project files'}>{showFiles ? 'Hide' : 'Files'}</button>
             </div>}
-            <button type="button" onClick={() => setActiveView('tutor')} title="Open Tutor Notebook" aria-label="Open Tutor Notebook"><RouteIcon id="tutor" /></button>
-            {onToggleCompact && <button className="sidebar-collapse-toggle" type="button" onClick={onToggleCompact} title="Compact Forge sidebar" aria-label="Compact Forge sidebar"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="m15 5-7 7 7 7" /><path d="M20 5v14" /></svg></button>}
+            <button type="button" onClick={() => setActiveView('tutor')} title="Open Hunter’s Study" aria-label="Open Hunter’s Study"><RouteIcon id="tutor" /></button>
+            {onToggleCompact && <button className="sidebar-collapse-toggle" type="button" onClick={onToggleCompact} title="Compact Hunt sidebar" aria-label="Compact Hunt sidebar"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="m15 5-7 7 7 7" /><path d="M20 5v14" /></svg></button>}
           </div>
         </div>
         <div className="workspace-label">{campaign?.workspace || 'loading workspace…'}</div>
@@ -735,19 +718,17 @@ export function ContextPanel({ activeView, campaign, files = [], activePath, com
             {encounter.mob_name ? <>
               <div className="panel-title"><span>ACTIVE BATTLE</span><b>{encounter.resolve ?? 0}/{encounter.max_resolve ?? 0}</b></div>
               {encounter.special_mechanic && <div className="campaign-special-mechanic" data-testid="campaign-special-mechanic"><strong>{encounter.special_mechanic.label}</strong><p>{encounter.special_mechanic.detail}</p><small>{encounter.special_mechanic.triggered ? 'REWARD CLAIMED' : 'REWARD AVAILABLE'}</small></div>}
-              <BattleBrief encounter={encounter} board={campaign?.campaign_board} charges={campaign?.armory?.charges} questions={battleQuestions} feedback={battleFeedback} onAsk={onAskBattleQuestion} onAnswer={onAnswerBattleOption} onCheckSetup={onCheckSetup} onStudy={(objective, sign) => { try { window.sessionStorage.setItem('questlab.tutor.request', JSON.stringify({ conceptId: sign || encounter?.mob?.sign_id || '', concept: encounter?.mob?.concept || encounter?.concept || '', objective: { id: objective?.id, label: objective?.label } })) } catch { /* storage unavailable */ } setActiveView('tutor') }} busy={busy} />
+              <BattleBrief player={player} armory={campaign?.armory} encounter={encounter} board={campaign?.campaign_board} charges={campaign?.armory?.charges} questions={battleQuestions} feedback={battleFeedback} onAsk={onAskBattleQuestion} onAnswer={onAnswerBattleOption} onCheckSetup={onCheckSetup} onStudy={(objective, sign) => { try { window.sessionStorage.setItem('questlab.tutor.request', JSON.stringify({ conceptId: sign || encounter?.mob?.sign_id || '', concept: encounter?.mob?.concept || encounter?.concept || '', objective: { id: objective?.id, label: objective?.label } })) } catch { /* storage unavailable */ } setActiveView('tutor') }} busy={busy} />
               <div className="campaign-battle-resolve" data-testid="forge-encounter-resolve" hidden>
                 <ProgressBar value={encounter.resolve ?? 0} max={encounter.max_resolve ?? 1} label="Enemy Resolve" className="resolve" />
               </div>
-              <PyrCompanion />
             </> : <>
               <div className="panel-title"><span>BOSS GATE</span><b>{encounter.resolve ?? encounter.boss_resolve ?? 0}/{encounter.max_resolve ?? encounter.boss_max_resolve ?? 0}</b></div>
               {encounter.special_mechanic && <div className="campaign-special-mechanic" data-testid="campaign-special-mechanic"><strong>{encounter.special_mechanic.label}</strong><p>{encounter.special_mechanic.detail}</p><small>{encounter.special_mechanic.triggered ? 'REWARD CLAIMED' : 'REWARD AVAILABLE'}</small></div>}
-              <BossBrief encounter={encounter} board={campaign?.campaign_board} questions={battleQuestions} feedback={battleFeedback} onAsk={onAskBossQuestion} onAnswer={onAnswerBossOption} busy={busy} />
+              <BossBrief player={player} armory={campaign?.armory} encounter={encounter} board={campaign?.campaign_board} questions={battleQuestions} feedback={battleFeedback} onAsk={onAskBossQuestion} onAnswer={onAnswerBossOption} busy={busy} />
               <div className="campaign-battle-resolve" data-testid="forge-boss-resolve" hidden>
                 <ProgressBar value={encounter.resolve ?? encounter.boss_resolve ?? 0} max={encounter.max_resolve ?? encounter.boss_max_resolve ?? 1} label="Boss Resolve" className="resolve boss-resolve" />
               </div>
-              <PyrCompanion />
             </>}
           </div>
         )}
@@ -759,9 +740,9 @@ export function ContextPanel({ activeView, campaign, files = [], activePath, com
     return (
       <>
         <div className="panel-title">
-          <span>TUTOR NOTEBOOK</span>
+          <span>HUNTER’S STUDY</span>
           <div className="panel-title-actions">
-            <button onClick={() => setActiveView('forge')} title="Return to Forge" aria-label="Return to Forge"><RouteIcon id="forge" /></button>
+            <button onClick={() => setActiveView('forge')} title="Return to Hunt" aria-label="Return to Hunt"><RouteIcon id="forge" /></button>
             <ContextCollapseButton label="Tutor" onToggleCompact={onToggleCompact} />
           </div>
         </div>
@@ -788,12 +769,12 @@ export function ContextPanel({ activeView, campaign, files = [], activePath, com
       <>
         <div className="panel-title">
           <span>{viewItems.find((item) => item.id === activeView)?.label?.toUpperCase()}</span>
-          <button onClick={() => setActiveView('forge')} title="Return to Forge" aria-label="Return to Forge"><RouteIcon id="forge" /></button>
+          <button onClick={() => setActiveView('forge')} title="Return to Hunt" aria-label="Return to Hunt"><RouteIcon id="forge" /></button>
         </div>
         <div className="context-scroll">
           <div className="context-kicker">CAMPAIGN SYNC</div>
           <h3>Waiting for the canonical state</h3>
-          <p>The Forge is still connected, but the campaign projection has not arrived yet. Player stats stay hidden until the state service responds.</p>
+          <p>The Hunt is still connected, but the campaign projection has not arrived yet. Player stats stay hidden until the state service responds.</p>
         </div>
       </>
     )
@@ -804,7 +785,7 @@ export function ContextPanel({ activeView, campaign, files = [], activePath, com
       <div className="panel-title">
         <span>{viewItems.find((item) => item.id === activeView)?.label?.toUpperCase()}</span>
         <div className="panel-title-actions">
-          {activeView !== 'dungeon' && <button onClick={() => setActiveView('forge')} title="Return to Forge" aria-label="Return to Forge"><RouteIcon id="forge" /></button>}
+          {activeView !== 'dungeon' && <button onClick={() => setActiveView('forge')} title="Return to Hunt" aria-label="Return to Hunt"><RouteIcon id="forge" /></button>}
           {activeView === 'dungeon' && <ContextCollapseButton label="Dungeon" onToggleCompact={onToggleCompact} />}
         </div>
       </div>
@@ -850,7 +831,7 @@ export function ContextPanel({ activeView, campaign, files = [], activePath, com
         {activeView === 'homestead' && (
           <>
             <div className="context-kicker">YOUR PLACE</div>
-            <h3>{homestead.name || 'The Forge'}</h3>
+            <h3>{homestead.name || 'The Hunt'}</h3>
             <p>Build your coding home with cosmetics earned from real learning.</p>
             <div className="context-stat"><span>Coins</span><b>{player.coins ?? 0}c</b></div>
             <div className="context-stat"><span>Owned</span><b>{owned.length}</b></div>
@@ -915,7 +896,7 @@ function ProgressBar({ value, max, label, className = '' }) {
   )
 }
 
-// Built-in PYR (OpenCode mode): replaces the raw CLI terminal in the Forge.
+// Built-in PYR (OpenCode mode): replaces the raw CLI terminal in the Hunt.
 // Verdicts from Submit run land here too, so the panel is the PYR log.
 export function PyrChatPanel({ log = [], ready, thinking, model, onAsk, onOpenSettings, battleCost = null }) {
   const [draft, setDraft] = useState('')
@@ -958,14 +939,14 @@ export function PyrChatPanel({ log = [], ready, thinking, model, onAsk, onOpenSe
   )
 }
 
-export function SurfaceNavigation({ activeView, onNavigate }) {
+export function SurfaceNavigation({ activeView, onNavigate, showSettings = false, showAiToggle = false, aiOpen = false, onToggleAi, zenMode = false, onExitZen }) {
   // Home (the campaign hub) sits with the other destinations; Settings is the
   // gear in the top-right HUD. Codex is now a folio inside Tutor Notebook: its
   // legacy route stays addressable for saved links but is not a duplicate
   // top-level destination.
   const destinationItems = [
     { id: 'hub', label: 'Home' },
-    { id: 'forge', label: 'Forge' },
+    { id: 'forge', label: 'Hunt' },
     ...viewItems.filter((item) => !['hub', 'codex', 'settings'].includes(item.id)),
   ]
   return (
@@ -986,6 +967,7 @@ export function SurfaceNavigation({ activeView, onNavigate }) {
           </button>
         ))}
       </div>
+      {(showSettings || showAiToggle || zenMode) && <div className="surface-nav-tools">{showAiToggle && <button type="button" className="surface-nav-tool" onClick={onToggleAi} aria-expanded={aiOpen} aria-controls="questlab-ai-panel">{aiOpen ? 'Hide AI' : 'Open AI'}</button>}{zenMode && <button type="button" className="surface-nav-tool" onClick={onExitZen}>Exit Zen</button>}{showSettings && <button type="button" className="surface-nav-tool surface-nav-settings" onClick={() => onNavigate?.('settings')} title="Settings" aria-label="Settings"><RouteIcon id="settings" /></button>}</div>}
     </nav>
   )
 }
@@ -1077,7 +1059,7 @@ export function TutorPracticeBar({ progress, practiceProjection, onPracticePromp
 
   return (
     <div className="tutor-practice-bar" data-testid="tutor-practice-bar">
-      <div className="tutor-practice-heading"><span className="screen-kicker">TUTOR NOTEBOOK</span><small>tutor.py is the shared learning notebook and IDE</small><p>PYR teaches with hints and generic examples. It will not reveal an answer key or paste a missing project snippet.</p><em>Raw CLI chat remains an advanced, unsandboxed path.</em></div>
+      <div className="tutor-practice-heading"><span className="screen-kicker">HUNTER’S STUDY</span><small>tutor.py is the shared learning notebook and IDE</small><p>PYR teaches with hints and generic examples. It will not reveal an answer key or paste a missing project snippet.</p><em>Raw CLI chat remains an advanced, unsandboxed path.</em></div>
       <label><span>Concept</span><select value={concept} onChange={(event) => setConcept(event.target.value)} disabled={busy}>{conceptOptions.map((item) => <option key={item.id} value={item.id}>{item.title || item.id}</option>)}</select></label>
       <label><span>Question lens</span><select value={questionType} onChange={(event) => setQuestionType(event.target.value)} disabled={busy}>{questionOptions.map((item) => <option key={item.id} value={item.id}>{item.label || item.id}</option>)}</select></label>
       <label><span>Difficulty</span><select value={difficulty} onChange={(event) => setDifficulty(event.target.value)} disabled={busy}>{Array.from({ length: Math.max(0, difficultyMax - difficultyMin + 1) }, (_, index) => difficultyMin + index).map((level) => <option key={level} value={level}>Tier {level}</option>)}</select></label>
@@ -1096,7 +1078,7 @@ function HubScreen({ progress, revision, onOpen }) {
     <div className="game-screen-scroll hub-screen" data-testid="hub" data-campaign-revision={revision}>
       <div className="screen-hero hub-hero">
         <div><span className="screen-kicker">QUEST HUB</span><h2>Choose your next move.</h2><p>Your contracts, campaign chapters and weekly goals share the same live campaign revision. Pick a surface and keep learning.</p></div>
-        <div className="hub-hero-actions"><button className="primary" type="button" onClick={() => onOpen?.('forge')}>Open Forge</button></div>
+        <div className="hub-hero-actions"><button className="primary" type="button" onClick={() => onOpen?.('forge')}>Open Hunt</button></div>
       </div>
       <div className="hub-grid">
         <section className="game-card hub-contracts">
@@ -1406,7 +1388,7 @@ function Codex({ progress, revision, codexProjection, encounter, saveCodexNote, 
         <article className="codex-book-page">
           {selectedPage ? (
             <>
-              <div className="codex-page-heading"><span className="screen-kicker">CONCEPT PAGE</span><h3>{selectedPage.title}</h3><p>Read the core idea, look at a generic example, and check your understanding before you return to Forge.</p><div className="codex-page-summary" data-testid="codex-page-summary"><span><b>{selectedEntries.length}</b> encounters</span><span><b>{pageQuestionTypes.length}</b> question lenses</span><span><b>{pageWeaknesses.length}</b> recorded patterns</span></div></div>
+              <div className="codex-page-heading"><span className="screen-kicker">CONCEPT PAGE</span><h3>{selectedPage.title}</h3><p>Read the core idea, look at a generic example, and check your understanding before you return to Hunt.</p><div className="codex-page-summary" data-testid="codex-page-summary"><span><b>{selectedEntries.length}</b> encounters</span><span><b>{pageQuestionTypes.length}</b> question lenses</span><span><b>{pageWeaknesses.length}</b> recorded patterns</span></div></div>
               <div className="codex-page-controls" data-testid="codex-page-controls" aria-label="Codex book navigation">
                 <button type="button" onClick={() => turnPage(-1)} disabled={selectedPageIndex <= 0} aria-label="Previous Codex book">← Previous</button>
                 <span>BOOK {bookPages.length ? selectedPageIndex + 1 : 0} / {bookPages.length || 0}</span>
@@ -1509,14 +1491,14 @@ function Codex({ progress, revision, codexProjection, encounter, saveCodexNote, 
  * Resource-first Tutor surface
  *
  * The standalone codex-resource prototype deliberately kept its state local
- * while we tuned the interaction.  This is the Forge port of that surface:
+ * while we tuned the interaction.  This is the Hunt port of that surface:
  * the projection, tutor.py buffer, revision and notes callbacks still come
  * from the canonical app, while notebook presentation preferences remain
  * browser-local until their own state-service schema exists.
  */
 // Tutor lenses → the practice question types the state gateway accepts
 // (sending the lens id itself was rejected, so Tutor answers never landed).
-const PRACTICE_TYPE_BY_LENS = { predict: 'code_trace', trace: 'code_trace', bug: 'bug_hunt', explain: 'short_explanation', transfer: 'short_explanation' }
+const PRACTICE_TYPE_BY_LENS = { build: 'code_trace', predict: 'code_trace', trace: 'code_trace', bug: 'bug_hunt', explain: 'short_explanation', transfer: 'short_explanation' }
 
 const RESOURCE_PRACTICE_MODES = [
   { id: 'predict', label: 'Predict output', prompt: 'Read the example and write your prediction as a Python comment in tutor.py.' },
@@ -1524,6 +1506,7 @@ const RESOURCE_PRACTICE_MODES = [
   { id: 'bug', label: 'Find a bug', prompt: 'Study the example mistake and explain the problem in a Python comment.' },
   { id: 'explain', label: 'Explain the idea', prompt: 'Teach the concept back in your own words.' },
   { id: 'transfer', label: 'Tiny transfer challenge', prompt: 'Describe one small new program where this idea would help.' },
+  { id: 'build', label: 'Write Python', prompt: 'Write and run a small Python example using this topic.' },
 ]
 const RESOURCE_NOTE_PAGES = [
   { id: 'notes', label: 'Notes', prompt: 'What do you want to remember in your own words?', placeholder: 'Write a definition, reminder, or connection…' },
@@ -1572,7 +1555,7 @@ function resourceFallbackPages(encounter) {
   }]
 }
 
-// Where you are in the Tutor survives going to the Forge and back, and a
+// Where you are in the Tutor survives going to the Hunt and back, and a
 // reload, but not closing the app: sessionStorage lives as long as the window.
 function useSessionState(key, initial) {
   const [value, setValue] = useState(() => {
@@ -1710,7 +1693,7 @@ function ResourceEncounterRecords({ entries }) {
           <header><strong>{entry.mob_name || 'Validated encounter'}</strong><span>{entry.status || 'verified'} · {entry.attempts || 0} attempt{entry.attempts === 1 ? '' : 's'}</span></header>
           {entry.code_snippet ? <pre>{entry.code_snippet}</pre> : <p className="context-note">Verified before a code excerpt was captured.</p>}
         </article>
-      )) : <p className="context-note">No validated encounter evidence yet. Your next correct Forge submission can leave a small personal excerpt here.</p>}
+      )) : <p className="context-note">No validated encounter evidence yet. Your next correct Hunt submission can leave a small personal excerpt here.</p>}
     </section>
   )
 }
@@ -1758,31 +1741,46 @@ const MAX_DANGER = 4
 
 const lootText = (items) => (items || []).map((item) => `${item.count} ${item.name}`).join(', ')
 
-function DelvePicker({ hunter, selected, onSelect, busy }) {
+const DELVE_MAP_POSITIONS = {
+  basics: [16, 70], collections: [22, 37], flow: [47, 67], archive: [49, 17],
+  labyrinth: [63, 41], workshop: [81, 76], spire: [83, 16], hollow: [90, 49],
+}
+
+const DELVE_LANDMARKS = {
+  basics: 'M3 11 12 4l9 7M6 10v9h12v-9M10 19v-5h4v5',
+  collections: 'M3 19 7 8l5-4 5 4 4 11M8 19v-5l4-3 4 3v5',
+  flow: 'M4 20V8h4V5h3v3h3V5h3v3h3v12M9 20v-5a3 3 0 0 1 6 0v5',
+  archive: 'M3 20h18M5 17V9l7-5 7 5v8M9 17v-5h6v5M3 20c2-2 4 2 6 0s4 2 6 0 4 2 6 0',
+  labyrinth: 'M4 4h16v16H4zM8 4v12h8V8h-4v4',
+  workshop: 'M4 20V11l5 3V9l5 3V6h4v14zM7 17h1m3 0h1m4 0h1',
+  spire: 'M7 20h10l-2-12-3-5-3 5zM10 12h4M10 16h4',
+  hollow: 'M12 3v6M6 5l2 5M18 5l-2 5M5 20c0-5 3-9 7-9s7 4 7 9M9 20v-3a3 3 0 0 1 6 0v3',
+}
+
+function DelveLandmark({ id }) {
+  return <svg viewBox="0 0 24 24" aria-hidden="true"><path d={DELVE_LANDMARKS[id]} /></svg>
+}
+
+function DelvePicker({ hunter, selected, onSelect, onBack, onStart, selectedClass, busy }) {
   const levels = Object.fromEntries((hunter?.signs || []).map((sign) => [sign.id, sign.level]))
+  const region = HUNT_REGIONS.find((item) => item.id === selected)
+  const isOpen = selected === 'open'
   return (
-    <section className="delve-picker" role="radiogroup" aria-label="Choose a delve">
-      <span className="dungeon-eyebrow">WHERE TO HUNT</span>
-      <div className="delve-grid">
-        {HUNT_REGIONS.map((region) => {
-          const sorted = [...region.pages].sort((a, b) => (levels[a] ?? 0) - (levels[b] ?? 0))
-          // Only call out a weakest sign when one actually trails the others.
-          const weakest = (levels[sorted[0]] ?? 0) < (levels[sorted[1]] ?? 0) ? sorted[0] : null
-          return (
-            <button key={region.id} type="button" role="radio" aria-checked={selected === region.id} className={`delve-card ${selected === region.id ? 'selected' : ''}`} onClick={() => onSelect(region.id)} disabled={busy}>
-              <span className="delve-head"><strong>{region.label}</strong><small>{'◆'.repeat(region.danger)}{'◇'.repeat(Math.max(0, MAX_DANGER - region.danger))}</small></span>
-              <ul>{region.pages.map((page) => <li key={page} className={page === weakest ? 'weak' : ''}><span>{HUNT_BEASTS[page]?.beast}</span><small>{page === weakest ? 'Weakest · ' : ''}Lvl {levels[page] ?? 0}</small></li>)}</ul>
-              <small className="delve-boss">Boss: {DELVE_BOSSES[region.id]}</small>
-            </button>
-          )
-        })}
-        <button type="button" role="radio" aria-checked={selected === ''} className={`delve-card open ${selected === '' ? 'selected' : ''}`} onClick={() => onSelect('')} disabled={busy}>
-          <span className="delve-head"><strong>Open dungeon</strong><small>ANY</small></span>
-          <p>Follows the concepts you have missed in the Codex. Beasts still drop parts when their sign is known.</p>
-        </button>
+    <main className="delve-picker delve-map-screen" aria-label="Choose a dungeon location">
+      <div className="delve-map-heading"><div><span className="dungeon-eyebrow">RUN SETUP · 2 / 2</span><h2>Choose your hunting ground</h2><p>Pick a location on the map to inspect its beasts and boss.</p></div><button className="dungeon-ghost-button" type="button" onClick={onBack}>← Change class</button></div>
+      <div className="delve-map-layout">
+        <section className="delve-world-map" aria-label="Dungeon locations">
+          <div className="delve-map-caption"><span>THE HUNTER’S MAP</span><small>Choose a destination</small></div>
+          {HUNT_REGIONS.map((item) => <button key={item.id} type="button" className={`delve-map-node ${selected === item.id ? 'selected' : ''}`} style={{ left: `${DELVE_MAP_POSITIONS[item.id][0]}%`, top: `${DELVE_MAP_POSITIONS[item.id][1]}%` }} onClick={() => onSelect(item.id)} aria-label={item.label} aria-pressed={selected === item.id} disabled={busy}><span className="delve-map-marker" aria-hidden="true"><DelveLandmark id={item.id} /></span><span className="delve-map-label" aria-hidden="true">{item.label}</span></button>)}
+          <button type="button" className={`delve-open-route ${isOpen ? 'selected' : ''}`} aria-pressed={isOpen} onClick={() => onSelect('open')} disabled={busy}>✧ Open dungeon</button>
+        </section>
+        <aside className="delve-map-detail" aria-live="polite">
+          <span className="dungeon-eyebrow">DESTINATION DETAILS</span>
+          {region ? <><h3>{region.label}</h3><div className="delve-danger"><span>Danger</span><strong aria-label={`${region.danger} out of ${MAX_DANGER} danger`}>{'◆'.repeat(region.danger)}{'◇'.repeat(MAX_DANGER - region.danger)}</strong></div><span className="delve-detail-label">BEASTS &amp; SIGN LEVELS</span><ul>{region.pages.map((page) => <li key={page}><span>{HUNT_BEASTS[page]?.beast || page}</span><strong>LVL {levels[page] ?? 0}</strong></li>)}</ul><div className="delve-detail-boss"><span className="delve-detail-label">FLOOR BOSS</span><strong>{DELVE_BOSSES[region.id]}</strong></div></> : isOpen ? <><h3>Open dungeon</h3><p>Follow the concepts you have missed in the Codex. Beasts still drop parts when their sign is known.</p><div className="delve-detail-boss"><span className="delve-detail-label">DANGER</span><strong>Adaptive</strong></div></> : <><h3>Where will you hunt?</h3><p>Select a location on the map to see its danger, beasts and boss.</p></>}
+          <div className="delve-detail-footer"><small>CLASS · {selectedClass?.name}</small><button className="dungeon-primary-button" type="button" onClick={onStart} disabled={busy || !selected}>{busy ? 'Starting…' : 'Enter the dungeon →'}</button><p>Bank your finds at a camp or by ending the run. Dying loses unbanked parts.</p></div>
+        </aside>
       </div>
-      <p className="delve-rule">Beasts drop parts into your pack. A camp or ending the run banks them; dying loses everything unbanked.</p>
-    </section>
+    </main>
   )
 }
 
@@ -2011,7 +2009,7 @@ function HunterCodex({ view, hunter, pages, entries, progress, encounter, pyr, b
 
       {view === 'bestiary' && (
         <div className="hunt-layout bestiary">
-          <section className="hunt-list" aria-label="Known beasts">
+          <section className="hunt-list" aria-label="Known beasts" tabIndex={0}>
             <div className="hunt-regions" role="group" aria-label="Lairs">
               {[{ id: 'all', label: 'All lairs' }, ...HUNT_REGIONS].map((item) => <button key={item.id} type="button" className={region === item.id ? 'active' : ''} onClick={() => setRegion(item.id)} aria-pressed={region === item.id}>{item.label}</button>)}
             </div>
@@ -2026,7 +2024,7 @@ function HunterCodex({ view, hunter, pages, entries, progress, encounter, pyr, b
               )
             })}
           </section>
-          <article className="hunt-parchment hunt-entry" aria-label="Bestiary entry">
+          <article className="hunt-parchment hunt-entry" aria-label="Bestiary entry" tabIndex={0}>
             <small className={`hunt-status ${statusOf(current.id)}`}>LURKS IN {regionOf(current.id).label.toUpperCase()} · DANGER {'☠'.repeat(regionOf(current.id).danger)} · {statusLabel[statusOf(current.id)].toUpperCase()}</small>
             <div className="hunt-entry-head">
               <span className="hunt-portrait" aria-hidden="true"><svg viewBox="0 0 24 24" width="84" height="84"><path d="M5 20c0-6 2-12 7-12s7 6 7 12" /><path d="M8 13l1.5 1.5M16 13l-1.5 1.5" /><path d="M9.5 17.5c1.5 1 3.5 1 5 0" /><path d="M3 20h18M7 8 5 4M17 8l2-4" /></svg></span>
@@ -2048,7 +2046,7 @@ function HunterCodex({ view, hunter, pages, entries, progress, encounter, pyr, b
 
       {view === 'signs' && (
         <div className="hunt-layout signs">
-          <section className="hunt-signs" aria-label="Your signs">
+          <section className="hunt-signs" aria-label="Your signs" tabIndex={0}>
             <small className="hunt-kicker">YOUR SIGNS · CHARGE THEM BY SLAYING THE BEASTS THEY BEAT</small>
             <div className="hunt-sign-grid">
               {huntPages.map((page) => {
@@ -2065,7 +2063,7 @@ function HunterCodex({ view, hunter, pages, entries, progress, encounter, pyr, b
               })}
             </div>
           </section>
-          <aside className="hunt-steel" aria-label="Selected sign">
+          <aside className="hunt-steel" aria-label="Selected sign" tabIndex={0}>
             <small className="hunt-kicker">SIGN · {signLabel(current.id).toUpperCase()} · BEATS {info.beast.toUpperCase()}</small>
             <div className="hunt-sign-head"><span className="hunt-sigil-box large"><HuntSigil pageId={current.id} size={44} /></span><h4>Sign of the {info.sign}</h4></div>
             {signById[current.id]?.next_gate && <p className="hunt-gate">Next rank · {signById[current.id].next_gate}</p>}
@@ -2100,13 +2098,16 @@ function ResourceTutorScreen({ pyr, hunter, sparRoster = [], sparActions, armory
   // The beast picked in the codex; empty means "the current hunt".
   const [huntPick, setHuntPick] = useSessionState('huntPick', '')
   const [selectedId, setSelectedId] = useSessionState('codexPage', pages[0]?.id || '')
-  const [practiceMode, setPracticeMode] = useSessionState('practiceMode', 'predict')
+  const [practiceMode, setPracticeMode] = useSessionState('practiceMode', 'build')
   const [practiceDifficulty, setPracticeDifficulty] = useSessionState('practiceDifficulty', 1)
   const [terminal, setTerminal] = useState({ status: 'ready', output: ['Run your notebook in the terminal; submit it for PYR feedback.'] })
   const [practiceFormat, setPracticeFormat] = useSessionState('practiceFormat', 'code')
   const [quizPick, setQuizPick] = useState(null)
+  const [interviewAnswer, setInterviewAnswer] = useState('')
+  const [interviewFeedback, setInterviewFeedback] = useState(null)
   const [studyObjective, setStudyObjective] = useState(null)
   const editorActions = useRef({})
+  const [practiceEditor, setPracticeEditor] = useState(null)
   const [aiPrompt, setAiPrompt] = useState('')
   const [aiMessages, setAiMessages] = useState([{ role: 'pyr', text: 'PYR channel ready. Ask for a hint when you need a nudge, not a finished answer.' }])
   // A practice question PYR wrote for the chosen lens (null = use the lens's generic prompt).
@@ -2151,7 +2152,7 @@ function ResourceTutorScreen({ pyr, hunter, sparRoster = [], sparActions, armory
   const submit = async () => {
     setTerminal({ status: 'submitted', output: ['[SUBMIT] tutor.py sent for bounded Tutor feedback.', 'No campaign reward, Resolve, HP or project mutation occurs here.'] })
     try {
-      const result = await onPracticePrompt?.({ concept: conceptLabel, questionType: PRACTICE_TYPE_BY_LENS[practiceMode] || 'short_explanation', difficulty: practiceDifficulty, answer: tutorCode, question: practiceQuestion?.text || '' })
+      const result = await onPracticePrompt?.({ concept: conceptLabel, questionType: PRACTICE_TYPE_BY_LENS[practiceMode] || 'short_explanation', difficulty: practiceDifficulty, answer: tutorCode, question: [practiceQuestion?.text || practiceModes.find((mode) => mode.id === practiceMode)?.prompt || '', practiceExample ? `Example:\n${practiceExample}` : ''].filter(Boolean).join('\n\n') })
       if (result?.verdict) {
         setTerminal({ status: result.verdict === 'correct' ? 'passed' : 'failed', output: [`[PYR] ${result.verdict === 'correct' ? 'Correct' : 'Not yet'}`, result.reason, 'Practice never changes campaign rewards, HP or Resolve.'] })
       }
@@ -2159,18 +2160,43 @@ function ResourceTutorScreen({ pyr, hunter, sparRoster = [], sparActions, armory
       setTerminal({ status: 'failed', output: [`Tutor feedback unavailable: ${error.message}`] })
     }
   }
+  const interviewQuestion = practiceQuestion?.text || `Explain ${conceptLabel} in your own words and give a small example of when you would use it.`
+  const submitInterview = async () => {
+    if (!interviewAnswer.trim() || busy) return
+    if (!onPracticePrompt) { setInterviewFeedback({ status: 'error', text: 'Feedback is unavailable right now.' }); return }
+    setInterviewFeedback({ status: 'pending', text: 'PYR is reviewing your explanation…' })
+    try {
+      const result = await onPracticePrompt?.({ concept: conceptLabel, questionType: 'short_explanation', difficulty: practiceDifficulty, answer: interviewAnswer, question: interviewQuestion })
+      setInterviewFeedback(result?.verdict ? { status: result.verdict, text: result.reason } : { status: 'pending', text: 'Your explanation was sent for feedback.' })
+    } catch (error) {
+      setInterviewFeedback({ status: 'error', text: `Feedback unavailable: ${error.message}` })
+    }
+  }
+  const askInterviewQuestion = async () => {
+    if (!pyr?.chooseLensEnabled || busy) return
+    setInterviewFeedback({ status: 'pending', text: 'PYR is preparing a question…' })
+    try {
+      const lens = RESOURCE_PRACTICE_MODES.find((mode) => mode.id === 'explain')
+      const choice = await pyr.chooseLens({ concept: conceptLabel, lenses: [lens] })
+      setPracticeQuestion({ text: choice.question, why: choice.why })
+      setInterviewAnswer('')
+      setInterviewFeedback(null)
+    } catch (error) {
+      setInterviewFeedback({ status: 'error', text: `Could not prepare a question: ${error.message}` })
+    }
+  }
   const askPyr = async () => {
     const prompt = aiPrompt.trim()
     if (!prompt) return
     setAiPrompt('')
     if (!pyr?.ready) {
-      setAiMessages((current) => [...current, { role: 'learner', text: prompt }, { role: 'pyr', text: 'Connect OpenCode in Settings → AI Tutor so I can answer here. Until then, launch a CLI in the Forge PYR panel.' }].slice(-8))
+      setAiMessages((current) => [...current, { role: 'learner', text: prompt }, { role: 'pyr', text: 'Connect OpenCode in Settings → AI Tutor so I can answer here. Until then, launch a CLI in the Hunt PYR panel.' }].slice(-8))
       return
     }
     setAiMessages((current) => [...current, { role: 'learner', text: prompt }, { role: 'pyr', text: '…thinking', pending: true }].slice(-8))
     let reply
     try {
-      reply = await pyr.ask({ question: prompt, concept: conceptLabel, code: String(tutorCode || '') })
+      reply = await pyr.ask({ question: prompt, concept: conceptLabel, code: practiceFormat === 'interview' ? interviewAnswer : String(tutorCode || '') })
     } catch (error) {
       reply = `I couldn't answer that just now (${error.message}). Try again in a moment.`
     }
@@ -2178,6 +2204,33 @@ function ResourceTutorScreen({ pyr, hunter, sparRoster = [], sparActions, armory
   }
   editorActions.current = { run: runPractice, submit, save: onTutorSave }
   const practiceModes = RESOURCE_PRACTICE_MODES
+  const practiceExample = !practiceQuestion && ['predict', 'trace', 'bug'].includes(practiceMode) ? (practiceMode === 'bug' ? (selectedPage?.mistake_examples?.[0] || selectedPage?.examples?.[0] || '') : (lessonFor(selectedPage)?.example || '')) : ''
+  const practicePrompt = practiceQuestion?.text || practiceModes.find((mode) => mode.id === practiceMode)?.prompt || ''
+  useEffect(() => {
+    if (!practiceEditor || surface !== 'ide' || practiceFormat !== 'code') return
+    const lines = [`# ${conceptLabel} · ${practiceModes.find((mode) => mode.id === practiceMode)?.label || 'Practice'}`, ...String(practicePrompt).split('\n').flatMap((line) => (line.match(/.{1,72}(?:\s|$)|.{1,72}/g) || ['']).map((part) => `# ${part.trim()}`))]
+    if (practiceExample) lines.push('#', '# Example:', ...String(practiceExample).split('\n').map((line) => `# ${line}`))
+    lines.push('#', '# Write your answer below. Your existing tutor.py is preserved.')
+    const node = document.createElement('div')
+    node.className = 'tutor-editor-prompt'
+    node.textContent = lines.join('\n')
+    node.style.fontSize = `${editorFontSize}px`
+    node.style.lineHeight = `${Math.round(editorFontSize * 1.55)}px`
+    let zoneId
+    const zone = { afterLineNumber: 0, heightInPx: lines.length * Math.round(editorFontSize * 1.55) + 16, domNode: node }
+    practiceEditor.changeViewZones((accessor) => { zoneId = accessor.addZone(zone) })
+    const resize = () => {
+      const height = node.scrollHeight
+      if (height > zone.heightInPx) {
+        zone.heightInPx = height
+        try { practiceEditor.changeViewZones((accessor) => accessor.layoutZone(zoneId)) } catch { /* editor disposed */ }
+      }
+    }
+    const observer = new ResizeObserver(resize)
+    observer.observe(node)
+    const frame = requestAnimationFrame(resize)
+    return () => { cancelAnimationFrame(frame); observer.disconnect(); try { practiceEditor.changeViewZones((accessor) => accessor.removeZone(zoneId)) } catch { /* editor disposed */ } }
+  }, [practiceEditor, surface, practiceFormat, practiceMode, practicePrompt, practiceExample, conceptLabel, editorFontSize])
   const choosePyrLens = async () => {
     try {
       const choice = await pyr.chooseLens({ concept: conceptLabel, lenses: practiceModes })
@@ -2188,10 +2241,10 @@ function ResourceTutorScreen({ pyr, hunter, sparRoster = [], sparActions, armory
     }
   }
   return (
-    <div className="resource-tutor-screen" data-testid="resource-tutor" data-campaign-revision={revision}>
-      <header className="resource-tutor-header"><div><span className="screen-kicker">TUTOR NOTEBOOK</span><h2>{huntView ? 'Study the beast. Train the sign. Hunt.' : 'Learn it, then make it yours.'}</h2><p>{huntView ? 'Explore the beasts and signs, then read a concept or practise it.' : 'Reference pages, a writable tutor.py and bounded PYR guidance share one calm workspace.'}</p></div><div className="resource-tutor-header-actions"><button type="button" onClick={() => onNavigate?.('forge')}>Resume Forge</button><span>REV {revision ?? 0}</span></div></header>
-      <nav className="resource-tutor-tabs" aria-label="Tutor sections"><button type="button" className={surface === 'learn' ? 'active' : ''} onClick={() => setSurface('learn')}>Lessons</button><button type="button" className={surface === 'bestiary' ? 'active' : ''} onClick={() => setSurface('bestiary')}>Bestiary</button><button type="button" className={surface === 'signs' ? 'active' : ''} onClick={() => setSurface('signs')}>Signs</button><button type="button" className={surface === 'ide' || surface === 'notes' ? 'active' : ''} disabled={practiceLocked} title={practiceLocked ? 'Unavailable during a boss fight' : undefined} onClick={() => setSurface('ide')}>↗ IDE practice</button><button type="button" className={surface === 'spar' ? 'active' : ''} disabled={practiceLocked} title={practiceLocked ? 'Unavailable during a boss fight' : undefined} onClick={() => setSurface('spar')}>⚔ Sparring</button></nav>
-      {practiceLocked && <p className="resource-boss-lock" role="status">Boss fight active · Lessons and the bestiary are open. Practice and sparring unlock after the fight or retreat.</p>}
+    <div className="resource-tutor-screen" data-study-surface={surface} data-testid="resource-tutor" data-campaign-revision={revision}>
+      <header className="resource-tutor-header"><div><span className="screen-kicker">HUNTER’S STUDY</span><h2>{huntView ? 'Study the beast. Train the sign. Hunt.' : 'Learn it, then make it yours.'}</h2><p>{huntView ? 'Explore the beasts and signs, then read a concept or practise it.' : 'Reference pages, a writable tutor.py and bounded PYR guidance share one calm workspace.'}</p></div><div className="resource-tutor-header-actions"><button type="button" onClick={() => onNavigate?.('forge')}>Resume Hunt</button><span>REV {revision ?? 0}</span></div></header>
+      <nav className="resource-tutor-tabs" aria-label="Hunter’s Study sections"><button type="button" className={surface === 'learn' ? 'active' : ''} onClick={() => setSurface('learn')}>Codex</button><button type="button" className={surface === 'bestiary' ? 'active' : ''} onClick={() => setSurface('bestiary')}>Bestiary</button><button type="button" className={surface === 'signs' ? 'active' : ''} onClick={() => setSurface('signs')}>Signs</button><button type="button" className={surface === 'ide' || surface === 'notes' ? 'active' : ''} disabled={practiceLocked} title={practiceLocked ? 'Unavailable during a boss fight' : undefined} onClick={() => setSurface('ide')}>↗ IDE practice</button><button type="button" className={surface === 'spar' ? 'active' : ''} disabled={practiceLocked} title={practiceLocked ? 'Unavailable during a boss fight' : undefined} onClick={() => setSurface('spar')}>⚔ Sparring</button></nav>
+      {practiceLocked && <p className="resource-boss-lock" role="status">Boss fight active · The codex and bestiary are open. Practice and sparring unlock after the fight or retreat.</p>}
       {surface === 'learn' && <TutorLearningPath practiceLocked={practiceLocked} pages={pages} selectedPage={selectedPage} onSelect={setSelectedId} onPractice={(mode) => { setPracticeMode(mode); setPracticeFormat('code'); setPracticeQuestion(null); setSurface('ide') }} reference={<><ResourceCodexExamples page={selectedPage} /><ResourceCodexMistakes page={selectedPage} entries={selectedEntries} /><ResourceEncounterRecords entries={selectedEntries} /><StudiedAtHome concept={selectedPage?.title} /><StudyAtHomeButton topic={selectedPage?.title} context="studying a concept between bounties" label="Study more at home" /></>} onResume={() => onNavigate?.('forge')} encounter={encounter} studyObjective={studyObjective} />}
       {!practiceLocked && surface === 'spar' && <SparringArena roster={sparRoster} actions={sparActions} armory={armory} busy={busy} />}
       {huntView && <HunterCodex practiceLocked={practiceLocked} view={surface} hunter={hunter} pages={pages} entries={entries} progress={progress} encounter={encounter} pyr={pyr} busy={busy}
@@ -2199,7 +2252,7 @@ function ResourceTutorScreen({ pyr, hunter, sparRoster = [], sparActions, armory
         onRead={(pageId) => { setHuntPick(pageId); setSelectedId(pageId); setSurface('learn') }}
         onPractice={(pageId, mode, difficulty) => { if (pageId) { setHuntPick(pageId); setSelectedId(pageId) } setPracticeMode(mode); setPracticeFormat('code'); setPracticeDifficulty(difficulty || 1); setPracticeQuestion(null); setSurface('ide') }} />}
 
-      {!practiceLocked && surface === 'ide' && <section className="resource-ide-layout"><aside className="resource-ide-rail tutor-practice-picker"><span className="screen-kicker">PRACTICE SETUP</span><label>Topic<select aria-label="Practice topic" value={selectedPage?.id || ''} onChange={(event) => { setSelectedId(event.target.value); setPracticeQuestion(null); setQuizPick(null) }}>{pages.map((page) => <option key={page.id} value={page.id}>{page.title}</option>)}</select></label><label>Activity<select aria-label="Practice activity" value={practiceFormat === 'quiz' || practiceFormat === 'true_false' ? practiceFormat : practiceMode} onChange={(event) => { const value = event.target.value; setQuizPick(null); setPracticeQuestion(null); if (value === 'quiz' || value === 'true_false') setPracticeFormat(value); else { setPracticeFormat('code'); setPracticeMode(value) } }}><option value="quiz">Multiple choice</option><option value="true_false">True or false</option>{practiceModes.map((mode) => <option key={mode.id} value={mode.id}>{mode.label}</option>)}</select></label><button type="button" onClick={() => setSurface('learn')}>Read this lesson</button><button type="button" onClick={() => setSurface('notes')}>Open notes</button><small>Practice is separate from your campaign files.</small></aside><main className="resource-ide-main">{practiceFormat === 'quiz' || practiceFormat === 'true_false' ? (() => { const base = lessonFor(selectedPage); const truth = TUTOR_TRUE_FALSE[selectedPage?.id]; const lesson = practiceFormat === 'true_false' ? (truth ? { ...base, ...truth, options: ['True', 'False'], example: null } : null) : base; return <section className="tutor-quiz"><span className="screen-kicker">{practiceFormat === 'true_false' ? 'TRUE OR FALSE' : 'MULTIPLE CHOICE'} · {conceptLabel.toUpperCase()}</span>{lesson?.options ? <><h3>{lesson.question}</h3>{lesson.example && <div className="tutor-question-editor"><div className="resource-editor-toolbar">example.py · read only</div><Editor height="180px" language="python" value={lesson.example} theme="vs-dark" options={{ readOnly: true, minimap: { enabled: false }, fontSize: editorFontSize, automaticLayout: true, scrollBeyondLastLine: false }} /></div>}<div className="tutor-lesson-options">{lesson.options.map((option, index) => <button key={option} type="button" className={quizPick === index ? 'selected' : ''} onClick={() => setQuizPick(index)}>{option}</button>)}</div>{quizPick !== null && <p className={`tutor-answer ${quizPick === lesson.answer ? 'correct' : 'incorrect'}`} role="status">{quizPick === lesson.answer ? lesson.why : 'Not quite. Read the example and try again.'}</p>}</> : <><h3>Read and practice this topic</h3><p>A written check for this topic is still being prepared. You can use the lesson and code practice now.</p><button type="button" onClick={() => setPracticeFormat('code')}>Open code practice</button></>}</section> })() : <><div className="resource-breadcrumb"><span>TUTOR</span><span>/</span><strong>IDE PRACTICE</strong></div><header className="resource-ide-heading"><div><span className="screen-kicker">{practiceModes.find((mode) => mode.id === practiceMode)?.label.toUpperCase()}</span><h3>{conceptLabel}</h3>{practiceQuestion ? <div className="pyr-practice-question"><span className="screen-kicker">PYR'S QUESTION</span><p>{practiceQuestion.text}</p>{practiceQuestion.why && <small>{practiceQuestion.why}</small>}</div> : <p>{practiceModes.find((mode) => mode.id === practiceMode)?.prompt} PYR can point at your reasoning without writing the finished response.</p>}</div><label><span>QUESTION LENS</span>{pyr?.chooseLensEnabled && <button type="button" className="pyr-choose-lens" onClick={choosePyrLens} disabled={busy}>✦ Let PYR choose</button>}<select value={practiceMode} onChange={(event) => { setPracticeMode(event.target.value); setPracticeQuestion(null) }}>{practiceModes.map((mode) => <option key={mode.id} value={mode.id}>{mode.label}</option>)}</select></label></header>{!practiceQuestion && ['predict', 'trace', 'bug'].includes(practiceMode) && <div className="tutor-reference-code"><div className="resource-editor-toolbar">{practiceMode === 'bug' ? 'example mistake' : 'example.py'} · read only</div><Editor height="140px" language="python" value={practiceMode === 'bug' ? (selectedPage?.mistake_examples?.[0] || selectedPage?.examples?.[0] || '# Open the lesson to see an example.') : (lessonFor(selectedPage)?.example || '')} theme="vs-dark" options={{ readOnly: true, minimap: { enabled: false }, fontSize: editorFontSize, automaticLayout: true, scrollBeyondLastLine: false }} /></div>}<div className="resource-mode-strip">{practiceModes.map((mode, index) => <button type="button" key={mode.id} className={practiceMode === mode.id ? 'active' : ''} onClick={() => { setPracticeMode(mode.id); setPracticeQuestion(null) }}><span>0{index + 1}</span>{mode.label}</button>)}</div><div className="resource-editor-card"><div className="resource-editor-toolbar"><span><b className="safe-badge">PYR WRITABLE</b> tutor.py{tutorDirty ? ' · unsaved' : ''}</span><span>MONACO · PYTHON · LOCAL COMPLETION</span></div><div className="resource-monaco"><Editor height="100%" path="tutor.py" language="python" value={tutorCode || ''} onChange={(value) => onTutorChange?.(value ?? '')} onMount={(editor, monaco) => { const provider = monaco.languages.registerCompletionItemProvider('python', { triggerCharacters: ['.', '_'], provideCompletionItems: (model) => ({ suggestions: resourceIdentifierSuggestions(model.getValue()).map((label) => ({ label, kind: monaco.languages.CompletionItemKind.Keyword, insertText: label })) }) }); editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter, () => editorActions.current.run?.()); editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => editorActions.current.save?.()); editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyMod.Shift | monaco.KeyCode.Enter, () => editorActions.current.submit?.()); editor.onDidDispose(() => provider.dispose()) }} theme="vs-dark" options={{ minimap: { enabled: false }, acceptSuggestionOnEnter: 'off', fontSize: editorFontSize, fontFamily: 'JetBrains Mono, ui-monospace, monospace', lineHeight: Math.round(editorFontSize * 1.55), padding: { top: 14, bottom: 14 }, automaticLayout: true, smoothScrolling: true, tabSize: 4, suggestOnTriggerCharacters: true }} /></div><div className="resource-editor-actions"><span>Ctrl/Cmd ↵ run · Ctrl/Cmd S save · Ctrl/Cmd ⇧ ↵ submit</span><div><button type="button" onClick={onTutorSave} disabled={busy}>Save Tutor</button><button type="button" onClick={onTutorFormat} disabled={busy}>Pretty</button><button type="button" data-tutor-run onClick={runPractice} disabled={busy}>▶ Run Tutor</button><button type="button" className="primary" data-tutor-submit onClick={submit} disabled={busy || !String(tutorCode || '').trim()}>Submit for feedback</button></div></div></div><section className={`resource-ide-terminal ${terminal.status}`} aria-live="polite"><div><span>PRACTICE FEEDBACK</span><b>{terminal.status.toUpperCase()}</b></div><pre>{terminal.output.join('\n')}</pre></section></>}{tutorExternalChange && <div className="tutor-conflict-banner" role="alert"><strong>External tutor.py change detected.</strong><span>Your unsaved edits are preserved.</span><button type="button" onClick={onTutorReloadExternal}>Reload external version</button><button type="button" onClick={onTutorKeepEdits}>Keep my edits</button></div>}</main><aside className="resource-ai-panel"><div className="resource-ai-heading"><div><span className="screen-kicker">PYR / AI</span><strong>Tutor channel</strong></div><span className="connection-pill">{pyr?.ready ? 'OPENCODE' : 'OFFLINE'}</span></div><p>Bounded guidance only. PYR will not paste a campaign answer or project-specific snippet.</p><div className="resource-ai-messages">{aiMessages.map((message, index) => <div key={`${message.role}-${index}`} className={`resource-ai-message ${message.role}`}><span>{message.role === 'learner' ? 'YOU' : 'PYR'}</span><p>{message.text}</p></div>)}</div><textarea value={aiPrompt} onChange={(event) => setAiPrompt(event.target.value)} rows={3} placeholder="Ask for a hint, not a finished answer…" /><div><button type="button" onClick={() => setAiMessages([])}>Clear</button><button type="button" className="primary" onClick={askPyr} disabled={busy}>Ask PYR</button></div></aside></section>}
+      {!practiceLocked && surface === 'ide' && <section className="resource-ide-layout"><aside className="resource-ide-rail tutor-practice-picker"><span className="screen-kicker">PRACTICE SETUP</span><label>Topic<select aria-label="Practice topic" value={selectedPage?.id || ''} onChange={(event) => { setSelectedId(event.target.value); setPracticeQuestion(null); setQuizPick(null); setInterviewAnswer(''); setInterviewFeedback(null) }}>{pages.map((page) => <option key={page.id} value={page.id}>{page.title}</option>)}</select></label><label>Activity<select aria-label="Practice activity" value={['quiz', 'true_false', 'interview'].includes(practiceFormat) ? practiceFormat : practiceMode} onChange={(event) => { const value = event.target.value; setQuizPick(null); setInterviewAnswer(''); setInterviewFeedback(null); setPracticeQuestion(null); if (['quiz', 'true_false', 'interview'].includes(value)) setPracticeFormat(value); else { setPracticeFormat('code'); setPracticeMode(value) } }}><option value="quiz">Multiple choice</option><option value="true_false">True or false</option><option value="interview">Written interview</option>{practiceModes.map((mode) => <option key={mode.id} value={mode.id}>{mode.label}</option>)}</select></label>{practiceFormat === 'code' && pyr?.chooseLensEnabled && <button type="button" onClick={choosePyrLens} disabled={busy}>✦ Let PYR choose</button>}<button type="button" onClick={() => setSurface('learn')}>Read this lesson</button><button type="button" onClick={() => setSurface('notes')}>Open notes</button><figure className="tutor-study-scene" role="img" aria-label="The hunter studies at his desk, turns pages, and visits the library shelf for another book"><div className="tutor-study-animation" aria-hidden="true" /><figcaption>STUDY IN PROGRESS</figcaption></figure><small>Practice is separate from your campaign files.</small></aside><main className="resource-ide-main">{practiceFormat === 'quiz' || practiceFormat === 'true_false' ? (() => { const base = lessonFor(selectedPage); const truth = TUTOR_TRUE_FALSE[selectedPage?.id]; const lesson = practiceFormat === 'true_false' ? (truth ? { ...base, ...truth, options: ['True', 'False'], example: null } : null) : base; return <section className="tutor-quiz"><span className="screen-kicker">{practiceFormat === 'true_false' ? 'TRUE OR FALSE' : 'MULTIPLE CHOICE'} · {conceptLabel.toUpperCase()}</span>{lesson?.options ? <><h3>{lesson.question}</h3>{lesson.example && <div className="tutor-question-editor"><div className="resource-editor-toolbar">example.py · read only</div><Editor height="180px" language="python" value={lesson.example} theme="vs-dark" options={{ readOnly: true, minimap: { enabled: false }, fontSize: editorFontSize, automaticLayout: true, scrollBeyondLastLine: false }} /></div>}<div className="tutor-lesson-options">{lesson.options.map((option, index) => <button key={option} type="button" className={quizPick === index ? 'selected' : ''} onClick={() => setQuizPick(index)}>{option}</button>)}</div>{quizPick !== null && <p className={`tutor-answer ${quizPick === lesson.answer ? 'correct' : 'incorrect'}`} role="status">{quizPick === lesson.answer ? lesson.why : 'Not quite. Read the example and try again.'}</p>}</> : <><h3>Read and practice this topic</h3><p>A written check for this topic is still being prepared. You can use the lesson and code practice now.</p><button type="button" onClick={() => setPracticeFormat('code')}>Open code practice</button></>}</section> })() : practiceFormat === 'interview' ? <section className="tutor-interview"><span className="screen-kicker">WRITTEN INTERVIEW · {conceptLabel.toUpperCase()}</span><h3>{interviewQuestion}</h3><button type="button" className="tutor-interview-question" onClick={askInterviewQuestion} disabled={!pyr?.chooseLensEnabled || busy || interviewFeedback?.status === 'pending'} title={!pyr?.chooseLensEnabled ? 'Connect PYR to generate another question' : undefined}>Ask PYR for another question</button><label htmlFor="practice-interview-answer">Your explanation</label><textarea id="practice-interview-answer" value={interviewAnswer} onChange={(event) => { setInterviewAnswer(event.target.value); setInterviewFeedback(null) }} maxLength={20000} placeholder="Explain your reasoning and give an example…" /><div className="tutor-interview-actions"><button type="button" className="primary" onClick={submitInterview} disabled={busy || !interviewAnswer.trim() || interviewFeedback?.status === 'pending'}>Submit for feedback</button></div>{interviewFeedback && <p className={`tutor-answer ${interviewFeedback.status}`} role="status">{interviewFeedback.status === 'correct' ? 'Correct · ' : interviewFeedback.status === 'incorrect' ? 'Not yet · ' : ''}{interviewFeedback.text}</p>}</section> : <><div className="resource-breadcrumb"><span>TUTOR</span><span>/</span><strong>IDE PRACTICE</strong></div><div className="resource-editor-card"><div className="resource-editor-toolbar"><span><b className="safe-badge">PYR WRITABLE</b> tutor.py{tutorDirty ? ' · unsaved' : ''}</span><span>MONACO · PYTHON · LOCAL COMPLETION</span></div><div className="resource-monaco"><Editor height="100%" path="tutor.py" language="python" value={tutorCode || ''} onChange={(value) => onTutorChange?.(value ?? '')} onMount={(editor, monaco) => { setPracticeEditor(editor); editor.onDidDispose(() => setPracticeEditor((current) => current === editor ? null : current)); const provider = monaco.languages.registerCompletionItemProvider('python', { triggerCharacters: ['.', '_'], provideCompletionItems: (model) => ({ suggestions: resourceIdentifierSuggestions(model.getValue()).map((label) => ({ label, kind: monaco.languages.CompletionItemKind.Keyword, insertText: label })) }) }); editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter, () => editorActions.current.run?.()); editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => editorActions.current.save?.()); editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyMod.Shift | monaco.KeyCode.Enter, () => editorActions.current.submit?.()); editor.onDidDispose(() => provider.dispose()) }} theme="vs-dark" options={{ minimap: { enabled: false }, acceptSuggestionOnEnter: 'off', fontSize: editorFontSize, fontFamily: 'JetBrains Mono, ui-monospace, monospace', lineHeight: Math.round(editorFontSize * 1.55), padding: { top: 14, bottom: 14 }, automaticLayout: true, smoothScrolling: true, tabSize: 4, suggestOnTriggerCharacters: true }} /></div><div className="resource-editor-actions"><span>Ctrl/Cmd ↵ run · Ctrl/Cmd S save · Ctrl/Cmd ⇧ ↵ submit</span><div><button type="button" onClick={onTutorSave} disabled={busy}>Save Tutor</button><button type="button" onClick={onTutorFormat} disabled={busy}>Pretty</button><button type="button" data-tutor-run onClick={runPractice} disabled={busy}>▶ Run Tutor</button><button type="button" className="primary" data-tutor-submit onClick={submit} disabled={busy || !String(tutorCode || '').trim()}>Submit for feedback</button></div></div></div><section className={`resource-ide-terminal ${terminal.status}`} aria-live="polite"><div><span>PRACTICE FEEDBACK</span><b>{terminal.status.toUpperCase()}</b></div><pre>{terminal.output.join('\n')}</pre></section></>}{tutorExternalChange && <div className="tutor-conflict-banner" role="alert"><strong>External tutor.py change detected.</strong><span>Your unsaved edits are preserved.</span><button type="button" onClick={onTutorReloadExternal}>Reload external version</button><button type="button" onClick={onTutorKeepEdits}>Keep my edits</button></div>}</main><aside className="resource-ai-panel"><div className="resource-ai-heading"><div><span className="screen-kicker">PYR / AI</span><strong>Tutor channel</strong></div><span className="connection-pill">{pyr?.ready ? 'OPENCODE' : 'OFFLINE'}</span></div><p>Bounded guidance only. PYR will not paste a campaign answer or project-specific snippet.</p><div className="resource-ai-messages">{aiMessages.map((message, index) => <div key={`${message.role}-${index}`} className={`resource-ai-message ${message.role}`}><span>{message.role === 'learner' ? 'YOU' : 'PYR'}</span><p>{message.text}</p></div>)}</div><textarea value={aiPrompt} onChange={(event) => setAiPrompt(event.target.value)} rows={3} placeholder="Ask for a hint, not a finished answer…" /><div><button type="button" onClick={() => setAiMessages([])}>Clear</button><button type="button" className="primary" onClick={askPyr} disabled={busy}>Ask PYR</button></div></aside></section>}
       {!practiceLocked && surface === 'notes' && <section className="resource-notes-layout"><aside className="resource-ide-rail resource-notes-rail"><button type="button" className="resource-rail-file" onClick={() => setSurface('ide')}><ForgeFileGlyph kind="python" /><small>tutor.py</small></button><button type="button" className="resource-rail-file active" onClick={() => setSurface('notes')}><ForgeFileGlyph kind="markdown" /><small>notes.md</small></button><div className="resource-ide-context"><span className="screen-kicker">CONCEPT</span><strong>{conceptLabel}</strong><small>notes.md · learner workspace</small></div></aside><main className="resource-notes-main"><ResourceNotebook pages={pages} selectedPage={selectedPage} entries={entries} onSelectPage={setSelectedId} /></main></section>}
     </div>
   )
@@ -2228,7 +2281,7 @@ function CharacterSheet({ progress, revision, avatarDataUrl = '', encounter, cod
           <div><small>RESOLVE / OBJECTIVE</small><strong>{encounter?.status === 'boss_available' ? 'BOSS GATE' : `${resolve}/${maxResolve || '—'}`}</strong><span>{encounter?.available_objectives?.length ?? 0} objective{(encounter?.available_objectives?.length ?? 0) === 1 ? '' : 's'} ready · {encounter?.attempts ?? 0} attempts</span></div>
           <div><small>LEARNING SIGNALS</small><strong>{codexCount} encounter records</strong><span>{(encounter?.question_types || []).join(' · ') || 'No question lens recorded yet.'}</span></div>
         </div>
-        <div className="character-cockpit-actions"><button className="primary" type="button" onClick={() => onNavigate?.('forge')}>Resume Forge</button><button type="button" onClick={() => onNavigate?.('tutor')}>Open Tutor</button><button type="button" onClick={() => onNavigate?.('codex')}>Read Codex</button></div>
+        <div className="character-cockpit-actions"><button className="primary" type="button" onClick={() => onNavigate?.('forge')}>Resume Hunt</button><button type="button" onClick={() => onNavigate?.('tutor')}>Open Tutor</button><button type="button" onClick={() => onNavigate?.('codex')}>Read Codex</button></div>
         <div className="character-event-strip" aria-label="Recent validated events">
           <small>RECENT VALIDATED EVENTS</small>
           {recentEvents.length ? recentEvents.map((event, index) => <span key={`${event.id || event.kind || 'event'}-${index}`}>{event.kind || event.type || 'validated event'}{event.reason ? ` · ${event.reason}` : ''}</span>) : <span>No validated events recorded yet.</span>}
@@ -2471,7 +2524,7 @@ function CharacterScreen({ progress, equipmentProjection, setAvatar, equipCampai
                 <div className="character-gear-list">
                   {(slot.items || []).length ? slot.items.map((item) => (
                     <button type="button" key={item.id} className={`character-gear-item ${item.equipped ? 'equipped' : ''}`} onClick={() => equipCampaignItem?.(item.id)} disabled={busy || item.equipped || !equipCampaignItem}>
-                      <AvatarSprite appearance={look} gear={{ ...gear, [slot.id]: item.name }} size={56} title={`Preview with ${item.name}`} />
+                      {lanternItemArt(item.id) ? <img className="character-item-art" src={lanternItemArt(item.id)} alt="" /> : <AvatarSprite appearance={look} gear={{ ...gear, [slot.id]: item.name }} size={56} title={`Preview with ${item.name}`} />}
                       <span><strong>{item.name}</strong><small>{item.effect || item.description}</small></span>
                       <b>{item.equipped ? 'EQUIPPED' : 'EQUIP'}</b>
                     </button>
@@ -2537,7 +2590,7 @@ function Homestead({ progress, revision, equipmentProjection, purchaseCosmetic, 
   const scrollToLoadout = () => document.querySelector('.home-loadout-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   const focusCopy = {
     hearth: ['HEARTH', 'Warm up before the next job.', 'Full rest costs 1 coin per 10 HP. If you cannot afford it, emergency rest restores you up to 30% HP. Meals offer a smaller top-up.', <div className="home-context-actions"><button type="button" disabled={busy || hp >= maxHp || (restCoins < restCost && hp >= restFloor) || !performHomesteadAction} onClick={() => perform('recover')}>{restCoins >= restCost ? `Rest · ${restCost} coins` : 'Free emergency rest'}</button><button type="button" className="ghost" disabled={busy || hp >= maxHp || !(supplies.meals > 0) || !performHomesteadAction} onClick={() => perform('meal')}>Eat a meal</button></div>],
-    armory: ['ARMORY CHEST', 'Tune the kit you will carry.', 'Armor softens retaliation. Trinkets shape Guard Breaks and protection. Equip what fits the next contract, then return to the Forge.', <div className="home-context-actions"><button type="button" onClick={scrollToLoadout}>Browse loadout</button><button type="button" className="ghost" disabled={busy || upgradeTokens < 1 || !performHomesteadAction} onClick={() => perform('spend_token')}>Spend upgrade token</button></div>],
+    armory: ['ARMORY CHEST', 'Tune the kit you will carry.', 'Armor softens retaliation. Trinkets shape Guard Breaks and protection. Equip what fits the next contract, then return to the Hunt.', <div className="home-context-actions"><button type="button" onClick={scrollToLoadout}>Browse loadout</button><button type="button" className="ghost" disabled={busy || upgradeTokens < 1 || !performHomesteadAction} onClick={() => perform('spend_token')}>Spend upgrade token</button></div>],
     pantry: ['PANTRY', 'Pack a useful encounter kit.', 'Field bandages restore HP at Home. Ember tonics can be primed during an encounter to soften one failed submission. Meals can also keep Pyr growing.', <div className="home-context-actions"><button type="button" disabled={busy || hp >= maxHp || !(supplies.bandages > 0) || !performHomesteadAction} onClick={() => perform('bandage')}>Use bandage</button><button type="button" className="ghost" disabled={busy || hp >= maxHp || !(supplies.meals > 0) || !performHomesteadAction} onClick={() => perform('meal')}>Eat a meal</button></div>],
     study: ['STUDY DESK', 'Turn learning into a stronger home.', 'Validated work earns upgrade tokens. Build five authored room upgrades here, then let the achievement plaques record the moments you earned them.', <div className="home-context-actions"><button type="button" onClick={() => setRoomUpgradePanelOpen(true)}>Open room upgrades</button><button type="button" className="ghost" disabled={busy || upgradeTokens < 1 || !performHomesteadAction} onClick={() => perform('spend_token')}>Spend one legacy token</button></div>],
     pyr: [pyrStage, 'Spend time with your code-flame.', `${pyrStageMeta.detail} Feed Pyr with a camp meal to restore training energy, or train to grow bond. The next evolution is ${nextPyrStageMeta ? `${nextPyrStageMeta.label} at bond ${nextPyrStageMeta.threshold}` : 'already reached'}.`, <div className="home-context-actions"><button type="button" disabled={busy || !(supplies.meals > 0) || !performHomesteadAction} onClick={() => perform('feed_pyr')}>Feed Pyr</button><button type="button" className="ghost" disabled={busy || pyrEnergy <= 0 || !performHomesteadAction} onClick={() => perform('train_pyr')}>Train with Pyr</button></div>],
@@ -2615,7 +2668,7 @@ function Homestead({ progress, revision, equipmentProjection, purchaseCosmetic, 
       <section className="home-loadout-section">
         <div className="home-section-heading"><div><span className="screen-kicker">LIVE LOADOUT</span><h3>Armor and trinkets</h3></div><span>Buy in Market · equip here</span></div>
         <div className="home-loadout-grid">
-          {(equipmentProjection?.slots || []).map((slot) => <div className="home-loadout-slot" key={slot.id}><span className="screen-kicker">{slot.label}</span><div className="home-equip-list">{(slot.items || []).length ? (slot.items || []).map((item) => <button type="button" className={`home-equip-card ${item.equipped ? 'equipped' : ''}`} key={item.id} onClick={() => equipCampaignItem?.(item.id)} disabled={busy || item.equipped || !equipCampaignItem}><span className="home-equip-symbol"><RouteIcon id={slot.id === 'armor' ? 'shield' : 'spark'} /></span><span><strong>{item.name}</strong><small>{(item.effect && item.effect !== 'No special effect' ? item.effect : item.description)}</small></span><b>{item.equipped ? 'EQUIPPED' : 'EQUIP'}</b></button>) : <p className="home-empty-copy">{slot.id === 'armor' ? 'No armor owned yet.' : 'Visit Market to find your first trinket.'}</p>}</div></div>)}
+          {(equipmentProjection?.slots || []).map((slot) => <div className="home-loadout-slot" key={slot.id}><span className="screen-kicker">{slot.label}</span><div className="home-equip-list">{(slot.items || []).length ? (slot.items || []).map((item) => <button type="button" className={`home-equip-card ${item.equipped ? 'equipped' : ''}`} key={item.id} onClick={() => equipCampaignItem?.(item.id)} disabled={busy || item.equipped || !equipCampaignItem}><span className="home-equip-symbol"><img className="item-art-icon" src={merchantItemArt({ ...item, slot: slot.id })} alt="" /></span><span><strong>{item.name}</strong><small>{(item.effect && item.effect !== 'No special effect' ? item.effect : item.description)}</small></span><b>{item.equipped ? 'EQUIPPED' : 'EQUIP'}</b></button>) : <p className="home-empty-copy">{slot.id === 'armor' ? 'No armor owned yet.' : 'Visit Market to find your first trinket.'}</p>}</div></div>)}
         </div>
       </section>
       <section className="home-supply-strip"><span className="screen-kicker">PACKED SUPPLIES</span><span>Bandages <strong>{supplies.bandages || player.potions || 0}</strong></span><span>Ember tonics <strong>{supplies.tonics || 0}</strong></span><span>Meals <strong>{supplies.meals || 0}</strong></span><span>Vision scrolls <strong>{supplies.vision_scrolls || 0}</strong></span><small>Use supplies from the encounter kit.</small></section>
@@ -2626,7 +2679,7 @@ function Homestead({ progress, revision, equipmentProjection, purchaseCosmetic, 
 
 const CAMPAIGN_POIS = [
   { id: 'home', icon: '⌂', label: 'Home', kicker: 'REST · LOADOUT · PROGRESS', summary: 'Recover, tune your kit, grow Pyr, and spend upgrade tokens.' },
-  { id: 'market', icon: '◇', label: 'Market', kicker: 'ROTATING STOCK · COINS', summary: 'Meet the Merchant, then browse armor, trinkets, and supplies.' },
+  { id: 'market', icon: '◇', label: 'Market', kicker: 'GEAR · SUPPLIES · COINS', summary: 'Meet the Merchant, then browse armor, trinkets, and supplies.' },
   { id: 'office', icon: '✦', label: 'Bounty Office', kicker: 'MAIN BOUNTIES', summary: 'Choose the next learning contract from the board.' },
 ]
 
@@ -2706,7 +2759,7 @@ function CampaignMapRail({ place, onSelect, collapsed, onToggle, progress, onSel
       <div className="panel-heading">
         <div><span className="campaign-eyebrow">PROJECT MAP</span><h2>{activeProject.name || 'Blackjack'}</h2></div>
         {onSelectCampaign ? <button type="button" className="campaign-tag campaign-switch" onClick={() => setPicking(true)} title="Switch campaign">Switch ▾</button> : <span className="campaign-tag">3 POIs</span>}
-        <button type="button" className="map-rail-toggle" onClick={onToggle} aria-label={collapsed ? 'Expand project map' : 'Collapse project map'}>{collapsed ? '›' : '‹'}</button>
+        <button type="button" className="map-rail-toggle" onClick={onToggle} aria-expanded={!collapsed} title={collapsed ? 'Expand project map' : 'Collapse project map'} aria-label={collapsed ? 'Expand project map' : 'Collapse project map'}><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d={collapsed ? 'm9 5 7 7-7 7' : 'm15 5-7 7 7 7'} /><path d="M20 5v14" /></svg></button>
       </div>
       {!collapsed && <>
         <p className="campaign-panel-copy">A small campaign board. Choose where to prepare or which work to take next; there is no route tree to decode.</p>
@@ -2794,9 +2847,10 @@ const ARMORY_TABS = [
 const SLOT_WORDS = { weapon: 'Weapon', armor: 'Armour', trinket: 'Trinket', food: 'Food', tonic: 'Tonic', relic: 'Relic', aid: 'Aid' }
 
 function ArmoryItem({ item, children }) {
+  const art = merchantItemArt(item)
   return (
     <article className={`armory-item tier-${item.tier} ${item.equipped ? 'equipped' : ''}`}>
-      <div className="armory-item-head"><strong>{item.name}</strong><small>{String(item.tier).toUpperCase()} {SLOT_WORDS[item.slot] || item.slot}{item.count ? ` ×${item.count}` : ''}</small></div>
+      <div className="armory-item-head">{art && <img className="armory-item-icon" src={art} alt="" />}<strong>{item.name}</strong><small>{String(item.tier).toUpperCase()} {SLOT_WORDS[item.slot] || item.slot}{item.count ? ` ×${item.count}` : ''}</small></div>
       <p className="armory-effect">{item.effect}</p>
       {item.flavour && <small className="armory-flavour">{item.flavour}</small>}
       {children}
@@ -2840,111 +2894,81 @@ function ArmoryPanel({ armory, actions, busy }) {
 }
 
 // The Merchant's armoury: gear and food from campaigns you have reached.
-function ArmouryLots({ armory, coins, actions, busy, onBack }) {
+function CoinIcon() {
+  return <svg className="market-coin-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8" /><path d="M9 9h5a2 2 0 0 1 0 4h-4a2 2 0 0 0 0 4h5M12 6v12" /></svg>
+}
+
+function MarketItemVisual({ item }) {
+  return <span className={`armoury-lot-art slot-${item.slot}`} aria-hidden="true"><img src={merchantItemArt(item)} alt="" /></span>
+}
+
+function ArmouryLots({ armory, coins, actions, legacyPurchases, purchaseMarketItem, busy, onBack }) {
   const [filter, setFilter] = useState('open')
-  const lots = (armory?.market || []).filter((lot) => filter === 'all' || !lot.locked)
-  const campaigns = [...new Set(lots.map((lot) => lot.campaign))]
+  const [slot, setSlot] = useState('all')
+  const [selectedId, setSelectedId] = useState('')
+  const stock = merchantLots(armory?.market, CAMPAIGN_MARKET_STOCK, legacyPurchases, coins)
+  const lots = stock.filter((lot) => (filter === 'all' || !lot.locked) && (slot === 'all' || lot.slot === slot))
+  const selected = lots.find((lot) => lot.id === selectedId) || lots[0]
   const names = Object.fromEntries((armory?.collection || []).map((entry) => [entry.branch, entry.name]))
-  return (
-    <div className="alchemy-bench armoury-lots">
-      <div className="market-browser-head"><div><span className="campaign-eyebrow">THE MERCHANT · ARMOURY LOTS</span><h3>Gear from every campaign you have reached.</h3><p>Common and uncommon pieces open when you start a campaign, rare ones when half its contracts are cleared. Epics and legendaries are never sold: hunt them in contracts, the Dungeon and boss fights.</p></div><div className="market-browser-actions"><span className="market-purse-pill">◉ {coins} coins</span><button type="button" className="campaign-button ghost" onClick={onBack}>← Back to The Merchant</button></div></div>
-      <div className="bench-tabs" role="tablist" aria-label="Lots"><button type="button" className={filter === 'open' ? 'active' : ''} onClick={() => setFilter('open')}>Open lots</button><button type="button" className={filter === 'all' ? 'active' : ''} onClick={() => setFilter('all')}>All lots</button></div>
-      {campaigns.length ? campaigns.map((branch) => (
-        <section key={branch} className="alchemy-region">
-          <h4>{branch === 'aid' ? 'Aid · one-time help' : branch === 'hunter' ? 'Hunter weapons' : names[branch] || branch}</h4>
-          <div className="armory-grid">{lots.filter((lot) => lot.campaign === branch).map((lot) => (
-            <ArmoryItem key={lot.id} item={lot}>
-              <button type="button" className="campaign-button" onClick={() => actions?.buy?.(lot.id)} disabled={busy || !lot.affordable}>{lot.affordable || lot.locked ? `Buy · ${lot.price} coins` : `Need ${Math.max(1, lot.price - (coins || 0))} more coins`}</button>
-              {lot.locked && <small className="alchemy-reason">{lot.locked} to unlock</small>}
-            </ArmoryItem>
-          ))}</div>
-        </section>
-      )) : <p className="alchemy-empty">No lots open yet. Start a campaign to open its armoury.</p>}
-    </div>
-  )
+  const slots = ['all', ...new Set(stock.map((lot) => lot.slot))]
+  return <div className="alchemy-bench armoury-lots">
+    <div className="market-browser-head"><div><span className="campaign-eyebrow">THE MERCHANT · SHOP</span><h3>Find your next piece of kit.</h3><p>Choose a piece to inspect its effect and requirements. More lots open as you progress through campaigns.</p></div><div className="market-browser-actions"><span className="market-purse-pill"><CoinIcon /> {coins}</span><button type="button" className="campaign-button ghost" onClick={onBack}>← Back to The Merchant</button></div></div>
+    <div className="armoury-controls"><div className="bench-tabs" role="group" aria-label="Lot availability"><button type="button" className={filter === 'open' ? 'active' : ''} aria-pressed={filter === 'open'} onClick={() => setFilter('open')}>Open lots</button><button type="button" className={filter === 'all' ? 'active' : ''} aria-pressed={filter === 'all'} onClick={() => setFilter('all')}>All lots</button></div><div className="bench-tabs" role="group" aria-label="Item type">{slots.map((kind) => <button type="button" key={kind} className={slot === kind ? 'active' : ''} aria-pressed={slot === kind} onClick={() => setSlot(kind)}>{kind === 'all' ? 'All items' : kind === 'supply' ? 'Supplies' : SLOT_WORDS[kind] || kind}</button>)}</div></div>
+    <div className="armoury-lots-layout"><section className="armoury-lot-catalog" aria-label="Shop items">{lots.length ? lots.map((lot) => <button type="button" key={lot.id} className={`armoury-lot-card ${selected?.id === lot.id ? 'active' : ''} ${lot.locked ? 'locked' : ''}`} aria-pressed={selected?.id === lot.id} onClick={() => setSelectedId(lot.id)}><MarketItemVisual item={lot} /><span className="armoury-lot-copy"><strong>{lot.name}</strong><small>{String(lot.tier).toUpperCase()} · {SLOT_WORDS[lot.slot] || lot.slot}</small><span className="armoury-lot-price"><CoinIcon /> {lot.price}{lot.owned ? ' · OWNED' : lot.locked ? ' · LOCKED' : ''}</span></span></button>) : <p className="alchemy-empty">No lots in this selection.</p>}</section>
+    <aside className="armoury-lot-detail" aria-label="Selected shop item">{selected ? <><span className="campaign-eyebrow">SELECTED · {String(selected.tier).toUpperCase()} {SLOT_WORDS[selected.slot] || selected.slot}</span><MarketItemVisual item={selected} /><h3>{selected.name}</h3><p>{selected.effect}</p>{selected.flavour && <p className="armoury-lot-flavour">{selected.flavour}</p>}<small>{selected.campaign === 'hunter' ? 'Hunter weapons' : selected.campaign === 'aid' ? 'Hunter aid' : selected.campaign === 'merchant' ? 'Merchant’s stock' : names[selected.campaign] || selected.campaign}</small><div className="armoury-detail-price"><span>PRICE</span><strong><CoinIcon /> {selected.price}</strong></div>{selected.locked && <p className="alchemy-reason">{selected.locked} to unlock</p>}{!selected.owned && !selected.locked && !selected.affordable && <p className="alchemy-reason">Need {Math.max(1, selected.price - (coins || 0))} more coins.</p>}<button type="button" className="campaign-button" onClick={() => selected.source === 'merchant' ? purchaseMarketItem?.(selected.id) : actions?.buy?.(selected.id)} disabled={busy || selected.owned || !(selected.source === 'merchant' ? purchaseMarketItem : actions?.buy) || !selected.affordable || Boolean(selected.locked)}>{selected.owned ? 'Owned' : <>Buy · <CoinIcon /> {selected.price}</>}</button></> : <p className="alchemy-empty">Choose another item type to browse.</p>}</aside></div>
+  </div>
 }
 
 function AlchemyBench({ hunter, coins, actions, busy, onBack }) {
   const craftOil = actions?.craftOil
   const [tab, setTab] = useState('oils')
+  const [regionId, setRegionId] = useState(HUNT_REGIONS[0].id)
+  const [selectedSign, setSelectedSign] = useState(HUNT_REGIONS[0].pages[0])
+  const region = HUNT_REGIONS.find((item) => item.id === regionId) || HUNT_REGIONS[0]
   const recipes = hunter?.oil_recipes || []
   const materials = hunter?.materials || []
   const rankNames = ['Uninscribed', 'Inscribed', 'Honed', 'Mastered']
   return (
     <div className="alchemy-bench">
-      <div className="market-browser-head"><div><span className="campaign-eyebrow">THE MERCHANT · ALCHEMY BENCH</span><h3>{BENCH_TABS[tab].title}</h3><p>{BENCH_TABS[tab].copy}</p></div><div className="market-browser-actions"><span className="market-purse-pill">◉ {coins} coins</span><button type="button" className="campaign-button ghost" onClick={onBack}>← Back to The Merchant</button></div></div>
+      <div className="market-browser-head"><div><span className="campaign-eyebrow">THE MERCHANT · ALCHEMY BENCH</span><h3>{BENCH_TABS[tab].title}</h3><p>{BENCH_TABS[tab].copy}</p></div><div className="market-browser-actions"><span className="market-purse-pill"><CoinIcon /> {coins}</span><button type="button" className="campaign-button ghost" onClick={onBack}>← Back to The Merchant</button></div></div>
       <div className="alchemy-stores"><span className="campaign-eyebrow">YOUR STORES</span>{materials.length ? materials.map((item) => <span key={item.id} className="alchemy-chip">{item.name} ×{item.count}</span>) : <span className="alchemy-empty">Nothing banked yet. Delve in the Infinite Dungeon and bank parts at a camp.</span>}{(hunter?.oils || []).map((oil) => <span key={oil.id} className="alchemy-chip oil">{oil.name} ×{oil.count}</span>)}</div>
       <div className="bench-tabs" role="tablist" aria-label="Alchemy bench">{Object.entries(BENCH_TABS).map(([id, info]) => <button key={id} type="button" role="tab" aria-selected={tab === id} className={tab === id ? 'active' : ''} onClick={() => setTab(id)}>{info.label}{id === 'identify' && hunter?.vials ? ` (${hunter.vials})` : ''}</button>)}</div>
       {tab === 'smithing' && <SmithingPanel kit={hunter?.kit} coins={coins} actions={actions} busy={busy} />}
       {tab === 'identify' && <IdentifyPanel hunter={hunter} actions={actions} busy={busy} />}
-      {tab === 'oils' && HUNT_REGIONS.map((region) => (
-        <section key={region.id} className="alchemy-region">
-          <h4>{region.label}</h4>
-          {region.pages.map((sign) => (
-            <div key={sign} className="alchemy-sign">
-              <div className="alchemy-sign-head"><HuntSigil pageId={sign} size={20} /><strong>{HUNT_BEASTS[sign]?.beast}</strong><small>Sign of the {HUNT_BEASTS[sign]?.sign}</small></div>
-              <div className="alchemy-recipes">
-                {recipes.filter((recipe) => recipe.sign === sign).map((recipe) => {
-                  const missing = recipe.materials.filter((item) => item.have < item.count)
-                  const reason = !recipe.unlocked ? `Needs the sign ${rankNames[recipe.rank_needed]}` : missing.length ? `Missing ${missing.map((item) => `${item.count - item.have} ${item.name}`).join(', ')}` : coins < recipe.coins ? `Needs ${recipe.coins} coins` : ''
-                  return (
-                    <article key={recipe.id} className={`alchemy-recipe tier-${recipe.tier} ${recipe.unlocked ? '' : 'locked'}`}>
-                      <strong>{recipe.name.split(' ').slice(-2).join(' ')}</strong>
-                      <p>{recipe.effect}</p>
-                      <small>{recipe.materials.map((item) => `${item.count} ${item.name} (${item.have})`).join(' · ')} · {recipe.coins} coins</small>
-                      <button type="button" className="campaign-button" onClick={() => craftOil?.(recipe.id)} disabled={busy || !craftOil || !recipe.affordable || !recipe.unlocked} title={reason || 'Craft one'}>{recipe.owned ? `Craft (have ${recipe.owned})` : 'Craft'}</button>
-                      {reason && <small className="alchemy-reason">{reason}</small>}
-                    </article>
-                  )
-                })}
-              </div>
-            </div>
-          ))}
+      {tab === 'oils' && <div className="alchemy-workspace">
+        <aside className="alchemy-picker" aria-label="Choose oil ingredients">
+          <div className="alchemy-region-select"><span>Region</span><details><summary aria-label={`Oil region: ${region.label}`}>{region.label}<span aria-hidden="true">▾</span></summary><div className="alchemy-region-menu" aria-label="Choose oil region">{HUNT_REGIONS.map((item) => <button key={item.id} type="button" className={region.id === item.id ? 'active' : ''} aria-pressed={region.id === item.id} onClick={(event) => { setRegionId(item.id); setSelectedSign(item.pages[0]); event.currentTarget.closest('details').open = false }}>{item.label}</button>)}</div></details></div>
+          <span className="campaign-eyebrow">CHOOSE A BEAST</span>
+          <div className="alchemy-beast-list">{region.pages.map((sign) => <button type="button" key={sign} className={selectedSign === sign ? 'active' : ''} aria-pressed={selectedSign === sign} onClick={() => setSelectedSign(sign)}><HuntSigil pageId={sign} size={20} /><span><strong>{HUNT_BEASTS[sign]?.beast}</strong><small>Sign of the {HUNT_BEASTS[sign]?.sign}</small></span></button>)}</div>
+        </aside>
+        <section className="alchemy-selection" aria-label="Oil recipes for selected beast">
+          <div className="alchemy-sign-head"><HuntSigil pageId={selectedSign} size={24} /><div><span className="campaign-eyebrow">{region.label.toUpperCase()} · OILS</span><h4>{HUNT_BEASTS[selectedSign]?.beast}</h4><small>Sign of the {HUNT_BEASTS[selectedSign]?.sign}</small></div></div>
+          <div className="alchemy-recipes">{recipes.filter((recipe) => recipe.sign === selectedSign).map((recipe) => {
+            const missing = recipe.materials.filter((item) => item.have < item.count)
+            const reason = !recipe.unlocked ? `Needs the sign ${rankNames[recipe.rank_needed]}` : missing.length ? `Missing ${missing.map((item) => `${item.count - item.have} ${item.name}`).join(', ')}` : coins < recipe.coins ? `Needs ${recipe.coins} coins` : ''
+            return <article key={recipe.id} className={`alchemy-recipe tier-${recipe.tier} ${recipe.unlocked ? '' : 'locked'}`}><strong>{recipe.name}</strong><p>{recipe.effect}</p><small>{recipe.materials.map((item) => `${item.count} ${item.name} (${item.have})`).join(' · ')} · {recipe.coins} coins</small><button type="button" className="campaign-button" onClick={() => craftOil?.(recipe.id)} disabled={busy || !craftOil || !recipe.affordable || !recipe.unlocked} title={reason || 'Craft one'}>{recipe.owned ? `Craft (have ${recipe.owned})` : 'Craft'}</button>{reason && <small className="alchemy-reason">{reason}</small>}</article>
+          })}{!recipes.some((recipe) => recipe.sign === selectedSign) && <p className="alchemy-empty">No recipes available for this beast yet.</p>}</div>
         </section>
-      ))}
+      </div>}
     </div>
   )
 }
 
 function CampaignMarket({ progress, hunter, hunterActions, armory, armoryActions, onBackHome, purchaseMarketItem, busy }) {
   const coins = Number(progress?.player?.coins ?? 0)
-  const [open, setOpen] = useState(false)
+  const [shop, setShop] = useState(false)
   const [alchemy, setAlchemy] = useState(false)
-  const [armoury, setArmoury] = useState(false)
-  const [category, setCategory] = useState('All')
-  const [selectedId, setSelectedId] = useState(CAMPAIGN_MARKET_STOCK[6].id)
   const purchased = Array.isArray(progress?.homestead?.market_purchases) ? progress.homestead.market_purchases : []
-  const merchantName = 'The Merchant'
-  const categories = ['All', 'Armor', 'Trinket', 'Supply']
-  const visible = category === 'All' ? CAMPAIGN_MARKET_STOCK : CAMPAIGN_MARKET_STOCK.filter((item) => item.kind === category)
-  const selected = visible.find((item) => item.id === selectedId) || visible[0] || CAMPAIGN_MARKET_STOCK[0]
-  const owned = selected && purchased.includes(selected.id)
-  const rarity = selected?.price >= 120 ? 'RARE' : selected?.price >= 70 ? 'UNCOMMON' : 'COMMON'
-  const buy = () => {
-    if (!selected || owned || coins < selected.price || busy || !purchaseMarketItem) return
-    purchaseMarketItem(selected.id)
-  }
-  const changeCategory = (next) => {
-    setCategory(next)
-    const nextVisible = next === 'All' ? CAMPAIGN_MARKET_STOCK : CAMPAIGN_MARKET_STOCK.filter((item) => item.kind === next)
-    setSelectedId(nextVisible[0]?.id || '')
-  }
-  return (
-    <>
-      <div className="campaign-place-heading"><div><span className="campaign-eyebrow">MARKET · AUCTION HOUSE</span><h2>{open ? 'Browse today’s lots.' : `${merchantName} has a case for you.`}</h2><p>{merchantName} rotates useful armor, trinkets, and supplies. The market changes your preparation, never the answer you need to learn.</p></div><span className="campaign-place-seal market">◇</span></div>
-      {armoury ? <ArmouryLots armory={armory} coins={coins} actions={armoryActions} busy={busy} onBack={() => setArmoury(false)} /> : alchemy ? <AlchemyBench hunter={hunter} coins={coins} actions={hunterActions} busy={busy} onBack={() => setAlchemy(false)} /> : !open ? <section className="market-greeting">
-        <div className="market-vendor-scene"><div className="vendor-lantern">✦</div><div className="vendor-portrait merchant-pixel-sprite" aria-hidden="true" dangerouslySetInnerHTML={{ __html: merchantPixelSprite() }} /><div className="vendor-counter" /><div className="vendor-nameplate"><span className="campaign-eyebrow">SHOPKEEPER NPC</span><strong>{merchantName}</strong></div></div>
-        <div className="market-greeting-copy"><span className="campaign-eyebrow">WELCOME, TRAVELLER</span><h3>“Coins open the case. Knowledge keeps you alive.”</h3><p>The shelf changes between expeditions. Browse the lots when you are ready to prepare, then equip your finds at Home.</p><div className="market-greeting-doors"><button type="button" className="campaign-button" onClick={() => setOpen(true)}>Browse today’s lots <span>→</span></button><button type="button" className="campaign-button ghost" onClick={() => setAlchemy(true)}>Hunter’s alchemy <span>⚗</span></button><button type="button" className="campaign-button ghost" onClick={() => setArmoury(true)}>Armoury lots <span>⚔</span></button></div><small>Single-player market · no bidding · buy only what helps your next learning job.</small></div>
-        <aside className="market-greeting-purse"><span className="campaign-eyebrow">YOUR PURSE</span><strong>◉ {coins}</strong><small>{CAMPAIGN_MARKET_STOCK.length} lots waiting in the case</small></aside>
-      </section> : <div className="market-browser">
-        <div className="market-browser-head"><div><span className="campaign-eyebrow">THE MERCHANT’S OPEN LOTS</span><h3>Browse and choose your preparation.</h3></div><div className="market-browser-actions"><span className="market-purse-pill">◉ {coins} coins</span><button type="button" className="campaign-button ghost" onClick={() => setOpen(false)}>← Back to The Merchant</button></div></div>
-        <div className="market-browser-grid"><nav className="market-category-rail" aria-label="Market categories"><span className="campaign-eyebrow">CATEGORIES</span>{categories.map((item) => <button key={item} type="button" className={`market-category ${category === item ? 'active' : ''}`} onClick={() => changeCategory(item)}>{item === 'All' ? 'All lots' : item === 'Supply' ? 'Supplies' : `${item}s`}<small>{item === 'All' ? CAMPAIGN_MARKET_STOCK.length : CAMPAIGN_MARKET_STOCK.filter((stock) => stock.kind === item).length}</small></button>)}</nav><section className="market-lot-list" aria-label="Available market lots"><div className="market-list-head"><span>LOT</span><span>TYPE</span><span>PRICE</span></div>{visible.map((item) => { const itemOwned = purchased.includes(item.id); return <button type="button" key={item.id} className={`market-lot-row ${selected?.id === item.id ? 'active' : ''} ${itemOwned ? 'owned' : ''}`} onClick={() => setSelectedId(item.id)}><span className="market-lot-icon">{item.icon}</span><span className="market-lot-copy"><strong>{item.name}</strong><small>{item.detail}{itemOwned ? ' · owned' : ''}</small></span><span className="market-lot-kind">{item.kind}</span><strong className="market-lot-price">{item.price}<small> coins</small></strong></button> })}</section><aside className="market-item-detail">{selected && <><span className="campaign-eyebrow">SELECTED LOT · {selected.kind.toUpperCase()}</span><div className="market-detail-icon">{selected.icon}</div><span className="campaign-eyebrow">{rarity}</span><h3>{selected.name}</h3><p>{selected.detail}</p><div className="market-detail-facts"><span><small>PRICE</small><strong>{selected.price} coins</strong></span><span><small>STATUS</small><strong>{owned ? 'OWNED' : 'AVAILABLE'}</strong></span></div>{owned ? <span className="market-owned-note">Already in your kit · equip it from Home.</span> : <button type="button" className="campaign-button" onClick={buy} disabled={busy || coins < selected.price || !purchaseMarketItem}>Buy this lot</button>}</>}</aside></div>
-        <div className="campaign-market-footer"><span>⬡</span><p>Armor protects HP. Trinkets shape Guard Breaks and protection. Supplies are consumed from the encounter kit.</p></div>
-      </div>}
-      <div className="campaign-stat-row"><span><small>COINS</small><strong>{coins}</strong></span><span><small>LOTS</small><strong>{CAMPAIGN_MARKET_STOCK.length}</strong></span><span><small>PREP</small><strong>{purchased.length} owned</strong></span></div>
-      {onBackHome && <button type="button" className="campaign-button ghost" onClick={onBackHome}>Open Home loadout →</button>}
-    </>
-  )
+  const stockCount = merchantLots(armory?.market, CAMPAIGN_MARKET_STOCK, purchased, coins).filter((lot) => !lot.locked).length
+  return <>
+    <div className="campaign-place-heading"><div><span className="campaign-eyebrow">MARKET · THE MERCHANT</span><h2>The Merchant has a case for you.</h2><p>Find equipment and supplies, or craft oils from the materials you have gathered.</p></div><span className="campaign-place-seal market">◇</span></div>
+    {shop ? <ArmouryLots armory={armory} coins={coins} actions={armoryActions} legacyPurchases={purchased} purchaseMarketItem={purchaseMarketItem} busy={busy} onBack={() => setShop(false)} /> : alchemy ? <AlchemyBench hunter={hunter} coins={coins} actions={hunterActions} busy={busy} onBack={() => setAlchemy(false)} /> : <section className="market-greeting">
+      <div className="market-vendor-scene"><div className="vendor-lantern">✦</div><div className="vendor-portrait merchant-pixel-sprite" aria-hidden="true" dangerouslySetInnerHTML={{ __html: merchantPixelSprite() }} /><div className="vendor-counter" /><div className="vendor-nameplate"><span className="campaign-eyebrow">SHOPKEEPER NPC</span><strong>The Merchant</strong></div></div>
+      <div className="market-greeting-copy"><span className="campaign-eyebrow">WELCOME, TRAVELLER</span><h3>“Coins open the case. Knowledge keeps you alive.”</h3><p>Browse the shop for equipment and supplies. More campaign gear becomes available as you progress; equip your finds at Home.</p><div className="market-greeting-doors"><button type="button" className="campaign-button" onClick={() => setShop(true)}>Browse the shop <span>→</span></button><button type="button" className="campaign-button ghost" onClick={() => setAlchemy(true)}>Hunter’s alchemy <span>⚗</span></button></div></div>
+      <aside className="market-greeting-purse"><span className="campaign-eyebrow">YOUR PURSE</span><strong><CoinIcon /> {coins}</strong><small>{stockCount} items available to browse</small></aside>
+    </section>}
+    <div className="market-bottom"><div className="campaign-stat-row"><span><small>COINS</small><strong><CoinIcon /> {coins}</strong></span><span><small>SHOP</small><strong>{stockCount} available</strong></span><span><small>PREP</small><strong>{purchased.length + (armory?.items?.length || 0)} owned</strong></span></div>{onBackHome && <button type="button" className="campaign-button ghost market-home-button" onClick={onBackHome}>Open Home loadout →</button>}</div>
+  </>
 }
 
 // Bounties that train the craft around the code, as a poster ribbon.
@@ -2952,6 +2976,12 @@ const CONTRACT_KIND_LABELS = { workshop: 'WORKSHOP', debug: 'DEBUG', memory: 'FR
 
 // What each objective asks of you, as a poster tag.
 const OBJECTIVE_KIND = { setup_check: 'SETUP', code_checkpoint: 'BUILD', bug_diagnosis: 'FIX', prediction: 'PREDICT', explanation: 'EXPLAIN', snippet_check: 'READ', code_interview: 'INTERVIEW' }
+
+function BountyPosterArt({ projectId, entry }) {
+  const art = lanternEncounterArt(projectId, entry.name)
+  const locked = entry.status === 'locked'
+  return <span className={`poster-mob-visual ${locked ? 'silhouette' : ''}`} aria-hidden="true">{art ? <span className="poster-mob-sprite" style={{ backgroundImage: `url("${art}")` }} /> : <svg className="poster-mob-fallback" viewBox="0 0 64 72" focusable="false"><path d="M17 60 20 43 14 36 18 26 24 23 22 13 28 17 32 10 36 17 42 13 40 23 46 26 50 36 44 43 47 60 39 60 35 48 29 48 25 60Z" /><path d="M12 62h40" /></svg>}</span>
+}
 
 function CampaignOffice({ progress, board, onEnter }) {
   const activeProject = (progress?.projects || []).find((project) => project.status === 'active') || {}
@@ -3006,11 +3036,11 @@ function CampaignOffice({ progress, board, onEnter }) {
   }
   return (
     <>
-      <div className="campaign-place-heading"><div><span className="campaign-eyebrow">BOUNTY OFFICE · {story.client ? `CONTRACT FOR ${story.client.toUpperCase()}` : 'CONTRACT BOARD'}</span><h2>{story.title || 'Choose the work that moves you.'}</h2><p>{story.hook || 'Every bounty is a learning task. Read the weakness, prepare at Home, then enter the Forge when you are ready to write.'}</p>{board?.entry_file && <small className="office-entry-file">You build this in <code>{board.entry_file}</code> in the Forge.</small>}</div><span className="campaign-place-seal office">✦</span></div>
+      <div className="campaign-place-heading"><div><span className="campaign-eyebrow">BOUNTY OFFICE · {story.client ? `CONTRACT FOR ${story.client.toUpperCase()}` : 'CONTRACT BOARD'}</span><h2>{story.title || 'Choose the work that moves you.'}</h2><p>{story.hook || 'Every bounty is a learning task. Read the weakness, prepare at Home, then enter the Hunt when you are ready to write.'}</p>{board?.entry_file && <small className="office-entry-file">You build this in <code>{board.entry_file}</code> in the Hunt.</small>}</div><span className="campaign-place-seal office">✦</span></div>
       {currentAct && <div className="office-act-banner"><span className="campaign-eyebrow">{currentAct.title}</span><p>{currentAct.goal}</p></div>}
       <div className="office-toolbar"><div className="office-tabs"><button type="button" className="office-tab active">MAIN BOUNTIES</button><button type="button" className="office-tab" disabled>VILLAGE · NEXT</button></div><div className="board-switcher"><button type="button" className="board-switch" onClick={() => selectBoard(boardIndex - 1)} disabled={boardIndex === 0}>← {currentAct ? 'PREVIOUS ACT' : 'PREVIOUS BOARD'}</button><span className="board-page-label">{currentAct ? `ACT ${boardIndex + 1} / ${boards.length}` : `BOARD ${boardIndex + 1} / ${boards.length}`}<small>{boardEntries.length} contracts{currentAct ? '' : ` · max ${boardSize}`}</small></span><button type="button" className="board-switch" onClick={() => selectBoard(boardIndex + 1)} disabled={boardIndex >= boards.length - 1}>{currentAct ? 'NEXT ACT' : 'NEXT BOARD'} →</button></div></div>
-      <section className="office-board" aria-label="Bounty board"><div className="office-board-header"><strong>{String(activeProject.name || 'Campaign').toUpperCase()} · COMMUNITY BOUNTIES</strong><span className="campaign-eyebrow">{entries.length} POSTERS · {mobs.filter((mob) => isMobDefeated(mob.status)).length} CLEARED</span></div><div className="bounty-posters">{boardEntries.map((entry) => <button type="button" key={entry.id} className={`bounty-poster poster-size-${entry.rank} ${entry.status === 'locked' ? 'locked' : ''} ${selected?.id === entry.id ? 'active' : ''}`} onClick={() => entry.status !== 'locked' && setSelectedId(entry.id)} disabled={entry.status === 'locked'}><span className="poster-pin" /><div className="poster-art">{entry.status === 'locked' ? '?' : entry.icon}<span className="poster-rank">{(entry.tier || entry.rank).toUpperCase()}</span></div><span className="poster-signal">{entry.signal}</span>{entry.kind && entry.status !== 'locked' && <span className={`poster-kind kind-${entry.kind}`}>{CONTRACT_KIND_LABELS[entry.kind]}</span>}<h3>{entry.status === 'locked' ? 'HIDDEN SILHOUETTE' : entry.name}</h3><p>{entry.status === 'locked' ? 'Complete the previous bounty to reveal this poster.' : entry.category}</p><small>{entry.reward}</small></button>)}</div></section>
-      {selected && <section className="office-detail"><div><span className="campaign-eyebrow">{unlocked ? 'SELECTED BOUNTY' : 'LOCKED BOUNTY'}</span><h3>{unlocked ? selected.name : 'Hidden silhouette'}</h3><p>{selected.detail}</p>{unlocked && selected.task && selected.task !== selected.detail && <p className="office-detail-task"><b>The job:</b> {selected.task}</p>}<div className="office-detail-facts"><span>{selected.category}</span>{selected.sign && <span className="office-sign"><HuntSigil pageId={selected.sign} size={14} /> Sign of the {HUNT_BEASTS[selected.sign]?.sign || selected.sign}{selected.beast ? ` · ${selected.beast}` : ''}</span>}<span>{selected.reward}</span></div>{unlocked && selected.objectives.length > 0 && <ol className="office-objectives">{selected.objectives.map((objective) => <li key={objective.id}><b className={`kind-${objective.question_type}`}>{OBJECTIVE_KIND[objective.question_type] || 'TASK'}</b>{objective.label}</li>)}</ol>}</div><button type="button" className="campaign-button" onClick={onEnter} disabled={!unlocked}>{unlocked ? 'Study this work →' : 'Complete the previous bounty'}</button></section>}
+      <section className="office-board" aria-label="Bounty board"><div className="office-board-header"><strong>{String(activeProject.name || 'Campaign').toUpperCase()} · COMMUNITY BOUNTIES</strong><span className="campaign-eyebrow">{entries.length} POSTERS · {mobs.filter((mob) => isMobDefeated(mob.status)).length} CLEARED</span></div><div className="bounty-posters">{boardEntries.map((entry) => <button type="button" key={entry.id} className={`bounty-poster poster-size-${entry.rank} ${entry.status === 'locked' ? 'locked' : ''} ${selected?.id === entry.id ? 'active' : ''}`} onClick={() => entry.status !== 'locked' && setSelectedId(entry.id)} disabled={entry.status === 'locked'}><span className="poster-pin" /><div className="poster-art"><BountyPosterArt projectId={activeProject.branch} entry={entry} /><span className="poster-rank">{(entry.tier || entry.rank).toUpperCase()}</span>{isMobDefeated(entry.status) && <b className="poster-captured-stamp">CAPTURED</b>}</div><span className="poster-signal">{entry.signal}</span>{entry.kind && entry.status !== 'locked' && <span className={`poster-kind kind-${entry.kind}`}>{CONTRACT_KIND_LABELS[entry.kind]}</span>}<h3>{entry.status === 'locked' ? 'HIDDEN' : entry.name}</h3><p>{entry.status === 'locked' ? 'Complete the previous bounty to reveal this poster.' : entry.category}</p><small>{entry.reward}</small></button>)}</div></section>
+      {selected && <section className="office-detail"><div><span className="campaign-eyebrow">{unlocked ? 'SELECTED BOUNTY' : 'LOCKED BOUNTY'}</span><h3>{unlocked ? selected.name : 'Hidden'}</h3><p>{selected.detail}</p>{unlocked && selected.task && selected.task !== selected.detail && <p className="office-detail-task"><b>The job:</b> {selected.task}</p>}<div className="office-detail-facts"><span>{selected.category}</span>{selected.sign && <span className="office-sign"><HuntSigil pageId={selected.sign} size={14} /> Sign of the {HUNT_BEASTS[selected.sign]?.sign || selected.sign}{selected.beast ? ` · ${selected.beast}` : ''}</span>}<span>{selected.reward}</span></div>{unlocked && selected.objectives.length > 0 && <ol className="office-objectives">{selected.objectives.map((objective) => <li key={objective.id}><b className={`kind-${objective.question_type}`}>{OBJECTIVE_KIND[objective.question_type] || 'TASK'}</b>{objective.label}</li>)}</ol>}</div><button type="button" className="campaign-button" onClick={onEnter} disabled={!unlocked}>{unlocked ? 'Study this work →' : 'Complete the previous bounty'}</button></section>}
       <div className="campaign-stat-row"><span><small>CHAPTER</small><strong>{activeProject.name || '01'}</strong></span><span><small>CLEARED</small><strong>{mobs.filter((mob) => isMobDefeated(mob.status)).length}</strong></span><span><small>REWARDS</small><strong>COINS + TOKENS</strong></span></div>
     </>
   )
@@ -3293,7 +3323,7 @@ function HomeRoom({ progress, homeRooms, purchaseHomeRoom, buildRoomUpgrade, arm
         {homeStatus === 'ready' && homeHelp && <section className="home-guide" aria-label="Welcome home">
           <span className="screen-kicker">WELCOME HOME</span><h3>Your place between runs</h3>
           <p>Rest at the hearth to restore health. Prepare equipment, spend hunter points, build permanent upgrades and view trophies here. Walk up to the door marked Pyr’s Den to visit Pyr.</p>
-          <p>Walk with WASD or the arrow keys; hold Shift to move faster. Press E near an object or Pyr. Use the navigation above to reach the Forge, Tutor and Dungeon.</p>
+          <p>Walk with WASD or the arrow keys; hold Shift to move faster. Press E near an object or Pyr. Use the navigation above to reach the Hunt, Tutor and Dungeon.</p>
           <button type="button" onClick={() => { try { window.localStorage.setItem('questlab.homeGuideSeen', 'true') } catch { /* storage unavailable */ } setHomeHelp(false); focusRoom() }}>Explore Home →</button>
         </section>}
         {homeStatus !== 'ready' && <div className="home-loading" role="status" aria-live="polite">
@@ -3336,7 +3366,7 @@ function HomeRoom({ progress, homeRooms, purchaseHomeRoom, buildRoomUpgrade, arm
 
 function CampaignSurface({ progress, homeRooms, purchaseHomeRoom, revision, equipmentProjection, purchaseCosmetic, purchaseMarketItem, equipCosmetic, equipCampaignItem, buildRoomUpgrade, performHomesteadAction, setAvatar, selectCampaign, hunter, spendStatPoint, hunterActions, campaignBoard, armory, armoryActions, busy, onNavigate }) {
   const [place, setPlace] = useState('office')
-  const [mapCollapsed, setMapCollapsed] = useState(false)
+  const [mapCollapsed, setMapCollapsed] = useState(() => { try { return JSON.parse(window.localStorage.getItem('questlab.campaignMapCollapsed') || 'false') === true } catch { return false } })
   const homeBuild = useHomeBuild()
   const [classicHome, setClassicHome] = useState(() => {
     try { return window.localStorage.getItem('questlab.classicHome') === 'true' } catch { return false }
@@ -3346,7 +3376,8 @@ function CampaignSurface({ progress, homeRooms, purchaseHomeRoom, revision, equi
     try { window.localStorage.setItem('questlab.classicHome', String(value)) } catch { /* storage unavailable */ }
   }
   const openForge = () => onNavigate?.('forge')
-  const selectPlace = (next) => { setPlace(next); if (next === 'home') setMapCollapsed(true) }
+  const selectPlace = (next) => setPlace(next)
+  const toggleMapRail = () => setMapCollapsed((value) => { const next = !value; try { window.localStorage.setItem('questlab.campaignMapCollapsed', JSON.stringify(next)) } catch { /* storage unavailable */ } return next })
   const homeNavigate = (next) => {
     if (next === 'forge') {
       setPlace('office')
@@ -3358,7 +3389,7 @@ function CampaignSurface({ progress, homeRooms, purchaseHomeRoom, revision, equi
   return (
     <div className={`campaign-v1 game-screen-scroll ${place === 'home' ? 'home-active' : ''}`} data-testid="campaign-surface" data-campaign-revision={revision}>
       <div className={`campaign-layout ${mapCollapsed ? 'map-rail-is-collapsed' : ''}`}>
-        <CampaignMapRail progress={progress} place={place} onSelect={selectPlace} onSelectCampaign={selectCampaign} busy={busy} collapsed={mapCollapsed} onToggle={() => setMapCollapsed((value) => !value)} />
+        <CampaignMapRail progress={progress} place={place} onSelect={selectPlace} onSelectCampaign={selectCampaign} busy={busy} collapsed={mapCollapsed} onToggle={toggleMapRail} />
         <main className="campaign-place-panel" data-place={place}>
           {place === 'home' && homeBuild === 'ready' && !classicHome && <HomeRoom progress={progress} homeRooms={homeRooms} purchaseHomeRoom={purchaseHomeRoom} buildRoomUpgrade={buildRoomUpgrade} hunter={hunter} spendStatPoint={spendStatPoint} armory={armory} armoryActions={armoryActions} performHomesteadAction={performHomesteadAction} onNavigate={onNavigate} onClassic={() => setClassic(true)} busy={busy} />}
           {place === 'home' && homeBuild === 'ready' && classicHome && <div className="home-room-switch"><button type="button" onClick={() => setClassic(false)}>Back to the room</button></div>}
@@ -3385,9 +3416,20 @@ const dungeonRoomMeta = (type) => DUNGEON_ROOM_META[type] || DUNGEON_ROOM_META.s
 
 const GRID_ROOM_WORDS = { rest: 'Camp', encounter: 'Gate', elite: 'Elite', market: 'Market', mystery: 'Fate', boss: 'Boss' }
 const FLOOR_MODIFIERS = { deep: 'DEEP FLOOR · HARDER, RICHER', quiet: 'QUIET FLOOR · ONE MORE CAMP' }
+const DUNGEON_REGION_ART = { basics: '0% 0%', collections: '33.333% 0%', flow: '66.667% 0%', archive: '100% 0%', labyrinth: '0% 100%', workshop: '33.333% 100%', spire: '66.667% 100%', hollow: '100% 100%' }
+const DUNGEON_REGION_PANELS = { basics: [0, 0], collections: [1, 0], flow: [2, 0], archive: [3, 0], labyrinth: [0, 1], workshop: [1, 1], spire: [2, 1], hollow: [3, 1] }
+function dungeonRegionArt(run) {
+  const position = DUNGEON_REGION_ART[run.region?.id]
+  return position ? { '--dungeon-region-art': `url("${import.meta.env.BASE_URL}campaign-art/dungeon-regions/regions-atlas.png")`, '--dungeon-region-position': position } : undefined
+}
+function DungeonRegionScene({ run, dimmed = false }) {
+  const panel = DUNGEON_REGION_PANELS[run.region?.id]
+  if (!panel) return null
+  return <img className="dungeon-region-scene" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', padding: 0, border: 0, background: 'none', filter: 'none', pointerEvents: 'none', zIndex: 0, opacity: dimmed ? 0.19 : 1 }} src={`${import.meta.env.BASE_URL}campaign-art/dungeon-regions/${run.region.id}.png`} alt="" />
+}
 
 // A floor as a room grid under fog: explored rooms, their doors, the boss lair.
-function DungeonGridMap({ run, onChoose, onTravel, busy }) {
+function DungeonGridMap({ run, onChoose, onTravel, onRevealFloor, busy }) {
   const route = run.map
   const columns = Number(route.columns) || 5
   const rows = Number(route.rows) || 4
@@ -3418,11 +3460,13 @@ function DungeonGridMap({ run, onChoose, onTravel, busy }) {
     if (fromId < toId && byId[fromId] && byId[toId]) lines.push([byId[fromId], byId[toId]])
   }))
   return (
-    <section className="dungeon-proto-panel dungeon-map-panel" data-testid="dungeon-map" aria-label="Map and route">
+    <section className="dungeon-proto-panel dungeon-map-panel" data-testid="dungeon-map" aria-label="Map and route" style={dungeonRegionArt(run)}>
       <div className="dungeon-panel-heading"><div><span className="dungeon-eyebrow">LAYER ONE</span><h2>Floor {route.floor || run.floor}</h2></div><span className="dungeon-panel-tag">{FLOOR_MODIFIERS[route.modifier] || (run.region?.label || 'OPEN DUNGEON').toUpperCase()}</span></div>
-      <p className="dungeon-panel-copy">Explore room by room. You see the doors of rooms you have explored, and you can always feel the boss lair. Between fights, walk back through explored rooms to take another door.</p>
+      <p className="dungeon-panel-copy">Explore room by room, or use a Vision Scroll to reveal this floor. You can travel through explored rooms to reach another door.</p>
+      <div className="dungeon-floor-scout"><img src={lanternItemArt('dungeon-vision-scroll')} alt="" /><div><strong>VISION SCROLL · {run.loadout?.vision_scrolls ?? 0}</strong><small>{route.revealed ? 'This floor is revealed.' : 'Reveal room types and connections for this floor.'}</small></div><button type="button" onClick={() => onRevealFloor?.(run.run_id)} disabled={busy || !onRevealFloor || !selector || route.revealed || (run.loadout?.vision_scrolls ?? 0) <= 0}>{route.revealed ? 'Revealed' : 'Reveal floor'}</button></div>
       <div className="dungeon-map-legend"><span><i className="legend-dot rest" />camp</span><span><i className="legend-dot market" />market</span><span><i className="legend-dot encounter" />gate</span><span><i className="legend-dot elite" />elite</span><span><i className="legend-dot mystery" />fate</span><span><i className="legend-dot boss" />boss</span></div>
       <div className="dungeon-proto-map grid-floor" role="grid" aria-label={`Dungeon floor ${route.floor || run.floor}`} style={{ gridTemplateColumns: `repeat(${columns}, 1fr)`, gridTemplateRows: `repeat(${rows}, minmax(78px, 1fr))` }}>
+        <DungeonRegionScene run={run} dimmed />
         <svg className="dungeon-map-edges" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
           {lines.map(([a, b]) => { const p = point(a); const q = point(b); return <line key={`${a.id}-${b.id}`} className={visited.has(a.id) && visited.has(b.id) ? 'active' : ''} x1={p.x} y1={p.y} x2={q.x} y2={q.y} /> })}
         </svg>
@@ -3454,9 +3498,9 @@ function DungeonGridMap({ run, onChoose, onTravel, busy }) {
   )
 }
 
-function DungeonMap({ run, onChoose, onTravel, busy }) {
+function DungeonMap({ run, onChoose, onTravel, onRevealFloor, busy }) {
   if (!run?.active) return null
-  if (run.map?.layout === 'grid') return <DungeonGridMap run={run} onChoose={onChoose} onTravel={onTravel} busy={busy} />
+  if (run.map?.layout === 'grid') return <DungeonGridMap run={run} onChoose={onChoose} onTravel={onTravel} onRevealFloor={onRevealFloor} busy={busy} />
   const currentFloor = Number(run.floor || 1)
   const route = run.map && Array.isArray(run.map.nodes) ? run.map : null
   const currentId = route?.current_node_id || run.current_node?.id
@@ -3475,7 +3519,7 @@ function DungeonMap({ run, onChoose, onTravel, busy }) {
   // route edges terminate at node centres instead of drifting between rows.
   const point = (node) => ({ x: (Number(node.column || 3) - 0.5) * 20, y: (Number(node.row || 1) - 0.5) * (120 / 8) })
   return (
-    <section className="dungeon-proto-panel dungeon-map-panel" data-testid="dungeon-map" aria-label="Map and route">
+    <section className="dungeon-proto-panel dungeon-map-panel" data-testid="dungeon-map" aria-label="Map and route" style={dungeonRegionArt(run)}>
       {/* Map & route is the first prototype layer; room actions and the run menu stay beside it. */}
       <div className="dungeon-panel-heading"><div><span className="dungeon-eyebrow">LAYER ONE</span><h2>Map &amp; route</h2></div><span className="dungeon-panel-tag">FLOOR {currentFloor}</span></div>
       <p className="dungeon-panel-copy">Choose one of three authored lanes. Room types roll independently each run, so luck can hand you a full row of elites, gates, fates, camps or markets. Two elites or three gates trigger a recovery row; the final row is always camp/market preparation.</p>
@@ -3531,8 +3575,8 @@ function DungeonCharacterPanel({ run, tab, setTab, onEquip, busy, onFinish, onRe
       <div className="dungeon-panel-heading"><div><span className="dungeon-eyebrow">RUN MENU</span><h2>Character</h2></div><span className="dungeon-panel-tag">{run.active ? 'ACTIVE' : 'ENDED'}</span></div>
       <div className="dungeon-class-summary"><span className="dungeon-class-icon" aria-hidden="true"><RouteIcon id="spark" /></span><div><span className="dungeon-eyebrow">ACTIVE CLASS · PASSIVE</span><strong>{classData.name || 'Dungeon class'}</strong><small>{classData.passive || 'Choose a class before the descent.'}</small></div></div>
       <div className="dungeon-character-tabs" role="tablist" aria-label="Run character tabs">{tabs.map((item) => <button key={item} type="button" role="tab" aria-selected={tab === item} className={tab === item ? 'active' : ''} onClick={() => setTab(item)}>{item}</button>)}</div>
-      {tab === 'LOADOUT' && <div className="dungeon-loadout-list">{['weapon', 'armor', 'trinket'].map((slot) => { const item = inventory.find((candidate) => candidate.kind === slot && candidate.equipped) || inventory.find((candidate) => candidate.kind === slot); return <div className="dungeon-loadout-item" key={slot}><span className="dungeon-item-art"><RouteIcon id={iconFor(slot)} /></span><div><small>{slot.toUpperCase()} · {item ? 'OWNED' : 'EMPTY'}</small><strong>{item?.name || loadout[slot] || 'None'}</strong><span>{item?.description || 'Earn this slot from an authored room.'}</span></div>{item && <button type="button" disabled={busy || item.equipped} onClick={() => onEquip?.(run.run_id, item.id)}>{item.equipped ? 'Equipped' : 'Equip'}</button>}</div> })}<div className="dungeon-supply-item"><RouteIcon id="scroll" /><div><small>RUN ITEM · SCOUTING</small><strong>Vision scroll</strong><span>Preview one unrevealed risk on the map.</span></div><b>{loadout.vision_scrolls ?? 0}</b></div></div>}
-      {tab === 'INVENTORY' && <div className="dungeon-inventory-list" data-testid="dungeon-inventory">{inventory.map((item) => <div key={item.id} className={item.equipped ? 'equipped' : ''}><div><small>{String(item.kind || 'item').toUpperCase()}</small><strong>{item.name}</strong><span>{item.description || 'Run item'}</span></div><button type="button" onClick={() => onEquip?.(run.run_id, item.id)} disabled={busy || item.equipped}>{item.equipped ? 'Equipped' : 'Equip'}</button></div>)}{!inventory.length && <p className="dungeon-muted">Your run inventory is empty. Earn gear from markets, elites and bosses.</p>}</div>}
+      {tab === 'LOADOUT' && <div className="dungeon-loadout-list">{['weapon', 'armor', 'trinket'].map((slot) => { const item = inventory.find((candidate) => candidate.kind === slot && candidate.equipped) || inventory.find((candidate) => candidate.kind === slot); return <div className="dungeon-loadout-item" key={slot}><span className={`dungeon-item-art ${!item && slot === 'trinket' ? 'empty-trinket' : ''}`}>{item && lanternItemArt(item.id) ? <img className="item-art-icon" src={lanternItemArt(item.id)} alt="" /> : !item && slot === 'trinket' ? <img className="item-art-icon" src={lanternItemArt('dungeon-warden-sigil')} alt="" /> : <RouteIcon id={iconFor(slot)} />}</span><div><small>{slot.toUpperCase()} · {item ? 'OWNED' : 'EMPTY'}</small><strong>{item?.name || loadout[slot] || 'None'}</strong><span>{item?.description || 'Earn this slot from an authored room.'}</span></div>{item && <button type="button" disabled={busy || item.equipped} onClick={() => onEquip?.(run.run_id, item.id)}>{item.equipped ? 'Equipped' : 'Equip'}</button>}</div> })}<div className="dungeon-supply-item"><span className="dungeon-item-art"><img className="item-art-icon" src={lanternItemArt('dungeon-vision-scroll')} alt="" /></span><div><small>RUN ITEM · SCOUTING</small><strong>Vision scroll</strong><span>Reveal room types and connections for the current floor.</span></div><b>{loadout.vision_scrolls ?? 0}</b></div></div>}
+      {tab === 'INVENTORY' && <div className="dungeon-inventory-list" data-testid="dungeon-inventory" role="region" aria-label="Dungeon equipment inventory" tabIndex={0}>{inventory.map((item) => <div key={item.id} className={item.equipped ? 'equipped' : ''}>{lanternItemArt(item.id) && <img className="dungeon-inventory-icon" src={lanternItemArt(item.id)} alt="" />}<div><small>{String(item.kind || 'item').toUpperCase()}</small><strong>{item.name}</strong><span>{item.description || 'Run item'}</span></div><button type="button" onClick={() => onEquip?.(run.run_id, item.id)} disabled={busy || item.equipped}>{item.equipped ? 'Equipped' : 'Equip'}</button></div>)}{!inventory.length && <p className="dungeon-muted">Your run inventory is empty. Earn gear from markets, elites and bosses.</p>}</div>}
       {tab === 'PACK' && <div className="dungeon-pack-list" data-testid="dungeon-pack">{pack.map((item) => <div key={item.id}><strong>{item.name}</strong><b>×{item.count}</b></div>)}{!pack.length && <p className="dungeon-muted">Your pack is empty. Beasts drop parts when you clear their fight.</p>}<small>{run.region ? `Delve: ${run.region.label}. ` : ''}Unbanked: a camp or ending the run banks it; dying loses it.</small></div>}
       {tab === 'STATS' && <div className="dungeon-stat-grid"><div><small>HP</small><strong>{loadout.hp ?? 0}/{loadout.max_hp ?? 0}</strong></div><div><small>SCORE</small><strong>{run.score ?? 0}</strong></div><div><small>COINS</small><strong>{run.run_coins ?? 0}</strong></div><div><small>HEALS</small><strong>{loadout.heals ?? 0}</strong></div><div><small>FLOOR</small><strong>{run.floor ?? 1}</strong></div><div><small>ROOM</small><strong>{run.room ?? 1}</strong></div></div>}
       <div className="dungeon-character-note"><RouteIcon id="spark" /><p>Run gear is earned from elites, bosses and markets. Equip it here; it never enters the campaign save.</p></div>
@@ -3564,16 +3608,16 @@ function DungeonRoomPanel({ run, question, loadout, onRest, onCampAction, onReve
   return (
     <section className={`dungeon-proto-panel dungeon-room-panel ${meta.tone}`} aria-label="Room screen">
       <div className="dungeon-panel-heading"><div><span className="dungeon-eyebrow">LAYER TWO</span><h2>Room screen</h2></div><span className={`dungeon-room-type ${meta.tone}`}><RouteIcon id={meta.iconId} /> {meta.label}</span></div>
-      <div className={`dungeon-room-illustration ${meta.tone}`}><span className="dungeon-room-orbit orbit-a" /><span className="dungeon-room-orbit orbit-b" /><RouteIcon id={meta.iconId} /><small>{meta.subtitle}</small></div>
+      <div className={`dungeon-room-illustration ${meta.tone} ${dungeonRegionArt(run) ? 'has-region-art' : ''}`}><DungeonRegionScene run={run} /><span className="dungeon-room-orbit orbit-a" /><span className="dungeon-room-orbit orbit-b" /><RouteIcon id={meta.iconId} /><small>{run.region?.label ? `${run.region.label} · ${meta.subtitle}` : meta.subtitle}</small></div>
       <div className="dungeon-room-copy"><span className="dungeon-eyebrow">{run.current_node?.label || `${meta.label} · ROOM ${run.room || 1}`}</span><h3>{title}</h3><p>{copy}</p></div>
       {run.encounter && <div className="dungeon-mob-banner" aria-label="Current adaptive learning mob"><span className="dungeon-mob-sigil" aria-hidden="true"><RouteIcon id={type === 'boss' ? 'boss' : type === 'elite' ? 'target' : 'flame'} /></span><div><small>{type === 'boss' ? 'FLOOR BOSS' : type === 'elite' ? 'ELITE GATE' : 'ADAPTIVE MOB'} · PHASE {run.encounter.phase || 'I'}</small><strong>{run.encounter.name || encounterName}</strong><span>Concept: {encounterConcept} · difficulty {encounterDifficulty} · failure ends this run.</span></div><b>DIFFICULTY {encounterDifficulty}</b></div>}
       {type === 'selector' && run.last_result?.outcome === 'risk_entered' && RISK_OUTCOME_WORDS[run.last_result.reason] && <div className="dungeon-camp-banked" role="status"><span className="dungeon-eyebrow">LAST FATE</span><strong>{RISK_OUTCOME_WORDS[run.last_result.reason]}</strong></div>}
       {type === 'selector' && <div className="dungeon-room-action"><strong>Choose a route on the map.</strong><span>Room types are visible; future questions and answers are not.</span></div>}
       {type === 'rest' && (run.last_banked || []).length > 0 && <div className="dungeon-camp-banked" role="status"><span className="dungeon-eyebrow">PACK BANKED AT CAMP</span><strong>{lootText(run.last_banked)}</strong><span>Safe in your hunter's stores, whatever happens next.</span></div>}
       {type === 'rest' && <><div className="dungeon-room-supplies"><div><span className="dungeon-eyebrow">RUN SUPPLIES</span><strong>{loadout.heals ?? 0} rests · {loadout.bandages ?? 0} bandages · {loadout.rations ?? 0} rations · {loadout.tonics ?? 0} tonics</strong></div><span>{loadout.hp ?? 0}/{loadout.max_hp ?? 0} HP</span></div><div className="dungeon-camp-rule"><span className="dungeon-eyebrow">ONE ACTION PER CAMPSITE VISIT</span><span>{run.camp_action_used ? 'Action used. Leave when you are ready.' : 'Choose one preparation, then the route opens again.'}</span></div><div className="dungeon-action-grid"><button className="dungeon-action-card" type="button" onClick={() => (onCampAction || onRest)?.(run.run_id, 'rest')} disabled={busy || run.camp_action_used || (!onCampAction && !onRest) || (loadout.heals ?? 0) <= 0 || fullHealth}><RouteIcon id="plus" /><span><strong>Rest by the fire</strong><small>Recover up to 30 HP · {loadout.heals ?? 0} charge(s)</small></span><b>REST</b></button><button className="dungeon-action-card" type="button" onClick={() => onCampAction?.(run.run_id, 'bandage')} disabled={busy || run.camp_action_used || !onCampAction || (loadout.bandages ?? 0) <= 0 || fullHealth}><RouteIcon id="plus" /><span><strong>Use a bandage</strong><small>Recover up to 22 HP · {loadout.bandages ?? 0} left</small></span><b>HEAL</b></button><button className="dungeon-action-card" type="button" onClick={() => onCampAction?.(run.run_id, 'cook')} disabled={busy || run.camp_action_used || !onCampAction || (loadout.rations ?? 0) <= 0}><RouteIcon id="spark" /><span><strong>Cook a ration</strong><small>Increase maximum HP by 10 · {loadout.rations ?? 0} left</small></span><b>COOK</b></button><button className="dungeon-action-card" type="button" onClick={() => onCampAction?.(run.run_id, 'sharpen')} disabled={busy || run.camp_action_used || !onCampAction || (loadout.edge_charges ?? 0) > 0}><RouteIcon id="sword" /><span><strong>Sharpen your edge</strong><small>Next clean submission deals +1 Resolve</small></span><b>PREP</b></button><button className="dungeon-action-card" type="button" onClick={() => onCampAction?.(run.run_id, 'fortify')} disabled={busy || run.camp_action_used || !onCampAction || (loadout.armor_guard ?? 0) > 0}><RouteIcon id="shield" /><span><strong>Fortify your armor</strong><small>Absorb one failed-submission hit</small></span><b>BRACE</b></button><button className="dungeon-action-card" type="button" onClick={() => onCampAction?.(run.run_id, 'tonic')} disabled={busy || run.camp_action_used || !onCampAction || (loadout.tonics ?? 0) <= 0 || fullHealth}><RouteIcon id="spark" /><span><strong>Drink an ember tonic</strong><small>Recover up to 30 HP · {loadout.tonics ?? 0} left</small></span><b>TONIC</b></button></div><button className="dungeon-primary-wide" type="button" onClick={() => onLeave?.(run.run_id)} disabled={busy || !onLeave}>Leave campsite →</button></>}
-      {type === 'market' && <><div className="dungeon-market-wallet"><div><span className="dungeon-eyebrow">RUN PURSE</span><strong>{run.run_coins ?? 0} coins</strong></div><div className="dungeon-market-stock"><span>Heals <b>{loadout.heals ?? 0}</b></span><span>Bandages <b>{loadout.bandages ?? 0}</b></span><span>Rations <b>{loadout.rations ?? 0}</b></span><span>Scrolls <b>{loadout.vision_scrolls ?? 0}</b></span></div></div><div className="dungeon-shelf-note"><span className="dungeon-eyebrow">ROTATING SHELF</span><span>Run supplies and gear · run coins only</span></div><div className="dungeon-market-list">{(run.market_catalog || []).map((item) => { const owned = ['weapon', 'armor', 'trinket'].includes(item.kind) && (run.inventory || []).some((entry) => entry.id === item.id); return <div key={item.id} className="dungeon-market-item"><RouteIcon id={item.kind === 'weapon' ? 'sword' : item.kind === 'armor' ? 'shield' : 'spark'} /><span><strong>{item.name}</strong><small>{item.description}</small></span><button type="button" aria-label={owned ? `${item.name}, owned` : `Buy ${item.name} for ${item.price} coins`} onClick={() => onMarketPurchase?.(run.run_id, item.id)} disabled={owned || busy || !onMarketPurchase || (run.run_coins ?? 0) < (item.price ?? 0)}>{owned ? 'Owned' : `${item.price}c`}</button></div> })}</div><button className="dungeon-primary-wide" type="button" onClick={() => onLeave?.(run.run_id)} disabled={busy || !onLeave}>Leave market →</button></>}
+      {type === 'market' && <><div className="dungeon-market-wallet"><div><span className="dungeon-eyebrow">RUN PURSE</span><strong>{run.run_coins ?? 0} coins</strong></div><div className="dungeon-market-stock"><span>Heals <b>{loadout.heals ?? 0}</b></span><span>Bandages <b>{loadout.bandages ?? 0}</b></span><span>Rations <b>{loadout.rations ?? 0}</b></span><span>Scrolls <b>{loadout.vision_scrolls ?? 0}</b></span></div></div><div className="dungeon-shelf-note"><span className="dungeon-eyebrow">ROTATING SHELF</span><span>Run supplies and gear · run coins only</span></div><div className="dungeon-market-list">{(run.market_catalog || []).map((item) => { const owned = ['weapon', 'armor', 'trinket'].includes(item.kind) && (run.inventory || []).some((entry) => entry.id === item.id); return <div key={item.id} className="dungeon-market-item"><img className="dungeon-inventory-icon" src={merchantItemArt({ ...item, slot: item.kind })} alt="" /><span><strong>{item.name}</strong><small>{item.description}</small></span><button type="button" aria-label={owned ? `${item.name}, owned` : `Buy ${item.name} for ${item.price} coins`} onClick={() => onMarketPurchase?.(run.run_id, item.id)} disabled={owned || busy || !onMarketPurchase || (run.run_coins ?? 0) < (item.price ?? 0)}>{owned ? 'Owned' : `${item.price}c`}</button></div> })}</div><button className="dungeon-primary-wide" type="button" onClick={() => onLeave?.(run.run_id)} disabled={busy || !onLeave}>Leave market →</button></>}
       {(type === 'encounter' || type === 'elite' || type === 'boss') && <><div className="dungeon-encounter-preview"><RouteIcon id={type === 'boss' ? 'boss' : type === 'elite' ? 'target' : 'sword'} /><div><span className="dungeon-eyebrow">{type === 'boss' ? 'FINAL DESTINATION' : type === 'elite' ? 'ELITE QUESTION ROOM · TRINKET DROP' : 'LOCKED QUESTION ROOM'}</span><strong>{encounterName}</strong><p>{type === 'boss' ? 'The final destination is state-owned. A verified file unlocks the next floor.' : type === 'elite' ? 'A harder question room with a bounded trinket reward.' : `${question.prompt || 'Build the answer in dungeon.py.'} The editor stays the single answer surface.`}</p></div></div><button className="dungeon-danger-wide" type="button" onClick={onOpenCode} disabled={busy || !onOpenCode}>Open code editor →</button></>}
-      {type === 'mystery' && <div className="dungeon-risk-card"><RouteIcon id="question" /><div><span className="dungeon-eyebrow">{run.risk_status === 'revealed' ? 'SCOUTED RISK' : 'UNSCOUTED RISK'}</span><strong>{run.risk_profile?.title || 'Something is watching the route.'}</strong><p>{run.risk_profile?.preview || 'A vision scroll previews one risk. Entering never requires a scroll.'}</p></div><div className="dungeon-risk-actions"><button className="dungeon-ghost-button" type="button" onClick={() => onRevealRisk?.(run.run_id)} disabled={busy || run.risk_status === 'revealed' || run.risk_status === 'entered' || !onRevealRisk || (loadout.vision_scrolls ?? 0) <= 0}>Use vision scroll · {loadout.vision_scrolls ?? 0}</button><button className="dungeon-danger-wide" type="button" onClick={() => onEnterRisk?.(run.run_id)} disabled={busy || run.risk_status === 'entered' || !onEnterRisk}>Enter the risk →</button></div></div>}
+      {type === 'mystery' && <div className="dungeon-risk-card"><RouteIcon id="question" /><div><span className="dungeon-eyebrow">{run.risk_status === 'revealed' ? 'SCOUTED RISK' : 'UNSCOUTED RISK'}</span><strong>{run.risk_profile?.title || 'Something is watching the route.'}</strong><p>{run.risk_profile?.preview || 'Enter to discover what fate has in store.'}</p></div><div className="dungeon-risk-actions"><button className="dungeon-danger-wide" type="button" onClick={() => onEnterRisk?.(run.run_id)} disabled={busy || run.risk_status === 'entered' || !onEnterRisk}>Enter the risk →</button></div></div>}
       <div className="dungeon-room-note"><span>DESIGN RULE</span><p>No challenge is generated until you commit to an encounter node.</p></div>
     </section>
   )
@@ -3716,7 +3760,7 @@ const SPAR_ROUNDS = 5
 // Simulated fights in the Tutor notebook: only foes already met, five
 // clickable rounds, no damage. Right first clicks still grow your signs.
 function SparringArena({ roster = [], actions, armory, busy }) {
-  const [foeId, setFoeId] = useSessionState('sparFoe', '')
+  const [foeId, setFoeId] = useState('')
   const [round, setRound] = useState(0)
   const [boutId, setBoutId] = useState(0)
   const [question, setQuestion] = useState(null)
@@ -3724,6 +3768,7 @@ function SparringArena({ roster = [], actions, armory, busy }) {
   const [score, setScore] = useState(0)
   const [error, setError] = useState('')
   const [sparCode, setSparCode] = useState('')
+  const [sparText, setSparText] = useState('')
   const foe = roster.find((item) => item.id === foeId)
   const contracts = roster.filter((item) => item.kind === 'contract')
   const beasts = roster.filter((item) => item.kind === 'beast')
@@ -3734,6 +3779,7 @@ function SparringArena({ roster = [], actions, armory, busy }) {
       const nextQuestion = await actions?.ask?.(target, number)
       setQuestion(nextQuestion)
       setSparCode(nextQuestion?.starter_code || '')
+      setSparText('')
     } catch (failure) {
       setError(failure?.message || 'PYR could not write this round.')
     }
@@ -3765,6 +3811,15 @@ function SparringArena({ roster = [], actions, armory, busy }) {
       if (result?.verdict === 'correct') setScore((value) => value + 1)
     } catch (failure) { setError(failure?.message || 'The code could not be reviewed. Try again.') }
   }
+  const submitText = async () => {
+    if (!question || busy || feedback || !sparText.trim()) return
+    setError('')
+    try {
+      const result = await actions?.answerText?.(foeId, sparText)
+      setFeedback(result)
+      if (result?.verdict === 'correct') setScore((value) => value + 1)
+    } catch (failure) { setError(failure?.message || 'The answer could not be reviewed. Try again.') }
+  }
   const next = () => {
     setFeedback(null)
     if (round >= SPAR_ROUNDS) {
@@ -3792,57 +3847,39 @@ function SparringArena({ roster = [], actions, armory, busy }) {
       fight: { chip: wasCorrect ? 1 : 0, max_resolve: SPAR_ROUNDS, resolve_before: practiceResolveBefore,
         resolve_after: Math.max(0, practiceResolveBefore - (wasCorrect ? 1 : 0)) } },
   } : null
-  const foeButton = (item) => (
-    <button key={item.id} type="button" className={`spar-foe ${item.id === foeId ? 'active' : ''}`} onClick={() => start(item.id)} disabled={busy}>
-      {item.sign && <HuntSigil pageId={item.sign} size={18} />}
-      <span><strong>{item.name}</strong><small>{item.kind === 'contract' ? item.campaign : `Sign of the ${HUNT_BEASTS[item.sign]?.sign || item.sign}`}</small></span>
-    </button>
-  )
   return (
-    <section className="spar-arena" aria-label="Sparring">
-      <aside className="spar-roster">
-        <span className="screen-kicker">FOES YOU HAVE MET</span>
-        {roster.length === 0 && <p className="spar-empty">Nobody yet. Fight a campaign bounty or delve the Dungeon, then come back to train against what you met.</p>}
-        {contracts.length > 0 && <><small className="spar-group">Campaign bounties</small>{contracts.map(foeButton)}</>}
-        {beasts.length > 0 && <><small className="spar-group">Dungeon beasts</small>{beasts.map(foeButton)}</>}
+    <section className="spar-arena spar-dungeon-layout" aria-label="Sparring">
+      <aside className="spar-fight-column" aria-label="Sparring fight">
+        <div className="spar-selector">
+          <label htmlFor="spar-foe-select" className="dungeon-eyebrow">FOES YOU HAVE MET</label>
+          <select id="spar-foe-select" value={foeId} onChange={(event) => { if (event.target.value) start(event.target.value) }} disabled={busy || !roster.length}>
+            <option value="">Choose an opponent</option>
+            {contracts.length > 0 && <optgroup label="Campaign bounties">{contracts.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</optgroup>}
+            {beasts.length > 0 && <optgroup label="Dungeon beasts">{beasts.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</optgroup>}
+          </select>
+          {!roster.length && <small>Fight a campaign bounty or dungeon beast to unlock an opponent.</small>}
+        </div>
+        {foe ? <>
+          <div className="dungeon-brief-strip spar-strip"><span className="dungeon-brief-kind">SIMULATED · NO DAMAGE</span><span>Round {Math.min(round, SPAR_ROUNDS)} / {SPAR_ROUNDS}</span><span>Score {score}</span></div>
+          <section className="spar-question spar-question-brief">
+            <span className="dungeon-eyebrow">{finished ? 'BOUT OVER' : 'THE QUESTION'}</span>
+            {finished ? <p>You answered {score} of {SPAR_ROUNDS} rounds right against {foe.name}.</p>
+              : question ? <DungeonPromptText text={question.prompt} />
+              : error ? <p role="alert">{error} <button type="button" className="campaign-button ghost" onClick={() => ask(foeId, round)}>Try again</button></p>
+              : <p className="spar-empty">PYR is writing round {round}…</p>}
+          </section>
+          <DungeonCombatArena key={foe.id} run={practiceRun} loadout={practiceLoadout} turn={practiceTurn} simulated />
+        </> : <div className="spar-intro"><span className="screen-kicker">THE SPARRING RING</span><h3>Train against what you have fought.</h3><p>Choose an opponent for five simulated rounds. Practice HP and Resolve reset after the bout.</p></div>}
       </aside>
-      <div className="spar-ring">
-        {!foe ? (
-          <div className="spar-intro"><span className="screen-kicker">THE SPARRING RING</span><h3>Train against what you have fought.</h3><p>A simulated fight: five rounds of questions and a coding exercise, with room to think. Nothing here can hurt you, and every right first answer still sharpens your signs.</p></div>
-        ) : (
-          <>
-            <div className="dungeon-brief-strip spar-strip">
-              <span className="dungeon-brief-kind">SIMULATED · NO DAMAGE</span>
-              <span>Round {Math.min(round, SPAR_ROUNDS)} / {SPAR_ROUNDS}</span>
-              <span>Score {score}</span>
-            </div>
-            <div className="spar-bout-layout"><section className="spar-question">
-              <span className="dungeon-eyebrow">{finished ? 'BOUT OVER' : 'THE QUESTION'}</span>
-              {finished ? (
-                <div className="spar-result"><h3>{score >= 4 ? 'A clean win.' : score >= 3 ? 'You held your own.' : 'Back to the notebook.'}</h3><p>You answered {score} of {SPAR_ROUNDS} rounds right against {foe.name}.</p><button type="button" className="campaign-button" onClick={() => start(foe.id)} disabled={busy}>Spar again</button></div>
-              ) : question ? (
-                <>
-                  <div className={question.question_type === 'code' ? 'spar-code-layout' : 'spar-choice-layout'}>
-                  <div className="spar-prompt"><DungeonPromptText text={question.prompt} /></div>
-                  {question.question_type === 'code' ? <div className="spar-code-workspace"><div className="resource-editor-toolbar"><span>sparring.py · scratch workspace</span>{!feedback && <button type="button" className="campaign-button" onClick={submitCode} disabled={busy || !sparCode.trim()}>Submit for feedback</button>}</div><Editor height="260px" language="python" value={sparCode} onChange={(value) => setSparCode(value ?? '')} theme="vs-dark" options={{ minimap: { enabled: false }, fontSize: 14, automaticLayout: true, readOnly: Boolean(feedback), scrollBeyondLastLine: false }} /><p>This scratch answer is reviewed by PYR; it is not run or saved to your project.</p></div> : !feedback && <ChoicePanel options={question.options || []} onChoose={choose} busy={busy} label="PICK ONE" />}
-                  </div>
-                  {error && <p role="alert">{error}</p>}
-                  {feedback && (
-                    <div className={`battle-feedback ${feedback.verdict}`} role="status">
-                      <strong>{feedback.verdict === 'correct' ? '✔ Hit. ' : '✘ Parried. '}</strong>{feedback.reason}
-                      <button type="button" className="campaign-button" onClick={next} autoFocus>{round >= SPAR_ROUNDS ? 'See the result' : 'Next round'} →</button>
-                    </div>
-                  )}
-                </>
-              ) : error ? (
-                <p className="spar-empty">{error} <button type="button" className="campaign-button ghost" onClick={() => ask(foeId, round)}>Try again</button></p>
-              ) : <p className="spar-empty">PYR is writing round {round}…</p>}
-            </section>
-            <DungeonCombatArena key={foe.id} run={practiceRun} loadout={practiceLoadout} turn={practiceTurn} simulated />
-            </div>
-          </>
-        )}
-      </div>
+      <main className="spar-answer-workbench" aria-label="Sparring answer">
+        {!foe ? <div className="spar-answer-empty"><span className="dungeon-eyebrow">PRACTICE WORKSPACE</span><p>Choose an opponent to begin.</p></div>
+          : finished ? <div className="spar-result"><span className="dungeon-eyebrow">BOUT OVER</span><h3>{score >= 4 ? 'A clean win.' : score >= 3 ? 'You held your own.' : 'Back to the notebook.'}</h3><p>You answered {score} of {SPAR_ROUNDS} rounds right against {foe.name}.</p><button type="button" className="campaign-button" onClick={() => start(foe.id)} disabled={busy}>Spar again</button></div>
+          : question ? <>
+            {question.question_type === 'code' ? <div className="spar-code-workspace"><div className="resource-editor-toolbar"><span>sparring.py · scratch workspace</span>{!feedback && <button type="button" className="campaign-button" onClick={submitCode} disabled={busy || !sparCode.trim()}>Submit for feedback</button>}</div><Editor height="100%" language="python" value={sparCode} onChange={(value) => setSparCode(value ?? '')} theme="vs-dark" options={{ minimap: { enabled: false }, fontSize: 14, automaticLayout: true, readOnly: Boolean(feedback), scrollBeyondLastLine: false }} /><p>This scratch answer is reviewed by PYR; it is not run or saved to your project.</p></div> : question.question_type === 'interview' || question.question_type === 'short_explanation' ? <div className="spar-interview-workspace"><label htmlFor="spar-interview-answer" className="dungeon-eyebrow">YOUR EXPLANATION</label><textarea id="spar-interview-answer" value={sparText} onChange={(event) => setSparText(event.target.value)} readOnly={Boolean(feedback)} maxLength={20000} placeholder="Explain your reasoning in your own words…" /><small>Your answer is reviewed by PYR and stays in this practice bout.</small>{!feedback && <button type="button" className="campaign-button" onClick={submitText} disabled={busy || !sparText.trim()}>Submit explanation</button>}</div> : ['true_false', 'multiple_choice'].includes(question.question_type) ? (!feedback && <ChoicePanel options={question.options || []} onChoose={choose} busy={busy} label="PICK ONE" />) : <p role="alert">This question format is not available. Try the round again. <button type="button" className="campaign-button ghost" onClick={() => ask(foeId, round)}>Try again</button></p>}
+            {error && <p role="alert">{error}</p>}
+            {feedback && <div className={`battle-feedback ${feedback.verdict}`} role="status"><strong>{feedback.verdict === 'correct' ? '✔ Hit. ' : '✘ Parried. '}</strong>{feedback.reason}<button type="button" className="campaign-button" onClick={next} autoFocus>{round >= SPAR_ROUNDS ? 'See the result' : 'Next round'} →</button></div>}
+          </> : <div className="spar-answer-empty"><span className="dungeon-eyebrow">PRACTICE WORKSPACE</span><p>{error ? 'Retry the question on the left.' : 'Your answer will appear here when the question is ready.'}</p></div>}
+      </main>
     </section>
   )
 }
@@ -3851,7 +3888,7 @@ const BATTLE_CHOICE_KINDS = new Set(['prediction', 'explanation'])
 
 // The campaign battle sidebar, laid out like the Dungeon brief: the question
 // first, then what you are fighting, then every objective.
-function BattleBrief({ encounter, board, charges = {}, questions = {}, feedback, onAsk, onAnswer, onCheckSetup, onStudy, busy }) {
+function BattleBrief({ player, armory, encounter, board, charges = {}, questions = {}, feedback, onAsk, onAnswer, onCheckSetup, onStudy, busy }) {
   const open = encounter.available_objectives || []
   const contract = (board?.contracts || []).find((item) => item.name === encounter.mob_name)
   // Beginner lessons and workshops follow their written teaching order;
@@ -3878,6 +3915,14 @@ function BattleBrief({ encounter, board, charges = {}, questions = {}, feedback,
     <div className="battle-brief" data-testid="forge-contract">
       <section className="battle-brief-question">
         <span className="battle-eyebrow">THE QUESTION{current ? ` · ${OBJECTIVE_KIND[current.question_type] || 'TASK'}` : ''}</span>
+      <ol className="battle-brief-objectives">
+        {allObjectives.map((objective) => (
+          <li key={objective.id} className={done.has(objective.id) ? 'done' : current?.id === objective.id ? 'current' : ''}>
+            <b className={`kind-${objective.question_type}`}>{done.has(objective.id) ? '✔' : OBJECTIVE_KIND[objective.question_type] || 'TASK'}</b>
+            <span>{objective.label}</span>
+          </li>
+        ))}
+      </ol>
         {!current ? <p>Every objective is done.</p> : setup ? (
           <>
             <strong>{current.label}</strong>
@@ -3897,7 +3942,7 @@ function BattleBrief({ encounter, board, charges = {}, questions = {}, feedback,
           <>
             <strong>{current.label}</strong>
             <DungeonPromptText text={current.brief} />
-            <small>Graded on <code>{gradedOn}</code>: open it in the Forge, then press <b>Submit run</b>.</small>
+            <small>Graded on <code>{gradedOn}</code>: open it in the Hunt, then press <b>Submit run</b>.</small>
           </>
         )}
         {feedback && !String(feedback.objectiveId || '').startsWith('boss:') && <div className={`battle-feedback ${feedback.verdict}`} role="status">{feedback.verdict === 'correct' ? '✔ ' : feedback.verdict === 'not_yet' ? 'Not yet. ' : '✘ '}{feedback.reason}</div>}
@@ -3908,23 +3953,37 @@ function BattleBrief({ encounter, board, charges = {}, questions = {}, feedback,
       <section className="battle-brief-enemy">
         <span className="battle-eyebrow">WHAT YOU'RE FIGHTING</span>
         <strong>{encounter.mob_name}</strong>
+        <ForgeCombatScene encounter={encounter} player={player} armory={armory} />
         {contract?.sign && <small className="battle-brief-sign"><HuntSigil pageId={contract.sign} size={14} /> {contract.beast || 'Beast'} · Sign of the {HUNT_BEASTS[contract.sign]?.sign || contract.sign}</small>}
-        <ProgressBar value={encounter.resolve ?? 0} max={encounter.max_resolve ?? 1} label="Enemy Resolve" className="resolve" />
         <small>{encounter.guards ? `${encounter.guards} free mistake${encounter.guards === 1 ? '' : 's'} banked · ` : ''}{done.size} of {allObjectives.length} objectives done</small>
         {(charges?.free_asks > 0 || charges?.wards > 0) && <small className="battle-brief-aid" data-testid="battle-aid">Armed: {[charges.free_asks ? `${charges.free_asks} free PYR ask${charges.free_asks === 1 ? '' : 's'}` : '', charges.wards ? `${charges.wards} ward${charges.wards === 1 ? '' : 's'}` : ''].filter(Boolean).join(' · ')}</small>}
         {encounter.pyr_assists > 0 && <small className="battle-brief-pyr" data-testid="battle-pyr-cost">PYR helped {encounter.pyr_assists}× · this fight pays {encounter.reward_scale}% XP and coins{encounter.pyr_assists >= 2 ? ' · no loot' : ''}</small>}
         {encounter.mob?.lore && <p className="battle-brief-lore">{encounter.mob.lore}</p>}
       </section>
-      <ol className="battle-brief-objectives">
-        {allObjectives.map((objective) => (
-          <li key={objective.id} className={done.has(objective.id) ? 'done' : current?.id === objective.id ? 'current' : ''}>
-            <b className={`kind-${objective.question_type}`}>{done.has(objective.id) ? '✔' : OBJECTIVE_KIND[objective.question_type] || 'TASK'}</b>
-            <span>{objective.label}</span>
-          </li>
-        ))}
-      </ol>
+
     </div>
   )
+}
+
+function ForgeCombatScene({ encounter, player = {}, armory, boss = false }) {
+  const name = boss ? (encounter.boss || 'Boss') : encounter.mob_name
+  const hp = Math.max(0, Number(player.hp) || 0)
+  const maxHp = Math.max(1, Number(player.max_hp) || 1)
+  const resolve = Math.max(0, Number(encounter.resolve ?? encounter.boss_resolve) || 0)
+  const maxResolve = Math.max(1, Number(encounter.max_resolve ?? encounter.boss_max_resolve) || 1)
+  const weapon = armory?.weapon
+  const previous = useRef(null)
+  const [turn, setTurn] = useState(null)
+  useEffect(() => {
+    const before = previous.current
+    previous.current = { name, hp, resolve }
+    if (!before || before.name !== name) { setTurn(null); return }
+    if (resolve < before.resolve || hp < before.hp) {
+      const correct = resolve < before.resolve
+      setTurn({ hpAfter: hp, result: { evidence_id: `forge-${Date.now()}`, outcome: correct ? 'correct' : 'incorrect', damage: Math.max(0, before.hp - hp), fight: { max_resolve: maxResolve, resolve_before: before.resolve, resolve_after: resolve, chip: Math.max(0, before.resolve - resolve) } } })
+    }
+  }, [name, hp, resolve, maxResolve])
+  return <DungeonCombatArena campaign run={{ room_type: boss ? 'boss' : 'encounter', region: { id: encounter.project_id === '00-lantern-vale' ? 'basics' : '' }, encounter: { name, resolve, max_resolve: maxResolve } }} loadout={{ hp, max_hp: maxHp, weapon: weapon?.name || 'Bare hands', weapon_style: weapon?.combat_style || 'unarmed' }} turn={turn} />
 }
 
 // ── LearnHarness: home, where the hunter studies the theory ────────────────
@@ -4050,9 +4109,9 @@ function LearnHarnessCard() {
 const BOSS_CHOICE_KINDS = new Set(['snippet_check', 'code_interview'])
 
 // The boss gate in the sidebar: the current goal first (a coding task to
-// build in the Forge, or a clickable question about your own file), then the
+// build in the Hunt, or a clickable question about your own file), then the
 // boss and every phase of the fight.
-function BossBrief({ encounter, board, questions = {}, feedback, onAsk, onAnswer, busy }) {
+function BossBrief({ player, armory, encounter, board, questions = {}, feedback, onAsk, onAnswer, busy }) {
   const phases = encounter.boss_requirements_projection || []
   const current = encounter.boss_current_requirement || null
   const choice = Boolean(current && BOSS_CHOICE_KINDS.has(current.question_type))
@@ -4071,6 +4130,14 @@ function BossBrief({ encounter, board, questions = {}, feedback, onAsk, onAnswer
     <div className="battle-brief boss-brief" data-testid="forge-boss-brief">
       <section className="battle-brief-question">
         <span className="battle-eyebrow">THE QUESTION{current ? ` · ${OBJECTIVE_KIND[current.question_type] || 'TASK'}` : ''}</span>
+      <ol className="battle-brief-objectives">
+        {phases.map((phase) => (
+          <li key={phase.id} className={phase.status === 'verified' ? 'done' : phase.status === 'current' ? 'current' : ''}>
+            <b className={`kind-${phase.question_type}`}>{phase.status === 'verified' ? '✔' : OBJECTIVE_KIND[phase.question_type] || 'TASK'}</b>
+            <span>{phase.label}</span>
+          </li>
+        ))}
+      </ol>
         {!current ? <p>Every goal is verified. The boss falls.</p> : choice ? (
           question ? (
             <>
@@ -4091,17 +4158,10 @@ function BossBrief({ encounter, board, questions = {}, feedback, onAsk, onAnswer
       <section className="battle-brief-enemy">
         <span className="battle-eyebrow">WHAT YOU'RE FIGHTING</span>
         <strong>{encounter.boss || 'The boss'}</strong>
-        <ProgressBar value={encounter.resolve ?? encounter.boss_resolve ?? 0} max={encounter.max_resolve ?? encounter.boss_max_resolve ?? 1} label="Boss Resolve" className="resolve boss-resolve" />
+        <ForgeCombatScene encounter={encounter} player={player} armory={armory} boss />
         {encounter.boss_lore && <p className="battle-brief-lore">{encounter.boss_lore}</p>}
       </section>
-      <ol className="battle-brief-objectives">
-        {phases.map((phase) => (
-          <li key={phase.id} className={phase.status === 'verified' ? 'done' : phase.status === 'current' ? 'current' : ''}>
-            <b className={`kind-${phase.question_type}`}>{phase.status === 'verified' ? '✔' : OBJECTIVE_KIND[phase.question_type] || 'TASK'}</b>
-            <span>{phase.label}</span>
-          </li>
-        ))}
-      </ol>
+
     </div>
   )
 }
@@ -4153,12 +4213,7 @@ function DungeonQuestionBrief({ run, question, loadout, editorContent, hunter, o
         <span>Floor {run.floor ?? 1} · Room {run.room ?? 1}</span>
         <span>{type.label}</span>
         <DungeonDifficulty value={question.difficulty} />
-        {encounter.fight && encounter.fight.questions_total > 1 && (
-          <span className={`dungeon-brief-fightchip ${encounter.fight.mechanic?.enraged ? 'enraged' : ''}`}>
-            Q {Math.min((encounter.fight.questions_cleared || 0) + 1, encounter.fight.questions_total)}/{encounter.fight.questions_total} · {encounter.fight.guards || 0} free
-            {encounter.fight.mechanic ? ` · ${encounter.fight.mechanic.kind === 'self_destruct' ? `Blast in ${encounter.fight.mechanic.countdown}` : encounter.fight.mechanic.enraged ? 'Enraged ×2' : `Rage in ${encounter.fight.mechanic.countdown}`}` : ''}
-          </span>
-        )}
+
       </div>
 
       <section className="dungeon-brief-question">
@@ -4180,23 +4235,20 @@ function DungeonQuestionBrief({ run, question, loadout, editorContent, hunter, o
         </section>
       )}
 
-      <section className="dungeon-brief-enemy">
-        <div className="dungeon-brief-enemy-head">
-          <div><span className="dungeon-eyebrow">{run.room_type === 'boss' ? 'BOSS' : run.room_type === 'elite' ? 'ELITE' : 'MOB'}{encounter.phase ? ` · PHASE ${encounter.phase}` : ''}</span><strong>{encounter.name || 'Room guardian'}</strong><small>{encounter.category || mechanic.label || 'learning mob'}</small></div>
-          <div className="dungeon-brief-resolve"><small>RESOLVE</small><strong>{encounter.resolve ?? '—'} / {encounter.max_resolve ?? '—'}</strong></div>
-        </div>
-        <DungeonResolveBar resolve={encounter.resolve} max={encounter.max_resolve} />
+      <DungeonCombatArena run={run} loadout={loadout} turn={combatTurn}>
+        {(encounter.category || mechanic.label) && <small className="combat-mob-category">{encounter.category || mechanic.label}</small>}
         {encounter.fight && <DungeonFightStrip fight={encounter.fight} />}
-        {encounter.fight && <DungeonOils run={run} hunter={hunter} onApplyOil={onApplyOil} busy={busy} />}
-        <ul className="dungeon-brief-facts">
-          <li><span>Correct answer</span><b>Chips Resolve; at zero it breaks and you bank a free mistake</b></li>
-          {mechanic.on_failure && <li><span>Wrong answer</span><b>{mechanic.on_failure}</b></li>}
-          {mechanic.passive && <li><span>Passive</span><b>{mechanic.passive}</b></li>}
-          <li><span>Rewards</span><b>+{reward.score ?? 0} score · +{reward.coins ?? 0} coins{Array.isArray(reward.authorized_items) && reward.authorized_items.length ? ` · ${reward.authorized_items.join(', ')}` : ''}</b></li>
-        </ul>
-      </section>
-
-      <DungeonCombatArena run={run} loadout={loadout} turn={combatTurn} />
+        <details className="combat-mob-details">
+          <summary>Mob abilities, oils &amp; rewards</summary>
+          {encounter.fight && <DungeonOils run={run} hunter={hunter} onApplyOil={onApplyOil} busy={busy} />}
+          <ul className="dungeon-brief-facts">
+            <li><span>Correct answer</span><b>Chips Resolve; at zero it breaks and you bank a free mistake</b></li>
+            {mechanic.on_failure && <li><span>Wrong answer</span><b>{mechanic.on_failure}</b></li>}
+            {mechanic.passive && <li><span>Passive</span><b>{mechanic.passive}</b></li>}
+            <li><span>Rewards</span><b>+{reward.score ?? 0} score · +{reward.coins ?? 0} coins{Array.isArray(reward.authorized_items) && reward.authorized_items.length ? ` · ${reward.authorized_items.join(', ')}` : ''}</b></li>
+          </ul>
+        </details>
+      </DungeonCombatArena>
 
       <details className="dungeon-brief-guide">
         <summary>Step guide · Resolve preview</summary>
@@ -4301,9 +4353,11 @@ function DungeonVerdictCard({ card, avatar, onClose, onContinue }) {
             {(card.loot?.items || []).map((item) => <li key={item.id} className="loot">+{item.count} {item.name}</li>)}
             {card.loot?.clean && (card.loot?.items || []).length > 0 && <li className="loot">clean fight bonus</li>}
             {card.loot?.trinket && <li className="loot">Trinket: {card.loot.trinket.name}{card.loot.trinket.equipped ? ' (equipped)' : ''}</li>}
+            {card.loot?.weapon && <li className="loot">Boss weapon: {card.loot.weapon.name} · equip it from your inventory</li>}
           </ul>
         )}
         {card.loot?.trinket && <p className="dungeon-verdict-summary">{card.loot.trinket.name}: {card.loot.trinket.description}</p>}
+        {card.loot?.weapon && <p className="dungeon-verdict-summary">{card.loot.weapon.name}: {card.loot.weapon.description}</p>}
         {card.died && (card.packLost || []).length > 0 && <p className="dungeon-verdict-lost">Unbanked loot lost: {lootText(card.packLost)}.</p>}
         {!card.died && (card.loot?.items || []).length > 0 && <p className="dungeon-verdict-hint">Parts go in your pack. Bank them at a camp or by ending the run.</p>}
         <p className="dungeon-verdict-hint">{error ? 'Nothing was spent. Fix the problem above and submit again.' : card.died ? `Your run ended with ${card.score ?? 0} score. Pick a class to start a new one.` : correct ? (done ? 'Pick your next room on the map.' : 'The next question is ready.') : clicked ? 'A new question is ready.' : 'Your answer is still in dungeon.py. Fix it and submit again.'}</p>
@@ -4319,6 +4373,7 @@ function DungeonVerdictCard({ card, avatar, onClose, onContinue }) {
 
 function DungeonScreen({ avatar, hunter, onApplyOil, onTravel, onAnswerOption, dungeon, revision, onStart, onChoose, onRest, onCampAction, onRevealRisk, onEnterRisk, onMarketPurchase, onEquip, onLeave, onFinish, onReset, submitDungeon, busy, saving, editorContent, onEditorChange, onSave }) {
   const [selectedClassId, setSelectedClassId] = useState('')
+  const [setupStep, setSetupStep] = useState('class')
   const [submitStatus, setSubmitStatus] = useState('')
   const [roomTab, setRoomTab] = useState('room')
   const [characterTab, setCharacterTab] = useState('LOADOUT')
@@ -4368,6 +4423,7 @@ function DungeonScreen({ avatar, hunter, onApplyOil, onTravel, onAnswerOption, d
     if (turnTimerRef.current || combatTurn) return
     if (!run.active) {
       setSelectedClassId('')
+      setSetupStep('class')
       setRoomTab('room')
       autoOpenedQuestionRef.current = ''
       return
@@ -4385,10 +4441,10 @@ function DungeonScreen({ avatar, hunter, onApplyOil, onTravel, onAnswerOption, d
     }
   }, [run.active, run.room_type, run.question?.id, combatTurn])
 
-  const [selectedRegionId, setSelectedRegionId] = useState('basics')
+  const [selectedRegionId, setSelectedRegionId] = useState(null)
   const start = async () => {
     if (!onStart || busy) return
-    await onStart({ classId: selectedClassId, regionId: selectedRegionId })
+    await onStart({ classId: selectedClassId, regionId: selectedRegionId === 'open' ? '' : selectedRegionId })
   }
   const lastRunLoot = run.status === 'dead' && (run.pack_lost || []).length
     ? `Your last hunt fell. Lost: ${lootText(run.pack_lost)}.`
@@ -4433,8 +4489,8 @@ function DungeonScreen({ avatar, hunter, onApplyOil, onTravel, onAnswerOption, d
   return (
     <div className="dungeon-screen-shell" data-testid="dungeon" data-campaign-revision={revision}>
       {verdictCard && <ShellPortal scope="dungeon-screen-shell"><DungeonVerdictCard card={verdictCard} avatar={avatar} onClose={() => setVerdictCard(null)} onContinue={() => { setVerdictCard(null); setRoomTab('map') }} /></ShellPortal>}
-      <header className="dungeon-local-header"><div className="dungeon-local-brand"><span className="dungeon-brand-mark"><RouteIcon id="spark" /></span><div><span className="dungeon-eyebrow">INFINITE DUNGEON</span><h1>{run.active ? `Floor ${run.floor} · Room ${run.room}` : 'The Descent'}</h1></div></div><span className="dungeon-local-badge"><i /> CANONICAL RUN · STATE GATEWAY</span>{run.active ? <div className="dungeon-run-stats" aria-label="Run stats"><div><small>FLOOR</small><strong>{run.floor ?? 1}</strong></div><div><small>HP</small><strong>{loadout.hp ?? 0}/{loadout.max_hp ?? 0}</strong></div><div><small>SCORE</small><strong>{run.score ?? 0}</strong></div><div><small>COINS</small><strong>{run.run_coins ?? 0}</strong></div><button className="dungeon-reset-header" type="button" onClick={() => onReset?.(run.run_id)} disabled={busy || !onReset}>Reset run</button></div> : <div className="dungeon-header-note"><span className="dungeon-eyebrow">BEFORE THE DESCENT</span><strong>CHOOSE YOUR CLASS</strong></div>}</header>
-      {!run.active ? <main className="dungeon-class-select" aria-label="Choose a dungeon class"><section className="dungeon-class-hero"><span className="dungeon-eyebrow">RUN SETUP · FLOOR 1</span><h2>So how you wanna play it.</h2><p>Pick a class</p>{lastRunLoot && <p className="delve-last-run">{lastRunLoot}</p>}</section><section className="dungeon-class-grid" role="radiogroup" aria-label="Dungeon classes">{DUNGEON_CLASSES.map((starterClass) => <button key={starterClass.id} type="button" role="radio" aria-checked={selectedClassId === starterClass.id} className={`dungeon-class-card ${selectedClassId === starterClass.id ? 'selected' : ''}`} onClick={() => setSelectedClassId(starterClass.id)} disabled={busy}><span className="dungeon-class-card-top"><span className="dungeon-class-icon" aria-hidden="true"><RouteIcon id={starterClass.iconId} /></span><span><span className="dungeon-eyebrow">{starterClass.role}</span><strong>{starterClass.name}</strong></span>{selectedClassId === starterClass.id && <small className="dungeon-class-picked">READY</small>}</span><span className="dungeon-class-weapon"><span className="dungeon-class-label">STARTER WEAPON</span><strong>{starterClass.weapon}</strong><small>{starterClass.weaponDetail || 'A bounded run weapon for this playstyle.'}</small></span><span className="dungeon-class-passive"><span className="dungeon-class-label">PASSIVE</span><p>{starterClass.passive}</p></span></button>)}</section><DelvePicker hunter={hunter} selected={selectedRegionId} onSelect={setSelectedRegionId} busy={busy} />{selectedClassId && <div className="dungeon-class-cta" aria-live="polite"><button className="dungeon-primary-button" type="button" onClick={start} disabled={busy}>{busy ? 'Starting…' : 'Enter the dungeon'} <span>→</span></button></div>}</main> : roomTab === 'code' ? <section className="dungeon-ide-screen" aria-label="Challenge IDE"><div className="dungeon-ide-topline"><button type="button" className="dungeon-ghost-button" onClick={() => setRoomTab('room')} disabled={Boolean(combatTurn)}>← Map locked</button><span className="dungeon-eyebrow">{run.room_type === 'boss' ? 'FLOOR BOSS · FINAL DESTINATION' : run.room_type === 'elite' ? 'ELITE GATE · TRINKET DROP' : 'QUESTION ROOM · NO ROUTE CONTROLS'}</span><span className="dungeon-ide-risk">FAILURE COSTS HP</span></div><div className="dungeon-ide-layout"><DungeonQuestionBrief run={run} question={question} loadout={loadout} editorContent={editorContent} hunter={hunter} onApplyOil={onApplyOil} busy={busy || Boolean(combatTurn)} combatTurn={combatTurn} /><div className="dungeon-code-workbench">{choiceOptions.length ? <ChoicePanel options={choiceOptions} onChoose={chooseOption} busy={busy || Boolean(verdictCard) || Boolean(combatTurn)} /> : <><div className="dungeon-editor-toolbar"><span>dungeon.py · current room buffer</span><span>PYTHON · MONACO · LOCAL COMPLETION</span></div><DungeonEditorSurface value={editorContent || ''} onChange={onEditorChange} onSave={onSave} onSubmit={submit} busy={busy || Boolean(combatTurn) || Boolean(verdictCard)} saving={saving} /></>}{submitStatus && <small className="battle-submit-status" role="status">{submitStatus}</small>}</div></div></section> : <><div className="dungeon-workspace-tabs" role="tablist" aria-label="Dungeon workspace"><button type="button" role="tab" aria-selected={roomTab === 'map'} className={roomTab === 'map' ? 'active' : ''} onClick={() => setRoomTab('map')}>Map &amp; route</button><button type="button" role="tab" aria-selected={roomTab === 'room'} className={roomTab === 'room' ? 'active' : ''} onClick={() => setRoomTab('room')}>Room screen</button><button type="button" role="tab" aria-selected={roomTab === 'code'} className={roomTab === 'code' ? 'active' : ''} onClick={openCode} disabled={!['encounter', 'elite', 'boss'].includes(run.room_type)}>Code editor</button></div><div className="dungeon-prototype-grid" data-testid="dungeon-tab-panel"><DungeonMap run={run} onChoose={chooseRoom} onTravel={onTravel} busy={busy} /><DungeonRoomPanel run={run} question={question} loadout={loadout} onRest={onRest} onCampAction={onCampAction} onRevealRisk={onRevealRisk} onEnterRisk={onEnterRisk} onMarketPurchase={onMarketPurchase} onLeave={onLeave} onOpenCode={openCode} busy={busy} /><DungeonCharacterPanel run={run} tab={characterTab} setTab={setCharacterTab} onEquip={onEquip} busy={busy} onFinish={onFinish} onReset={onReset} /></div><p className="dungeon-checkpoint-note">{statusText} Run <code>{run.run_id}</code> will resume after a Forge or workstation restart; death is the only reset.</p></>}
+      <header className="dungeon-local-header"><div className="dungeon-local-brand"><span className="dungeon-brand-mark"><RouteIcon id="spark" /></span><div><span className="dungeon-eyebrow">INFINITE DUNGEON</span><h1>{run.active ? `Floor ${run.floor} · Room ${run.room}` : 'The Descent'}</h1></div></div><span className="dungeon-local-badge"><i /> CANONICAL RUN · STATE GATEWAY</span>{run.active ? <div className="dungeon-run-stats" aria-label="Run stats"><div><small>FLOOR</small><strong>{run.floor ?? 1}</strong></div><div><small>HP</small><strong>{loadout.hp ?? 0}/{loadout.max_hp ?? 0}</strong></div><div><small>SCORE</small><strong>{run.score ?? 0}</strong></div><div><small>COINS</small><strong>{run.run_coins ?? 0}</strong></div><button className="dungeon-reset-header" type="button" onClick={() => onReset?.(run.run_id)} disabled={busy || !onReset}>Reset run</button></div> : <div className="dungeon-header-note"><span className="dungeon-eyebrow">BEFORE THE DESCENT</span><strong>{setupStep === 'class' ? 'CHOOSE YOUR CLASS' : 'CHOOSE A LOCATION'}</strong></div>}</header>
+      {!run.active ? setupStep === 'class' ? <main className="dungeon-class-select" aria-label="Choose a dungeon class"><section className="dungeon-class-hero"><span className="dungeon-eyebrow">RUN SETUP · FLOOR 1</span><h2>So how you wanna play it.</h2><p>Pick a class</p>{lastRunLoot && <p className="delve-last-run">{lastRunLoot}</p>}</section><section className="dungeon-class-grid" role="radiogroup" aria-label="Dungeon classes">{DUNGEON_CLASSES.map((starterClass) => <button key={starterClass.id} type="button" role="radio" aria-checked={selectedClassId === starterClass.id} className={`dungeon-class-card ${selectedClassId === starterClass.id ? 'selected' : ''}`} onClick={() => setSelectedClassId(starterClass.id)} disabled={busy}><span className="dungeon-class-card-top"><span className="dungeon-class-icon" aria-hidden="true"><RouteIcon id={starterClass.iconId} /></span><span><span className="dungeon-eyebrow">{starterClass.role}</span><strong>{starterClass.name}</strong></span>{selectedClassId === starterClass.id && <small className="dungeon-class-picked">READY</small>}</span><span className="dungeon-class-weapon"><span className="dungeon-class-label">STARTER WEAPON</span><strong>{starterClass.weapon}</strong><small>{starterClass.weaponDetail || 'A bounded run weapon for this playstyle.'}</small></span><span className="dungeon-class-passive"><span className="dungeon-class-label">PASSIVE</span><p>{starterClass.passive}</p></span></button>)}</section>{selectedClassId && <div className="dungeon-class-cta" aria-live="polite"><button className="dungeon-primary-button" type="button" onClick={() => setSetupStep('location')} disabled={busy}>Choose location <span>→</span></button></div>}</main> : <DelvePicker hunter={hunter} selected={selectedRegionId} onSelect={setSelectedRegionId} onBack={() => setSetupStep('class')} onStart={start} selectedClass={DUNGEON_CLASSES.find((item) => item.id === selectedClassId)} busy={busy} /> : roomTab === 'code' ? <section className="dungeon-ide-screen" aria-label="Challenge IDE"><div className="dungeon-ide-topline"><button type="button" className="dungeon-ghost-button" onClick={() => setRoomTab('room')} disabled={Boolean(combatTurn)}>← Map locked</button><span className="dungeon-eyebrow">{run.room_type === 'boss' ? 'FLOOR BOSS · FINAL DESTINATION' : run.room_type === 'elite' ? 'ELITE GATE · TRINKET DROP' : 'QUESTION ROOM · NO ROUTE CONTROLS'}</span><span className="dungeon-ide-risk">FAILURE COSTS HP</span></div><div className="dungeon-ide-layout"><DungeonQuestionBrief run={run} question={question} loadout={loadout} editorContent={editorContent} hunter={hunter} onApplyOil={onApplyOil} busy={busy || Boolean(combatTurn)} combatTurn={combatTurn} /><div className="dungeon-code-workbench">{choiceOptions.length ? <ChoicePanel options={choiceOptions} onChoose={chooseOption} busy={busy || Boolean(verdictCard) || Boolean(combatTurn)} /> : <><div className="dungeon-editor-toolbar"><span>dungeon.py · current room buffer</span><span>PYTHON · MONACO · LOCAL COMPLETION</span></div><DungeonEditorSurface value={editorContent || ''} onChange={onEditorChange} onSave={onSave} onSubmit={submit} busy={busy || Boolean(combatTurn) || Boolean(verdictCard)} saving={saving} /></>}{submitStatus && <small className="battle-submit-status" role="status">{submitStatus}</small>}</div></div></section> : <><div className="dungeon-workspace-tabs" role="tablist" aria-label="Dungeon workspace"><button type="button" role="tab" aria-selected={roomTab === 'map'} className={roomTab === 'map' ? 'active' : ''} onClick={() => setRoomTab('map')}>Map &amp; route</button><button type="button" role="tab" aria-selected={roomTab === 'room'} className={roomTab === 'room' ? 'active' : ''} onClick={() => setRoomTab('room')}>Room screen</button><button type="button" role="tab" aria-selected={roomTab === 'code'} className={roomTab === 'code' ? 'active' : ''} onClick={openCode} disabled={!['encounter', 'elite', 'boss'].includes(run.room_type)}>Code editor</button></div><div className="dungeon-prototype-grid" data-testid="dungeon-tab-panel"><DungeonMap run={run} onChoose={chooseRoom} onTravel={onTravel} onRevealFloor={onRevealRisk} busy={busy} /><DungeonRoomPanel run={run} question={question} loadout={loadout} onRest={onRest} onCampAction={onCampAction} onRevealRisk={onRevealRisk} onEnterRisk={onEnterRisk} onMarketPurchase={onMarketPurchase} onLeave={onLeave} onOpenCode={openCode} busy={busy} /><DungeonCharacterPanel run={run} tab={characterTab} setTab={setCharacterTab} onEquip={onEquip} busy={busy} onFinish={onFinish} onReset={onReset} /></div><p className="dungeon-checkpoint-note">{statusText} Run <code>{run.run_id}</code> will resume after a Hunt or workstation restart; death is the only reset.</p></>}
     </div>
   )
 }
@@ -4540,7 +4596,7 @@ function AccountPanel({ account, busy, notice, onSignIn, onSignUp, onSignOut, on
       {!configured && (
         <div className="account-local-state">
           <strong>Offline / Local Mode</strong>
-          <p>{account.detail || 'Add the public Supabase values to enable account sign-in. Your local Forge is unaffected.'}</p>
+          <p>{account.detail || 'Add the public Supabase values to enable account sign-in. Your local Hunt is unaffected.'}</p>
         </div>
       )}
 
@@ -4733,11 +4789,11 @@ function AiTutorSettings({ ai = {} }) {
           <button type="button" onClick={() => refreshAiTutor?.()}>Re-check</button>
         </div>
         {opencode.integrations?.length > 0 && <div className="settings-chips">{opencode.integrations.map((name) => <span key={name}>{name}</span>)}</div>}
-        <p className="settings-note">Add a provider or API key: open the Forge terminal and run <code>opencode auth login</code>, then press Re-check.</p>
+        <p className="settings-note">Add a provider or API key: open the Hunt terminal and run <code>opencode auth login</code>, then press Re-check.</p>
       </section>
       <section className="settings-group">
         <header><h3>PYR mode</h3></header>
-        <SettingRow label="How PYR runs" description={settings.mode === 'classic' ? 'Classic: the Forge PYR panel is a raw terminal; launch Claude, AGY, Codex or Copilot there and submissions are pasted into it.' : 'OpenCode: PYR is built in and already loaded. It grades your submissions and chats in the Forge panel. Falls back to Classic when OpenCode is not ready.'}>
+        <SettingRow label="How PYR runs" description={settings.mode === 'classic' ? 'Classic: the Hunt PYR panel is a raw terminal; launch Claude, AGY, Codex or Copilot there and submissions are pasted into it.' : 'OpenCode: PYR is built in and already loaded. It grades your submissions and chats in the Hunt panel. Falls back to Classic when OpenCode is not ready.'}>
           <div className="settings-segmented" role="radiogroup" aria-label="PYR mode">
             <button type="button" role="radio" aria-checked={settings.mode !== 'classic'} className={settings.mode !== 'classic' ? 'active' : ''} onClick={() => update({ mode: 'opencode' })} disabled={saving}>OpenCode</button>
             <button type="button" role="radio" aria-checked={settings.mode === 'classic'} className={settings.mode === 'classic' ? 'active' : ''} onClick={() => update({ mode: 'classic' })} disabled={saving}>Classic terminal</button>
@@ -4875,7 +4931,7 @@ function StatCard({ label, value, hint }) {
   return <div className="stat-card"><small>{label}</small><strong>{value}</strong>{hint && <span>{hint}</span>}</div>
 }
 
-function PlayerStatsPanel({ progress, hunter }) {
+function PlayerStatsPanel({ progress, hunter, activity }) {
   if (!progress || typeof progress !== 'object') {
     return <section className="settings-group"><header><h3>Player Stats</h3></header><p className="settings-note">Your stats appear once your save has loaded.</p></section>
   }
@@ -4911,7 +4967,11 @@ function PlayerStatsPanel({ progress, hunter }) {
       </div>
       <h4 className="stat-group-title">Campaign</h4>
       <div className="stat-grid">
-        <StatCard label="Level" value={player.level ?? 1} hint={`${number(player.lifetime_xp ?? player.xp)} XP earned`} />
+        <StatCard label="Level" value={player.level ?? 1} hint={`${number(player.xp)} / ${number(player.xp_next ?? 100)} XP to next level`} />
+        <StatCard label="Rank" value={player.rank || 'F'} hint={player.title || 'Apprentice Coder'} />
+        <StatCard label="Learning streak" value={`${number(progress.streak?.current)} days`} hint="consecutive validated days" />
+        <StatCard label="Mastery shields" value={number((progress.skills || []).filter((skill) => skill.shield?.tier && skill.shield.tier !== 'none').length)} />
+        <StatCard label="Activity score" value={number(activity?.activity_score)} hint="validated learning actions" />
         <StatCard label="Mobs slain" value={number(stats.mobs_defeated)} />
         <StatCard label="Bosses defeated" value={number(bosses)} hint={`${number(stats.projects_cleared)} projects shipped`} />
         <StatCard label="Answers verified" value={number(records.answers_verified)} />
@@ -4956,7 +5016,7 @@ function SettingsScreen({ progress, hunter, preferences, setters, resetLayout, a
   return (
     <div className="game-screen-scroll settings-screen settings-v2" data-campaign-revision={revision}>
       <div className="screen-hero settings-hero">
-        <div><span className="screen-kicker">SETTINGS</span><h2>Make the Forge fit you.</h2><p>Usability and accessibility settings are free forever. Homestead coins only unlock cosmetic presentation.</p></div>
+        <div><span className="screen-kicker">SETTINGS</span><h2>Make the Hunt fit you.</h2><p>Usability and accessibility settings are free forever. Homestead coins only unlock cosmetic presentation.</p></div>
       </div>
       <div className="settings-layout">
         <nav className="settings-nav" aria-label="Settings sections">
@@ -4967,7 +5027,7 @@ function SettingsScreen({ progress, hunter, preferences, setters, resetLayout, a
           ))}
         </nav>
         <div className="settings-content">
-          {active.id === 'stats' && <PlayerStatsPanel progress={progress} hunter={hunter} />}
+          {active.id === 'stats' && <PlayerStatsPanel progress={progress} hunter={hunter} activity={ai?.activity} />}
           {active.id === 'appearance' && <section className="settings-group">
             <header><h3>Appearance</h3></header>
             <SettingRow label="Theme" description="Arcade is the pixel default. Homestead themes are cosmetics you buy with coins.">
@@ -4997,10 +5057,10 @@ function SettingsScreen({ progress, hunter, preferences, setters, resetLayout, a
             <SettingRow label="Terminal font size" description={`${terminalFontSize}px`}>
               <input type="range" min="10" max="20" value={terminalFontSize} onChange={(event) => setters.setTerminalFontSize(Number(event.target.value))} aria-label="Terminal font size" />
             </SettingRow>
-            <SettingRow label="PYR terminal panel" description="The raw CLI terminal beside the Forge editor. Not needed when OpenCode grades for you. Hidden on Codex, Home and Settings either way.">
+            <SettingRow label="PYR terminal panel" description="The raw CLI terminal beside the Hunt editor. Not needed when OpenCode grades for you. Hidden on Codex, Home and Settings either way.">
               <SettingToggle label="PYR terminal panel" checked={showAiTerminal !== false} onChange={setters.setShowAiTerminal} />
             </SettingRow>
-            <SettingRow label="Panel layout" description="Restore the default Forge panel sizes.">
+            <SettingRow label="Panel layout" description="Restore the default Hunt panel sizes.">
               <button type="button" onClick={resetLayout}>Reset panel layout</button>
             </SettingRow>
           </section>}
@@ -5010,7 +5070,7 @@ function SettingsScreen({ progress, hunter, preferences, setters, resetLayout, a
           {active.id === 'about' && <section className="settings-group">
             <header><h3>About Quest Lab</h3></header>
             <SettingRow label="Save file" description="Your character, campaign and Dungeon state."><code className="settings-path">{runtime?.canonical_state_path || '…'}</code></SettingRow>
-            <SettingRow label="Workspace" description="Where your game files live and the Forge terminal starts."><code className="settings-path">{runtime?.workspace || '…'}</code></SettingRow>
+            <SettingRow label="Workspace" description="Where your game files live and the Hunt terminal starts."><code className="settings-path">{runtime?.workspace || '…'}</code></SettingRow>
             <SettingRow label="Checkout" description="The Quest Lab code this app is running."><code className="settings-path">{runtime?.repo_git?.branch || '…'} · {(runtime?.repo_git?.head_sha || '').slice(0, 8)}</code></SettingRow>
             <SettingRow label="Docs" description="How the desktop app, AI tutor and campaign fit together."><code className="settings-path">docs/DESKTOP_APP.md · docs/AI_TUTOR.md</code></SettingRow>
           </section>}
@@ -5031,7 +5091,7 @@ export function GameScreen({ pyr, settingsAi, runtime, setAvatar, selectCampaign
     return withWideNavigation(
       <div className="game-screen-scroll campaign-loading" data-testid="campaign-loading" aria-live="polite">
         <section className="screen-hero">
-          <div><span className="screen-kicker">CAMPAIGN SYNC</span><h2>Waiting for the canonical state</h2><p>Forge will show your level, encounters, Codex and inventory as soon as the state service returns the latest revision. No starter values are being substituted.</p></div>
+          <div><span className="screen-kicker">CAMPAIGN SYNC</span><h2>Waiting for the canonical state</h2><p>Hunt will show your level, encounters, Codex and inventory as soon as the state service returns the latest revision. No starter values are being substituted.</p></div>
         </section>
       </div>
     )

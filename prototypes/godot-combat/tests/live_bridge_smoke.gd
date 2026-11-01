@@ -14,10 +14,16 @@ func run_checks() -> void:
 	root.add_child(scene)
 	await process_frame
 	scene.embedded = true
+	scene._apply_live_state({"simulated": false, "region": "basics", "enemy": "wraith", "style": "sword"})
+	require(scene.backdrop.texture.resource_path.ends_with("basics-village.png"), "Basics Village backdrop missing")
+	scene._apply_live_state({"simulated": false, "region": "collections", "enemy": "wraith", "style": "sword"})
+	require(scene.backdrop.texture.resource_path.ends_with("collection-caves.png"), "Collection Caves backdrop missing")
 	scene._apply_live_state({"simulated": false, "enemy": "wraith", "style": "sword"})
-	require(scene.enemy.hframes == 1 and scene.enemy.texture.resource_path.ends_with("live-wraith.png"), "Dungeon enemy identity missing")
+	require(scene.enemy.hframes == 4 and scene.enemy.texture.resource_path.ends_with("wraith-v2-sheet.png"), "Dungeon enemy identity missing")
 	scene._apply_live_state({"simulated": false, "enemy": "wraith", "style": "sword", "turn_id": "hit", "outcome": "correct"})
 	require(scene.acting and scene.last_turn_id == "hit", "Live hit did not start")
+	await create_timer(0.43).timeout
+	require(scene.enemy.texture.resource_path.ends_with("wraith-v2-hurt-sheet.png"), "Wraith hurt animation missing")
 	scene._apply_live_state({"simulated": false, "enemy": "wraith", "style": "sword", "turn_id": "miss", "outcome": "incorrect"})
 	scene._apply_live_state({"simulated": false, "enemy": "wraith", "style": "sword", "turn_id": "miss", "outcome": "incorrect"})
 	require(scene.pending_live_turns.size() == 1, "Repeated turn was not deduplicated")

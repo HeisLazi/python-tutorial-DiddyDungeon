@@ -637,6 +637,24 @@ def write_spar_code_question(*, concept: str, foe: str, studied: list[str] | tup
     return {"prompt": text.strip(), "starter_code": starter}
 
 
+def write_spar_interview_question(*, concept: str, foe: str, studied: list[str] | tuple[str, ...] = ()) -> dict[str, str]:
+    """Ask for a concise explanation without disclosing a model answer."""
+    prompt = "\n\n".join((
+        TUTOR_RULES,
+        "Write one beginner-friendly interview question for a Python learning game's sparring round.",
+        f"Concept: {concept}\nFoe: {foe}",
+        "Ask the learner to explain their reasoning or a tradeoff in their own words. "
+        "Use a generic situation unrelated to their campaign. Do not include the answer.",
+        _studied_part(studied),
+        'Reply ONLY as JSON: {"prompt":"the interview question"}',
+    ))
+    reply = extract_json_object(run_prompt(prompt, title="Quest Lab · sparring interview"))
+    text = reply.get("prompt")
+    if not isinstance(text, str) or not text.strip() or len(text) > 4000:
+        raise AiTutorError("PYR's interview question had no usable prompt", kind="unparseable")
+    return {"prompt": text.strip()}
+
+
 def choose_practice_lens(*, concept: str, lenses: list[dict[str, str]], learner: Any) -> dict[str, str]:
     allowed = {lens["id"] for lens in lenses}
     catalogue = "\n".join(f"- {lens['id']}: {lens['label']} — {lens['prompt']}" for lens in lenses)

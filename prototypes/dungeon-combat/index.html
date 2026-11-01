@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Dungeon combat · prototype</title><link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="app">
+  <header class="app-header"><div class="brand"><small>PYTHON QUEST LAB</small><strong>Infinite Dungeon</strong></div><div class="top-stats"><span>♥ <b id="top-hp">84</b></span><span>◉ 38c</span><span id="top-floor">✦ FLOOR 2</span><span class="prototype-tag">PROTOTYPE · NO SAVE</span></div></header>
+  <nav class="app-nav" aria-label="Game navigation"><span>⌂ HOME</span><span>⚒ FORGE</span><span>▤ TUTOR</span><span class="active">◈ INFINITE DUNGEON</span></nav>
+  <main class="dungeon">
+    <div class="dungeon-top"><button type="button" class="quiet" id="reset">↶ RESET DEMO</button><div><span class="eyebrow">INFINITE DUNGEON</span><strong id="location-title">THE FORGOTTEN CRYPT</strong></div><span class="room-tag" id="room-tag">FLOOR 2 · ENCOUNTER</span></div>
+    <div class="screen">
+      <aside class="brief" aria-label="Room question and combat">
+        <div class="brief-top"><span>ENCOUNTER</span><span>FLOOR 2 · ROOM 4</span><span>CODE TRACE</span></div>
+        <section class="question"><span class="eyebrow">THE QUESTION · LOOPS</span><h1>Read the loop.</h1><p>What number does this code print when the loop finishes?</p><pre><code>total = 0
+for n in range(3):
+    total += n
+print(total)</code></pre></section>
+        <section class="enemy-info"><div><span class="eyebrow">MOB · THE OFF-BY-ONE WRAITH</span><p>A restless shade that twists the edges of every loop.</p></div><span class="danger">STRIKE · 12 HP</span></section>
+        <section class="combat" aria-label="Combat scene in the Your HP section">
+          <div class="combat-title"><span>⚔ COMBAT</span><span>YOUR HP / ENEMY RESOLVE</span></div>
+          <div class="arena" id="arena" data-enemy-scale="elite">
+            <div class="arena-shade"></div>
+            <div class="vitals hunter-vitals"><div><span>TATE BUTI</span><b id="hunter-value">84 / 100</b></div><div class="bar"><i id="hunter-bar" style="width:84%"></i></div><small>HP</small></div>
+            <div class="vitals enemy-vitals"><div><span>WRAITH</span><b id="enemy-value">12 / 18</b></div><div class="bar enemy-bar"><i id="enemy-bar" style="width:66.67%"></i></div><small>RESOLVE</small></div>
+            <div class="ground-shadow shadow-hunter"></div><div class="ground-shadow shadow-enemy"></div>
+            <div class="fighter hunter" id="hunter"><div class="hunter-sprite"></div><svg class="weapon" id="weapon-art" viewBox="0 0 22 52" shape-rendering="crispEdges" aria-hidden="true"><path fill="#171320" d="M9 0h4v35h5v4h-5v9H9v-9H4v-4h5z"/><path fill="#e1e6e8" d="M10 2h2v33h-2z"/><path fill="#8da6be" d="M12 6h1v28h-1z"/><path fill="#e9b75f" d="M5 35h12v3H5z"/><path fill="#744a30" d="M10 39h2v9h-2z"/></svg></div>
+            <div class="fighter enemy" id="enemy"><img src="assets/wraith-pixel.png" alt="" draggable="false"></div>
+            <div class="strike" id="strike"></div><span id="damage" class="damage" aria-hidden="true"></span>
+            <div class="arena-footer"><span id="turn-label">AWAITING YOUR ANSWER</span><span>TURN <b id="turn">01</b></span></div>
+          </div>
+          <div class="arena-options"><label>ARENA PREVIEW<select id="location-select"><option value="crypt">Floor 2 · Crypt</option></select></label><label>SIZE PREVIEW<select id="enemy-scale"><option value="mob">Small mob</option><option value="elite" selected>Elite size</option><option value="boss">Boss size</option></select></label></div><div class="battle-caption"><div><small>HUNTER WEAPON</small><strong id="weapon-label">Hunter Sword</strong></div><label>TRY A WEAPON <select id="weapon-select"><option value="sword">Hunter Sword</option><option value="spear">Spear</option><option value="dagger">Dagger</option></select></label></div>
+          <p class="feedback" id="feedback" role="status" aria-live="polite">Your turn. Submit an answer to see the fight.</p>
+        </section>
+        <div class="preview-note">Prototype combat replaces the existing <b>Your HP</b> card in the left sidebar.</div>
+      </aside>
+      <section class="workbench" aria-label="Answer workspace">
+        <div class="editor-heading"><div><span class="eyebrow">QUESTION ROOM · CODE TRACE</span><h2>Face the wraith.</h2><p>Read the code, then choose the result. Your answer is your attack.</p></div><span class="risk">✦ A FAILED ANSWER COSTS HP</span></div>
+        <div class="editor-tabs"><span class="selected">▣ dungeon.py</span><span>PYTHON · ROOM BUFFER</span></div>
+        <div class="editor" aria-label="Example code"><div class="lines">1<br>2<br>3<br>4<br>5<br>6</div><pre><code><span class="comment"># What will this print?</span>
+<span class="variable">total</span> = <span class="number">0</span>
+<span class="keyword">for</span> n <span class="keyword">in</span> <span class="function">range</span>(<span class="number">3</span>):
+    total += n
+<span class="function">print</span>(total)</code></pre><span class="readonly">EXAMPLE CODE</span></div>
+        <div class="answer-area"><div class="answer-heading"><span class="eyebrow">SELECT YOUR ANSWER</span><span>ONE ANSWER · ONE TURN</span></div><div class="answers" role="radiogroup" aria-label="Answer"><button type="button" role="radio" aria-checked="false" data-answer="0"><i>A</i> 2</button><button type="button" role="radio" aria-checked="false" data-answer="1"><i>B</i> 3</button><button type="button" role="radio" aria-checked="false" data-answer="2"><i>C</i> 6</button><button type="button" role="radio" aria-checked="false" data-answer="3"><i>D</i> 9</button></div><div class="submit-row"><span>Try a correct answer, then a wrong one to see both turns.</span><button type="button" id="submit" disabled>SUBMIT ANSWER →</button></div></div>
+        <footer class="demo-footer"><span>◈ VISUAL PROTOTYPE</span><span>Answer checking and numbers are simulated. Nothing is saved.</span></footer>
+      </section>
+    </div>
+  </main>
+</div>
+<script src="app.js"></script>
+</body></html>

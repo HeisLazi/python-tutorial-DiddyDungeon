@@ -13,7 +13,7 @@ import { pyrClientId } from './cloud/pyrClient.js'
 const ICONS = {
   'Quest Hub': '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 10 9-7 9 7M5 9v11h14V9M9 20v-6h6v6"/></svg>',
   Forge: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 15h16M7 15V9l5-4 5 4v6M9 19h6"/></svg>',
-  'Tutor Notebook': '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3v5l-4 8a3 3 0 0 0 2.7 4h8.6A3 3 0 0 0 19 16l-4-8V3M8 11h8M9 16h6"/></svg>',
+  'Hunter’s Study': '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3v5l-4 8a3 3 0 0 0 2.7 4h8.6A3 3 0 0 0 19 16l-4-8V3M8 11h8M9 16h6"/></svg>',
   'Quest Journal': '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 4h12v16H6zM9 8h6M9 12h6M9 16h4"/></svg>',
   Codex: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H11v16H6.5A2.5 2.5 0 0 0 4 21.5zM20 5.5A2.5 2.5 0 0 0 17.5 3H13v16h4.5A2.5 2.5 0 0 1 20 21.5z"/></svg>',
   Character: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M5 21a7 7 0 0 1 14 0"/></svg>',

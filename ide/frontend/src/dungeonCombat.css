@@ -43,3 +43,22 @@
 
 .combat-godot-scene iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; pointer-events: none; }
 .combat-loading { position: absolute; z-index: 4; inset: 0; display: grid; place-items: center; background: #100d19; color: #eac788; font: 8px/1.6 'Press Start 2P', monospace; text-align: center; }
+
+/* Fight information belongs with the scene, not in a second enemy card. */
+.combat-encounter-info { padding: 6px 8px; background: #1b1522; }
+.combat-encounter-info .dungeon-fight-strip { display: flex; flex-wrap: wrap; gap: 5px 12px; margin: 0; }
+.combat-encounter-info .dungeon-fight-cell { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px; padding: 0; border: 0; background: transparent; }
+.combat-encounter-info .dungeon-fight-cell strong { font-size: 13px; }
+.combat-encounter-info .dungeon-fight-cell small { flex-basis: 100%; font-size: 12px; }
+.combat-encounter-info .dungeon-fight-pips { display: none; }
+.combat-mob-details { margin-top: 6px; color: #d8c7b6; font-size: 13px; }
+.combat-mob-details summary { cursor: pointer; color: #eac788; }
+.combat-mob-details .dungeon-brief-facts { margin-top: 6px; font-size: 13px; }
+.combat-mob-category { display: block; margin-bottom: 4px; color: #c8b8b3; }
+.combat-segments { display: flex; gap: 2px; height: 15px; margin-top: 5px; }
+.combat-segments > span { flex: 1 1 0; min-width: 0; overflow: hidden; border: 1px solid #b89b87; background: #211326; box-shadow: 0 1px #080609; }
+.combat-segments i { display: block; height: 100%; background: linear-gradient(#e5a4df 0 18%, #b66ad3 18% 75%, #80428e 75%); transition: width .35s steps(4, end); }
+@media (prefers-reduced-motion: reduce) { .combat-segments i { transition: none; } }
+
+.combat-segments.hp > span { border-color: #c79581; background: #2a151c; }
+.combat-segments.hp i { background: linear-gradient(#ffc2a2 0 18%, #e76056 18% 75%, #a83942 75%); }

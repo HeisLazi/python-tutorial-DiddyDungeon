@@ -68,7 +68,7 @@ func run_checks() -> void:
 	scene._miss()
 	var mimic_miss: Dictionary = await sample(scene, 1.4)
 	require(mimic_miss.enemy.has("mimic-action-sheet.png:3"), "Mimic attack pose missing")
-	for weapon in ["staff", "whip", "greatsword", "handmagic"]:
+	for weapon in ["staff", "whip", "greatsword", "handmagic", "scythe", "oil"]:
 		scene._reset()
 		scene._next_weapon()
 		require(scene.weapon_label.text.to_lower().replace(" ", "") == weapon, "Weapon selection failed: " + weapon)
@@ -114,5 +114,5 @@ func run_checks() -> void:
 	require(scene.body.texture == scene.skins.fixture.styles.staff.hurt, "Selected skin hurt missing")
 	await sample(scene, 1.0)
 	require(scene.select_skin("tate"), "Could not restore Tate")
-	print("PASS: idle, five weapons, skin selection, hit reactions, counters and both modes")
+	print("PASS: idle, seven weapons, skin selection, hit reactions, counters and both modes")
 	quit(0)

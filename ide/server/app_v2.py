@@ -1074,6 +1074,7 @@ def use_dungeon_camp_action(payload: DungeonCampActionRequest):
     return _dungeon_player_action("dungeon_camp_action", payload.model_dump())
 
 
+@app.post("/api/dungeon/map/reveal")
 @app.post("/api/dungeon/risk/reveal")
 def reveal_dungeon_risk(payload: DungeonRunRequest):
     return _dungeon_player_action("dungeon_reveal_risk", payload.model_dump())
@@ -3823,6 +3824,13 @@ class SparCodeRequest(BaseModel):
     code: str = Field(min_length=1, max_length=20_000)
 
 
+class SparTextRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    target_id: str = Field(min_length=1, max_length=MAX_IDENTIFIER_LENGTH)
+    answer: str = Field(min_length=1, max_length=20_000)
+
+
 class SparOptionRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -3847,6 +3855,15 @@ def ai_spar_question(payload: SparQuestionRequest):
     """PYR writes the next sparring question (a simulated fight: no damage)."""
 
     foe = _spar_foe(payload.target_id)
+    if payload.round == 5:
+        written = _ai_call(ai_tutor.write_spar_interview_question, concept=foe["concept"] or foe["name"],
+                           foe=foe["name"], studied=_studied_ideas(f"{foe['concept']} {foe['name']}"))
+        key = f"spar:{payload.target_id}"
+        question = {"prompt": written["prompt"], "question_type": "interview", "question_id": uuid.uuid4().hex}
+        with PROGRESS_LOCK:
+            CHOICE_ANSWER_KEYS.pop(key, None)
+            SPAR_QUESTIONS[key] = question
+        return {"ok": True, "question": {"target_id": payload.target_id, "round": payload.round, **question}}
     if payload.round == 4:
         written = _ai_call(ai_tutor.write_spar_code_question, concept=foe["concept"] or foe["name"],
                            foe=foe["name"], studied=_studied_ideas(f"{foe['concept']} {foe['name']}"))
@@ -3883,7 +3900,7 @@ def answer_spar_option(payload: SparOptionRequest):
     with PROGRESS_LOCK:
         question = SPAR_QUESTIONS.get(key)
         answer = CHOICE_ANSWER_KEYS.get(key)
-        if not question or not answer or question.get("question_type") == "code":
+        if not question or not answer or question.get("question_type") not in {"true_false", "multiple_choice"}:
             raise HTTPException(status_code=409, detail="That sparring question is no longer open")
         options = list(question.get("options") or [])
         if payload.option_index >= len(options):
@@ -3907,24 +3924,23 @@ def answer_spar_option(payload: SparOptionRequest):
     return {"ok": True, "verdict": verdict, "reason": reason, "correct_index": int(answer["answer"]), "hunter_gain": recorded["result"].get("hunter_gain")}
 
 
-@app.post("/api/spar/answer-code")
-def answer_spar_code(payload: SparCodeRequest):
-    _ensure_no_active_boss()
-    """Review the current scratch answer without executing or saving it."""
-    foe = _spar_foe(payload.target_id)
-    if not payload.code.strip():
-        raise HTTPException(status_code=422, detail="Write some code before submitting")
-    key = f"spar:{payload.target_id}"
+def _answer_spar_written(target_id: str, answer: str, expected_type: str):
+    """Grade a bound written round once, releasing it if grading fails."""
+    foe = _spar_foe(target_id)
+    if not answer.strip():
+        raise HTTPException(status_code=422, detail="Write an answer before submitting")
+    key = f"spar:{target_id}"
     with PROGRESS_LOCK:
         question = SPAR_QUESTIONS.get(key)
-        if not question or question.get("question_type") != "code" or question.get("grading"):
-            raise HTTPException(status_code=409, detail="That coding round is no longer available")
+        accepted_types = {"interview", "short_explanation"} if expected_type == "interview" else {expected_type}
+        if not question or question.get("question_type") not in accepted_types or question.get("grading"):
+            raise HTTPException(status_code=409, detail="That written round is no longer available")
         question["grading"] = True
         question_id = question["question_id"]
         prompt = str(question["prompt"])
     try:
-        result = _ai_call(ai_tutor.judge, "practice", context={"concept": foe["concept"], "execution": "not run"},
-                          answer=payload.code, question=prompt)
+        result = _ai_call(ai_tutor.judge, "practice", context={"concept": foe["concept"], "answer_type": expected_type, **({"execution": "not run"} if expected_type == "code" else {})},
+                          answer=answer, question=prompt)
     except Exception:
         with PROGRESS_LOCK:
             current = SPAR_QUESTIONS.get(key)
@@ -3937,14 +3953,27 @@ def answer_spar_code(payload: SparCodeRequest):
             raise HTTPException(status_code=409, detail="The sparring round changed during feedback")
         concept = HUNTER_SIGN_CONCEPTS.get(foe.get("sign") or "", foe["concept"] or foe["name"])
         try:
-            started = STATE_SERVICE.apply("practice_session_started", {"concept": concept[:120], "question_type": "code_trace", "difficulty": 2}, "player")
+            started = STATE_SERVICE.apply("practice_session_started", {"concept": concept[:120], "question_type": "code_trace" if expected_type == "code" else "short_explanation", "difficulty": 2}, "player")
             session_id = started["result"]["session"]["session_id"]
-            recorded = STATE_SERVICE.apply_internal("practice_record_attempt", {"session_id": session_id, "outcome": result["verdict"], "evidence_id": f"sp-code-{uuid.uuid4().hex[:16]}", "reason": result["reason"]})
+            recorded = STATE_SERVICE.apply_internal("practice_record_attempt", {"session_id": session_id, "outcome": result["verdict"], "evidence_id": f"sp-written-{uuid.uuid4().hex[:16]}", "reason": result["reason"]})
         except StateCommandError as exc:
             current.pop("grading", None)
             raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
         SPAR_QUESTIONS.pop(key, None)
     return {"ok": True, **result, "hunter_gain": recorded["result"].get("hunter_gain")}
+
+
+
+@app.post("/api/spar/answer-code")
+def answer_spar_code(payload: SparCodeRequest):
+    _ensure_no_active_boss()
+    return _answer_spar_written(payload.target_id, payload.code, "code")
+
+
+@app.post("/api/spar/answer-text")
+def answer_spar_text(payload: SparTextRequest):
+    _ensure_no_active_boss()
+    return _answer_spar_written(payload.target_id, payload.answer, "interview")
 
 
 class DungeonOptionRequest(BaseModel):
