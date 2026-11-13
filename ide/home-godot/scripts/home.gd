@@ -17,11 +17,37 @@ const TILES: Texture2D = preload("res://art/tiles.png")
 var FONT_FILE: FontFile = preload("res://art/PressStart2P.woff2")
 const CRT_SHADER: Shader = preload("res://shaders/crt.gdshader")
 const SWAY_SHADER: Shader = preload("res://shaders/sway.gdshader")
+const LOOK_SHADER: Shader = preload("res://shaders/hunter_look.gdshader")
+const OIL_PET: Texture2D = preload("res://art/oil-pet.png")
+const SIR_GETRICH_HOME: Texture2D = preload("res://art/sir-getrich-home.png")
+const ONLINE_HOUSE_BACKGROUND: Texture2D = preload("res://art/online/house_background_v2.png")
+const ONLINE_LEADERBOARD: Texture2D = preload("res://art/online/leaderboard_stand.png")
+const ONLINE_STALL: Texture2D = preload("res://art/online/getrich_stall_v2.png")
+const ONLINE_GOLD_HOARD: Texture2D = preload("res://art/online/gold_hoard.png")
+const ONLINE_GOTHIC_GATE: Texture2D = preload("res://art/online/gothic_gate.png")
+const ONLINE_FERRYMAN: Texture2D = preload("res://art/online/ferryman.png")
+const ONLINE_SKIFF: Texture2D = preload("res://art/online/skiff.png")
+const ONLINE_FERRY_LANDING: Texture2D = preload("res://art/online/ferryman_landing.png")
+const CHARMS := {"pink-cap": preload("res://art/charm-pink-cap.png"), "soul-lantern": preload("res://art/charm-soul-lantern.png"), "jacklight": preload("res://art/charm-jacklight.png"), "generic": preload("res://art/charm-generic.png")}
 
 # The hunter: one sheet per facing, 8 walk frames then 4 idle frames. Right is the side sheet flipped.
 const SHEET_FRONT: Texture2D = preload("res://art/hunter_front.png")
 const SHEET_SIDE: Texture2D = preload("res://art/hunter_side.png")
 const SHEET_BACK: Texture2D = preload("res://art/hunter_back.png")
+const OUTFIT_SHEETS := {
+	"debugger": {"front": preload("res://art/hunter_debugger_front.png"), "side": preload("res://art/hunter_debugger_side.png"), "back": preload("res://art/hunter_debugger_back.png")},
+	"merchant-oracle": {"front": preload("res://art/hunter_merchant_oracle_front.png"), "side": preload("res://art/hunter_merchant_oracle_side.png"), "back": preload("res://art/hunter_merchant_oracle_back.png")},
+	"ivory": {"front": preload("res://art/hunter_ivory_front.png"), "side": preload("res://art/hunter_ivory_side.png"), "back": preload("res://art/hunter_ivory_back.png")},
+	"spectral": {"front": preload("res://art/hunter_warden_heavy_front.png"), "side": preload("res://art/hunter_warden_heavy_side.png"), "back": preload("res://art/hunter_warden_heavy_back.png")},
+	"harvest": {"front": preload("res://art/hunter_harvest_scout_front.png"), "side": preload("res://art/hunter_harvest_scout_side.png"), "back": preload("res://art/hunter_harvest_scout_back.png")},
+	"oracle": {"front": preload("res://art/hunter_arcane_front.png"), "side": preload("res://art/hunter_arcane_side.png"), "back": preload("res://art/hunter_arcane_back.png")},
+	"patchwork": {"front": preload("res://art/hunter_patchwork_front.png"), "side": preload("res://art/hunter_patchwork_side.png"), "back": preload("res://art/hunter_patchwork_back.png")},
+	"pilgrim": {"front": preload("res://art/hunter_pilgrim_front.png"), "side": preload("res://art/hunter_pilgrim_side.png"), "back": preload("res://art/hunter_pilgrim_back.png")},
+	"wayfarer": {"front": preload("res://art/hunter_wayfarer_front.png"), "side": preload("res://art/hunter_wayfarer_side.png"), "back": preload("res://art/hunter_wayfarer_back.png")},
+	"norse": {"front": preload("res://art/hunter_norse_front.png"), "side": preload("res://art/hunter_norse_side.png"), "back": preload("res://art/hunter_norse_back.png")},
+	"lanternkeeper": {"front": preload("res://art/hunter_lanternkeeper_front.png"), "side": preload("res://art/hunter_lanternkeeper_side.png"), "back": preload("res://art/hunter_lanternkeeper_back.png")},
+	"wardplate": {"front": preload("res://art/hunter_wardplate_front.png"), "side": preload("res://art/hunter_wardplate_side.png"), "back": preload("res://art/hunter_wardplate_back.png")},
+}
 const WALK_FRAMES := 8
 const WALK_FPS := 10.0
 const IDLE_FRAMES := 4
@@ -57,11 +83,16 @@ var pips := Node2D.new()
 var ambient := CanvasModulate.new()
 var room_nodes: Array[Node] = []        # things in `world` that belong to the room (freed on change)
 var animated: Array[Dictionary] = []    # {sprite, base, frames, phase}
+var sheet_animated: Array[Dictionary] = [] # {sprite, frames, fps, phase}
+var bobbing: Array[Dictionary] = []     # {sprite, base_y, amplitude, speed, phase}
 var lights: Array[Dictionary] = []      # {node, base, flicker}
 var hearth_sprite: Sprite2D
 var hearth_base := "fire"
 var hunter := Node2D.new()
+var visitors := {}
 var body_sprite := Sprite2D.new()
+var oil_pet := Sprite2D.new()
+var trinket_gem := Sprite2D.new()
 var pyr := Sprite2D.new()
 var pyr_light: PointLight2D
 var pyr_sheet_stage := -1
@@ -72,6 +103,7 @@ var hud := CanvasLayer.new()
 var prompt_box := ColorRect.new()
 var prompt_label := Label.new()
 var toast_label := Label.new()
+var online_minimap := Node2D.new()
 var fade := ColorRect.new()
 var crt_rect := ColorRect.new()
 var light_tex: ImageTexture
@@ -122,6 +154,8 @@ func _ready() -> void:
 	_build_hunter()
 	_build_hud()
 	_connect_app()
+	if OS.has_feature("web") and bool(JavaScriptBridge.eval("new URLSearchParams(window.location.search).get('online') === '1'", true)):
+		room_id = "online_hideout"
 	for arg in OS.get_cmdline_user_args():
 		if arg.begins_with("--shot="):
 			shot_path = arg.trim_prefix("--shot=")
@@ -169,6 +203,8 @@ func go_room(id: String, spawn: Vector2, instant := false) -> void:
 		await out.finished
 	_clear_room()
 	room_id = id
+	online_minimap.visible = id.begins_with("online_")
+	online_minimap.queue_redraw()
 	pyr.visible = id == "den"
 	pyr_light.enabled = id == "den"
 	built_level = room_level(id)
@@ -215,6 +251,8 @@ func _clear_room() -> void:
 	stations.clear()
 	doors.clear()
 	animated.clear()
+	sheet_animated.clear()
+	bobbing.clear()
 	lights.clear()
 	hearth_sprite = null
 	near = {}
@@ -248,6 +286,65 @@ func tile(piece: String, x: int, y: int) -> Sprite2D:
 
 func bg(piece: String, at: Vector2, from_feet := false) -> Sprite2D:
 	return _piece(background, piece, at, from_feet)
+
+
+func asset_back(texture: Texture2D, feet: Vector2, scale_factor := Vector2.ONE) -> Sprite2D:
+	## Place an imported transparent prop behind actors. `feet` is its bottom centre.
+	var sprite := Sprite2D.new()
+	sprite.texture = texture
+	sprite.centered = false
+	sprite.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	sprite.offset = Vector2(-texture.get_width() / 2.0, -texture.get_height())
+	sprite.position = feet
+	sprite.scale = scale_factor
+	background.add_child(sprite)
+	return sprite
+
+
+func asset_obj(texture: Texture2D, feet: Vector2, block: Rect2 = Rect2(), scale_factor := Vector2.ONE) -> Sprite2D:
+	## Place an imported transparent prop in the y-sorted world.
+	var sprite := Sprite2D.new()
+	sprite.texture = texture
+	sprite.centered = false
+	sprite.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	sprite.offset = Vector2(-texture.get_width() / 2.0, -texture.get_height())
+	sprite.position = feet
+	sprite.scale = scale_factor
+	world.add_child(sprite)
+	room_nodes.append(sprite)
+	if block.size != Vector2.ZERO:
+		blockers.append(block)
+	return sprite
+
+
+func character(texture: Texture2D, feet: Vector2) -> Sprite2D:
+	var sprite := Sprite2D.new()
+	sprite.texture = texture
+	sprite.centered = false
+	sprite.offset = Vector2(-texture.get_width() / 2.0, -texture.get_height())
+	sprite.position = feet
+	world.add_child(sprite)
+	room_nodes.append(sprite)
+	return sprite
+
+
+func sir_getrich(feet: Vector2) -> Sprite2D:
+	var sprite := Sprite2D.new()
+	sprite.texture = SIR_GETRICH_HOME
+	sprite.hframes = 4
+	sprite.frame = 0
+	sprite.centered = false
+	sprite.offset = Vector2(-14, -48)
+	sprite.position = feet
+	world.add_child(sprite)
+	room_nodes.append(sprite)
+	sheet_animated.append({"sprite":sprite, "frames":4, "fps":2.2, "phase":0.0})
+	return sprite
+
+
+func idle_bob(sprite: Sprite2D, amplitude := 0.7, speed := 2.2) -> void:
+	bobbing.append({"sprite": sprite, "base_y": sprite.position.y, "amplitude": amplitude,
+		"speed": speed, "phase": float(int(sprite.position.x) % 9)})
 
 
 func obj(piece: String, feet: Vector2, block: Rect2 = Rect2()) -> Sprite2D:
@@ -364,6 +461,15 @@ func add_tint(rect: Rect2, color: Color) -> Polygon2D:
 	return poly
 
 
+func add_shape(points: PackedVector2Array, color: Color) -> Polygon2D:
+	## A flat pixel-art silhouette or perspective plane beneath the room props.
+	var poly := Polygon2D.new()
+	poly.polygon = points
+	poly.color = color
+	background.add_child(poly)
+	return poly
+
+
 func add_patch(points: PackedVector2Array, color: Color) -> Polygon2D:
 	## An additive patch of coloured light on the floor (stained glass, moonlight).
 	var poly := Polygon2D.new()
@@ -426,7 +532,14 @@ func _build_hunter() -> void:
 	body_sprite.centered = false
 	body_sprite.offset = Vector2(-FRAME.x / 2.0, -FRAME.y + 1)
 	hunter.add_child(body_sprite)
+	trinket_gem.position = Vector2(5, -16)
+	trinket_gem.visible = false
+	hunter.add_child(trinket_gem)
 	world.add_child(hunter)
+	oil_pet.texture = OIL_PET
+	oil_pet.visible = false
+	oil_pet.position = pos + Vector2(-18, -7)
+	world.add_child(oil_pet)
 	# Pyr, the little code-flame, follows along (and lights the way).
 	pyr.texture = TILES
 	pyr.region_enabled = true
@@ -457,6 +570,10 @@ func _style(label: Label, size := 8, color := Color("f2efe6")) -> void:
 func _build_hud() -> void:
 	hud.layer = 10
 	add_child(hud)
+	online_minimap.name = "OnlineRoomMap"
+	online_minimap.visible = false
+	online_minimap.draw.connect(_draw_online_minimap)
+	hud.add_child(online_minimap)
 	prompt_box.color = Color(0.08, 0.06, 0.12, 0.92)
 	prompt_box.position = Vector2(8, 156)
 	prompt_box.size = Vector2(304, 18)
@@ -494,6 +611,32 @@ func _build_hud() -> void:
 	crt_layer.add_child(crt_rect)
 
 
+func _draw_online_minimap() -> void:
+	## Unlabelled floor plan: the current room glows, and the Ferryman route is visible.
+	var frame := Rect2(250, 5, 64, 42)
+	online_minimap.draw_rect(frame, Color("171522"))
+	online_minimap.draw_rect(frame, Color("b98d52"), false, 1.0)
+	online_minimap.draw_rect(Rect2(252, 7, 60, 38), Color("2d2435"), false, 1.0)
+	# Corridors connect the hub's landmarks; the left branch leads toward the Ferryman room and raid.
+	online_minimap.draw_rect(Rect2(262, 19, 37, 2), Color("92724d"))
+	online_minimap.draw_rect(Rect2(280, 12, 2, 20), Color("92724d"))
+	online_minimap.draw_rect(Rect2(264, 19, 2, 18), Color("92724d"))
+	var nodes := {
+		"board": Rect2(255, 17, 10, 8),
+		"hub": Rect2(270, 15, 21, 14),
+		"shop": Rect2(296, 17, 13, 8),
+		"arena": Rect2(276, 8, 10, 6),
+		"ferryman": Rect2(254, 33, 12, 8),
+	}
+	var colors := {"board": Color("b3a0a0"), "hub": Color("9a6471"), "shop": Color("d6ad5e"), "arena": Color("bd7851"), "ferryman": Color("64c5ce")}
+	for key in nodes:
+		var box: Rect2 = nodes[key]
+		online_minimap.draw_rect(box, Color("16131d"))
+		online_minimap.draw_rect(box.grow(-1), colors[key])
+	var active := Rect2(270, 15, 21, 14) if room_id == "online_hideout" else Rect2(254, 33, 12, 8)
+	online_minimap.draw_rect(active.grow(1), Color("f3d27c"), false, 1.0)
+
+
 # ── The app bridge (web build only) ─────────────────────────────────────────
 var _receive_callback: JavaScriptObject
 
@@ -525,6 +668,25 @@ func _send_app(message: Dictionary) -> void:
 
 
 func _apply_state() -> void:
+	if state.has("visitors"):
+		_update_visitors(state["visitors"])
+	if state.has("leaderboard"):
+		_update_online_leaderboard()
+	var look: String = str(state.get("armorLook", "classic"))
+	var colors := {"ivory": Color(1.8, 1.7, 1.6), "spectral": Color(0.55, 1.2, 1.05), "harvest": Color(1.35, 0.65, 0.35), "arcane": Color(0.75, 0.65, 1.25), "steel": Color(0.85, 1.0, 1.12), "ember": Color(1.25, 0.8, 0.48)}
+	if colors.has(look) and not OUTFIT_SHEETS.has(look):
+		var material := ShaderMaterial.new()
+		material.shader = LOOK_SHADER
+		material.set_shader_parameter("tint", colors[look])
+		material.set_shader_parameter("strength", 0.8)
+		material.set_shader_parameter("ivory", look == "ivory")
+		body_sprite.material = material
+	else:
+		body_sprite.material = null
+	oil_pet.visible = str(state.get("pet", "none")) == "oil"
+	var charm: String = str(state.get("trinketIcon", "none"))
+	trinket_gem.visible = CHARMS.has(charm)
+	if trinket_gem.visible: trinket_gem.texture = CHARMS[charm]
 	_configure_pyr_sheet(clampi(int(state.get("pyr_stage", 1)), 1, 4))
 	if str(state.get("pyr_action", "")) == "feed":
 		pyr_pose = 3
@@ -541,6 +703,25 @@ func _apply_state() -> void:
 		go_room(room_id, pos, true)     # an upgrade was bought: rebuild this room at its new level
 		if gained:
 			_celebrate(Rooms.upgrade_name(room_id, built_level))
+
+
+func _update_online_leaderboard() -> void:
+	var labels := world.find_children("*", "Label", true, false)
+	var rows: Array = state.get("leaderboard", []) if state.get("leaderboard", []) is Array else []
+	for label in labels:
+		if not label.has_meta("online_leaderboard_row"):
+			continue
+		var index := int(label.get_meta("online_leaderboard_row"))
+		if rows.is_empty():
+			label.text = "NO MATCH" if index == 0 else ""
+		elif index < rows.size():
+			var entry: Dictionary = rows[index] if rows[index] is Dictionary else {}
+			var display_name := str(entry.get("name", "Hunter")).strip_edges()
+			if display_name.length() > 8:
+				display_name = display_name.substr(0, 7) + "."
+			label.text = "%d %s" % [index + 1, display_name]
+		else:
+			label.text = ""
 
 
 func _draw_pips() -> void:
@@ -560,6 +741,12 @@ func _draw_pips() -> void:
 # ── Each frame ──────────────────────────────────────────────────────────────
 func _process(delta: float) -> void:
 	clock += delta
+	if oil_pet.visible:
+		var target: Vector2 = pos + Vector2(-18, -7 + sin(clock * 3.0))
+		if oil_pet.position.distance_to(target) > 90.0:
+			oil_pet.position = target
+		else:
+			oil_pet.position = oil_pet.position.lerp(target, minf(1.0, delta * 5.0))
 	pyr_pose_time = maxf(0.0, pyr_pose_time - delta)
 	if shot_path != "":
 		shot_frames += 1
@@ -584,13 +771,14 @@ func _process(delta: float) -> void:
 			anim_t = 0.0
 		_check_doors()
 	_refresh_hunter()
+	_animate_visitors(delta)
 	if OS.has_feature("web") and not changing:
 		map_update_time -= delta
 		if map_update_time <= 0.0:
 			map_update_time = 0.15
 			if pos.distance_to(map_last_pos) > 0.5:
 				map_last_pos = pos
-				_send_app({"type": "position", "room": room_id, "x": pos.x, "y": pos.y})
+				_send_app({"type": "position", "room": room_id, "x": pos.x, "y": pos.y, "facing": facing})
 	if room_id == "den":
 		_wander_pyr(delta)
 	_animate_room(delta)
@@ -622,13 +810,15 @@ func _check_doors() -> void:
 
 func _refresh_hunter() -> void:
 	hunter.position = pos.round()
+	var look: String = str(state.get("armorLook", "classic"))
+	var sheets: Dictionary = OUTFIT_SHEETS.get(look, {"front": SHEET_FRONT, "side": SHEET_SIDE, "back": SHEET_BACK})
 	match facing:
 		"up":
-			body_sprite.texture = SHEET_BACK
+			body_sprite.texture = sheets["back"]
 		"down":
-			body_sprite.texture = SHEET_FRONT
+			body_sprite.texture = sheets["front"]
 		_:
-			body_sprite.texture = SHEET_SIDE
+			body_sprite.texture = sheets["side"]
 	body_sprite.flip_h = facing == "right"
 	var col: int
 	if anim_t > 0.0:
@@ -636,6 +826,96 @@ func _refresh_hunter() -> void:
 	else:
 		col = WALK_FRAMES + int(clock * IDLE_FPS) % IDLE_FRAMES   # breathing, after the walk frames
 	body_sprite.region_rect = Rect2(col * FRAME.x, 0, FRAME.x, FRAME.y)
+
+
+func _update_visitors(incoming: Variant) -> void:
+	# Presence is presentation only. The app authenticates membership and never
+	# sends player inventory, credentials, or save state through this bridge.
+	if not incoming is Array:
+		return
+	var retained := {}
+	for item in incoming.slice(0, 3):
+		if not item is Dictionary:
+			continue
+		var id := str(item.get("id", ""))
+		if id.is_empty() or id.length() > 128:
+			continue
+		var x: Variant = item.get("x")
+		var y: Variant = item.get("y")
+		if not (x is int or x is float) or not (y is int or y is float):
+			continue
+		if not is_finite(float(x)) or not is_finite(float(y)):
+			continue
+		retained[id] = true
+		if not visitors.has(id):
+			var node := Node2D.new()
+			node.name = "GuestHunter"
+			var sprite := Sprite2D.new()
+			sprite.name = "Body"
+			sprite.region_enabled = true
+			sprite.centered = false
+			sprite.offset = Vector2(-FRAME.x / 2.0, -FRAME.y + 1)
+			sprite.self_modulate = Color(1.18, 1.18, 1.18, 1.0)
+			node.add_child(sprite)
+			var name_label := Label.new()
+			name_label.name = "Name"
+			_style(name_label, 5, Color("f8dfa6"))
+			name_label.position = Vector2(-40, -48)
+			name_label.size = Vector2(80, 10)
+			name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+			name_label.clip_text = true
+			node.add_child(name_label)
+			world.add_child(node)
+			node.position = Vector2(clampf(float(x), 0, VIEW.x), clampf(float(y), 0, VIEW.y))
+			visitors[id] = {"node": node, "sprite": sprite, "label": name_label, "target": node.position, "moving": 0.0}
+		var guest: Dictionary = visitors[id]
+		var target := Vector2(clampf(float(x), 0, VIEW.x), clampf(float(y), 0, VIEW.y))
+		if (guest["target"] as Vector2).distance_to(target) > 0.5:
+			guest["moving"] = 0.4
+		guest["target"] = target
+		guest["facing"] = str(item.get("facing", "down"))
+		var look := str(item.get("look", "classic"))
+		if str(guest.get("look", "")) != look:
+			var sprite: Sprite2D = guest["sprite"]
+			var colors := {"arcane": Color(0.75, 0.65, 1.25), "steel": Color(0.85, 1.0, 1.12), "ember": Color(1.25, 0.8, 0.48)}
+			if colors.has(look):
+				var material := ShaderMaterial.new()
+				material.shader = LOOK_SHADER
+				material.set_shader_parameter("tint", colors[look])
+				material.set_shader_parameter("strength", 0.8)
+				sprite.material = material
+			else:
+				sprite.material = null
+		guest["look"] = look
+		guest["room"] = str(item.get("room", "great_hall"))
+		var label: Label = guest["label"]
+		var display_name := str(item.get("name", "Hunter")).strip_edges()
+		if display_name.length() > 12:
+			display_name = display_name.substr(0, 10) + ".."
+		label.text = display_name
+	for id in visitors.keys():
+		if not retained.has(id):
+			var node: Node2D = visitors[id]["node"]
+			node.queue_free()
+			visitors.erase(id)
+
+
+func _animate_visitors(delta: float) -> void:
+	for guest in visitors.values():
+		var node: Node2D = guest["node"]
+		var sprite: Sprite2D = guest["sprite"]
+		node.visible = str(guest.get("room", "")) == room_id
+		if not node.visible:
+			continue
+		var target: Vector2 = guest["target"]
+		node.position = node.position.lerp(target, minf(1.0, delta * 12.0))
+		guest["moving"] = maxf(0.0, float(guest["moving"]) - delta)
+		var sheets: Dictionary = OUTFIT_SHEETS.get(str(guest.get("look", "classic")), {"front": SHEET_FRONT, "side": SHEET_SIDE, "back": SHEET_BACK})
+		var direction := str(guest.get("facing", "down"))
+		sprite.texture = sheets["back"] if direction == "up" else sheets["front"] if direction == "down" else sheets["side"]
+		sprite.flip_h = direction == "right"
+		var col := int(clock * WALK_FPS) % WALK_FRAMES if float(guest["moving"]) > 0.0 else WALK_FRAMES + int(clock * IDLE_FPS) % IDLE_FRAMES
+		sprite.region_rect = Rect2(col * FRAME.x, 0, FRAME.x, FRAME.y)
 
 
 func _configure_pyr_sheet(stage: int) -> void:
@@ -699,6 +979,14 @@ func _animate_room(delta: float) -> void:
 	var beat := int(clock * 4.0) % 2
 	for a in animated:
 		_set_piece(a["sprite"], "%s_%d" % [a["base"], (beat + int(a["phase"])) % int(a["frames"])])
+	for a in sheet_animated:
+		var sprite: Sprite2D = a["sprite"]
+		if is_instance_valid(sprite):
+			sprite.frame = (int(clock * float(a["fps"])) + int(a["phase"])) % int(a["frames"])
+	for b in bobbing:
+		var sprite: Sprite2D = b["sprite"]
+		if is_instance_valid(sprite):
+			sprite.position.y = float(b["base_y"]) + sin(clock * float(b["speed"]) + float(b["phase"])) * float(b["amplitude"])
 	if hearth_sprite != null:
 		_set_piece(hearth_sprite, ("%s_%d" % [hearth_base, beat]) if bool(state["fire_lit"]) else (hearth_base + "_out"))
 	flicker_t += delta

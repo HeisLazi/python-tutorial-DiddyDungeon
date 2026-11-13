@@ -2,8 +2,14 @@ extends SceneTree
 
 const Rooms = preload("res://scripts/rooms.gd")
 const Home = preload("res://scenes/main.tscn")
-const IDS := ["great_hall", "den"]
-const ARRIVALS := {"great_hall": [Vector2(80, 80)], "den": [Vector2(160, 170)]}
+const IDS := ["great_hall", "den", "still", "online_hideout", "online_ferryman"]
+const ARRIVALS := {
+ "great_hall": [Vector2(80, 80), Vector2(218, 82)],
+ "den": [Vector2(160, 170)],
+ "still": [Vector2(160, 170)],
+ "online_hideout": [Vector2(160, 150), Vector2(2, 150)],
+ "online_ferryman": [Vector2(274, 148), Vector2(56, 146)],
+}
 
 func _initialize() -> void:
  call_deferred("run_checks")

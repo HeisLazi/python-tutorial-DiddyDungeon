@@ -1,0 +1,13 @@
+<!doctype html>
+<meta charset="utf-8"><title>Pilgrim Leather — armour preview</title>
+<style>body{margin:0;background:#17151e;color:#eee5cb;font:16px system-ui;text-align:center}h1{font-size:20px}iframe{width:min(960px,95vw);height:min(540px,54vw);border:3px solid #9c8050;background:#17151e}button,select{background:#302935;color:#f0dfb4;border:1px solid #ac8b52;padding:9px 14px;margin:5px}p{color:#c5b79b}</style>
+<h1>Pilgrim Leather — combat art preview</h1>
+<p>Choose a weapon and play an attack or a hit reaction.</p>
+<div><select id="style" aria-label="Weapon"><option value="sword">Sword</option><option value="staff">Staff</option><option value="whip">Whip</option><option value="greatsword">Greatsword</option><option value="handmagic">Hand magic</option><option value="scythe">Scythe</option><option value="oil">Oil bottle</option></select><button id="attack">Attack</button><button id="hurt">Take a hit</button></div>
+<iframe id="arena" title="Pilgrim Leather combat scene" src="../../ide/frontend/public/combat/index.html?embed=1"></iframe>
+<script>
+const frame=document.getElementById('arena'), style=document.getElementById('style');let turn=0,ready=false;
+function send(outcome=''){if(ready)frame.contentWindow.diddyCombatReceive(JSON.stringify({armorLook:'pilgrim',simulated:true,style:style.value,enemy:'hollow',turn_id:outcome?String(++turn):'',outcome}));}
+window.addEventListener('message',e=>{if(e.origin===location.origin&&e.source===frame.contentWindow&&e.data?.source==='diddy-combat'&&e.data?.type==='ready'){ready=true;send()}});
+style.addEventListener('change',()=>send());document.getElementById('attack').onclick=()=>send('correct');document.getElementById('hurt').onclick=()=>send('incorrect');
+</script>

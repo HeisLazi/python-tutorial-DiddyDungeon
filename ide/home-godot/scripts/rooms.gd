@@ -212,6 +212,12 @@ static func build(h, id: String, level: int) -> void:
 			_war_room(h, level)
 		"den":
 			_den(h, level)
+		"still":
+			_still(h, level)
+		"online_hideout":
+			_online_hideout(h)
+		"online_ferryman":
+			_online_ferryman(h)
 		_:
 			_great_hall(h, level)
 
@@ -304,11 +310,11 @@ static func _vertical_door(h, north: bool, x: float, to: String, spawn: Vector2)
 
 
 ## A visible, labelled door to another room, approached from in front.
-static func _front_door(h, x: float, to: String, spawn: Vector2) -> void:
+static func _front_door(h, x: float, to: String, spawn: Vector2, label: String = "PYR'S DEN") -> void:
 	h.bg("door_wood", Vector2(x, 68), true)
 	h.add_light(Vector2(x, 62), 44.0, Color("e3c38a"), 0.36, 0.0)
 	h.door(Rect2(x - 12, 68, 24, 5), to, spawn)
-	_zone_label(h, "PYR'S DEN", Vector2(x - 25, 7))
+	_zone_label(h, label, Vector2(x - 25, 7))
 
 
 static func _zone_label(h, text: String, at: Vector2) -> void:
@@ -343,6 +349,84 @@ static func _hall_divider(h, x: float, y: float, length: float) -> void:
 	for offset in range(0, int(length), 7):
 		h.add_tint(Rect2(x, y + float(offset), 5, 1), Color("211e30"))
 	h.block(Rect2(x, y + 2, 5, length - 4))
+
+
+static func _online_hideout(h) -> void:
+	# Full illustrated environment plate: the arena is visible through the open doors.
+	h.set_ambient(Color.WHITE)
+	var bg_scale := Vector2(320.0 / h.ONLINE_HOUSE_BACKGROUND.get_width(), 180.0 / h.ONLINE_HOUSE_BACKGROUND.get_height())
+	h.asset_back(h.ONLINE_HOUSE_BACKGROUND, Vector2(160, 180), bg_scale)
+	# The wall is solid above the room's walkable marble floor.
+	h.block(Rect2(0, 0, 320, 48))
+	h.block(Rect2(0, 48, 8, 64))
+	h.block(Rect2(312, 48, 8, 64))
+	h.block(Rect2(0, 177, 320, 8))
+	h.station("online_arena", "Enter the Colosseum", Rect2(126, 76, 68, 49), Vector2(160, 105))
+	# A freestanding board sits forward on the floor, with live group rankings printed on its face.
+	var board: Sprite2D = h.asset_obj(h.ONLINE_LEADERBOARD, Vector2(82, 156), Rect2(), Vector2(0.25, 0.25))
+	board.z_index = 1
+	var heading := Label.new()
+	heading.text = "RANKINGS"
+	heading.position = Vector2(65, 102)
+	heading.size = Vector2(34, 7)
+	heading.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	heading.add_theme_font_override("font", h.FONT_FILE)
+	heading.add_theme_font_size_override("font_size", 4)
+	heading.add_theme_color_override("font_color", Color("482b2c"))
+	heading.add_theme_color_override("font_outline_color", Color("f0d9a1"))
+	heading.add_theme_constant_override("outline_size", 1)
+	heading.z_index = 12
+	heading.z_as_relative = false
+	h.world.add_child(heading)
+	for i in range(4):
+		var row := Label.new()
+		row.set_meta("online_leaderboard_row", i)
+		row.position = Vector2(59, 108 + i * 5)
+		row.size = Vector2(48, 6)
+		row.clip_text = true
+		row.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		row.add_theme_font_override("font", h.FONT_FILE)
+		row.add_theme_font_size_override("font_size", 4)
+		row.add_theme_color_override("font_color", Color("30282b"))
+		row.add_theme_color_override("font_outline_color", Color("fff0cb"))
+		row.add_theme_constant_override("outline_size", 1)
+		row.z_index = 12
+		row.z_as_relative = false
+		h.world.add_child(row)
+	# The dock route sits on the map's left side, out of view from this room-facing camera.
+	# Keep its transition at the extreme left edge; do not draw a frontal doorway into the room.
+	h.door(Rect2(0, 130, 4, 44), "online_ferryman", Vector2(274, 148))
+	h.station("online_leaderboard", "View group standings", Rect2(48, 126, 70, 40), Vector2(82, 133))
+	# The existing torch stands remain as the room's small animated light source.
+	for x in [113.0, 207.0]:
+		h.anim("torch_stand", Vector2(x, 105), Rect2(x - 5, 101, 10, 4))
+		h.add_light(Vector2(x, 86), 40.0, Color("ffba70"), 0.44, 0.16)
+	# Sir Getrich's stock is a single imported sprite; his merchant sprite stays animated in front.
+	h.asset_obj(h.ONLINE_STALL, Vector2(276, 123), Rect2(242, 70, 68, 54), Vector2(0.048, 0.048))
+	var getrich: Sprite2D = h.sir_getrich(Vector2(276, 123))
+	h.idle_bob(getrich, 0.45, 1.8)
+	h.station("online_shop", "Visit Sir Getrich", Rect2(242, 104, 68, 38), Vector2(276, 119))
+	h._update_online_leaderboard()
+
+
+static func _online_ferryman(h) -> void:
+	# A dedicated underworld landing: the environment, skiff and boatman are imported pixel-art assets.
+	h.set_ambient(Color(0.67, 0.78, 0.88))
+	h.asset_back(h.ONLINE_FERRY_LANDING, Vector2(160, 180))
+	h.block(Rect2(0, 0, 320, 132))
+	h.block(Rect2(0, 173, 320, 12))
+	h.block(Rect2(0, 132, 12, 42))
+	h.block(Rect2(308, 132, 12, 42))
+	h.asset_back(h.ONLINE_SKIFF, Vector2(160, 145))
+	h.add_light(Vector2(160, 117), 48.0, Color("5ee8ff"), 0.42, 0.06)
+	var ferryman: Sprite2D = h.asset_obj(h.ONLINE_FERRYMAN, Vector2(160, 139))
+	h.idle_bob(ferryman, 0.45, 1.5)
+	# Stand near the Ferryman to sail into the co-op raid. Closing the raid returns here.
+	h.station("online_raid", "Travel to the raid", Rect2(126, 140, 68, 24), Vector2(160, 136))
+	# The matching arch returns to Shax Champions House.
+	h.asset_back(h.ONLINE_GOTHIC_GATE, Vector2(286, 149), Vector2(0.78, 0.82))
+	h.add_light(Vector2(286, 122), 38.0, Color("d5b878"), 0.3, 0.0)
+	h.door(Rect2(264, 124, 44, 42), "online_hideout", Vector2(56, 146))
 
 
 static func _great_hall(h, lv: int) -> void:
@@ -394,7 +478,7 @@ static func _great_hall(h, lv: int) -> void:
 	var beam := Color(0.50, 0.60, 0.95, 0.10 + (0.19 if glass else 0.0) * minf(1.0, (lv - GH_GLASS) / float(GH_GRAND - GH_GLASS)))
 	var panes: Array = [Color(0.95, 0.25, 0.30, 0.30), Color(0.30, 0.45, 1.0, 0.32), Color(1.0, 0.78, 0.28, 0.30),
 		Color(0.65, 0.35, 0.95, 0.30), Color(0.35, 0.65, 1.0, 0.30), Color(0.95, 0.35, 0.40, 0.28)]
-	for x in [120.0, 236.0]:
+	for x in [120.0, 265.0]:
 		var dir := 1.0 if x < 160.0 else -1.0
 		h.bg(window_kind, Vector2(x, 60), true)
 		h.add_shaft(Vector2(x - 12, 40), 24.0, 96.0, 30.0 * dir, beam)
@@ -411,7 +495,7 @@ static func _great_hall(h, lv: int) -> void:
 				k += 1
 
 	# ── Banners: torn rags at the start, crimson crests after (they sway) ──
-	for x in [38.0, 198.0]:
+	for x in [38.0]:
 		var banner: Sprite2D = h.bg("banner_crest" if lv >= GH_BANNERS else "banner_torn", Vector2(x, 56), true)
 		h.sway(banner, 0.9, 1.7, 36.0)
 
@@ -473,6 +557,7 @@ static func _great_hall(h, lv: int) -> void:
 
 
 	_front_door(h, 80.0, "den", Vector2(160, 170))
+	_front_door(h, 218.0, "still", Vector2(160, 170), "THE STILL")
 	_zone_label(h, "GEAR", Vector2(26, 84))
 	_zone_label(h, "HUNTER", Vector2(88, 105))
 	_zone_label(h, "TROPHIES", Vector2(246, 84))
@@ -988,3 +1073,26 @@ static func _den(h, lv: int) -> void:
 	h.add_embers(Rect2(40, 74, 240, 90), Color(0.85, 0.78, 0.75, 0.45), maxi(4, 12 - lv), 3.0, 5.0)
 
 	_vertical_door(h, false, 160.0, "great_hall", Vector2(80, 80))
+
+
+static func _still(h, _lv: int) -> void:
+	_shell(h, -1, -1, {}, {}, "wood")
+	h.set_ambient(Color(0.62, 0.59, 0.64))
+	h.bg("rug_crimson", Vector2(92, 128), true)
+	h.bg("rug_crimson", Vector2(226, 130), true)
+	h.bg("bookshelf_full", Vector2(45, 83), true)
+	h.bg("shelf_stocked", Vector2(272, 83), true)
+	h.bg("herbs", Vector2(137, 62), true)
+	h.bg("herbs", Vector2(188, 62), true)
+	h.add_shadow(Vector2(92, 112), 28.0, 6.0)
+	h.anim("cauldron_p", Vector2(92, 112), Rect2(81, 105, 22, 7))
+	h.add_light(Vector2(92, 100), 65.0, Color("92d6a2"), 0.85, 0.18)
+	h.add_embers(Rect2(86, 83, 12, 18), Color("a5e8ba"), 6, 7.0, 2.0)
+	h.station("still", "Use the Hunter's Still", Rect2(67, 114, 50, 25), Vector2(92, 72))
+	_prop(h, "desk_big", Vector2(226, 115), 40.0, 9.0)
+	h.add_light(Vector2(226, 98), 52.0, Color("ffd295"), 0.65, 0.1)
+	h.station("journal", "Open the Legacy Journal", Rect2(197, 119, 58, 27), Vector2(226, 78))
+	h.anim("torch", Vector2(160, 54), Rect2(), true)
+	h.add_light(Vector2(160, 42), 60.0, Color("ffba79"), 0.7, 0.2)
+	h.add_embers(Rect2(36, 70, 248, 95), Color(0.78, 0.82, 0.72, 0.45), 7, 3.0, 5.0)
+	_vertical_door(h, false, 160.0, "great_hall", Vector2(218, 82))

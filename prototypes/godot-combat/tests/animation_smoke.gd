@@ -69,17 +69,18 @@ func run_checks() -> void:
 	var mimic_miss: Dictionary = await sample(scene, 1.4)
 	require(mimic_miss.enemy.has("mimic-action-sheet.png:3"), "Mimic attack pose missing")
 	for weapon in ["staff", "whip", "greatsword", "handmagic", "scythe", "oil"]:
+		var sheet_name: String = "oil-pink" if weapon == "oil" else weapon
 		scene._reset()
 		scene._next_weapon()
 		require(scene.weapon_label.text.to_lower().replace(" ", "") == weapon, "Weapon selection failed: " + weapon)
 		scene._attack()
 		var action: Dictionary = await sample(scene, 1.4)
 		require(scene.resolve == 4 and not scene.acting, weapon + " attack did not complete")
-		require(action.hunter.has("tate-" + weapon + "-sheet.png:1") and action.hunter.has("tate-" + weapon + "-sheet.png:2"), weapon + " attack poses missing")
+		require(action.hunter.has("tate-" + sheet_name + "-sheet.png:1") and action.hunter.has("tate-" + sheet_name + "-sheet.png:2"), weapon + " attack poses missing")
 		scene._miss()
 		var reaction: Dictionary = await sample(scene, 1.4)
 		require(scene.hp == 4 and not scene.acting, weapon + " counter did not complete")
-		require(reaction.hunter.has("tate-" + weapon + "-hurt-sheet.png:2"), weapon + " hurt pose missing")
+		require(reaction.hunter.has("tate-" + sheet_name + "-hurt-sheet.png:2"), weapon + " hurt pose missing")
 	# A second skin uses distinct texture objects so this verifies actual skin
 	# lookup through both attack and hurt, not merely the label change.
 	var fixture: Dictionary = scene.CATALOG.tate().duplicate(true)

@@ -1,0 +1,30 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Quest Lab · Friends Lobby</title><style>
+*{box-sizing:border-box}body{margin:0;background:#100d1d;color:#e9dece;font:15px/1.5 monospace}header{border-bottom:2px solid #5d486c;padding:20px 5vw;color:#f6d187}header small,.eyebrow{font-size:11px;letter-spacing:.14em;color:#ba9bb9}h1{margin:5px 0;font-size:22px}h2{color:#f6d89a;font-size:18px}main{max-width:980px;margin:35px auto;padding:0 20px}.intro{color:#c7b8ca}.grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:25px}.panel{background:#1d162d;border:2px solid #604969;box-shadow:inset 0 0 0 3px #120d1d;padding:22px}label{display:block;color:#dcc599;margin:14px 0 6px}input{display:block;width:100%;background:#100e1b;border:1px solid #786078;color:#fff4dd;padding:12px;font:inherit}button{margin-top:16px;border:2px solid #f1ce80;background:#d6a94f;color:#211725;padding:10px 15px;font:inherit;font-weight:bold;cursor:pointer}button:disabled{opacity:.45;cursor:default}.ghost{background:#292039;color:#efddbc;border-color:#735a7b}.members{list-style:none;padding:0}.members li{padding:12px 0;border-bottom:1px solid #53415b;display:flex;justify-content:space-between;gap:10px}.online{color:#9cdda9}.offline{color:#d6a895}.status{color:#ebcb8a;min-height:25px;overflow-wrap:anywhere}.invite{overflow-wrap:anywhere;color:#f1d99d;font-size:14px;line-height:1.6}.badge{display:inline-block;border:1px solid #916c4a;padding:3px 8px;color:#e6bf80;font-size:11px;letter-spacing:.1em}p{color:#c8bacb}.info{font-size:12px;color:#b9abc2}@media(max-width:700px){.grid{grid-template-columns:1fr}}</style></head><body><header><small>QUEST LAB · CONNECTION PROTOTYPE</small><h1>Friends Lobby</h1></header><main><span class="badge">PRIVATE INVITATION · TWO HUNTERS</span><p class="intro">Meet in a private room and ready up. This prototype exchanges presence and readiness only.</p><div class="grid"><section class="panel" id="setup"><div class="eyebrow">CREATE OR JOIN</div><h2>Enter the gathering</h2><label for="name">Hunter name</label><input id="name" maxlength="24" autocomplete="nickname" placeholder="Your hunter’s name"><button id="create">Create a room</button><label for="invite">Or enter a room invitation</label><input id="invite" autocomplete="off" placeholder="Paste the invitation code"><button id="join" class="ghost">Join room</button><p class="info">Share the invitation privately with one friend. This lobby does not run code or read saves.</p></section><section class="panel"><div class="eyebrow">YOUR ROOM</div><h2 id="room-title">Waiting for a room</h2><p class="status" id="status" role="status">Create or join a room to begin.</p><div id="room" hidden><p>Invitation code:</p><p id="room-code" class="invite"></p><p class="info">Anyone with this code can join while a seat is available.</p><ul class="members" id="members"></ul><button id="ready">Ready up</button> <button class="ghost" id="leave">Leave room</button><p id="ready-status"></p></div></section></div></main><script>
+let session = null, polling = false, timer = null;
+const $ = id => document.getElementById(id);
+async function call(action, payload) {
+ const response = await fetch('/api/'+action, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload)});
+ const result = await response.json(); if (!response.ok) throw new Error(result.error || 'Connection failed.'); return result;
+}
+function render(state) {
+ $('room').hidden = false; $('setup').hidden = true; $('room-title').textContent = 'Your private room';
+ $('room-code').textContent = state.room; $('members').replaceChildren();
+ for (const member of state.members) { const row = document.createElement('li'), name = document.createElement('span'), badge = document.createElement('span'); name.textContent = member.name + (member.you ? ' (you)' : ''); badge.className = member.online ? 'online' : 'offline'; badge.textContent = member.online ? (member.ready ? 'READY' : 'ONLINE') : 'DISCONNECTED'; row.append(name,badge); $('members').append(row); }
+ if (state.members.length < 2) { const row=document.createElement('li'); row.textContent='Waiting for another hunter…'; $('members').append(row); }
+ const me=state.members.find(member=>member.you); session.ready=me.ready;
+ $('ready').textContent=me.ready?'Cancel ready':'Ready up';
+ $('ready-status').textContent=state.both_ready?'Both hunters are ready. Connection milestone complete.':'Both hunters must be online and ready.';
+ $('status').textContent='Connected';
+}
+async function update() {
+ if (!session || polling) return; const current=session; polling=true;
+ try { const result=await call('state',{room:current.room,token:current.token}); if(session===current) render(result.state); }
+ catch(error){if(session===current) $('status').textContent='Connection interrupted: '+error.message;}
+ finally{polling=false;}
+}
+function enter(result){session={room:result.state.room,token:result.token,ready:false};render(result.state);timer=setInterval(update,3000);}
+$('create').onclick=async()=>{try{enter(await call('create',{name:$('name').value}));}catch(error){$('status').textContent=error.message;}};
+$('join').onclick=async()=>{try{enter(await call('join',{name:$('name').value,room:$('invite').value.trim()}));}catch(error){$('status').textContent=error.message;}};
+$('ready').onclick=async()=>{if(!session)return;try{const result=await call('ready',{room:session.room,token:session.token,ready:!session.ready});render(result.state);}catch(error){$('status').textContent=error.message;}};
+$('leave').onclick=async()=>{if(!session)return;try{await call('leave',{room:session.room,token:session.token});}catch{}clearInterval(timer);session=null;$('room').hidden=true;$('setup').hidden=false;$('room-title').textContent='Waiting for a room';$('status').textContent='You left the room.';};
+</script></body></html>
