@@ -22,47 +22,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from ide.server.new_game import fresh_progress  # noqa: E402
-from ide.server.state import (  # noqa: E402
-    ARMORY_STACK_SLOTS,
-    CAMPAIGN_DELVE_GEAR,
-    DUNGEON_MATERIAL_NAMES,
-    DUNGEON_REGIONS,
-    HUNTER_SIGN_COUNTERS,
-    HUNTER_SIGN_KEYWORDS,
-    ONLINE_MASTERY_BY_ID,
-    LocalStateService,
-    armory_catalog,
-)
-
-BIG_PURSE = 999_999
-SIGN_XP = 1_000_000
-MATERIAL_COUNT = 99
-
-
-def everything_unlocked() -> dict:
-    progress = fresh_progress()
-    for project in progress["projects"]:
-        LocalStateService._open_project(progress, project)
-    progress["player"].update(level=30, xp=0, xp_next=10_000, lifetime_xp=500_000, coins=BIG_PURSE, hp=130, max_hp=130)
-
-    hunter = LocalStateService._hunter_state(progress)
-    for item_id, item in armory_catalog().items():
-        LocalStateService._armory_add(hunter, item_id, 9 if item.get("slot") in ARMORY_STACK_SLOTS else 1)
-    hunter["armory"]["owned_appearances"] = sorted(ONLINE_MASTERY_BY_ID)
-    # A sign's level is capped until its gates are met (a Tutor pass, enough clean casts, a campaign
-    # use and a teachback), so fill every counter, not just the XP.
-    for sign_id in HUNTER_SIGN_KEYWORDS:
-        hunter["signs"][sign_id] = {**{counter: 50 for counter in HUNTER_SIGN_COUNTERS}, "xp": SIGN_XP}
-    for material in DUNGEON_MATERIAL_NAMES:
-        hunter["materials"][material] = MATERIAL_COUNT
-
-    progress["dungeon_journal"] = {
-        "unlocks": [item["id"] for item in CAMPAIGN_DELVE_GEAR],
-        "cleared_bosses": list(DUNGEON_REGIONS),
-    }
-    progress["test_save"] = {"purpose": "everything unlocked for testing; not a real save"}
-    return progress
+from ide.server.unlocked_save import everything_unlocked  # noqa: E402
 
 
 def main() -> int:

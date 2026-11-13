@@ -333,8 +333,13 @@ def main():
     if os.environ.get("QUESTLAB_INITIALIZE_SAVE") == "1":
         if bundled_dist is None or not configured_state or not state_path.is_absolute():
             raise SystemExit("New-save initialization requires a bundled app and an explicit absolute save path")
-        from ide.server.new_game import initialize_new_save
-        initialize_new_save(state_path)
+        if os.environ.get("QUESTLAB_TEST_SAVE") == "1":
+            # Desktop test mode (`Quest Lab.exe --test`): a separate everything-unlocked save.
+            from ide.server.unlocked_save import initialize_test_save
+            initialize_test_save(state_path)
+        else:
+            from ide.server.new_game import initialize_new_save
+            initialize_new_save(state_path)
     env["QUESTLAB_WORKSPACE"] = str(workspace)
     env["QUESTLAB_BACKEND_PORT"] = str(backend_port)
     env["QUESTLAB_FRONTEND_PORT"] = str(frontend_port)

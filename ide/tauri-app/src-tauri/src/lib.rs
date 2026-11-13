@@ -68,11 +68,20 @@ fn show_failure(window: &WebviewWindow, message: &str) {
     ));
 }
 
+/// Test mode (`Quest Lab.exe --test`, or QUESTLAB_TEST_MODE=1): runs on a separate
+/// everything-unlocked save in `<data dir>/test-mode`, so the real save is never touched.
+fn test_mode() -> bool {
+    std::env::args().any(|arg| arg == "--test")
+        || std::env::var("QUESTLAB_TEST_MODE").map(|v| v == "1").unwrap_or(false)
+}
+
 fn spawn_backend(
     window: WebviewWindow,
     payload: Option<PathBuf>,
     data_dir: PathBuf,
 ) -> Option<Child> {
+    let testing = test_mode();
+    let data_dir = if testing { data_dir.join("test-mode") } else { data_dir };
     let root = payload
         .as_ref()
         .map(|path| path.join("app"))
@@ -154,6 +163,12 @@ fn spawn_backend(
             .env("PYTHONPATH", pythonpath)
             .env("PYTHONNOUSERSITE", "1")
             .env("PATH", search_path);
+        if testing {
+            command
+                .env("QUESTLAB_TEST_SAVE", "1")
+                .env("QUESTLAB_TEST_UNLOCKS", "1");
+            let _ = window.set_title("Quest Lab (TEST: everything unlocked, separate save)");
+        }
         // AppImage's launcher exports PYTHONHOME=/usr. Point the embedded
         // interpreter back at its bundled standard library instead.
         #[cfg(unix)]

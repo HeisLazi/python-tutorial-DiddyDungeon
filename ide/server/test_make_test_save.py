@@ -45,3 +45,14 @@ def test_it_refuses_the_real_save_and_relative_paths(monkeypatch):
         monkeypatch.setattr('sys.argv', ['make_test_save.py', argument])
         with pytest.raises(SystemExit):
             make.main()
+
+
+def test_the_installed_app_can_create_the_test_save_only_when_missing(tmp_path):
+    use_real_content()
+    from ide.server.unlocked_save import initialize_test_save
+    target = tmp_path / 'test-mode' / 'progress.json'
+    assert initialize_test_save(target) is True and json.loads(target.read_text())['test_save']
+    target.write_text('{"progress": "kept"}')
+    assert initialize_test_save(target) is False and json.loads(target.read_text()) == {'progress': 'kept'}
+    with pytest.raises(ValueError):
+        initialize_test_save(Path('relative.json'))
