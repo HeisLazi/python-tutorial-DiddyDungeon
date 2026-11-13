@@ -21,6 +21,7 @@ ide/frontend/dist/
 
 # Future desktop packaging output
 src-tauri/target/
+.build/
 
 # Supabase CLI local state
 supabase/.temp/
@@ -41,3 +42,6 @@ ide/home-godot/shot_*
 
 # Large AI reference renders (kept local; the converted sprite sources are in tools/home_art/assets)
 ide/home-godot/reference/
+
+# Godot editor cache
+.godot/

@@ -1,5 +1,20 @@
 # Combat art work in progress
 
+2026-11-13 Basics continuation: sixteen Lanternkeeper source candidates (sword action, idle, follow,
+hurt; staff, whip, greatsword, hand-magic, scythe and oil action and hurt) have been checked as 72px slices but not in the game. Home turnaround and walk sources have been checked as 38px review strips; the walk background haze is removed by the existing builder threshold. Review them in
+`lanternkeeper-candidate-preview.html`; at sprite size, the lantern and straw cape need a closer
+legibility check. The first sword hurt sheet clipped its sword and a first sword follow sheet had
+an alpha haze; both were rejected and replaced. The outfit is not registered or complete, and
+the temporary ember fallback still applies. See `ARMOUR_ECHOES_PLAN.md` for tests and remaining work.
+
+Wardplate now also has sixteen combat source candidates and Home turnaround and walk sources,
+checked as 72px and 38px review slices respectively. They are not yet registered or reviewed in
+game. See `wardplate-candidate-preview.html`; the steel palette fallback remains temporary.
+
+Basics elite follow-up: the server names elites as Elder variants of the local species. An Elder
+Nameless Wraith, Elder String Mimic and Elder Forked Path action and hurt candidates have been
+generated and slice-checked; they are not yet registered or reviewed in game.
+
 2026-10-30. Worktree `feature/tauri-arcade`; do not push. This is not a completion report.
 
 The requested scope is the full Lantern Vale beginner campaign (20 contracts and its boss), plus Basics Village and Collection Caves in Infinite Dungeon, and weapons and trinkets. The old Home and gameplay state rules remain authoritative; use isolated test saves only.
