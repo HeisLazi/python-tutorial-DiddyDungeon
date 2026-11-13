@@ -15,6 +15,7 @@ function focusXterm(selector) {
 }
 
 const commands = [
+  { label: 'Toggle Zen mode', keys: 'Ctrl+K Z', run: () => window.dispatchEvent(new Event('questlab-toggle-zen')) },
   { label: 'Run current file', keys: 'Ctrl+Enter', run: () => document.querySelector('.editor-panel .toolbar-actions button.primary')?.click() },
   { label: 'Save current file', keys: 'Ctrl+S', run: () => (byText('Save Tutor') || byText('Save'))?.click() },
   { label: 'Pretty / format', keys: 'Shift+Alt+F', run: () => clickText('Pretty') },

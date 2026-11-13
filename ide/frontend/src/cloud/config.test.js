@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 
-import { resolveCloudConfig } from './config.js'
+import { loadRemoteCloudConfig, resolveCloudConfig } from './config.js'
 import { SyncEngine } from './syncEngine.js'
 
 test('missing cloud values select Offline / Local Mode without creating a client', () => {
@@ -47,4 +47,18 @@ test('public Supabase values enable the cloud service boundary', () => {
   assert.equal(config.valid, true)
   assert.equal(engine.client, expectedClient)
   assert.equal(state.mode, 'cloud-ready')
+})
+
+test('same-origin config relay accepts only HTTPS Supabase publishable config', async () => {
+  let requestedPath = ''
+  const fake = async (path, options) => {
+    requestedPath = path
+    assert.equal(options.credentials, 'omit')
+    assert.equal(options.redirect, 'error')
+    return {ok:true, json:async () => ({url:'https://example.supabase.co',publishable_key:'sb_publishable_test'})}
+  }
+  assert.equal((await loadRemoteCloudConfig(fake, 500)).configured, true)
+  assert.equal(requestedPath, '/api/online/client-config')
+  assert.equal(await loadRemoteCloudConfig(async () => ({ok:true,json:async () => ({url:'https://example.supabase.co',publishable_key:'sb_secret_test'})}), 500), null)
+  assert.equal(await loadRemoteCloudConfig(async () => { throw new Error('offline') }, 500), null)
 })

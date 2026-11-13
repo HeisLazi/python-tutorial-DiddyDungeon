@@ -21,3 +21,11 @@ test('cloud projection refuses malformed room levels and Embers', () => {
   assert.throws(() => projectPlayerState({ homestead: { room_levels: { den: 1 } } }), /Invalid Home room levels/)
   assert.throws(() => projectPlayerState({ homestead: { upgrade_tokens: -1 } }), /Invalid Home Embers/)
 })
+
+
+test('Legacy Journal unlocks and boss clears survive the browser sync projection', () => {
+  const journal = { unlocks: ['forged-lantern-coat', 'campaign-dungeon-village-lantern'], cleared_bosses: ['basics'] }
+  const projection = projectPlayerState({ campaign: { dungeon_journal: journal } })
+  assert.deepEqual(projection.campaign.dungeon_journal, journal)
+  assert.deepEqual(projectPlayerState(projection).campaign.dungeon_journal, journal)
+})

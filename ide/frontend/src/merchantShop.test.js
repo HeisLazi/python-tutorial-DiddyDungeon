@@ -17,3 +17,9 @@ test('unlocked items precede locked items from either inventory', () => {
   const lots = merchantLots([{ id: 'locked', locked: 'Complete a campaign' }, { id: 'open', locked: null }], [{ id: 'classic', name: 'Classic', kind: 'Supply', price: 10 }], [], 20)
   assert.deepEqual(lots.map((item) => item.id), ['open', 'classic', 'locked'])
 })
+
+test('purchased supplies remain available to buy again', () => {
+  const [meal] = merchantLots([], [{ id: 'camp-meal', name: 'Camp meal', kind: 'Supply', price: 26 }], ['camp-meal'], 30)
+  assert.equal(meal.owned, false)
+  assert.equal(meal.affordable, true)
+})

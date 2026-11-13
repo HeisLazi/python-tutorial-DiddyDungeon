@@ -445,7 +445,7 @@
 .app-shell[data-theme="arcade"] .boss-overlay { background: rgb(5 4 12 / 0.82); }
 .app-shell[data-theme="arcade"] .boss-card,
 .app-shell[data-theme="arcade"] .celebration-card,
-.app-shell[data-theme="arcade"] .launch-splash {
+.app-shell[data-theme="arcade"] .launch-splash-card {
   max-width: 520px;
   padding: 28px;
   border: 4px solid var(--danger);
@@ -457,7 +457,7 @@
 .app-shell[data-theme="arcade"] .boss-card p { font-size: 18px; color: var(--muted); }
 .app-shell[data-theme="arcade"] .celebration-card { border-color: var(--gold); }
 .app-shell[data-theme="arcade"] .celebration-card h2 { color: var(--gold); }
-.app-shell[data-theme="arcade"] .launch-splash { border-color: var(--gold); }
+.app-shell[data-theme="arcade"] .launch-splash-card { border-color: var(--gold); }
 
 /* Scrollbars as pixel rails. */
 .app-shell[data-theme="arcade"] ::-webkit-scrollbar { width: 12px; height: 12px; }
@@ -640,8 +640,29 @@
 .app-shell[data-theme="arcade"] [data-place="market"] .armoury-lot-card { display: grid; align-content: start; gap: 8px; min-width: 0; padding: 10px; text-align: left; border: 2px solid var(--line2); background: var(--panel2); color: var(--text); cursor: pointer; }
 .app-shell[data-theme="arcade"] [data-place="market"] .armoury-lot-card.active, .app-shell[data-theme="arcade"] [data-place="market"] .armoury-lot-card:hover { border-color: var(--gold); }
 .armoury-lot-card.locked { opacity: .65; }
-.armoury-lot-art { display: grid; place-items: center; width: 100%; height: 100px; border: 1px solid #65557b; background: #171323; color: #c7ad78; }
-.armoury-lot-art img { max-width: 90%; max-height: 94%; object-fit: contain; image-rendering: pixelated; }
+.armoury-lot-art { position: relative; display: grid; place-items: center; width: 100%; height: 100px; overflow: hidden; border: 1px solid #65557b; background: #171323; color: #c7ad78; }
+.armoury-lot-art.slot-armor { height: 132px; background: linear-gradient(180deg, #1d1928, #100e18); }
+.armoury-lot-art img { position: absolute; inset: 5%; width: 90%; height: 90%; max-width: none; max-height: none; object-fit: contain; image-rendering: pixelated; }
+.armoury-lot-art.slot-armor:not(.standalone-armor) img { transform: scale(1.45); }
+.armoury-lot-art.standalone-armor img { inset: 2%; width: 96%; height: 96%; }
+.market-hunter-preview { display: block; width: 112px; height: 84px; flex: none; background-size: 400% 100%; background-repeat: no-repeat; background-position: 0 0; image-rendering: pixelated; }
+.armoury-lot-detail .market-hunter-preview { width: 176px; height: 132px; }
+.market-hunter-preview.animated { animation: market-hunter-idle 1.2s steps(3, end) infinite alternate; }
+@keyframes market-hunter-idle { from { background-position: 0 0; } to { background-position: 100% 0; } }
+.market-weapon-stage { background: radial-gradient(ellipse at 50% 80%, #34302e, #15121e 72%); }
+.market-weapon-figure { position: relative; display: block; height: 100%; max-height: 144px; max-width: 100%; }
+.market-weapon-pose { position: absolute; inset: 0; background-repeat: no-repeat; background-size: 400% 100%; background-position: 0 0; image-rendering: pixelated; }
+.market-weapon-pose.idle { animation: market-weapon-idle-visibility 6s steps(1, end) infinite, market-weapon-breathe 1.6s ease-in-out infinite; }
+.market-weapon-pose.sword-idle { animation: market-weapon-idle-visibility 6s steps(1, end) infinite, market-weapon-breathe 1.6s ease-in-out infinite, market-hunter-idle 1.2s steps(3, end) infinite alternate; }
+.market-weapon-pose.attack { opacity: 0; animation: market-weapon-attack 6s steps(1, end) infinite; }
+.market-weapon-caption { position: absolute; left: 8px; bottom: 7px; color: #d4bc8b; font: 8px/1.2 monospace; letter-spacing: .08em; }
+.market-weapon-item { position: absolute; right: 7px; bottom: 7px; width: 40px; height: 40px; border: 1px solid #68563f; background: #15121e; }
+.armoury-lot-art .market-weapon-item img { position: absolute; inset: 3%; width: 94%; height: 94%; object-fit: contain; }
+@keyframes market-weapon-idle-visibility { 0%, 92% { opacity: 1; } 77% { opacity: 0; } }
+@keyframes market-weapon-breathe { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-2px); } }
+@keyframes market-weapon-attack { 0%, 76% { opacity: 0; background-position: 0 0; } 77% { opacity: 1; background-position: 33.333% 0; } 81% { opacity: 1; background-position: 66.666% 0; } 86% { opacity: 1; background-position: 100% 0; } 92%, 100% { opacity: 0; background-position: 0 0; } }
+@media (prefers-reduced-motion: reduce) { .market-hunter-preview.animated { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .market-weapon-pose.idle, .market-weapon-pose.sword-idle, .market-weapon-pose.attack { animation: none; } }
 .armoury-lot-art svg { width: 48px; height: 48px; fill: none; stroke: currentColor; stroke-width: 1.5; }
 .armoury-lot-copy { display: grid; gap: 5px; min-width: 0; }
 .armoury-lot-copy strong { color: #f0e4d2; line-height: 1.3; }
@@ -649,10 +670,16 @@
 .armoury-lot-price, .armoury-detail-price strong { color: #f1cf7c; }
 .armoury-lot-detail { display: grid; align-content: start; gap: 12px; min-width: 0; padding: 16px; border: 2px solid #80683d; background: #1d1827; }
 .armoury-lot-detail .armoury-lot-art { height: 150px; }
+.hunter-still-room { --dungeon-panel-2: #211c30; --dungeon-panel-3: #151221; --dungeon-line: #5d4d6a; --dungeon-text: #f1ead7; --dungeon-muted: #bdb1c8; --dungeon-gold: #e8b94e; --dungeon-gold-soft: #f3d889; display: grid; gap: 14px; min-width: 0; }
+.hunter-still-room > .dungeon-legacy-journal { grid-template-columns: 1fr; align-items: start; gap: 14px; max-height: none; padding: 18px; border-radius: 0; }
+.hunter-still-room .dungeon-journal-heading h3 { font-size: 18px; }
+.hunter-still-room :is(.dungeon-journal-rule, .dungeon-journal-empty, .dungeon-journal-bosses p, .dungeon-journal-unlocks strong, .dungeon-journal-unlocks small, .dungeon-journal-next) { font-size: 13px; line-height: 1.5; }
+.hunter-still-room :is(.dungeon-journal-heading > span, .dungeon-journal-unlocks > span, .dungeon-journal-bosses > span, .dungeon-journal-bonuses small) { font-size: 11px; }
+.app-shell[data-theme="arcade"] .campaign-v1 .hunter-still-room .dungeon-legacy-journal { border-radius: 0; }
 .armoury-lot-detail h3, .armoury-lot-detail p { margin: 0; }
 .armoury-lot-flavour { color: #b9a9bd; font-style: italic; }
 .armoury-detail-price { display: flex; justify-content: space-between; padding: 10px; border: 1px solid #66536d; }
-@media (max-width: 900px) { .armoury-lots-layout { grid-template-columns: 1fr; } .armoury-lot-catalog { max-height: 360px; } }
+@media (max-width: 900px) { .armoury-lots-layout { grid-template-columns: 1fr; } .armoury-lot-catalog { max-height: 360px; } .hunter-still-room > .dungeon-legacy-journal { grid-template-columns: 1fr; } }
 .app-shell[data-theme="arcade"] .campaign-v1 .campaign-place-panel[data-place="market"] { border-radius: 0; }
 .app-shell[data-theme="arcade"] [data-place="market"] :is(.vendor-nameplate, .market-detail-icon, .market-lot-icon, .market-greeting-copy, .market-greeting-purse, .market-detail-facts span, .market-category, .market-lot-row, .alchemy-beast-list button) { border-radius: 0; }
 
@@ -715,3 +742,8 @@
 .forge-v2.dungeon-mode .dungeon-room-illustration.has-region-art::after { content: ''; position: absolute; inset: 0; z-index: 0; background: linear-gradient(0deg, #100e20ed, transparent 62%); pointer-events: none; }
 .forge-v2.dungeon-mode .dungeon-room-illustration.has-region-art > svg:not(.dungeon-region-scene),
 .forge-v2.dungeon-mode .dungeon-room-illustration.has-region-art small { z-index: 1; }
+
+/* Legacy Journal checklist inside the Home panel: larger type to match the room. */
+.hunter-still-room :is(.dungeon-journal-all > summary, .dungeon-journal-region-head small, .dungeon-journal-echoes li > small) { font-size: 11px; }
+.hunter-still-room .dungeon-journal-region-head strong, .hunter-still-room .dungeon-journal-echoes li > strong { font-size: 13px; }
+.hunter-still-room .dungeon-journal-badge { font-size: 9px; }

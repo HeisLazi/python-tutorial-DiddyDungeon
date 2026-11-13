@@ -1,6 +1,6 @@
 import ReactDOM from 'react-dom/client'
 import { loader } from '@monaco-editor/react'
-import App from './AppV2.jsx?homePortParity20260921'
+import { initializeCloudConfig } from './cloud/config.js'
 import './styles.css'
 import './foundation.css'
 import './v2.css'
@@ -8,10 +8,6 @@ import './enhancements.css'
 import './uiPolish.css'
 import './commandPalette.css'
 import './combatShell.css'
-import './forgeEnhancements.js'
-import './uiPolish.js'
-import './commandPalette.js'
-import './combatShell.js'
 import '@xterm/xterm/css/xterm.css'
 import './arcade.css'
 
@@ -24,4 +20,12 @@ loader.config({ paths: { vs: `${import.meta.env.BASE_URL}monaco/vs` } })
 // Quest Lab owns real PTY/WebSocket sessions. React StrictMode intentionally
 // double-mounts effects in development, which creates/kills duplicate shells.
 // Run the local IDE once so each visible terminal maps to one PTY session.
-ReactDOM.createRoot(document.getElementById('root')).render(<App />)
+async function start() {
+  await initializeCloudConfig()
+  const [{ default: App }] = await Promise.all([
+    import('./AppV2.jsx?homePortParity20260921'), import('./forgeEnhancements.js'),
+    import('./uiPolish.js'), import('./commandPalette.js'), import('./combatShell.js'),
+  ])
+  ReactDOM.createRoot(document.getElementById('root')).render(<App />)
+}
+void start()

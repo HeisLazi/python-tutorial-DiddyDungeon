@@ -60,3 +60,29 @@ export function resolveCloudConfig(environment = {}) {
 }
 
 export const cloudConfig = resolveCloudConfig(import.meta.env ?? {})
+
+// The loopback app backend fetches this public config from the match service.
+// Using the same origin avoids Windows WebView port/CORS mismatches when more
+// than one Quest Lab instance is open. Keep it in memory only.
+export async function loadRemoteCloudConfig(fetchImpl = globalThis.fetch, timeoutMs = 3500) {
+  try {
+    if (!fetchImpl) return null
+    const controller = new AbortController()
+    const timer = setTimeout(() => controller.abort(), timeoutMs)
+    let data
+    try {
+      const response = await fetchImpl('/api/online/client-config', {signal:controller.signal, cache:'no-store', credentials:'omit', redirect:'error'})
+      if (!response.ok) return null
+      data = await response.json()
+    } finally { clearTimeout(timer) }
+    const project = new URL(data?.url)
+    if (project.protocol !== 'https:' || !project.hostname.endsWith('.supabase.co') || project.username || project.password || project.pathname !== '/' || project.search || project.hash || typeof data.publishable_key !== 'string' || !data.publishable_key.startsWith('sb_publishable_') || data.publishable_key.length > 512) return null
+    return resolveCloudConfig({VITE_SUPABASE_URL:project.origin, VITE_SUPABASE_ANON_KEY:data.publishable_key})
+  } catch { return null }
+}
+
+export async function initializeCloudConfig() {
+  if (cloudConfig.configured || !cloudConfig.valid) return
+  const remote = await loadRemoteCloudConfig()
+  if (remote) Object.assign(cloudConfig, remote)
+}

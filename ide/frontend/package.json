@@ -9,7 +9,7 @@
     "prebuild": "node scripts/copy-monaco.mjs",
     "build": "vite build",
     "preview": "vite preview",
-    "test": "node --test src/cloud/*.test.js"
+    "test": "node --test src/cloud/*.test.js src/OnlineHideout.test.js src/OnlineLeaderboard.test.js src/DungeonLegacyJournal.test.js src/raidCombatUi.test.js"
   },
   "dependencies": {
     "@fontsource/press-start-2p": "^5.3.0",

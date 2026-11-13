@@ -8,7 +8,7 @@ const LANTERN_ENCOUNTERS = new Set([
 
 export function lanternEncounterArt(projectId, name) {
   if (projectId !== '00-lantern-vale' || !name) return null
-  const slug = name.toLowerCase().replace(/^the\s+/, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
+  const slug = name.toLowerCase().replace(/^the\s+/, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').replace(/^lord-twang-iii$/, 'unwritten-king')
   return LANTERN_ENCOUNTERS.has(slug) ? `${(import.meta.env?.BASE_URL || '/')}campaign-art/lantern-vale/${slug}.png` : null
 }
 
@@ -22,7 +22,7 @@ const LANTERN_LOCATIONS = [
 
 export function lanternEncounterLocation(projectId, name) {
   if (projectId !== '00-lantern-vale' || !name) return null
-  const slug = name.toLowerCase().replace(/^the\s+/, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
+  const slug = name.toLowerCase().replace(/^the\s+/, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').replace(/^lord-twang-iii$/, 'unwritten-king')
   const location = LANTERN_LOCATIONS.find(([, encounters]) => encounters.includes(slug))?.[0]
   return location ? `${(import.meta.env?.BASE_URL || '/')}campaign-art/lantern-vale/locations/${location}.png` : null
 }

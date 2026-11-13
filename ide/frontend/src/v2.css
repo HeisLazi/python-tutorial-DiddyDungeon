@@ -1487,6 +1487,7 @@
 .bench-tabs button { padding: 6px 14px; border: 1px solid var(--line, #444); background: transparent; color: inherit; font: inherit; cursor: pointer; }
 .bench-tabs button.active { border-color: var(--gold, #f5c542); color: var(--gold, #f5c542); }
 .smithing-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; }
+.smithing-intro { grid-column: 1 / -1; margin: 0; }
 .smithing-piece { display: grid; gap: 6px; align-content: start; padding: 12px; border: 1px solid var(--line, #444); }
 .smithing-piece p { margin: 0; }
 .smithing-piece small { color: var(--muted, #999); font-size: 13px; }
@@ -1537,6 +1538,10 @@
 .armory-slots small { color: var(--muted, #999); font-size: 11px; }
 .armory-slots button { justify-self: start; margin-top: 4px; padding: 2px 8px; border: 1px solid var(--line, #444); background: transparent; color: inherit; font: inherit; font-size: 12px; cursor: pointer; }
 .armory-summary { margin: 0; color: var(--muted, #999); font-size: 13px; }
+.armory-mastery-loadout { display: grid; gap: 7px; padding: 10px; border: 1px solid var(--line, #444); background: rgba(15, 14, 23, .45); }
+.armory-mastery-loadout > p { margin: 0; color: var(--muted, #999); font-size: 12px; }
+.armory-mastery-loadout label { display: grid; gap: 4px; color: var(--muted, #b8b3c2); font-size: 12px; }
+.armory-mastery-loadout select { width: 100%; min-height: 36px; padding: 6px 9px; border: 1px solid var(--line, #555); background: #211e2b; color: inherit; font: inherit; }
 .armory-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 8px; }
 .armory-item { display: grid; gap: 4px; align-content: start; padding: 10px; border: 1px solid var(--line, #444); border-left-width: 4px; }
 .armory-item-head { display: grid; gap: 2px; }
@@ -2084,3 +2089,24 @@
 .dungeon-floor-scout button { flex: none; }
 .dungeon-item-art.empty-trinket { border-style: dashed; }
 .dungeon-item-art.empty-trinket img { opacity: .3; filter: grayscale(1); }
+
+/* A quiet Hunt workspace; terminals remain mounted so their sessions survive. */
+.app-shell.forge-v2.zen-mode { grid-template-rows: minmax(0, 1fr); }
+.app-shell.forge-v2.zen-mode > :is(.topbar, .quest-banner, .surface-nav, .statusbar) { display: none; }
+.app-shell.forge-v2.zen-mode > .workspace-grid { grid-row: 1; grid-template-rows: minmax(0, 1fr) !important; }
+.app-shell.forge-v2.zen-mode .workspace-grid > :is(.terminal-panel, .terminal-resizer, .ai-panel, .right-resizer) { display: none !important; }
+.app-shell.forge-v2.zen-mode .editor-panel { grid-row: 1; position: relative; }
+.app-shell.forge-v2.zen-mode .editor-toolbar .zen-normal-action,
+.app-shell.forge-v2.zen-mode .editor-toolbar [data-qol-submit] { display: none; }
+.zen-pyr-backdrop { position: absolute; inset: 36px 0 0; z-index: 30; display: grid; place-items: center; padding: 22px; background: #0a0810aa; }
+.zen-pyr-card { width: min(510px, 100%); max-height: min(620px, 90%); overflow: auto; padding: 22px; border: 2px solid #a5895c; background: #211b25; color: #f3e9d5; box-shadow: 0 0 0 3px #100d15, 8px 8px 0 #08070aaa; }
+.zen-pyr-card.correct { border-color: #8ab77d; }
+.zen-pyr-card.incorrect, .zen-pyr-card.error { border-color: #d48370; }
+.zen-pyr-heading { display: flex; align-items: center; justify-content: space-between; color: #e1bd7e; font: 700 11px ui-monospace, monospace; letter-spacing: .12em; }
+.zen-pyr-heading button { font-size: 20px; line-height: 1; }
+.zen-pyr-card h2 { margin: 20px 0 12px; color: #fff2d7; font-size: 20px; }
+.zen-pyr-card p { white-space: pre-wrap; line-height: 1.6; overflow-wrap: anywhere; }
+.zen-pyr-card form { display: grid; gap: 12px; }
+.zen-pyr-card label, .zen-pyr-card small { color: #c4b8a7; line-height: 1.5; }
+.zen-pyr-card textarea { width: 100%; min-height: 115px; resize: vertical; padding: 12px; border: 1px solid #77624d; background: #100e16; color: #fff2d7; font: inherit; }
+.zen-pyr-card form button { justify-self: start; }

@@ -10,6 +10,7 @@ function Furniture({ id }) {
     case 'armory': return <><rect x="4" y="5" width="10" height="4" fill="#ae8b68"/><circle cx="29" cy="18" r="7" fill="none" stroke="#b38d68" strokeWidth="2"/><circle cx="29" cy="18" r="2" fill="#d6c4a6"/></>
     case 'war_room': return <><rect x="12" y="12" width="17" height="8" fill="#ae8b68"/><path d="M14 16l4-2 3 3 5-3" fill="none" stroke="#dfd29c"/><path d="M4 4h8v3H4z M29 4h7v3h-7z" fill="#a38b70"/></>
     case 'den': return <><path d="M4 5q6-5 12 0v4H4z" fill="#e6a777"/><path d="M22 9h12 M28 5v9" stroke="#c9a480" strokeWidth="2"/><ellipse cx="28" cy="21" rx="7" ry="4" fill="#94775e"/></>
+    case 'still': return <><circle cx="11" cy="17" r="5" fill="#77af8a"/><rect x="23" y="14" width="10" height="6" fill="#b88b5f"/><path d="M25 16h6" stroke="#e5d2a2"/></>
     default: return null
   }
 }
@@ -19,8 +20,8 @@ export default function CastleFloorPlan({ currentRoom, position }) {
   const adjacent = new Set(Object.values(current.exits))
   const px = Math.max(0, Math.min(1, Number(position?.x ?? 160) / 320))
   const py = Math.max(0, Math.min(1, (Number(position?.y ?? 142) - 64) / 122))
-  return <svg className="home-map-plan" viewBox="0 0 90 85" aria-hidden="true">
-    <g className="castle-map-corridors"><path d="M45 35v15" /></g>
+  return <svg className="home-map-plan" viewBox="0 0 90 90" aria-hidden="true">
+    <g className="castle-map-corridors"><path d="M22 35v10h14v10 M68 35v10H54v10" /></g>
     {HOME_DIRECTORY.map((entry) => <g key={entry.id} className={`castle-map-room ${entry.id === current.id ? 'current' : adjacent.has(entry.id) ? 'adjacent' : ''}`} transform={`translate(${entry.x} ${entry.y})`}>
       <rect className="castle-map-shadow" x="-2" y="-2" width="44" height="34" />
       <rect className="castle-map-walls" width="40" height="30" />
@@ -28,6 +29,6 @@ export default function CastleFloorPlan({ currentRoom, position }) {
       <Furniture id={entry.id} />
       {entry.id === current.id && <><circle className="castle-map-marker-edge" cx={5 + px * 30} cy={5 + py * 20} r="3.6"/><circle className="castle-map-marker" cx={5 + px * 30} cy={5 + py * 20} r="2.4"/></>}
     </g>)}
-    <g className="castle-map-thresholds"><path d="M42 34h6 M42 50h6" /></g>
+    <g className="castle-map-thresholds"><path d="M19 34h6 M65 34h6 M33 55h6 M51 55h6" /></g>
   </svg>
 }

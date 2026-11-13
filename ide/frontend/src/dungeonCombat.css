@@ -62,3 +62,35 @@
 
 .combat-segments.hp > span { border-color: #c79581; background: #2a151c; }
 .combat-segments.hp i { background: linear-gradient(#ffc2a2 0 18%, #e76056 18% 75%, #a83942 75%); }
+
+/* Raid vitals sit over each fighter, like Hunt's fighter-first HUD. */
+.raid-character-vitals { position:absolute; top:35%; transform:translateX(-50%); z-index:5; width:9.6%; min-width:66px; max-width:132px; padding:3px 4px 4px; border:1px solid #8b6b4c; background:#100d19db; box-shadow:2px 2px #08060c; color:#f7e8ca; text-align:center; text-shadow:1px 1px #000; font:clamp(5px,.65vw,8px)/1.3 'Press Start 2P',monospace; }
+.raid-character-vitals>span { display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.raid-character-vitals .combat-segments { height:11px; margin-top:3px; gap:2px; }
+.raid-character-vitals .combat-segments>span { border-color:#c79581; }
+.raid-character-vitals.you { border-color:#dfbd72; box-shadow:2px 2px #08060c,0 0 7px #dfbd7255; }
+.raid-character-vitals.down { border-color:#9a5751; opacity:.65; }
+.raid-character-vitals.down .combat-segments.hp i { background:linear-gradient(#7b6870,#46323f); }
+
+/* Boss resolve frame tracks state-owned phases and active mechanics. */
+.combat-vitals.enemy-vitals.boss-vitals { --boss-frame: #d9b875; top: 5px; right: 5px; padding: 5px; border: 2px solid var(--boss-frame); background: #120e19e8; box-shadow: inset 0 0 0 1px #463224, 2px 2px 0 #08070c; }
+.combat-vitals.enemy-vitals.boss-vitals.raid-boss-vitals { top:27%; right:5%; width:31%; }
+.combat-vitals.enemy-vitals.boss-vitals::before, .combat-vitals.enemy-vitals.boss-vitals::after { content: '◆'; position: absolute; top: -5px; color: var(--boss-frame); text-shadow: 1px 1px #160c11; font-size: 8px; }
+.combat-vitals.enemy-vitals.boss-vitals::before { left: -4px; }
+.combat-vitals.enemy-vitals.boss-vitals::after { right: -4px; }
+.combat-vitals.enemy-vitals.boss-vitals small { display: block; margin-top: 3px; color: var(--boss-frame); overflow-wrap: anywhere; }
+
+/* Boss phase is communicated through the Resolve fill and scene frame. */
+.dungeon-combat-panel.boss-scene { --phase-light: #f1dda9; --phase-fill: #b99a5f; --phase-shadow: #765b38; --phase-frame: #b79a67; border-color: var(--phase-frame); }
+.dungeon-combat-panel.boss-scene.phase-arcane { --phase-light: #ffe0a0; --phase-fill: #df9c42; --phase-shadow: #92501f; --phase-frame: #e4a24e; }
+.dungeon-combat-panel.boss-scene.phase-ember { --phase-light: #ffc196; --phase-fill: #ed6a36; --phase-shadow: #9e3322; --phase-frame: #ef713e; }
+.dungeon-combat-panel.boss-scene.phase-crown { --phase-light: #ffb19a; --phase-fill: #e63838; --phase-shadow: #841a27; --phase-frame: #e6453c; }
+.dungeon-combat-panel.boss-scene .enemy-vitals .combat-segments.resolve i { background: linear-gradient(var(--phase-light) 0 18%, var(--phase-fill) 18% 75%, var(--phase-shadow) 75%); }
+.dungeon-combat-panel.boss-scene .combat-godot-scene::after { content: ''; position: absolute; inset: 0; z-index: 6; border: 3px solid var(--phase-frame); box-shadow: inset 0 0 0 2px #160e18; pointer-events: none; }
+
+/* The Resolve frame follows the phase; the final phase has a restrained pulse. */
+.dungeon-combat-panel.boss-scene .combat-vitals.enemy-vitals.boss-vitals { --boss-frame: var(--phase-frame); }
+.dungeon-combat-panel.boss-scene.phase-crown .enemy-vitals .combat-segments.resolve { animation: boss-final-pulse 1.8s ease-in-out infinite; }
+@keyframes boss-final-pulse { 0%, 100% { filter: brightness(1); } 50% { filter: brightness(1.3); } }
+@media (prefers-reduced-motion: reduce) { .dungeon-combat-panel.boss-scene.phase-crown .enemy-vitals .combat-segments.resolve { animation: none; } }
+@media(max-width:750px){.raid-character-vitals{top:34%;width:10.8%;min-width:0;padding:2px 2px 3px;font-size:5px}.raid-character-vitals .combat-segments{height:9px;gap:1px}.combat-vitals.enemy-vitals.boss-vitals.raid-boss-vitals{top:26%;right:3%;width:34%}}

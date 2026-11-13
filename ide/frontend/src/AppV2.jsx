@@ -1,17 +1,31 @@
 import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react'
 import Editor from '@monaco-editor/react'
+import { registerPythonHoverProvider } from './pythonHover.js'
 import { Terminal } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
 import { buildQuestDocument, ContextPanel, GameScreen, projectDirOf, PyrChatPanel, RewardQueue, SurfaceNavigation, TutorPracticeBar } from './RpgViews.jsx?homePortParity20260921'
 import { syncEngine } from './cloud/syncEngine.js'
+import { cloudConfig } from './cloud/config.js'
 import { pyrClientId } from './cloud/pyrClient.js'
 
 const FRONTEND_BUILD_SHA = typeof __QUESTLAB_BUILD_SHA__ === 'string' ? __QUESTLAB_BUILD_SHA__ : ''
 
 const api = async (url, options = {}) => {
+  const headers = { 'Content-Type': 'application/json', ...(options.headers || {}) }
+  if (typeof url === 'string' && url.startsWith('/api/ai/') && syncEngine.client?.auth?.getSession) {
+    try {
+      const { data } = await syncEngine.client.auth.getSession()
+      const accessToken = data?.session?.access_token
+      if (accessToken) headers.Authorization = `Bearer ${accessToken}`
+      if (cloudConfig.anonKey?.startsWith('sb_publishable_')) headers.apikey = cloudConfig.anonKey
+    } catch {
+      // The route will use the existing local OpenCode fallback if no cloud
+      // session is available on this device.
+    }
+  }
   const response = await fetch(url, {
-    headers: { 'Content-Type': 'application/json', ...(options.headers || {}) },
     ...options,
+    headers,
   })
   if (!response.ok) {
     const body = await response.text()
@@ -22,7 +36,9 @@ const api = async (url, options = {}) => {
     } catch {
       // Raw text is still useful when the backend is not returning JSON.
     }
-    throw new Error(message)
+    const error = new Error(message)
+    error.status = response.status
+    throw error
   }
   return response.json()
 }
@@ -40,6 +56,24 @@ const languageFor = (path = '') => {
 }
 
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value))
+
+// Display-only aliases preserve the saved branch and boss identifiers.
+const SHANDUMBALLA_ID = '00-lantern-vale'
+const renameShandumballa = (campaign) => {
+  const renameProject = (project) => project?.branch === SHANDUMBALLA_ID
+    ? { ...project, name: 'Mysterys in Shandumballa', boss: project.boss === 'The Unwritten King' ? 'Lord Twang III' : project.boss }
+    : project
+  const progress = campaign.progress && { ...campaign.progress, projects: (campaign.progress.projects || []).map(renameProject) }
+  const encounter = campaign.encounter?.project_id === SHANDUMBALLA_ID
+    ? { ...campaign.encounter, project_name: 'Mysterys in Shandumballa', boss: campaign.encounter.boss === 'The Unwritten King' ? 'Lord Twang III' : campaign.encounter.boss }
+    : campaign.encounter
+  const campaign_board = campaign.campaign_board?.branch === SHANDUMBALLA_ID
+    ? { ...campaign.campaign_board, name: 'Mysterys in Shandumballa', boss: campaign.campaign_board.boss === 'The Unwritten King' ? 'Lord Twang III' : campaign.campaign_board.boss }
+    : campaign.campaign_board
+  const armory = campaign.armory && { ...campaign.armory, collection: (campaign.armory.collection || []).map(renameProject) }
+  return { ...campaign, progress, encounter, campaign_board, armory }
+}
+
 
 function StatIcon({ name }) {
   const paths = {
@@ -430,6 +464,8 @@ function AppV2() {
   const [runtime, setRuntime] = useState(null)
   const [files, setFiles] = useState([])
   const [activePath, setActivePath] = useState('')
+  const activePathRef = useRef('')
+  activePathRef.current = activePath
   const [editorMode, setEditorMode] = useState('file')
   const [code, setCode] = useState('')
   // The editor text as of the last keystroke: Ctrl+S can fire before React
@@ -440,6 +476,10 @@ function AppV2() {
     setCode(value)
   }
   const [dirty, setDirty] = useState(false)
+  const fileDirtyRef = useRef(false)
+  const fileRevisionRef = useRef(null)
+  const fileConflictRef = useRef(null)
+  const [fileConflict, setFileConflict] = useState(null)
   const [tutorCode, setTutorCode] = useState('')
   const [tutorDirty, setTutorDirty] = useState(false)
   const [tutorDiskRevision, setTutorDiskRevision] = useState('')
@@ -505,6 +545,11 @@ function AppV2() {
   const [animations, setAnimations] = usePersistentState('questlab.animations', true)
   const [showAiTerminal, setShowAiTerminal] = usePersistentState('questlab.showAiTerminal', true)
   const [zenMode, setZenMode] = usePersistentState('questlab.zenMode', false)
+  const [zenPyr, setZenPyr] = useState(null)
+  const [zenQuestion, setZenQuestion] = useState('')
+  const zenActiveRef = useRef(false)
+  const zenSubmitRef = useRef(null)
+  const editorInstanceRef = useRef(null)
   const [gameMode, setGameMode] = usePersistentState('questlab.gameMode', false)
   // OpenCode-backed PYR (ide/server/ai_tutor.py). `pyrThinking` is the label
   // shown while a model call runs; state writes pause until it clears.
@@ -561,15 +606,44 @@ function AppV2() {
   }
 
   useEffect(() => {
-    const handler = (e) => {
-      if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'z') {
-        e.preventDefault()
-        setZenMode((z) => !z)
+    let chord = false
+    let timer
+    const toggle = () => {
+      if (activeView === 'forge') setZenMode((value) => !value)
+    }
+    const handler = (event) => {
+      if (activeView !== 'forge') return
+      if (chord) {
+        chord = false
+        window.clearTimeout(timer)
+        if (!event.ctrlKey && !event.metaKey && !event.altKey && event.key.toLowerCase() === 'z') {
+          event.preventDefault()
+          event.stopPropagation()
+          toggle()
+          return
+        }
+      }
+      if ((event.ctrlKey || event.metaKey) && !event.shiftKey && !event.altKey && event.key.toLowerCase() === 'k') {
+        event.preventDefault()
+        event.stopPropagation()
+        chord = true
+        timer = window.setTimeout(() => { chord = false }, 1500)
+      }
+      if (event.key === 'Escape' && zenPyr) {
+        event.preventDefault()
+        event.stopPropagation()
+        setZenPyr(null)
+        editorInstanceRef.current?.focus()
       }
     }
-    window.addEventListener('keydown', handler)
-    return () => window.removeEventListener('keydown', handler)
-  }, [])
+    window.addEventListener('keydown', handler, true)
+    window.addEventListener('questlab-toggle-zen', toggle)
+    return () => {
+      window.clearTimeout(timer)
+      window.removeEventListener('keydown', handler, true)
+      window.removeEventListener('questlab-toggle-zen', toggle)
+    }
+  }, [activeView, zenPyr])
   const progress = campaign?.progress || {}
   const player = progress.player || {}
   // The active campaign project decides which file the Hunt opens; a boss
@@ -588,7 +662,7 @@ function AppV2() {
       void (async () => {
         // Keep the old project's edits, then never leave its file open as
         // if it belonged to the new project.
-        if (dirty) await saveFile()
+        if (dirty && !(await saveFile())) return
         if (exists) return openFile(activeEntryFile, false)
         setEditorMode('file')
         setActivePath('')
@@ -628,20 +702,22 @@ function AppV2() {
   // tutor editor mounted here would render the old duplicate surface beside
   // the new prototype port.
   const showEditor = activeView === 'forge'
+  const zenActive = showEditor && zenMode
+  zenActiveRef.current = zenActive
   const tutorSurface = false
   const questSurface = activeView === 'forge' && editorMode === 'quest'
-  const aiRouteHidden = ['hub', 'character', 'codex', 'tutor', 'homestead', 'settings', 'dungeon'].includes(activeView)
+  const aiRouteHidden = ['hub', 'character', 'codex', 'tutor', 'homestead', 'settings', 'dungeon', 'online'].includes(activeView)
   const hubMode = activeView === 'hub'
   // Codex is a reading room, not another editor-column panel. Keep its
   // active-quest rail inside the folio while giving the book the full Hunt
   // viewport so the page cannot collapse into a narrow infinite-feed shape.
-  const wideSurface = ['hub', 'character', 'homestead', 'codex', 'tutor', 'settings'].includes(activeView)
+  const wideSurface = ['hub', 'character', 'homestead', 'codex', 'tutor', 'settings', 'online'].includes(activeView)
   // Historical contract marker: the original wide route set was
   // const wideSurface = ['hub', 'character', 'homestead', 'codex', 'settings']
   // Tutor is intentionally included now because it owns the full resource
   // reader/IDE surface rather than the legacy Hunt editor grid.
   const dungeonSurface = activeView === 'dungeon'
-  const aiGridVisible = showAiTerminal && !aiRouteHidden && !zenMode
+  const aiGridVisible = showAiTerminal && !aiRouteHidden && !zenActive
   const aiVisible = showAiTerminal && (!aiRouteHidden || aiPopoverOpen)
   const bossGateActive = activeView === 'forge' && (
     campaign?.encounter?.status === 'boss_available'
@@ -677,19 +753,20 @@ function AppV2() {
     finally { setBossTransitionBusy(false) }
   }
   const welcomeName = cloudState.profile?.display_name || player.name || cloudState.user?.email?.split('@')?.[0] || 'Adventurer'
+  const runtimePackaged = Boolean(runtime?.packaged)
   const runtimeBranch = runtime?.repo_git?.branch || 'checking branch…'
-  const runtimeMismatch = Boolean(runtime?.expected_branch && runtimeBranch !== runtime.expected_branch)
-  const runtimeStale = Boolean(runtime?.repo_git?.behind_upstream > 0)
+  const runtimeMismatch = Boolean(!runtimePackaged && runtime?.expected_branch && runtimeBranch !== runtime.expected_branch)
+  const runtimeStale = Boolean(!runtimePackaged && runtime?.repo_git?.behind_upstream > 0)
   const runtimeBuildMismatch = Boolean(
-    FRONTEND_BUILD_SHA
+    !runtimePackaged
+      && FRONTEND_BUILD_SHA
       && runtime?.repo_git?.head_sha
       && FRONTEND_BUILD_SHA !== runtime.repo_git.head_sha,
   )
   const runtimeAuthority = runtime?.state_authority || {}
   const runtimeContractMissing = Boolean(
     runtime && (
-      !runtime.expected_branch
-      || !runtime.repo_git?.head_sha
+      (!runtimePackaged && (!runtime.expected_branch || !runtime.repo_git?.head_sha))
       || !runtimeAuthority.canonical_path
       || runtimeAuthority.canonical_authoritative !== true
       || runtimeAuthority.legacy_authoritative !== false
@@ -758,13 +835,16 @@ function AppV2() {
           detail: event.loot.effect || 'Added to your Armory',
         })
       }
+      if (event.bonus_loot) {
+        notifications.push({ id: `${event.id}:bonus-loot`, kind: 'unlock', title: 'ELITE GEAR', body: event.bonus_loot.name, detail: event.bonus_loot.effect || 'Added to your Armory' })
+      }
       if (event.mob_defeated) {
         notifications.push({
           id: `${event.id}:defeated`,
           kind: 'defeat',
           title: 'MOB DEFEATED',
           body: mobName,
-          detail: [xp > 0 ? `+${xp} XP` : '', coins > 0 ? `+${coins} Coins` : ''].filter(Boolean).join(' · '),
+          detail: [xp > 0 ? `+${xp} XP` : '', coins > 0 ? `+${coins} Coins` : '', event.embers ? `+${event.embers} Ember${event.embers === 1 ? '' : 's'}` : ''].filter(Boolean).join(' · '),
         })
         if (event.next_mob) {
           notifications.push({
@@ -780,7 +860,7 @@ function AppV2() {
             id: `${event.id}:boss-gate`,
             kind: 'unlock',
             title: 'BOSS GATE UNLOCKED',
-            body: event.boss_name || 'Integrated project challenge',
+            body: event.boss_name === 'The Unwritten King' ? 'Lord Twang III' : (event.boss_name || 'Integrated project challenge'),
             detail: 'All mobs cleared · behaviour, explanation and interview remain',
           })
         }
@@ -794,11 +874,13 @@ function AppV2() {
         id: `${event.id}:boss`,
         kind: 'defeat',
         title: 'BOSS DEFEATED',
-        body: event.boss_name || 'Project boss',
+        body: event.boss_name === 'The Unwritten King' ? 'Lord Twang III' : (event.boss_name || 'Project boss'),
         detail: [
           bossRewardXp !== null ? `+${bossRewardXp} XP` : '',
           event.project_name || 'Project complete',
           event.next_project_name ? `Unlocked: ${event.next_project_name}` : '',
+          event.embers ? `+${event.embers} Embers` : '',
+          Array.isArray(event.loot) && event.loot.length ? `Rewards: ${event.loot.map((item) => item.name).join(', ')}` : '',
         ].filter(Boolean).join(' · '),
       })
       if (event.project_completed) {
@@ -1165,7 +1247,7 @@ function AppV2() {
       if (fresh.length) setRewardQueue((current) => [...current, ...fresh].slice(-8))
     }
     campaignRevisionRef.current = nextRevision
-    setCampaign(next)
+    setCampaign(renameShandumballa(next))
     syncEngine.observeCampaign(next)
   }
 
@@ -1191,10 +1273,10 @@ function AppV2() {
   const refreshAiTutor = async () => {
     try {
       const next = await api('/api/ai/status')
-      setAiTutor({ loaded: true, settings: next.settings, opencode: next.opencode })
+      setAiTutor({ loaded: true, settings: next.settings, cloud: next.cloud, opencode: next.opencode })
       return next
     } catch (error) {
-      setAiTutor({ loaded: true, settings: null, opencode: { ready: false, detail: error.message } })
+      setAiTutor({ loaded: true, settings: null, cloud: { ready: false, detail: error.message }, opencode: { ready: false, detail: error.message } })
       return null
     }
   }
@@ -1206,10 +1288,11 @@ function AppV2() {
   }
 
   const openCodeReady = Boolean(aiTutor.opencode?.ready)
-  // OpenCode mode is the default; Classic brings back the CLI terminal.
-  // Without a ready OpenCode the panel falls back to Classic on its own.
-  const pyrMode = aiTutor.settings?.mode === 'classic' ? 'classic' : 'opencode'
-  const builtInPyr = pyrMode === 'opencode' && openCodeReady
+  const sharedPyrReady = Boolean(aiTutor.cloud?.ready)
+  // Keep the device's OpenCode runtime as the default. Shared PYR is opt-in;
+  // a signed-in session must never silently reroute local requests to Supabase.
+  const pyrMode = aiTutor.settings?.mode || 'opencode'
+  const builtInPyr = pyrMode === 'shared' ? sharedPyrReady : pyrMode === 'opencode' && openCodeReady
   const autoGrade = builtInPyr && aiTutor.settings?.auto_grade !== false
 
   // Run one OpenCode call with the shared "PYR is thinking" lock. Concurrent
@@ -1233,23 +1316,24 @@ function AppV2() {
     })
     setNotice(`PYR ${result.verdict === 'correct' ? '✔ correct' : '✘ not yet'} — ${result.reason}`)
     pushPyrLog({ role: 'verdict', verdict: result.verdict, text: result.reason })
+    if (zenActiveRef.current) setZenPyr({ type: 'verdict', verdict: result.verdict, text: result.reason })
     await refreshCampaign({ silent: true })
     return result
   })
 
   // Tutor Notebook tools: a real Ask PYR channel and AI-chosen question lenses.
   const pyrTools = {
-    ready: openCodeReady,
-    chooseLensEnabled: openCodeReady && aiTutor.settings?.choose_practice_lens !== false,
+    ready: builtInPyr,
+    chooseLensEnabled: builtInPyr && aiTutor.settings?.choose_practice_lens !== false,
     ask: ({ question, concept, code, battle = false }) => withPyr('PYR is thinking…', async () => {
       const result = await api('/api/ai/ask', { method: 'POST', body: JSON.stringify({ question, concept, code, battle }) })
       if (result.assist) {
         // Help during a fight costs that fight's rewards (see the battle sidebar),
         // unless an armed PYR's Favour paid for it.
-        const { reward_scale: scale, loot_lost: lootLost, mob_name: mobName, free, free_asks_left: freeLeft } = result.assist
+        const { reward_scale: scale, loot_lost: lootLost, mob_name: mobName, free, free_asks_left: freeLeft, help_free: helpFree } = result.assist
         setNotice(free
           ? `PYR's Favour spent: that ask cost nothing (${freeLeft} free ask${freeLeft === 1 ? '' : 's'} left).`
-          : `PYR helped against ${mobName}: it now pays ${scale}% XP and coins${lootLost ? ' and drops no loot' : ''}.`)
+          : helpFree ? `PYR helped against ${mobName}. Mysterys in Shandumballa rewards are unchanged.` : `PYR helped against ${mobName}: it now pays ${scale}% XP and coins${lootLost ? ' and drops no loot' : ''}.`)
         void refreshCampaign({ silent: true })
       }
       return result.reply
@@ -1554,6 +1638,40 @@ function AppV2() {
       throw new Error('There is no current state-owned quest to submit yet.')
     }
     return submitBattle({ objectiveId: currentQuest.id })
+  }
+
+  const submitInZen = async () => {
+    if (!autoGrade) {
+      setZenPyr({ type: 'error', text: 'Zen feedback requires the built-in PYR tutor with automatic grading. Exit Zen to submit through your CLI tutor.' })
+      return
+    }
+    setZenPyr({ type: 'loading', text: 'PYR is reviewing your submission…' })
+    try {
+      await submitCampaignRun()
+    } catch (error) {
+      if (zenActiveRef.current) setZenPyr({ type: 'error', text: error.message || 'Could not submit this answer.' })
+    }
+  }
+  zenSubmitRef.current = submitInZen
+
+  const askInZen = async (event) => {
+    event.preventDefault()
+    const question = zenQuestion.trim()
+    if (!question) return
+    if (!builtInPyr) {
+      setZenPyr({ type: 'error', text: 'The built-in PYR tutor is not ready. Exit Zen and open Settings → AI Tutor to set it up, or use the CLI tutor in the normal layout.' })
+      return
+    }
+    pushPyrLog({ role: 'you', text: question })
+    setZenPyr({ type: 'loading', text: 'PYR is thinking…' })
+    try {
+      const reply = await pyrTools.ask({ question, concept: campaign?.encounter?.concept || campaign?.encounter?.mob?.concept || '', code: String(code || ''), battle: Boolean(campaign?.encounter?.mob_name) })
+      pushPyrLog({ role: 'pyr', text: reply })
+      if (zenActiveRef.current) setZenPyr({ type: 'reply', text: reply })
+      setZenQuestion('')
+    } catch (error) {
+      if (zenActiveRef.current) setZenPyr({ type: 'error', text: error.message || 'PYR could not answer just now.' })
+    }
   }
 
   // Tutor sparring: simulated fights with foes already met (no damage).
@@ -1934,8 +2052,13 @@ function AppV2() {
   }, [])
 
   useEffect(() => {
+    if (cloudState.authStatus === 'signed-in' || cloudState.authStatus === 'signed-out') void refreshAiTutor()
+  }, [cloudState.authStatus])
+
+  useEffect(() => {
     const onKey = (event) => {
       const modifier = event.ctrlKey || event.metaKey
+      if (event.target instanceof Element && event.target.closest('.zen-pyr-card')) return
       if (modifier && !event.shiftKey && event.key === 'Enter') {
         // Monaco treats Ctrl/Cmd+Enter as a command only when the browser
         // event is intercepted early. Prevent the newline/space insertion and
@@ -1956,6 +2079,7 @@ function AppV2() {
         event.preventDefault()
         event.stopPropagation()
         // Each surface owns its own submit button; click the one on screen.
+        if (zenActive) { void zenSubmitRef.current?.(); return }
         const target = activeView === 'dungeon' ? '[data-dungeon-submit]' : activeView === 'tutor' || activeView === 'practice' ? '[data-tutor-submit]' : '[data-qol-submit]'
         document.querySelector(target)?.click()
         return
@@ -2018,7 +2142,7 @@ function AppV2() {
   }
 
   const openFile = async (path, confirmDiscard = true) => {
-    if (confirmDiscard && dirty && path !== activePath && !window.confirm('Discard unsaved changes?')) return
+    if (confirmDiscard && dirty && !window.confirm('Discard unsaved changes?')) return
     try {
       setBusy(true)
       const result = await api(`/api/file?path=${encodeURIComponent(path)}`)
@@ -2026,6 +2150,10 @@ function AppV2() {
       setActivePath(path)
       editorSelectionRef.current = ''
       setEditorCode(result.content ?? '')
+      fileRevisionRef.current = result.revision
+      fileDirtyRef.current = false
+      fileConflictRef.current = null
+      setFileConflict(null)
       setDirty(false)
       setNotice('')
     } catch (error) {
@@ -2045,23 +2173,91 @@ function AppV2() {
 
   const saveFile = async () => {
     if (!activePath || editorMode === 'quest') return false
+    if (fileConflictRef.current) {
+      setNotice('Resolve the external file change before saving.')
+      return false
+    }
     try {
       setBusy(true)
-      await api('/api/file', {
+      const submitted = codeRef.current
+      const result = await api('/api/file', {
         method: 'PUT',
-        body: JSON.stringify({ path: activePath, content: codeRef.current }),
+        body: JSON.stringify({ path: activePath, content: submitted, expected_revision: fileRevisionRef.current }),
       })
-      setDirty(false)
+      fileRevisionRef.current = result.revision
+      fileDirtyRef.current = codeRef.current !== submitted
+      setDirty(fileDirtyRef.current)
       setNotice(`Saved ${activePath}`)
       refreshCampaign()
       refreshFiles()
       return true
     } catch (error) {
       setNotice(`Save failed: ${error.message}`)
+      if (error.status === 409) void checkExternalFile(activePath)
       return false
     } finally {
       setBusy(false)
     }
+  }
+
+  const checkExternalFile = async (path) => {
+    const startingRevision = fileRevisionRef.current
+    if (!startingRevision) return
+    try {
+      let external
+      try {
+        external = await api(`/api/file?path=${encodeURIComponent(path)}`)
+      } catch (error) {
+        if (error.status !== 404) throw error
+        external = { revision: 'missing', content: null }
+      }
+      // A save or a switch to another file happened while the read was in flight.
+      if (startingRevision !== fileRevisionRef.current || path !== activePathRef.current) return
+      if (external.revision === startingRevision) return
+      if (fileDirtyRef.current || fileConflictRef.current || external.revision === 'missing') {
+        fileConflictRef.current = external
+        setFileConflict(external)
+        setNotice('File changed outside the game. Your edits are preserved until you choose what to keep.')
+      } else {
+        fileRevisionRef.current = external.revision
+        setEditorCode(external.content ?? '')
+        setNotice('Reloaded the file saved outside the game.')
+      }
+    } catch (error) {
+      setNotice(`File sync check failed: ${error.message}`)
+    }
+  }
+
+  useEffect(() => {
+    if (activeView !== 'forge' || editorMode !== 'file' || !activePath) return undefined
+    let cancelled = false
+    const check = () => { if (!cancelled) void checkExternalFile(activePath) }
+    check()
+    const timer = window.setInterval(check, 1500)
+    return () => { cancelled = true; window.clearInterval(timer) }
+  }, [activeView, editorMode, activePath])
+
+  const reloadExternalFile = () => {
+    const external = fileConflictRef.current
+    if (!external || external.revision === 'missing') return
+    fileRevisionRef.current = external.revision
+    fileDirtyRef.current = false
+    fileConflictRef.current = null
+    setFileConflict(null)
+    setEditorCode(external.content ?? '')
+    setDirty(false)
+    setNotice('Loaded the external version.')
+  }
+
+  const keepGameFile = () => {
+    const external = fileConflictRef.current
+    if (!external) return
+    fileRevisionRef.current = external.revision
+    fileDirtyRef.current = true
+    fileConflictRef.current = null
+    setFileConflict(null)
+    setDirty(true)
+    setNotice('Your game edits are kept. Save to replace the external version.')
   }
 
   const saveTutor = async () => {
@@ -2129,6 +2325,10 @@ function AppV2() {
       setDungeonSaving(false)
     }
   }
+  const runDungeonCode = async ({ runId, questionId, content }) => api('/api/dungeon/run-code', {
+    method: 'POST',
+    body: JSON.stringify({ run_id: runId, question_id: questionId, content }),
+  })
 
   const dungeonAction = async (path, payload, successMessage) => {
     try {
@@ -2169,7 +2369,7 @@ function AppV2() {
     return submitDungeon({ runId, questionId, answer: text })
   }
   const travelDungeon = (runId, nodeId) => dungeonAction('/api/dungeon/travel', { run_id: runId, node_id: nodeId }, () => 'You walk back through explored rooms.')
-  const applyDungeonOil = (runId, oilId) => dungeonAction('/api/dungeon/oil', { run_id: runId, oil_id: oilId }, (result) => `${result.oil?.name || 'Oil'} applied: ${result.oil?.effect || ''}`)
+  const applyDungeonOil = (runId, oilId) => dungeonAction('/api/dungeon/oil', { run_id: runId, oil_id: oilId }, (result) => `${result.oil?.name?.replace(/ Oil$/, ' Preparation') || 'Preparation'} applied: ${result.oil?.effect || ''}`)
   const equipDungeonItem = (runId, itemId) => dungeonAction('/api/dungeon/equip', { run_id: runId, item_id: itemId }, (result) => `${result.equipped || itemId} equipped.`)
   const chooseDungeonRoom = (runId, choiceId) => dungeonAction('/api/dungeon/choose', { run_id: runId, choice_id: choiceId }, (result) => {
     const kind = result.choice?.kind || result.dungeon?.room_type || 'room'
@@ -2284,7 +2484,7 @@ function AppV2() {
   const pyrWrittenRoomsRef = useRef(new Set())
   useEffect(() => {
     const question = dungeon.question
-    if (!openCodeReady || aiTutor.settings?.generate_dungeon_questions === false || pyrThinking) return
+    if (!builtInPyr || aiTutor.settings?.generate_dungeon_questions === false || pyrThinking) return
     if (activeView !== 'dungeon' || !dungeon.active || !question?.id || !['encounter', 'elite', 'boss'].includes(dungeon.room_type)) return
     // dungeon.pyr_written survives restarts; dungeonDirty means the player is typing.
     if (dungeon.pyr_written || dungeonDirty || pyrWrittenRoomsRef.current.has(question.id) || String(dungeonCode || '').trim()) return
@@ -2293,21 +2493,30 @@ function AppV2() {
       await api('/api/ai/dungeon-question', { method: 'POST', body: JSON.stringify({ run_id: dungeon.run_id }) })
       await refreshCampaign({ silent: true })
     }).catch((error) => setNotice(`PYR could not write this room (${error.message}); using the built-in question.`))
-  }, [openCodeReady, aiTutor.settings?.generate_dungeon_questions, activeView, dungeon.active, dungeon.run_id, dungeon.room_type, dungeon.question?.id, dungeon.pyr_written, dungeonCode, dungeonDirty, pyrThinking])
+  }, [builtInPyr, aiTutor.settings?.generate_dungeon_questions, activeView, dungeon.active, dungeon.run_id, dungeon.room_type, dungeon.question?.id, dungeon.pyr_written, dungeonCode, dungeonDirty, pyrThinking])
 
   const formatCurrent = async () => {
     if (!activePath || editorMode === 'quest') return
+    if (fileConflictRef.current) {
+      setNotice('Resolve the external file change before formatting.')
+      return
+    }
     try {
       setBusy(true)
+      const submitted = codeRef.current
       const result = await api('/api/format', {
         method: 'POST',
-        body: JSON.stringify({ path: activePath, content: codeRef.current }),
+        body: JSON.stringify({ path: activePath, content: submitted, expected_revision: fileRevisionRef.current }),
       })
-      setEditorCode(result.content ?? codeRef.current)
-      setDirty(false)
+      fileRevisionRef.current = result.revision
+      const changedWhileFormatting = codeRef.current !== submitted
+      if (!changedWhileFormatting) setEditorCode(result.content ?? submitted)
+      fileDirtyRef.current = changedWhileFormatting
+      setDirty(changedWhileFormatting)
       setNotice(`Formatted ${activePath} with ${result.formatter}`)
     } catch (error) {
       setNotice(`Format failed: ${error.message}`)
+      if (error.status === 409) void checkExternalFile(activePath)
     } finally {
       setBusy(false)
     }
@@ -2344,8 +2553,9 @@ function AppV2() {
       dir ? `${dir}/` : '',
     )
     if (!path || path.endsWith('/')) return
+    if (dirty && !window.confirm('Discard unsaved changes before creating a new file?')) return
     try {
-      await api('/api/file', { method: 'PUT', body: JSON.stringify({ path, content: '' }) })
+      await api('/api/file', { method: 'PUT', body: JSON.stringify({ path, content: '', expected_revision: 'missing' }) })
       await refreshFiles()
       await openFile(path, false)
     } catch (error) {
@@ -2494,7 +2704,7 @@ function AppV2() {
       })
       let refreshed = await refreshCampaign()
       if (refreshed && Number(refreshed.revision) < Number(result.revision)) refreshed = await refreshCampaign()
-      if (!refreshed) setCampaign((current) => current ? { ...current, progress: result.progress, home_rooms: result.home_rooms, revision: result.revision } : current)
+      if (!refreshed) setCampaign((current) => current ? renameShandumballa({ ...current, progress: result.progress, home_rooms: result.home_rooms, revision: result.revision }) : current)
       setNotice(`${result.step?.name || 'Room upgrade'} built.`)
       return result
     } catch (error) {
@@ -2540,9 +2750,9 @@ function AppV2() {
     try {
       await api('/api/hunter/craft', { method: 'POST', body: JSON.stringify({ oil_id: oilId }) })
       await refreshCampaign({ silent: true })
-      setNotice('Oil crafted. Apply it in a fight against its beast.')
+      setNotice('Preparation crafted. Use it in a fight against its beast.')
     } catch (error) {
-      setNotice(`Oil not crafted: ${error.message}`)
+      setNotice(`Preparation not crafted: ${error.message}`)
     }
   }
 
@@ -2558,6 +2768,7 @@ function AppV2() {
   }
   const armoryActions = {
     equip: (itemId) => hunterPost('/api/armory/equip', { item_id: itemId }, 'Could not equip that'),
+    equipAppearance: (slot, appearanceId) => hunterPost('/api/armory/appearance', { slot, appearance_id: appearanceId || null }, 'Could not equip that mastery look'),
     unequip: (slot) => hunterPost('/api/armory/unequip', { slot }, 'Could not take that off'),
     use: async (itemId) => {
       const result = await hunterPost('/api/armory/use', { item_id: itemId }, 'Could not use that')
@@ -2572,6 +2783,11 @@ function AppV2() {
   }
   const hunterActions = {
     craftOil,
+    forgeArmor: async (itemId) => {
+      const result = await hunterPost('/api/hunter/forge-armor', { item_id: itemId }, 'Armour not forged')
+      if (result) setNotice('Armour forged. Equip it from Prepare at Home.')
+      return result
+    },
     upgradeKit: async (track) => {
       const result = await hunterPost('/api/hunter/kit', { track }, 'Kit not upgraded')
       if (result) setNotice('Kit upgraded. It comes with you into every delve.')
@@ -2775,6 +2991,9 @@ function AppV2() {
   const signUp = ({ email, password, displayName }) => accountAction(() => syncEngine.signUp(email, password, displayName), 'Account created. Check your email if confirmation is required.')
   const signOut = () => accountAction(() => syncEngine.signOut(), 'Signed out. Hunt stays available locally.')
   const saveDeviceLabel = (label) => accountAction(() => syncEngine.setDeviceLabel(label), 'Device name saved.')
+  const saveProfileName = (name) => accountAction(() => syncEngine.setDisplayName(name), 'Username saved.')
+  const uploadProfileAvatar = (dataUrl) => accountAction(() => syncEngine.setAvatarDataUrl(dataUrl), 'Profile picture saved.')
+  const removeProfileAvatar = () => accountAction(() => syncEngine.removeAvatar(), 'Profile picture removed.')
   const resolveCloudConflict = (choice) => accountAction(() => syncEngine.resolveConflict(choice), choice === 'cloud' ? 'Cloud campaign copy applied.' : 'This device campaign copy published.')
 
   // The encounter card can compact itself; it must not silently override the
@@ -2785,10 +3004,10 @@ function AppV2() {
   // Keep the grid's separator column in compact mode so the editor remains
   // column-four even while the visible resize affordance is hidden.
   const leftPanelColumns = leftPanelCollapsed ? '76px 5px' : `${effectiveLeftWidth}px 5px`
-  const gridStyle = zenMode
+  const gridStyle = zenActive
     ? {
         gridTemplateColumns: 'minmax(0, 1fr)',
-        gridTemplateRows: `minmax(220px, 1fr) 5px ${terminalHeight}px`,
+        gridTemplateRows: 'minmax(0, 1fr)',
       }
     : wideSurface
     ? {
@@ -2841,7 +3060,7 @@ function AppV2() {
 
   return (
     <div
-      className={`app-shell forge-v2 ${hubMode ? 'hub-mode' : ''} ${wideSurface ? 'wide-mode' : ''} ${['tutor', 'codex'].includes(activeView) ? 'resource-mode' : ''} ${dungeonSurface ? 'dungeon-mode' : ''} ${hudDensity === 'compact' ? 'hud-compact' : ''} ${animations ? '' : 'no-animations'} ${zenMode ? 'zen-mode' : ''} ${gameMode ? 'game-mode' : ''}`}
+      className={`app-shell forge-v2 ${hubMode ? 'hub-mode' : ''} ${wideSurface ? 'wide-mode' : ''} ${['tutor', 'codex'].includes(activeView) ? 'resource-mode' : ''} ${dungeonSurface ? 'dungeon-mode' : ''} ${hudDensity === 'compact' ? 'hud-compact' : ''} ${animations ? '' : 'no-animations'} ${zenActive ? 'zen-mode' : ''} ${gameMode ? 'game-mode' : ''}`}
       data-theme={theme}
       data-font={fontFamily}
       data-cursor={equipped.cursor || 'cursor-basic'}
@@ -2855,11 +3074,13 @@ function AppV2() {
     >
       {showSplash && (
         <div className={`launch-splash ${splashClosing ? 'is-closing' : ''}`} role="dialog" aria-modal="true" aria-label="Welcome to Python Quest Lab">
+          <div className="launch-splash-card">
           <div className="launch-splash-mark" aria-hidden="true"><StatIcon name="flame" /></div>
           <span className="screen-kicker">PYTHON QUEST LAB</span>
           <h2>{initialLaunch.returning ? `Welcome back, ${welcomeName}` : 'Welcome to the Hunt'}</h2>
           <p>{initialLaunch.returning ? 'Your campaign, notes and checkpoint are waiting. Resume exactly where you left off.' : 'Your campaign, notes and checkpoint are ready. The shell and AI sessions stay connected while this welcome screen is open.'}</p>
           <button className="primary" type="button" onClick={dismissSplash} disabled={splashClosing}>{splashClosing ? 'Opening…' : 'Enter Hunt'}</button>
+          </div>
         </div>
       )}
       <RewardQueue items={rewardQueue} />
@@ -2874,7 +3095,7 @@ function AppV2() {
         <div className="boss-overlay" role="dialog" aria-modal="true" aria-label="Boss gate">
           <div className="boss-card">
             <span className="screen-kicker">BOSS GATE OPEN</span>
-            <h2>⚔ {campaign?.encounter?.boss || 'The boss'} awaits</h2>
+            <h2>{campaign?.encounter?.boss || 'The boss'} awaits</h2>
             <p>Every bounty on this board is cleared. This boss has its own gauntlet: coding phases you Submit run in the Hunt, and questions about your own code you answer in the left sidebar. Watch its phases on the left.</p>
             <p>During the fight you can read lessons and the bestiary. Leaving for Home or another activity resets the boss to its first phase.</p>
             <button className="primary" type="button" onClick={beginBossFight} disabled={bossTransitionBusy} autoFocus>{bossTransitionBusy ? 'Entering…' : 'Fight'}</button>
@@ -2925,7 +3146,7 @@ function AppV2() {
             </button>
           )}
           {zenMode && (
-            <button className="zen-toggle" type="button" onClick={() => setZenMode(false)} title="Leave Zen mode (Ctrl+Shift+Z)">
+            <button className="zen-toggle" type="button" onClick={() => setZenMode(false)} title="Leave Zen mode (Ctrl/Cmd+K, then Z)">
               Exit Zen
             </button>
           )}
@@ -2942,10 +3163,10 @@ function AppV2() {
         <div className="git-pill">{campaignReady ? `${git.branch || 'no branch'} · ${git.dirty_count ?? 0} changes` : 'campaign unavailable'}</div>
       </div>
 
-      <SurfaceNavigation activeView={activeView} onNavigate={setActiveView} showSettings={['forge', 'dungeon'].includes(activeView)} showAiToggle={['forge', 'dungeon'].includes(activeView) && showAiTerminal && aiRouteHidden} aiOpen={aiPopoverOpen} onToggleAi={() => setAiPopoverOpen((open) => !open)} zenMode={['forge', 'dungeon'].includes(activeView) && zenMode} onExitZen={() => setZenMode(false)} />
+      <SurfaceNavigation activeView={activeView} onNavigate={setActiveView} showSettings={['forge', 'dungeon'].includes(activeView)} showAiToggle={['forge', 'dungeon'].includes(activeView) && showAiTerminal && aiRouteHidden} aiOpen={aiPopoverOpen} onToggleAi={() => setAiPopoverOpen((open) => !open)} zenMode={zenActive} onExitZen={() => setZenMode(false)} />
 
       <main className="workspace-grid" style={gridStyle}>
-        {!wideSurface && !dungeonSurface && !zenMode && <aside className={`left-panel panel ${leftPanelCollapsed ? 'left-panel-compact' : ''}`}>
+        {!wideSurface && !dungeonSurface && !zenActive && <aside className={`left-panel panel ${leftPanelCollapsed ? 'left-panel-compact' : ''}`}>
           <ContextPanel
             activeView={activeView}
             campaign={campaign}
@@ -2973,7 +3194,7 @@ function AppV2() {
           />
         </aside>}
 
-        {!wideSurface && !dungeonSurface && !leftPanelCollapsed && !zenMode && <div className="resize-handle vertical left-resizer" role="separator" aria-orientation="vertical" aria-label="Resize encounter panel" onPointerDown={(event) => startResize('left', event)} />}
+        {!wideSurface && !dungeonSurface && !leftPanelCollapsed && !zenActive && <div className="resize-handle vertical left-resizer" role="separator" aria-orientation="vertical" aria-label="Resize encounter panel" onPointerDown={(event) => startResize('left', event)} />}
         <section className={`editor-panel panel ${showEditor ? '' : 'surface-hidden'} ${tutorSurface ? 'tutor-editor-panel' : ''}`}>
             <div className="editor-toolbar">
               <div className="active-file">
@@ -2986,6 +3207,11 @@ function AppV2() {
                 )}
               </div>
               <div className="toolbar-actions">
+              {zenActive && <>
+                <button type="button" onClick={() => setZenPyr({ type: 'ask' })}>Ask PYR</button>
+                <button type="button" onClick={submitInZen} disabled={Boolean(pyrThinking)} title="Submit current file · Ctrl/Cmd+Shift+Enter">Submit to PYR</button>
+                <button type="button" onClick={() => { setZenPyr(null); setZenMode(false) }} title="Ctrl/Cmd+K, then Z">Exit Zen</button>
+              </>}
               {tutorSurface ? (
                 <>
                   <button onClick={saveTutor} disabled={busy}>Save Tutor</button>
@@ -2998,9 +3224,9 @@ function AppV2() {
                 </>
               ) : (
                 <>
-                  <button onClick={saveFile} disabled={!activePath || busy}>Save</button>
-                  <button onClick={formatCurrent} disabled={!activePath || busy}>Pretty</button>
-                  <button className="primary" onClick={runCurrent} disabled={!activePath || !activePath.endsWith('.py')}>▶ Run</button>
+                  <button className="zen-normal-action" onClick={saveFile} disabled={!activePath || busy}>Save</button>
+                  <button className="zen-normal-action" onClick={formatCurrent} disabled={!activePath || busy}>Pretty</button>
+                  <button className="primary zen-normal-action" onClick={runCurrent} disabled={!activePath || !activePath.endsWith('.py')}>▶ Run</button>
                 </>
               )}
             </div>
@@ -3021,12 +3247,22 @@ function AppV2() {
               <button onClick={keepTutorEdits}>Keep my edits</button>
             </div>
           )}
+          {showEditor && !questSurface && fileConflict && (
+            <div className="tutor-conflict-banner" role="alert">
+              <strong>{fileConflict.revision === 'missing' ? 'File deleted outside the game.' : 'File changed outside the game.'}</strong>
+              <span>Your game edits are preserved. {fileConflict.revision === 'missing' ? 'Keep them to recreate the file when you save.' : 'Reload the external file or keep your edits, then save to replace it.'}</span>
+              {fileConflict.revision !== 'missing' && <button type="button" onClick={reloadExternalFile}>Reload external version</button>}
+              <button type="button" onClick={keepGameFile}>Keep my edits</button>
+            </div>
+          )}
           <div className="editor-wrap">
             <Editor
               path={tutorSurface ? 'tutor.py' : questSurface ? 'quest.md' : (activePath || 'untitled.txt')}
               language={tutorSurface ? 'python' : questSurface ? 'markdown' : languageFor(activePath)}
               value={tutorSurface ? tutorCode : questSurface ? questDocument : code}
-              onMount={(editor) => {
+              onMount={(editor, monaco) => {
+                editorInstanceRef.current = editor
+                if (tutorSurface || languageFor(activePath) === 'python') registerPythonHoverProvider(monaco)
                 editorSelectionSubscriptionRef.current?.dispose()
                 const updateSelection = () => {
                   const selection = editor.getSelection()
@@ -3042,6 +3278,7 @@ function AppV2() {
                   setTutorDirty(true)
                 } else if (!questSurface) {
                   setEditorCode(value ?? '')
+                  fileDirtyRef.current = true
                   setDirty(true)
                 }
               }}
@@ -3059,6 +3296,20 @@ function AppV2() {
               }}
             />
           </div>
+          {zenActive && zenPyr && (
+            <div className="zen-pyr-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget && zenPyr.type !== 'loading') { setZenPyr(null); editorInstanceRef.current?.focus() } }}>
+              <div className={`zen-pyr-card ${zenPyr.verdict || zenPyr.type}`} role="dialog" aria-modal="true" aria-labelledby="zen-pyr-title">
+                <div className="zen-pyr-heading"><span>✦ PYR / FOCUS</span><button type="button" aria-label="Close PYR" onClick={() => { setZenPyr(null); editorInstanceRef.current?.focus() }}>×</button></div>
+                <h2 id="zen-pyr-title">{zenPyr.type === 'ask' ? 'Ask PYR' : zenPyr.type === 'verdict' ? (zenPyr.verdict === 'correct' ? 'That’s right' : 'Not quite yet') : zenPyr.type === 'error' ? 'A little help' : zenPyr.type === 'loading' ? 'One moment' : 'PYR says'}</h2>
+                {zenPyr.type === 'ask' ? <form onSubmit={askInZen}>
+                  <label htmlFor="zen-pyr-question">What are you working through?</label>
+                  <textarea id="zen-pyr-question" autoFocus value={zenQuestion} onChange={(event) => setZenQuestion(event.target.value)} placeholder="Ask for a hint or explanation…" />
+                  <small>PYR can see your current file.{campaign?.encounter?.mob_name ? ' Asking during a fight can affect its rewards.' : ''}</small>
+                  <button className="primary" type="submit" disabled={!zenQuestion.trim() || Boolean(pyrThinking)}>Send to PYR</button>
+                </form> : <><p role="status">{zenPyr.text}</p>{zenPyr.type !== 'loading' && <button type="button" autoFocus onClick={() => { setZenPyr(null); editorInstanceRef.current?.focus() }}>Back to code</button>}</>}
+              </div>
+            </div>
+          )}
         </section>
 
         <div className={`resize-handle horizontal terminal-resizer ${showEditor ? '' : 'surface-hidden'}`} onPointerDown={(event) => startResize('terminal', event)} />
@@ -3102,6 +3353,7 @@ function AppV2() {
                 setDungeonDirty(true)
                 dungeonDirtyRef.current = true
               }}
+              onDungeonRunCode={runDungeonCode}
               onSaveDungeon={saveDungeon}
               onDungeonRest={useDungeonRest}
               onDungeonCampAction={useDungeonCampAction}
@@ -3142,7 +3394,7 @@ function AppV2() {
               selectCampaign={selectCampaign}
               hunter={campaign?.hunter_projection}
               spendStatPoint={spendStatPoint}
-              settingsAi={{ aiTutor, refreshAiTutor, saveAiSettings, activity }}
+              settingsAi={{ aiTutor, refreshAiTutor, saveAiSettings, testAiConnection: (model) => api('/api/ai/test', { method: 'POST', body: JSON.stringify({ model }) }), activity }}
               runtime={runtime}
               busy={busy || Boolean(pyrThinking)}
               preferences={preferences}
@@ -3155,6 +3407,9 @@ function AppV2() {
               onSignUp={signUp}
               onSignOut={signOut}
               onDeviceLabelSave={saveDeviceLabel}
+              onProfileSave={saveProfileName}
+              onAvatarUpload={uploadProfileAvatar}
+              onAvatarRemove={removeProfileAvatar}
               onResolveConflict={resolveCloudConflict}
               workspaceTransfer={workspaceTransfer}
               workspaceTransferBusy={workspaceTransferBusy}
@@ -3164,6 +3419,7 @@ function AppV2() {
               onWorkspaceTransferPreviewPull={previewWorkspacePull}
                onWorkspaceTransferApplyPull={applyWorkspacePull}
                onNavigate={setActiveView}
+               onEquipmentSynced={() => refreshCampaign({ silent: true })}
                tutorCode={tutorCode}
                tutorDirty={tutorDirty}
                tutorExternalChange={tutorExternalChange}
@@ -3189,11 +3445,11 @@ function AppV2() {
           {builtInPyr && (
             <PyrChatPanel
               log={pyrLog}
-              ready={openCodeReady}
+              ready={builtInPyr}
               thinking={pyrThinking}
-              model={aiTutor.settings?.model || 'Auto'}
+              model={(pyrMode === 'shared' ? aiTutor.cloud?.model : aiTutor.settings?.model) || (pyrMode === 'shared' ? 'Shared PYR' : 'OpenCode')}
               onOpenSettings={() => setActiveView('settings')}
-              battleCost={campaign?.encounter?.mob_name ? { mob: campaign.encounter.mob_name, asks: campaign.encounter.pyr_assists || 0, scale: campaign.encounter.reward_scale ?? 100, free: campaign?.armory?.charges?.free_asks || 0 } : null}
+              battleCost={campaign?.encounter?.mob_name ? { mob: campaign.encounter.mob_name, asks: campaign.encounter.pyr_assists || 0, scale: campaign.encounter.reward_scale ?? 100, free: campaign?.armory?.charges?.free_asks || 0, helpFree: campaign.encounter.help_free, lootProtected: campaign.encounter.loot_protected } : null}
               onAsk={(question) => {
                 pushPyrLog({ role: 'you', text: question })
                 pyrTools.ask({ question, concept: campaign?.encounter?.concept || campaign?.encounter?.mob?.concept || '', code: String(code || ''), battle: Boolean(campaign?.encounter?.mob_name) })
@@ -3237,7 +3493,9 @@ function AppV2() {
         {import.meta.env.VITE_QUESTLAB_TEST_UNLOCKS === '1' && <strong style={{ color: '#ffcd4b' }}>TEST SAVE · ALL GEAR UNLOCKED</strong>}
         <span>{notice || `Runtime: ${runtime?.shell || 'checking shell…'}`}</span>
         <span className={`runtime-identity ${runtimeContractMissing || runtimeMismatch || runtimeStale || runtimeBuildMismatch ? 'warning' : ''}`} title={runtime?.repo_root || ''}>
-          {runtimeContractMissing
+          {runtimePackaged
+            ? 'PACKAGED DESKTOP'
+            : runtimeContractMissing
             ? 'RUNTIME STALE · use current launcher'
             : runtimeBuildMismatch
               ? 'FRONTEND STALE · restart current launcher'

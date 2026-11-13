@@ -80,9 +80,6 @@
 .dungeon-brief-you small { display: block; color: var(--dungeon-muted); font-size: 13px; }
 .dungeon-brief-passive { margin-top: 2px; color: var(--dungeon-dim) !important; }
 
-.dungeon-brief-guide summary { cursor: pointer; color: var(--dungeon-gold); font-size: 13px; }
-.dungeon-brief-guide[open] summary { margin-bottom: 8px; }
-.dungeon-brief-guide .dungeon-guide-panel { border: 0; padding: 0; background: transparent; }
 
 /* Verdict card: pops over the Dungeon after every graded submission. */
 .dungeon-verdict-backdrop {

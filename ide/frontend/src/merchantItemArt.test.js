@@ -24,3 +24,18 @@ test('starter coats and vision scrolls resolve to actual images', () => {
     assert.ok(path && existsSync(resolve(publicDir, `.${path}`)), id)
   }
 })
+
+test('Basics run gear and Journal echoes use their own existing item icons', () => {
+  const ids = ['dawn-lantern', 'lantern-coat', 'pilgrim-ward', 'village-lantern', 'pilgrim-knot', 'warm-ember']
+  const paths = ids.map(id => {
+    const runId = `dungeon-${id}`
+    const path = lanternItemArt(runId)
+    assert.equal(path, lanternItemArt(`campaign-${runId}`), id)
+    assert.equal(path, merchantItemArt({ id: runId }), id)
+    const png = readFileSync(resolve(publicDir, `.${path}`))
+    assert.equal(png.readUInt32BE(16), 64, id)
+    assert.equal(png.readUInt32BE(20), 64, id)
+    return path
+  })
+  assert.equal(new Set(paths).size, ids.length)
+})

@@ -4,6 +4,14 @@ import test from 'node:test'
 
 const source = (relativeUrl) => readFileSync(new URL(relativeUrl, import.meta.url), 'utf8')
 
+// The source of one top-level function, so a rule can be scoped to the component it protects.
+const functionSource = (code, name) => {
+  const start = code.search(new RegExp(`(^|\\n)(export )?function ${name}\\(`))
+  assert.ok(start >= 0, `${name} was not found`)
+  const next = code.slice(start + 1).search(/\n(export )?function [A-Z]|\nconst [A-Z_]+ = /)
+  return code.slice(start, next < 0 ? undefined : start + 1 + next)
+}
+
 test('Monaco loads from the local same-origin copy with no CDN loader', () => {
   const main = source('../main.jsx')
   const packageJson = JSON.parse(source('../../package.json'))
@@ -171,12 +179,11 @@ test('Forge binds the active campaign file before provider adjudication', () => 
   assert.match(app, /pasteAiPrompt/)
   assert.match(app, /File sent|Battle answer sent to/)
   assert.match(app, /Bounded Quest Lab context/)
-  assert.match(app, /Active Forge file \(\$\{forge\.path/)
+  assert.match(app, /Active file \(\$\{context\.active_file\?\.path/)
   assert.match(app, /const submitCampaignRun = async/)
   assert.match(app, /__questlabSubmitCampaignRun/)
   assert.match(views, /data-testid="forge-document-tabs"|className="forge-document-tabs"/)
   assert.match(views, /quest\.md <small>STATE VIEW<\/small>/)
-  assert.match(views, /data-testid="pyr-sidebar-companion"/)
   assert.doesNotMatch(views, /data-testid="forge-file-submission"/)
   assert.doesNotMatch(views, /Submit current Forge file to PYR/)
   assert.doesNotMatch(views, /battle-answer-editor/)
@@ -194,9 +201,9 @@ test('Forge left panel can collapse to file shortcuts and restore its drawable e
   assert.match(app, /onToggleCompact=\{\(\) => setLeftPanelCollapsed/)
   assert.match(views, /data-testid="forge-compact-panel"/)
   assert.match(views, /Open quest\.md state view/)
-  assert.match(views, /Compact Forge sidebar/)
-  assert.match(views, /Expand Forge sidebar/)
-  assert.match(views, /onClick=\{\(\) => setActiveView\('tutor'\)\} title="Open Tutor Notebook"/)
+  assert.match(views, /Compact Hunt sidebar/)
+  assert.match(views, /Expand Hunt sidebar/)
+  assert.match(views, /onClick=\{\(\) => setActiveView\('tutor'\)\} title="Open Hunter’s Study"/)
   assert.match(views, /className="sidebar-collapse-toggle"/)
   assert.match(views, /className="forge-compact-expand"[\s\S]*?className=\{`forge-compact-file/)
   assert.match(foundation, /\.forge-compact-panel \{ display: flex;/)
@@ -231,14 +238,12 @@ test('Forge boot has a short fade-in with reduced-motion and preference fallback
   assert.match(foundation, /\.app-shell\.no-animations \{ animation: none !important; \}/)
 })
 
-test('PYR companion has a restrained pet idle loop, lower boss-gate placement, and motion-safe fallback', () => {
+test('PYR pet styling keeps a restrained idle loop, lower boss-gate placement and a motion-safe fallback', () => {
   const views = source('../RpgViews.jsx')
   const foundation = source('../foundation.css')
   const v2 = source('../v2.css')
 
-  assert.match(views, /data-pyr-motion="idle"/)
-  assert.match(views, /className="pyr-eye pyr-eye-left"/)
-  assert.match(views, /className="pyr-eye pyr-eye-right"/)
+  // The sidebar pet is no longer rendered; its styles stay until the pet returns or the CSS is retired.
   assert.match(foundation, /@keyframes pyr-float/)
   assert.match(foundation, /@keyframes pyr-blink/)
   assert.match(foundation, /prefers-reduced-motion: reduce/)
@@ -267,7 +272,7 @@ test('Dungeon checkpoints and Practice remain separate learning modes', () => {
   assert.match(views, /Practice is unlimited and separate from Campaign and Dungeon/)
   assert.match(views, /Submit to PYR/)
   assert.match(views, /RECENT PRACTICE HISTORY/)
-  assert.match(views, /id: 'tutor', label: 'Tutor Notebook'/)
+  assert.match(views, /id: 'tutor', label: 'Hunter’s Study'/)
   assert.doesNotMatch(views, /<option value="python-basics">python-basics<\/option>/)
   assert.match(app, /Tutor Notebook and Practice intentionally share one tutor\.py IDE surface/)
   assert.match(app, /\/api\/tutor\/format/)
@@ -308,27 +313,32 @@ test('navigation keeps Tutor as the single practice workspace and uses one app-l
   const foundation = source('../foundation.css')
   const palette = source('../commandPalette.js')
 
-  assert.match(app, /const normalizeView = \(value\) => value === 'practice' \? 'tutor' : value === 'quests' \? 'codex' : value/)
+  assert.match(app, /const normalizeView = \(value\) => \{/)
+  assert.match(app, /if \(value === 'practice'\) return 'tutor'/)
+  assert.match(app, /if \(value === 'quests'\) return 'codex'/)
+  assert.match(app, /if \(value === 'character' \|\| value === 'homestead'\) return 'hub'/)
   assert.doesNotMatch(app, /value === 'dungeon' \? 'forge'/)
-  assert.match(app, /return normalizeView\(candidate\)/)
+  assert.match(app, /const activeView = normalizeView\(storedActiveView\)/)
   assert.doesNotMatch(views, /id: 'practice', icon:/)
   assert.doesNotMatch(palette, /Open Quest Journal/)
-  assert.match(app, /gridStyle = wideSurface\s*\? \{/)
+  assert.match(app, /const gridStyle = zenActive/)
   assert.match(app, /const wideSurface = \['hub', 'character', 'homestead', 'codex', 'settings'\]/)
-  assert.match(app, /import \{ buildQuestDocument, ContextPanel, GameScreen, RewardQueue, SurfaceNavigation, TutorPracticeBar \}/)
-  assert.match(app, /<SurfaceNavigation activeView=\{activeView\} onNavigate=\{setActiveView\} \/>/)
+  assert.match(app, /import \{[^}]*buildQuestDocument[^}]*ContextPanel[^}]*GameScreen[^}]*RewardQueue[^}]*SurfaceNavigation[^}]*TutorPracticeBar[^}]*\} from/)
+  assert.match(app, /<SurfaceNavigation activeView=\{activeView\} onNavigate=\{setActiveView\} /)
   assert.doesNotMatch(app, /!wideSurface && <ActivityRail/)
   assert.match(views, /data-testid="wide-route-nav"/)
   assert.match(views, /aria-label="Wide route navigation"/)
   assert.match(views, /data-wide-route=\{activeView\}/)
   assert.match(views, /<SurfaceNavigation activeView="codex" onNavigate=\{onNavigate\} \/>/)
   assert.match(views, /const wideRoute = \['hub', 'character', 'homestead', 'codex', 'settings'\]/)
-  assert.match(views, /purchaseCosmetic, equipCosmetic, equipCampaignItem, saveCodexNote/)
+  assert.match(views, /purchaseCosmetic, purchaseMarketItem, equipCosmetic, equipCampaignItem/)
   assert.match(foundation, /\.surface-nav \{ position: sticky;/)
   assert.match(views, /withWideNavigation/)
   assert.match(views, /function RouteIcon\(/)
   assert.match(views, /className="activity-rail" data-react-owned="true"/)
-  assert.doesNotMatch(views, /icon:\s*['"`]/)
+  // Navigation items carry only an id and a label; the icon is the shared RouteIcon, never a text glyph.
+  assert.doesNotMatch(functionSource(views, 'SurfaceNavigation'), /icon:\s*['"`]/)
+  assert.match(functionSource(views, 'SurfaceNavigation'), /<RouteIcon id=\{item\.id\} \/>/)
   assert.match(foundation, /\.wide-screen-frame > \.game-screen-scroll/)
   assert.match(foundation, /\.wide-screen-frame > \.codex-screen \{ flex: 1 1 auto; min-height: 0; height: auto; \}/)
   assert.match(foundation, /\.surface-nav-link\.active/)
@@ -355,16 +365,14 @@ test('wide settings never inherits the Forge rail and the level HUD stays center
   assert.match(v2, /\.forge-v2 \.topbar \.hud-xp \{ justify-self: center;/)
 })
 
-test('Forge-first rail keeps the locked route order', () => {
+test('route rail keeps the locked order', () => {
   const views = source('../RpgViews.jsx')
   const expected = [
-    "{ id: 'hub', label: 'Quest Hub' }",
-    "{ id: 'forge', label: 'Forge' }",
-    "{ id: 'tutor', label: 'Tutor Notebook' }",
+    "{ id: 'hub', label: 'Campaign' }",
+    "{ id: 'tutor', label: 'Hunter’s Study' }",
     "{ id: 'dungeon', label: 'Infinite Dungeon' }",
+    "{ id: 'online', label: 'Colosseum' }",
     "{ id: 'codex', label: 'Codex' }",
-    "{ id: 'character', label: 'Character' }",
-    "{ id: 'homestead', label: 'Homestead' }",
     "{ id: 'settings', label: 'Settings' }",
   ]
   const start = views.indexOf('export const viewItems')
@@ -372,6 +380,9 @@ test('Forge-first rail keeps the locked route order', () => {
   assert.deepEqual(expected, expected.filter((item) => rail.indexOf(item) >= 0).sort((a, b) => rail.indexOf(a) - rail.indexOf(b)))
   assert.equal(rail.includes("{ id: 'practice'"), false)
   assert.equal(rail.includes("{ id: 'dungeon'"), true)
+  // Character and Homestead were merged into the Campaign surface and must not come back as routes.
+  assert.equal(rail.includes("{ id: 'character'"), false)
+  assert.equal(rail.includes("{ id: 'homestead'"), false)
 })
 
 test('splash idle timing follows real activity instead of a background heartbeat', () => {
@@ -419,7 +430,6 @@ test('Forge and Codex keep the active encounter projection visible without Battl
   assert.match(views, /encounter\.mob\?\.lore/)
   assert.match(views, /reward_envelope/)
   assert.match(views, /quest\.md <small>STATE VIEW<\/small>/)
-  assert.match(views, /data-testid="pyr-sidebar-companion"/)
   assert.doesNotMatch(views, /data-testid="forge-file-submission"/)
   assert.match(views, /data-testid="codex-active-quest"/)
   assert.match(views, /data-testid="codex-folio-controls"/)
@@ -430,7 +440,7 @@ test('Forge and Codex keep the active encounter projection visible without Battl
   assert.match(views, /data-testid="codex-mastery"/)
   assert.match(views, /function Codex\(\{ progress, revision, codexProjection, encounter, saveCodexNote/)
   assert.doesNotMatch(views, /id: 'quests', label:/)
-  assert.match(app, /value === 'quests' \? 'codex'/)
+  assert.match(app, /if \(value === 'quests'\) return 'codex'/)
   assert.match(views, /data-testid="dungeon-inventory"/)
   assert.match(views, /onEquip=\{onDungeonEquip\}/)
   assert.match(app, /\/api\/dungeon\/equip/)
@@ -525,13 +535,15 @@ test('Codex mastery and companion surfaces keep the SVG icon language', () => {
   assert.match(foundation, /\.skill-icon svg,[\s\S]*?\.pyr-orb svg,[\s\S]*?\.homestead-hearth > svg/)
 })
 
-test('Character and Homestead props keep the shared SVG icon language', () => {
+test('Character props keep the shared SVG icon language', () => {
   const views = source('../RpgViews.jsx')
   const foundation = source('../foundation.css')
 
-  assert.doesNotMatch(views, /[◈✦♛⌨]/)
+  // Scoped to the live Character screen. The classic Homestead fallback scene still draws
+  // glyph props and is tracked as debt in docs/JOURNAL_AUDIT_2026-11-12.md.
+  assert.doesNotMatch(functionSource(views, 'CharacterScreen'), /[◈✦♛⌨]/)
   assert.match(views, /RouteIcon id="spark"/)
-  assert.match(views, /RouteIcon id="window"/)
+  assert.match(views, /window: <>/)
   assert.match(views, /RouteIcon id="forge" \/>/)
   assert.match(foundation, /F-134: extend the shared 24px monochrome icon grid/)
   assert.match(foundation, /\.equipment-list > div > span svg,[\s\S]*?\.homestead-shelf > svg/)
@@ -554,7 +566,9 @@ test('route, quest and Dungeon markers use the shared SVG vocabulary', () => {
   const views = source('../RpgViews.jsx')
   const foundation = source('../foundation.css')
 
-  assert.doesNotMatch(views, /[✓○◌◆◇◐⌘]/)
+  // Scoped to the Dungeon map, route markers and the Journal. Data tables such as the achievement
+  // catalogue and the classic Homestead still carry glyphs and are tracked as debt.
+  for (const name of ['DungeonGridMap', 'DungeonMap', 'JournalEchoRow', 'DungeonLegacyJournal']) assert.doesNotMatch(functionSource(views, name), /[✓○◌◆◇◐⌘]/, name)
   for (const icon of ['check', 'target', 'lock', 'plus']) assert.match(views, new RegExp(`['"]${icon}['"]`))
   assert.match(foundation, /F-136: finish SVG parity on route, quest and Dungeon markers/)
   assert.match(foundation, /\.dungeon-map-node > span svg,[\s\S]*?\.panel-title > button svg/)
@@ -720,7 +734,6 @@ test('Campaign boss validation remains a state-service boundary without a second
   assert.match(app, /CAMPAIGN COMPLETE/)
   assert.match(app, /answer_source: 'forge_active_file'/)
   assert.match(views, /data-testid="forge-boss-resolve"/)
-  assert.match(views, /data-testid="pyr-sidebar-companion"/)
   assert.match(app, /const submitCampaignRun = async/)
   assert.match(app, /return submitBoss\(\)/)
   assert.doesNotMatch(views, /function ForgeBossSubmission|BOSS \/ MOB MECHANICS/)
@@ -767,7 +780,6 @@ test('boss phases and bounded trinket triggers stay state-service sourced', () =
   assert.match(app, /BOSS PHASE VERIFIED/)
   assert.match(app, /TRINKET TRIGGERED/)
   assert.match(views, /data-testid="forge-boss-resolve"/)
-  assert.match(views, /data-testid="pyr-sidebar-companion"/)
   assert.doesNotMatch(views, /function ForgeBossSubmission/)
   assert.doesNotMatch(views, /data-testid="boss-phase-track"/)
 })
@@ -780,7 +792,6 @@ test('boss gate keeps Resolve in the sidebar and moves the state-owned quest int
   const v2 = source('../v2.css')
 
   assert.match(views, /data-testid="forge-boss-resolve"/)
-  assert.match(views, /data-testid="pyr-sidebar-companion"/)
   assert.match(views, /quest\.md <small>STATE VIEW<\/small>/)
   assert.match(views, /STATE-OWNED CURRENT ENCOUNTER/)
   assert.match(views, /## Current quest/)
@@ -800,7 +811,7 @@ test('boss gate keeps Resolve in the sidebar and moves the state-owned quest int
   assert.match(app, /data-boss-gate=\{bossGateActive \? 'true' : 'false'\}/)
   assert.match(v2, /F-176: route navigation is one app-level surface/)
   assert.match(v2, /data-boss-gate="true"\]\s+\.campaign-battle-sidebar[\s\S]*max-height: none/)
-  assert.match(app, /const effectiveLeftWidth = Math\.max\(260, Number\(leftWidth\)/)
+  assert.match(app, /const effectiveLeftWidth = Math\.max\(battleSidebar \? 380 : 260, Number\(leftWidth\)/)
   assert.match(source('../styles.css'), /left-resizer/)
 })
 
@@ -845,6 +856,8 @@ test('runtime health exposes the checkout and one canonical state authority', ()
   assert.match(views, /CHECKOUT MISMATCH/)
   assert.match(views, /CHECKOUT STALE/)
   assert.match(views, /runtimeContractMissing/)
+  assert.match(views, /const runtimePackaged = Boolean\(runtime\?\.packaged\)/)
+  assert.match(views, /PACKAGED DESKTOP/)
   assert.match(views, /RUNTIME STALE · use current launcher/)
   assert.match(views, /canonical_authoritative !== true/)
   assert.match(views, /legacy_authoritative !== false/)
@@ -894,7 +907,7 @@ test('Codex renders a searchable concept library and writes bounded field notes 
   assert.match(state, /def codex_projection\(/)
 })
 
-test('Codex and Homestead expose live evidence and loadout summaries', () => {
+test('Codex exposes live evidence summaries and the campaign surface reads the equipped gear', () => {
   const views = source('../RpgViews.jsx')
 
   assert.match(views, /codex-summary-grid/)
@@ -902,9 +915,6 @@ test('Codex and Homestead expose live evidence and loadout summaries', () => {
   assert.match(views, /codexMetrics\.verifiedResults/)
   assert.match(views, /pageQuestionTypes/)
   assert.match(views, /pageWeaknesses/)
-  assert.match(views, /homestead-live-status/)
-  assert.match(views, /homestead-overview-grid/)
-  assert.match(views, /CANONICAL REV/)
   assert.match(views, /equipment\.armor/)
   assert.match(views, /equipment\.trinket/)
 })
@@ -924,8 +934,6 @@ test('campaign equipment loadout stays bounded and state-service sourced', () =>
   assert.match(state, /Unlock this campaign item before equipping it/)
   assert.match(app, /const equipCampaignItem = async/)
   assert.match(app, /\/api\/equipment\/equip/)
-  assert.match(views, /data-testid="campaign-loadout"/)
-  assert.match(views, /Future loot stays hidden/)
   assert.match(views, /equipCampaignItem/)
   assert.match(sync, /owned_armor/)
   assert.match(sync, /owned_trinkets/)

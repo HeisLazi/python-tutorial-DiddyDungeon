@@ -112,6 +112,12 @@ const projectCampaignState = (progress = {}) => {
       }
     }
   }
+  if (isRecord(source.dungeon_journal)) {
+    campaign.dungeon_journal = {
+      unlocks: boundedTextList(source.dungeon_journal.unlocks, 128),
+      cleared_bosses: boundedTextList(source.dungeon_journal.cleared_bosses, 8),
+    }
+  }
   if (Array.isArray(source.dungeon_leaderboard)) campaign.dungeon_leaderboard = boundedRecords(source.dungeon_leaderboard, ['run_id', 'score', 'floor', 'room', 'status', 'concept_id', 'ended_at'], 50)
   if (Array.isArray(source.practice_sessions)) {
     campaign.practice_sessions = source.practice_sessions.filter(isRecord).slice(-50).map((session) => ({
@@ -617,7 +623,9 @@ export class SyncEngine {
 
   async signUp(email, password, displayName) {
     if (!this.client?.auth) throw new Error('Cloud sign-up is unavailable in Offline / Local Mode.')
-    const name = normalizeProfileName(displayName)
+    const rawName = String(displayName ?? '').trim().replace(/\s+/g, ' ')
+    if (rawName.length > 24 || /[\u0000-\u001f\u007f]/.test(rawName)) throw new Error('Username must be 1–24 characters and cannot contain control characters.')
+    const name = safeDisplayName(rawName, 'Quest Lab player')
     this.setState({ authStatus: 'signing-up', detail: 'Creating your Quest Lab account…', error: null })
     const { data, error } = await this.client.auth.signUp({
       email: String(email).trim(),
@@ -667,6 +675,22 @@ export class SyncEngine {
     if (result.error) throw asError(result.error, 'Device name could not be saved.')
     this.setState({ device: deviceSummary(result.data), error: null })
     return this.state
+  }
+
+  async setDisplayName(value) {
+    if (!this.client?.from || !this.session?.user) throw new Error('Sign in before changing your username.')
+    const name = String(value ?? '').trim().replace(/\s+/g, ' ')
+    if (!name || name.length > 24 || /[\u0000-\u001f\u007f]/.test(name)) {
+      throw new Error('Username must be 1–24 characters and cannot contain control characters.')
+    }
+    const result = await this.client.from('profiles')
+      .update({ display_name: name })
+      .eq('id', this.session.user.id)
+      .select(profileColumns)
+      .single()
+    if (result?.error) throw asError(result.error, 'Username could not be saved.')
+    this.setState({ profile: profileSummary(result.data), error: null })
+    return this.state.profile
   }
 
   _setAvatar(path, dataUrl, source = 'local', status = 'ready') {
