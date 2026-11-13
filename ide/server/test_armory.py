@@ -102,7 +102,7 @@ class ArmoryBehaviourTests(unittest.TestCase):
         self.assertEqual((weapon["name"], weapon["combat_style"]), ("Ace of Spades Blade", "sword"))
         self.service.apply("armory_equip", {"item_id": "cas-jackpot-hammer"}, "player")
         weapon = self.service.armory_projection(self.service.snapshot())["weapon"]
-        self.assertIsNone(weapon["combat_style"])
+        self.assertEqual(weapon["combat_style"], "greatsword")  # a hammer swings like the heavy style until it has its own
         self.service.apply("armory_unequip", {"slot": "weapon"}, "player")
         self.assertIsNone(self.service.armory_projection(self.service.snapshot())["weapon"])
 

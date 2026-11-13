@@ -28,6 +28,7 @@ from ide.server.beginner_codex import BEGINNER_CODEX
 from ide.server.dungeon_items import GEAR_BY_NAME, REGIONAL_ARMOURS, REGIONAL_TRINKETS, SIGNATURE_WEAPONS
 from ide.server.home_rooms import HOME_ROOM_LABELS, HOME_ROOM_LADDERS, effective_room_levels, validate_room_levels
 from ide.server.online.shop import ONLINE_MASTERY_BY_ID, ONLINE_SHOP_GEAR
+from ide.server.weapon_signatures import SIGNATURE_CAPS, apply_signatures, signature_bonus, signature_text
 
 MAX_EVENT_RECORDS = 100
 MAX_REASON_LENGTH = 240
@@ -1389,6 +1390,7 @@ ARMORY_EFFECT_CAPS = {
     "impact": 3, "break_coins": 10, "reduction": 60, "start_guards": 1, "heal_on_objective": 6,
     "coin_bonus": 25, "xp_bonus": 30, "loot_luck": 25, "heal": 100,
     "opening_impact": 3, "retry_impact": 3, "heal_on_break": 6,
+    **SIGNATURE_CAPS,
 }
 ARMORY_FLAG_EFFECTS = frozenset({"first_miss_free", "block_first_miss", "revive"})
 ARMORY_ON_TYPES = frozenset({"any", *CAMPAIGN_QUESTION_TYPES})
@@ -1653,6 +1655,7 @@ def armory_catalog() -> dict[str, dict[str, Any]]:
             by_id[item_id] = {'id': item_id, 'name': name, 'slot': 'trinket', 'tier': 'rare', 'effect': effect,
                               'campaign': 'elite', 'flavour': f'A keepsake earned from {mob_name}.'}
         by_id[OIL_OF_DOOM['id']] = dict(OIL_OF_DOOM)
+        apply_signatures(by_id)
         _ARMORY_CACHE.update(source=data, by_id=by_id, by_name={item["name"]: item for item in by_id.values()})
     return _ARMORY_CACHE["by_id"]
 
@@ -1677,6 +1680,7 @@ def armory_effect_text(effect: Mapping[str, Any]) -> str:
         parts.append(f"+{effect['retry_impact']} impact when correcting a missed bounty objective")
     if effect.get("heal_on_break"):
         parts.append(f"restore {effect['heal_on_break']} HP on a bounty Guard Break")
+    parts.extend(signature_text(effect))
     if effect.get("reduction"):
         parts.append(f"{effect['reduction']}% less damage from misses")
     if effect.get("first_miss_free"):
@@ -9080,6 +9084,23 @@ class LocalStateService:
         missed_objectives = encounter.get("missed_objectives") if isinstance(encounter.get("missed_objectives"), list) else []
         if weapon and objective_id in missed_objectives:
             impact = min(MAX_IMPACT + ARMORY_EFFECT_CAPS["impact"], impact + int(weapon.get("retry_impact", 0)))
+        weapon_triggers: list[str] = []
+        clean_objective = objective_id not in missed_objectives
+        if weapon:
+            streak = 0
+            for earlier in reversed(completed):
+                if earlier in missed_objectives:
+                    break
+                streak += 1
+            streak = streak + 1 if clean_objective else 0
+            max_resolve = max(1, int(encounter.get("max_resolve", profile["max_resolve"])))
+            signature, weapon_triggers = signature_bonus(
+                weapon, first=not completed, clean=clean_objective, streak=streak,
+                low_hp=self._counter(self._dict(progress, "player"), "hp") * 2 <= max(1, self._counter(self._dict(progress, "player"), "max_hp")),
+                heavy=base_impact >= 4, last_type=encounter.get("last_question_type") if completed else None,
+                this_type=str(objective["question_type"]), enemy_low=before * 5 <= max_resolve * 2, verified=len(completed),
+            )
+            impact = min(MAX_IMPACT + ARMORY_EFFECT_CAPS["impact"], impact + signature)
         if effects['trinket_on'] in {'any', objective['question_type']}:
             impact = min(MAX_IMPACT + ARMORY_EFFECT_CAPS['impact'], impact + effects['trinket_impact'])
         if effects['set_bonus'].get('on') in {'any', objective['question_type']}:
@@ -9095,7 +9116,10 @@ class LocalStateService:
             # objective. Breaking the guard early only helps: a free mistake
             # and coins, then Resolve is what the remaining objectives remove.
             break_coins = CAMPAIGN_BREAK_COINS + (int(weapon.get("break_coins", 0)) if weapon else 0) + int(effects['set_bonus'].get('break_coins', 0))
-            encounter["guards"] = min(3, self._counter(encounter, "guards") + 1)
+            extra_guard = int(weapon.get("break_guard", 0)) if weapon else 0
+            if extra_guard:
+                weapon_triggers.append("Guard +1")
+            encounter["guards"] = min(3, self._counter(encounter, "guards") + 1 + extra_guard)
             break_player = self._dict(progress, "player")
             break_player["coins"] = self._counter(break_player, "coins") + break_coins
             break_stats = self._dict(progress, "stats")
@@ -9103,7 +9127,15 @@ class LocalStateService:
             after = max(1, sum(int(profile["objectives"][key]["impact"]) for key in remaining))
             guard_break = {"coins": break_coins, "guards": encounter["guards"]}
         healed = 0
-        heal_amount = effects["heal_on_objective"] + (int(weapon.get("heal_on_break", 0)) if weapon and guard_break else 0)
+        clean_heal = int(weapon.get("heal_clean", 0)) if weapon and clean_objective else 0
+        if clean_heal:
+            weapon_triggers.append(f"Mend +{clean_heal} HP")
+        clean_coins = int(weapon.get("coin_clean", 0)) if weapon and clean_objective else 0
+        if clean_coins:
+            coin_player = self._dict(progress, "player")
+            coin_player["coins"] = self._counter(coin_player, "coins") + clean_coins
+            weapon_triggers.append(f"Pay-out +{clean_coins} coins")
+        heal_amount = effects["heal_on_objective"] + clean_heal + (int(weapon.get("heal_on_break", 0)) if weapon and guard_break else 0)
         if heal_amount:
             heal_player = self._dict(progress, "player")
             current_hp = self._counter(heal_player, "hp")
@@ -9155,6 +9187,7 @@ class LocalStateService:
                 "base_impact": base_impact,
                 "bonus_impact": bonus_impact,
                 "trinket_trigger": trinket_trigger,
+                "weapon_triggers": weapon_triggers,
                 "resolve_before": before,
                 "resolve_after": after,
                 "mob_defeated": bool(finish),
@@ -9170,6 +9203,7 @@ class LocalStateService:
                 "base_impact": base_impact,
                 "bonus_impact": bonus_impact,
                 "trinket_trigger": trinket_trigger,
+                "weapon_triggers": weapon_triggers,
                 "evidence_id": evidence_id,
                 "reason": reason,
                 "impact": impact,

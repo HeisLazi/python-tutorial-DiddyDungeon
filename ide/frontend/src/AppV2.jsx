@@ -1168,6 +1168,16 @@ function AppV2() {
       }
     }
 
+    if (Array.isArray(event.weapon_triggers) && event.weapon_triggers.length > 0 && action !== 'record_battle_miss') {
+      notifications.push({
+        id: `${event.id}:weapon`,
+        kind: 'reward',
+        title: 'WEAPON ABILITY',
+        body: event.weapon_triggers.join(' · '),
+        detail: 'Your weapon\'s signature fired',
+      })
+    }
+
     if (event.trinket_trigger && action !== 'record_battle_miss') {
       notifications.push({
         id: `${event.id}:trinket`,
