@@ -1,13 +1,12 @@
-"""Static contracts for the unapplied hosted sync migration.
+"""Static contracts for hosted sync migrations.
 
-These checks intentionally do not connect to Supabase.  They keep the
-committed migration and its executable SQL fixture aligned until the hosted
-Milestone C approval gate permits applying and running them against Postgres.
+These checks intentionally do not connect to Supabase. They keep local
+migrations and executable SQL fixtures aligned; live ACL checks belong in the
+Supabase SQL fixtures and hosted acceptance run.
 """
 
-from pathlib import Path
 import unittest
-
+from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 MIGRATION = ROOT / "supabase" / "migrations" / "20260916000100_player_state_device_ownership.sql"
@@ -19,9 +18,31 @@ IDENTITY_RLS_TEST = ROOT / "supabase" / "tests" / "profiles_devices_rls.sql"
 BOUNDS_MIGRATION = ROOT / "supabase" / "migrations" / "20260915000300_player_state_value_bounds.sql"
 CAMPAIGN_MIGRATION = ROOT / "supabase" / "migrations" / "20260917000100_player_state_campaign_projection.sql"
 DUNGEON_GRID_MIGRATION = ROOT / "supabase" / "migrations" / "20261025000100_dungeon_grid_and_boss_phases.sql"
+RPC_PRIVILEGES_MIGRATION = ROOT / "supabase" / "migrations" / "20261108014402_revoke_anonymous_save_and_validator_rpcs.sql"
 
 
 class CloudMigrationContractTests(unittest.TestCase):
+    def test_security_definer_helpers_are_not_public_api(self):
+        import re
+
+        sql = re.sub(r"\s+", " ", RPC_PRIVILEGES_MIGRATION.read_text(encoding="utf-8").lower())
+        for function in (
+            "public.handle_new_quest_lab_user()",
+            "public.validate_campaign_projection(jsonb)",
+            "public.validate_player_state_projection(jsonb)",
+            "public.validate_player_state_projection_base(jsonb)",
+        ):
+            self.assertIn(f"revoke execute on function {function} from public, anon, authenticated;", sql)
+
+        self.assertIn(
+            "revoke execute on function public.save_player_state(bigint, jsonb, uuid) from public, anon;",
+            sql,
+        )
+        self.assertIn(
+            "grant execute on function public.save_player_state(bigint, jsonb, uuid) to authenticated;",
+            sql,
+        )
+
     def test_player_state_rpc_binds_provenance_to_authenticated_device(self):
         sql = MIGRATION.read_text(encoding="utf-8")
 
@@ -122,12 +143,24 @@ class CloudMigrationContractTests(unittest.TestCase):
         ):
             self.assertIn(phrase, sql)
 
+    def test_campaign_projection_capacity_migration_keeps_json_bounds_and_acl(self):
+        # Find the migration by name: later, unrelated migrations are allowed to sort after it.
+        matches = sorted((ROOT / "supabase" / "migrations").glob("*increase_cloud_campaign_projection_limit*.sql"))
+        self.assertTrue(matches, "the campaign projection capacity migration is missing")
+        sql = matches[-1].read_text(encoding="utf-8")
+        self.assertIn("octet_length(campaign::text) > 48000", sql)
+        self.assertIn("octet_length(next_state::text) > 64000", sql)
+        self.assertIn("octet_length(state::text) <= 64000", sql)
+        self.assertIn("revoke all on function public.validate_campaign_projection(jsonb) from public;", sql)
+        self.assertIn("revoke all on function public.validate_player_state_projection(jsonb) from public;", sql)
+
     def test_dungeon_grid_migration_accepts_every_field_the_app_syncs(self):
         import re
 
         from ide.server.state import LocalStateService
 
-        sql = DUNGEON_GRID_MIGRATION.read_text(encoding="utf-8")
+        newest = max(path for path in (ROOT / "supabase" / "migrations").glob("*.sql") if "dungeon_journal" in path.read_text(encoding="utf-8"))
+        sql = newest.read_text(encoding="utf-8")
 
         def allow_list(prefix: str, anchor: str) -> set[str]:
             lists = [set(re.findall(r"'([a-z_]+)'", body)) for body in re.findall(re.escape(prefix) + r" - array\[([^\]]*)\]", sql)]
@@ -158,12 +191,23 @@ class CloudMigrationContractTests(unittest.TestCase):
         from ide.server.state import BOSS_REQUIREMENTS
 
         # The latest migration that (re)defines the boss phase list is the live one.
-        newest = sorted(path for path in (ROOT / "supabase" / "migrations").glob("*.sql") if "unsupported phase" in path.read_text(encoding="utf-8"))[-1]
+        newest = max(path for path in (ROOT / "supabase" / "migrations").glob("*.sql") if "unsupported phase" in path.read_text(encoding="utf-8"))
         sql = newest.read_text(encoding="utf-8")
         phases = re.search(r"field_name not in \(([^)]*)\)", sql)
         self.assertIsNotNone(phases)
         self.assertEqual(set(re.findall(r"'([a-z0-9_]+)'", phases.group(1))), set(BOSS_REQUIREMENTS))
         self.assertIn(f"-> 'verified') > {len(BOSS_REQUIREMENTS)} then", sql)
+
+    def test_latest_campaign_validator_accepts_only_bounded_journal_shape(self):
+        newest = max(
+            path
+            for path in (ROOT / "supabase" / "migrations").glob("*.sql")
+            if "create or replace function public.validate_campaign_projection" in path.read_text(encoding="utf-8")
+        )
+        sql = newest.read_text(encoding="utf-8")
+        self.assertIn("'dungeon_journal'", sql)
+        self.assertIn("dungeon journal unlocks must be bounded", sql)
+        self.assertIn("dungeon journal boss clears must be bounded", sql)
 
 
 if __name__ == "__main__":

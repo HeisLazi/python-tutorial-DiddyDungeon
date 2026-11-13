@@ -22,8 +22,11 @@ import shutil
 import subprocess
 import threading
 import time
+from contextvars import ContextVar
 from pathlib import Path
 from typing import Any
+
+import httpx
 
 DEFAULT_TIMEOUT_SECONDS = 150
 STATUS_TIMEOUT_SECONDS = 25
@@ -35,7 +38,8 @@ MODEL_PATTERN = re.compile(r"^[A-Za-z0-9._:/@#+-]{0,200}$")
 
 DEFAULT_SETTINGS: dict[str, Any] = {
     "provider": "opencode",
-    # "opencode": PYR is built in and grades automatically (default).
+    # OpenCode remains local and is the default even for signed-in users.
+    # "shared": use the hosted PYR function explicitly.
     # "classic": the Forge PYR terminal, where the player launches a CLI
     # harness (Claude, AGY, Codex, Copilot) that receives pasted prompts.
     "mode": "opencode",
@@ -60,6 +64,11 @@ TUTOR_RULES = (
 _CALL_LOCK = threading.Lock()
 _SETTINGS_LOCK = threading.Lock()
 _MODELS_CACHE: dict[str, Any] = {"at": 0.0, "models": []}
+_PYR_CREDENTIALS: ContextVar[tuple[str, str]] = ContextVar("questlab_pyr_credentials", default=("", ""))
+PYR_FUNCTION_URL = os.getenv(
+    "QUESTLAB_PYR_FUNCTION_URL",
+    "https://ajnxexxcqfbozszwpjpk.supabase.co/functions/v1/pyr",
+).strip()
 
 
 class AiTutorError(Exception):
@@ -69,6 +78,56 @@ class AiTutorError(Exception):
         super().__init__(message)
         self.kind = kind
         self.status_code = status_code
+
+
+def bind_request_credentials(access_token: str, publishable_key: str):
+    """Bind the signed-in player's Supabase credentials to this request only."""
+
+    return _PYR_CREDENTIALS.set((access_token, publishable_key))
+
+
+def reset_request_credentials(token) -> None:
+    _PYR_CREDENTIALS.reset(token)
+
+
+def _cloud_request_headers() -> dict[str, str]:
+    access_token, publishable_key = _PYR_CREDENTIALS.get()
+    if not access_token:
+        return {}
+    headers = {"Authorization": f"Bearer {access_token}"}
+    if publishable_key.startswith("sb_publishable_"):
+        headers["apikey"] = publishable_key
+    return headers
+
+
+def cloud_status() -> dict[str, Any]:
+    """Check the shared tutor endpoint without sending a model request."""
+
+    headers = _cloud_request_headers()
+    if not headers:
+        return {"ready": False, "detail": "Sign in to your Quest Lab account to use shared PYR."}
+    if not PYR_FUNCTION_URL.startswith("https://"):
+        return {"ready": False, "detail": "Shared PYR endpoint is not configured for HTTPS."}
+    try:
+        response = httpx.get(PYR_FUNCTION_URL, headers=headers, timeout=8.0, follow_redirects=False)
+    except httpx.HTTPError:
+        return {"ready": False, "detail": "Shared PYR could not be reached."}
+    if response.status_code == 401:
+        return {"ready": False, "detail": "Your cloud session expired. Sign in again to use shared PYR."}
+    if response.status_code == 403:
+        return {"ready": False, "detail": "Join your private Hunter group to use shared PYR."}
+    if response.status_code != 200:
+        return {"ready": False, "detail": "Shared PYR is not ready. Check its cloud configuration."}
+    try:
+        payload = response.json()
+    except ValueError:
+        payload = {}
+    return {
+        "ready": payload.get("ready") is True,
+        "provider": str(payload.get("provider") or "Shared AI"),
+        "model": str(payload.get("model") or ""),
+        "detail": str(payload.get("detail") or "Shared PYR is ready."),
+    }
 
 
 # ── Device-local settings ──────────────────────────────────────────────
@@ -109,8 +168,8 @@ def save_settings(update: dict[str, Any]) -> dict[str, Any]:
                 raise AiTutorError(f"Invalid value for {key}", kind="invalid", status_code=422)
             if key == "model" and not MODEL_PATTERN.match(value):
                 raise AiTutorError("Model must look like provider/model", kind="invalid", status_code=422)
-            if key == "mode" and value not in {"opencode", "classic"}:
-                raise AiTutorError("Mode must be opencode or classic", kind="invalid", status_code=422)
+            if key == "mode" and value not in {"opencode", "shared", "classic"}:
+                raise AiTutorError("Mode must be opencode, shared or classic", kind="invalid", status_code=422)
             settings[key] = value
         path = settings_path()
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -285,7 +344,54 @@ def prepare_scratch() -> Path:
 
 
 def run_prompt(prompt: str, *, title: str, model: str | None = None, timeout: float = DEFAULT_TIMEOUT_SECONDS) -> str:
-    """Run one prompt through OpenCode and return the final assistant text."""
+    """Run using the selected local OpenCode or hosted PYR runtime."""
+
+    selected_mode = load_settings().get("mode", "opencode")
+    if selected_mode == "shared":
+        headers = _cloud_request_headers()
+        if not headers:
+            raise AiTutorError("Sign in to Quest Lab to use shared PYR.", kind="auth", status_code=401)
+        if not PYR_FUNCTION_URL.startswith("https://"):
+            raise AiTutorError("Shared PYR is not configured for HTTPS", kind="unavailable", status_code=503)
+        if len(prompt) > MAX_CONTEXT_CHARS:
+            raise AiTutorError("PYR context is too large", kind="invalid", status_code=413)
+        if not _CALL_LOCK.acquire(blocking=False):
+            raise AiTutorError("PYR is already thinking about another request", kind="busy", status_code=409)
+        try:
+            response = httpx.post(
+                PYR_FUNCTION_URL,
+                headers=headers,
+                json={"prompt": prompt, "title": title[:120]},
+                timeout=timeout,
+                follow_redirects=False,
+            )
+        except httpx.TimeoutException as exc:
+            raise AiTutorError(f"Shared PYR took longer than {int(timeout)}s", kind="timeout", status_code=504) from exc
+        except httpx.HTTPError as exc:
+            raise AiTutorError("Shared PYR could not be reached", kind="unavailable", status_code=503) from exc
+        finally:
+            _CALL_LOCK.release()
+        if response.status_code == 401:
+            raise AiTutorError("Your cloud session expired. Sign in again to use shared PYR.", kind="auth", status_code=401)
+        if response.status_code == 403:
+            raise AiTutorError("Join your private Hunter group to use shared PYR.", kind="auth", status_code=403)
+        if response.status_code == 429:
+            raise AiTutorError("Shared PYR has reached its request limit. Try again shortly.", kind="rate_limited", status_code=429)
+        if response.status_code >= 500:
+            raise AiTutorError("The shared AI provider is temporarily unavailable", kind="provider", status_code=502)
+        if response.status_code != 200:
+            raise AiTutorError("Shared PYR rejected this request", kind="invalid", status_code=422)
+        try:
+            payload = response.json()
+        except ValueError as exc:
+            raise AiTutorError("Shared PYR returned an invalid response", kind="empty") from exc
+        reply = payload.get("reply") if isinstance(payload, dict) else None
+        if not isinstance(reply, str) or not reply.strip():
+            raise AiTutorError("Shared PYR returned no answer", kind="empty")
+        return reply.strip()[:MAX_ANSWER_CHARS]
+
+    if selected_mode == "classic":
+        raise AiTutorError("PYR is set to Manual CLI. Choose Local OpenCode or Shared PYR to use built-in answers.", kind="unavailable", status_code=409)
 
     binary = opencode_binary()
     if not binary:
@@ -707,7 +813,14 @@ def ask(*, question: str, concept: str = "", code: str = "", context: Any = None
 
 
 def test_connection(model: str | None = None) -> dict[str, Any]:
-    chosen = resolve_model((model if model is not None else load_settings()["model"]).strip())
+    selected_mode = load_settings().get("mode", "opencode")
+    if selected_mode == "classic":
+        raise AiTutorError("Manual CLI mode has no built-in connection test. Choose Local OpenCode or Shared PYR first.", kind="unavailable", status_code=409)
+    cloud_mode = selected_mode == "shared"
+    cloud = cloud_status() if cloud_mode else {}
+    if cloud_mode and not cloud.get("ready"):
+        raise AiTutorError(str(cloud.get("detail") or "Shared PYR is not ready."), kind="unavailable", status_code=503)
+    chosen = str(cloud.get("model") or "Shared PYR") if cloud_mode else resolve_model((model if model is not None else load_settings()["model"]).strip())
     started = time.monotonic()
     reply = extract_json_object(
         run_prompt('Reply with ONLY this JSON object: {"ok": true}', title="Quest Lab · connection test", model=model, timeout=90)

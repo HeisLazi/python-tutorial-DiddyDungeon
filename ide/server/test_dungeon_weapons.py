@@ -5,7 +5,8 @@ from pathlib import Path
 
 import pytest
 
-from ide.server.state import LocalStateService
+from ide.server.dungeon_items import GEAR_BY_NAME
+from ide.server.state import DUNGEON_MARKET_CATALOG, LocalStateService
 from ide.server.test_state_service import fixture_progress
 
 
@@ -29,6 +30,9 @@ def change(path, weapon, *, hp=None, resolve=None, cleared=None, question_type=N
     state = json.loads(path.read_text())
     run = state['dungeon_run']
     run['loadout']['weapon'] = weapon
+    item = GEAR_BY_NAME.get(weapon) or next((candidate for candidate in DUNGEON_MARKET_CATALOG if candidate.get('weapon') == weapon), None)
+    if item and not any(entry['id'] == item['id'] for entry in run['inventory']):
+        run['inventory'].append({key: item[key] for key in ('id', 'name', 'kind', 'weapon', 'armor', 'trinket', 'description') if key in item})
     if hp is not None:
         run['loadout']['hp'] = hp
     if resolve is not None:

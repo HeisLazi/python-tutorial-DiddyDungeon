@@ -3,6 +3,7 @@ from __future__ import annotations
 import unittest
 from unittest.mock import patch
 
+import httpx
 from fastapi.testclient import TestClient
 from starlette.websockets import WebSocketDisconnect
 
@@ -44,6 +45,47 @@ class LocalSecurityTests(unittest.TestCase):
         self.assertEqual(origins[:2], ("http://127.0.0.1:5275", "http://localhost:5275"))
         self.assertIn("tauri://localhost", origins)
         self.assertNotIn("*", origins)
+
+    def test_online_config_relay_returns_only_public_client_settings(self):
+        transport = httpx.MockTransport(
+            lambda request: httpx.Response(
+                200,
+                json={"url": "https://example.supabase.co", "publishable_key": "sb_publishable_test"},
+            )
+        )
+        original_client = httpx.AsyncClient
+        with (
+            patch.object(app_v2, "ONLINE_SERVICE_URL", "https://online.example"),
+            patch.object(
+                app_v2.httpx,
+                "AsyncClient",
+                side_effect=lambda *args, **kwargs: original_client(
+                    *args, transport=transport, **kwargs
+                ),
+            ),
+        ):
+            response = self.client.get("/api/online/client-config")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.headers["cache-control"], "no-store")
+        self.assertTrue(response.json()["publishable_key"].startswith("sb_publishable_"))
+
+    def test_online_config_relay_rejects_secret_keys(self):
+        transport = httpx.MockTransport(
+            lambda request: httpx.Response(
+                200,
+                json={"url": "https://example.supabase.co", "publishable_key": "sb_secret_test"},
+            )
+        )
+        original_client = httpx.AsyncClient
+        with patch.object(
+            app_v2.httpx,
+            "AsyncClient",
+            side_effect=lambda *args, **kwargs: original_client(
+                *args, transport=transport, **kwargs
+            ),
+        ):
+            response = self.client.get("/api/online/client-config")
+        self.assertEqual(response.status_code, 503)
 
 
 if __name__ == "__main__":

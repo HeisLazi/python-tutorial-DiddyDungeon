@@ -27,6 +27,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from ide.server.beginner_codex import BEGINNER_CODEX
 from ide.server.dungeon_items import GEAR_BY_NAME, REGIONAL_ARMOURS, REGIONAL_TRINKETS, SIGNATURE_WEAPONS
 from ide.server.home_rooms import HOME_ROOM_LABELS, HOME_ROOM_LADDERS, effective_room_levels, validate_room_levels
+from ide.server.online.shop import ONLINE_MASTERY_BY_ID, ONLINE_SHOP_GEAR
 
 MAX_EVENT_RECORDS = 100
 MAX_REASON_LENGTH = 240
@@ -143,9 +144,8 @@ def campaign_contract(branch: object, mob_name: object) -> dict[str, Any] | None
     return next((item for item in mobs if isinstance(item, dict) and item.get("name") == mob_name), None)
 MAX_IDENTIFIER_LENGTH = 120
 MAX_REWARD_XP = 100
-# Asking PYR for help during a campaign fight costs that fight's rewards:
-# each ask takes 20% off its XP and coins (never below 40%), and from the
-# second ask on it drops no loot. The bounty also stops counting as clean.
+# Outside Lantern Vale, paid PYR help reduces XP and coins and can suppress
+# ordinary loot. Named elite rewards are protected. Assisted fights are not clean.
 PYR_ASSIST_REWARD_STEP = 20
 PYR_ASSIST_REWARD_FLOOR = 40
 PYR_ASSIST_LOOT_LIMIT = 2
@@ -180,11 +180,12 @@ PRACTICE_DIFFICULTY_MAX = 5
 CODEX_NOTES_DIRECTORY = "notes"
 MAX_DUNGEON_LEADERBOARD = 50
 MAX_DUNGEON_INVENTORY = 64
+MAX_DUNGEON_JOURNAL_UNLOCKS = 128
 MAX_SYNC_LIST_ITEMS = 100
 MAX_SYNC_TEXT_LENGTH = 120
 MAX_SYNC_LEVEL = 1000
 MAX_SYNC_COUNTER = 1_000_000_000
-MAX_SYNC_CAMPAIGN_BYTES = 18_000
+MAX_SYNC_CAMPAIGN_BYTES = 48_000
 MAX_SYNC_PROJECTS = 20
 MAX_SYNC_MOBS_PER_PROJECT = 20
 MAX_SYNC_GOALS_PER_BUCKET = 20
@@ -257,7 +258,7 @@ EQUIPMENT_CATALOG: tuple[dict[str, Any], ...] = (
     {"id": "trinket-ember-scythe", "name": "Ember Scythe", "kind": "trinket", "effect": "+1 Impact on the first verified objective", "description": "A weapon-shaped trinket; Impact remains evidence-backed."},
     {"id": "trinket-guardian-sigil", "name": "Guardian Sigil", "kind": "trinket", "effect": "Negates one counterattack", "description": "A single bounded ward for a risky submission."},
     {"id": "trinket-phoenix-ember", "name": "Phoenix Ember", "kind": "trinket", "effect": "Revives at 1 HP once per encounter", "description": "A last spark when an incorrect answer would down you."},
-    {"id": "debugger-plate", "name": "Debugger Plate", "kind": "armor", "effect": "15% less damage from misses", "description": "A plated guard tuned for the next mechanic."},
+    {"id": "debugger-plate", "name": "Debugger Plate", "kind": "armor", "effect": "30% less damage from misses", "description": "Rare spectral plate for hunters who stand their ground."},
     {"id": "ledgerguard-coat", "name": "Ledgerguard Coat", "kind": "armor", "effect": "25% less damage from misses", "description": "A careful coat for long, difficult lessons."},
     {"id": "emberweave-mantle", "name": "Emberweave Mantle", "kind": "armor", "effect": "30% less damage from misses", "description": "Warm woven plates catch one punishing mistake."},
     {"id": "syntax-ward", "name": "Syntax Ward", "kind": "trinket", "effect": "Blocks the first counterattack each battle", "description": "A compact ward against syntax-error damage."},
@@ -310,8 +311,8 @@ EQUIPMENT_ID_BY_NAME: dict[str, str] = {item["name"]: item["id"] for item in EQU
 CAMPAIGN_MARKET_CATALOG: tuple[dict[str, Any], ...] = (
     {"id": "field-bandage", "name": "Field bandage", "kind": "supply", "supply": "bandages", "price": 18, "description": "Recover during Home preparation."},
     {"id": "ember-tonic", "name": "Ember tonic", "kind": "supply", "supply": "tonics", "price": 32, "description": "A one-use buffer for the next encounter."},
-    {"id": "camp-meal", "name": "Camp meal", "kind": "supply", "supply": "meals", "price": 26, "description": "Restore a small amount of HP from the encounter kit."},
-    {"id": "debugger-plate", "name": "Debugger Plate", "kind": "armor", "price": 72, "description": "15% less damage from misses."},
+    {"id": "camp-meal", "name": "Camp meal", "kind": "supply", "supply": "meals", "price": 26, "description": "Feed Pyr or restore HP from the encounter kit."},
+    {"id": "debugger-plate", "name": "Debugger Plate", "kind": "armor", "price": 220, "description": "30% less damage from misses."},
     {"id": "ledgerguard-coat", "name": "Ledgerguard Coat", "kind": "armor", "price": 118, "description": "25% less damage from misses."},
     {"id": "emberweave-mantle", "name": "Emberweave Mantle", "kind": "armor", "price": 146, "description": "30% less damage from misses."},
     {"id": "syntax-ward", "name": "Syntax Ward", "kind": "trinket", "price": 48, "description": "Blocks the first counterattack each battle."},
@@ -321,6 +322,8 @@ CAMPAIGN_MARKET_CATALOG: tuple[dict[str, Any], ...] = (
     {"id": "vision-scroll", "name": "Vision Scroll", "kind": "trinket", "price": 125, "description": "+10% chance of rarer loot."},
 )
 CAMPAIGN_MARKET_BY_ID: dict[str, dict[str, Any]] = {item["id"]: item for item in CAMPAIGN_MARKET_CATALOG}
+# Keep retired IDs in the catalogue for old saves, but no longer sell them.
+CAMPAIGN_MARKET_AVAILABLE = frozenset({"field-bandage", "ember-tonic", "camp-meal", "debugger-plate", "syntax-ward", "loop-lens"})
 
 # Homestead room progression is intentionally a small authored catalogue.  The
 # browser may render this copy, but ownership, costs and the resulting stat
@@ -519,6 +522,8 @@ ACTION_DEFINITIONS: dict[str, ActionDefinition] = {
     "boss_start": ActionDefinition(frozenset({"player"})),
     "boss_retreat": ActionDefinition(frozenset({"player"})),
     "equip_equipment": ActionDefinition(frozenset({"player"})),
+    "sync_online_equipment": ActionDefinition(frozenset({"player"})),
+    "armory_appearance_equip": ActionDefinition(frozenset({"player"})),
     "set_avatar": ActionDefinition(frozenset({"player"})),
     "select_campaign": ActionDefinition(frozenset({"player"})),
     "hunter_spend_point": ActionDefinition(frozenset({"player"})),
@@ -556,6 +561,7 @@ ACTION_DEFINITIONS: dict[str, ActionDefinition] = {
     "dungeon_reroll_question": ActionDefinition(frozenset({SYSTEM_ACTOR}), internal=True),
     "hunter_craft_oil": ActionDefinition(frozenset({"player"})),
     "hunter_upgrade_kit": ActionDefinition(frozenset({"player"})),
+    "hunter_forge_armor": ActionDefinition(frozenset({"player"})),
     "armory_equip": ActionDefinition(frozenset({"player"})),
     "armory_unequip": ActionDefinition(frozenset({"player"})),
     "armory_use": ActionDefinition(frozenset({"player"})),
@@ -1126,6 +1132,7 @@ SYNC_CAMPAIGN_FIELDS = frozenset(
         "codex",
         "dungeon_run",
         "dungeon_leaderboard",
+        "dungeon_journal",
         "practice_sessions",
     }
 )
@@ -1323,9 +1330,9 @@ def dungeon_equipped_effects(loadout: Mapping[str, Any]) -> dict[str, int]:
 # sign's beast (one per fight), an oil only helps: a free mistake, a slower
 # mechanic or bigger Resolve chips. It never shortens a fight.
 HUNTER_OIL_TIERS = (
-    {"id": "ward", "name": "Ward Oil", "rank": 0, "parts": 2, "essence": 0, "coins": 10, "effect": "One free mistake banked for this fight."},
-    {"id": "slowing", "name": "Slowing Oil", "rank": 1, "parts": 3, "essence": 1, "coins": 25, "effect": "Its mechanic countdown gets 2 more answers."},
-    {"id": "bane", "name": "Bane Oil", "rank": 2, "parts": 5, "essence": 2, "coins": 50, "effect": "Every correct answer chips 3 more Resolve this fight."},
+    {"id": "ward", "name": "Ward Preparation", "rank": 0, "parts": 2, "essence": 0, "coins": 10, "effect": "One free mistake banked for this fight."},
+    {"id": "slowing", "name": "Slowing Preparation", "rank": 1, "parts": 3, "essence": 1, "coins": 25, "effect": "Its mechanic countdown gets 2 more answers."},
+    {"id": "bane", "name": "Bane Preparation", "rank": 2, "parts": 5, "essence": 2, "coins": 50, "effect": "Every correct answer chips 3 more Resolve this fight."},
 )
 HUNTER_OIL_TIERS_BY_ID = {tier["id"]: tier for tier in HUNTER_OIL_TIERS}
 HUNTER_OIL_SLOW_ANSWERS = 2
@@ -1349,6 +1356,25 @@ DUNGEON_MATERIAL_NAMES[DUNGEON_VIAL] = "Unmarked Vial"
 HUNTER_IDENTIFY_TIER_WEIGHTS = (("ward", 6), ("slowing", 3), ("bane", 1))
 
 
+# Permanent armour made with banked Dungeon materials. Dungeon run gear
+# remains separate, so crafting does not silently alter an active run.
+HUNTER_FORGED_ARMOUR = (
+    {"id": "forged-lantern-coat", "name": "Lanternbound Coat", "slot": "armor", "tier": "uncommon", "effect": {"reduction": 18}, "flavour": "A coat stitched from the remains of the village's mimics.", "materials": {"mimic-scale": 4, "village-essence": 1}, "coins": 40},
+    {"id": "forged-divers-mail", "name": "Drowned Mail", "slot": "armor", "tier": "rare", "effect": {"reduction": 25}, "flavour": "Mail assembled from the Collection Caves' drowned hoard.", "materials": {"drowner-link": 4, "cave-essence": 1}, "coins": 65},
+    {"id": "forged-keeper-plate", "name": "Flowkeeper Plate", "slot": "armor", "tier": "rare", "effect": {"reduction": 30}, "flavour": "Plate worked from the scales and essence of Flow Keep.", "materials": {"ouroboros-scale": 4, "keep-essence": 1}, "coins": 90},
+    {"id": "forged-norse-mail", "name": "Norse Mail", "slot": "armor", "tier": "uncommon", "effect": {"reduction": 20}, "flavour": "Layered mail and a fur mantle forged for a hunter's journey.", "materials": {"mimic-scale": 3, "village-essence": 1}, "coins": 45},
+)
+
+# Stashed copies use bounded run effects and never consume permanent gear.
+HUNTER_FORGED_RUN_ARMOUR = tuple(
+    {"id": item["id"], "name": item["name"], "kind": "armor", "armor": item["name"],
+     "description": description, "effects": effects}
+    for item, description, effects in zip(HUNTER_FORGED_ARMOUR,
+        ("Reduce damage from each failed answer by 2.", "The first mistake in each fight deals 3 less damage.", "Reduce damage from each failed answer by 3.", "Reduce damage from each failed answer by 2."),
+        ({"damage_flat": 2}, {"damage_first_fight": 3}, {"damage_flat": 3}, {"damage_flat": 2}))
+)
+GEAR_BY_NAME.update({item["name"]: item for item in HUNTER_FORGED_RUN_ARMOUR})
+
 # ── Armory: campaign gear, food and relics ───────────────────────────────
 # Every campaign story file carries an "armory" of themed items (weapons,
 # armour, trinkets, food, tonics and a boss relic). Ownership lives in the
@@ -1362,6 +1388,7 @@ ARMORY_TIERS = ("common", "uncommon", "rare", "epic", "legendary")
 ARMORY_EFFECT_CAPS = {
     "impact": 3, "break_coins": 10, "reduction": 60, "start_guards": 1, "heal_on_objective": 6,
     "coin_bonus": 25, "xp_bonus": 30, "loot_luck": 25, "heal": 100,
+    "opening_impact": 3, "retry_impact": 3, "heal_on_break": 6,
 }
 ARMORY_FLAG_EFFECTS = frozenset({"first_miss_free", "block_first_miss", "revive"})
 ARMORY_ON_TYPES = frozenset({"any", *CAMPAIGN_QUESTION_TYPES})
@@ -1380,6 +1407,9 @@ AID_ITEMS = (
      "flavour": "Three questions, no strings, no lost rewards."},
     {"id": "aid-aegis-of-patience", "name": "Aegis of Patience", "slot": "aid", "tier": "rare", "effect": {"wards": 2}, "price": 110,
      "flavour": "For the bounties where you will need two more tries."},
+    {"id": "aid-scholar-note", "name": "Scholar's Notes", "slot": "aid", "tier": "uncommon", "effect": {"free_asks": 2}, "price": 70, "flavour": "Two questions for PYR without a reward penalty."},
+    {"id": "aid-lantern-ward", "name": "Lantern Ward", "slot": "aid", "tier": "rare", "effect": {"wards": 2}, "price": 125, "flavour": "Two patient chances to recover from mistakes."},
+    {"id": "aid-travellers-kit", "name": "Traveller's Aid Kit", "slot": "aid", "tier": "epic", "effect": {"wards": 1, "free_asks": 2}, "price": 165, "flavour": "A ward and two questions for a difficult journey."},
 )
 AID_DROP_CHANCE = 30  # % per cleared bounty
 # Simple weapons let the Home loadout use the authored combat styles. Their
@@ -1390,6 +1420,9 @@ HUNTER_STYLE_WEAPONS = (
     {"id": "hunter-sparring-greatsword", "name": "Hunter's Greatsword", "slot": "weapon", "tier": "common", "effect": {"impact": 1, "on": "code_checkpoint"}, "price": 80, "combat_style": "greatsword", "flavour": "A heavy blade held in both hands."},
     {"id": "hunter-sparring-scythe", "name": "Hunter's Scythe", "slot": "weapon", "tier": "common", "effect": {"impact": 1, "on": "bug_diagnosis"}, "price": 80, "combat_style": "scythe", "flavour": "A long steel scythe wielded in both hands."},
     {"id": "hunter-sparring-focus", "name": "Hunter's Casting Focus", "slot": "weapon", "tier": "common", "effect": {"impact": 1, "on": "explanation"}, "price": 80, "combat_style": "handmagic", "flavour": "A focus for casting directly from the hands."},
+    {"id": "merchant-vigil-sabre", "name": "Vigil Sabre", "slot": "weapon", "tier": "uncommon", "effect": {"heal_on_break": 3}, "price": 115, "combat_style": "sword", "flavour": "A duelist's blade that recovers health when a bounty's guard breaks."},
+    {"id": "merchant-moonlit-staff", "name": "Moonlit Staff", "slot": "weapon", "tier": "rare", "effect": {"opening_impact": 2}, "price": 230, "combat_style": "staff", "flavour": "A starlit focus that makes the first verified bounty objective count."},
+    {"id": "merchant-nightfall-greatsword", "name": "Nightfall Greatsword", "slot": "weapon", "tier": "epic", "effect": {"retry_impact": 2}, "price": 340, "combat_style": "greatsword", "flavour": "A heavy blade that rewards correcting a mistake."},
 )
 
 # Campaign versions are distinct permanent items. Run gear keeps its own rules.
@@ -1427,17 +1460,138 @@ def campaign_dungeon_trinket_effect(item: Mapping[str, Any]) -> dict[str, Any]:
 CAMPAIGN_DELVE_GEAR = tuple(
     {'id': 'campaign-' + item['id'], 'name': CAMPAIGN_WEAPON_NAMES[item['id']], 'slot': 'weapon', 'tier': 'epic',
      'effect': CAMPAIGN_WEAPON_EFFECTS[item['id']], 'combat_style': item.get('style') or DUNGEON_WEAPON_STYLES.get(item['name'], 'sword'),
-     'flavour': 'A campaign-forged version of a Dungeon weapon.', 'source_id': item['id'], 'region': item.get('region')}
+     'flavour': 'A campaign-forged version of a Dungeon weapon.', 'source_id': item['id'], 'region': item.get('region'),
+     'mode_eligibility': ['campaign', 'sparring', 'pvp'], 'source': 'legacy-journal'}
     for item in CAMPAIGN_DUNGEON_SOURCES
 ) + tuple(
     {'id': 'campaign-' + item['id'], 'name': "Delver's " + item['name'], 'slot': 'trinket', 'tier': 'rare',
      'effect': campaign_dungeon_trinket_effect(item), 'flavour': 'A keepsake earned from a dangerous elite.',
-     'source_id': item['id'], 'region': item['region']}
+     'source_id': item['id'], 'region': item['region'],
+     'mode_eligibility': ['campaign', 'sparring', 'pvp'], 'source': 'legacy-journal'}
     for item in REGIONAL_TRINKETS
 )
+
+# Armour echoes follow the "prove it in battle" rule: win a boss wearing the run armour (a regional
+# armour only counts at its own region's boss) and the Journal records a permanent campaign echo.
+# One row per armour: (run armour id, echo name, tier, campaign damage reduction, flavour).
+# Tier follows the run price (under 60 common, 60-99 uncommon, 100-149 rare, 150-199 epic, 200+
+# legendary); reduction comes from the existing campaign armour ladder. Adding a region is one row.
+CAMPAIGN_ARMOUR_ECHOES = (
+    ('dungeon-lantern-coat', 'Lanternkeeper’s Coat', 'uncommon', 18, 'A coat mended by the keepers of the Basics Village lanterns.'),
+    ('dungeon-pilgrim-ward', 'Wayfarer’s Wardplate', 'rare', 25, 'A pilgrim’s ward, hammered flat and worn to the first boss.'),
+)
+_RUN_ARMOUR_BY_ID = {item['id']: item for item in DUNGEON_MARKET_CATALOG if item.get('kind') == 'armor'}
+CAMPAIGN_DELVE_GEAR += tuple(
+    {'id': 'campaign-' + source_id, 'name': name, 'slot': 'armor', 'tier': tier, 'effect': {'reduction': reduction},
+     'flavour': flavour, 'source_id': source_id, 'region': _RUN_ARMOUR_BY_ID[source_id].get('region'),
+     'mode_eligibility': ['campaign', 'sparring', 'pvp'], 'source': 'legacy-journal'}
+    for source_id, name, tier, reduction, flavour in CAMPAIGN_ARMOUR_ECHOES
+)
+# Run gear that earns its echo by winning a boss while using it: the shop armour above and the
+# seven market weapons. Signature weapons and elite trinkets keep their own drop rules.
+JOURNAL_PROOF_ITEMS = {
+    item['source_id']: next(source for source in DUNGEON_MARKET_CATALOG if source['id'] == item['source_id'])
+    for item in CAMPAIGN_DELVE_GEAR
+    if item['source_id'] in {source['id'] for source in DUNGEON_MARKET_CATALOG if source.get('kind') in {'weapon', 'armor'}}
+}
+# Boss clears add small, capped, run-only perks to every future run. The first three give
+# starting HP (and a bandage at three); each later boss adds exactly one more small perk.
+JOURNAL_BOSS_PERKS = {
+    4: ('starting_coins', 10, '+10 starting run coins'),
+    5: ('starting_vision_scrolls', 1, '+1 vision scroll'),
+    6: ('starting_heals', 1, '+1 heal charge'),
+    7: ('starting_rations', 1, '+1 ration'),
+    8: ('starting_tonics', 1, '+1 ember tonic'),
+}
+JOURNAL_MASTER_TITLE = 'Master Delver'
 OIL_OF_DOOM = {'id': 'cas-oil-of-doom', 'name': 'Oil of Doom and Despair', 'slot': 'weapon', 'tier': 'legendary',
     'effect': {'impact': 2, 'on': 'any', 'break_coins': 5}, 'combat_style': 'oil',
     'flavour': 'A giant baby oil bottle gripped by its lid and swung in both hands.', 'campaign': '04-casino-slots'}
+
+# These are permanent campaign gear; the bottle remains a boss reward.
+HUNTER_FASHION_GEAR = (
+    {'id': 'hunter-ivory-revel-suit', 'name': 'Ivory Revel Suit', 'slot': 'armor', 'tier': 'rare', 'effect': {'reduction': 20}, 'price': 180, 'flavour': 'A white suit with a tiny bottle companion.'},
+    {'id': 'hunter-pink-cap-charm', 'name': 'Pink Cap Charm', 'slot': 'trinket', 'tier': 'rare', 'effect': {'coin_bonus': 10}, 'price': 100, 'flavour': 'A keepsake for the Ivory Revel set.'},
+    {'id': 'hunter-gravebound-plate', 'name': 'Gravebound Warden Plate', 'slot': 'armor', 'tier': 'rare', 'effect': {'reduction': 30}, 'price': 200, 'flavour': 'A sentinel’s spectral battle plate.'},
+    {'id': 'hunter-gravebound-greatblade', 'name': 'Gravebound Greatblade', 'slot': 'weapon', 'tier': 'rare', 'effect': {'retry_impact': 2, 'heal_on_break': 2}, 'price': 180, 'combat_style': 'greatsword', 'flavour': 'A grave-forged blade that turns a corrected mistake into renewed strength.'},
+    {'id': 'hunter-soul-lantern', 'name': 'Soul Lantern', 'slot': 'trinket', 'tier': 'rare', 'effect': {'heal_on_objective': 1}, 'price': 120, 'flavour': 'A little stolen light for the long fight.'},
+    {'id': 'hunter-harvest-coat', 'name': 'Harvest Revenant Coat', 'slot': 'armor', 'tier': 'rare', 'effect': {'reduction': 20}, 'price': 160, 'flavour': 'Autumn colours for a midnight hunt.'},
+    {'id': 'hunter-jack-scythe', 'name': 'Jack-o’ Scythe', 'slot': 'weapon', 'tier': 'rare', 'effect': {'impact': 1, 'on': 'prediction'}, 'price': 170, 'combat_style': 'scythe', 'flavour': 'A harvest blade that rewards foresight.'},
+    {'id': 'hunter-jacklight-charm', 'name': 'Jacklight Charm', 'slot': 'trinket', 'tier': 'rare', 'effect': {'coin_bonus': 10}, 'price': 100, 'flavour': 'A flickering pumpkin keepsake.'},
+    {'id': 'merchant-patchwork-coat', 'name': 'Merchant Patchwork Coat', 'slot': 'armor', 'tier': 'common', 'effect': {'reduction': 12}, 'price': 75, 'flavour': 'A practical travelling coat, mended for the road.'},
+    {'id': 'merchant-pilgrim-leather', 'name': 'Merchant Pilgrim Leather', 'slot': 'armor', 'tier': 'uncommon', 'effect': {'reduction': 18}, 'price': 125, 'flavour': 'A fitted leather coat for a cautious traveller.'},
+    {'id': 'merchant-wayfarer-brigandine', 'name': 'Merchant Wayfarer Brigandine', 'slot': 'armor', 'tier': 'rare', 'effect': {'reduction': 25}, 'price': 205, 'flavour': 'Layered protection for a longer expedition.'},
+    {'id': 'merchant-oracle-mantle', 'name': 'Merchant Oracle Mantle', 'slot': 'armor', 'tier': 'epic', 'effect': {'reduction': 20, 'first_miss_free': True}, 'price': 350, 'flavour': 'An embroidered mantle that forgives the first mistake in each battle.'},
+)
+
+SHOP_SUPPLIES = (
+    {'id': 'merchant-road-rations', 'name': 'Road Rations', 'slot': 'food', 'tier': 'common', 'effect': {'heal': 20}, 'price': 35, 'flavour': 'A packed meal that restores 20 HP.'},
+    {'id': 'merchant-orchard-apple', 'name': 'Orchard Apple', 'slot': 'food', 'tier': 'common', 'effect': {'heal': 12}, 'price': 20, 'flavour': 'A simple snack for a short trip.'},
+    {'id': 'merchant-herbal-tea', 'name': 'Herbal Tea', 'slot': 'tonic', 'tier': 'common', 'effect': {'next_battle': {'reduction': 10}}, 'price': 30, 'flavour': 'A soothing brew for the next battle.'},
+    {'id': 'merchant-wayside-stew', 'name': 'Wayside Stew', 'slot': 'food', 'tier': 'uncommon', 'effect': {'heal': 30}, 'price': 55, 'flavour': 'A warm bowl after a hard road.'},
+    {'id': 'merchant-scholars-tea', 'name': 'Scholar’s Tea', 'slot': 'tonic', 'tier': 'uncommon', 'effect': {'next_battle': {'xp_bonus': 15}}, 'price': 60, 'flavour': 'Steady attention for your next fight.'},
+    {'id': 'merchant-warding-draught', 'name': 'Warding Draught', 'slot': 'tonic', 'tier': 'uncommon', 'effect': {'next_battle': {'guards': 1}}, 'price': 70, 'flavour': 'Carry a little protection into battle.'},
+    {'id': 'merchant-hearth-pie', 'name': 'Hearth Pie', 'slot': 'food', 'tier': 'rare', 'effect': {'heal': 45}, 'price': 90, 'flavour': 'A generous slice for a weary hunter.'},
+    {'id': 'merchant-steadfast-tonic', 'name': 'Steadfast Tonic', 'slot': 'tonic', 'tier': 'rare', 'effect': {'next_battle': {'reduction': 15}}, 'price': 95, 'flavour': 'Reduce damage by 15% in the next battle.'},
+    {'id': 'merchant-traders-tonic', 'name': 'Trader’s Tonic', 'slot': 'tonic', 'tier': 'rare', 'effect': {'next_battle': {'coin_bonus': 15}}, 'price': 95, 'flavour': 'A little luck for the next bounty.'},
+    {'id': 'merchant-hunters-feast', 'name': 'Hunter’s Feast', 'slot': 'food', 'tier': 'epic', 'effect': {'heal': 60}, 'price': 145, 'flavour': 'A hearty meal before a dangerous hunt.'},
+    {'id': 'merchant-insight-elixir', 'name': 'Insight Elixir', 'slot': 'tonic', 'tier': 'epic', 'effect': {'next_battle': {'xp_bonus': 25, 'reduction': 10}}, 'price': 160, 'flavour': 'Focus and protection for the next battle.'},
+    {'id': 'merchant-lucky-ward', 'name': 'Lucky Ward Tonic', 'slot': 'tonic', 'tier': 'epic', 'effect': {'next_battle': {'coin_bonus': 25, 'guards': 1}}, 'price': 170, 'flavour': 'A guarded opening and a richer bounty.'},
+    {'id': 'merchant-grand-banquet', 'name': 'Grand Banquet', 'slot': 'food', 'tier': 'legendary', 'effect': {'heal': 80}, 'price': 240, 'flavour': 'A feast saved for the longest journeys.'},
+    {'id': 'merchant-sages-resolve', 'name': 'Sage’s Resolve', 'slot': 'tonic', 'tier': 'legendary', 'effect': {'next_battle': {'xp_bonus': 40, 'reduction': 20}}, 'price': 260, 'flavour': 'Concentration and resolve for one demanding battle.'},
+    {'id': 'merchant-gilded-aegis', 'name': 'Gilded Aegis Tonic', 'slot': 'tonic', 'tier': 'legendary', 'effect': {'next_battle': {'coin_bonus': 40, 'guards': 1}}, 'price': 270, 'flavour': 'A fortified start and a generous bounty.'},
+)
+
+# A named keepsake belongs to one authored elite. IDs stay stable even if the
+# catalogue or the order of a campaign changes.
+CAMPAIGN_ELITE_TRINKETS = {
+    ('00-lantern-vale', 'The Endless Echo'): ('echo-knot', 'Echo Knot', {'block_first_miss': True}),
+    ('00-lantern-vale', 'The Delivery Beast'): ('delivery-seal', 'Delivery Seal', {'heal_on_objective': 1}),
+    ('00-lantern-vale', 'The Clockwork Caravan'): ('caravan-gear', 'Caravan Gear', {'start_guards': 1}),
+    ('00-lantern-vale', 'The Unwritten Road'): ('open-road-token', 'Open Road Token', {'loot_luck': 10}),
+    ('04-casino-slots', 'The Debt Ghoul'): ('debt-ghoul-token', 'Debt Ghoul Token', {'coin_bonus': 10}),
+    ('04-casino-slots', 'The Greed Spirit'): ('greed-spirits-coin', 'Greed Spirit’s Coin', {'loot_luck': 10}),
+    ('04-casino-slots', 'The Balancer'): ('balancers-weight', 'Balancer’s Weight', {'block_first_miss': True}),
+    ('04-casino-slots', 'The Front Door'): ('front-door-key', 'Front Door Key', {'start_guards': 1}),
+    ('05-dungeon-crawler', 'The Seeded Maze'): ('seeded-maze-knot', 'Seeded Maze Knot', {'loot_luck': 10}),
+    ('05-dungeon-crawler', 'The Star Seeker'): ('star-seekers-lens', 'Star Seeker’s Lens', {'xp_bonus': 10}),
+    ('05-dungeon-crawler', 'The Context Keeper'): ('context-keepers-seal', 'Context Keeper’s Seal', {'block_first_miss': True}),
+    ('05-dungeon-crawler', 'The Lantern Keeper'): ('lantern-keepers-wick', 'Lantern Keeper’s Wick', {'heal_on_objective': 1}),
+    ('05-dungeon-crawler', 'The Type Inquisitor'): ('inquisitors-sigil', 'Inquisitor’s Sigil', {'start_guards': 1}),
+}
+
+# Boss rewards are fixed to their campaign and deliberately exclude trinkets.
+CAMPAIGN_BOSS_GEAR = {
+    '00-lantern-vale': ('lv-05', 'lv-10', 'lv-22'),
+    '01-blackjack': ('bj-the-house-cutter', 'bj-the-high-roller-s-mail', 'bj-the-house-s-broken-shoe'),
+    '04-casino-slots': ('cas-oil-of-doom', 'cas-the-fortune-mail', 'cas-lady-luck-s-loaded-coin'),
+    '05-dungeon-crawler': ('dc-the-core-breaker', 'dc-the-core-forged-plate', 'dc-the-dungeon-core-fragment'),
+}
+
+# Each piece has exactly one elite source; the keepsake is awarded alongside it.
+CAMPAIGN_ELITE_GEAR = {
+    ('00-lantern-vale', 'The Endless Echo'): 'lv-02',
+    ('00-lantern-vale', 'The Delivery Beast'): 'lv-07',
+    ('00-lantern-vale', 'The Clockwork Caravan'): 'lv-03',
+    ('00-lantern-vale', 'The Unwritten Road'): 'lv-09',
+    ('04-casino-slots', 'The Debt Ghoul'): 'cas-lever-arm-mace',
+    ('04-casino-slots', 'The Greed Spirit'): 'cas-silver-sequin-vest',
+    ('04-casino-slots', 'The Balancer'): 'cas-auditor-s-waistcoat',
+    ('04-casino-slots', 'The Front Door'): 'cas-jackpot-hammer',
+    ('05-dungeon-crawler', 'The Seeded Maze'): 'dc-riveted-leather',
+    ('05-dungeon-crawler', 'The Star Seeker'): 'dc-lantern-lit-shortsword',
+    ('05-dungeon-crawler', 'The Context Keeper'): 'dc-deepvein-brigandine',
+    ('05-dungeon-crawler', 'The Lantern Keeper'): 'dc-deepvein-warhammer',
+    ('05-dungeon-crawler', 'The Type Inquisitor'): 'dc-lamp-lit-lamellar',
+}
+CAMPAIGN_FIXED_REWARD_IDS = frozenset(CAMPAIGN_ELITE_GEAR.values()) | frozenset(item for items in CAMPAIGN_BOSS_GEAR.values() for item in items)
+SHOP_AID_IDS = frozenset({'aid-pyrs-favour', 'aid-ward-shield', 'aid-scholar-note', 'aid-lantern-ward', 'aid-travellers-kit'})
+
+HUNTER_SETS = (
+    {'id': 'ivory-revel', 'name': 'Ivory Revel', 'pieces': ('cas-oil-of-doom', 'hunter-ivory-revel-suit', 'hunter-pink-cap-charm'), 'bonus': {'coin_bonus': 10, 'heal_on_objective': 1}, 'description': '+10% campaign coins and heal 1 HP per verified objective.'},
+    {'id': 'gravebound', 'name': 'Gravebound Warden', 'pieces': ('hunter-gravebound-greatblade', 'hunter-gravebound-plate', 'hunter-soul-lantern'), 'bonus': {'reduction': 10, 'heal_on_objective': 1}, 'description': '+10% damage reduction and heal 1 HP per verified objective.'},
+    {'id': 'harvest', 'name': 'Harvest Revenant', 'pieces': ('hunter-jack-scythe', 'hunter-harvest-coat', 'hunter-jacklight-charm'), 'bonus': {'impact': 1, 'on': 'prediction', 'break_coins': 3}, 'description': '+1 prediction impact and +3 coins on a Guard Break.'},
+)
 
 # The local activity log behind the Settings activity graph: one entry per
 # (local) day. Never synced; old days fall off after a bit over a year.
@@ -1450,7 +1604,7 @@ ARMORY_MAX_STACK = 99
 CAMPAIGN_BREAK_COINS = 3
 LEGACY_ARMOR_REDUCTION = {
     "Apprentice Coat": 10, "Leather Guard": 20, "Runic Mail": 30, "Emberplate": 40, "Guardian Aegis": 50, "Mythril Archive Plate": 60,
-    "Debugger Plate": 15, "Ledgerguard Coat": 25, "Emberweave Mantle": 30,
+    "Debugger Plate": 30, "Ledgerguard Coat": 25, "Emberweave Mantle": 30,
 }
 # The Merchant's original trinkets, given real armory effects.
 LEGACY_TRINKET_EFFECTS = {
@@ -1463,10 +1617,10 @@ LEGACY_TRINKET_EFFECTS = {
 # Animations are authored per weapon type; unsupported equipment gets an
 # explicit unarmed placeholder instead of pretending it is a sword.
 ARMORY_WEAPON_COMBAT_STYLES: dict[str, str] = {
-    "lv-01": "sword", "lv-02": "sword",
+    "lv-01": "sword", "lv-02": "sword", "lv-05": "sword",
     "bj-card-edge-dagger": "sword", "bj-ace-of-spades-blade": "sword",
     "bj-the-shoe-splitter": "greatsword", "bj-the-house-cutter": "sword",
-    "dc-lantern-lit-shortsword": "sword",
+    "dc-lantern-lit-shortsword": "sword", "dc-the-core-breaker": "greatsword",
 }
 ARMORY_COMBAT_STYLES = frozenset({"sword", "staff", "whip", "greatsword", "handmagic", "scythe", "oil"})
 
@@ -1486,10 +1640,18 @@ def armory_catalog() -> dict[str, dict[str, Any]]:
                     by_id[item["id"]] = {**item, "campaign": branch}
         for item in AID_ITEMS:
             by_id[item["id"]] = {**item, "campaign": AID_CAMPAIGN}
-        for item in HUNTER_STYLE_WEAPONS:
+        for item in HUNTER_STYLE_WEAPONS + HUNTER_FASHION_GEAR + SHOP_SUPPLIES:
             by_id[item["id"]] = {**item, "campaign": "hunter"}
+        for item in HUNTER_FORGED_ARMOUR:
+            by_id[item["id"]] = {**item, "campaign": "smithing"}
         for item in CAMPAIGN_DELVE_GEAR:
             by_id[item['id']] = {**item, 'campaign': 'dungeon'}
+        for item in ONLINE_SHOP_GEAR:
+            by_id[item['id']] = {**item, 'campaign': 'online'}
+        for (branch, mob_name), (slug, name, effect) in CAMPAIGN_ELITE_TRINKETS.items():
+            item_id = 'elite-' + branch + '-' + slug
+            by_id[item_id] = {'id': item_id, 'name': name, 'slot': 'trinket', 'tier': 'rare', 'effect': effect,
+                              'campaign': 'elite', 'flavour': f'A keepsake earned from {mob_name}.'}
         by_id[OIL_OF_DOOM['id']] = dict(OIL_OF_DOOM)
         _ARMORY_CACHE.update(source=data, by_id=by_id, by_name={item["name"]: item for item in by_id.values()})
     return _ARMORY_CACHE["by_id"]
@@ -1509,6 +1671,12 @@ def armory_effect_text(effect: Mapping[str, Any]) -> str:
         parts.append(f"+{effect['impact']} impact on {'every objective' if on == 'any' else _OBJECTIVE_WORDS.get(on, on) + ' objectives'}")
     if effect.get("break_coins"):
         parts.append(f"+{effect['break_coins']} coins on a Guard Break")
+    if effect.get("opening_impact"):
+        parts.append(f"+{effect['opening_impact']} impact on the first verified bounty objective")
+    if effect.get("retry_impact"):
+        parts.append(f"+{effect['retry_impact']} impact when correcting a missed bounty objective")
+    if effect.get("heal_on_break"):
+        parts.append(f"restore {effect['heal_on_break']} HP on a bounty Guard Break")
     if effect.get("reduction"):
         parts.append(f"{effect['reduction']}% less damage from misses")
     if effect.get("first_miss_free"):
@@ -2707,7 +2875,7 @@ class LocalStateService:
 
         dungeon = campaign.get("dungeon_run")
         if dungeon is not None:
-            raw = cls._campaign_mapping(dungeon, "campaign.dungeon_run", {"status", "run_id", "seed", "class_id", "concept_id", "floor", "room", "room_type", "score", "run_coins", "started_at", "updated_at", "ended_at", "loadout", "inventory", "question", "question_number", "room_choices", "map", "floor_layout", "gear_charge", "gear_charge_weapon", "gear_revive_used", "gear_first_miss_floor", "risk_profile", "risk_status", "editor_content", "last_result", "history", "attempts"})
+            raw = cls._campaign_mapping(dungeon, "campaign.dungeon_run", {"status", "run_id", "seed", "class_id", "concept_id", "region_id", "floor", "room", "room_type", "score", "run_coins", "started_at", "updated_at", "ended_at", "loadout", "inventory", "question", "question_number", "room_choices", "map", "floor_layout", "gear_charge", "gear_charge_weapon", "gear_revive_used", "gear_first_miss_floor", "risk_profile", "risk_status", "editor_content", "last_result", "history", "attempts", "camp_action_used"})
             item: dict[str, Any] = {}
             if "floor_layout" in raw:
                 if not isinstance(raw["floor_layout"], str) or raw["floor_layout"] not in {"grid", "lanes"}:
@@ -2721,12 +2889,17 @@ class LocalStateService:
                 item["gear_first_miss_floor"] = cls._campaign_int(raw["gear_first_miss_floor"], "campaign.dungeon_run.gear_first_miss_floor", maximum=MAX_DUNGEON_FLOOR)
             if raw.get("gear_charge_weapon") is not None:
                 item["gear_charge_weapon"] = cls._campaign_text(raw["gear_charge_weapon"], "campaign.dungeon_run.gear_charge_weapon", max_length=MAX_IDENTIFIER_LENGTH)
-            for field in ("status", "run_id", "seed", "class_id", "concept_id", "room_type"):
+            for field in ("status", "run_id", "seed", "class_id", "concept_id", "region_id", "room_type"):
                 if field in raw:
-                    item[field] = cls._campaign_text(raw[field], f"campaign.dungeon_run.{field}", max_length=MAX_IDENTIFIER_LENGTH)
+                    if field == "region_id" and raw[field] is None:
+                        item[field] = None
+                    else:
+                        item[field] = cls._campaign_text(raw[field], f"campaign.dungeon_run.{field}", max_length=MAX_IDENTIFIER_LENGTH)
             for field in ("started_at", "updated_at", "ended_at"):
                 if field in raw and raw[field] is not None:
                     item[field] = cls._campaign_text(raw[field], f"campaign.dungeon_run.{field}", max_length=80)
+            if "camp_action_used" in raw:
+                item["camp_action_used"] = cls._campaign_bool(raw["camp_action_used"], "campaign.dungeon_run.camp_action_used")
             for field in ("floor", "room", "score", "run_coins", "question_number", "attempts"):
                 if field in raw:
                     item[field] = cls._campaign_int(raw[field], f"campaign.dungeon_run.{field}", maximum=MAX_DUNGEON_FLOOR if field in {"floor", "room"} else MAX_SYNC_COUNTER)
@@ -2895,6 +3068,32 @@ class LocalStateService:
                 clean_board.append(item)
             clean["dungeon_leaderboard"] = clean_board
 
+        journal = campaign.get("dungeon_journal")
+        if journal is not None:
+            raw_journal = cls._campaign_mapping(journal, "campaign.dungeon_journal", {"unlocks", "cleared_bosses"})
+            unlocks = raw_journal.get("unlocks", [])
+            if not isinstance(unlocks, list) or len(unlocks) > MAX_DUNGEON_JOURNAL_UNLOCKS:
+                raise StateCommandError("campaign.dungeon_journal.unlocks must be a bounded list")
+            catalog_ids = set(armory_catalog())
+            clean_unlocks = []
+            for index, item_id in enumerate(unlocks):
+                clean_id = cls._campaign_identifier(item_id, f"campaign.dungeon_journal.unlocks[{index}]")
+                if clean_id not in catalog_ids:
+                    raise StateCommandError(f"campaign.dungeon_journal.unlocks[{index}] is unknown")
+                if clean_id not in clean_unlocks:
+                    clean_unlocks.append(clean_id)
+            bosses = raw_journal.get("cleared_bosses", [])
+            if not isinstance(bosses, list) or len(bosses) > len(DUNGEON_REGIONS):
+                raise StateCommandError("campaign.dungeon_journal.cleared_bosses must be bounded")
+            clean_bosses = []
+            for index, region_id in enumerate(bosses):
+                clean_id = cls._campaign_identifier(region_id, f"campaign.dungeon_journal.cleared_bosses[{index}]")
+                if clean_id not in DUNGEON_REGIONS:
+                    raise StateCommandError(f"campaign.dungeon_journal.cleared_bosses[{index}] is unknown")
+                if clean_id not in clean_bosses:
+                    clean_bosses.append(clean_id)
+            clean["dungeon_journal"] = {"unlocks": clean_unlocks, "cleared_bosses": clean_bosses}
+
         practice = campaign.get("practice_sessions")
         if practice is not None:
             if not isinstance(practice, list) or len(practice) > MAX_PRACTICE_SESSIONS:
@@ -3030,12 +3229,13 @@ class LocalStateService:
             if raw_run is None:
                 campaign["dungeon_run"] = None
             elif isinstance(raw_run, Mapping):
-                run_fields = {"status", "run_id", "seed", "class_id", "concept_id", "floor", "room", "room_type", "score", "run_coins", "started_at", "updated_at", "ended_at", "question_number", "editor_content", "attempts", "risk_profile", "risk_status", "floor_layout", "gear_charge", "gear_charge_weapon", "gear_revive_used", "gear_first_miss_floor"}
+                run_fields = {"status", "run_id", "seed", "class_id", "concept_id", "region_id", "floor", "room", "room_type", "score", "run_coins", "started_at", "updated_at", "ended_at", "question_number", "editor_content", "attempts", "risk_profile", "risk_status", "floor_layout", "gear_charge", "gear_charge_weapon", "gear_revive_used", "gear_first_miss_floor", "camp_action_used"}
                 item = pick(raw_run, run_fields)
                 if isinstance(raw_run.get("loadout"), Mapping):
                     item["loadout"] = pick(raw_run["loadout"], {"weapon", "armor", "trinket", "hp", "max_hp", "heals", "coins", "bandages", "rations", "vision_scrolls", "tonics", "edge_charges", "armor_guard"})
                 if isinstance(raw_run.get("inventory"), list):
-                    item["inventory"] = [pick(entry, {"id", "name", "kind", "armor", "trinket", "description"}) for entry in raw_run["inventory"] if isinstance(entry, Mapping)]
+                    # Keep boss weapons through a cloud-save round-trip.
+                    item["inventory"] = [pick(entry, {"id", "name", "kind", "weapon", "armor", "trinket", "description"}) for entry in raw_run["inventory"] if isinstance(entry, Mapping)]
                 if isinstance(raw_run.get("question"), Mapping):
                     item["question"] = pick(raw_run["question"], {"id", "question_type", "concept_id", "difficulty", "prompt", "options"})
                 elif "question" in raw_run:
@@ -3065,6 +3265,18 @@ class LocalStateService:
                 for item in progress["dungeon_leaderboard"]
                 if isinstance(item, Mapping)
             ]
+        raw_journal = progress.get("dungeon_journal") if isinstance(progress.get("dungeon_journal"), Mapping) else {}
+        hunter = progress.get("hunter") if isinstance(progress.get("hunter"), Mapping) else {}
+        armory = hunter.get("armory") if isinstance(hunter.get("armory"), Mapping) else {}
+        raw_owned = armory.get("owned") if isinstance(armory.get("owned"), list) else []
+        forged_ids = {item["id"] for item in HUNTER_FORGED_ARMOUR}
+        unlocks = list(raw_journal.get("unlocks", [])) if isinstance(raw_journal.get("unlocks"), list) else []
+        unlocks = list(dict.fromkeys([*unlocks, *(item_id for item_id in raw_owned if isinstance(item_id, str) and item_id in forged_ids)]))
+        if raw_journal or unlocks:
+            campaign["dungeon_journal"] = {
+                "unlocks": unlocks[:MAX_DUNGEON_JOURNAL_UNLOCKS],
+                "cleared_bosses": list(raw_journal.get("cleared_bosses", [])) if isinstance(raw_journal.get("cleared_bosses"), list) else [],
+            }
         if "practice_sessions" in progress:
             campaign["practice_sessions"] = cls.practice_projection(progress).get("sessions", [])
         return campaign
@@ -3330,7 +3542,19 @@ class LocalStateService:
                 if field not in incoming_campaign:
                     continue
                 incoming_value = incoming_campaign[field]
-                if field in {"learning_state", "streak", "stats"} and isinstance(incoming_value, Mapping):
+                if field == "dungeon_journal" and isinstance(incoming_value, Mapping):
+                    existing = progress.get(field) if isinstance(progress.get(field), Mapping) else {}
+                    merged_value = {}
+                    for key in ("unlocks", "cleared_bosses"):
+                        old_items = existing.get(key) if isinstance(existing.get(key), list) else []
+                        merged_value[key] = list(dict.fromkeys([*old_items, *incoming_value.get(key, [])]))
+                        limit = MAX_DUNGEON_JOURNAL_UNLOCKS if key == "unlocks" else len(DUNGEON_REGIONS)
+                        if len(merged_value[key]) > limit:
+                            raise StateCommandError("The combined Legacy Journal exceeds its safe limit", status_code=409)
+                    if merged_value != existing:
+                        progress[field] = merged_value
+                        changed = True
+                elif field in {"learning_state", "streak", "stats"} and isinstance(incoming_value, Mapping):
                     existing_value = progress.get(field)
                     merged_value = dict(existing_value) if isinstance(existing_value, Mapping) else {}
                     merged_value.update(incoming_value)
@@ -3581,7 +3805,9 @@ class LocalStateService:
             "available_objectives": available,
             "attempts": attempts,
             "pyr_assists": max(0, int(matching.get("pyr_assists", 0) or 0)),
-            "reward_scale": self.pyr_reward_scale(int(matching.get("pyr_assists", 0) or 0)),
+            "reward_scale": 100 if project.get('branch') == '00-lantern-vale' else self.pyr_reward_scale(int(matching.get("pyr_assists", 0) or 0)),
+            "help_free": project.get('branch') == '00-lantern-vale',
+            "loot_protected": project.get('branch') == '00-lantern-vale' or contract.get('tier') == 'elite',
             "guards": max(0, int(matching.get("guards", 0) or 0)) if isinstance(matching, Mapping) else 0,
             "question_types": observed_types,
             "current_quest": available[0] if available else None,
@@ -3682,24 +3908,37 @@ class LocalStateService:
         """
 
         raw = run.get("inventory")
+        run_catalog = (*DUNGEON_MARKET_CATALOG, *SIGNATURE_WEAPONS, *REGIONAL_ARMOURS, *REGIONAL_TRINKETS, *DUNGEON_TRINKETS, *HUNTER_FORGED_RUN_ARMOUR)
+        run_items_by_id = {item["id"]: item for item in run_catalog}
+        starter_class = DUNGEON_CLASSES_BY_ID.get(str(run.get("class_id") or ""), DUNGEON_CLASSES_BY_ID["syntax-warden"])
+        starter_weapon = str(starter_class.get("starter_weapon") or "Lint Lantern")
+        starter_weapon_id = str(starter_class.get("starter_weapon_id") or "dungeon-lint-lantern")
+
+        def canonical_item(item: Mapping[str, Any]) -> dict[str, Any]:
+            return {key: item[key] for key in ("id", "name", "kind", "weapon", "armor", "trinket", "description") if key in item}
+
         if raw is None:
             loadout = run.get("loadout") if isinstance(run.get("loadout"), Mapping) else {}
-            starter = {
-                "id": "dungeon-starter-armor",
-                "name": str(loadout.get("armor") or "Apprentice Coat"),
-                "kind": "armor",
-                "armor": str(loadout.get("armor") or "Apprentice Coat"),
-                "description": "Starter armor for this Dungeon run.",
-            }
-            items = [starter]
-            if loadout.get("weapon"):
-                items.append({
-                    "id": "dungeon-starter-weapon",
-                    "name": str(loadout.get("weapon")),
-                    "kind": "weapon",
-                    "weapon": str(loadout.get("weapon")),
-                    "description": next((item["description"] for item in DUNGEON_MARKET_CATALOG if item.get("weapon") == loadout.get("weapon")), "Starter weapon for this Dungeon run."),
+            armor_name = str(loadout.get("armor") or "Apprentice Coat")
+            armor_item = next((item for item in run_catalog if item.get("kind") == "armor" and item.get("armor") == armor_name), None)
+            items = [canonical_item(armor_item)] if armor_item else [{
+                "id": "dungeon-starter-armor", "name": "Apprentice Coat", "kind": "armor",
+                "armor": "Apprentice Coat", "description": "Starter armor for this Dungeon run.",
+            }]
+            weapon_name = str(loadout.get("weapon") or starter_weapon)
+            weapon_item = next((item for item in run_catalog if item.get("kind") == "weapon" and item.get("weapon") == weapon_name), None)
+            if weapon_item:
+                items.append(canonical_item(weapon_item))
+            else:
+                starter_item = run_items_by_id.get(starter_weapon_id)
+                items.append(canonical_item(starter_item) if starter_item else {
+                    "id": "dungeon-starter-weapon", "name": starter_weapon, "kind": "weapon",
+                    "weapon": starter_weapon, "description": "Starter weapon for this Dungeon run.",
                 })
+            trinket_name = loadout.get("trinket")
+            trinket_item = next((item for item in run_catalog if item.get("kind") == "trinket" and item.get("trinket") == trinket_name), None)
+            if trinket_item:
+                items.append(canonical_item(trinket_item))
             if mutate:
                 run["inventory"] = items
             return items
@@ -3714,19 +3953,20 @@ class LocalStateService:
             kind = item.get("kind")
             if not isinstance(item_id, str) or not item_id.strip() or not isinstance(name, str) or not name.strip() or kind not in {"weapon", "armor", "trinket"}:
                 raise StateCommandError(f"Existing Dungeon inventory item {index} is invalid", status_code=500)
-            clean = {
-                "id": item_id[:MAX_IDENTIFIER_LENGTH],
-                "name": name[:MAX_IDENTIFIER_LENGTH],
-                "kind": kind,
-                "description": str(item.get("description") or "")[:300],
-            }
-            if kind == "weapon":
-                clean["weapon"] = str(item.get("weapon") or name)[:MAX_IDENTIFIER_LENGTH]
-            elif kind == "armor":
-                clean["armor"] = str(item.get("armor") or name)[:MAX_IDENTIFIER_LENGTH]
-            else:
-                clean["trinket"] = str(item.get("trinket") or name)[:MAX_IDENTIFIER_LENGTH]
-            items.append(clean)
+            if item_id == "dungeon-starter-armor":
+                if kind == "armor" and item.get("name") == "Apprentice Coat" and item.get("armor") == "Apprentice Coat":
+                    items.append({"id": "dungeon-starter-armor", "name": "Apprentice Coat", "kind": "armor", "armor": "Apprentice Coat", "description": "Starter armor for this Dungeon run."})
+                continue
+            if item_id == "dungeon-starter-weapon":
+                if kind == "weapon" and item.get("name") == starter_weapon and item.get("weapon") == starter_weapon:
+                    items.append({"id": "dungeon-starter-weapon", "name": starter_weapon, "kind": "weapon", "weapon": starter_weapon, "description": "Starter weapon for this Dungeon run."})
+                continue
+            canonical = run_items_by_id.get(item_id)
+            if canonical is None:
+                # Historical checkpoints could copy campaign items into a
+                # run. Keep only equipment defined for the Dungeon economy.
+                continue
+            items.append(canonical_item(canonical))
         if mutate:
             run["inventory"] = items
         return items
@@ -3760,16 +4000,166 @@ class LocalStateService:
         ]
         return sorted(items, key=lambda item: item["name"])
 
+    @staticmethod
+    def _dungeon_journal(progress: dict[str, Any]) -> dict[str, Any]:
+        journal = progress.get("dungeon_journal")
+        if not isinstance(journal, dict):
+            journal = {"unlocks": [], "cleared_bosses": []}
+            progress["dungeon_journal"] = journal
+        if not isinstance(journal.get("unlocks"), list):
+            journal["unlocks"] = []
+        if not isinstance(journal.get("cleared_bosses"), list):
+            journal["cleared_bosses"] = []
+        return journal
+
+    def _dungeon_journal_unlock(self, progress: dict[str, Any], item_id: str) -> dict[str, Any] | None:
+        """Record an explicit permanent Journal reward and grant its campaign item."""
+
+        item = armory_catalog().get(item_id)
+        if item is None:
+            return None
+        journal = self._dungeon_journal(progress)
+        unlocks = journal["unlocks"]
+        if item_id not in unlocks and len(unlocks) < MAX_DUNGEON_JOURNAL_UNLOCKS:
+            unlocks.append(item_id)
+        hunter = self._hunter_state(progress)
+        self._armory_add(hunter, item_id)
+        return {"id": item_id, "name": item["name"], "slot": item["slot"], "tier": item.get("tier", "common")}
+
+    def _dungeon_journal_record_boss(self, progress: dict[str, Any], region_id: str) -> bool:
+        if region_id not in DUNGEON_REGIONS:
+            return False
+        bosses = self._dungeon_journal(progress)["cleared_bosses"]
+        if region_id in bosses or len(bosses) >= len(DUNGEON_REGIONS):
+            return False
+        bosses.append(region_id)
+        return True
+
+    def _dungeon_journal_prove_gear(self, progress: dict[str, Any], run: Mapping[str, Any], region_id: str) -> list[dict[str, Any]]:
+        """Echoes earned by winning a boss in the gear: "prove it in battle".
+
+        Only gear the run actually holds and has equipped counts. A regional armour counts at its own
+        region's boss, a generic one at any boss. A class's starter weapon never counts, so a weapon
+        echo rewards buying and using the item. Returns only echoes newly unlocked by this clear.
+        """
+
+        loadout = run.get("loadout") if isinstance(run.get("loadout"), Mapping) else {}
+        starter = DUNGEON_CLASSES_BY_ID.get(str(run.get("class_id") or ""), DUNGEON_CLASSES_BY_ID["syntax-warden"])
+        held = {entry.get("id") for entry in self._dungeon_inventory_entries(dict(run))}
+        unlocked = set(self._dungeon_journal(progress)["unlocks"])
+        earned = []
+        for echo in CAMPAIGN_DELVE_GEAR:
+            source = JOURNAL_PROOF_ITEMS.get(echo["source_id"])
+            if source is None or echo["id"] in unlocked:
+                continue
+            slot = source["kind"]
+            if loadout.get(slot) != source[slot] or source["id"] not in held:
+                continue
+            if echo.get("region") and echo["region"] != region_id:
+                continue
+            if slot == "weapon" and source["id"] == starter.get("starter_weapon_id"):
+                continue
+            unlock = self._dungeon_journal_unlock(progress, echo["id"])
+            if unlock:
+                earned.append(unlock)
+        return earned
+
+    @classmethod
+    def _dungeon_journal_projection(cls, progress: Mapping[str, Any]) -> dict[str, Any]:
+        journal = progress.get("dungeon_journal") if isinstance(progress, Mapping) else None
+        raw_unlocks = journal.get("unlocks", []) if isinstance(journal, Mapping) else []
+        raw_bosses = journal.get("cleared_bosses", []) if isinstance(journal, Mapping) else []
+        catalog = armory_catalog()
+        unlocks = list(dict.fromkeys(item_id for item_id in raw_unlocks if isinstance(item_id, str) and item_id in catalog)) if isinstance(raw_unlocks, list) else []
+        bosses = list(dict.fromkeys(region_id for region_id in raw_bosses if isinstance(region_id, str) and region_id in DUNGEON_REGIONS)) if isinstance(raw_bosses, list) else []
+        boss_count = len(bosses)
+        earned = set(unlocks)
+        # How each permanent echo is earned: an elite drops its region's trinket, a boss its
+        # signature weapon, and shop gear is proven by winning a boss while using it.
+        elite_sources = {item["id"]: item for item in REGIONAL_TRINKETS}
+        boss_sources = {item["id"]: item for item in SIGNATURE_WEAPONS}
+        checklist = []
+        for item in CAMPAIGN_DELVE_GEAR:
+            region = DUNGEON_REGIONS.get(str(item.get("region") or ""))
+            proof = JOURNAL_PROOF_ITEMS.get(item.get("source_id"))
+            if item.get("source_id") in elite_sources and region:
+                how = f"Elite drop · {region['label']}"
+            elif item.get("source_id") in boss_sources and region:
+                how = f"Boss drop · {region['boss']}"
+            elif proof:
+                verb = "wearing" if proof["kind"] == "armor" else "wielding"
+                how = f"Prove it · win {region['boss'] if region else 'any boss'} {verb} {proof['name']}"
+            else:
+                how = "Legacy reward"
+            checklist.append({
+                "id": item["id"], "name": item["name"], "slot": item["slot"], "tier": item.get("tier", "common"),
+                "region": item.get("region"), "earned": item["id"] in earned, "how": how,
+                "modes": list(item.get("mode_eligibility") or ["campaign", "sparring", "pvp"]),
+            })
+        region_rows = []
+        for region_id, region in DUNGEON_REGIONS.items():
+            members = [row for row in checklist if row["region"] == region_id]
+            region_rows.append({
+                "id": region_id, "label": region["label"], "boss": region["boss"], "cleared": region_id in bosses,
+                "echoes_total": len(members), "echoes_earned": sum(1 for row in members if row["earned"]),
+            })
+        return {
+            "unlocks": [
+                {"id": item_id, "name": catalog[item_id]["name"], "slot": catalog[item_id]["slot"],
+                 "tier": catalog[item_id].get("tier", "common"), "region": catalog[item_id].get("region"),
+                 "source_id": catalog[item_id].get("source_id")}
+                for item_id in unlocks
+            ],
+            "cleared_bosses": [
+                {"id": region_id, "name": DUNGEON_REGIONS[region_id]["boss"], "region": DUNGEON_REGIONS[region_id]["label"]}
+                for region_id in bosses
+            ],
+            "bonuses": {
+                "starting_hp": min(15, boss_count * 5),
+                "starting_bandages": 1 if boss_count >= 3 else 0,
+                **{key: (amount if boss_count >= number else 0) for number, (key, amount, _) in JOURNAL_BOSS_PERKS.items()},
+            },
+            "title": JOURNAL_MASTER_TITLE if boss_count >= len(DUNGEON_REGIONS) else None,
+            "perks": [
+                {"boss": number, "label": label, "earned": boss_count >= number}
+                for number, label in (
+                    (1, "+5 starting HP"), (2, "+5 starting HP"), (3, "+5 starting HP and +1 bandage"),
+                    *((number, perk[2]) for number, perk in JOURNAL_BOSS_PERKS.items()),
+                )
+            ],
+            "next_milestone": (
+                "Clear a regional boss for +5 starting HP (up to +15, plus a bandage at three bosses)." if boss_count < 3
+                else f"Clear the next boss for {JOURNAL_BOSS_PERKS[boss_count + 1][2]} ({len(DUNGEON_REGIONS) - boss_count} bosses remaining)." if boss_count < len(DUNGEON_REGIONS)
+                else f"All {len(DUNGEON_REGIONS)} bosses cleared: you are a {JOURNAL_MASTER_TITLE}. Collect any echoes you are still missing."
+            ),
+            # The full checklist, so the screen can show what is still out there to earn.
+            "checklist": checklist,
+            "regions": region_rows,
+            "totals": {"bosses": boss_count, "bosses_total": len(DUNGEON_REGIONS),
+                       "echoes": sum(1 for row in checklist if row["earned"]), "echoes_total": len(checklist)},
+        }
+
     def _dungeon_bank_pack(self, run: dict[str, Any], progress: dict[str, Any]) -> list[dict[str, Any]]:
-        """Move the run pack into the hunter's bank (at a camp or a safe exit)."""
+        """Bank materials; recover old pre-Journal gear as explicit Journal unlocks."""
 
         banked = self._dungeon_pack_items(run.get("pack"))
         if banked:
             hunter = self._hunter_state(progress)
             catalog = armory_catalog()
+            run_item_ids = {item["id"] for item in (*DUNGEON_MARKET_CATALOG, *SIGNATURE_WEAPONS, *REGIONAL_TRINKETS, *DUNGEON_TRINKETS)}
             for item in banked:
                 if item["id"] in catalog:
-                    self._armory_add(hunter, item["id"], item["count"])
+                    if item["id"] in run_item_ids:
+                        # Legacy run-only equipment cannot escape its run.
+                        continue
+                    catalog_item = catalog[item["id"]]
+                    if catalog_item.get("slot") in ARMORY_GEAR_SLOTS:
+                        # Older runs could put campaign equipment directly in
+                        # the at-risk pack. Preserve those earned drops during
+                        # migration, but record them through the Journal.
+                        self._dungeon_journal_unlock(progress, item["id"])
+                    else:
+                        self._armory_add(hunter, item["id"], item["count"])
                 else:
                     hunter["materials"][item["id"]] = self._counter(hunter["materials"], item["id"]) + item["count"]
         run["pack"] = {}
@@ -3806,10 +4196,6 @@ class LocalStateService:
         for key, count in drops.items():
             pack[key] = self._counter(pack, key) + count
         run["pack"] = pack
-        gear = self._dungeon_gear_drop(run, room_type, progress)
-        if gear:
-            pack[gear] = self._counter(pack, gear) + 1
-            drops[gear] = 1
         loot: dict[str, Any] = {"items": self._dungeon_pack_items(drops), "clean": clean, "trinket": None, "coins": 0}
         inventory = self._dungeon_inventory_entries(run, mutate=True)
         owned = {item.get("id") for item in inventory}
@@ -3827,6 +4213,10 @@ class LocalStateService:
                 if equipped:
                     loadout["trinket"] = trinket["trinket"]
                 loot["trinket"] = {"id": trinket["id"], "name": trinket["name"], "description": trinket["description"], "equipped": equipped}
+                if isinstance(progress, dict):
+                    permanent = next((item for item in CAMPAIGN_DELVE_GEAR if item.get("source_id") == trinket["id"]), None)
+                    if permanent:
+                        loot["journal_unlock"] = self._dungeon_journal_unlock(progress, permanent["id"])
             else:
                 run["run_coins"] = self._counter(run, "run_coins") + DUNGEON_TRINKET_FALLBACK_COINS
                 loot["coins"] = DUNGEON_TRINKET_FALLBACK_COINS
@@ -3835,20 +4225,20 @@ class LocalStateService:
             if signature and len(inventory) < MAX_DUNGEON_INVENTORY:
                 inventory.append({key: signature[key] for key in ("id", "name", "kind", "weapon", "description")})
                 loot["weapon"] = {"id": signature["id"], "name": signature["name"], "description": signature["description"]}
-        # Permanent campaign versions go into the at-risk pack; only a camp
-        # or a safe exit banks them into the Hunter's armory.
-        if progress is not None and room_type in {'elite', 'boss'}:
-            hunter = progress.get('hunter') if isinstance(progress.get('hunter'), Mapping) else {}
-            armory = hunter.get('armory') if isinstance(hunter.get('armory'), Mapping) else {}
-            banked_owned = set(armory.get('owned', [])) if isinstance(armory.get('owned'), list) else set()
-            region_id = run.get('region_id')
-            slot = 'trinket' if room_type == 'elite' else 'weapon'
-            pool = [item for item in CAMPAIGN_DELVE_GEAR if item['slot'] == slot and item.get('region') == region_id and item['id'] not in banked_owned and item['id'] not in pack]
-            if pool:
-                item = pool[0]
-                pack[item['id']] = 1
-                drops[item['id']] = 1
-                loot['items'] = self._dungeon_pack_items(drops)
+                if isinstance(progress, dict):
+                    permanent = next((item for item in CAMPAIGN_DELVE_GEAR if item.get("source_id") == signature["id"]), None)
+                    if permanent:
+                        loot["journal_unlock"] = self._dungeon_journal_unlock(progress, permanent["id"])
+        if room_type == "boss" and isinstance(progress, dict):
+            region_id = str(run.get("region_id") or "")
+            proven = self._dungeon_journal_prove_gear(progress, run, region_id)
+            if proven:
+                loot["journal_proofs"] = proven
+            if self._dungeon_journal_record_boss(progress, region_id):
+                loot["journal_bonus"] = self._dungeon_journal_projection(progress)["bonuses"]
+                perk = JOURNAL_BOSS_PERKS.get(len(self._dungeon_journal(progress)["cleared_bosses"]))
+                if perk:
+                    loot["journal_perk"] = perk[2]
         return loot
 
     @classmethod
@@ -4284,7 +4674,7 @@ class LocalStateService:
         )
 
     def _dungeon_travel(self, payload: Mapping[str, Any], progress: dict[str, Any]) -> Mutation:
-        """Walk back through explored rooms. Inert: no camp, no banking."""
+        """Walk back through explored rooms; reopen safe rooms without replaying fights."""
 
         data = self._payload(payload, {"run_id", "node_id"}, {"run_id", "node_id"})
         run = self._active_dungeon_run(progress)
@@ -4301,9 +4691,22 @@ class LocalStateService:
             raise StateCommandError("You can only walk back through explored rooms", status_code=409)
         if node_id == route.get("current_node_id"):
             return Mutation(False, {"run": self.dungeon_projection(progress)})
+        node = next((item for item in route.get("nodes", []) if isinstance(item, Mapping) and item.get("id") == node_id), None)
+        if not isinstance(node, Mapping):
+            raise StateCommandError("That explored room is no longer on this floor", status_code=409)
         route["current_node_id"] = node_id
         run["map"] = route
-        run["room_choices"] = self._dungeon_route_choices(run)
+        room_type = str(node.get("type") or "selector")
+        # Reopen safe rooms. Combat rooms remain resolved and cannot be replayed.
+        if room_type in {"rest", "market"}:
+            run["room_type"] = room_type
+            run["room_choices"] = []
+            run["question"] = None
+            run["editor_content"] = ""
+            run["camp_action_used"] = False
+        else:
+            run["room_type"] = "selector"
+            run["room_choices"] = self._dungeon_route_choices(run)
         run["updated_at"] = _utc_now()
         return Mutation(True, {"run": self.dungeon_projection(progress)}, {"run_id": run_id, "node_id": node_id, "reason": "dungeon_travelled"})
 
@@ -4674,6 +5077,7 @@ class LocalStateService:
             raise StateCommandError("No active Dungeon run is available", status_code=409)
         if not isinstance(run.get("run_id"), str) or not run["run_id"].strip():
             raise StateCommandError("Existing Dungeon run ID is invalid", status_code=500)
+        self._dungeon_ensure_loadout_defaults(run)
         return run
 
     def dungeon_projection(self, progress: Mapping[str, Any]) -> dict[str, Any]:
@@ -4686,7 +5090,7 @@ class LocalStateService:
 
         run = self._dungeon_run(progress)
         if run is None:
-            return {"active": False, "status": "idle", "editor_content": ""}
+            return {"active": False, "status": "idle", "editor_content": "", "journal": self._dungeon_journal_projection(progress)}
         status = run.get("status", "idle")
         if status not in {"active", "dead", "complete"}:
             raise StateCommandError("Existing Dungeon run status is invalid", status_code=500)
@@ -4723,12 +5127,22 @@ class LocalStateService:
             "inventory": [],
             "market_catalog": [],
             "leaderboard": [],
+            "journal": self._dungeon_journal_projection(progress),
         }
         for field in ("floor", "room", "score", "run_coins"):
             try:
                 projection[field] = max(0, int(projection[field] or 0))
             except (TypeError, ValueError) as exc:
                 raise StateCommandError(f"Existing Dungeon field {field} is invalid", status_code=500) from exc
+        # The stash is available at camps without consuming a rest action.
+        # It is derived from permanent ownership; no new save field is needed.
+        hunter = progress.get("hunter") if isinstance(progress.get("hunter"), Mapping) else {}
+        armory = hunter.get("armory") if isinstance(hunter.get("armory"), Mapping) else {}
+        owned = {item for item in (armory.get("owned") if isinstance(armory.get("owned"), list) else []) if isinstance(item, str)} | self._earned_campaign_gear(progress)
+        projection["armor_stash"] = [
+            {key: item[key] for key in ("id", "name", "description")}
+            for item in HUNTER_FORGED_RUN_ARMOUR if item["id"] in owned
+        ] if status == "active" and run.get("room_type") == "rest" else []
         if status == "active" and run.get("room_type") == "market":
             discount = min(90, self._counter(run, "market_discount"))
             projection["market_catalog"] = [
@@ -4758,6 +5172,11 @@ class LocalStateService:
             field: loadout.get(field, loadout_defaults[field])
             for field in ("weapon", "armor", "trinket", "hp", "max_hp", "heals", "coins", "bandages", "rations", "vision_scrolls", "tonics", "edge_charges", "armor_guard")
         }
+        run_catalog = (*DUNGEON_MARKET_CATALOG, *SIGNATURE_WEAPONS, *REGIONAL_ARMOURS, *REGIONAL_TRINKETS, *DUNGEON_TRINKETS, *HUNTER_FORGED_RUN_ARMOUR)
+        valid_names = {kind: {str(item.get(kind) or item.get("name")) for item in run_catalog if item.get("kind") == kind} for kind in ("weapon", "armor", "trinket")}
+        for field, kind in (("weapon", "weapon"), ("armor", "armor"), ("trinket", "trinket")):
+            if projection["loadout"].get(field) not in valid_names[kind] and not (field == "armor" and projection["loadout"].get(field) == "Apprentice Coat"):
+                projection["loadout"][field] = loadout_defaults[field]
         projection["loadout"]["weapon_style"] = DUNGEON_WEAPON_STYLES.get(str(projection["loadout"].get("weapon") or ""), "sword")
         selected_class = DUNGEON_CLASSES_BY_ID.get(str(projection["class_id"]))
         if selected_class is not None:
@@ -4766,7 +5185,9 @@ class LocalStateService:
                 for field in ("id", "name", "role", "passive", "starter_weapon", "resolve_bonus", "syntax_guard")
                 if field in selected_class
             }
-        inventory = self._dungeon_inventory_entries(run)
+        safe_run = dict(run)
+        safe_run["loadout"] = dict(projection["loadout"])
+        inventory = self._dungeon_inventory_entries(safe_run)
         inventory = [dict(item) for item in inventory]
         if not any(item.get("kind") == "weapon" for item in inventory):
             inventory.append({
@@ -4965,10 +5386,8 @@ class LocalStateService:
         if starter_class is None:
             raise StateCommandError("Unknown Dungeon class", status_code=422)
         run_id = f"dungeon-{uuid.uuid4().hex}"
-        player = self._dict(progress, "player")
-        vitality = self.hunter_projection(progress)["stats"]["vitality"]["value"]
-        kit = self._hunter_kit_levels(progress)
-        maximum = (self._counter(player, "max_hp") or 100) + 5 * max(0, vitality - 1) + HUNTER_KIT_COAT_HP * kit["coat"]
+        journal = self._dungeon_journal_projection(progress)
+        maximum = 100 + int(journal["bonuses"]["starting_hp"])
         now = _utc_now()
         run = {
             "status": "active",
@@ -4982,7 +5401,7 @@ class LocalStateService:
             "room": 1,
             "room_type": "selector",
             "score": 0,
-            "run_coins": int(starter_class.get("starting_coins", 0) or 0),
+            "run_coins": int(starter_class.get("starting_coins", 0) or 0) + int(journal["bonuses"]["starting_coins"]),
             "started_at": now,
             "updated_at": now,
             "ended_at": None,
@@ -4992,12 +5411,12 @@ class LocalStateService:
                 "trinket": None,
                 "hp": maximum,
                 "max_hp": maximum,
-                "heals": 1 + int(starter_class.get("extra_heals", 0) or 0),
-                "coins": int(starter_class.get("starting_coins", 0) or 0),
-                "bandages": 1 + kit["satchel"],
-                "rations": 1,
-                "vision_scrolls": 0,
-                "tonics": 0,
+                "heals": 1 + int(starter_class.get("extra_heals", 0) or 0) + int(journal["bonuses"]["starting_heals"]),
+                "coins": int(starter_class.get("starting_coins", 0) or 0) + int(journal["bonuses"]["starting_coins"]),
+                "bandages": 1 + int(journal["bonuses"]["starting_bandages"]),
+                "rations": 1 + int(journal["bonuses"]["starting_rations"]),
+                "vision_scrolls": int(journal["bonuses"]["starting_vision_scrolls"]),
+                "tonics": int(journal["bonuses"]["starting_tonics"]),
                 "edge_charges": 0,
                 "armor_guard": 0,
             },
@@ -5264,7 +5683,7 @@ class LocalStateService:
                     weapon_effect = "; ".join(filter(None, [weapon_effect, f"Gear · +{healed} HP"]))
             if loadout.get("trinket") == "Whetstone Charm":
                 chip += 1
-            chip += int(fight.get("bane", 0) or 0) + self._hunter_kit_levels(progress)["blade"]
+            chip += int(fight.get("bane", 0) or 0)
             fight["resolve"] = max(0, resolve_before - chip)
             if fight["resolve"] == 0 and not fight_done:
                 # A break only helps: a free mistake, the mechanic stops, a few coins.
@@ -5475,6 +5894,24 @@ class LocalStateService:
         }
         for key, value in defaults.items():
             loadout.setdefault(key, value)
+        run_catalog = (*DUNGEON_MARKET_CATALOG, *SIGNATURE_WEAPONS, *REGIONAL_ARMOURS, *REGIONAL_TRINKETS, *DUNGEON_TRINKETS, *HUNTER_FORGED_RUN_ARMOUR)
+        valid_names = {kind: {str(item.get(kind) or item.get("name")) for item in run_catalog if item.get("kind") == kind} for kind in ("weapon", "armor", "trinket")}
+        if loadout.get("weapon") not in valid_names["weapon"]:
+            loadout["weapon"] = starter.get("starter_weapon", "Lint Lantern")
+        if loadout.get("armor") not in valid_names["armor"] and loadout.get("armor") != "Apprentice Coat":
+            loadout["armor"] = "Apprentice Coat"
+        if loadout.get("trinket") not in valid_names["trinket"]:
+            loadout["trinket"] = None
+        inventory = self._dungeon_inventory_entries(run, mutate=True)
+        if not any(item.get("kind") == "armor" and item.get("armor") == loadout.get("armor") for item in inventory):
+            loadout["armor"] = "Apprentice Coat"
+            inventory.insert(0, {"id": "dungeon-starter-armor", "name": "Apprentice Coat", "kind": "armor", "armor": "Apprentice Coat", "description": "Starter armor for this Dungeon run."})
+        if not any(item.get("kind") == "weapon" and item.get("weapon") == loadout.get("weapon") for item in inventory):
+            loadout["weapon"] = starter.get("starter_weapon", "Lint Lantern")
+            inventory.append({"id": starter.get("starter_weapon_id", "dungeon-lint-lantern"), "name": loadout["weapon"], "kind": "weapon", "weapon": loadout["weapon"], "description": "Starter weapon for this Dungeon run."})
+        if not any(item.get("kind") == "trinket" and item.get("trinket") == loadout.get("trinket") for item in inventory):
+            loadout["trinket"] = None
+        run["inventory"] = inventory[:MAX_DUNGEON_INVENTORY]
         return loadout
 
     def _dungeon_camp_action(self, payload: Mapping[str, Any], progress: dict[str, Any]) -> Mutation:
@@ -5705,14 +6142,26 @@ class LocalStateService:
             raise StateCommandError("Dungeon run changed; reload the current run", status_code=409)
         inventory = self._dungeon_inventory_entries(run, mutate=True)
         item = next((candidate for candidate in inventory if candidate.get("id") == item_id), None)
+        retrieved = False
         if item is None:
-            raise StateCommandError("That item is not in this Dungeon run inventory", status_code=404)
+            hunter = progress.get("hunter") if isinstance(progress.get("hunter"), Mapping) else {}
+            armory = hunter.get("armory") if isinstance(hunter.get("armory"), Mapping) else {}
+            owned = {item for item in (armory.get("owned") if isinstance(armory.get("owned"), list) else []) if isinstance(item, str)} | self._earned_campaign_gear(progress)
+            stashed = next((entry for entry in HUNTER_FORGED_RUN_ARMOUR if entry["id"] == item_id), None)
+            if run.get("room_type") != "rest" or stashed is None or item_id not in owned:
+                raise StateCommandError("That item is not in this Dungeon run inventory", status_code=404)
+            if len(inventory) >= MAX_DUNGEON_INVENTORY:
+                raise StateCommandError("Your Dungeon inventory is full", status_code=409)
+            item = {key: stashed[key] for key in ("id", "name", "kind", "armor", "description")}
+            inventory.append(item)
+            run["inventory"] = inventory
+            retrieved = True
         loadout = self._dungeon_ensure_loadout_defaults(run)
         field = "weapon" if item.get("kind") == "weapon" else "armor" if item.get("kind") == "armor" else "trinket"
         value = item.get(field)
         if not isinstance(value, str) or not value.strip():
             raise StateCommandError("That Dungeon item cannot be equipped", status_code=422)
-        if loadout.get(field) == value:
+        if loadout.get(field) == value and not retrieved:
             return Mutation(False, {"run": self.dungeon_projection(progress), "equipped": value, "slot": field})
         if field == "weapon":
             run["gear_charge"] = 0
@@ -5757,19 +6206,19 @@ class LocalStateService:
             raise StateCommandError("Dungeon run changed; reload the current run", status_code=409)
         question = run.get("question")
         if run.get("room_type") not in {"encounter", "elite", "boss"} or not isinstance(question, Mapping):
-            raise StateCommandError("Oils are applied during a fight", status_code=409)
+            raise StateCommandError("Delve Preparations are used during a fight", status_code=409)
         sign_id, _, tier_id = oil_id.rpartition("-")
         tier = HUNTER_OIL_TIERS_BY_ID.get(tier_id)
         if tier is None or sign_id not in HUNTER_BEASTS:
-            raise StateCommandError("Unknown oil", status_code=422)
+            raise StateCommandError("Unknown Delve Preparation", status_code=422)
         hunter = self._hunter_state(progress)
         if self._counter(hunter["oils"], oil_id) <= 0:
-            raise StateCommandError("You have none of that oil; craft it at the Merchant", status_code=409)
+            raise StateCommandError("You have none of that preparation; craft it at Hunter's Still", status_code=409)
         if sign_id not in hunter_signs_for(question.get("concept_id") or run.get("concept_id")):
-            raise StateCommandError("That oil is made for a different beast", status_code=409)
+            raise StateCommandError("That preparation is made for a different beast", status_code=409)
         fight = self._dungeon_fight(run, progress)
         if isinstance(fight.get("oil"), Mapping):
-            raise StateCommandError("This fight already has an oil applied", status_code=409)
+            raise StateCommandError("This fight already has a preparation applied", status_code=409)
         mechanic = fight.get("mechanic")
         if tier_id == "slowing" and not isinstance(mechanic, dict):
             raise StateCommandError("This fight has no mechanic to slow", status_code=409)
@@ -5901,7 +6350,7 @@ class LocalStateService:
             if self._boss_is_active(progress) and (normalized_action.startswith("dungeon_") or normalized_action in {
                 "homestead_action", "home_room_purchase", "homestead_room_upgrade", "homestead_purchase", "homestead_equip",
                 "campaign_market_purchase", "equip_equipment", "set_avatar", "select_campaign", "hunter_spend_point",
-                "hunter_craft_oil", "hunter_upgrade_kit", "hunter_identify_start", "hunter_identify_answer",
+                "hunter_craft_oil", "hunter_forge_armor", "hunter_upgrade_kit", "hunter_identify_start", "hunter_identify_answer",
                 "practice_session_started", "practice_record_attempt", "armory_equip", "armory_unequip", "armory_use", "armory_buy",
             }):
                 raise StateCommandError("Leave the boss fight first; retreat resets its progress", status_code=409)
@@ -6251,6 +6700,8 @@ class LocalStateService:
             "boss_start": self._boss_start,
             "boss_retreat": self._boss_retreat,
             "equip_equipment": self._equip_equipment,
+            "sync_online_equipment": self._sync_online_equipment,
+            "armory_appearance_equip": self._armory_appearance_equip,
             "set_avatar": self._set_avatar,
             "select_campaign": self._select_campaign,
             "hunter_spend_point": self._hunter_spend_point,
@@ -6287,6 +6738,7 @@ class LocalStateService:
             "dungeon_travel": self._dungeon_travel,
             "dungeon_reroll_question": self._dungeon_reroll_question,
             "hunter_craft_oil": self._hunter_craft_oil,
+            "hunter_forge_armor": self._hunter_forge_armor,
             "hunter_upgrade_kit": self._hunter_upgrade_kit,
             "armory_equip": self._armory_equip,
             "armory_unequip": self._armory_unequip,
@@ -6359,6 +6811,10 @@ class LocalStateService:
         for key in ("stack", "buffs"):
             if not isinstance(armory.get(key), dict):
                 armory[key] = {}
+        if not isinstance(armory.get("owned_appearances"), list):
+            armory["owned_appearances"] = []
+        if not isinstance(armory.get("appearance_equipped"), dict):
+            armory["appearance_equipped"] = {}
         return hunter
 
     @staticmethod
@@ -6367,6 +6823,38 @@ class LocalStateService:
         return any(isinstance(project, Mapping) and project.get('branch') == '04-casino-slots' and
                    (project.get('boss_status') == 'defeated' or isinstance(project.get('boss_clear'), Mapping))
                    for project in projects)
+
+    @staticmethod
+    def _earned_campaign_gear(progress: Mapping[str, Any]) -> set[str]:
+        """Recover fixed gear from recorded clears without granting currency."""
+        earned: set[str] = set()
+        projects = progress.get('projects') if isinstance(progress.get('projects'), list) else []
+        for project in projects:
+            if not isinstance(project, Mapping):
+                continue
+            branch = project.get('branch')
+            if not isinstance(branch, str):
+                continue
+            if project.get('boss_status') == 'defeated' or isinstance(project.get('boss_clear'), Mapping):
+                earned.update(CAMPAIGN_BOSS_GEAR.get(branch, ()))
+            mobs = project.get('mobs') if isinstance(project.get('mobs'), list) else []
+            for mob in mobs:
+                if not isinstance(mob, Mapping) or mob.get('status') not in {'defeated', 'cleared'}:
+                    continue
+                mob_name = mob.get('name')
+                if not isinstance(mob_name, str):
+                    continue
+                definition = CAMPAIGN_ELITE_TRINKETS.get((branch, mob_name))
+                if definition:
+                    earned.add('elite-' + str(branch) + '-' + definition[0])
+                elite_gear = CAMPAIGN_ELITE_GEAR.get((branch, mob_name))
+                if elite_gear:
+                    earned.add(elite_gear)
+        journal = progress.get("dungeon_journal") if isinstance(progress.get("dungeon_journal"), Mapping) else {}
+        unlocks = journal.get("unlocks") if isinstance(journal.get("unlocks"), list) else []
+        allowed = {item["id"] for item in (*CAMPAIGN_DELVE_GEAR, *HUNTER_FORGED_ARMOUR)}
+        earned.update(item_id for item_id in unlocks if isinstance(item_id, str) and item_id in allowed)
+        return earned
 
     def _hunter_record(
         self,
@@ -6553,11 +7041,17 @@ class LocalStateService:
                     "affordable": count(bank, info["essence"]) >= need and coins >= HUNTER_KIT_COINS_PER_LEVEL * need,
                 }
             kit.append(entry)
+        armory = hunter.get("armory") if isinstance(hunter.get("armory"), Mapping) else {}
+        owned_gear = {item for item in (armory.get("owned") if isinstance(armory.get("owned"), list) else []) if isinstance(item, str)} | cls._earned_campaign_gear(progress)
+        armor_recipes = []
+        for item in HUNTER_FORGED_ARMOUR:
+            inputs = [{"id": key, "name": DUNGEON_MATERIAL_NAMES[key], "count": need, "have": count(bank, key)} for key, need in item["materials"].items()]
+            armor_recipes.append({"id": item["id"], "name": item["name"], "tier": item["tier"], "effect": armory_effect_text(item["effect"]), "flavour": item["flavour"], "materials": inputs, "coins": item["coins"], "owned": item["id"] in owned_gear, "affordable": coins >= item["coins"] and all(part["have"] >= part["count"] for part in inputs)})
         puzzle = hunter.get("identify") if isinstance(hunter.get("identify"), Mapping) else None
         identify = {key: puzzle[key] for key in ("id", "sign", "prompt", "options") if key in puzzle} if puzzle else None
         return {
             "signs": signs, "stats": stats, "level": player_level, "free_points": max(0, points - spent_total),
-            "materials": materials, "oil_recipes": recipes, "oils": oils, "kit": kit,
+            "materials": materials, "oil_recipes": recipes, "oils": oils, "kit": kit, "armor_recipes": armor_recipes,
             "vials": count(bank, DUNGEON_VIAL), "identify": identify,
         }
 
@@ -6584,6 +7078,7 @@ class LocalStateService:
         hunter = progress.get("hunter") if isinstance(progress.get("hunter"), Mapping) else {}
         armory = hunter.get("armory") if isinstance(hunter.get("armory"), Mapping) else {}
         owned = [item for item in armory.get("owned", []) if isinstance(item, str)] if isinstance(armory.get("owned"), list) else []
+        owned = list(dict.fromkeys([*owned, *sorted(cls._earned_campaign_gear(progress))]))
         weapon = catalog.get(armory.get("weapon")) if isinstance(armory.get("weapon"), str) and armory.get("weapon") in owned else None
         armor_name = str(equipment.get("armor") or "")
         armor = by_name.get(armor_name) if by_name.get(armor_name, {}).get("slot") == "armor" else None
@@ -6595,13 +7090,16 @@ class LocalStateService:
         relics = [catalog[item] for item in owned if item in catalog and catalog[item]["slot"] == "relic"]
         trinket_effect = trinket["effect"] if trinket else {}
         armor_effect = armor["effect"] if armor else {}
+        equipped_ids = {item['id'] for item in (weapon, armor, trinket) if item and item.get('id') in owned}
+        active_set = next((item for item in HUNTER_SETS if set(item['pieces']) <= equipped_ids), None)
+        set_bonus = active_set['bonus'] if active_set else {}
 
         def capped(key: str, value: object) -> int:
             return max(0, min(ARMORY_EFFECT_CAPS[key], int(value or 0)))
 
         return {
             "weapon": {key: (capped(key, value) if key in ARMORY_EFFECT_CAPS else value) for key, value in weapon["effect"].items()} if weapon else None,
-            "reduction": min(ARMORY_REDUCTION_CAP, capped("reduction", armor_effect.get("reduction")) if armor else LEGACY_ARMOR_REDUCTION.get(armor_name, 0)),
+            "reduction": min(ARMORY_REDUCTION_CAP, (capped("reduction", armor_effect.get("reduction")) if armor else LEGACY_ARMOR_REDUCTION.get(armor_name, 0)) + int(set_bonus.get('reduction', 0))),
             "first_miss_free": bool(armor_effect.get("first_miss_free")),
             "block_first_miss": bool(trinket_effect.get("block_first_miss")),
             "first_miss_source": armor["name"] if armor_effect.get("first_miss_free") else trinket["name"] if trinket else None,
@@ -6610,10 +7108,11 @@ class LocalStateService:
             "trinket_impact": capped('impact', trinket_effect.get('impact')),
             "trinket_on": trinket_effect.get('on'),
             "start_guards": capped("start_guards", trinket_effect.get("start_guards")),
-            "heal_on_objective": capped("heal_on_objective", trinket_effect.get("heal_on_objective")),
+            "heal_on_objective": capped("heal_on_objective", int(trinket_effect.get("heal_on_objective", 0)) + int(set_bonus.get('heal_on_objective', 0))),
             "loot_luck": capped("loot_luck", trinket_effect.get("loot_luck")),
-            "coin_bonus": min(ARMORY_BONUS_CAP, capped("coin_bonus", trinket_effect.get("coin_bonus")) + sum(capped("coin_bonus", relic["effect"].get("coin_bonus")) for relic in relics)),
+            "coin_bonus": min(ARMORY_BONUS_CAP, capped("coin_bonus", trinket_effect.get("coin_bonus")) + int(set_bonus.get('coin_bonus', 0)) + sum(capped("coin_bonus", relic["effect"].get("coin_bonus")) for relic in relics)),
             "xp_bonus": min(ARMORY_BONUS_CAP, capped("xp_bonus", trinket_effect.get("xp_bonus")) + sum(capped("xp_bonus", relic["effect"].get("xp_bonus")) for relic in relics)),
+            "set_bonus": set_bonus,
         }
 
     def _armory_take_buffs(self, progress: dict[str, Any]) -> dict[str, int]:
@@ -6644,14 +7143,15 @@ class LocalStateService:
         if contract.get('tier') == 'elite':
             hunter = self._hunter_state(progress)
             owned = set(hunter['armory']['owned'])
-            sign = contract.get('sign')
-            regions = [key for key, value in DUNGEON_REGIONS.items() if sign in value.get('signs', [])]
-            pool = [item for item in CAMPAIGN_DELVE_GEAR if item['slot'] == 'trinket' and item['id'] not in owned and (not regions or item['region'] in regions)]
-            if pool:
-                item = random.Random(f"{project.get('branch')}:{mob.get('name')}:elite").choice(pool)
+            definition = CAMPAIGN_ELITE_TRINKETS.get((project.get('branch'), mob.get('name')))
+            if definition:
+                item_id = 'elite-' + str(project.get('branch')) + '-' + definition[0]
+                if item_id in owned:
+                    return None
+                item = armory_catalog()[item_id]
                 self._armory_add(hunter, item['id'])
                 return {'id': item['id'], 'name': item['name'], 'slot': item['slot'], 'tier': item['tier'], 'effect': armory_effect_text(item['effect'])}
-        pool = [item for item in armory_catalog().values() if item["campaign"] == project.get("branch") and item["slot"] not in {"relic"} and item["tier"] != "legendary"]
+        pool = [item for item in armory_catalog().values() if item["campaign"] == project.get("branch") and item["slot"] not in {"relic"} and item["tier"] != "legendary" and item['id'] not in CAMPAIGN_FIXED_REWARD_IDS]
         if not pool:
             return None
         hunter = self._hunter_state(progress)
@@ -6671,62 +7171,55 @@ class LocalStateService:
         self._armory_add(hunter, item["id"])
         return {"id": item["id"], "name": item["name"], "slot": item["slot"], "tier": item["tier"], "effect": armory_effect_text(item["effect"])}
 
+    def _armory_elite_bonus(self, progress: dict[str, Any], project: Mapping[str, Any], mob: Mapping[str, Any], evidence_id: str) -> dict[str, Any] | None:
+        """Award the equipment assigned to this elite alongside its keepsake."""
+        item_id = CAMPAIGN_ELITE_GEAR.get((project.get('branch'), mob.get('name')))
+        item = armory_catalog().get(item_id)
+        if not item:
+            return None
+        hunter = self._hunter_state(progress)
+        if item_id in hunter['armory']['owned']:
+            return None
+        self._armory_add(hunter, item['id'])
+        return {'id': item['id'], 'name': item['name'], 'slot': item['slot'], 'tier': item['tier'], 'effect': armory_effect_text(item['effect'])}
+
+    def _grant_home_embers(self, progress: dict[str, Any], amount: int) -> int:
+        home = self._dict(progress, 'homestead')
+        balance = home.get('upgrade_tokens', 1)
+        if not isinstance(balance, int) or isinstance(balance, bool) or balance < 0:
+            raise StateCommandError('Existing upgrade_tokens is invalid', status_code=500)
+        granted = min(amount, max(0, MAX_SYNC_COUNTER - balance))
+        home['upgrade_tokens'] = balance + granted
+        return granted
+
     def _armory_boss_loot(self, progress: dict[str, Any], project: Mapping[str, Any]) -> list[dict[str, Any]]:
-        """A campaign boss drops its relic and one legendary piece."""
+        """Award the campaign boss's fixed weapon, armour and relic once."""
 
         catalog = armory_catalog()
         hunter = self._hunter_state(progress)
         owned = set(hunter["armory"]["owned"])
         branch = project.get("branch")
         loot = []
-        relic = next((item for item in catalog.values() if item["campaign"] == branch and item["slot"] == "relic"), None)
-        legendaries = [item for item in catalog.values() if item["campaign"] == branch and item["tier"] == "legendary" and item["slot"] in ARMORY_GEAR_SLOTS and item["id"] not in owned and item['id'] != OIL_OF_DOOM['id']]
-        rng = random.Random(f"{self.device_id()}:{branch}:boss")
-        for item in ([relic] if relic and relic["id"] not in owned else []) + ([rng.choice(legendaries)] if legendaries else []):
-            self._armory_add(hunter, item["id"])
-            loot.append({"id": item["id"], "name": item["name"], "slot": item["slot"], "tier": item["tier"], "effect": armory_effect_text(item["effect"])})
-        if branch == '04-casino-slots' and OIL_OF_DOOM['id'] not in owned:
-            self._armory_add(hunter, OIL_OF_DOOM['id'])
-            loot.append({'id': OIL_OF_DOOM['id'], 'name': OIL_OF_DOOM['name'], 'slot': 'weapon', 'tier': OIL_OF_DOOM['tier'], 'effect': armory_effect_text(OIL_OF_DOOM['effect'])})
-        campaign_weapons = [item for item in CAMPAIGN_DELVE_GEAR if item['slot'] == 'weapon' and not item.get('region') and item['id'] not in owned]
-        if campaign_weapons:
-            item = rng.choice(campaign_weapons)
-            self._armory_add(hunter, item['id'])
-            loot.append({'id': item['id'], 'name': item['name'], 'slot': 'weapon', 'tier': item['tier'], 'effect': armory_effect_text(item['effect'])})
+        boss_items = CAMPAIGN_BOSS_GEAR.get(branch)
+        if boss_items is None:
+            # Older/custom campaign catalogues keep their own legendary gear.
+            # Never select a boss trinket, including for an unlisted campaign.
+            boss_items = tuple(next((item['id'] for item in catalog.values()
+                                     if item.get('campaign') == branch and item.get('slot') == slot
+                                     and (slot == 'relic' or item.get('tier') == 'legendary')), '')
+                               for slot in ('weapon', 'armor', 'relic'))
+        for item_id in boss_items:
+            item = catalog.get(item_id)
+            if not item or item_id in owned:
+                continue
+            self._armory_add(hunter, item_id)
+            loot.append({'id': item_id, 'name': item['name'], 'slot': item['slot'], 'tier': item['tier'], 'effect': armory_effect_text(item['effect'])})
         # And a PYR's Blessing for the next campaign.
         blessing = catalog.get("aid-pyrs-blessing")
         if blessing:
             self._armory_add(hunter, blessing["id"])
             loot.append({"id": blessing["id"], "name": blessing["name"], "slot": "aid", "tier": blessing["tier"], "effect": armory_effect_text(blessing["effect"])})
         return loot
-
-    def _dungeon_gear_drop(self, run: Mapping[str, Any], room_type: str, progress: Mapping[str, Any] | None) -> str | None:
-        """Floor bosses drop campaign gear (legendaries deep down, once that
-        campaign's boss is beaten); elites sometimes drop food."""
-
-        if room_type not in {"boss", "elite"}:
-            return None
-        if not isinstance(progress, Mapping):
-            return None
-        projects = [item for item in progress.get("projects", []) if isinstance(item, Mapping)] if isinstance(progress.get("projects"), list) else []
-        started = [item for item in projects if item.get("status") == "active" or any(isinstance(mob, Mapping) and mob.get("status") == "defeated" for mob in item.get("mobs", []) or [])]
-        if not started:
-            return None
-        hunter = progress.get("hunter") if isinstance(progress.get("hunter"), Mapping) else {}
-        armory = hunter.get("armory") if isinstance(hunter.get("armory"), Mapping) else {}
-        owned = set(armory.get("owned", []) if isinstance(armory.get("owned"), list) else [])
-        rng = random.Random(f"{run.get('seed')}:{run.get('question_number')}:{room_type}:gear")
-        project = rng.choice(started)
-        pool = [item for item in armory_catalog().values() if item["campaign"] == project.get("branch") and item["slot"] != "relic"]
-        if room_type == "elite":
-            if rng.random() >= 0.5:
-                return None
-            item = self._armory_roll(rng, [item for item in pool if item["slot"] in ARMORY_STACK_SLOTS], {tier: 1 for tier in ARMORY_TIERS}, owned)
-        else:
-            deep = max(1, int(run.get("floor", 1) or 1)) >= 3 and project.get("completed") is True
-            weights = {"rare": 50, "epic": 40, "legendary": 10 if deep else 0}
-            item = self._armory_roll(rng, [item for item in pool if item["slot"] in ARMORY_GEAR_SLOTS], weights, owned)
-        return item["id"] if item else None
 
     def armory_projection(self, progress: Mapping[str, Any]) -> dict[str, Any]:
         """The hunter's gear, food, relics, collection and Merchant lots."""
@@ -6735,6 +7228,7 @@ class LocalStateService:
         hunter = progress.get("hunter") if isinstance(progress.get("hunter"), Mapping) else {}
         armory = hunter.get("armory") if isinstance(hunter.get("armory"), Mapping) else {}
         owned = [item for item in armory.get("owned", []) if isinstance(item, str) and item in catalog] if isinstance(armory.get("owned"), list) else []
+        owned = list(dict.fromkeys([*owned, *(item for item in sorted(self._earned_campaign_gear(progress)) if item in catalog)]))
         if self._oil_boss_already_defeated(progress) and OIL_OF_DOOM['id'] not in owned:
             owned.append(OIL_OF_DOOM['id'])
         stack = armory.get("stack") if isinstance(armory.get("stack"), Mapping) else {}
@@ -6743,6 +7237,10 @@ class LocalStateService:
 
         def view(item: Mapping[str, Any], **extra: Any) -> dict[str, Any]:
             projected = {key: item[key] for key in ("id", "name", "slot", "tier", "flavour", "campaign") if key in item} | {"effect": armory_effect_text(item["effect"])} | extra
+            group = next((group for group in HUNTER_SETS if item['id'] in group['pieces']), None)
+            if group:
+                projected['set_name'] = group['name']
+                projected['set_description'] = group['description']
             if item.get("slot") == "weapon":
                 style = item.get("combat_style") or ARMORY_WEAPON_COMBAT_STYLES.get(str(item.get("id")))
                 projected["combat_style"] = style if isinstance(style, str) and style in ARMORY_COMBAT_STYLES else None
@@ -6760,32 +7258,38 @@ class LocalStateService:
                 continue
             found = sum(1 for item in pool if item["id"] in owned or int(stack.get(item["id"], 0) or 0) > 0)
             collection.append({"branch": branch, "name": project.get("name"), "found": found, "total": len(pool)})
-            mobs = [mob for mob in project.get("mobs", []) or [] if isinstance(mob, Mapping)]
-            cleared = sum(1 for mob in mobs if mob.get("status") in {"defeated", "cleared"})
-            share = cleared / max(1, len(mobs))
-            started = project.get("status") == "active" or cleared > 0 or project.get("completed") is True
-            for item in pool:
-                if not isinstance(item.get("price"), int):
-                    continue
-                if item["slot"] in ARMORY_GEAR_SLOTS and item["id"] in owned:
-                    continue
-                need = "Start this campaign" if not started else ("Clear half of its contracts" if item["tier"] == "rare" and share < 0.5 and project.get("completed") is not True else None)
-                market.append(view(item, price=item["price"], locked=need, affordable=need is None and coins >= item["price"]))
         for item in AID_ITEMS:
-            market.append(view(catalog[item["id"]], price=item["price"], locked=None, affordable=coins >= item["price"]))
-        for item in HUNTER_STYLE_WEAPONS:
-            if item["id"] not in owned:
+            if item['id'] in SHOP_AID_IDS:
+                market.append(view(catalog[item["id"]], price=item["price"], locked=None, affordable=coins >= item["price"]))
+        for item in HUNTER_STYLE_WEAPONS + HUNTER_FASHION_GEAR + SHOP_SUPPLIES:
+            if item['slot'] in ARMORY_STACK_SLOTS or item["id"] not in owned:
                 market.append(view(catalog[item["id"]], price=item["price"], locked=None, affordable=coins >= item["price"]))
         tier_rank = {tier: index for index, tier in enumerate(ARMORY_TIERS)}
         market.sort(key=lambda item: (item["locked"] is not None, item["campaign"], ARMORY_SLOTS.index(item["slot"]), tier_rank[item["tier"]]))
         effects = self._gear_effects(progress)
+        owned_appearances = list(dict.fromkeys(
+            item_id for item_id in armory.get("owned_appearances", [])
+            if isinstance(item_id, str) and item_id in ONLINE_MASTERY_BY_ID
+        ))
+        equipped_appearance_ids = armory.get("appearance_equipped", {})
+        equipped_appearances = {}
+        for slot, appearance_type in (("weapon", "weapon"), ("armor", "armor")):
+            item_id = equipped_appearance_ids.get(slot) if isinstance(equipped_appearance_ids, Mapping) else None
+            item = ONLINE_MASTERY_BY_ID.get(item_id) if isinstance(item_id, str) and item_id in owned_appearances else None
+            if item and item.get("appearance_type") == appearance_type:
+                equipped_appearances[slot] = {key: item[key] for key in ("id", "name", "tier", "style", "appearance_type") if key in item}
+            else:
+                equipped_appearances[slot] = None
         return {
             "items": items,
             "equipped": equipped,
             "weapon": view(catalog[equipped["weapon"]]) if equipped["weapon"] in catalog else None,
+            "mastery_appearances": [{key: ONLINE_MASTERY_BY_ID[item_id][key] for key in ("id", "name", "tier", "style", "appearance_type", "description") if key in ONLINE_MASTERY_BY_ID[item_id]} for item_id in owned_appearances],
+            "equipped_appearances": equipped_appearances,
             "buffs": {key: value for key, value in (armory.get("buffs") or {}).items() if isinstance(value, int) and value > 0} if isinstance(armory.get("buffs"), Mapping) else {},
             "charges": self.aid_charges(progress),
             "collection": collection,
+            "sets": [{**item, 'pieces': [catalog[piece]['name'] for piece in item['pieces']], 'equipped_count': sum(1 for piece in item['pieces'] if piece in owned and (equipped['weapon'] == piece or catalog[piece]['name'] in (equipped['armor'], equipped['trinket']))) } for item in HUNTER_SETS],
             "market": market,
             "summary": {key: effects[key] for key in ("reduction", "start_guards", "heal_on_objective", "coin_bonus", "xp_bonus", "loot_luck")},
         }
@@ -6799,12 +7303,17 @@ class LocalStateService:
         if item is None or item["slot"] not in ARMORY_GEAR_SLOTS:
             raise StateCommandError("That is not gear you can equip", status_code=404)
         hunter = self._hunter_state(progress)
-        if item_id == OIL_OF_DOOM['id'] and self._oil_boss_already_defeated(progress) and item_id not in hunter['armory']['owned']:
+        if item_id in self._earned_campaign_gear(progress) and item_id not in hunter['armory']['owned']:
             hunter['armory']['owned'].append(item_id)
         if item_id not in hunter["armory"]["owned"]:
             raise StateCommandError("You do not own that item yet", status_code=409)
         if item["slot"] == "weapon":
             hunter["armory"]["weapon"] = item_id
+            selected_look = hunter["armory"]["appearance_equipped"].get("weapon")
+            selected_appearance = ONLINE_MASTERY_BY_ID.get(selected_look) if isinstance(selected_look, str) else None
+            style = item.get("combat_style") or ARMORY_WEAPON_COMBAT_STYLES.get(item_id)
+            if selected_appearance and selected_appearance.get("style") != style:
+                hunter["armory"]["appearance_equipped"]["weapon"] = None
         else:
             # Only the name reaches the synced equipment; ownership stays local.
             self._dict(progress, "equipment")[item["slot"]] = item["name"]
@@ -6816,10 +7325,40 @@ class LocalStateService:
         if slot not in ARMORY_GEAR_SLOTS:
             raise StateCommandError("Unknown gear slot", status_code=422)
         if slot == "weapon":
-            self._hunter_state(progress)["armory"]["weapon"] = None
+            armory = self._hunter_state(progress)["armory"]
+            armory["weapon"] = None
+            armory["appearance_equipped"]["weapon"] = None
         else:
             self._dict(progress, "equipment")[slot] = "Apprentice Coat" if slot == "armor" else "None"
         return Mutation(True, {"armory": self.armory_projection(progress)}, {"slot": slot, "reason": "armory_unequipped"})
+
+    def _armory_appearance_equip(self, payload: Mapping[str, Any], progress: dict[str, Any]) -> Mutation:
+        """Equip or clear an earned mastery look without changing gear stats."""
+        data = self._payload(payload, {"slot", "appearance_id"}, {"slot"})
+        slot = self._text(data["slot"], "slot", max_length=20, identifier=True)
+        if slot not in {"weapon", "armor"}:
+            raise StateCommandError("Mastery looks only apply to a weapon or armour", status_code=422)
+        raw_id = data.get("appearance_id")
+        appearance_id = raw_id.strip() if isinstance(raw_id, str) else "" if raw_id is None else None
+        if appearance_id is None:
+            raise StateCommandError("appearance_id must be text or null")
+        hunter = self._hunter_state(progress)
+        armory = hunter["armory"]
+        if appearance_id:
+            appearance_id = self._text(appearance_id, "appearance_id", max_length=MAX_IDENTIFIER_LENGTH, identifier=True)
+            appearance = ONLINE_MASTERY_BY_ID.get(appearance_id)
+            if not appearance or appearance.get("appearance_type") != slot:
+                raise StateCommandError("That mastery look does not fit this slot", status_code=422)
+            if appearance_id not in armory["owned_appearances"]:
+                raise StateCommandError("You have not earned that mastery look", status_code=409)
+            if slot == "weapon":
+                weapon_id = armory.get("weapon")
+                weapon = armory_catalog().get(weapon_id) if isinstance(weapon_id, str) else None
+                style = (weapon or {}).get("combat_style") or ARMORY_WEAPON_COMBAT_STYLES.get(str(weapon_id))
+                if not style or appearance.get("style") != style:
+                    raise StateCommandError("That weapon look does not match your equipped weapon", status_code=409)
+        armory["appearance_equipped"][slot] = appearance_id or None
+        return Mutation(True, {"armory": self.armory_projection(progress)}, {"slot": slot, "appearance_id": appearance_id or None, "reason": "mastery_appearance_equipped"})
 
     def _armory_use(self, payload: Mapping[str, Any], progress: dict[str, Any]) -> Mutation:
         """Eat or drink something: heal now, and buff the next battle."""
@@ -6897,9 +7436,10 @@ class LocalStateService:
         if rng.randrange(100) >= AID_DROP_CHANCE:
             return None
         depth = index / max(1, len(mobs) - 1)
-        weights = {item["id"]: (40 if item["tier"] == "uncommon" else round(8 + 22 * depth)) for item in AID_ITEMS}
+        drops = [item for item in AID_ITEMS if item['id'] not in SHOP_AID_IDS and item['id'] != 'aid-pyrs-blessing']
+        weights = {item["id"]: (40 if item["tier"] == "uncommon" else round(8 + 22 * depth)) for item in drops}
         roll = rng.randrange(sum(weights.values()))
-        for item in AID_ITEMS:
+        for item in drops:
             roll -= weights[item["id"]]
             if roll < 0:
                 self._armory_add(self._hunter_state(progress), item["id"])
@@ -6931,33 +7471,41 @@ class LocalStateService:
             levels[track] = min(HUNTER_KIT_MAX_LEVEL, value) if isinstance(value, int) and not isinstance(value, bool) and value > 0 else 0
         return levels
 
+    def _hunter_forge_armor(self, payload: Mapping[str, Any], progress: dict[str, Any]) -> Mutation:
+        """Forge permanent campaign armour from banked materials, once per item."""
+        data = self._payload(payload, {"item_id"}, {"item_id"})
+        item_id = self._text(data["item_id"], "item_id", max_length=MAX_IDENTIFIER_LENGTH, identifier=True)
+        recipe = next((entry for entry in self.hunter_projection(progress)["armor_recipes"] if entry["id"] == item_id), None)
+        if recipe is None:
+            raise StateCommandError("Unknown armour recipe", status_code=404)
+        if recipe["owned"]:
+            raise StateCommandError("You already own that armour", status_code=409)
+        if not recipe["affordable"]:
+            raise StateCommandError("Not enough banked materials or coins", status_code=409)
+        journal = progress.get("dungeon_journal") if isinstance(progress.get("dungeon_journal"), Mapping) else {}
+        unlocks = journal.get("unlocks") if isinstance(journal.get("unlocks"), list) else []
+        if item_id not in unlocks and len(unlocks) >= MAX_DUNGEON_JOURNAL_UNLOCKS:
+            raise StateCommandError("Your Legacy Journal is full; no materials were spent", status_code=409)
+        hunter = self._hunter_state(progress)
+        for part in recipe["materials"]:
+            remaining = self._counter(hunter["materials"], part["id"]) - part["count"]
+            if remaining:
+                hunter["materials"][part["id"]] = remaining
+            else:
+                hunter["materials"].pop(part["id"], None)
+        player = self._dict(progress, "player")
+        player["coins"] = self._counter(player, "coins") - recipe["coins"]
+        self._dungeon_journal_unlock(progress, item_id)
+        return Mutation(True, {"hunter": self.hunter_projection(progress), "armory": self.armory_projection(progress), "item_id": item_id, "coins": player["coins"]}, {"reason": "hunter_armor_forged", "item_id": item_id})
+
     def _hunter_upgrade_kit(self, payload: Mapping[str, Any], progress: dict[str, Any]) -> Mutation:
         """Spend region essences and coins on one level of a kit track."""
 
-        data = self._payload(payload, {"track"}, {"track"})
-        track = self._text(data["track"], "track", max_length=20, identifier=True)
-        entry = next((item for item in self.hunter_projection(progress)["kit"] if item["id"] == track), None)
-        if entry is None:
-            raise StateCommandError("Unknown kit piece", status_code=404)
-        cost = entry["next"]
-        if cost is None:
-            raise StateCommandError(f"{entry['name']} is already at its best", status_code=409)
-        if not cost["affordable"]:
-            raise StateCommandError(f"Needs {cost['count']} {cost['essence_name']} and {cost['coins']} coins", status_code=409)
-        hunter = self._hunter_state(progress)
-        left = self._counter(hunter["materials"], cost["essence"]) - cost["count"]
-        if left > 0:
-            hunter["materials"][cost["essence"]] = left
-        else:
-            hunter["materials"].pop(cost["essence"], None)
-        player = self._dict(progress, "player")
-        player["coins"] = self._counter(player, "coins") - cost["coins"]
-        hunter["kit"][track] = entry["level"] + 1
-        return Mutation(
-            True,
-            {"hunter": self.hunter_projection(progress), "track": track, "level": entry["level"] + 1, "coins": player["coins"]},
-            {"track": track, "level": entry["level"] + 1, "coins_spent": cost["coins"], "reason": "hunter_kit_upgraded"},
-        )
+        # The old kit tracks were charged for bonuses that the Dungeon no
+        # longer applies. Preserve existing levels and materials while actual
+        # equipment smithing is being designed; never charge for a no-op.
+        self._payload(payload, {"track"}, {"track"})
+        raise StateCommandError("Smithing upgrades are unavailable while equipment crafting is being reworked. Your materials have not been spent.", status_code=409)
 
     def _hunter_new_identify(self, hunter: dict[str, Any], progress: Mapping[str, Any]) -> dict[str, Any]:
         """Deal a snippet for the next vial: weak signs come up more often."""
@@ -7033,11 +7581,11 @@ class LocalStateService:
         oil_id = self._text(data["oil_id"], "oil_id", max_length=MAX_IDENTIFIER_LENGTH, identifier=True)
         recipe = next((item for item in self.hunter_projection(progress)["oil_recipes"] if item["id"] == oil_id), None)
         if recipe is None:
-            raise StateCommandError("Unknown oil recipe", status_code=404)
+            raise StateCommandError("Unknown preparation recipe", status_code=404)
         if not recipe["unlocked"]:
-            raise StateCommandError(f"This oil needs its sign at rank {recipe['rank_needed']}", status_code=409)
+            raise StateCommandError(f"This preparation needs its sign at rank {recipe['rank_needed']}", status_code=409)
         if not recipe["affordable"]:
-            raise StateCommandError("Not enough banked materials or coins for this oil", status_code=409)
+            raise StateCommandError("Not enough banked materials or coins for this preparation", status_code=409)
         hunter = self._hunter_state(progress)
         for item in recipe["materials"]:
             left = self._counter(hunter["materials"], item["id"]) - item["count"]
@@ -7122,6 +7670,55 @@ class LocalStateService:
             },
         )
 
+    def _sync_online_equipment(self, payload: Mapping[str, Any], progress: dict[str, Any]) -> Mutation:
+        """Cache online merchant items in this device's campaign armory.
+
+        The local game receives this list from the signed-in online merchant.
+        It is a convenience projection for campaign/sparring, never proof for
+        ranked PvP; the online service verifies account ownership separately.
+        """
+        data = self._payload(payload, {"item_ids", "appearance_ids"}, {"item_ids"})
+        raw_ids = data["item_ids"]
+        if not isinstance(raw_ids, list) or len(raw_ids) > MAX_EQUIPMENT_ITEMS:
+            raise StateCommandError("Online equipment list is invalid")
+        allowed = {item["id"] for item in ONLINE_SHOP_GEAR}
+        item_ids = list(dict.fromkeys(
+            self._text(item_id, "item_ids", max_length=MAX_IDENTIFIER_LENGTH, identifier=True)
+            for item_id in raw_ids
+        ))
+        if any(item_id not in allowed for item_id in item_ids):
+            raise StateCommandError("Online equipment was not in the account's verified stock", status_code=403)
+        raw_appearance_ids = data.get("appearance_ids", [])
+        if not isinstance(raw_appearance_ids, list) or len(raw_appearance_ids) > MAX_EQUIPMENT_ITEMS:
+            raise StateCommandError("Online mastery appearance list is invalid")
+        appearance_ids = list(dict.fromkeys(
+            self._text(item_id, "appearance_ids", max_length=MAX_IDENTIFIER_LENGTH, identifier=True)
+            for item_id in raw_appearance_ids
+        ))
+        if any(item_id not in ONLINE_MASTERY_BY_ID for item_id in appearance_ids):
+            raise StateCommandError("Online appearance was not in the account's verified mastery rewards", status_code=403)
+        hunter = self._hunter_state(progress)
+        armory = hunter.setdefault("armory", {})
+        raw_owned = armory.setdefault("owned", [])
+        if not isinstance(raw_owned, list):
+            raise StateCommandError("Existing state field hunter.armory.owned is invalid", status_code=500)
+        owned = [item_id for item_id in raw_owned if isinstance(item_id, str) and item_id in armory_catalog()]
+        additions = [item_id for item_id in item_ids if item_id not in owned]
+        if len(owned) + len(additions) > MAX_EQUIPMENT_ITEMS:
+            raise StateCommandError("Armory inventory is full", status_code=409)
+        owned_appearances = armory["owned_appearances"]
+        owned_appearances[:] = list(dict.fromkeys(
+            item_id for item_id in owned_appearances
+            if isinstance(item_id, str) and item_id in ONLINE_MASTERY_BY_ID
+        ))
+        appearance_additions = [item_id for item_id in appearance_ids if item_id not in owned_appearances]
+        if not additions and not appearance_additions:
+            return Mutation(False, {"armory": self.armory_projection(progress), "added": []})
+        raw_owned[:] = owned + additions
+        owned_appearances.extend(appearance_additions)
+        return Mutation(True, {"armory": self.armory_projection(progress), "added": additions, "added_appearances": appearance_additions},
+                        {"online_item_ids": additions, "online_appearance_ids": appearance_additions, "reason": "online_equipment_synced"})
+
     def _record_equipment_unlock(self, payload: Mapping[str, Any], progress: dict[str, Any]) -> Mutation:
         """Record a validated equipment unlock from trusted game code."""
 
@@ -7168,7 +7765,7 @@ class LocalStateService:
         data = self._payload(payload, {"item_id"}, {"item_id"})
         item_id = self._text(data["item_id"], "item_id", max_length=MAX_IDENTIFIER_LENGTH, identifier=True)
         item = CAMPAIGN_MARKET_BY_ID.get(item_id)
-        if item is None:
+        if item is None or item_id not in CAMPAIGN_MARKET_AVAILABLE:
             raise StateCommandError("Unknown Campaign Market lot", status_code=404)
         homestead = progress.get("homestead")
         if not isinstance(homestead, dict):
@@ -7179,7 +7776,7 @@ class LocalStateService:
             homestead["market_purchases"] = purchases
         if not isinstance(purchases, list) or any(not isinstance(value, str) for value in purchases):
             raise StateCommandError("Existing homestead market purchases are invalid", status_code=500)
-        if item_id in purchases:
+        if item_id in purchases and item.get("kind") != "supply":
             return Mutation(
                 False,
                 {"already_owned": True, "item": item, "coins": self._counter(self._dict(progress, "player"), "coins")},
@@ -7214,12 +7811,15 @@ class LocalStateService:
             if not isinstance(supply, str) or supply not in {"bandages", "tonics", "meals", "vision_scrolls"}:
                 raise StateCommandError("Unknown Campaign Market supply", status_code=500)
             supplies = self._homestead_supplies(progress)
-            supplies[supply] = min(MAX_SYNC_COUNTER, self._counter(supplies, supply) + 1)
+            if self._counter(supplies, supply) >= MAX_SYNC_COUNTER:
+                raise StateCommandError("Your supply pouch is full", status_code=409)
+            supplies[supply] += 1
         else:
             raise StateCommandError("Campaign Market lot has an invalid kind", status_code=500)
 
         player["coins"] = coins - price
-        purchases.append(item_id)
+        if item_id not in purchases:
+            purchases.append(item_id)
         history = homestead.get("purchase_history")
         if not isinstance(history, list):
             raise StateCommandError("Existing state field purchase_history is invalid", status_code=500)
@@ -7659,24 +8259,27 @@ class LocalStateService:
         reason = self._text(data.get("reason") or "Asked PYR for help", "reason")
         project, _mobs, index, mob = self._active_project_and_mob(progress)
         encounter = self._ensure_encounter_state(progress, project, mob, index)
+        help_free = project.get('branch') == '00-lantern-vale'
+        loot_protected = help_free or (campaign_contract(project.get('branch'), mob.get('name')) or {}).get('tier') == 'elite'
         records = self._dict(progress, "records")
         records["pyr_asks"] = self._counter(records, "pyr_asks") + 1
-        if self._spend_aid(progress, "free_asks"):
+        if not help_free and self._spend_aid(progress, "free_asks"):
             # PYR's Favour: this ask is on the house.
-            scale = self.pyr_reward_scale(self._counter(encounter, "pyr_assists"))
+            scale = 100 if help_free else self.pyr_reward_scale(self._counter(encounter, "pyr_assists"))
             result = {"mob_name": str(mob.get("name") or ""), "pyr_assists": self._counter(encounter, "pyr_assists"), "reward_scale": scale,
-                      "loot_lost": self._counter(encounter, "pyr_assists") >= PYR_ASSIST_LOOT_LIMIT, "free": True, "free_asks_left": self.aid_charges(progress)["free_asks"]}
+                      "loot_lost": not loot_protected and self._counter(encounter, "pyr_assists") >= PYR_ASSIST_LOOT_LIMIT, "free": True, "free_asks_left": self.aid_charges(progress)["free_asks"]}
             return Mutation(True, result, {**result, "reason": reason})
         encounter["pyr_assists"] = self._counter(encounter, "pyr_assists") + 1
         mob["assist"] = "assisted"
         assist = self._dict(progress, "assist")
         assist["pyr_asks"] = self._counter(assist, "pyr_asks") + 1
-        scale = self.pyr_reward_scale(encounter["pyr_assists"])
+        scale = 100 if help_free else self.pyr_reward_scale(encounter["pyr_assists"])
         result = {
             "mob_name": str(mob.get("name") or ""),
             "pyr_assists": encounter["pyr_assists"],
             "reward_scale": scale,
-            "loot_lost": encounter["pyr_assists"] >= PYR_ASSIST_LOOT_LIMIT,
+            "loot_lost": not loot_protected and encounter["pyr_assists"] >= PYR_ASSIST_LOOT_LIMIT,
+            "help_free": help_free,
             "free": False,
         }
         return Mutation(True, result, {**result, "reason": reason})
@@ -8047,6 +8650,9 @@ class LocalStateService:
             contract = campaign_contract(project.get("branch"), mob.get("name")) or {}
             sign = contract.get("sign") if isinstance(contract.get("sign"), str) else None
             profile = self._encounter_profile(index, project, mob)
+            elite_reward = CAMPAIGN_ELITE_TRINKETS.get((project.get('branch'), mob.get('name'))) if mob.get('status') != 'locked' else None
+            elite_gear_id = CAMPAIGN_ELITE_GEAR.get((project.get('branch'), mob.get('name'))) if mob.get('status') != 'locked' else None
+            elite_gear = armory_catalog().get(elite_gear_id)
             contracts.append({
                 "name": mob.get("name"),
                 "status": mob.get("status"),
@@ -8058,6 +8664,8 @@ class LocalStateService:
                 "beast": HUNTER_BEASTS[sign]["beast"] if sign in HUNTER_BEASTS else None,
                 # light (one code task, two questions), quick (two goals) or elite (four or five).
                 "tier": contract.get("tier") if contract.get("tier") in {"light", "quick", "elite"} else None,
+                "elite_reward": elite_reward[1] if elite_reward else None,
+                "elite_gear": elite_gear['name'] if elite_gear else None,
                 "kind": contract.get("kind") if contract.get("kind") in CONTRACT_KINDS else None,
                 "objectives": [{"id": key, "label": value["label"], "question_type": value["question_type"], **({"file": value["file"]} if value.get("file") else {})} for key, value in profile["objectives"].items()],
             })
@@ -8385,12 +8993,16 @@ class LocalStateService:
         reward_xp = min(MAX_REWARD_XP, reward_xp * (100 + min(ARMORY_BONUS_CAP, effects["xp_bonus"] + int(buffs.get("xp_bonus", 0)))) // 100)
         reward_coins = min(MAX_REWARD_COINS, reward_coins * (100 + min(ARMORY_BONUS_CAP, effects["coin_bonus"] + int(buffs.get("coin_bonus", 0)))) // 100)
         pyr_assists = self._counter(encounter, "pyr_assists")
-        reward_scale = self.pyr_reward_scale(pyr_assists)
+        reward_scale = 100 if project.get('branch') == '00-lantern-vale' else self.pyr_reward_scale(pyr_assists)
         reward_xp = reward_xp * reward_scale // 100
         reward_coins = reward_coins * reward_scale // 100
         reward = self._grant_reward(player, reward_xp, reward_coins)
-        loot = None if pyr_assists >= PYR_ASSIST_LOOT_LIMIT else self._armory_contract_drop(progress, project, mobs, index, mob, evidence_id)
-        aid_loot = None if pyr_assists >= PYR_ASSIST_LOOT_LIMIT else self._aid_drop(progress, project, mobs, index, mob, evidence_id)
+        is_elite = (campaign_contract(project.get('branch'), mob.get('name')) or {}).get('tier') == 'elite'
+        loot_allowed = project.get('branch') == '00-lantern-vale' or pyr_assists < PYR_ASSIST_LOOT_LIMIT
+        loot = self._armory_contract_drop(progress, project, mobs, index, mob, evidence_id) if loot_allowed or is_elite else None
+        bonus_loot = self._armory_elite_bonus(progress, project, mob, evidence_id) if is_elite else None
+        embers = self._grant_home_embers(progress, 8) if is_elite else 0
+        aid_loot = self._aid_drop(progress, project, mobs, index, mob, evidence_id) if loot_allowed else None
         achievement_unlocked = None
         achievements = progress.get("achievements")
         if isinstance(achievements, list):
@@ -8413,6 +9025,8 @@ class LocalStateService:
             "reward_xp": reward_xp,
             "reward_coins": reward_coins,
             "loot": loot,
+            "bonus_loot": bonus_loot,
+            "embers": embers,
             "aid_loot": aid_loot,
             "pyr_assists": pyr_assists,
             "reward_scale": reward_scale,
@@ -8461,8 +9075,15 @@ class LocalStateService:
         weapon = effects["weapon"]
         if weapon and weapon.get("on") in {"any", objective["question_type"]}:
             impact = min(MAX_IMPACT + ARMORY_EFFECT_CAPS["impact"], impact + int(weapon.get("impact", 0)))
+        if weapon and not completed:
+            impact = min(MAX_IMPACT + ARMORY_EFFECT_CAPS["impact"], impact + int(weapon.get("opening_impact", 0)))
+        missed_objectives = encounter.get("missed_objectives") if isinstance(encounter.get("missed_objectives"), list) else []
+        if weapon and objective_id in missed_objectives:
+            impact = min(MAX_IMPACT + ARMORY_EFFECT_CAPS["impact"], impact + int(weapon.get("retry_impact", 0)))
         if effects['trinket_on'] in {'any', objective['question_type']}:
             impact = min(MAX_IMPACT + ARMORY_EFFECT_CAPS['impact'], impact + effects['trinket_impact'])
+        if effects['set_bonus'].get('on') in {'any', objective['question_type']}:
+            impact = min(MAX_IMPACT + ARMORY_EFFECT_CAPS['impact'], impact + int(effects['set_bonus'].get('impact', 0)))
         special = campaign_special_mechanic(project, str(mob.get("name") or ""))
         if special and special["reward"] == "focus" and special["trigger"] in completed:
             impact = min(MAX_IMPACT + ARMORY_EFFECT_CAPS["impact"], impact + 1)
@@ -8473,7 +9094,7 @@ class LocalStateService:
             # The iron rule: impact never ends a battle before its last
             # objective. Breaking the guard early only helps: a free mistake
             # and coins, then Resolve is what the remaining objectives remove.
-            break_coins = CAMPAIGN_BREAK_COINS + (int(weapon.get("break_coins", 0)) if weapon else 0)
+            break_coins = CAMPAIGN_BREAK_COINS + (int(weapon.get("break_coins", 0)) if weapon else 0) + int(effects['set_bonus'].get('break_coins', 0))
             encounter["guards"] = min(3, self._counter(encounter, "guards") + 1)
             break_player = self._dict(progress, "player")
             break_player["coins"] = self._counter(break_player, "coins") + break_coins
@@ -8482,10 +9103,11 @@ class LocalStateService:
             after = max(1, sum(int(profile["objectives"][key]["impact"]) for key in remaining))
             guard_break = {"coins": break_coins, "guards": encounter["guards"]}
         healed = 0
-        if effects["heal_on_objective"]:
+        heal_amount = effects["heal_on_objective"] + (int(weapon.get("heal_on_break", 0)) if weapon and guard_break else 0)
+        if heal_amount:
             heal_player = self._dict(progress, "player")
             current_hp = self._counter(heal_player, "hp")
-            healed = max(0, min(effects["heal_on_objective"], self._counter(heal_player, "max_hp") - current_hp))
+            healed = max(0, min(heal_amount, self._counter(heal_player, "max_hp") - current_hp))
             heal_player["hp"] = current_hp + healed
         completed.append(objective_id)
         mechanic_reward = apply_campaign_mechanic(progress, encounter, special) if special and special["trigger"] == objective_id else None
@@ -9158,6 +9780,7 @@ class LocalStateService:
         validation["verified"] = list(boss_gauntlet(project))
         validation["completed_at"] = completed_at
         boss_loot = self._armory_boss_loot(progress, project)
+        boss_embers = self._grant_home_embers(progress, 20)
 
         clean_clear = bool(project.get("clean_clear_eligible"))
         assist = progress.get("assist")
@@ -9221,6 +9844,7 @@ class LocalStateService:
                 "boss_defeated": True,
                 "project_completed": True,
                 "loot": boss_loot,
+                "embers": boss_embers,
                 "boss_name": boss_name,
                 "project_name": project_name,
                 "reward_xp": 100,
@@ -9253,6 +9877,7 @@ class LocalStateService:
                 "boss_defeated": True,
                 "project_completed": True,
                 "loot": boss_loot,
+                "embers": boss_embers,
                 "next_project_name": next_project["name"] if next_project else None,
                 "reward_xp": 100,
                 "reward_coins": 0,

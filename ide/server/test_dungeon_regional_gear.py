@@ -4,13 +4,20 @@ import threading
 import pytest
 
 from ide.server.dungeon_items import GEAR_BY_NAME, REGIONAL_ARMOURS, REGIONAL_TRINKETS, SIGNATURE_WEAPONS
-from ide.server.state import DUNGEON_REGIONS, MAX_DUNGEON_INVENTORY, LocalStateService, StateCommandError
+from ide.server.state import DUNGEON_CLASSES_BY_ID, DUNGEON_MARKET_CATALOG, DUNGEON_REGIONS, MAX_DUNGEON_INVENTORY, LocalStateService, StateCommandError
 from ide.server.test_dungeon_weapons import fight, answer, change
 
 
 def update(path, **values):
     state = json.loads(path.read_text())
-    state['dungeon_run']['loadout'].update(values)
+    run = state['dungeon_run']
+    run['loadout'].update(values)
+    if isinstance(values.get('armor'), str):
+        armor = next(item for item in DUNGEON_MARKET_CATALOG if item.get('armor') == values['armor'])
+        run.setdefault('inventory', []).append({
+            'id': armor['id'], 'name': armor['name'], 'kind': 'armor',
+            'armor': armor['armor'], 'description': armor['description'],
+        })
     path.write_text(json.dumps(state))
 
 
@@ -22,6 +29,50 @@ def test_catalog_has_distinct_items_in_every_region():
         assert len([item for item in SIGNATURE_WEAPONS if item['region'] == region]) == 1
         assert any(item['region'] == region for item in REGIONAL_ARMOURS)
         assert len([item for item in REGIONAL_TRINKETS if item['region'] == region]) >= 3
+
+
+def test_legacy_campaign_loadout_is_scrubbed_from_projection_and_checkpoint_migration(fight):
+    service, path = fight
+    state = json.loads(path.read_text())
+    run = state['dungeon_run']
+    run['inventory'] = None
+    run['loadout'].update(weapon="Hunter's Greatsword", armor='Debugger Plate', trinket='Soul Lantern')
+    starter_weapon = DUNGEON_CLASSES_BY_ID[run['class_id']]['starter_weapon']
+    path.write_text(json.dumps(state))
+
+    projected = service.dungeon_projection(json.loads(path.read_text()))
+    assert projected['loadout']['weapon'] == starter_weapon
+    assert projected['loadout']['armor'] == 'Apprentice Coat'
+    assert projected['loadout']['trinket'] is None
+    assert all(item['name'] not in {"Hunter's Greatsword", 'Debugger Plate', 'Soul Lantern'} for item in projected['inventory'])
+
+    migrated = json.loads(path.read_text())['dungeon_run']
+    service._dungeon_ensure_loadout_defaults(migrated)
+    assert migrated['loadout']['weapon'] == starter_weapon
+    assert migrated['loadout']['armor'] == 'Apprentice Coat'
+    assert all(item['name'] not in {"Hunter's Greatsword", 'Debugger Plate', 'Soul Lantern'} for item in migrated['inventory'])
+
+
+def test_dungeon_inventory_rebuilds_item_data_from_run_catalog(fight):
+    service, path = fight
+    state = json.loads(path.read_text())
+    run = state['dungeon_run']
+    starter = DUNGEON_CLASSES_BY_ID[run['class_id']]
+    starter_weapon = starter['starter_weapon']
+    target_weapon = next(item for item in DUNGEON_MARKET_CATALOG if item['kind'] == 'weapon' and item['weapon'] != starter_weapon)
+    run['inventory'] = [
+        {'id': target_weapon['id'], 'name': "Hunter's Greatsword", 'kind': 'weapon', 'weapon': "Hunter's Greatsword", 'description': 'forged from campaign gear'},
+        {'id': 'dungeon-starter-armor', 'name': 'Debugger Plate', 'kind': 'armor', 'armor': 'Debugger Plate', 'description': 'campaign plate'},
+    ]
+    run['loadout'].update(weapon="Hunter's Greatsword", armor='Debugger Plate')
+    path.write_text(json.dumps(state))
+
+    result = service.apply('dungeon_equip_item', {'run_id': run['run_id'], 'item_id': target_weapon['id']}, 'player')['result']['run']
+    assert result['loadout']['weapon'] == target_weapon['weapon']
+    assert result['loadout']['armor'] == 'Apprentice Coat'
+    assert {item['name'] for item in result['inventory']} == {starter_weapon, target_weapon['name'], 'Apprentice Coat'}
+    saved = json.loads(path.read_text())['dungeon_run']
+    assert {item['name'] for item in saved['inventory']} == {starter_weapon, target_weapon['name'], 'Apprentice Coat'}
 
 
 def test_field_jacket_reduces_actual_failed_answer_damage(fight):

@@ -48,6 +48,12 @@ def fixture_progress() -> dict:
     }
 
 
+def casino_mob_count() -> int:
+    """The Silver Reels length comes from its campaign file, not a magic number."""
+    campaign = Path(__file__).parent / "campaigns" / "04-casino-slots.json"
+    return len(json.loads(campaign.read_text(encoding="utf-8"))["mobs"])
+
+
 class StateServiceBehaviorTests(unittest.TestCase):
     def make_service(self):
         directory = tempfile.TemporaryDirectory()
@@ -716,20 +722,22 @@ class StateServiceBehaviorTests(unittest.TestCase):
         run = self.enter_dungeon_room(service2, path2, "elite", insight=4)
         self.assertEqual(run["encounter"]["fight"]["mechanic"]["every"], 3)
 
-    def test_vitality_raises_a_new_runs_max_hp(self):
+    def test_campaign_vitality_does_not_raise_a_new_runs_max_hp(self):
         service, path = self.make_service()
         state = self.read(path)
         state["hunter"] = {"signs": {}, "stats_xp": {"vitality": 20}, "spent": {}}
         path.write_text(json.dumps(state), encoding="utf-8")
         run = service.apply("dungeon_start_run", {"concept_id": "loops", "seed": "loop-seed"}, "player")["result"]["run"]
-        base = self.read(path)["player"].get("max_hp") or 100
-        self.assertEqual(run["loadout"]["max_hp"], base + 10)
+        self.assertEqual(run["loadout"]["max_hp"], 100)
 
     def enter_delve_room(self, service, path, kind, region="collections", trinket=None):
         run = service.apply("dungeon_start_run", {"seed": "delve-seed", "region_id": region}, "player")["result"]["run"]
         state = self.read(path)
         if trinket:
             state["dungeon_run"]["loadout"]["trinket"] = trinket
+            from ide.server.state import DUNGEON_TRINKETS, REGIONAL_TRINKETS
+            item = next(item for item in (*DUNGEON_TRINKETS, *REGIONAL_TRINKETS) if item.get("trinket") == trinket)
+            state["dungeon_run"]["inventory"].append({key: item[key] for key in ("id", "name", "kind", "trinket", "description") if key in item})
         node = {"id": "f1-r1-delve", "kind": kind, "row": 1, "column": 1, "label": kind}
         state["dungeon_run"]["room_choices"] = [node]
         state["dungeon_run"]["map"]["nodes"] = list(state["dungeon_run"]["map"].get("nodes", [])) + [node]
@@ -870,23 +878,102 @@ class StateServiceBehaviorTests(unittest.TestCase):
                     exec(code, {})
                 self.assertEqual(out.getvalue().strip(), puzzle["answer_text"], (sign_id, code))
 
-    def test_kit_upgrades_spend_essence_and_carry_into_every_delve(self):
+    def test_forged_armour_stash_and_old_kit_are_safe(self):
+        from ide.server.state import dungeon_equipped_effects
         service, path = self.make_service()
-        self.stock_hunter(path, {"village-essence": 1, "cave-essence": 1, "keep-essence": 1}, coins=200)
-        coat = service.apply("hunter_upgrade_kit", {"track": "coat"}, "player")["result"]
-        self.assertEqual(coat["coins"], 160)
-        service.apply("hunter_upgrade_kit", {"track": "satchel"}, "player")
-        service.apply("hunter_upgrade_kit", {"track": "blade"}, "player")
+        self.stock_hunter(path, {"mimic-scale": 4, "village-essence": 1}, coins=100)
+        before = self.read(path)
         with self.assertRaises(StateCommandError):
-            service.apply("hunter_upgrade_kit", {"track": "coat"}, "player")  # level 2 needs 2 essences
-        run = service.apply("dungeon_start_run", {"concept_id": "loops", "seed": "kit-seed"}, "player")["result"]["run"]
-        base = self.read(path)["player"].get("max_hp") or 100
-        self.assertEqual(run["loadout"]["max_hp"], base + 8)
-        self.assertEqual(run["loadout"]["bandages"], 2)
+            service.apply("hunter_upgrade_kit", {"track": "coat"}, "player")
+        self.assertEqual(self.read(path), before)
+        made = service.apply("hunter_forge_armor", {"item_id": "forged-lantern-coat"}, "player")["result"]
+        self.assertEqual(made["coins"], 60)
+        self.assertIn("forged-lantern-coat", self.read(path)["hunter"]["armory"]["owned"])
+        self.assertEqual(made["hunter"]["materials"], [])
+        with self.assertRaises(StateCommandError):
+            service.apply("hunter_forge_armor", {"item_id": "forged-lantern-coat"}, "player")
+        run = service.apply("dungeon_start_run", {"seed": "stash-test", "region_id": "basics"}, "player")["result"]["run"]
+        self.assertEqual(run["loadout"]["armor"], "Apprentice Coat")
+        with self.assertRaises(StateCommandError):
+            service.apply("dungeon_equip_item", {"run_id": run["run_id"], "item_id": "forged-lantern-coat"}, "player")
+        # Move back to the start camp through the real map navigation.
+        state = self.read(path)
+        start = state["dungeon_run"]["map"]["current_node_id"]
+        fight = next(choice for choice in state["dungeon_run"]["room_choices"] if choice["kind"] in {"encounter", "elite"})
+        service.apply("dungeon_choose_room", {"run_id": run["run_id"], "choice_id": fight["id"]}, "player")
+        while self.read(path)["dungeon_run"]["room_type"] in {"encounter", "elite"}:
+            self.answer_room(service, path, "correct", f"stash-{self.read(path)['meta']['revision']}")
+        camp = service.apply("dungeon_travel", {"run_id": run["run_id"], "node_id": start}, "player")["result"]["run"]
+        self.assertEqual(camp["room_type"], "rest")
+        self.assertEqual(camp["armor_stash"][0]["id"], "forged-lantern-coat")
+        claimed = service.apply("dungeon_equip_item", {"run_id": run["run_id"], "item_id": "forged-lantern-coat"}, "player")["result"]["run"]
+        self.assertEqual(claimed["loadout"]["armor"], "Lanternbound Coat")
+        self.assertEqual(dungeon_equipped_effects(claimed["loadout"])["damage_flat"], 2)
+        self.assertFalse(claimed["camp_action_used"])
+        self.assertEqual(sum(item["id"] == "forged-lantern-coat" for item in claimed["inventory"]), 1)
+        self.assertEqual(service.dungeon_projection(self.read(path))["loadout"]["armor"], "Lanternbound Coat")
         service.apply("dungeon_reset_run", {"run_id": run["run_id"]}, "player")
-        self.enter_delve_room(service, path, "elite")
-        hit = self.answer_room(service, path, "correct", "k1")
-        self.assertEqual(hit["fight"]["chip"], 4 + 1)
+        self.assertIn("forged-lantern-coat", self.read(path)["hunter"]["armory"]["owned"])
+
+    def test_forge_rejects_unaffordable_and_unowned_stash(self):
+        service, path = self.make_service()
+        self.stock_hunter(path, {"mimic-scale": 4}, coins=100)
+        before = self.read(path)
+        with self.assertRaises(StateCommandError):
+            service.apply("hunter_forge_armor", {"item_id": "forged-lantern-coat"}, "player")
+        self.assertEqual(self.read(path), before)
+        run = service.apply("dungeon_start_run", {"seed": "stash-unowned", "region_id": "basics"}, "player")["result"]["run"]
+        with self.assertRaises(StateCommandError):
+            service.apply("dungeon_equip_item", {"run_id": run["run_id"], "item_id": "forged-lantern-coat"}, "player")
+
+    def test_forged_armour_journal_restores_ownership_without_losing_local_unlocks(self):
+        service, path = self.make_service()
+        self.stock_hunter(path, {"mimic-scale": 4, "village-essence": 1}, coins=100)
+        service.apply("hunter_forge_armor", {"item_id": "forged-lantern-coat"}, "player")
+        source = self.read(path)
+        projection = service._sync_projection(source)
+        self.assertIn("forged-lantern-coat", projection["campaign"]["dungeon_journal"]["unlocks"])
+        other = fixture_progress()
+        other["dungeon_journal"] = {"unlocks": ["forged-divers-mail"], "cleared_bosses": ["flow"]}
+        other["hunter"] = {"materials": {"wraith-ash": 9}, "armory": {"owned": []}}
+        service._merge_sync_projection(other, projection)
+        self.assertEqual(set(other["dungeon_journal"]["unlocks"]), {"forged-lantern-coat", "forged-divers-mail"})
+        self.assertEqual(other["hunter"]["materials"], {"wraith-ash": 9})
+        self.assertTrue(next(item for item in service.hunter_projection(other)["armor_recipes"] if item["id"] == "forged-lantern-coat")["owned"])
+        self.assertIn("forged-lantern-coat", [item["id"] for item in service.armory_projection(other)["items"]])
+        path.write_text(json.dumps(other), encoding="utf-8")
+        run = service.apply("dungeon_start_run", {"seed": "restored-stash", "region_id": "basics"}, "player")["result"]["run"]
+        saved = self.read(path)
+        saved["dungeon_run"]["room_type"] = "rest"
+        path.write_text(json.dumps(saved), encoding="utf-8")
+        self.assertIn("forged-lantern-coat", [item["id"] for item in service.dungeon_projection(self.read(path))["armor_stash"]])
+        equipped = service.apply("dungeon_equip_item", {"run_id": run["run_id"], "item_id": "forged-lantern-coat"}, "player")["result"]["run"]
+        self.assertEqual(equipped["loadout"]["armor"], "Lanternbound Coat")
+
+    def test_old_forged_ownership_is_projected_without_mutating_the_save(self):
+        service, path = self.make_service()
+        state = self.read(path)
+        state["hunter"] = {"armory": {"owned": ["forged-lantern-coat"]}}
+        original = json.dumps(state, sort_keys=True)
+        projected = service._sync_projection(state)
+        self.assertIn("forged-lantern-coat", projected["campaign"]["dungeon_journal"]["unlocks"])
+        self.assertEqual(json.dumps(state, sort_keys=True), original)
+
+    def test_forged_coat_reduces_actual_dungeon_damage(self):
+        from ide.server.state import HUNTER_FORGED_RUN_ARMOUR
+        damage = []
+        for wearing in (False, True):
+            service, path = self.make_service()
+            self.enter_delve_room(service, path, "encounter", region="basics")
+            state = self.read(path)
+            if wearing:
+                coat = HUNTER_FORGED_RUN_ARMOUR[0]
+                state["dungeon_run"]["loadout"]["armor"] = coat["name"]
+                state["dungeon_run"]["inventory"].append({key: coat[key] for key in ("id", "name", "kind", "armor", "description")})
+                path.write_text(json.dumps(state), encoding="utf-8")
+            result = self.answer_room(service, path, "incorrect", f"damage-{wearing}")
+            damage.append(result["damage"])
+        self.assertEqual(damage[0] - damage[1], 2)
 
     def test_identify_a_vial_by_reading_code(self):
         from ide.server.app_v2 import _without_identify_answer
@@ -1002,7 +1089,7 @@ class StateServiceBehaviorTests(unittest.TestCase):
             self.assertGreater(down["room"], room_before)
             self.assertEqual(down["pack"], [])  # the camp at the bottom banks it
 
-    def test_walking_back_to_a_camp_is_inert_and_death_still_takes_the_pack(self):
+    def test_walking_back_to_a_camp_reopens_it_and_death_still_takes_the_pack(self):
         service, path = self.make_service()
         service.apply("dungeon_start_run", {"seed": "inert", "region_id": "basics"}, "player")
         run = self.read(path)["dungeon_run"]
@@ -1012,11 +1099,13 @@ class StateServiceBehaviorTests(unittest.TestCase):
         while self.read(path)["dungeon_run"]["room_type"] in {"encounter", "elite"}:
             self.answer_room(service, path, "correct", f"i{self.read(path)['dungeon_run']['question_number']}")
         self.assertTrue(self.read(path)["dungeon_run"]["pack"])
-        back = service.apply("dungeon_travel", {"run_id": run["run_id"], "node_id": start}, "player")["result"]["run"]
-        self.assertEqual(back["room_type"], "selector")
-        self.assertTrue(back["pack"])
+        # Only explored rooms can be walked back to.
         with self.assertRaises(StateCommandError):
             service.apply("dungeon_travel", {"run_id": run["run_id"], "node_id": fight["id"].replace("-c", "-x")}, "player")
+        back = service.apply("dungeon_travel", {"run_id": run["run_id"], "node_id": start}, "player")["result"]["run"]
+        # Safe rooms reopen (the start node is Camp I); combat rooms stay resolved. Rest is paid, so this is not a free heal.
+        self.assertEqual(back["room_type"], "rest")
+        self.assertTrue(back["pack"])
         dead = service.apply_internal("dungeon_record_death", {"run_id": run["run_id"], "reason": "fell"})["result"]
         self.assertTrue(dead["pack_lost"])
 
@@ -1181,6 +1270,20 @@ class StateServiceBehaviorTests(unittest.TestCase):
         duplicate = service.apply("campaign_market_purchase", {"item_id": "syntax-ward"}, "player")
         self.assertFalse(duplicate["changed"])
         self.assertEqual(self.read(path)["meta"]["revision"], 6)
+
+    def test_camp_meals_can_be_bought_again_and_fed_to_pyr(self):
+        service, path = self.make_service()
+        state = self.read(path)
+        state["player"]["coins"] = 100
+        path.write_text(json.dumps(state), encoding="utf-8")
+        service.apply("campaign_market_purchase", {"item_id": "camp-meal"}, "player")
+        service.apply("homestead_action", {"action": "feed_pyr"}, "player")
+        service.apply("campaign_market_purchase", {"item_id": "camp-meal"}, "player")
+        result = self.read(path)
+        self.assertEqual(result["player"]["coins"], 48)
+        self.assertEqual(result["supplies"]["meals"], 1)
+        self.assertEqual(result["homestead"]["market_purchases"].count("camp-meal"), 1)
+        self.assertGreaterEqual(result["companion"]["fed_count"], 1)
 
     def test_homestead_room_upgrade_uses_authored_catalog_and_migrates_first_token(self):
         service, path = self.make_service()
@@ -1497,7 +1600,10 @@ class StateServiceBehaviorTests(unittest.TestCase):
         state = self.read(path)
         project = state["projects"][0]
         project.update({"boss": "The House", "boss_status": "available", "progress": 100})
-        project["mobs"] = [{"name": "The Count Keeper", "status": "defeated", "concept": "Loops"}]
+        # The loader pads a project back to its canonical mobs, so resolve all of them.
+        service._extend_campaign(state)
+        for mob in project["mobs"]:
+            mob["status"] = "defeated"
         path.write_text(json.dumps(state), encoding="utf-8")
 
         phase = service.apply_internal(
@@ -1547,7 +1653,10 @@ class StateServiceBehaviorTests(unittest.TestCase):
         project = state["projects"][0]
         project.update({"boss": "The House", "progress": 100})
         project.pop("boss_status", None)
-        project["mobs"] = [{"name": "The Count Keeper", "status": "defeated", "concept": "Loops"}]
+        # The loader pads a project back to its canonical mobs, so resolve all of them.
+        service._extend_campaign(state)
+        for mob in project["mobs"]:
+            mob["status"] = "defeated"
         path.write_text(json.dumps(state), encoding="utf-8")
         self.assertEqual(service.encounter_projection(self.read(path))["status"], "boss_available")
 
@@ -1574,7 +1683,10 @@ class StateServiceBehaviorTests(unittest.TestCase):
         state = self.read(path)
         project = state["projects"][0]
         project.update({"boss": "The House", "clean_clear_eligible": True})
-        project["mobs"] = [{"name": "The Empty Table", "status": "available", "concept": "Variables"}]
+        # The loader pads a project back to its canonical mobs: leave The Empty Table as the last open one.
+        service._extend_campaign(state)
+        for index, mob in enumerate(project["mobs"]):
+            mob["status"] = "available" if index == 0 else "defeated"
         state["achievements"].extend(
             [
                 {"name": "Housebreaker", "unlocked": False},
@@ -1636,14 +1748,17 @@ class StateServiceBehaviorTests(unittest.TestCase):
         self.assertEqual(after["companion"]["next_form"], "Runic Familiar")
         self.assertEqual(after["state_events"][-1]["action"], "record_boss_clear")
         self.assertTrue(after["state_events"][-1]["project_completed"])
-        self.assertEqual(service.encounter_projection(after)["status"], "complete")
+        # Blackjack is done, but the canonical campaigns are loaded now, so the next one is ready.
+        self.assertEqual(service.encounter_projection(after)["status"], "available")
 
     def test_boss_clear_opens_the_next_project_with_a_seeded_bounty_board(self):
         service, path = self.make_service()
         state = self.read(path)
         first = state["projects"][0]
         first.update({"order": 1, "branch": "01-blackjack", "boss": "The House", "boss_status": "available"})
-        first["mobs"] = [{"name": "The Empty Table", "status": "defeated", "concept": "Variables"}]
+        service._extend_campaign(state)
+        for mob in first["mobs"]:
+            mob["status"] = "defeated"
         skipped = {"order": 0, "branch": "05-dungeon-crawler", "name": "The Deep Crawler", "status": "available", "boss": "Die Tozza van Zamalek", "progress": 0}
         upcoming = {"order": 2, "branch": "04-casino-slots", "name": "The Silver Reels", "status": "available", "boss": "Ekse Ouens P Diddy", "progress": 0}
         state["projects"] = [skipped, first, upcoming]
@@ -1660,9 +1775,9 @@ class StateServiceBehaviorTests(unittest.TestCase):
         self.assertEqual(by_branch["01-blackjack"]["status"], "completed")
         casino = by_branch["04-casino-slots"]
         self.assertEqual(casino["status"], "active")
-        self.assertEqual(casino["entry_file"], "casino.py")
-        self.assertEqual(len(casino["mobs"]), 8)
-        self.assertEqual([mob["status"] for mob in casino["mobs"]], ["available"] + ["locked"] * 7)
+        self.assertEqual(casino["entry_file"], "silver_reels/casino.py")
+        self.assertEqual(len(casino["mobs"]), casino_mob_count())
+        self.assertEqual([mob["status"] for mob in casino["mobs"]], ["available"] + ["locked"] * (casino_mob_count() - 1))
         self.assertIn("Ekse Ouens P Diddy", after["current_quest"])
         # A fresh board means a fresh encounter, not an instantly open boss gate.
         projection = service.encounter_projection(after)
@@ -1698,17 +1813,21 @@ class StateServiceBehaviorTests(unittest.TestCase):
         self.assertEqual(switched["event"]["previous_project_id"], "01-blackjack")
         after = {item["branch"]: item for item in self.read(path)["projects"]}
         self.assertEqual(after["04-casino-slots"]["status"], "active")
-        self.assertEqual(after["04-casino-slots"]["entry_file"], "casino.py")
-        self.assertEqual([mob["status"] for mob in after["04-casino-slots"]["mobs"]], ["available"] + ["locked"] * 7)
+        self.assertEqual(after["04-casino-slots"]["entry_file"], "silver_reels/casino.py")
+        self.assertEqual([mob["status"] for mob in after["04-casino-slots"]["mobs"]], ["available"] + ["locked"] * (casino_mob_count() - 1))
         # The project left behind keeps its board and progress.
         self.assertEqual(after["01-blackjack"]["status"], "available")
-        self.assertEqual(after["01-blackjack"]["progress"], 40)
-        self.assertEqual([mob["status"] for mob in after["01-blackjack"]["mobs"]], ["defeated", "available"])
+        # The loader pads a board back to its canonical mobs, so check what was kept, not its length.
+        kept = [mob["status"] for mob in after["01-blackjack"]["mobs"]]
+        self.assertEqual(kept[:2], ["defeated", "available"])
+        self.assertEqual(set(kept[2:]) - {"locked"}, set())
+        self.assertEqual(after["01-blackjack"]["progress"], round(100 * kept.count("defeated") / len(kept)))
         self.assertEqual(service.encounter_projection(self.read(path))["project_name"], "The Silver Reels")
 
         # Switching back resumes it; selecting the active one is a no-op.
         back = service.apply("select_campaign", {"branch": "01-blackjack"}, "player")
-        self.assertEqual([mob["status"] for mob in {i["branch"]: i for i in self.read(path)["projects"]}["01-blackjack"]["mobs"]], ["defeated", "available"])
+        resumed = [mob["status"] for mob in {i["branch"]: i for i in self.read(path)["projects"]}["01-blackjack"]["mobs"]]
+        self.assertEqual(resumed[:2], ["defeated", "available"])
         self.assertTrue(back["changed"])
         self.assertFalse(service.apply("select_campaign", {"branch": "01-blackjack"}, "player")["changed"])
 
@@ -1720,15 +1839,10 @@ class StateServiceBehaviorTests(unittest.TestCase):
     def test_approved_legacy_reconciliation_restores_only_reviewed_fields_and_is_idempotent(self):
         service, path = self.make_service()
         state = self.read(path)
-        state["current_quest"] = "Blackjack — PYR teaches the next needed concept, then you enter Forge phase and implement it from scratch."
         state["last_session"] = "Forge RPG Shell and Homestead were approved as the next IDE evolution. No learning rewards or purchases were claimed."
         state["player"].update({"level": 1, "xp": 0, "xp_next": 100, "lifetime_xp": 0, "coins": 0})
-        state["projects"][0]["mobs"] = [
-            {"name": "The Empty Table", "status": "available", "concept": "Variables, input/output and basic program state"},
-            {"name": "The Dealer's Hand", "status": "locked", "concept": "Lists and random selection"},
-            {"name": "The Count Keeper", "status": "locked", "concept": "Loops and totals"},
-            {"name": "The Hitman", "status": "locked", "concept": "Input loops and control flow"},
-        ]
+        # The loader pads a project back to its canonical mobs, so start from the real Blackjack board.
+        service._extend_campaign(state)
         state["projects"][0]["progress"] = 0
         state["goals"] = {
             "daily": [{"id": "first-deal", "done": False}, {"id": "explain-lists", "done": False}],
@@ -1755,7 +1869,6 @@ class StateServiceBehaviorTests(unittest.TestCase):
             "streak_days_logged": ["2026-09-14"],
             "daily_goal_ids": ["first-deal", "explain-lists"],
             "weekly_goal_progress": [{"id": "two-mobs", "progress": 2}],
-            "current_quest": "Blackjack — Mob 3: The Hitman (repeatedly choose hit or stand).",
             "last_session": "Cleared Mob 0, Mob 1, and Mob 2 cleanly. Approaching Mob 3.",
         }
 
@@ -1769,7 +1882,9 @@ class StateServiceBehaviorTests(unittest.TestCase):
         self.assertEqual(after["player"]["coins"], 55)
         self.assertEqual(after["stats"]["mobs_defeated"], 3)
         self.assertEqual(after["projects"][0]["progress"], 38)
-        self.assertEqual([mob["status"] for mob in after["projects"][0]["mobs"]], ["defeated", "defeated", "defeated", "available"])
+        statuses = [mob["status"] for mob in after["projects"][0]["mobs"]]
+        self.assertEqual(statuses[:4], ["defeated", "defeated", "defeated", "available"])
+        self.assertEqual(set(statuses[4:]), {"locked"})
         self.assertEqual(after["encounter_state"]["mob_name"], "The Hitman")
         self.assertEqual(after["encounter_state"]["resolve"], 8)
         self.assertEqual(after["encounter_state"]["max_resolve"], 8)
@@ -2229,7 +2344,7 @@ class StateGatewayHttpTests(unittest.TestCase):
         self.assertEqual(body["encounter"]["available_objectives"][0]["question_type"], "prediction")
         self.assertEqual(body["encounter"]["mob"]["name"], "The Empty Table")
         self.assertEqual(body["encounter"]["mob"]["index"], 0)
-        self.assertIn("bounded field encounter", body["encounter"]["mob"]["lore"])
+        self.assertIn("An empty table", body["encounter"]["mob"]["lore"])  # the mob's contract text in 01-blackjack.json
         self.assertEqual(body["encounter"]["current_quest"]["id"], "table_setup")
         self.assertEqual(len(body["encounter"]["mechanics"]), 3)
         self.assertEqual(body["encounter"]["reward_envelope"], {"xp": 25, "coins": 10, "authorized_items": []})

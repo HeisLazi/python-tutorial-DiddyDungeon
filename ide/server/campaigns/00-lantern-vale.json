@@ -1,6 +1,6 @@
 {
   "branch": "00-lantern-vale",
-  "name": "The Lantern Vale: Python Foundations",
+  "name": "Mysterys in Shandumballa",
   "boss": "The Unwritten King",
   "order": 0,
   "catalog": true,
@@ -19,7 +19,7 @@
   ],
   "concept_focus": "A first software project: Python foundations, data structures, objects, tests and functional techniques",
   "story": {
-    "title": "The Lantern Vale",
+    "title": "Mysterys in Shandumballa",
     "client": "Mira, keeper of the road",
     "hook": "The lanterns along the road have gone dark. Starting from your first Python file, build a little adventure to help a traveler carry light between places. Each new rule makes the world more alive and teaches a tool you can reuse elsewhere."
   },
@@ -45,7 +45,7 @@
       "goal": "Separate rules from effects, transform collections, pass functions and transfer your skills to a different problem."
     }
   ],
-  "boss_lore": "The Unwritten King cannot be defeated by copying a recipe: the road changes and your rules must still make sense.",
+  "boss_lore": "Lord Twang III cannot be defeated by copying a recipe: the road changes and your rules must still make sense.",
   "boss_brief": "Show the playable Lantern Vale project: a menu that quits, locations, inventory and a delivery, functions in a module, a Traveler object, a JSON save with a safe failure path, tests, and a README that explains how to run it. Demonstrate a successful delivery and a rejected one.",
   "boss_twist": "Make a second delivery with a different destination and item using the same rules function (for example can_deliver()), and show a test for each. Explain what changed and what you reused. Describe the shared inputs and outputs before changing the code. Add a test for a wrong destination, a missing item and a completed delivery, then run the whole test file again. Explain how this same data-and-rules pattern could be used for a shop basket or an order in a later web application.",
   "boss_gauntlet": [
@@ -980,11 +980,12 @@
       "slot": "weapon",
       "tier": "legendary",
       "effect": {
-        "impact": 3,
+        "impact": 1,
         "on": "any",
-        "break_coins": 6
+        "opening_impact": 2,
+        "heal_on_break": 4
       },
-      "flavour": "A keepsake from the roads of Lantern Vale."
+      "flavour": "Lord Twang III’s blade kindles a strong opening and restores health when a bounty guard breaks."
     },
     {
       "id": "lv-06",
@@ -1175,10 +1176,9 @@
       "slot": "relic",
       "tier": "legendary",
       "effect": {
-        "xp_bonus": 5,
-        "coin_bonus": 5
+        "xp_bonus": 8
       },
-      "flavour": "A keepsake from the roads of Lantern Vale."
+      "flavour": "A fragment of Lord Twang III’s crown, kept as a lesson in persistence."
     }
   ],
   "boss_mechanic": {

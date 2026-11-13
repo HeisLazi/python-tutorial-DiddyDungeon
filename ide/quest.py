@@ -105,6 +105,23 @@ def ensure_frontend_dist(build_sha: str, env: dict[str, str]) -> Path:
     return dist
 
 
+def packaged_frontend_dist(env: dict[str, str], *, app_mode: bool) -> Path | None:
+    """Resolve an explicitly supplied built UI for an installed desktop app.
+
+    The developer launcher continues to build from source. Packaged releases
+    provide a prebuilt directory and must never invoke npm on a player's PC.
+    """
+    raw = env.get("QUESTLAB_BUNDLED_DIST", "").strip()
+    if not raw:
+        return None
+    if not app_mode:
+        raise SystemExit("A bundled frontend can only be used in app mode")
+    dist = Path(raw).expanduser()
+    if not dist.is_absolute() or not (dist / "index.html").is_file():
+        raise SystemExit("The packaged frontend is missing or its path is not absolute")
+    return dist.resolve()
+
+
 def current_branch(root: Path) -> str:
     try:
         result = subprocess.run(
@@ -283,21 +300,23 @@ def main():
     workspace = Path(args.workspace).expanduser().resolve()
     if not workspace.exists() or not workspace.is_dir():
         raise SystemExit(f"Workspace does not exist: {workspace}")
-    if not (FRONTEND / "node_modules").exists():
-        raise SystemExit("Frontend dependencies are missing. Run: cd ide/frontend && npm install")
-    if not frontend_dependencies_ready(FRONTEND):
-        if running_under_wsl():
+    bundled_dist = packaged_frontend_dist(os.environ, app_mode=args.app)
+    if bundled_dist is None:
+        if not (FRONTEND / "node_modules").exists():
+            raise SystemExit("Frontend dependencies are missing. Run: cd ide/frontend && npm install")
+        if not frontend_dependencies_ready(FRONTEND):
+            if running_under_wsl():
+                raise SystemExit(
+                    "WSL frontend dependencies are incomplete or were installed for Windows (missing Vite/Supabase "
+                    "metadata or a native Linux Rollup package). Run npm ci inside this WSL checkout or use a clean "
+                    "Linux filesystem before launching Forge."
+                )
             raise SystemExit(
-                "WSL frontend dependencies are incomplete or were installed for Windows (missing Vite/Supabase "
-                "metadata or a native Linux Rollup package). Run npm ci inside this WSL checkout or use a clean "
-                "Linux filesystem before launching Forge."
+                "Frontend dependencies are incomplete (missing Vite/Supabase package metadata). "
+                "Run npm ci from a stopped native Windows Forge process before launching."
             )
-        raise SystemExit(
-            "Frontend dependencies are incomplete (missing Vite/Supabase package metadata). "
-            "Run npm ci from a stopped native Windows Forge process before launching."
-        )
-    if not shutil.which("npm"):
-        raise SystemExit("npm is not on PATH")
+        if not shutil.which("npm"):
+            raise SystemExit("npm is not on PATH")
 
     backend_port = choose_port(args.backend_port)
     # In app mode the backend serves the bundle itself, so the browser origin
@@ -311,6 +330,11 @@ def main():
     configured_state = os.environ.get("QUESTLAB_STATE_PATH", "").strip()
     state_path = Path(configured_state).expanduser() if configured_state else REPO_ROOT / "progress.json"
     env["QUESTLAB_STATE_PATH"] = str(state_path if state_path.is_absolute() else REPO_ROOT / state_path)
+    if os.environ.get("QUESTLAB_INITIALIZE_SAVE") == "1":
+        if bundled_dist is None or not configured_state or not state_path.is_absolute():
+            raise SystemExit("New-save initialization requires a bundled app and an explicit absolute save path")
+        from ide.server.new_game import initialize_new_save
+        initialize_new_save(state_path)
     env["QUESTLAB_WORKSPACE"] = str(workspace)
     env["QUESTLAB_BACKEND_PORT"] = str(backend_port)
     env["QUESTLAB_FRONTEND_PORT"] = str(frontend_port)
@@ -343,7 +367,7 @@ def main():
     if args.reload_backend:
         backend_cmd.append("--reload")
     if args.app:
-        env["QUESTLAB_SERVE_DIST"] = str(ensure_frontend_dist(env["QUESTLAB_BUILD_SHA"], env))
+        env["QUESTLAB_SERVE_DIST"] = str(bundled_dist or ensure_frontend_dist(env["QUESTLAB_BUILD_SHA"], env))
 
     frontend_cmd = [
         "npm",

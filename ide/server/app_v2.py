@@ -1,14 +1,12 @@
 from __future__ import annotations
 
 import asyncio
-import fcntl
 import hashlib
 import uuid
 import difflib
 import importlib.util
 import json
 import os
-import pty
 import re
 import secrets
 import shutil
@@ -17,13 +15,21 @@ import struct
 import subprocess
 import sys
 import tempfile
-import termios
 import threading
 import time
 from pathlib import Path
 from typing import Literal
+from urllib.parse import urlsplit
+
+import httpx
+
+if os.name != "nt":
+    import fcntl
+    import pty
+    import termios
 
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 from starlette.middleware.trustedhost import TrustedHostMiddleware
@@ -63,6 +69,10 @@ from ide import workspace_transfer
 
 REPO_ROOT = Path(os.getenv("QUESTLAB_REPO_ROOT", Path(__file__).resolve().parents[2])).resolve()
 WORKSPACE = Path(os.getenv("QUESTLAB_WORKSPACE", REPO_ROOT)).resolve()
+ONLINE_SERVICE_URL = os.getenv(
+    "QUESTLAB_ONLINE_SERVICE_URL",
+    "https://papasmurff-linux.tail7ca373.ts.net",
+).strip().rstrip("/")
 
 
 def checkout_storage_namespace(repo_root: Path | None = None, workspace: Path | None = None) -> str:
@@ -127,6 +137,12 @@ NOTE_IDENTIFIER_PATTERN = r"[A-Za-z0-9][A-Za-z0-9._-]{0,119}"
 MAX_TEXT_BYTES = 2_000_000
 IGNORED_DIRS = {
     ".git",
+    ".build",
+    ".claude",
+    ".combat-qa",
+    ".godot",
+    ".playwright-cli",
+    ".pytest_cache",
     ".questlab-trash",
     "node_modules",
     ".venv",
@@ -137,6 +153,7 @@ IGNORED_DIRS = {
     ".vscode",
     "dist",
     "build",
+    "target",
     # A malformed transfer once created a literal ``\\`` directory under the
     # checkout. It mirrors a filesystem root and must never appear as a
     # second workspace root in the editor tree.
@@ -172,6 +189,7 @@ def extend_campaign_on_startup() -> None:
     except Exception:  # a missing or unreadable save is handled by the first real action
         pass
 WORKSPACE_NOTES_LOCK = threading.RLock()
+WORKSPACE_FILE_LOCK = threading.RLock()
 PYR_CONTEXT_LOCK = threading.RLock()
 PYR_CONTEXT_INPUT: dict[str, str | None] = {
     "active_path": None,
@@ -211,9 +229,30 @@ app.add_middleware(
 )
 
 
+@app.middleware("http")
+async def bind_pyr_user_session(request, call_next):
+    """Forward signed-in Supabase credentials only within AI request scope."""
+
+    if not request.url.path.startswith("/api/ai/"):
+        return await call_next(request)
+    authorization = request.headers.get("authorization", "")
+    token = authorization[7:].strip() if authorization.lower().startswith("bearer ") else ""
+    if len(token) > 8_192 or any(char.isspace() for char in token):
+        token = ""
+    publishable_key = request.headers.get("apikey", "")
+    if not publishable_key.startswith("sb_publishable_") or len(publishable_key) > 512:
+        publishable_key = ""
+    context = ai_tutor.bind_request_credentials(token, publishable_key)
+    try:
+        return await call_next(request)
+    finally:
+        ai_tutor.reset_request_credentials(context)
+
+
 class FileWrite(BaseModel):
     path: str
     content: str
+    expected_revision: str | None = None
 
 
 class TutorWrite(BaseModel):
@@ -230,6 +269,7 @@ class StateCustodyMigrationRequest(BaseModel):
 class FormatRequest(BaseModel):
     path: str
     content: str
+    expected_revision: str | None = None
 
 
 class HomesteadPurchase(BaseModel):
@@ -379,6 +419,14 @@ class DungeonEditorRequest(BaseModel):
     run_id: str = Field(min_length=1, max_length=MAX_IDENTIFIER_LENGTH)
     question_id: str = Field(min_length=1, max_length=MAX_IDENTIFIER_LENGTH)
     content: str = Field(max_length=MAX_DUNGEON_EDITOR_BYTES)
+
+
+class DungeonCodeRunRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    run_id: str = Field(min_length=1, max_length=MAX_IDENTIFIER_LENGTH)
+    question_id: str = Field(min_length=1, max_length=MAX_IDENTIFIER_LENGTH)
+    content: str = Field(min_length=1, max_length=MAX_DUNGEON_EDITOR_BYTES)
 
 
 class DungeonRunRequest(BaseModel):
@@ -842,6 +890,12 @@ def build_tree() -> list[dict]:
 
 
 def resolve_shell() -> str:
+    if os.name == "nt":
+        # Prefer the native console, even when Git for Windows adds bash to PATH.
+        requested = os.getenv("COMSPEC", "").strip()
+        if requested and Path(requested).is_file():
+            return requested
+        return shutil.which("cmd.exe") or "cmd.exe"
     requested = os.getenv("SHELL", "").strip()
     if requested and Path(requested).exists():
         return requested
@@ -922,6 +976,62 @@ def health():
     }
 
 
+@app.get("/api/online/client-config")
+async def online_client_config():
+    """Relay only the match service's public Supabase client config.
+
+    The browser requests this same-origin endpoint so desktop instances using
+    a fallback local port do not depend on a fixed remote CORS allowlist.
+    """
+
+    service = urlsplit(ONLINE_SERVICE_URL)
+    if (
+        service.scheme != "https"
+        or not service.hostname
+        or service.username
+        or service.password
+        or service.path not in {"", "/"}
+        or service.query
+        or service.fragment
+    ):
+        raise HTTPException(status_code=503, detail="Online account configuration is unavailable.")
+
+    try:
+        async with httpx.AsyncClient(
+            timeout=httpx.Timeout(3.5, connect=2.0), follow_redirects=False
+        ) as client:
+            response = await client.get(f"{ONLINE_SERVICE_URL}/client-config")
+        if response.status_code != 200:
+            raise ValueError("upstream unavailable")
+        payload = response.json()
+        project_url = payload.get("url") if isinstance(payload, dict) else None
+        publishable_key = payload.get("publishable_key") if isinstance(payload, dict) else None
+        project = urlsplit(project_url) if isinstance(project_url, str) else None
+        if (
+            project is None
+            or project.scheme != "https"
+            or not project.hostname
+            or not project.hostname.endswith(".supabase.co")
+            or project.username
+            or project.password
+            or project.path not in {"", "/"}
+            or project.query
+            or project.fragment
+            or not isinstance(publishable_key, str)
+            or not publishable_key.startswith("sb_publishable_")
+            or len(publishable_key) > 512
+        ):
+            raise ValueError("invalid public configuration")
+        return JSONResponse(
+            {"url": project_url, "publishable_key": publishable_key},
+            headers={"Cache-Control": "no-store"},
+        )
+    except (httpx.HTTPError, ValueError, TypeError):
+        raise HTTPException(
+            status_code=503, detail="Online account configuration is unavailable."
+        ) from None
+
+
 @app.get("/api/runtime")
 def runtime():
     shell = resolve_shell()
@@ -930,6 +1040,7 @@ def runtime():
     return {
         "shell": shell,
         "python": sys.executable,
+        "packaged": bool(os.getenv("QUESTLAB_BUNDLED_DIST")),
         "workspace": str(WORKSPACE),
         "repo_root": str(REPO_ROOT),
         "sync_storage_namespace": checkout_storage_namespace(),
@@ -1050,6 +1161,82 @@ def save_dungeon_editor(payload: DungeonEditorRequest):
     result.update({"dungeon": projection, "file": {"path": "dungeon.py", "content": projection.get("editor_content", "")}})
     result["revision"] = metadata["revision"]
     return result
+
+
+@app.post("/api/dungeon/run-code")
+def run_dungeon_code(payload: DungeonCodeRunRequest):
+    """Run the current room's Python attempt without changing run/combat state."""
+
+    try:
+        progress, _metadata = STATE_SERVICE.snapshot_with_metadata()
+        projection = STATE_SERVICE.dungeon_projection(progress)
+    except StateCommandError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
+    question = projection.get("question") if isinstance(projection.get("question"), dict) else {}
+    if (
+        not projection.get("active")
+        or projection.get("run_id") != payload.run_id
+        or question.get("id") != payload.question_id
+    ):
+        raise HTTPException(status_code=409, detail="That Dungeon question is no longer current.")
+
+    content_bytes = payload.content.encode("utf-8")
+    if len(content_bytes) > MAX_DUNGEON_EDITOR_BYTES:
+        raise HTTPException(status_code=413, detail="Dungeon code is too large to run.")
+
+    started = time.monotonic()
+    timeout_seconds = 5
+    with tempfile.TemporaryDirectory(prefix="questlab-dungeon-") as temporary_dir:
+        script = Path(temporary_dir) / "dungeon.py"
+        script.write_text(payload.content, encoding="utf-8")
+        # Keep account tokens and application configuration out of learner
+        # processes. Run the editor buffer from the learner's workspace so
+        # relative file access and imports behave like `python dungeon.py` in
+        # the terminal. The submitted buffer itself remains a temporary file.
+        allowed_environment = {"PATH", "LANG", "LC_ALL", "SYSTEMROOT", "WINDIR", "TEMP", "TMP", "PATHEXT"}
+        child_environment = {
+            key: value for key, value in os.environ.items()
+            if key.upper() in allowed_environment
+        }
+        python_paths = [str(WORKSPACE)]
+        python_paths.extend(item for item in os.environ.get("PYTHONPATH", "").split(os.pathsep) if item)
+        child_environment.update({
+            "PYTHONIOENCODING": "utf-8",
+            "PYTHONUTF8": "1",
+            "PYTHONNOUSERSITE": "1",
+            "PYTHONPATH": os.pathsep.join(python_paths),
+        })
+        try:
+            completed = subprocess.run(
+                [sys.executable, "-s", str(script)],
+                cwd=WORKSPACE,
+                stdin=subprocess.DEVNULL,
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+                timeout=timeout_seconds,
+                env=child_environment,
+                start_new_session=(os.name != "nt"),
+            )
+            output = completed.stdout + ("\n" if completed.stdout and completed.stderr else "") + completed.stderr
+            if not output.strip():
+                output = "Program finished with no output." if completed.returncode == 0 else "Program exited without output."
+            return {
+                "status": "passed" if completed.returncode == 0 else "failed",
+                "exit_code": completed.returncode,
+                "duration_ms": round((time.monotonic() - started) * 1000),
+                "output": output[-8000:],
+                "combat_changed": False,
+            }
+        except subprocess.TimeoutExpired:
+            return {
+                "status": "timeout",
+                "exit_code": None,
+                "duration_ms": round((time.monotonic() - started) * 1000),
+                "output": f"Stopped after {timeout_seconds} seconds. Check for an infinite loop.",
+                "combat_changed": False,
+            }
 
 
 def _dungeon_player_action(action: str, payload: dict) -> dict:
@@ -2428,7 +2615,16 @@ def read_file(path: str):
         content = target.read_text(encoding="utf-8")
     except UnicodeDecodeError as exc:
         raise HTTPException(status_code=415, detail="Only UTF-8 text files are supported") from exc
-    return {"path": target.relative_to(WORKSPACE).as_posix(), "content": content}
+    return {"path": target.relative_to(WORKSPACE).as_posix(), "content": content, "revision": tutor_revision(content)}
+
+
+def _check_file_revision(target: Path, expected_revision: str | None) -> None:
+    if expected_revision is None:
+        return  # Existing API clients may still use unconditional writes.
+    if expected_revision == "missing" and not target.exists():
+        return
+    if not target.is_file() or tutor_revision(target.read_text(encoding="utf-8")) != expected_revision:
+        raise HTTPException(status_code=409, detail="This file changed outside the game. Your edits were not saved; review the external version first.")
 
 
 @app.put("/api/file")
@@ -2438,11 +2634,13 @@ def write_file(payload: FileWrite):
     encoded = payload.content.encode("utf-8")
     if len(encoded) > MAX_TEXT_BYTES:
         raise HTTPException(status_code=413, detail="File is too large for the learning editor")
-    target.parent.mkdir(parents=True, exist_ok=True)
-    before = _read_text_or_empty(target)
-    target.write_text(payload.content, encoding="utf-8")
+    with WORKSPACE_FILE_LOCK:
+        _check_file_revision(target, payload.expected_revision)
+        target.parent.mkdir(parents=True, exist_ok=True)
+        before = _read_text_or_empty(target)
+        target.write_text(payload.content, encoding="utf-8")
     _record_code_lines(before, payload.content)
-    return {"ok": True, "path": target.relative_to(WORKSPACE).as_posix(), "bytes": len(encoded)}
+    return {"ok": True, "path": target.relative_to(WORKSPACE).as_posix(), "bytes": len(encoded), "revision": tutor_revision(payload.content)}
 
 
 CODE_LINE_SUFFIXES = {".py", ".md", ".txt", ".json", ".toml", ".cfg", ".ini", ".html", ".css", ".js", ".sql"}
@@ -2628,7 +2826,7 @@ def write_tutor(payload: TutorWrite):
     }
 
 
-def _format_file(target: Path, content: str, *, allow_tutor: bool = False) -> dict:
+def _format_file(target: Path, content: str, *, allow_tutor: bool = False, expected_revision: str | None = None) -> dict:
     if allow_tutor:
         if target.resolve() != TUTOR_PATH.resolve():
             raise HTTPException(status_code=403, detail="Only the Campaign Tutor Notebook may use this endpoint")
@@ -2638,6 +2836,7 @@ def _format_file(target: Path, content: str, *, allow_tutor: bool = False) -> di
     if len(encoded) > MAX_TEXT_BYTES:
         raise HTTPException(status_code=413, detail="File is too large for the learning editor")
 
+    _check_file_revision(target, expected_revision)
     target.parent.mkdir(parents=True, exist_ok=True)
     target.write_text(content, encoding="utf-8")
     suffix = target.suffix.lower()
@@ -2670,10 +2869,12 @@ def _format_file(target: Path, content: str, *, allow_tutor: bool = False) -> di
         detail = (result.stderr or result.stdout or "Formatter failed").strip()
         raise HTTPException(status_code=422, detail=detail[:4000])
 
+    formatted = target.read_text(encoding="utf-8")
     return {
         "ok": True,
         "path": target.relative_to(WORKSPACE).as_posix(),
-        "content": target.read_text(encoding="utf-8"),
+        "content": formatted,
+        "revision": tutor_revision(formatted),
         "formatter": formatter,
     }
 
@@ -2685,7 +2886,8 @@ def format_tutor(payload: TutorWrite):
 
 @app.post("/api/format")
 def format_file(payload: FormatRequest):
-    return _format_file(safe_path(payload.path), payload.content)
+    with WORKSPACE_FILE_LOCK:
+        return _format_file(safe_path(payload.path), payload.content, expected_revision=payload.expected_revision)
 
 
 @app.get("/api/notes")
@@ -2940,6 +3142,20 @@ class ArmoryItemRequest(BaseModel):
     item_id: str = Field(min_length=1, max_length=MAX_IDENTIFIER_LENGTH)
 
 
+class OnlineEquipmentSyncRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    item_ids: list[str] = Field(max_length=24)
+    appearance_ids: list[str] = Field(default_factory=list, max_length=24)
+
+
+class ArmoryAppearanceRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    slot: str = Field(min_length=1, max_length=20)
+    appearance_id: str | None = Field(default=None, max_length=MAX_IDENTIFIER_LENGTH)
+
+
 class ArmorySlotRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -2949,6 +3165,18 @@ class ArmorySlotRequest(BaseModel):
 @app.post("/api/armory/equip")
 def equip_armory_item(payload: ArmoryItemRequest):
     return _hunter_action("armory_equip", payload.model_dump())
+
+
+@app.post("/api/armory/appearance")
+def equip_armory_appearance(payload: ArmoryAppearanceRequest):
+    return _hunter_action("armory_appearance_equip", payload.model_dump())
+
+
+@app.post("/api/equipment/sync-online")
+def sync_online_equipment(payload: OnlineEquipmentSyncRequest):
+    """Copy account-owned online merchant stock into this device's armory."""
+
+    return _hunter_action("sync_online_equipment", payload.model_dump())
 
 
 @app.post("/api/armory/unequip")
@@ -2964,6 +3192,11 @@ def use_armory_item(payload: ArmoryItemRequest):
 @app.post("/api/armory/buy")
 def buy_armory_item(payload: ArmoryItemRequest):
     return _hunter_action("armory_buy", payload.model_dump())
+
+
+@app.post("/api/hunter/forge-armor")
+def forge_hunter_armor(payload: ArmoryItemRequest):
+    return _hunter_action("hunter_forge_armor", payload.model_dump())
 
 
 @app.post("/api/hunter/kit")
@@ -3072,6 +3305,11 @@ async def terminal(websocket: WebSocket, role: str):
     await websocket.accept()
     shell = resolve_shell()
     env = terminal_environment(role)
+
+    if os.name == "nt":
+        from ide.server.windows_terminal import run_windows_terminal
+        await run_windows_terminal(websocket, shell, WORKSPACE, env)
+        return
 
     try:
         pid, master_fd = pty.fork()
@@ -3201,7 +3439,7 @@ class AiSettingsRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     model: str | None = Field(default=None, max_length=200)
-    mode: Literal["opencode", "classic"] | None = None
+    mode: Literal["opencode", "shared", "classic"] | None = None
     auto_grade: bool | None = None
     generate_dungeon_questions: bool | None = None
     choose_practice_lens: bool | None = None
@@ -3325,7 +3563,11 @@ CHOICE_ANSWER_KEYS: dict[str, dict[str, object]] = {}
 
 @app.get("/api/ai/status")
 def ai_status():
-    return {"ok": True, "settings": ai_tutor.load_settings(), "opencode": ai_tutor.status()}
+    cloud = ai_tutor.cloud_status()
+    # Show local OpenCode independently of cloud readiness so signing in never
+    # hides or disables the user's existing CLI setup.
+    opencode = ai_tutor.status()
+    return {"ok": True, "settings": ai_tutor.load_settings(), "cloud": cloud, "opencode": opencode}
 
 
 @app.get("/api/ai/models")

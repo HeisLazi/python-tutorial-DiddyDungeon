@@ -20,6 +20,7 @@ from ide.server.state import (
     StateCommandError,
     armory_catalog,
 )
+from ide.server.online.shop import ONLINE_MASTERY_BY_ID
 from ide.server.test_campaign_content import story_files, use_real_content, user_like_progress
 
 ALLOWED_EFFECTS = set(ARMORY_EFFECT_CAPS) | set(ARMORY_FLAG_EFFECTS) | {"on", "next_battle"}
@@ -117,22 +118,50 @@ class ArmoryBehaviourTests(unittest.TestCase):
             self.assertNotIn("keepsake", equipped["effect"].lower())
             self.assertFalse(any(item["id"] == item_id for item in self.service.armory_projection(self.service.snapshot())["market"]))
 
+    def test_online_mastery_sync_keeps_appearances_separate_from_gear(self):
+        appearance_id = "online-mastery-armor-rare"
+        result = self.service.apply("sync_online_equipment", {"item_ids": [], "appearance_ids": [appearance_id]}, "player")["result"]
+        projection = result["armory"]
+        self.assertEqual(result["added_appearances"], [appearance_id])
+        self.assertNotIn(appearance_id, self.read()["hunter"]["armory"]["owned"])
+        self.assertEqual([item["id"] for item in projection["mastery_appearances"]], [appearance_id])
+        self.assertEqual(projection["equipped_appearances"], {"weapon": None, "armor": None})
+
+    def test_mastery_looks_require_ownership_and_matching_gear_slot_or_style(self):
+        with self.assertRaises(StateCommandError):
+            self.service.apply("armory_appearance_equip", {"slot": "armor", "appearance_id": "online-mastery-armor-rare"}, "player")
+        self.service.apply("sync_online_equipment", {"item_ids": [], "appearance_ids": ["online-mastery-armor-rare", "online-mastery-weapon-whip-rare", "online-mastery-weapon-sword-rare"]}, "player")
+        self.give("hunter-sparring-whip", "hunter-sparring-staff")
+        self.service.apply("armory_equip", {"item_id": "hunter-sparring-whip"}, "player")
+        before = self.service._gear_effects(self.service.snapshot())
+        self.service.apply("armory_appearance_equip", {"slot": "armor", "appearance_id": "online-mastery-armor-rare"}, "player")
+        self.service.apply("armory_appearance_equip", {"slot": "weapon", "appearance_id": "online-mastery-weapon-whip-rare"}, "player")
+        equipped = self.service.armory_projection(self.service.snapshot())["equipped_appearances"]
+        self.assertEqual((equipped["armor"]["tier"], equipped["weapon"]["style"]), ("rare", "whip"))
+        self.assertEqual(before, self.service._gear_effects(self.service.snapshot()))
+        with self.assertRaises(StateCommandError):
+            self.service.apply("armory_appearance_equip", {"slot": "weapon", "appearance_id": "online-mastery-weapon-sword-rare"}, "player")
+        with self.assertRaises(StateCommandError):
+            self.service.apply("armory_appearance_equip", {"slot": "armor", "appearance_id": "online-mastery-weapon-whip-rare"}, "player")
+        self.service.apply("armory_equip", {"item_id": "hunter-sparring-staff"}, "player")
+        self.assertIsNone(self.service.armory_projection(self.service.snapshot())["equipped_appearances"]["weapon"])
+
     def test_a_weapon_breaks_the_guard_but_the_fight_still_takes_every_objective(self):
-        self.give("bj-the-house-cutter")  # legendary: +3 impact on every objective, +6 break coins
+        self.give("bj-the-house-cutter")  # +2 on explanations and +8 coins on a Guard Break
         self.service.apply("armory_equip", {"item_id": "bj-the-house-cutter"}, "player")
         coins = self.read()["player"]["coins"]
-        one = self.objective("ace_rule")  # 3 + 3 = 6 of 8
-        self.assertFalse(one["mob_defeated"])
-        two = self.objective("multi_ace_trace")  # 2 + 3 = 5 > 2 left: a Guard Break
-        self.assertFalse(two["mob_defeated"])
-        self.assertEqual(two["guard_break"], {"coins": 3 + 6, "guards": 1})
-        self.assertEqual(two["resolve_after"], 3)  # what the last objective removes
-        guarded = self.miss("ace_bug")
+        explanation = self.objective("ace_bug")  # base 3 + weapon 2, leaving 3 of 8
+        self.assertFalse(explanation["mob_defeated"])
+        breaker = self.objective("ace_rule")  # removes the last 3; trace objective remains
+        self.assertFalse(breaker["mob_defeated"])
+        self.assertEqual(breaker["guard_break"], {"coins": 3 + 8, "guards": 1})
+        self.assertEqual(breaker["resolve_after"], 2)  # the final trace objective still resolves
+        guarded = self.miss("multi_ace_trace")
         self.assertTrue(guarded["guard_used"])
         self.assertEqual(guarded["damage"], 0)
-        three = self.objective("ace_bug")
-        self.assertTrue(three["mob_defeated"])
-        self.assertGreaterEqual(self.read()["player"]["coins"], coins + 9)
+        final = self.objective("multi_ace_trace")
+        self.assertTrue(final["mob_defeated"])
+        self.assertGreaterEqual(self.read()["player"]["coins"], coins + 11)
 
     def test_hunter_and_delver_weapons_change_real_campaign_impact(self):
         self.give('hunter-sparring-greatsword')
@@ -147,9 +176,9 @@ class ArmoryBehaviourTests(unittest.TestCase):
         result = self.objective('multi_ace_trace')
         self.assertEqual(result['resolve_before'] - result['resolve_after'], 3)  # base 2 + prediction bonus
 
-    def test_armour_trinkets_food_and_relics_apply_in_battle(self):
+    def test_armour_trinket_food_and_relic_effects_match_the_current_catalog(self):
         self.give("bj-the-high-roller-s-mail", "bj-counting-abacus", "bj-midnight-club-sandwich", "bj-the-house-s-broken-shoe")
-        self.service.apply("armory_equip", {"item_id": "bj-the-high-roller-s-mail"}, "player")  # 45% less damage, first miss free
+        self.service.apply("armory_equip", {"item_id": "bj-the-high-roller-s-mail"}, "player")  # 50% less damage
         self.service.apply("armory_equip", {"item_id": "bj-counting-abacus"}, "player")  # rare: start with a free mistake
         self.service.apply("armory_use", {"item_id": "bj-midnight-club-sandwich"}, "player")  # next battle: a free mistake
         self.assertEqual(self.read()["hunter"]["armory"]["buffs"], {"guards": 1})
@@ -159,12 +188,12 @@ class ArmoryBehaviourTests(unittest.TestCase):
         self.assertTrue(first["guard_used"])
         self.assertEqual(first["guards"], 1)  # trinket 1 + food 1, one spent
         self.miss("ace_rule")  # second guard
-        third = self.miss("ace_rule")  # the armour's free first miss
-        self.assertEqual(third["damage"], 0)
+        third = self.miss("ace_rule")
+        self.assertEqual(third["damage"], 14)  # armor keeps reducing damage after both guards are spent
         fourth = self.miss("ace_rule")
-        self.assertEqual(fourth["damage"], (28 * 55 + 99) // 100)  # mob 9 uses the last damage bucket, 28
+        self.assertEqual(fourth["damage"], 14)  # mob 9 uses the last damage bucket, 28
         summary = self.service.armory_projection(self.read())["summary"]
-        self.assertEqual((summary["reduction"], summary["start_guards"], summary["coin_bonus"]), (45, 1, 5))
+        self.assertEqual((summary["reduction"], summary["start_guards"], summary["coin_bonus"]), (50, 1, 10))
 
     def test_cleared_contracts_drop_campaign_loot_into_the_armory(self):
         for objective in ("ace_rule", "multi_ace_trace", "ace_bug"):
@@ -199,11 +228,11 @@ class ArmoryBehaviourTests(unittest.TestCase):
     def test_aid_is_always_on_sale_and_cannot_be_armed_past_its_cap(self):
         market = self.service.armory_projection(self.read())["market"]
         aid = {lot["id"]: lot for lot in market if lot["campaign"] == "aid"}
-        self.assertEqual(set(aid), {"aid-pyrs-favour", "aid-ward-shield", "aid-pyrs-blessing", "aid-aegis-of-patience"})
+        self.assertEqual(set(aid), {"aid-pyrs-favour", "aid-ward-shield", "aid-scholar-note", "aid-lantern-ward", "aid-travellers-kit"})
         self.assertTrue(all(lot["locked"] is None for lot in aid.values()))
         self.give(coins=500)
-        self.service.apply("armory_buy", {"item_id": "aid-aegis-of-patience"}, "player")
-        self.service.apply("armory_use", {"item_id": "aid-aegis-of-patience"}, "player")
+        self.service.apply("armory_buy", {"item_id": "aid-lantern-ward"}, "player")
+        self.service.apply("armory_use", {"item_id": "aid-lantern-ward"}, "player")
         self.give("aid-aegis-of-patience")
         self.assertEqual(self.service.apply("armory_use", {"item_id": "aid-aegis-of-patience"}, "player")["result"]["armed"], {"wards": 1})  # capped at 3
         self.give("aid-ward-shield")
@@ -211,23 +240,33 @@ class ArmoryBehaviourTests(unittest.TestCase):
             self.service.apply("armory_use", {"item_id": "aid-ward-shield"}, "player")
         self.assertEqual(self.read()["hunter"]["armory"]["stack"].get("aid-ward-shield"), 1)  # a refused use keeps the item
 
-    def test_the_merchant_gates_lots_by_campaign_progress(self):
-        state = self.read()
-        next(item for item in state["projects"] if item["branch"] == "05-dungeon-crawler").update(status="completed", completed=True)
-        self.path.write_text(json.dumps(state), encoding="utf-8")
+    def test_merchant_stock_is_distinct_from_campaign_rewards(self):
         market = self.service.armory_projection(self.read())["market"]
-        crawler = [lot for lot in market if lot["campaign"] == "05-dungeon-crawler"]
-        self.assertTrue(crawler and all(lot["locked"] is None for lot in crawler))  # a finished campaign sells everything up to rare
-        casino = [lot for lot in market if lot["campaign"] == "04-casino-slots"]
-        self.assertTrue(casino and all(lot["locked"] == "Start this campaign" for lot in casino))
-        blackjack_rare = next(lot for lot in market if lot["campaign"] == "01-blackjack" and lot["tier"] == "rare" and lot["slot"] == "weapon")
-        self.assertEqual(blackjack_rare["locked"], "Clear half of its contracts")  # 8 of 19 is under half
+        self.assertFalse(any(lot["campaign"] in {"00-lantern-vale", "01-blackjack", "04-casino-slots", "05-dungeon-crawler"} for lot in market))
         self.give(coins=500)
-        bought = self.service.apply("armory_buy", {"item_id": "bj-card-edge-dagger"}, "player")["result"]
-        self.assertEqual(bought["coins"], 460)
-        self.assertIn("bj-card-edge-dagger", self.read()["hunter"]["armory"]["owned"])
-        with self.assertRaises(Exception):
-            self.service.apply("armory_buy", {"item_id": "cas-coin-roll-club"}, "player")
+        bought = self.service.apply("armory_buy", {"item_id": "merchant-vigil-sabre"}, "player")["result"]
+        self.assertEqual(bought["coins"], 385)
+        self.assertIn("merchant-vigil-sabre", self.read()["hunter"]["armory"]["owned"])
+        with self.assertRaises(StateCommandError):
+            self.service.apply("armory_buy", {"item_id": "bj-card-edge-dagger"}, "player")
+
+    def test_new_merchant_stock_can_be_bought_equipped_and_used(self):
+        self.give(coins=3000)
+        for item_id, style in (("merchant-vigil-sabre", "sword"), ("merchant-moonlit-staff", "staff"), ("merchant-nightfall-greatsword", "greatsword")):
+            self.service.apply("armory_buy", {"item_id": item_id}, "player")
+            equipped = self.service.apply("armory_equip", {"item_id": item_id}, "player")["result"]["armory"]["weapon"]
+            self.assertEqual(equipped["combat_style"], style)
+        for item_id in ("merchant-patchwork-coat", "merchant-pilgrim-leather", "merchant-wayfarer-brigandine", "merchant-oracle-mantle"):
+            self.service.apply("armory_buy", {"item_id": item_id}, "player")
+            self.service.apply("armory_equip", {"item_id": item_id}, "player")
+            self.assertEqual(self.read()["equipment"]["armor"], armory_catalog()[item_id]["name"])
+        for item_id in ("aid-scholar-note", "aid-lantern-ward", "aid-travellers-kit", "merchant-road-rations", "merchant-steadfast-tonic"):
+            self.service.apply("armory_buy", {"item_id": item_id}, "player")
+            self.assertEqual(self.read()["hunter"]["armory"]["stack"][item_id], 1)
+        result = self.service.apply("armory_use", {"item_id": "aid-travellers-kit"}, "player")["result"]
+        self.assertEqual(result["armed"], {"free_asks": 2, "wards": 1})
+        self.service.apply("armory_use", {"item_id": "merchant-steadfast-tonic"}, "player")
+        self.assertEqual(self.read()["hunter"]["armory"]["buffs"]["reduction"], 15)
 
     def test_armory_ownership_never_reaches_the_cloud(self):
         self.give("bj-the-house-cutter", "bj-the-high-roller-s-mail", "bj-counting-abacus", "bj-free-bar-peanuts", "bj-the-house-s-broken-shoe")
@@ -241,17 +280,12 @@ class ArmoryBehaviourTests(unittest.TestCase):
             self.assertNotIn(f'"{item_id}"', text)
         self.assertEqual(projection["equipment"]["armor"], "The High Roller's Mail")
 
-    def test_dungeon_floor_bosses_drop_gear_that_banks_into_the_armory(self):
+    def test_run_gear_does_not_escape_when_the_dungeon_pack_is_banked(self):
         state = self.read()
-        run = {"seed": "gear", "question_number": 3, "floor": 1, "pack": {}}
-        gear = self.service._dungeon_gear_drop(run, "boss", state)
-        self.assertIsNotNone(gear)
-        item = armory_catalog()[gear]
-        self.assertIn(item["slot"], ARMORY_GEAR_SLOTS)
-        self.assertIn(item["tier"], {"rare", "epic"})
-        run["pack"] = {gear: 1, "wraith-ash": 2}
+        run = {"seed": "gear", "question_number": 3, "floor": 1, "pack": {"dungeon-syntax-sabre": 1, "wraith-ash": 2}}
         self.service._dungeon_bank_pack(run, state)
-        self.assertIn(gear, state["hunter"]["armory"]["owned"])
+        self.assertNotIn("dungeon-syntax-sabre", state["hunter"]["armory"]["owned"])
+        self.assertNotIn("dungeon-syntax-sabre", state.get("dungeon_journal", {}).get("unlocks", []))
         self.assertEqual(state["hunter"]["materials"].get("wraith-ash"), 2)
 
 
@@ -279,7 +313,7 @@ class LegacyGearTests(unittest.TestCase):
         for trinket, key in (("Syntax Ward", "block_first_miss"), ("Loop Lens", "heal_on_objective"), ("Guard Bell", "start_guards"), ("Scimitar of Momentum", "coin_bonus"), ("Vision Scroll", "loot_luck")):
             effects = LocalStateService._gear_effects({"equipment": {"trinket": trinket}})
             self.assertTrue(effects[key], trinket)
-        for armour, reduction in (("Debugger Plate", 15), ("Ledgerguard Coat", 25), ("Emberweave Mantle", 30)):
+        for armour, reduction in (("Debugger Plate", 30), ("Ledgerguard Coat", 25), ("Emberweave Mantle", 30)):
             effects = LocalStateService._gear_effects({"equipment": {"armor": armour}})
             self.assertEqual(effects["reduction"], reduction, armour)
 
