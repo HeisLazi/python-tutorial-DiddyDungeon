@@ -1,5 +1,6 @@
 """Every weapon has its own signature, a combat style, and the campaign loop honours the triggers."""
 import json
+import re
 import tempfile
 import threading
 import unittest
@@ -28,6 +29,23 @@ class WeaponCatalogTests(unittest.TestCase):
                 self.assertIn(item["combat_style"], ARMORY_COMBAT_STYLES)
                 self.assertTrue(item.get("shape"))
                 self.assertTrue(set(item["effect"]) & set(SIGNATURE_TEXT), "a weapon needs at least one signature trigger")
+
+    def test_every_weapon_has_its_own_icon_file(self):
+        """A weapon with no mapped icon silently falls back to stock art, so fail loudly instead."""
+        root = Path(__file__).resolve().parents[1] / "frontend"
+        source = (root / "src" / "lanternItemArt.js").read_text(encoding="utf-8")
+        mapping = dict(re.findall(r"^\s*'([^']+)':\s*'([^']+)',?\s*$", source, re.M))
+        owners: dict[str, list[str]] = {}
+        for item_id in self.weapons:
+            with self.subTest(item=item_id):
+                art = mapping.get(item_id) or (mapping.get(item_id[len("campaign-"):]) if item_id.startswith("campaign-dungeon-") else None)
+                self.assertTrue(art, f"{item_id} has no icon in lanternItemArt.js")
+                self.assertTrue((root / "public" / "campaign-art" / "items" / f"{art}.png").is_file(), f"{art}.png is missing")
+                owners.setdefault(art, []).append(item_id)
+        # The Dungeon run weapon and its Journal echo may share a file; nothing else should.
+        for art, ids in owners.items():
+            with self.subTest(art=art):
+                self.assertEqual(len(ids), 1, f"{ids} all use {art}.png")
 
     def test_no_two_weapons_share_the_same_effect(self):
         seen = {}
