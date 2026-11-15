@@ -1361,9 +1361,9 @@ HUNTER_IDENTIFY_TIER_WEIGHTS = (("ward", 6), ("slowing", 3), ("bane", 1))
 # Permanent armour made with banked Dungeon materials. Dungeon run gear
 # remains separate, so crafting does not silently alter an active run.
 HUNTER_FORGED_ARMOUR = (
-    {"id": "forged-lantern-coat", "name": "Lanternbound Coat", "slot": "armor", "tier": "uncommon", "effect": {"reduction": 18}, "flavour": "A coat stitched from the remains of the village's mimics.", "materials": {"mimic-scale": 4, "village-essence": 1}, "coins": 40},
-    {"id": "forged-divers-mail", "name": "Drowned Mail", "slot": "armor", "tier": "rare", "effect": {"reduction": 25}, "flavour": "Mail assembled from the Collection Caves' drowned hoard.", "materials": {"drowner-link": 4, "cave-essence": 1}, "coins": 65},
-    {"id": "forged-keeper-plate", "name": "Flowkeeper Plate", "slot": "armor", "tier": "rare", "effect": {"reduction": 30}, "flavour": "Plate worked from the scales and essence of Flow Keep.", "materials": {"ouroboros-scale": 4, "keep-essence": 1}, "coins": 90},
+    {"id": "forged-lantern-coat", "name": "Lanternbound Coat", "slot": "armor", "tier": "uncommon", "effect": {"reduction": 10, "start_guards": 1}, "flavour": "A coat stitched from the remains of the village's mimics.", "materials": {"mimic-scale": 4, "village-essence": 1}, "coins": 40},
+    {"id": "forged-divers-mail", "name": "Drowned Mail", "slot": "armor", "tier": "rare", "effect": {"reduction": 30, "heal_on_objective": 1}, "flavour": "Mail assembled from the Collection Caves' drowned hoard.", "materials": {"drowner-link": 4, "cave-essence": 1}, "coins": 65},
+    {"id": "forged-keeper-plate", "name": "Flowkeeper Plate", "slot": "armor", "tier": "rare", "effect": {"reduction": 20, "impact": 1, "on": "any"}, "flavour": "Plate worked from the scales and essence of Flow Keep.", "materials": {"ouroboros-scale": 4, "keep-essence": 1}, "coins": 90},
     {"id": "forged-norse-mail", "name": "Norse Mail", "slot": "armor", "tier": "uncommon", "effect": {"reduction": 20}, "flavour": "Layered mail and a fur mantle forged for a hunter's journey.", "materials": {"mimic-scale": 3, "village-essence": 1}, "coins": 45},
 )
 
@@ -1480,15 +1480,15 @@ CAMPAIGN_DELVE_GEAR = tuple(
 # Tier follows the run price (under 60 common, 60-99 uncommon, 100-149 rare, 150-199 epic, 200+
 # legendary); reduction comes from the existing campaign armour ladder. Adding a region is one row.
 CAMPAIGN_ARMOUR_ECHOES = (
-    ('dungeon-lantern-coat', 'Lanternkeeper’s Coat', 'uncommon', 18, 'A coat mended by the keepers of the Basics Village lanterns.'),
-    ('dungeon-pilgrim-ward', 'Wayfarer’s Wardplate', 'rare', 25, 'A pilgrim’s ward, hammered flat and worn to the first boss.'),
+    ('dungeon-lantern-coat', 'Lanternkeeper’s Coat', 'uncommon', {'start_guards': 1, 'heal_on_objective': 1}, 'A coat mended by the keepers of the Basics Village lanterns.'),
+    ('dungeon-pilgrim-ward', 'Wayfarer’s Wardplate', 'rare', {'reduction': 26, 'first_miss_free': True}, 'A pilgrim’s ward, hammered flat and worn to the first boss.'),
 )
 _RUN_ARMOUR_BY_ID = {item['id']: item for item in DUNGEON_MARKET_CATALOG if item.get('kind') == 'armor'}
 CAMPAIGN_DELVE_GEAR += tuple(
-    {'id': 'campaign-' + source_id, 'name': name, 'slot': 'armor', 'tier': tier, 'effect': {'reduction': reduction},
+    {'id': 'campaign-' + source_id, 'name': name, 'slot': 'armor', 'tier': tier, 'effect': dict(effect),
      'flavour': flavour, 'source_id': source_id, 'region': _RUN_ARMOUR_BY_ID[source_id].get('region'),
      'mode_eligibility': ['campaign', 'sparring', 'pvp'], 'source': 'legacy-journal'}
-    for source_id, name, tier, reduction, flavour in CAMPAIGN_ARMOUR_ECHOES
+    for source_id, name, tier, effect, flavour in CAMPAIGN_ARMOUR_ECHOES
 )
 # Run gear that earns its echo by winning a boss while using it: the shop armour above and the
 # seven market weapons. Signature weapons and elite trinkets keep their own drop rules.
@@ -1513,18 +1513,18 @@ OIL_OF_DOOM = {'id': 'cas-oil-of-doom', 'name': 'Oil of Doom and Despair', 'slot
 
 # These are permanent campaign gear; the bottle remains a boss reward.
 HUNTER_FASHION_GEAR = (
-    {'id': 'hunter-ivory-revel-suit', 'name': 'Ivory Revel Suit', 'slot': 'armor', 'tier': 'rare', 'effect': {'reduction': 20}, 'price': 180, 'flavour': 'A white suit with a tiny bottle companion.'},
+    {'id': 'hunter-ivory-revel-suit', 'name': 'Ivory Revel Suit', 'slot': 'armor', 'tier': 'rare', 'effect': {'reduction': 16, 'coin_bonus': 8}, 'price': 180, 'flavour': 'A white suit with a tiny bottle companion.'},
     {'id': 'hunter-pink-cap-charm', 'name': 'Pink Cap Charm', 'slot': 'trinket', 'tier': 'rare', 'effect': {'coin_bonus': 10}, 'price': 100, 'flavour': 'A keepsake for the Ivory Revel set.'},
-    {'id': 'hunter-gravebound-plate', 'name': 'Gravebound Warden Plate', 'slot': 'armor', 'tier': 'rare', 'effect': {'reduction': 30}, 'price': 200, 'flavour': 'A sentinel’s spectral battle plate.'},
+    {'id': 'hunter-gravebound-plate', 'name': 'Gravebound Warden Plate', 'slot': 'armor', 'tier': 'rare', 'effect': {'reduction': 24, 'revive': True}, 'price': 200, 'flavour': 'A sentinel’s spectral battle plate.'},
     {'id': 'hunter-gravebound-greatblade', 'name': 'Gravebound Greatblade', 'slot': 'weapon', 'tier': 'rare', 'effect': {'retry_impact': 2, 'heal_on_break': 2}, 'price': 180, 'combat_style': 'greatsword', 'flavour': 'A grave-forged blade that turns a corrected mistake into renewed strength.'},
     {'id': 'hunter-soul-lantern', 'name': 'Soul Lantern', 'slot': 'trinket', 'tier': 'rare', 'effect': {'heal_on_objective': 1}, 'price': 120, 'flavour': 'A little stolen light for the long fight.'},
-    {'id': 'hunter-harvest-coat', 'name': 'Harvest Revenant Coat', 'slot': 'armor', 'tier': 'rare', 'effect': {'reduction': 20}, 'price': 160, 'flavour': 'Autumn colours for a midnight hunt.'},
+    {'id': 'hunter-harvest-coat', 'name': 'Harvest Revenant Coat', 'slot': 'armor', 'tier': 'rare', 'effect': {'reduction': 16, 'loot_luck': 12}, 'price': 160, 'flavour': 'Autumn colours for a midnight hunt.'},
     {'id': 'hunter-jack-scythe', 'name': 'Jack-o’ Scythe', 'slot': 'weapon', 'tier': 'rare', 'effect': {'impact': 1, 'on': 'prediction'}, 'price': 170, 'combat_style': 'scythe', 'flavour': 'A harvest blade that rewards foresight.'},
     {'id': 'hunter-jacklight-charm', 'name': 'Jacklight Charm', 'slot': 'trinket', 'tier': 'rare', 'effect': {'coin_bonus': 10}, 'price': 100, 'flavour': 'A flickering pumpkin keepsake.'},
-    {'id': 'merchant-patchwork-coat', 'name': 'Merchant Patchwork Coat', 'slot': 'armor', 'tier': 'common', 'effect': {'reduction': 12}, 'price': 75, 'flavour': 'A practical travelling coat, mended for the road.'},
-    {'id': 'merchant-pilgrim-leather', 'name': 'Merchant Pilgrim Leather', 'slot': 'armor', 'tier': 'uncommon', 'effect': {'reduction': 18}, 'price': 125, 'flavour': 'A fitted leather coat for a cautious traveller.'},
-    {'id': 'merchant-wayfarer-brigandine', 'name': 'Merchant Wayfarer Brigandine', 'slot': 'armor', 'tier': 'rare', 'effect': {'reduction': 25}, 'price': 205, 'flavour': 'Layered protection for a longer expedition.'},
-    {'id': 'merchant-oracle-mantle', 'name': 'Merchant Oracle Mantle', 'slot': 'armor', 'tier': 'epic', 'effect': {'reduction': 20, 'first_miss_free': True}, 'price': 350, 'flavour': 'An embroidered mantle that forgives the first mistake in each battle.'},
+    {'id': 'merchant-patchwork-coat', 'name': 'Merchant Patchwork Coat', 'slot': 'armor', 'tier': 'common', 'effect': {'reduction': 10, 'coin_bonus': 4}, 'price': 75, 'flavour': 'A practical travelling coat, mended for the road.'},
+    {'id': 'merchant-pilgrim-leather', 'name': 'Merchant Pilgrim Leather', 'slot': 'armor', 'tier': 'uncommon', 'effect': {'reduction': 12, 'heal_on_objective': 1}, 'price': 125, 'flavour': 'A fitted leather coat for a cautious traveller.'},
+    {'id': 'merchant-wayfarer-brigandine', 'name': 'Merchant Wayfarer Brigandine', 'slot': 'armor', 'tier': 'rare', 'effect': {'reduction': 18, 'impact': 1, 'on': 'code_checkpoint'}, 'price': 205, 'flavour': 'Layered protection for a longer expedition.'},
+    {'id': 'merchant-oracle-mantle', 'name': 'Merchant Oracle Mantle', 'slot': 'armor', 'tier': 'epic', 'effect': {'reduction': 18, 'first_miss_free': True, 'xp_bonus': 10}, 'price': 350, 'flavour': 'An embroidered mantle that forgives the first mistake in each battle.'},
 )
 
 SHOP_SUPPLIES = (
@@ -7111,15 +7111,19 @@ class LocalStateService:
             "first_miss_free": bool(armor_effect.get("first_miss_free")),
             "block_first_miss": bool(trinket_effect.get("block_first_miss")),
             "first_miss_source": armor["name"] if armor_effect.get("first_miss_free") else trinket["name"] if trinket else None,
-            "revive": bool(trinket_effect.get("revive") or (weapon and weapon['effect'].get('revive'))),
-            "revive_source": trinket['name'] if trinket and trinket_effect.get('revive') else weapon['name'] if weapon and weapon['effect'].get('revive') else None,
+            "revive": bool(armor_effect.get("revive") or trinket_effect.get("revive") or (weapon and weapon['effect'].get('revive'))),
+            "revive_source": armor['name'] if armor and armor_effect.get('revive') else trinket['name'] if trinket and trinket_effect.get('revive') else weapon['name'] if weapon and weapon['effect'].get('revive') else None,
             "trinket_impact": capped('impact', trinket_effect.get('impact')),
             "trinket_on": trinket_effect.get('on'),
-            "start_guards": capped("start_guards", trinket_effect.get("start_guards")),
-            "heal_on_objective": capped("heal_on_objective", int(trinket_effect.get("heal_on_objective", 0)) + int(set_bonus.get('heal_on_objective', 0))),
-            "loot_luck": capped("loot_luck", trinket_effect.get("loot_luck")),
-            "coin_bonus": min(ARMORY_BONUS_CAP, capped("coin_bonus", trinket_effect.get("coin_bonus")) + int(set_bonus.get('coin_bonus', 0)) + sum(capped("coin_bonus", relic["effect"].get("coin_bonus")) for relic in relics)),
-            "xp_bonus": min(ARMORY_BONUS_CAP, capped("xp_bonus", trinket_effect.get("xp_bonus")) + sum(capped("xp_bonus", relic["effect"].get("xp_bonus")) for relic in relics)),
+            # Armour carries a role of its own beyond damage reduction: impact on one kind of question, guards, healing, rewards.
+            "armor_impact": capped('impact', armor_effect.get('impact')),
+            "armor_on": armor_effect.get('on'),
+            "armor_name": armor['name'] if armor else None,
+            "start_guards": min(2, capped("start_guards", armor_effect.get("start_guards")) + capped("start_guards", trinket_effect.get("start_guards"))),
+            "heal_on_objective": capped("heal_on_objective", int(armor_effect.get("heal_on_objective", 0)) + int(trinket_effect.get("heal_on_objective", 0)) + int(set_bonus.get('heal_on_objective', 0))),
+            "loot_luck": capped("loot_luck", int(armor_effect.get("loot_luck", 0)) + int(trinket_effect.get("loot_luck", 0))),
+            "coin_bonus": min(ARMORY_BONUS_CAP, capped("coin_bonus", armor_effect.get("coin_bonus")) + capped("coin_bonus", trinket_effect.get("coin_bonus")) + int(set_bonus.get('coin_bonus', 0)) + sum(capped("coin_bonus", relic["effect"].get("coin_bonus")) for relic in relics)),
+            "xp_bonus": min(ARMORY_BONUS_CAP, capped("xp_bonus", armor_effect.get("xp_bonus")) + capped("xp_bonus", trinket_effect.get("xp_bonus")) + sum(capped("xp_bonus", relic["effect"].get("xp_bonus")) for relic in relics)),
             "set_bonus": set_bonus,
         }
 
@@ -9183,6 +9187,8 @@ class LocalStateService:
             impact = min(MAX_IMPACT + ARMORY_EFFECT_CAPS["impact"], impact + signature)
         if effects['trinket_on'] in {'any', objective['question_type']}:
             impact = min(MAX_IMPACT + ARMORY_EFFECT_CAPS['impact'], impact + effects['trinket_impact'])
+        if effects['armor_impact'] and effects['armor_on'] in {'any', objective['question_type']}:
+            impact = min(MAX_IMPACT + ARMORY_EFFECT_CAPS['impact'], impact + effects['armor_impact'])
         if effects['set_bonus'].get('on') in {'any', objective['question_type']}:
             impact = min(MAX_IMPACT + ARMORY_EFFECT_CAPS['impact'], impact + int(effects['set_bonus'].get('impact', 0)))
         special = campaign_special_mechanic(project, str(mob.get("name") or ""))

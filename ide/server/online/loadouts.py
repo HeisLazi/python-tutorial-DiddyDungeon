@@ -41,7 +41,14 @@ def _bonuses(item):
         amount = max(_positive(effect.get('impact'), 3), _positive(effect.get('opening_impact'), 3), _positive(effect.get('retry_impact'), 3))
         return {'damage': amount, 'guard': 0, 'heal': 0}
     if slot == 'armor':
-        return {'damage': 0, 'guard': min(5, _positive(effect.get('reduction'), 60) // 10), 'heal': 0}
+        # Armour has a role of its own. Duel questions are always code, so impact only counts when it applies to
+        # every question or to code questions; a free first mistake or a banked guard is worth one more guard.
+        impact_on = effect.get('on') in ('any', 'code_checkpoint')
+        return {
+            'damage': _positive(effect.get('impact'), 3) if impact_on else 0,
+            'guard': min(5, _positive(effect.get('reduction'), 60) // 10 + (1 if effect.get('first_miss_free') or effect.get('start_guards') else 0)),
+            'heal': min(3, _positive(effect.get('heal_on_objective'), 6)),
+        }
     if slot == 'trinket':
         return {'damage': 0, 'guard': 0, 'heal': min(3, _positive(effect.get('heal_on_objective'), 6))}
     return {'damage': 0, 'guard': 0, 'heal': 0}

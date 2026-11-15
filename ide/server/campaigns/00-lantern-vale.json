@@ -993,7 +993,7 @@
       "slot": "armor",
       "tier": "common",
       "effect": {
-        "reduction": 10
+        "heal_on_objective": 1
       },
       "flavour": "A keepsake from the roads of Lantern Vale.",
       "price": 40
@@ -1004,7 +1004,8 @@
       "slot": "armor",
       "tier": "uncommon",
       "effect": {
-        "reduction": 18
+        "reduction": 14,
+        "xp_bonus": 5
       },
       "flavour": "A keepsake from the roads of Lantern Vale.",
       "price": 90
@@ -1015,7 +1016,8 @@
       "slot": "armor",
       "tier": "rare",
       "effect": {
-        "reduction": 26
+        "reduction": 22,
+        "start_guards": 1
       },
       "flavour": "A keepsake from the roads of Lantern Vale.",
       "price": 180
@@ -1026,7 +1028,10 @@
       "slot": "armor",
       "tier": "epic",
       "effect": {
-        "reduction": 35
+        "reduction": 20,
+        "heal_on_objective": 2,
+        "impact": 1,
+        "on": "explanation"
       },
       "flavour": "A keepsake from the roads of Lantern Vale."
     },
@@ -1036,8 +1041,9 @@
       "slot": "armor",
       "tier": "legendary",
       "effect": {
-        "reduction": 45,
-        "first_miss_free": true
+        "reduction": 40,
+        "first_miss_free": true,
+        "revive": true
       },
       "flavour": "A keepsake from the roads of Lantern Vale."
     },

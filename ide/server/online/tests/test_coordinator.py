@@ -152,7 +152,7 @@ class CoordinatorChecks(unittest.IsolatedAsyncioTestCase):
         await c.loadout('group', 'guest', match_id, {'armor':'hunter-gravebound-plate'})
         await c.submit('group', 'host', match_id, 'attack', 'correct')
         view = await c.submit('group', 'guest', match_id, 'guard', 'wrong')
-        self.assertEqual(view['you']['hp'], 72)  # 30 + 10 + 1 - 10 - 3
+        self.assertEqual(view['you']['hp'], 71)  # 30 + 10 + 1 - 10 - 2 (the Warden Plate's 24% reduction is worth 2 guard)
         self.assertEqual(view['opponent']['loadout']['weapon']['id'], 'hunter-sparring-greatsword')
         self.assertEqual(view['mode'], 'friendly')
 
