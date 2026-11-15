@@ -117,3 +117,14 @@ The weapon is drawn into the base sheet once, in memory (`HELD.compose` in `held
 - Test: `godot --headless --path prototypes/godot-combat --script res://tests/held_weapon_smoke.gd`.
 
 - Look at the real thing after any change to the art or the arena: `godot --path prototypes/godot-combat --script res://tests/overlay_motion_probe.gd -- --style=scythe --weapon=hunter-sparring-scythe` plays a real attack in a window and saves frames to `res://shots/` (needs a display; the headless smoke tests cannot see rendering). In the web build, load `/combat/index.html?embed=1`, send payloads to `window.diddyCombatReceive(JSON.stringify({...}))` and take screenshots mid-swing.
+
+## Recoloured armour looks
+
+Every armour in the Home armory needs a look of its own, but only 13 outfits have bespoke combat sheets. The other
+23 armours are **recolours**: the silhouette of the closest outfit with a different palette.
+
+- `source-art/looks_data.py` is the table: each look id, its parent outfit and its colour-band rules. `python3 source-art/looks.py [--only id,id] [--sheet]` regenerates the combat sheets (`art/tate-<look>-<style>...-sheet.png`), the weapon-less bases (`art/held/base-<look>-...`) and the Market preview sheets, then writes `looks_registry.gd`. Run `godot --headless --path prototypes/godot-combat --import` afterwards. `--sheet` writes `shots/looks-preview.png` for review.
+- The recolour works by colour band (`rot` rotates or sets a hue, `tint` gives colour to neutral cloth) so the painted shading survives. It never touches the hero's skin and hair (found by position from Tate's weapon-less sheets) and leaves a baked weapon's own pixels alone.
+- `looks_registry.gd` maps each look to its parent. A look draws held weapons from the parent's strips (`HELD.strip_for`), composed onto the look's own base, so a weapon keeps its own colours. It has no baked Graveblade or Dawn Lantern sheets; the Gravebound Greatblade is held instead.
+- `ide/frontend/src/hunterEquipment.js` (`ARMOUR_LOOKS`) maps each armour name to its look and to the outfit Home shows (Home only has art for the original outfits). `held_weapon_smoke.gd` checks every look, and `hunterEquipment.test.js` fails if two armours ever share a look.
+- To add an armour: give it an effect (`docs/ARMOUR_IDENTITIES.md`), a row in `looks_data.py`, a row in `ARMOUR_LOOKS`, and an icon. To give a look truly new silhouettes, draw a bespoke outfit instead (the first sections of this file).

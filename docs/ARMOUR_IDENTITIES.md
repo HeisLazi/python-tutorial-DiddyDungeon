@@ -90,8 +90,8 @@ Armour effects stack with the trinket's: guards and healing add up, the first fr
 | Lanternkeeper’s Coat | uncommon | Start every battle with a free mistake; heal 1 HP per verified objective. |
 | Wayfarer’s Wardplate | rare | 26% less damage from misses; your first miss each battle costs nothing. |
 
-## Still to do
+## Icons and looks
 
-- Icons: 18 armours still share one fallback coat icon. Each needs its own (see `ide/frontend/public/campaign-art/items/`).
-- Looks: only 13 outfits have their own combat sheets; the rest show as the base outfit or a tint. See `prototypes/godot-combat/SKIN_WORKFLOW.md`.
+- Every armour has its own icon (`ide/frontend/public/campaign-art/items/armor-<id>.png`, registered in `lanternItemArt.js`, drawn with Codex from `docs/review-art/armour/CODEX_ARMOUR_ICONS_*.md`). A test fails if two share one or a file is missing.
+- Every armour has its own look in combat: 10 bespoke outfits plus 23 recolours (see `prototypes/godot-combat/SKIN_WORKFLOW.md`). Recolours share a silhouette with their parent outfit, and Home shows that parent. A truly new silhouette needs a bespoke outfit.
 - The Infinite Dungeon's run armours are a separate system with their own effects (`dungeon_items.py`); they were not changed.
