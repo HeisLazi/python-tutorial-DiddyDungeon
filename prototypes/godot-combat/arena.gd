@@ -616,16 +616,20 @@ func select_skin(id: String) -> bool:
 func _poses() -> Dictionary:
 	var style := str(weapons[weapon_index]["id"])
 	var poses := _poses_for(skin_id, style, weapon_variant)
-	# Baked weapon variants (Dawn Lantern, Graveblade) keep their own art; the rest can use a held overlay.
-	return poses if not weapon_variant.is_empty() or unarmed else HELD.apply(poses, weapon_id, skin_id, style)
+	# A baked weapon variant (Dawn Lantern, Graveblade) keeps its own art where that outfit has it; everything else can use a held overlay.
+	return poses if _baked_variant(skin_id, style, weapon_variant) or unarmed else HELD.apply(poses, weapon_id, skin_id, style)
+
+## True when this variant has its own baked sheets for the skin and style (an outfit without them wears the plain style's sheets).
+func _baked_variant(skin: String, style: String, variant_name: String) -> bool:
+	return not variant_name.is_empty() and _poses_for(skin, style, variant_name).get("action") != skins[skin]["styles"][style].get("action")
 
 ## Keep the held-weapon sprites on their fighters' current frames just before each draw.
 func _sync_held() -> void:
 	if held == null or body == null or held_rival == null or enemy == null:
 		return
 	var style := str(weapons[weapon_index]["id"])
-	_mirror_held(held, body, _poses() if weapon_variant.is_empty() and not unarmed else {}, weapon_id, skin_id, style)
-	var rival_poses := _rival_poses() if duel_mode and rival_variant.is_empty() and not rival_unarmed else {}
+	_mirror_held(held, body, _poses() if not _baked_variant(skin_id, style, weapon_variant) and not unarmed else {}, weapon_id, skin_id, style)
+	var rival_poses := _rival_poses() if duel_mode and not _baked_variant(rival_skin_id, rival_style, rival_variant) and not rival_unarmed else {}
 	_mirror_held(held_rival, enemy, rival_poses, rival_weapon_id, rival_skin_id, rival_style)
 
 func _mirror_held(overlay: Sprite2D, target: Sprite2D, poses: Dictionary, weapon: String, skin: String, style: String) -> void:
@@ -649,7 +653,7 @@ func _mirror_held(overlay: Sprite2D, target: Sprite2D, poses: Dictionary, weapon
 
 func _rival_poses() -> Dictionary:
 	var poses := _poses_for(rival_skin_id, rival_style, rival_variant)
-	return poses if not rival_variant.is_empty() or rival_unarmed else HELD.apply(poses, rival_weapon_id, rival_skin_id, rival_style)
+	return poses if _baked_variant(rival_skin_id, rival_style, rival_variant) or rival_unarmed else HELD.apply(poses, rival_weapon_id, rival_skin_id, rival_style)
 
 func _poses_for(skin: String, style: String, variant_name: String) -> Dictionary:
 	var poses: Dictionary = skins[skin]["styles"][style]

@@ -81,10 +81,11 @@ func run_checks() -> void:
 			var shown_heavy := overlay_path(scene)
 			require(shown_heavy.ends_with("%s-%s-greatsword-action.png" % [weapon, looks[look]]), "%s / %s should draw a greatsword overlay, got '%s'" % [look, weapon, shown_heavy])
 			require(scene.body.texture.resource_path.contains("base-%s-greatsword-action" % looks[look]), "%s should stand on its weapon-less greatsword base" % look)
-	# Pole styles swap only the head, on every outfit.
+	# Pole styles swap only the head, on every outfit; whips add a piece at the lash tip.
 	var pole_styles := {
 		"scythe": {"weapons": ["dc-miner-s-pickaxe", "hunter-sparring-scythe", "hunter-jack-scythe", "campaign-dungeon-grave-scythe", "campaign-dungeon-undertow-scythe"], "baked": []},
 		"handmagic": {"weapons": ["cas-reel-spinner-chakram", "cas-lady-luck-s-sceptre", "hunter-sparring-focus", "campaign-dungeon-runic-casting", "campaign-dungeon-last-page"], "baked": []},
+		"whip": {"weapons": ["bj-croupier-s-rake", "campaign-dungeon-warden-chain", "campaign-dungeon-pathfinder-whip"], "baked": []},
 		"staff": {"weapons": ["lv-04", "dc-cartographer-s-spear", "hunter-sparring-staff", "merchant-moonlit-staff", "campaign-dungeon-aether-staff", "campaign-dungeon-oracle-staff"], "baked": []},
 	}
 	for pole in pole_styles:
@@ -97,10 +98,17 @@ func run_checks() -> void:
 					require(shown_pole.ends_with("%s-%s-%s-action.png" % [weapon, looks[look], pole]), "%s / %s should draw a %s head overlay, got '%s'" % [look, weapon, pole, shown_pole])
 				else:
 					require(shown_pole == "", "%s keeps its baked %s, got '%s'" % [look, pole, shown_pole])
+	scene._apply_live_state({"simulated": true, "style": "whip", "armorLook": "classic", "weaponId": "hunter-sparring-whip"})
+	require(overlay_path(scene) == "", "The Hunter's Whip is the plain lash and keeps the baked sheet")
 	scene._apply_live_state({"simulated": true, "style": "staff", "armorLook": "classic", "weaponId": "campaign-dungeon-dawn-lantern", "weaponVariant": "dawn-lantern"})
 	require(overlay_path(scene) == "", "The Dawn Lantern keeps its own baked variant")
 	scene._apply_live_state({"simulated": true, "style": "greatsword", "armorLook": "classic", "weaponId": "hunter-gravebound-greatblade", "weaponVariant": "graveblade"})
 	require(overlay_path(scene) == "", "The Gravebound Greatblade keeps its own baked variant sheets")
+	scene._apply_live_state({"simulated": true, "style": "greatsword", "armorLook": "ivory", "weaponId": "hunter-gravebound-greatblade", "weaponVariant": "graveblade"})
+	require(overlay_path(scene) == "" and scene.body.texture.resource_path.contains("ivory-graveblade"), "Ivory has baked Graveblade sheets, so no overlay")
+	for look in ["norse", "lanternkeeper", "wardplate"]:
+		scene._apply_live_state({"simulated": true, "style": "greatsword", "armorLook": look, "weaponId": "hunter-gravebound-greatblade", "weaponVariant": "graveblade"})
+		require(overlay_path(scene).ends_with("hunter-gravebound-greatblade-%s-greatsword-action.png" % look), "%s has no baked Graveblade, so it should draw the overlay: '%s'" % [look, overlay_path(scene)])
 	# Infinite Dungeon run weapons share the Journal echo's art.
 	scene._apply_live_state({"simulated": true, "style": "sword", "armorLook": "classic", "weaponId": "dungeon-loopblade"})
 	require(overlay_path(scene).ends_with("campaign-dungeon-loopblade-tate-sword-idle.png"), "dungeon-loopblade should use the loopblade strips: " + overlay_path(scene))
@@ -116,9 +124,12 @@ func run_checks() -> void:
 	require(scene.enemy.texture.resource_path.contains("base-wardplate-sword-idle"), "The rival should stand on its weapon-less base")
 	require(scene.held_rival.flip_h == scene.enemy.flip_h and scene.held_rival.frame == scene.enemy.frame and scene.held_rival.offset == scene.enemy.offset, "The rival overlay must mirror the enemy sprite")
 	require(scene.held.visible and scene.held.texture.resource_path.ends_with("lv-01-tate-sword-idle.png"), "The hunter keeps their own overlay in a duel")
-	scene._apply_live_state({"simulated": false, "region": "duel-colosseum", "style": "sword", "armorLook": "classic", "rivalStyle": "sword", "rivalArmorLook": "wardplate", "rivalWeaponId": "bj-the-house-cutter", "rivalWeaponVariant": "graveblade"})
+	scene._apply_live_state({"simulated": false, "region": "duel-colosseum", "style": "sword", "armorLook": "classic", "rivalStyle": "greatsword", "rivalArmorLook": "ivory", "rivalWeaponId": "hunter-gravebound-greatblade", "rivalWeaponVariant": "graveblade"})
 	scene._sync_held()
 	require(not scene.held_rival.visible, "A rival with a baked variant must not get an overlay")
+	scene._apply_live_state({"simulated": false, "region": "duel-colosseum", "style": "sword", "armorLook": "classic", "rivalStyle": "greatsword", "rivalArmorLook": "wardplate", "rivalWeaponId": "hunter-gravebound-greatblade", "rivalWeaponVariant": "graveblade"})
+	scene._sync_held()
+	require(scene.held_rival.visible and scene.held_rival.texture.resource_path.ends_with("hunter-gravebound-greatblade-wardplate-greatsword-action.png"), "A rival whose outfit has no baked Graveblade wears the overlay")
 	scene._apply_live_state({"simulated": false, "region": "duel-colosseum", "style": "unarmed", "armorLook": "classic", "rivalStyle": "unarmed", "rivalArmorLook": "wardplate", "rivalWeaponId": "bj-the-house-cutter"})
 	scene._sync_held()
 	require(not scene.held_rival.visible, "A bare-handed rival must not draw a weapon")

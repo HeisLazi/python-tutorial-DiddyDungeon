@@ -89,6 +89,7 @@ GREATSWORD_WEAPONS = {
     "campaign-dungeon-iron-greatsword": {"grip": 0.22, "reach": 1.0},
     "campaign-dungeon-minotaur-edge": {"grip": 0.25, "reach": 0.9},
     "campaign-dungeon-clockwork-greatblade": {"grip": 0.22, "reach": 1.0},
+    "hunter-gravebound-greatblade": {"grip": 0.22, "reach": 1.0},  # baked variant sheets exist for ten outfits; the rest wear this overlay
 }
 GREATSWORD_WEAPONS = {k: {**v, "back": v["grip"]} for k, v in GREATSWORD_WEAPONS.items()}  # keep the whole handle so it meets the fists
 STYLE_WEAPONS = {"sword": SWORD_WEAPONS, "greatsword": GREATSWORD_WEAPONS}
