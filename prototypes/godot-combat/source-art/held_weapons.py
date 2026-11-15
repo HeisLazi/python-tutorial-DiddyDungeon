@@ -40,17 +40,22 @@ OUTFITS = {
 # (their poses match it closely), shifted to wherever their own crossguard is.
 LIGHT_OUTFITS = {"ivory", "merchant-oracle"}
 # (skin, sheet, frame) -> blade start and end measured by hand, where borrowing Tate's geometry misses.
-MANUAL_BLADE = {("ivory", "idle", 2): ((54.4, 48.4), (67.0, 62.0))}
+MANUAL_BLADE = {("ivory", "sword", "idle", 2): ((54.4, 48.4), (67.0, 62.0))}
 
 
-def sword_sheets(skin: str) -> dict:
-    """sheet key -> (file name, cell width) for the sword style."""
-    if OUTFITS[skin] is None:
-        return {"idle": ("tate-idle-sheet.png", 96), "action": ("tate-sword-v2-sheet.png", 96),
-                "follow": ("tate-followthrough-sheet.png", 96), "hurt": ("tate-hurt-sheet.png", 96)}
+def style_sheets(skin: str, style: str) -> dict:
+    """sheet key -> (file name, cell width) for one combat style. Tate's own files predate the `tate-<prefix>-` naming."""
     prefix = OUTFITS[skin]
-    return {key: (f"tate-{prefix}-sword{suffix}-sheet.png", 96)
-            for key, suffix in (("idle", "-idle"), ("action", ""), ("follow", "-follow"), ("hurt", "-hurt"))}
+    if style == "sword":
+        if prefix is None:
+            return {"idle": ("tate-idle-sheet.png", 96), "action": ("tate-sword-v2-sheet.png", 96),
+                    "follow": ("tate-followthrough-sheet.png", 96), "hurt": ("tate-hurt-sheet.png", 96)}
+        return {key: (f"tate-{prefix}-sword{suffix}-sheet.png", 96)
+                for key, suffix in (("idle", "-idle"), ("action", ""), ("follow", "-follow"), ("hurt", "-hurt"))}
+    if style == "greatsword":
+        head = "tate" if prefix is None else f"tate-{prefix}"
+        return {"action": (f"{head}-greatsword-sheet.png", 128), "hurt": (f"{head}-greatsword-hurt-sheet.png", 128)}
+    raise KeyError(style)
 
 
 # Per item: the share of the icon (pommel to tip) that is grip, and the blade reach relative to
@@ -69,6 +74,24 @@ SWORD_WEAPONS = {
     "campaign-dungeon-loopblade": {"grip": 0.28, "reach": 1.0},
     "campaign-dungeon-hollow-fang": {"grip": 0.22, "reach": 0.85},
 }
+# Greatsword-style weapons: the blade is longer, hammers and clubs have a short grip and a heavy head. The
+# Gravebound Greatblade is left out because the game already plays it from its own baked variant sheets.
+GREATSWORD_WEAPONS = {
+    "lv-03": {"grip": 0.20, "reach": 0.65},
+    "bj-the-shoe-splitter": {"grip": 0.30, "reach": 0.7},
+    "cas-coin-roll-club": {"grip": 0.25, "reach": 0.7},
+    "cas-lever-arm-mace": {"grip": 0.25, "reach": 0.7},
+    "cas-jackpot-hammer": {"grip": 0.20, "reach": 0.7},
+    "dc-deepvein-warhammer": {"grip": 0.20, "reach": 0.7},
+    "dc-the-core-breaker": {"grip": 0.22, "reach": 1.0},
+    "hunter-sparring-greatsword": {"grip": 0.22, "reach": 1.0},
+    "merchant-nightfall-greatsword": {"grip": 0.22, "reach": 1.05},
+    "campaign-dungeon-iron-greatsword": {"grip": 0.22, "reach": 1.0},
+    "campaign-dungeon-minotaur-edge": {"grip": 0.25, "reach": 0.9},
+    "campaign-dungeon-clockwork-greatblade": {"grip": 0.22, "reach": 1.0},
+}
+GREATSWORD_WEAPONS = {k: {**v, "back": v["grip"]} for k, v in GREATSWORD_WEAPONS.items()}  # keep the whole handle so it meets the fists
+STYLE_WEAPONS = {"sword": SWORD_WEAPONS, "greatsword": GREATSWORD_WEAPONS}
 # Icons are filed under item id unless the Journal echo shares the Dungeon file.
 ICON_NAME = lambda item_id: f"weapon-{item_id}.png"  # noqa: E731
 
@@ -138,23 +161,42 @@ def guard_centre(cell: np.ndarray, near: np.ndarray, radius: float = 9.0):
     return None if best is None else best[1]
 
 
-def blade_frames(sheet: Image.Image, cell_w: int, reference=None, reference_sheet=None, manual=None):
+def blade_frames(sheet: Image.Image, cell_w: int, reference=None, reference_sheet=None, manual=None, borrow: bool = False, label: str = ""):
+    """Blade start/end per frame. With `borrow`, when colour detection finds nothing, or when what it finds disagrees
+    with the reference pose (angle off by more than 20 degrees or a very different length), the geometry is taken
+    from the reference frames (Tate's), shifted to this outfit's crossguard."""
     arr = np.array(sheet.convert("RGBA")).astype(int)
     ref_arr = None if reference is None else np.array(reference_sheet.convert("RGBA")).astype(int)
     frames = []
     for i in range(sheet.width // cell_w):
         cell = arr[:, i * cell_w : (i + 1) * cell_w]
-        if reference is None:
-            a, b = detect_blade(cell)
-        else:
+        borrowed = None
+        if reference is not None:
             ref = reference[i]
             anchor = ref["start"] - ref["dir"] * 3.5
             mine = guard_centre(cell, anchor)
             theirs = guard_centre(ref_arr[:, i * cell_w : (i + 1) * cell_w], anchor)
             shift = (mine - theirs) if mine is not None and theirs is not None else np.zeros(2)
-            a, b = ref["start"] + shift, ref["end"] + shift
-            if i in (manual or {}):
-                a, b = (np.array(point, float) for point in manual[i])
+            borrowed = (ref["start"] + shift, ref["end"] + shift)
+        a = b = None
+        if not borrow:
+            try:
+                a, b = detect_blade(cell)
+            except ValueError:
+                if borrowed is None:
+                    raise
+                print(f"  {label} frame {i}: no steel found, borrowing Tate's blade", file=sys.stderr)
+            if a is not None and borrowed is not None:
+                d1, d2 = (b - a) / np.hypot(*(b - a)), (borrowed[1] - borrowed[0]) / np.hypot(*(borrowed[1] - borrowed[0]))
+                angle = math.degrees(math.acos(float(np.clip(d1 @ d2, -1, 1))))
+                ratio = np.hypot(*(b - a)) / np.hypot(*(borrowed[1] - borrowed[0]))
+                if angle > 20 or not 0.6 <= ratio <= 1.6:
+                    print(f"  {label} frame {i}: detected blade disagrees with Tate's ({angle:.0f} deg, x{ratio:.1f}), borrowing", file=sys.stderr)
+                    a = b = None
+        if a is None:
+            a, b = borrowed
+        if i in (manual or {}):
+            a, b = (np.array(point, float) for point in manual[i])
         d = (b - a) / np.hypot(*(b - a))
         frames.append({"cell": cell, "start": a, "end": b, "dir": d, "len": float(np.hypot(*(b - a)))})
     return frames
@@ -178,7 +220,7 @@ def fill_body(cell: np.ndarray, erased: np.ndarray, d: np.ndarray) -> None:
             cell[y, x] = min(found, key=lambda item: item[0])[1]
 
 
-def strip_weapon(sheet: Image.Image, cell_w: int, frames, light: bool = False) -> Image.Image:
+def strip_weapon(sheet: Image.Image, cell_w: int, frames, light: bool = False, wide: bool = False) -> Image.Image:
     """Erase the blade and crossguard, keep the glove. `light` outfits cannot tell the blade from the coat by
     colour, so everything inside a thin capsule around the blade is erased and the body is repainted."""
     arr = np.array(sheet.convert("RGBA"))
@@ -186,16 +228,18 @@ def strip_weapon(sheet: Image.Image, cell_w: int, frames, light: bool = False) -
         cell = arr[:, i * cell_w : (i + 1) * cell_w]
         d = f["dir"]
         reach = (8.0, 4.0) if light else (6.0, 3.2)  # light outfits borrow keypoints, so allow for a few pixels of drift
+        if wide:  # the greatsword's blade is thicker and its guard longer
+            reach = (10.0, 5.0)
         guard = capsule(cell.shape[:2], f["start"] - d * reach[0], f["start"] + d * 1.5, reach[1]) & gold_mask(cell.astype(int))
         if light:
-            blade = capsule(cell.shape[:2], f["start"] - d * 1.0, f["end"] + d * 1.5, 2.6) & (cell[:, :, 3] > 0)
+            blade = capsule(cell.shape[:2], f["start"] - d * 1.0, f["end"] + d * 1.5, 3.6 if wide else 2.6) & (cell[:, :, 3] > 0)
         else:
-            blade = capsule(cell.shape[:2], f["start"] - d * 1.0, f["end"] + d * 1.5, 2.6) & steel_mask(cell.astype(int))
+            blade = capsule(cell.shape[:2], f["start"] - d * 1.0, f["end"] + d * 1.5, 4.0 if wide else 2.6) & steel_mask(cell.astype(int))
         erased = blade | guard
         cell[erased] = (0, 0, 0, 0)
         fill_body(cell, erased, d)
         # The blade's dark outline is left behind; peel it away from the outside in, but only near the blade.
-        zone = capsule(cell.shape[:2], f["start"] - d * 1.0, f["end"] + d * (14.0 if light else 3.0), 3.2 if light else 2.8)
+        zone = capsule(cell.shape[:2], f["start"] - d * 1.0, f["end"] + d * (14.0 if light else 3.0), 4.5 if wide else 3.2 if light else 2.8)
         for _ in range(6 if light else 4):
             dark = (cell[:, :, 3] > 0) & (cell[:, :, :3].astype(int).mean(2) < 150) & zone
             clear = cell[:, :, 3] == 0
@@ -207,6 +251,24 @@ def strip_weapon(sheet: Image.Image, cell_w: int, frames, light: bool = False) -
             if not peel.any():
                 break
             cell[peel] = (0, 0, 0, 0)
+        # Thin leftovers (a 1px blade edge, a guard arm) vanish under a morphological opening; thick body parts survive it.
+        opaque = cell[:, :, 3] > 0
+        for _ in range(2):
+            pad = np.pad(opaque, 1)
+            eroded = np.ones_like(opaque)
+            for dy in (0, 1, 2):
+                for dx in (0, 1, 2):
+                    eroded &= pad[dy : dy + opaque.shape[0], dx : dx + opaque.shape[1]]
+            pad = np.pad(eroded, 1)
+            opened = np.zeros_like(opaque)
+            for dy in (0, 1, 2):
+                for dx in (0, 1, 2):
+                    opened |= pad[dy : dy + opaque.shape[0], dx : dx + opaque.shape[1]]
+            thin = opaque & ~opened & capsule(cell.shape[:2], f["start"] - d * 5.0, f["end"] + d * 8.0, 5.0 if wide else 3.0)
+            if not thin.any():
+                break
+            cell[thin] = (0, 0, 0, 0)
+            opaque = cell[:, :, 3] > 0
         # Sweep up isolated specks (bits of guard or outline) left floating near where the weapon was.
         near_weapon = capsule(cell.shape[:2], f["start"] - d * 8.0, f["end"] + d * 14.0, 6.0)
         for part in components(cell[:, :, 3] > 0):
@@ -222,7 +284,7 @@ def load_icon(item_id: str):
     return Image.open(path).convert("RGBA")
 
 
-def horizontal_weapon(icon: Image.Image, grip: float):
+def horizontal_weapon(icon: Image.Image, grip: float, back: float = 0.0):
     """Rotate the diagonal icon so pommel->tip is +x, then keep the part beyond the grip.
 
     Returns (image, pivot x, pivot y) with the pivot at the guard position, in the image."""
@@ -241,19 +303,20 @@ def horizontal_weapon(icon: Image.Image, grip: float):
     r = np.array(rotated)
     ys, xs = np.where(r[:, :, 3] > 40)
     guard_x = centre[0] + length * grip
-    keep = xs >= guard_x - 2
+    start_x = int(guard_x - back * length)  # `back` keeps a little of the handle behind the guard so it meets the fist
+    keep = xs >= start_x - 2
     ys, xs = ys[keep], xs[keep]
-    box = (int(guard_x), int(ys.min()) - 1, int(xs.max()) + 2, int(ys.max()) + 2)
+    box = (start_x, int(ys.min()) - 1, int(xs.max()) + 2, int(ys.max()) + 2)
     crop = rotated.crop(box)
-    return crop, 0.0, (centre[1] - box[1])
+    return crop, (guard_x - start_x if back else 0.0), (centre[1] - box[1])
 
 
 def draw_overlay(base_frames, cell_w: int, height: int, icon: Image.Image, spec) -> Image.Image:
-    weapon, px, py = horizontal_weapon(icon, spec["grip"])
+    weapon, px, py = horizontal_weapon(icon, spec["grip"], spec.get("back", 0.0))
     out = Image.new("RGBA", (cell_w * len(base_frames), height), (0, 0, 0, 0))
     for i, f in enumerate(base_frames):
         reach = spec["reach"] * (f["len"] + 3.5)
-        scale = reach / weapon.width
+        scale = reach / (weapon.width - px)
         big_w = max(2, round(weapon.width * scale * SS))
         big_h = max(2, round(weapon.height * scale * SS))
         sprite = weapon.resize((big_w, big_h), Image.LANCZOS)
@@ -261,7 +324,7 @@ def draw_overlay(base_frames, cell_w: int, height: int, icon: Image.Image, spec)
         pad = max(big_w, big_h) + 8
         canvas = Image.new("RGBA", (pad * 2, pad * 2), (0, 0, 0, 0))
         # The weapon's axis sits on y=pad and its guard on x=pad, so rotating about (pad, pad) swings it from the guard.
-        canvas.alpha_composite(sprite, (pad, int(pad - py * scale * SS)))
+        canvas.alpha_composite(sprite, (int(pad - px * scale * SS), int(pad - py * scale * SS)))
         turned = canvas.rotate(-angle, resample=Image.BICUBIC, center=(pad, pad))
         anchor = f["start"] - f["dir"] * 3.5
         full = Image.new("RGBA", (cell_w * SS, height * SS), (0, 0, 0, 0))
@@ -282,26 +345,25 @@ def _paste_clipped(dst: Image.Image, src: Image.Image, x: int, y: int) -> None:
         dst.alpha_composite(src.crop(box), (max(0, x), max(0, y)))
 
 
-def build(skin: str, weapons: dict, force: bool = False, reference: dict | None = None):
-    """Build one outfit's sword bases and strips. Returns (report, frames by sheet key)."""
-    style = "sword"
+def build(skin: str, style: str, weapons: dict, force: bool = False, reference: dict | None = None):
+    """Build one outfit's bases and strips for a style. Returns (report, frames by sheet key)."""
     HELD.mkdir(exist_ok=True)
     report, all_frames = {}, {}
-    for key, (name, cell_w) in sword_sheets(skin).items():
+    for key, (name, cell_w) in style_sheets(skin, style).items():
         sheet = Image.open(ART / name).convert("RGBA")
         light = skin in LIGHT_OUTFITS
-        if light:
-            tate_name = sword_sheets("tate")[key][0]
-            manual = {f: points for (s, k, f), points in MANUAL_BLADE.items() if s == skin and k == key}
-            frames = blade_frames(sheet, cell_w, reference[key], Image.open(ART / tate_name), manual)
+        manual = {f: points for (s, st, k, f), points in MANUAL_BLADE.items() if s == skin and st == style and k == key}
+        if reference is not None:
+            tate_name = style_sheets("tate", style)[key][0]
+            frames = blade_frames(sheet, cell_w, reference[key], Image.open(ART / tate_name), manual, borrow=light, label=f"{skin}/{style}/{key}")
         else:
-            frames = blade_frames(sheet, cell_w)
+            frames = blade_frames(sheet, cell_w, manual=manual)
         all_frames[key] = frames
         report[key] = [
             {"start": [round(v, 1) for v in f["start"]], "end": [round(v, 1) for v in f["end"]], "len": round(f["len"], 1)}
             for f in frames
         ]
-        strip_weapon(sheet, cell_w, frames, light).save(HELD / f"base-{skin}-{style}-{key}-sheet.png")
+        strip_weapon(sheet, cell_w, frames, light, wide=(style == "greatsword")).save(HELD / f"base-{skin}-{style}-{key}-sheet.png")
         for item_id, spec in weapons.items():
             target = HELD / f"{item_id}-{skin}-{style}-{key}.png"
             if target.exists() and not force:
@@ -316,22 +378,25 @@ def build(skin: str, weapons: dict, force: bool = False, reference: dict | None 
 
 def main() -> None:
     parser = argparse.ArgumentParser()
+    parser.add_argument("--style", default="sword", choices=sorted(STYLE_WEAPONS))
     parser.add_argument("--only", help="comma separated item ids")
     parser.add_argument("--skins", help="comma separated skin ids (default: every outfit)")
     parser.add_argument("--force", action="store_true", help="overwrite strips that already exist")
     args = parser.parse_args()
-    weapons = SWORD_WEAPONS
+    weapons = STYLE_WEAPONS[args.style]
     if args.only:
         weapons = {k: v for k, v in weapons.items() if k in args.only.split(",")}
     skins = args.skins.split(",") if args.skins else list(OUTFITS)
-    _, tate_frames = build("tate", {}, args.force) if "tate" not in skins else (None, None)
+    tate_frames = None
+    if "tate" not in skins:
+        _, tate_frames = build("tate", args.style, {}, args.force)
     for skin in skins:
-        report, frames = build(skin, weapons, args.force, tate_frames)
+        report, frames = build(skin, args.style, weapons, args.force, tate_frames)
         if skin == "tate":
             tate_frames = frames
-        (HELD / f"keypoints-{skin}-sword.json").write_text(json.dumps(report, indent=1) + "\n", encoding="utf-8")
+        (HELD / f"keypoints-{skin}-{args.style}.json").write_text(json.dumps(report, indent=1) + "\n", encoding="utf-8")
         print(skin, "ok")
-    print("built", len(weapons), "weapons for", len(skins), "outfits")
+    print("built", len(weapons), args.style, "weapons for", len(skins), "outfits")
 
 
 if __name__ == "__main__":

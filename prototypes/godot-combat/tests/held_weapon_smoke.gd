@@ -73,6 +73,16 @@ func run_checks() -> void:
 			var shown := overlay_path(scene)
 			require(scene.skin_id == looks[look] and shown.ends_with("%s-%s-sword-idle.png" % [weapon, looks[look]]), "%s / %s should draw its overlay, got '%s' on skin %s" % [look, weapon, shown, scene.skin_id])
 			require(scene.body.texture.resource_path.contains("base-%s-sword-idle" % looks[look]), "%s should stand on its weapon-less base" % look)
+	# Greatsword-style weapons, on every outfit, in both of that style's sheets.
+	var heavy := ["lv-03", "bj-the-shoe-splitter", "cas-coin-roll-club", "cas-lever-arm-mace", "cas-jackpot-hammer", "dc-deepvein-warhammer", "dc-the-core-breaker", "hunter-sparring-greatsword", "merchant-nightfall-greatsword", "campaign-dungeon-iron-greatsword", "campaign-dungeon-minotaur-edge", "campaign-dungeon-clockwork-greatblade"]
+	for look in looks:
+		for weapon in heavy:
+			scene._apply_live_state({"simulated": true, "style": "greatsword", "armorLook": look, "weaponId": weapon})
+			var shown_heavy := overlay_path(scene)
+			require(shown_heavy.ends_with("%s-%s-greatsword-action.png" % [weapon, looks[look]]), "%s / %s should draw a greatsword overlay, got '%s'" % [look, weapon, shown_heavy])
+			require(scene.body.texture.resource_path.contains("base-%s-greatsword-action" % looks[look]), "%s should stand on its weapon-less greatsword base" % look)
+	scene._apply_live_state({"simulated": true, "style": "greatsword", "armorLook": "classic", "weaponId": "hunter-gravebound-greatblade", "weaponVariant": "graveblade"})
+	require(overlay_path(scene) == "", "The Gravebound Greatblade keeps its own baked variant sheets")
 	scene._apply_live_state({"simulated": true, "style": "sword", "armorLook": "ivory", "weaponId": "not-a-weapon"})
 	require(overlay_path(scene) == "" and scene.skin_id == "ivory", "An unknown weapon should keep the baked sword on any outfit")
 	scene._apply_live_state({"simulated": true, "style": "staff", "armorLook": "classic", "weaponId": "bj-the-house-cutter", "weaponVariant": "dawn-lantern"})
