@@ -50,7 +50,13 @@ def _bonuses(item):
             'heal': min(3, _positive(effect.get('heal_on_objective'), 6)),
         }
     if slot == 'trinket':
-        return {'damage': 0, 'guard': 0, 'heal': min(3, _positive(effect.get('heal_on_objective'), 6))}
+        # Same rules as armour: a free first mistake or banked guard is a guard, and impact only counts for code questions.
+        impact_on = effect.get('on') in ('any', 'code_checkpoint')
+        return {
+            'damage': min(3, (_positive(effect.get('impact'), 3) if impact_on else 0) + _positive(effect.get('opening_impact'), 3)),
+            'guard': min(5, _positive(effect.get('reduction'), 60) // 10 + (1 if effect.get('block_first_miss') or effect.get('start_guards') else 0)),
+            'heal': min(3, _positive(effect.get('heal_on_objective'), 6)),
+        }
     return {'damage': 0, 'guard': 0, 'heal': 0}
 
 

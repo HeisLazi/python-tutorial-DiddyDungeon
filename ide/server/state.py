@@ -1394,6 +1394,8 @@ ARMORY_EFFECT_CAPS = {
     **SIGNATURE_CAPS,
 }
 ARMORY_FLAG_EFFECTS = frozenset({"first_miss_free", "block_first_miss", "revive"})
+# Triggers a weapon or a trinket can carry; the fight reads their sum (see _gear_effects "triggers").
+GEAR_TRIGGER_KEYS = ("opening_impact", "retry_impact", "heal_on_break", "break_coins", *SIGNATURE_CAPS)
 ARMORY_ON_TYPES = frozenset({"any", *CAMPAIGN_QUESTION_TYPES})
 ARMORY_BUFF_CAPS = {"guards": 1, "reduction": 30, "xp_bonus": 50, "coin_bonus": 50}
 # Aid: one-time help that is armed by using it, then spent when it is needed.
@@ -1451,7 +1453,39 @@ CAMPAIGN_WEAPON_NAMES = {
 }
 CAMPAIGN_DUNGEON_SOURCES = tuple(item for item in DUNGEON_MARKET_CATALOG if item['id'] in CAMPAIGN_WEAPON_EFFECTS) + SIGNATURE_WEAPONS
 
+# Each Journal echo of a run trinket has an effect and a flavour of its own (run id -> (effect, flavour)).
+CAMPAIGN_ECHO_TRINKETS = {
+    'dungeon-village-lantern': ({'impact': 1, 'on': 'prediction', 'heal_on_objective': 1}, "A warm lamp that shows what happens next."),
+    'dungeon-pilgrim-knot': ({'start_guards': 1, 'xp_bonus': 5}, "A pilgrim's knot: it holds, and it teaches."),
+    'dungeon-warm-ember': ({'heal_on_objective': 2, 'loot_luck': 6}, "It keeps you warm and draws the eye of luck."),
+    'dungeon-tidal-pearl': ({'impact': 1, 'on': 'bug_diagnosis', 'heal_on_break': 2}, "The tide shows every flaw and soothes the break."),
+    'dungeon-cave-shell': ({'block_first_miss': True, 'reduction': 8}, "A hard shell: the first blow is blocked, the rest dulled."),
+    'dungeon-hoard-token': ({'coin_bonus': 12, 'break_coins': 3}, "A dragon's tithe, paid whenever a guard breaks."),
+    'dungeon-loop-thread': ({'chip_chain': 1, 'xp_bonus': 6}, "The same kind of question twice: it loops, and it bites."),
+    'dungeon-still-clock': ({'start_guards': 1, 'opening_impact': 1}, "Time holds its breath for your first answer."),
+    'dungeon-keepers-ring': ({'opening_impact': 2}, "The keeper strikes first, and it counts."),
+    'dungeon-ink-seal': ({'chip_clean': 1, 'xp_bonus': 8}, "Seal it right the first time."),
+    'dungeon-book-clasp': ({'block_first_miss': True, 'xp_bonus': 10}, "It shuts on the first blow and opens on the lesson."),
+    'dungeon-quiet-page': ({'heal_clean': 1, 'heal_on_objective': 1}, "Read quietly, heal quickly."),
+    'dungeon-thread-spool': ({'chip_follow': 1, 'impact': 1, 'on': 'explanation'}, "One thread leads to the next: follow-ups cut deeper."),
+    'dungeon-stone-eye': ({'block_first_miss': True, 'chip_low': 1}, "It stares down the first blow, and wakes when you are hurt."),
+    'dungeon-bull-ring': ({'chip_low': 2}, "The more you bleed, the harder you hit."),
+    'dungeon-copper-spring': ({'retry_impact': 2, 'xp_bonus': 5}, "It snaps back harder after a miss."),
+    'dungeon-brass-gear': ({'start_guards': 1, 'reduction': 6}, "Gears turn aside the first mistake."),
+    'dungeon-tuning-fork': ({'break_coins': 6, 'coin_bonus': 8}, "Strike the guard right and it rings with coin."),
+    'dungeon-oracle-lens': ({'chip_clean': 2}, "It sees the clean answer before you give it."),
+    'dungeon-star-thread': ({'heal_clean': 2}, "A clean answer pulls a little starlight back."),
+    'dungeon-warding-star': ({'block_first_miss': True, 'heal_on_objective': 1}, "A small ward that blocks the first blow and mends."),
+    'dungeon-ash-talisman': ({'chip_finish': 2}, "It waits, and finishes what is nearly done."),
+    'dungeon-spectral-chain': ({'start_guards': 1, 'chip_chain': 1}, "Link one kind of question to the next."),
+    'dungeon-ember-heart': ({'heal_on_break': 4, 'heal_on_objective': 1}, "Break a guard and the ember flares."),
+    'dungeon-last-spark': ({'revive': True, 'heal_on_objective': 1}, "One spark left. It is enough, once."),
+}
+
+
 def campaign_dungeon_trinket_effect(item: Mapping[str, Any]) -> dict[str, Any]:
+    if item['id'] in CAMPAIGN_ECHO_TRINKETS:
+        return dict(CAMPAIGN_ECHO_TRINKETS[item['id']][0])
     effects = item['effects']
     if effects.get('revive_once'): return {'revive': True}
     if effects.get('mechanic_delay') or effects.get('damage_first_fight'): return {'start_guards': 1}
@@ -1468,7 +1502,7 @@ CAMPAIGN_DELVE_GEAR = tuple(
     for item in CAMPAIGN_DUNGEON_SOURCES
 ) + tuple(
     {'id': 'campaign-' + item['id'], 'name': "Delver's " + item['name'], 'slot': 'trinket', 'tier': 'rare',
-     'effect': campaign_dungeon_trinket_effect(item), 'flavour': 'A keepsake earned from a dangerous elite.',
+     'effect': campaign_dungeon_trinket_effect(item), 'flavour': CAMPAIGN_ECHO_TRINKETS.get(item['id'], (None, 'A keepsake earned from a dangerous elite.'))[1],
      'source_id': item['id'], 'region': item['region'],
      'mode_eligibility': ['campaign', 'sparring', 'pvp'], 'source': 'legacy-journal'}
     for item in REGIONAL_TRINKETS
@@ -1514,13 +1548,13 @@ OIL_OF_DOOM = {'id': 'cas-oil-of-doom', 'name': 'Oil of Doom and Despair', 'slot
 # These are permanent campaign gear; the bottle remains a boss reward.
 HUNTER_FASHION_GEAR = (
     {'id': 'hunter-ivory-revel-suit', 'name': 'Ivory Revel Suit', 'slot': 'armor', 'tier': 'rare', 'effect': {'reduction': 16, 'coin_bonus': 8}, 'price': 180, 'flavour': 'A white suit with a tiny bottle companion.'},
-    {'id': 'hunter-pink-cap-charm', 'name': 'Pink Cap Charm', 'slot': 'trinket', 'tier': 'rare', 'effect': {'coin_bonus': 10}, 'price': 100, 'flavour': 'A keepsake for the Ivory Revel set.'},
+    {'id': 'hunter-pink-cap-charm', 'name': 'Pink Cap Charm', 'slot': 'trinket', 'tier': 'rare', 'effect': {'coin_bonus': 12, 'loot_luck': 5}, 'price': 100, 'flavour': 'A keepsake for the Ivory Revel set.'},
     {'id': 'hunter-gravebound-plate', 'name': 'Gravebound Warden Plate', 'slot': 'armor', 'tier': 'rare', 'effect': {'reduction': 24, 'revive': True}, 'price': 200, 'flavour': 'A sentinel’s spectral battle plate.'},
     {'id': 'hunter-gravebound-greatblade', 'name': 'Gravebound Greatblade', 'slot': 'weapon', 'tier': 'rare', 'effect': {'retry_impact': 2, 'heal_on_break': 2}, 'price': 180, 'combat_style': 'greatsword', 'flavour': 'A grave-forged blade that turns a corrected mistake into renewed strength.'},
-    {'id': 'hunter-soul-lantern', 'name': 'Soul Lantern', 'slot': 'trinket', 'tier': 'rare', 'effect': {'heal_on_objective': 1}, 'price': 120, 'flavour': 'A little stolen light for the long fight.'},
+    {'id': 'hunter-soul-lantern', 'name': 'Soul Lantern', 'slot': 'trinket', 'tier': 'rare', 'effect': {'heal_on_objective': 1, 'retry_impact': 1}, 'price': 120, 'flavour': 'A little stolen light for the long fight.'},
     {'id': 'hunter-harvest-coat', 'name': 'Harvest Revenant Coat', 'slot': 'armor', 'tier': 'rare', 'effect': {'reduction': 16, 'loot_luck': 12}, 'price': 160, 'flavour': 'Autumn colours for a midnight hunt.'},
     {'id': 'hunter-jack-scythe', 'name': 'Jack-o’ Scythe', 'slot': 'weapon', 'tier': 'rare', 'effect': {'impact': 1, 'on': 'prediction'}, 'price': 170, 'combat_style': 'scythe', 'flavour': 'A harvest blade that rewards foresight.'},
-    {'id': 'hunter-jacklight-charm', 'name': 'Jacklight Charm', 'slot': 'trinket', 'tier': 'rare', 'effect': {'coin_bonus': 10}, 'price': 100, 'flavour': 'A flickering pumpkin keepsake.'},
+    {'id': 'hunter-jacklight-charm', 'name': 'Jacklight Charm', 'slot': 'trinket', 'tier': 'rare', 'effect': {'impact': 1, 'on': 'prediction', 'loot_luck': 8}, 'price': 100, 'flavour': 'A flickering pumpkin keepsake.'},
     {'id': 'merchant-patchwork-coat', 'name': 'Merchant Patchwork Coat', 'slot': 'armor', 'tier': 'common', 'effect': {'reduction': 10, 'coin_bonus': 4}, 'price': 75, 'flavour': 'A practical travelling coat, mended for the road.'},
     {'id': 'merchant-pilgrim-leather', 'name': 'Merchant Pilgrim Leather', 'slot': 'armor', 'tier': 'uncommon', 'effect': {'reduction': 12, 'heal_on_objective': 1}, 'price': 125, 'flavour': 'A fitted leather coat for a cautious traveller.'},
     {'id': 'merchant-wayfarer-brigandine', 'name': 'Merchant Wayfarer Brigandine', 'slot': 'armor', 'tier': 'rare', 'effect': {'reduction': 18, 'impact': 1, 'on': 'code_checkpoint'}, 'price': 205, 'flavour': 'Layered protection for a longer expedition.'},
@@ -1548,19 +1582,19 @@ SHOP_SUPPLIES = (
 # A named keepsake belongs to one authored elite. IDs stay stable even if the
 # catalogue or the order of a campaign changes.
 CAMPAIGN_ELITE_TRINKETS = {
-    ('00-lantern-vale', 'The Endless Echo'): ('echo-knot', 'Echo Knot', {'block_first_miss': True}),
-    ('00-lantern-vale', 'The Delivery Beast'): ('delivery-seal', 'Delivery Seal', {'heal_on_objective': 1}),
-    ('00-lantern-vale', 'The Clockwork Caravan'): ('caravan-gear', 'Caravan Gear', {'start_guards': 1}),
-    ('00-lantern-vale', 'The Unwritten Road'): ('open-road-token', 'Open Road Token', {'loot_luck': 10}),
-    ('04-casino-slots', 'The Debt Ghoul'): ('debt-ghoul-token', 'Debt Ghoul Token', {'coin_bonus': 10}),
-    ('04-casino-slots', 'The Greed Spirit'): ('greed-spirits-coin', 'Greed Spirit’s Coin', {'loot_luck': 10}),
-    ('04-casino-slots', 'The Balancer'): ('balancers-weight', 'Balancer’s Weight', {'block_first_miss': True}),
-    ('04-casino-slots', 'The Front Door'): ('front-door-key', 'Front Door Key', {'start_guards': 1}),
-    ('05-dungeon-crawler', 'The Seeded Maze'): ('seeded-maze-knot', 'Seeded Maze Knot', {'loot_luck': 10}),
-    ('05-dungeon-crawler', 'The Star Seeker'): ('star-seekers-lens', 'Star Seeker’s Lens', {'xp_bonus': 10}),
-    ('05-dungeon-crawler', 'The Context Keeper'): ('context-keepers-seal', 'Context Keeper’s Seal', {'block_first_miss': True}),
-    ('05-dungeon-crawler', 'The Lantern Keeper'): ('lantern-keepers-wick', 'Lantern Keeper’s Wick', {'heal_on_objective': 1}),
-    ('05-dungeon-crawler', 'The Type Inquisitor'): ('inquisitors-sigil', 'Inquisitor’s Sigil', {'start_guards': 1}),
+    ('00-lantern-vale', 'The Endless Echo'): ('echo-knot', 'Echo Knot', {'block_first_miss': True, 'chip_switch': 1}),
+    ('00-lantern-vale', 'The Delivery Beast'): ('delivery-seal', 'Delivery Seal', {'heal_on_objective': 1, 'coin_bonus': 6}),
+    ('00-lantern-vale', 'The Clockwork Caravan'): ('caravan-gear', 'Caravan Gear', {'start_guards': 1, 'loot_luck': 6}),
+    ('00-lantern-vale', 'The Unwritten Road'): ('open-road-token', 'Open Road Token', {'loot_luck': 10, 'xp_bonus': 5}),
+    ('04-casino-slots', 'The Debt Ghoul'): ('debt-ghoul-token', 'Debt Ghoul Token', {'coin_bonus': 10, 'opening_impact': 1}),
+    ('04-casino-slots', 'The Greed Spirit'): ('greed-spirits-coin', 'Greed Spirit’s Coin', {'loot_luck': 12, 'coin_clean': 1}),
+    ('04-casino-slots', 'The Balancer'): ('balancers-weight', 'Balancer’s Weight', {'block_first_miss': True, 'chip_heavy': 1}),
+    ('04-casino-slots', 'The Front Door'): ('front-door-key', 'Front Door Key', {'start_guards': 1, 'coin_bonus': 5}),
+    ('05-dungeon-crawler', 'The Seeded Maze'): ('seeded-maze-knot', 'Seeded Maze Knot', {'loot_luck': 10, 'chip_follow': 1}),
+    ('05-dungeon-crawler', 'The Star Seeker'): ('star-seekers-lens', 'Star Seeker’s Lens', {'xp_bonus': 12, 'retry_impact': 1}),
+    ('05-dungeon-crawler', 'The Context Keeper'): ('context-keepers-seal', 'Context Keeper’s Seal', {'block_first_miss': True, 'impact': 1, 'on': 'code_checkpoint'}),
+    ('05-dungeon-crawler', 'The Lantern Keeper'): ('lantern-keepers-wick', 'Lantern Keeper’s Wick', {'heal_on_objective': 1, 'heal_on_break': 3}),
+    ('05-dungeon-crawler', 'The Type Inquisitor'): ('inquisitors-sigil', 'Inquisitor’s Sigil', {'start_guards': 1, 'impact': 1, 'on': 'bug_diagnosis'}),
 }
 
 # Boss rewards are fixed to their campaign and deliberately exclude trinkets.
@@ -7105,9 +7139,13 @@ class LocalStateService:
         def capped(key: str, value: object) -> int:
             return max(0, min(ARMORY_EFFECT_CAPS[key], int(value or 0)))
 
+        def triggers_of(*sources: Mapping[str, Any]) -> dict[str, int]:
+            total = {key: capped(key, sum(int(source.get(key) or 0) for source in sources)) for key in GEAR_TRIGGER_KEYS}
+            return {key: value for key, value in total.items() if value}
+
         return {
             "weapon": {key: (capped(key, value) if key in ARMORY_EFFECT_CAPS else value) for key, value in weapon["effect"].items()} if weapon else None,
-            "reduction": min(ARMORY_REDUCTION_CAP, (capped("reduction", armor_effect.get("reduction")) if armor else LEGACY_ARMOR_REDUCTION.get(armor_name, 0)) + int(set_bonus.get('reduction', 0))),
+            "reduction": min(ARMORY_REDUCTION_CAP, (capped("reduction", armor_effect.get("reduction")) if armor else LEGACY_ARMOR_REDUCTION.get(armor_name, 0)) + capped("reduction", trinket_effect.get("reduction")) + int(set_bonus.get('reduction', 0))),
             "first_miss_free": bool(armor_effect.get("first_miss_free")),
             "block_first_miss": bool(trinket_effect.get("block_first_miss")),
             "first_miss_source": armor["name"] if armor_effect.get("first_miss_free") else trinket["name"] if trinket else None,
@@ -7125,6 +7163,10 @@ class LocalStateService:
             "coin_bonus": min(ARMORY_BONUS_CAP, capped("coin_bonus", armor_effect.get("coin_bonus")) + capped("coin_bonus", trinket_effect.get("coin_bonus")) + int(set_bonus.get('coin_bonus', 0)) + sum(capped("coin_bonus", relic["effect"].get("coin_bonus")) for relic in relics)),
             "xp_bonus": min(ARMORY_BONUS_CAP, capped("xp_bonus", armor_effect.get("xp_bonus")) + capped("xp_bonus", trinket_effect.get("xp_bonus")) + sum(capped("xp_bonus", relic["effect"].get("xp_bonus")) for relic in relics)),
             "set_bonus": set_bonus,
+            "trinket": {key: (capped(key, value) if key in ARMORY_EFFECT_CAPS else value) for key, value in trinket_effect.items()} if trinket else None,
+            # Weapons and trinkets share one set of triggers (Combo, Chain, Mend, opening and retry impact, break bonuses);
+            # what the fight reads is their capped sum.
+            "triggers": triggers_of(weapon["effect"] if weapon else {}, trinket_effect) or None,
         }
 
     def _armory_take_buffs(self, progress: dict[str, Any]) -> dict[str, int]:
@@ -9163,14 +9205,15 @@ class LocalStateService:
         weapon = effects["weapon"]
         if weapon and weapon.get("on") in {"any", objective["question_type"]}:
             impact = min(MAX_IMPACT + ARMORY_EFFECT_CAPS["impact"], impact + int(weapon.get("impact", 0)))
-        if weapon and not completed:
-            impact = min(MAX_IMPACT + ARMORY_EFFECT_CAPS["impact"], impact + int(weapon.get("opening_impact", 0)))
+        triggers = effects["triggers"]
+        if triggers and not completed:
+            impact = min(MAX_IMPACT + ARMORY_EFFECT_CAPS["impact"], impact + int(triggers.get("opening_impact", 0)))
         missed_objectives = encounter.get("missed_objectives") if isinstance(encounter.get("missed_objectives"), list) else []
-        if weapon and objective_id in missed_objectives:
-            impact = min(MAX_IMPACT + ARMORY_EFFECT_CAPS["impact"], impact + int(weapon.get("retry_impact", 0)))
+        if triggers and objective_id in missed_objectives:
+            impact = min(MAX_IMPACT + ARMORY_EFFECT_CAPS["impact"], impact + int(triggers.get("retry_impact", 0)))
         weapon_triggers: list[str] = []
         clean_objective = objective_id not in missed_objectives
-        if weapon:
+        if triggers:
             streak = 0
             for earlier in reversed(completed):
                 if earlier in missed_objectives:
@@ -9179,7 +9222,7 @@ class LocalStateService:
             streak = streak + 1 if clean_objective else 0
             max_resolve = max(1, int(encounter.get("max_resolve", profile["max_resolve"])))
             signature, weapon_triggers = signature_bonus(
-                weapon, first=not completed, clean=clean_objective, streak=streak,
+                triggers, first=not completed, clean=clean_objective, streak=streak,
                 low_hp=self._counter(self._dict(progress, "player"), "hp") * 2 <= max(1, self._counter(self._dict(progress, "player"), "max_hp")),
                 heavy=base_impact >= 4, last_type=encounter.get("last_question_type") if completed else None,
                 this_type=str(objective["question_type"]), enemy_low=before * 5 <= max_resolve * 2, verified=len(completed),
@@ -9201,8 +9244,8 @@ class LocalStateService:
             # The iron rule: impact never ends a battle before its last
             # objective. Breaking the guard early only helps: a free mistake
             # and coins, then Resolve is what the remaining objectives remove.
-            break_coins = CAMPAIGN_BREAK_COINS + (int(weapon.get("break_coins", 0)) if weapon else 0) + int(effects['set_bonus'].get('break_coins', 0))
-            extra_guard = int(weapon.get("break_guard", 0)) if weapon else 0
+            break_coins = CAMPAIGN_BREAK_COINS + (int(triggers.get("break_coins", 0)) if triggers else 0) + int(effects['set_bonus'].get('break_coins', 0))
+            extra_guard = int(triggers.get("break_guard", 0)) if triggers else 0
             if extra_guard:
                 weapon_triggers.append("Guard +1")
             encounter["guards"] = min(3, self._counter(encounter, "guards") + 1 + extra_guard)
@@ -9213,15 +9256,15 @@ class LocalStateService:
             after = max(1, sum(int(profile["objectives"][key]["impact"]) for key in remaining))
             guard_break = {"coins": break_coins, "guards": encounter["guards"]}
         healed = 0
-        clean_heal = int(weapon.get("heal_clean", 0)) if weapon and clean_objective else 0
+        clean_heal = int(triggers.get("heal_clean", 0)) if triggers and clean_objective else 0
         if clean_heal:
             weapon_triggers.append(f"Mend +{clean_heal} HP")
-        clean_coins = int(weapon.get("coin_clean", 0)) if weapon and clean_objective else 0
+        clean_coins = int(triggers.get("coin_clean", 0)) if triggers and clean_objective else 0
         if clean_coins:
             coin_player = self._dict(progress, "player")
             coin_player["coins"] = self._counter(coin_player, "coins") + clean_coins
             weapon_triggers.append(f"Pay-out +{clean_coins} coins")
-        heal_amount = effects["heal_on_objective"] + clean_heal + (int(weapon.get("heal_on_break", 0)) if weapon and guard_break else 0)
+        heal_amount = effects["heal_on_objective"] + clean_heal + (int(triggers.get("heal_on_break", 0)) if triggers and guard_break else 0)
         if heal_amount:
             heal_player = self._dict(progress, "player")
             current_hp = self._counter(heal_player, "hp")

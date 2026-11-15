@@ -51,6 +51,7 @@ def _int(value: Any) -> int:
 def simulate(effects: Mapping[str, Any], rounds: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
     """Replay the answered rounds with this gear. Each round is {"correct": bool, "kind": choice|text|code}."""
     weapon = effects.get("weapon") or None
+    triggers = effects.get("triggers") or None  # the weapon's and the trinket's triggers, summed
     set_bonus = effects.get("set_bonus") or {}
     reduction = min(80, _int(effects.get("reduction")))
     hp, resolve = SPAR_HP, SPAR_RESOLVE
@@ -73,13 +74,13 @@ def simulate(effects: Mapping[str, Any], rounds: Sequence[Mapping[str, Any]]) ->
             if weapon and _matches(weapon.get("on"), qtype) and _int(weapon.get("impact")):
                 impact += _int(weapon.get("impact"))
                 fired.append(f"Weapon +{_int(weapon.get('impact'))}")
-            if weapon and completed == 0 and _int(weapon.get("opening_impact")):
-                impact += _int(weapon.get("opening_impact"))
-                fired.append(f"Opening +{_int(weapon.get('opening_impact'))}")
+            if triggers and completed == 0 and _int(triggers.get("opening_impact")):
+                impact += _int(triggers.get("opening_impact"))
+                fired.append(f"Opening +{_int(triggers.get('opening_impact'))}")
             streak += 1
             low_hp = hp * 2 <= SPAR_HP
             bonus, labels = signature_bonus(
-                weapon, first=completed == 0, clean=True, streak=streak, low_hp=low_hp, heavy=base >= 4,
+                triggers, first=completed == 0, clean=True, streak=streak, low_hp=low_hp, heavy=base >= 4,
                 last_type=last_type if completed else None, this_type=qtype,
                 enemy_low=before * 5 <= SPAR_RESOLVE * 2, verified=completed,
             )
@@ -97,16 +98,16 @@ def simulate(effects: Mapping[str, Any], rounds: Sequence[Mapping[str, Any]]) ->
             impact = min(SPAR_IMPACT_CAP, impact)
             resolve = max(0, before - impact)
             if resolve == 0 and remaining > 0:
-                extra = _int(weapon.get("break_guard")) if weapon else 0
+                extra = _int(triggers.get("break_guard")) if triggers else 0
                 guards = min(SPAR_GUARD_CAP, guards + 1 + extra)
                 resolve = max(1, remaining)
                 guard_broken = True
                 fired.append("Guard break")
             heal = _int(effects.get("heal_on_objective"))
-            if weapon:
-                heal += _int(weapon.get("heal_clean"))
+            if triggers:
+                heal += _int(triggers.get("heal_clean"))
                 if guard_broken:
-                    heal += _int(weapon.get("heal_on_break"))
+                    heal += _int(triggers.get("heal_on_break"))
             if heal:
                 healed = min(heal, SPAR_HP - hp)
                 hp += healed
@@ -145,6 +146,7 @@ def simulate(effects: Mapping[str, Any], rounds: Sequence[Mapping[str, Any]]) ->
 def effect_lines(effects: Mapping[str, Any]) -> dict[str, list[str]]:
     """What the loadout does in the ring, and what it does only for rewards (so nothing here)."""
     weapon = effects.get("weapon") or {}
+    triggers = effects.get("triggers") or {}
     applied: list[str] = []
     if _int(effects.get("reduction")):
         applied.append(f"{_int(effects.get('reduction'))}% less damage from wrong answers")
@@ -159,17 +161,17 @@ def effect_lines(effects: Mapping[str, Any]) -> dict[str, list[str]]:
     if _int(weapon.get("impact")):
         on = weapon.get("on", "any")
         applied.append(f"+{_int(weapon.get('impact'))} impact" + ("" if on == "any" else f" on {SPAR_QUESTION_TYPES_WORDS.get(str(on), str(on))} questions"))
-    if _int(weapon.get("opening_impact")):
-        applied.append(f"+{_int(weapon.get('opening_impact'))} impact on the first right answer")
-    if _int(weapon.get("heal_on_break")):
-        applied.append(f"Heal {_int(weapon.get('heal_on_break'))} HP when you break a guard")
+    if _int(triggers.get("opening_impact")):
+        applied.append(f"+{_int(triggers.get('opening_impact'))} impact on the first right answer")
+    if _int(triggers.get("heal_on_break")):
+        applied.append(f"Heal {_int(triggers.get('heal_on_break'))} HP when you break a guard")
     if _int(effects.get("trinket_impact")):
         applied.append(f"+{_int(effects.get('trinket_impact'))} impact from your trinket")
     if _int(effects.get("armor_impact")):
         on = effects.get("armor_on", "any")
         applied.append(f"+{_int(effects.get('armor_impact'))} impact from your armour" + ("" if on == "any" else f" on {SPAR_QUESTION_TYPES_WORDS.get(str(on), str(on))} questions"))
-    applied += signature_text({key: value for key, value in weapon.items() if key not in {"coin_clean"}})
+    applied += signature_text({key: value for key, value in triggers.items() if key not in {"coin_clean"}})
     ignored = [text.format(n=_int(effects.get(key))) for key, text in UNAPPLIED_EFFECTS if _int(effects.get(key))]
-    ignored += [text.format(n=_int(weapon.get(key))) for key, text in UNAPPLIED_WEAPON_EFFECTS if _int(weapon.get(key))]
+    ignored += [text.format(n=_int(triggers.get(key))) for key, text in UNAPPLIED_WEAPON_EFFECTS if _int(triggers.get(key))]
     return {"applied": applied, "ignored": ignored}
 

@@ -11,6 +11,12 @@ from ide.server.state import LEGACY_ARMOR_REDUCTION, LocalStateService, StateCom
 from ide.server.test_campaign_content import use_real_content, user_like_progress
 
 NO_GEAR = {"weapon": None, "reduction": 0, "set_bonus": {}}
+TRIGGER_KEYS = ("opening_impact", "heal_on_break", "break_coins", "break_guard", "chip_heavy", "coin_clean", "heal_clean")
+
+
+def armed(weapon):
+    """What the resolver gives for a weapon: the weapon itself plus the merged triggers the fight reads."""
+    return {**NO_GEAR, "weapon": weapon, "triggers": {key: weapon[key] for key in TRIGGER_KEYS if key in weapon}}
 
 
 def rounds(*marks):
@@ -52,7 +58,7 @@ class SparRulesTests(unittest.TestCase):
         self.assertEqual(again["rounds"][-1]["fired"][-1], "Revive")
 
     def test_heavy_impact_breaks_the_guard_instead_of_ending_the_fight_early(self):
-        strong = {**NO_GEAR, "weapon": {"impact": 3, "on": "any", "break_guard": 1}}
+        strong = armed({"impact": 3, "on": "any", "break_guard": 1})
         result = spar_sim.simulate(strong, rounds(True, True, True))
         # 12 Resolve, 5 per answer: it would reach 0 on the third hit, but two questions remain.
         self.assertTrue(result["rounds"][2]["guard_broken"])
@@ -72,7 +78,7 @@ class SparRulesTests(unittest.TestCase):
         self.assertEqual([item["impact"] for item in result["rounds"]], [2, 4])
 
     def test_effect_lines_split_what_applies_from_what_needs_rewards(self):
-        lines = spar_sim.effect_lines({"reduction": 25, "coin_bonus": 20, "xp_bonus": 0, "weapon": {"impact": 1, "on": "any", "break_coins": 3, "chip_heavy": 2, "coin_clean": 1}})
+        lines = spar_sim.effect_lines({**armed({"impact": 1, "on": "any", "break_coins": 3, "chip_heavy": 2, "coin_clean": 1}), "reduction": 25, "coin_bonus": 20, "xp_bonus": 0})
         self.assertIn("25% less damage from wrong answers", lines["applied"])
         self.assertTrue(any("worth 4 or more" in text for text in lines["applied"]))
         self.assertEqual(sorted(lines["ignored"]), ["+1 coins on a clean objective", "+20% coins", "+3 coins on a Guard Break"])

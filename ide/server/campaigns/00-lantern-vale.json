@@ -1055,7 +1055,7 @@
       "effect": {
         "xp_bonus": 10
       },
-      "flavour": "A keepsake from the roads of Lantern Vale.",
+      "flavour": "A seed that never sprouts, only teaches.",
       "price": 40
     },
     {
@@ -1064,9 +1064,9 @@
       "slot": "trinket",
       "tier": "uncommon",
       "effect": {
-        "heal_on_objective": 3
+        "retry_impact": 2
       },
-      "flavour": "A keepsake from the roads of Lantern Vale.",
+      "flavour": "It always points back to the question you missed.",
       "price": 90
     },
     {
@@ -1075,9 +1075,10 @@
       "slot": "trinket",
       "tier": "rare",
       "effect": {
-        "start_guards": 1
+        "start_guards": 1,
+        "heal_on_break": 2
       },
-      "flavour": "A keepsake from the roads of Lantern Vale.",
+      "flavour": "It flares when you start, and again when you break through.",
       "price": 180
     },
     {
@@ -1087,9 +1088,10 @@
       "tier": "epic",
       "effect": {
         "block_first_miss": true,
-        "coin_bonus": 15
+        "coin_bonus": 15,
+        "break_coins": 4
       },
-      "flavour": "A keepsake from the roads of Lantern Vale."
+      "flavour": "A road-warden's badge: the first blow is blocked, the toll is paid in coin."
     },
     {
       "id": "lv-15",
@@ -1099,9 +1101,10 @@
       "effect": {
         "start_guards": 1,
         "revive": true,
-        "loot_luck": 20
+        "heal_on_objective": 2,
+        "loot_luck": 10
       },
-      "flavour": "A keepsake from the roads of Lantern Vale."
+      "flavour": "The valley's own heart. It steadies you, mends you and brings you back once."
     },
     {
       "id": "lv-16",

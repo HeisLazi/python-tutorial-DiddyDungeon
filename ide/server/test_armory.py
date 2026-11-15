@@ -195,9 +195,9 @@ class ArmoryBehaviourTests(unittest.TestCase):
         self.assertEqual(result['resolve_before'] - result['resolve_after'], 3)  # base 2 + prediction bonus
 
     def test_armour_trinket_food_and_relic_effects_match_the_current_catalog(self):
-        self.give("bj-the-high-roller-s-mail", "bj-counting-abacus", "bj-midnight-club-sandwich", "bj-the-house-s-broken-shoe")
+        self.give("bj-the-high-roller-s-mail", "bj-the-gilded-ace", "bj-midnight-club-sandwich", "bj-the-house-s-broken-shoe")
         self.service.apply("armory_equip", {"item_id": "bj-the-high-roller-s-mail"}, "player")  # 36% less damage, +20% coins, a revive
-        self.service.apply("armory_equip", {"item_id": "bj-counting-abacus"}, "player")  # rare: start with a free mistake
+        self.service.apply("armory_equip", {"item_id": "bj-the-gilded-ace"}, "player")  # legendary: start with a free mistake, a revive, +15% coins
         self.service.apply("armory_use", {"item_id": "bj-midnight-club-sandwich"}, "player")  # next battle: a free mistake
         self.assertEqual(self.read()["hunter"]["armory"]["buffs"], {"guards": 1})
         first = self.miss("ace_rule")
@@ -211,7 +211,7 @@ class ArmoryBehaviourTests(unittest.TestCase):
         fourth = self.miss("ace_rule")
         self.assertEqual(fourth["damage"], 18)  # mob 9 uses the last damage bucket, 28
         summary = self.service.armory_projection(self.read())["summary"]
-        self.assertEqual((summary["reduction"], summary["start_guards"], summary["coin_bonus"]), (36, 1, 30))  # the mail's 20% coins plus the abacus's 10%
+        self.assertEqual((summary["reduction"], summary["start_guards"], summary["coin_bonus"]), (36, 1, 45))  # the mail's 20% coins, the ace's 15% and the broken shoe relic's 10%
 
     def test_cleared_contracts_drop_campaign_loot_into_the_armory(self):
         for objective in ("ace_rule", "multi_ace_trace", "ace_bug"):
