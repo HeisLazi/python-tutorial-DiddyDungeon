@@ -40,7 +40,13 @@ OUTFITS = {
 # (their poses match it closely), shifted to wherever their own crossguard is.
 LIGHT_OUTFITS = {"ivory", "merchant-oracle"}
 # (skin, sheet, frame) -> blade start and end measured by hand, where borrowing Tate's geometry misses.
-MANUAL_BLADE = {("ivory", "sword", "idle", 2): ((54.4, 48.4), (67.0, 62.0))}
+MANUAL_BLADE = {
+    ("ivory", "sword", "idle", 2): ((54.4, 48.4), (67.0, 62.0)),
+    # Norse poses its strike frames differently from Tate (frame 2 is a horizontal thrust, frame 3 a raised diagonal), so
+    # the borrowed keypoints pointed the wrong way and left the baked sword in the base. Measured from the sheet.
+    ("norse", "sword", "action", 2): ((53.0, 39.5), (74.0, 40.2)),
+    ("norse", "sword", "action", 3): ((45.0, 28.5), (63.0, 14.5)),
+}
 
 
 def style_sheets(skin: str, style: str) -> dict:

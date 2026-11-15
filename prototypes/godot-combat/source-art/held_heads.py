@@ -45,7 +45,8 @@ STAFF_WEAPONS = {
     "campaign-dungeon-aether-staff": {"grip": 0.70, "reach": 1.1},
     "campaign-dungeon-oracle-staff": {"grip": 0.70, "reach": 1.1},
 }
-STYLE_WEAPONS = {"scythe": SCYTHE_WEAPONS, "staff": STAFF_WEAPONS}
+# The scythe is no longer a head swap: see held_polearms.py (a whole scythe on the sword poses). Staves still swap heads.
+STYLE_WEAPONS = {"staff": STAFF_WEAPONS}
 # Outfits whose head could not be matched cleanly keep their baked weapon (no files means no overlay in the game).
 SKIP_OUTFITS = {"scythe": set(), "staff": set()}
 # Outfits whose weapon art is recoloured, so the exact-colour match fails: match the head's shape instead.
