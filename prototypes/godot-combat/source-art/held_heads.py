@@ -276,7 +276,7 @@ def build(skin: str, style: str, weapons: dict, force: bool, tate: dict | None):
             if icon is None:
                 print(f"skip {item_id}: no icon", file=sys.stderr)
                 continue
-            draw_overlay(blade, 128, sheet.height, icon, {**spec, "back": 0.0}, lead=0.0).save(target)
+            draw_overlay(blade, 128, sheet.height, icon, {**spec, "back": spec.get("back", 0.14)}, lead=0.0).save(target)
     return report, out_frames
 
 

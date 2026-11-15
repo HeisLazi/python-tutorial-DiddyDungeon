@@ -10,7 +10,7 @@ const ITEM_ART = {
   'hunter-gravebound-greatblade': 'weapon-hunter-gravebound-greatblade',
   'hunter-soul-lantern': 'hunter-fashion/soul-lantern',
   'hunter-harvest-coat': 'hunter-fashion/harvest',
-  'hunter-jack-scythe': 'hunter-fashion/scythe',
+  'hunter-jack-scythe': 'weapon-hunter-jack-scythe',
   'hunter-jacklight-charm': 'hunter-fashion/jacklight',
   'dungeon-dawn-lantern': 'basics/dawn-lantern',
   'dungeon-undertow-scythe': 'weapon-campaign-dungeon-undertow-scythe',

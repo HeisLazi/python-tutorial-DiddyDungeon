@@ -278,7 +278,7 @@ def strip_weapon(sheet: Image.Image, cell_w: int, frames, light: bool = False, w
 
 
 # Weapons whose menu icon is an older shared file rather than weapon-<id>.png.
-ICON_FILES = {"hunter-jack-scythe": "hunter-fashion/scythe.png"}
+ICON_FILES: dict[str, str] = {}
 
 
 def load_icon(item_id: str):
