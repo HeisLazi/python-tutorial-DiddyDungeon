@@ -277,8 +277,12 @@ def strip_weapon(sheet: Image.Image, cell_w: int, frames, light: bool = False, w
     return Image.fromarray(arr, "RGBA")
 
 
+# Weapons whose menu icon is an older shared file rather than weapon-<id>.png.
+ICON_FILES = {"hunter-jack-scythe": "hunter-fashion/scythe.png"}
+
+
 def load_icon(item_id: str):
-    path = ICONS / ICON_NAME(item_id)
+    path = ICONS / ICON_FILES.get(item_id, ICON_NAME(item_id))
     if not path.is_file():
         return None
     return Image.open(path).convert("RGBA")
@@ -311,11 +315,11 @@ def horizontal_weapon(icon: Image.Image, grip: float, back: float = 0.0):
     return crop, (guard_x - start_x if back else 0.0), (centre[1] - box[1])
 
 
-def draw_overlay(base_frames, cell_w: int, height: int, icon: Image.Image, spec) -> Image.Image:
+def draw_overlay(base_frames, cell_w: int, height: int, icon: Image.Image, spec, lead: float = 3.5) -> Image.Image:
     weapon, px, py = horizontal_weapon(icon, spec["grip"], spec.get("back", 0.0))
     out = Image.new("RGBA", (cell_w * len(base_frames), height), (0, 0, 0, 0))
     for i, f in enumerate(base_frames):
-        reach = spec["reach"] * (f["len"] + 3.5)
+        reach = spec["reach"] * (f["len"] + lead)
         scale = reach / (weapon.width - px)
         big_w = max(2, round(weapon.width * scale * SS))
         big_h = max(2, round(weapon.height * scale * SS))
@@ -326,7 +330,7 @@ def draw_overlay(base_frames, cell_w: int, height: int, icon: Image.Image, spec)
         # The weapon's axis sits on y=pad and its guard on x=pad, so rotating about (pad, pad) swings it from the guard.
         canvas.alpha_composite(sprite, (int(pad - px * scale * SS), int(pad - py * scale * SS)))
         turned = canvas.rotate(-angle, resample=Image.BICUBIC, center=(pad, pad))
-        anchor = f["start"] - f["dir"] * 3.5
+        anchor = f["start"] - f["dir"] * lead
         full = Image.new("RGBA", (cell_w * SS, height * SS), (0, 0, 0, 0))
         _paste_clipped(full, turned, round(anchor[0] * SS) - pad, round(anchor[1] * SS) - pad)
         small = full.resize((cell_w, height), Image.BOX)

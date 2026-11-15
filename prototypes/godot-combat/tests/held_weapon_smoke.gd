@@ -81,6 +81,23 @@ func run_checks() -> void:
 			var shown_heavy := overlay_path(scene)
 			require(shown_heavy.ends_with("%s-%s-greatsword-action.png" % [weapon, looks[look]]), "%s / %s should draw a greatsword overlay, got '%s'" % [look, weapon, shown_heavy])
 			require(scene.body.texture.resource_path.contains("base-%s-greatsword-action" % looks[look]), "%s should stand on its weapon-less greatsword base" % look)
+	# Pole styles swap only the head. A few outfits keep their baked pole weapon where the head could not be matched cleanly.
+	var pole_styles := {
+		"scythe": {"weapons": ["dc-miner-s-pickaxe", "hunter-sparring-scythe", "hunter-jack-scythe", "campaign-dungeon-grave-scythe", "campaign-dungeon-undertow-scythe"], "baked": ["debugger", "merchant-oracle"]},
+		"staff": {"weapons": ["lv-04", "dc-cartographer-s-spear", "hunter-sparring-staff", "merchant-moonlit-staff", "campaign-dungeon-aether-staff", "campaign-dungeon-oracle-staff"], "baked": ["warden"]},
+	}
+	for pole in pole_styles:
+		for look in looks:
+			var covered: bool = not (looks[look] in pole_styles[pole]["baked"])
+			for weapon in pole_styles[pole]["weapons"]:
+				scene._apply_live_state({"simulated": true, "style": pole, "armorLook": look, "weaponId": weapon})
+				var shown_pole := overlay_path(scene)
+				if covered:
+					require(shown_pole.ends_with("%s-%s-%s-action.png" % [weapon, looks[look], pole]), "%s / %s should draw a %s head overlay, got '%s'" % [look, weapon, pole, shown_pole])
+				else:
+					require(shown_pole == "", "%s keeps its baked %s, got '%s'" % [look, pole, shown_pole])
+	scene._apply_live_state({"simulated": true, "style": "staff", "armorLook": "classic", "weaponId": "campaign-dungeon-dawn-lantern", "weaponVariant": "dawn-lantern"})
+	require(overlay_path(scene) == "", "The Dawn Lantern keeps its own baked variant")
 	scene._apply_live_state({"simulated": true, "style": "greatsword", "armorLook": "classic", "weaponId": "hunter-gravebound-greatblade", "weaponVariant": "graveblade"})
 	require(overlay_path(scene) == "", "The Gravebound Greatblade keeps its own baked variant sheets")
 	# Infinite Dungeon run weapons share the Journal echo's art.
