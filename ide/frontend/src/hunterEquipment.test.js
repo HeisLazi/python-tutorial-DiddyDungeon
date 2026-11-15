@@ -16,7 +16,7 @@ test('appearance and companion follow equipped armour rather than a separate set
   assert.equal(hunterAppearance('Merchant Oracle Mantle', '').armorLook, 'merchant-oracle')
   assert.equal(hunterAppearance('Lanternkeeper’s Coat', '').armorLook, 'lanternkeeper')
   assert.equal(hunterAppearance('Wayfarer’s Wardplate', '').armorLook, 'wardplate')
-  // The run armours these echoes come from keep their generic palette look.
-  assert.equal(hunterAppearance('Lantern Coat', '').armorLook, 'ember')
+  assert.equal(hunterAppearance('Lantern Coat', '').armorLook, 'lanternkeeper')
+  assert.equal(hunterAppearance('Pilgrim Ward', '').armorLook, 'wardplate')
   assert.equal(hunterAppearance('Apprentice Coat', '').pet, 'none')
 })

@@ -118,8 +118,15 @@ func run_checks() -> void:
 	require(scene.select_skin("tate"), "Could not restore Tate")
 	# Exercise the live bridge selection rather than just inspecting filenames.
 	scene.embedded = true
+	for id in ["elder-wraith", "elder-string-mimic", "elder-forked-path"]:
+		scene._apply_live_state({"enemy": id, "region": "basics", "style": "staff"})
+		var visual: Dictionary = scene.ANIMATED_ENEMIES[id]
+		require(scene.enemy.texture == visual.action and scene.enemy.hframes == 4, id + " action was not selected")
+		scene._enemy_hit()
+		require(scene.enemy.texture == visual.hurt, id + " hurt was not selected")
+		await create_timer(0.5).timeout
 	for look in ["classic", "lanternkeeper", "wardplate"]:
-		scene._apply_live_state({"enemy": "wraith", "region": "basics", "style": "staff", "armorLook": look, "weaponVariant": "dawn-lantern"})
+		scene._apply_live_state({"enemy": "elder-wraith", "region": "basics", "style": "staff", "armorLook": look, "weaponVariant": "dawn-lantern"})
 		var skin: String = "tate" if look == "classic" else look
 		require(scene.body.texture == scene.DAWN_LANTERN_POSES[skin].action, look + " Dawn Lantern idle was not selected")
 		require(scene._poses().hurt == scene.DAWN_LANTERN_POSES[skin].hurt, look + " Dawn Lantern hurt was not selected")

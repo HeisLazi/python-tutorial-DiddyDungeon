@@ -4,16 +4,19 @@
 hurt; staff, whip, greatsword, hand-magic, scythe and oil action and hurt) have been checked as 72px slices but not in the game. Home turnaround and walk sources have been checked as 38px review strips; the walk background haze is removed by the existing builder threshold. Review them in
 `lanternkeeper-candidate-preview.html`; at sprite size, the lantern and straw cape need a closer
 legibility check. The first sword hurt sheet clipped its sword and a first sword follow sheet had
-an alpha haze; both were rejected and replaced. The outfit is not registered or complete, and
-the temporary ember fallback still applies. See `ARMOUR_ECHOES_PLAN.md` for tests and remaining work.
+an alpha haze; both were rejected and replaced. The outfit is now registered for both run and echo
+names, but remains incomplete pending in-game review. See `ARMOUR_ECHOES_PLAN.md` for remaining work.
 
 Wardplate now also has sixteen combat source candidates and Home turnaround and walk sources,
-checked as 72px and 38px review slices respectively. They are not yet registered or reviewed in
-game. See `wardplate-candidate-preview.html`; the steel palette fallback remains temporary.
+checked as 72px and 38px review slices respectively. They are registered for both run and echo
+names; see `wardplate-candidate-preview.html`. Most styles and Home still need in-game review.
 
 Basics elite follow-up: the server names elites as Elder variants of the local species. An Elder
 Nameless Wraith, Elder String Mimic and Elder Forked Path action and hurt candidates have been
-generated and slice-checked; they are not yet registered or reviewed in game.
+generated, slice-checked and registered. Dawn Lantern action and hurt sheets exist for classic Tate
+and both Basics outfits, with unsupported outfits retaining temporary generic staff art. Review both
+in `basics-new-art-preview.html`; neither has been visually verified in the game. Six Basics run gear
+icons now have individual assets and mappings, also awaiting inventory review.
 
 2026-10-30. Worktree `feature/tauri-arcade`; do not push. This is not a completion report.
 

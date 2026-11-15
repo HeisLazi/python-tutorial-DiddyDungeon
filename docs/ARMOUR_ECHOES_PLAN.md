@@ -28,9 +28,11 @@ shuka and beadwork, while the hide ward panels are fantasy. Construction referen
 The Basics checklist now has an explicit six-reward/source test. Targeted Journal, armour and
 delve tests passed (28), the frontend suite passed (120), and the existing Godot animation smoke
 passed against an isolated copy, including a candidate skin validation and look-selection check;
-visual timing and projectile origin still need in-game review. The full Python suite
-in a copy without a user save or Git metadata reported 439 passed and 16 failed; the original
-plan records 13 baseline failures, so the copy's additional failures are not yet classified.
+visual timing and projectile origin still need in-game review. The full Python suite in a copy
+without a user save or Git metadata reported 440 passed and 16 failed. In addition to the 13
+baseline failures recorded below, the launcher test expects a source progress file that was
+deliberately omitted from the copy; two new-game tests run under the autouse legacy-only campaign
+fixture and cannot find the shipped starter campaign.
 
 **Phase 1 is implemented in the working tree** (not committed, not deployed). Art, the online
 check and the boss 4 to 8 perks are still to do.
@@ -57,7 +59,7 @@ check and the boss 4 to 8 perks are still to do.
 - Not done: a real run (buy, equip, win the Basics boss) in the app, and the online friendly-duel
   check for armour echoes (phase 3).
 
-**Phase 2 (art) is done and wired, but not committed or deployed (2026-11-13).** Claude has no image
+**Phase 2 (art) is in progress and wired, but not complete, committed or deployed.** Claude has no image
 generator, so Codex generated the 36 source sheets from the kit's prompts (Argon kept separate
 copies). Claude sliced and wired them:
 - Combat: 32 sheets in `prototypes/godot-combat/art/` (`tate-lanternkeeper-*`, `tate-wardplate-*`),
@@ -73,9 +75,15 @@ copies). Claude sliced and wired them:
   `live_bridge_smoke`, the real combat export renders both looks (sword and staff seen), frontend
   look and preview tests pass.
 - Not done: the other weapon styles and the Home scene were not eyeballed in the running app; no
-  `graveblade` variants exist for these two looks (excluded like Norse); the Pilgrim Ward shop icon is
-  still the old blue coat; `live_bridge_smoke` already fails its Harvest check
-  (`tate-harvest-oil` vs the `harvest-scout` file prefix), which this work did not touch.
+  `graveblade` variants exist for these two looks (excluded like Norse).
+
+**Basics continuation:** the run armour names now select the same new looks as the echoes. Six item
+icons, three distinct Elder action/hurt pairs, and Dawn Lantern action/hurt sheets for classic Tate
+and the two Basics looks are wired. Other looks temporarily retain their normal staff for the Dawn
+Lantern. The candidate slices and mapping tests pass; the weapon, Elders, inventory icons, all
+outfit poses and Home still need visual review in the running game and an isolated complete run.
+The frontend suite passes 132 tests. Both Godot smoke scripts pass in an isolated project copy after
+correcting stale Warden/Harvest filename expectations and ensuring test failures produce a nonzero exit.
 
 **Phase 4 (boss 4 to 8 perks) is implemented in the working tree (2026-11-13), not committed or
 deployed.** `JOURNAL_BOSS_PERKS` in `ide/server/state.py` gives, for the 4th to 8th distinct boss
