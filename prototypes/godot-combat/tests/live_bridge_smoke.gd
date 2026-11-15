@@ -1,13 +1,14 @@
 extends SceneTree
 
+var failures := 0
+
 func _initialize() -> void:
 	call_deferred("run_checks")
 
 func require(condition: bool, message: String) -> void:
 	if not condition:
 		push_error(message)
-		quit(1)
-		assert(condition, message)
+		failures += 1
 
 func run_checks() -> void:
 	var scene: Node = load("res://main.tscn").instantiate()
@@ -43,16 +44,17 @@ func run_checks() -> void:
 	scene._apply_live_state({"simulated": true, "style": "oil", "armorLook": "ivory", "pet": "oil"})
 	require(scene.skin_id == "ivory" and scene.oil_pet.visible and scene.body.texture.resource_path.ends_with("tate-ivory-oil-sheet.png"), "Ivory suit and companion missing")
 	scene._apply_live_state({"simulated": true, "style": "greatsword", "armorLook": "spectral", "pet": "none"})
-	require(scene.skin_id == "warden" and not scene.oil_pet.visible and scene.body.texture.resource_path.ends_with("tate-warden-greatsword-sheet.png"), "Warden armour or pet removal missing")
+	require(scene.skin_id == "warden" and not scene.oil_pet.visible and scene.body.texture.resource_path.ends_with("tate-warden-heavy-greatsword-sheet.png"), "Warden armour or pet removal missing")
 	scene._apply_live_state({"simulated": true, "style": "sword", "armorLook": "classic", "pet": "none"})
 	require(scene.skin_id == "tate" and scene.body.material == null, "Classic appearance was not restored")
 	for look in {"ivory": "ivory", "spectral": "warden", "harvest": "harvest"}:
 		var skin: String = {"ivory": "ivory", "spectral": "warden", "harvest": "harvest"}[look]
+		var prefix: String = {"ivory": "ivory", "spectral": "warden-heavy", "harvest": "harvest-scout"}[look]
 		require(scene.CATALOG.validate_skin(scene.skins[skin]).is_empty(), "Invalid outfit: " + skin)
 		for style in scene.CATALOG.STYLES:
 			scene._apply_live_state({"simulated": true, "style": style.id, "armorLook": look, "trinketIcon": "pink-cap"})
 			require(scene.skin_id == skin and scene.trinket_gem.visible, "Outfit or charm not selected: " + skin + "/" + style.id)
-			require(scene._poses().action.resource_path.contains("tate-" + skin + "-" + style.id) and scene._poses().hurt.resource_path.contains("tate-" + skin + "-" + style.id), "Wrong outfit frames: " + skin + "/" + style.id)
+			require(scene._poses().action.resource_path.contains("tate-" + prefix + "-" + style.id) and scene._poses().hurt.resource_path.contains("tate-" + prefix + "-" + style.id), "Wrong outfit frames: " + skin + "/" + style.id)
 	for look in {"debugger": "debugger-v2", "merchant-oracle": "merchant-oracle", "lanternkeeper": "lanternkeeper", "wardplate": "wardplate"}:
 		var prefix: String = {"debugger": "debugger-v2", "merchant-oracle": "merchant-oracle", "lanternkeeper": "lanternkeeper", "wardplate": "wardplate"}[look]
 		require(scene.CATALOG.validate_skin(scene.skins[look]).is_empty(), "Invalid outfit: " + look)
@@ -62,5 +64,8 @@ func run_checks() -> void:
 			require(scene._poses().action.resource_path.contains("tate-" + prefix + "-" + style.id) and scene._poses().hurt.resource_path.contains("tate-" + prefix + "-" + style.id), "Wrong outfit frames: " + look + "/" + style.id)
 	scene._apply_live_state({"simulated": true, "style": "sword", "armorLook": "classic", "trinketIcon": "none"})
 	require(not scene.trinket_gem.visible, "Unequipped trinket still visible")
-	print("PASS: live enemy identity, turn queue, simulation, unarmed and presentation-only state")
-	quit(0)
+	if failures:
+		quit(1)
+	else:
+		print("PASS: live enemy identity, turn queue, simulation, unarmed and presentation-only state")
+		quit(0)
