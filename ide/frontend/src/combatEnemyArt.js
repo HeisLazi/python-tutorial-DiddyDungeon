@@ -1,5 +1,4 @@
-// Match stable, public encounter names; an Elder is the same species as its
-// ordinary counterpart. Unknown encounters retain the existing placeholder.
+// Match stable, public encounter names. Unknown encounters retain the placeholder.
 const LANTERN_ACTORS = new Set([
   'first-spark', 'whispering-gate', 'endless-echo', 'little-lantern',
   'inventory-drowner', 'counting-moth', 'mapkeeper', 'delivery-beast',
@@ -9,7 +8,14 @@ const LANTERN_ACTORS = new Set([
 ])
 
 export function combatEnemyArt(name, projectId = '') {
-  const normal = String(name || '').trim().toLowerCase().replace(/^(the|elder)\s+/, '')
+  const raw = String(name || '').trim().toLowerCase().replace(/^the\s+/, '')
+  const basicsElders = {
+    'elder nameless wraith': 'elder-wraith',
+    'elder string mimic': 'elder-string-mimic',
+    'elder forked path': 'elder-forked-path',
+  }
+  if (basicsElders[raw]) return basicsElders[raw]
+  const normal = raw.replace(/^elder\s+/, '')
   const slug = normal.replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
   if (projectId === '01-blackjack') {
     const actors = { 'empty-table': 'empty-table', 'dealer-s-hand': 'dealers-hand', 'count-keeper': 'count-keeper', hitman: 'hitman', 'bust-hound': 'bust-hound', 'house-clerk': 'house-clerk', judge: 'judge', 'rematch-shade': 'rematch-shade' }

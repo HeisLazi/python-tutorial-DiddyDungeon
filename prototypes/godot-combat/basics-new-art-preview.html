@@ -1,0 +1,42 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Basics weapon and Elders — art review</title>
+<style>
+body { margin: 2rem auto; max-width: 48rem; padding: 0 1rem; background: #17151e; color: #eee5cb; font: 16px system-ui; }
+p { color: #c5b79b; line-height: 1.5; } button, select { background: #302935; color: #f0dfb4; border: 1px solid #ac8b52; padding: .6rem; margin: .25rem; }
+canvas { display: block; width: min(100%, 512px); height: auto; margin: 1rem 0; background: #26212a; image-rendering: pixelated; }
+</style>
+<h1>Basics weapon and Elders — art review</h1>
+<p>Candidate slices shown at twice sprite size. Inspect every frame for grip, edges, clipping and baseline. This preview is not a substitute for a running-game review.</p>
+<label>Sheet <select id="sheet">
+<option value="tate-dawn">Classic Tate · Dawn Lantern action</option><option value="tate-dawn-hurt">Classic Tate · Dawn Lantern hurt</option>
+<option value="tate-lanternkeeper-dawn">Lanternkeeper · Dawn Lantern action</option><option value="tate-lanternkeeper-dawn-hurt">Lanternkeeper · Dawn Lantern hurt</option>
+<option value="tate-wardplate-dawn">Wardplate · Dawn Lantern action</option><option value="tate-wardplate-dawn-hurt">Wardplate · Dawn Lantern hurt</option>
+<option value="elder-wraith">Elder Wraith · action</option><option value="elder-wraith-hurt">Elder Wraith · hurt</option>
+<option value="elder-mimic-action">Elder Mimic · action</option><option value="elder-mimic-hurt">Elder Mimic · hurt</option>
+<option value="elder-forked-path">Elder Forked Path · action</option><option value="elder-forked-path-hurt">Elder Forked Path · hurt</option>
+</select></label>
+<button id="toggle">Pause</button><button id="next">Next frame</button>
+<canvas id="preview" width="256" height="144" aria-label="Enlarged sprite preview"></canvas><p id="status" aria-live="polite"></p>
+<script>
+const select = document.getElementById('sheet'), canvas = document.getElementById('preview')
+const ctx = canvas.getContext('2d'), status = document.getElementById('status'), img = new Image()
+let frame = 0, playing = true
+function draw() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height)
+  if (!img.complete || !img.naturalWidth) return
+  const width = img.naturalWidth / 4
+  ctx.imageSmoothingEnabled = false
+  ctx.drawImage(img, frame * width, 0, width, 72, (256 - width * 2) / 2, 0, width * 2, 144)
+  status.textContent = `Frame ${frame + 1} / 4 · shown at 2× sprite size`
+}
+function load() { frame = 0; img.src = `art/${select.value}-sheet.png` }
+img.onload = draw
+img.onerror = () => { status.textContent = 'Could not load this review sheet.' }
+select.onchange = load
+document.getElementById('toggle').onclick = e => { playing = !playing; e.target.textContent = playing ? 'Pause' : 'Play' }
+document.getElementById('next').onclick = () => { playing = false; document.getElementById('toggle').textContent = 'Play'; frame = (frame + 1) % 4; draw() }
+setInterval(() => { if (playing) { frame = (frame + 1) % 4; draw() } }, 280)
+load()
+</script>

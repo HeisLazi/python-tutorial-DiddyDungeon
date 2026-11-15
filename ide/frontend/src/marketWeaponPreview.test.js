@@ -33,7 +33,7 @@ test('culture-led Basics armour echoes have their own sheets and never borrow th
 })
 
 test('Dawn Lantern previews the same staff poses for supported outfits', () => {
-  for (const [equipped, prefix] of [['', 'tate'], ['Lanternkeeper’s Coat', 'tate-lanternkeeper'], ['Wayfarer’s Wardplate', 'tate-wardplate']]) {
+  for (const [equipped, prefix] of [['', 'tate'], ['Lantern Coat', 'tate-lanternkeeper'], ['Pilgrim Ward', 'tate-wardplate']]) {
     const preview = marketWeaponPreview({ name: 'Dawn Lantern' }, equipped)
     assert.equal(preview.style, 'staff')
     assert.match(preview.action, new RegExp(`${prefix}-dawn-sheet\\.png$`))

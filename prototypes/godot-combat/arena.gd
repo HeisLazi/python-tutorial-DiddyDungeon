@@ -30,6 +30,9 @@ const REGION_BACKDROPS := {
 }
 const ANIMATED_ENEMIES := {
 	"wraith": {"action": preload("res://art/wraith-v2-sheet.png"), "hurt": preload("res://art/wraith-v2-hurt-sheet.png"), "scale": 1.5},
+	"elder-wraith": {"action": preload("res://art/elder-wraith-sheet.png"), "hurt": preload("res://art/elder-wraith-hurt-sheet.png"), "scale": 1.5},
+	"elder-string-mimic": {"action": preload("res://art/elder-mimic-action-sheet.png"), "hurt": preload("res://art/elder-mimic-hurt-sheet.png"), "scale": 1.5, "offset_x": -7, "ground_offset": -2},
+	"elder-forked-path": {"action": preload("res://art/elder-forked-path-sheet.png"), "hurt": preload("res://art/elder-forked-path-hurt-sheet.png"), "scale": 1.5},
 	"drowner": {"action": preload("res://art/drowner-sheet.png"), "hurt": preload("res://art/drowner-hurt-sheet.png"), "scale": 1.5},
 	"ghoul": {"action": preload("res://art/ghoul-sheet.png"), "hurt": preload("res://art/ghoul-hurt-sheet.png"), "scale": 1.5},
 	"loaded-die": {"action": preload("res://art/loaded-die-sheet.png"), "hurt": preload("res://art/loaded-die-hurt-sheet.png"), "scale": 1.4},
@@ -383,7 +386,7 @@ func _apply_live_state(payload: Dictionary) -> void:
 			enemy.texture = visual["action"]
 			enemy.hframes = 4
 			enemy.vframes = 1
-			enemy.offset = Vector2(-19, 0)
+			enemy.offset = Vector2(float(visual.get("offset_x", -19)), 0)
 			enemy.scale = Vector2.ONE * size
 			enemy.position = Vector2(237, 146 - 32 * size + float(visual.get("ground_offset", 0.0)))
 		elif not simulated and LIVE_ENEMIES.has(live_enemy_id):
