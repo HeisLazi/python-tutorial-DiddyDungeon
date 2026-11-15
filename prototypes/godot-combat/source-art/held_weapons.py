@@ -5,12 +5,13 @@ Contract (also the brief for any artist-made replacement strips):
   * An overlay strip has exactly the same pixel size and cell layout as its base sheet. It is
     transparent except for the weapon, drawn in place for every pose, and Godot draws it above the
     hunter with the same frame index, offset and scale.
-  * Strips are generated from the 128px item icon (grip bottom-left, tip top-right) unless a
-    hand-made file with the same name already exists in art/held/ (then it is left alone).
+  * Strips are generated from the 128px item icon (grip bottom-left, tip top-right). A strip that
+    already exists is left alone, so a hand-made one survives; pass --force to regenerate it.
 
 Usage (system python3 with Pillow and numpy):
-    python3 held_weapons.py            # rebuild bases and every sword strip
-    python3 held_weapons.py --preview  # also write a contact sheet to ../../../tmp path given by --out
+    python3 held_weapons.py                                   # rebuild the bases, add any missing strips
+    python3 held_weapons.py --force --only campaign-dungeon-loopblade   # regenerate one weapon after its icon changed
+After either, run `godot --headless --path prototypes/godot-combat --import`.
 """
 from __future__ import annotations
 
@@ -218,7 +219,7 @@ def _paste_clipped(dst: Image.Image, src: Image.Image, x: int, y: int) -> None:
         dst.alpha_composite(src.crop(box), (max(0, x), max(0, y)))
 
 
-def build(skin: str, style: str, weapons: dict) -> dict:
+def build(skin: str, style: str, weapons: dict, force: bool = False) -> dict:
     HELD.mkdir(exist_ok=True)
     report = {}
     sheets = SOURCES[skin][style]
@@ -232,6 +233,8 @@ def build(skin: str, style: str, weapons: dict) -> dict:
         strip_weapon(sheet, cell_w, frames).save(HELD / f"base-{skin}-{style}-{key}-sheet.png")
         for item_id, spec in weapons.items():
             target = HELD / f"{item_id}-{skin}-{style}-{key}.png"
+            if target.exists() and not force:
+                continue
             icon = load_icon(item_id)
             if icon is None:
                 print(f"skip {item_id}: no icon", file=sys.stderr)
@@ -243,11 +246,12 @@ def build(skin: str, style: str, weapons: dict) -> dict:
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--only", help="comma separated item ids")
+    parser.add_argument("--force", action="store_true", help="overwrite strips that already exist")
     args = parser.parse_args()
     weapons = SWORD_WEAPONS
     if args.only:
         weapons = {k: v for k, v in weapons.items() if k in args.only.split(",")}
-    report = build("tate", "sword", weapons)
+    report = build("tate", "sword", weapons, args.force)
     (HELD / "keypoints-tate-sword.json").write_text(json.dumps(report, indent=1) + "\n", encoding="utf-8")
     print("built", len(weapons), "weapon strips and 4 bases")
 
