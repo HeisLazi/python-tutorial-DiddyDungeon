@@ -2,6 +2,7 @@ extends Node2D
 
 const HOLLOW_SHADER = preload("res://hollow.gdshader")
 const LOOK_SHADER = preload("res://hunter_look.gdshader")
+const HELD := preload("res://held_weapon.gd")
 const OIL_PET = preload("res://art/oil-pet.png")
 const CHARMS := {"pink-cap": preload("res://art/charm-pink-cap.png"), "soul-lantern": preload("res://art/charm-soul-lantern.png"), "jacklight": preload("res://art/charm-jacklight.png"), "generic": preload("res://art/charm-generic.png")}
 const ATLAS: Texture2D = preload("res://art/tiles.png")
@@ -108,6 +109,8 @@ var health_label: Label
 var weapon_label: Label
 var weapon_index := 0
 var weapon_variant := ""
+var weapon_id := ""
+var held: Sprite2D
 var variant_pose_cache := {}
 var weapons: Array = CATALOG.STYLES
 var skins: Dictionary = {"tate": CATALOG.tate(), "ivory": CATALOG.ivory(), "warden": CATALOG.warden(), "harvest": CATALOG.harvest(), "oracle": CATALOG.oracle(), "patchwork": CATALOG.patchwork(), "pilgrim": CATALOG.pilgrim(), "wayfarer": CATALOG.wayfarer(), "norse": CATALOG.norse(), "lanternkeeper": CATALOG.lanternkeeper(), "wardplate": CATALOG.wardplate(), "debugger": CATALOG.debugger(), "merchant-oracle": CATALOG.merchant_oracle()}
@@ -134,6 +137,8 @@ func _ready() -> void:
 			shot_path = arg.trim_prefix("--shot=")
 		if arg.begins_with("--pose="):
 			shot_pose = int(arg.trim_prefix("--pose="))
+		if arg.begins_with("--weapon="):
+			weapon_id = arg.trim_prefix("--weapon=")
 	if OS.has_feature("web"):
 		embedded = bool(JavaScriptBridge.eval("new URLSearchParams(window.location.search).has('embed')", true))
 	build_scene()
@@ -228,6 +233,12 @@ func build_scene() -> void:
 	body.offset = _poses()["offset"]
 	body.position = Vector2(0, -48)
 	hunter.add_child(body)
+	# The held weapon is a second sprite that mirrors the body's sheet, frame and offset (see held_weapon.gd).
+	held = Sprite2D.new()
+	held.hframes = 4
+	held.visible = false
+	hunter.add_child(held)
+	RenderingServer.frame_pre_draw.connect(_sync_held)
 	trinket_gem = Sprite2D.new()
 	trinket_gem.position = Vector2(5, -25)
 	trinket_gem.visible = false
@@ -418,6 +429,7 @@ func _apply_live_state(payload: Dictionary) -> void:
 		_clear_raid_party()
 	var style: String = payload.get("style", "sword")
 	weapon_variant = str(payload.get("weaponVariant", ""))
+	weapon_id = str(payload.get("weaponId", ""))
 	var look: String = str(payload.get("armorLook", "classic"))
 	skin_id = _skin_for_look(look)
 	_set_look(look if skin_id == "tate" else "classic", str(payload.get("armorMastery", "")), str(payload.get("weaponMastery", "")))
@@ -588,7 +600,33 @@ func select_skin(id: String) -> bool:
 	return true
 
 func _poses() -> Dictionary:
-	return _poses_for(skin_id, str(weapons[weapon_index]["id"]), weapon_variant)
+	var style := str(weapons[weapon_index]["id"])
+	var poses := _poses_for(skin_id, style, weapon_variant)
+	# Baked weapon variants (Dawn Lantern, Graveblade) keep their own art; the rest can use a held overlay.
+	return poses if not weapon_variant.is_empty() or unarmed else HELD.apply(poses, weapon_id, skin_id, style)
+
+## Keep the held-weapon sprite on the hunter's current frame just before each draw.
+func _sync_held() -> void:
+	if held == null or body == null:
+		return
+	var style := str(weapons[weapon_index]["id"])
+	var texture: Texture2D = null
+	if weapon_variant.is_empty() and not unarmed and HELD.covers(weapon_id, skin_id, style):
+		var key := HELD.key_of(_poses(), body.texture)
+		if not key.is_empty():
+			texture = HELD.strip_for(weapon_id, skin_id, style, key)
+	held.visible = texture != null and body.visible
+	if texture == null:
+		return
+	held.texture = texture
+	held.hframes = body.hframes
+	held.frame = body.frame
+	held.offset = body.offset
+	held.position = body.position
+	held.scale = body.scale
+	held.flip_h = body.flip_h
+	held.modulate = body.modulate
+	held.material = body.material
 
 func _rival_poses() -> Dictionary:
 	return _poses_for(rival_skin_id, rival_style, rival_variant)

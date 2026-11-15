@@ -93,3 +93,15 @@ clipping, proportions and motion in game before marking one complete. Oracle
 Mantle, Patchwork Travel Coat, Pilgrim Leather and Wayfarer Brigandine have their own Home and
 seven-style combat art. Their interactive previews are `oracle-preview.html`,
 `patchwork-preview.html`, `pilgrim-preview.html` and `wayfarer-preview.html` in this directory.
+
+## Held-weapon overlays
+
+A weapon can be drawn as a second sprite on top of a weapon-less hunter, instead of being baked into every sheet. This is how each Quest Lab weapon gets its own look in combat.
+
+- `art/held/base-<skin>-<style>-<idle|action|follow|hurt>-sheet.png`: the hunter sheet with the blade and crossguard removed. The glove and grip stay.
+- `art/held/<item id>-<skin>-<style>-<sheet>.png`: that weapon only, same pixel size and cell layout as its base, transparent elsewhere. Godot draws it above the hunter with the same frame, offset and scale (`held_weapon.gd`, `_sync_held` in `arena.gd`).
+- The overlay is used only when the game sends `weaponId` (the item id), the skin and style have bases, and the weapon has a strip for every base sheet. Otherwise the baked sheet is used. Variants with their own baked art (`dawn-lantern`, `graveblade`) and bare hands never get an overlay.
+- Today only Tate's default outfit and the `sword` style are covered. Other outfits drift by several pixels per pose, so each outfit and style needs its own bases and blade keypoints.
+- `source-art/held_weapons.py` builds the bases by detecting the blade in each pose and erasing it, then bakes every sword-style weapon's strips from its 128px icon. Re-run it after changing an icon. A hand-made strip with the same file name is the better route for hero weapons.
+- Screenshot a pose with a weapon: `godot --path prototypes/godot-combat -- --shot=<absolute path inside the project> --pose=2 --weapon=bj-the-house-cutter` (flatpak Godot cannot write outside the project).
+- Test: `godot --headless --path prototypes/godot-combat --script res://tests/held_weapon_smoke.gd`.

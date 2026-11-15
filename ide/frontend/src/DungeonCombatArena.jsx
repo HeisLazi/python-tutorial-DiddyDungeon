@@ -60,7 +60,7 @@ export default function DungeonCombatArena({ run, loadout, turn, simulated = fal
   const bossArenas = { 'blackjack-house': 'blackjack-house', 'lantern-unwritten-king': 'unwritten-king', 'silver-mogul': 'silver-mogul', tozza: 'tozza' }
   const eliteArenas = { 'lantern-endless-echo': 'elite-endless-echo', 'lantern-delivery-beast': 'elite-delivery-beast', 'lantern-clockwork-caravan': 'elite-clockwork-caravan', 'lantern-unwritten-road': 'elite-unwritten-road' }
   const locationArt = isBoss && bossArenas[enemyArt] ? bossArenas[enemyArt] : campaign && eliteArenas[enemyArt] ? eliteArenas[enemyArt] : (run.region?.id || '')
-  payloadRef.current = { ...appearance, simulated, armorMastery: campaign || simulated ? (loadout.armor_mastery || '') : '', weaponMastery: campaign || simulated ? (loadout.weapon_mastery || '') : '', region: raidMode ? 'choef-chief-keep' : locationArt, enemy: raidMode ? 'the-choef-chief' : enemyArt, style: loadout.weapon_style || combatStyle(loadout.weapon), weaponVariant: /^gravebound greatblade$/i.test(loadout.weapon || '') ? 'graveblade' : '', raid: raidMode, party: raidParty, seated: raidSeated, attack: turn?.attack || {}, turn_id: result?.evidence_id || '', outcome: result?.outcome || '' }
+  payloadRef.current = { ...appearance, simulated, armorMastery: campaign || simulated ? (loadout.armor_mastery || '') : '', weaponMastery: campaign || simulated ? (loadout.weapon_mastery || '') : '', region: raidMode ? 'choef-chief-keep' : locationArt, enemy: raidMode ? 'the-choef-chief' : enemyArt, style: loadout.weapon_style || combatStyle(loadout.weapon), weaponVariant: /^gravebound greatblade$/i.test(loadout.weapon || '') ? 'graveblade' : '', weaponId: loadout.weapon_id || '', raid: raidMode, party: raidParty, seated: raidSeated, attack: turn?.attack || {}, turn_id: result?.evidence_id || '', outcome: result?.outcome || '' }
   const send = () => {
     if (!readyRef.current) return
     try { frameRef.current?.contentWindow?.diddyCombatReceive?.(JSON.stringify(payloadRef.current)) } catch { /* scene is still loading */ }
@@ -85,7 +85,7 @@ export default function DungeonCombatArena({ run, loadout, turn, simulated = fal
       pendingRef.current.push({ ...payloadRef.current })
     }
     send()
-  }, [simulated, campaign, run.region?.id, run.room_type, run.project_id, encounter.name, loadout.weapon, loadout.weapon_style, loadout.armor, loadout.trinket, loadout.armor_mastery, loadout.weapon_mastery, result?.evidence_id, result?.outcome, raidMode, raidParty, raidSeated])
+  }, [simulated, campaign, run.region?.id, run.room_type, run.project_id, encounter.name, loadout.weapon, loadout.weapon_id, loadout.weapon_style, loadout.armor, loadout.trinket, loadout.armor_mastery, loadout.weapon_mastery, result?.evidence_id, result?.outcome, raidMode, raidParty, raidSeated])
 
   return <section ref={arenaRef} className={`dungeon-combat-panel ${isBoss ? `boss-scene phase-${phaseTone}` : ''}`} aria-label="Combat scene">
     <div className="combat-panel-title"><span>{raidMode ? `CO-OP RAID · PHASE ${Number(encounter.phase || 0) + 1}` : simulated ? 'SPARRING · SIMULATED' : `${campaign ? 'HUNT' : run.room_type === 'boss' ? 'BOSS' : run.room_type === 'elite' ? 'ELITE' : 'MOB'}${!isBoss && encounter.phase ? ` · PHASE ${encounter.phase}` : ''}`}</span><span>{raidMode ? 'THE HUNTERS VS THE CHOEF CHIEF' : simulated ? 'PRACTICE ONLY' : 'YOUR HP / ENEMY RESOLVE'}</span></div>
