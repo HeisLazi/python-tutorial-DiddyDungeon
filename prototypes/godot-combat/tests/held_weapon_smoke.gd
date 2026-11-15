@@ -84,6 +84,7 @@ func run_checks() -> void:
 	# Pole styles swap only the head. A few outfits keep their baked pole weapon where the head could not be matched cleanly.
 	var pole_styles := {
 		"scythe": {"weapons": ["dc-miner-s-pickaxe", "hunter-sparring-scythe", "hunter-jack-scythe", "campaign-dungeon-grave-scythe", "campaign-dungeon-undertow-scythe"], "baked": ["debugger", "merchant-oracle"]},
+		"handmagic": {"weapons": ["cas-reel-spinner-chakram", "cas-lady-luck-s-sceptre", "hunter-sparring-focus", "campaign-dungeon-runic-casting", "campaign-dungeon-last-page"], "baked": []},
 		"staff": {"weapons": ["lv-04", "dc-cartographer-s-spear", "hunter-sparring-staff", "merchant-moonlit-staff", "campaign-dungeon-aether-staff", "campaign-dungeon-oracle-staff"], "baked": ["warden"]},
 	}
 	for pole in pole_styles:
