@@ -6,7 +6,7 @@ import { onlineRaid as defaultRaidClient, onlineRaidsConfigured as defaultConfig
 
 const statusLabels = { available:'Ready', blocked:'Waiting on earlier task', evaluating:'Checking code…', submitted:'Needs peer review', accepted:'Accepted', failed:'Checks failed', changes_requested:'Changes requested' }
 
-export default function OnlineRaid({ groupId, userId, playerName, playerLook = 'classic', visitors = [], onClose,
+export default function OnlineRaid({ groupId, userId, playerName, playerLook = 'classic', playerWeaponId = '', visitors = [], onClose,
   raidClient = defaultRaidClient, configured = defaultConfigured }) {
   const [raid, setRaid] = useState(null)
   const [loadingCurrent, setLoadingCurrent] = useState(true)
@@ -141,7 +141,7 @@ export default function OnlineRaid({ groupId, userId, playerName, playerLook = '
           raidParty={raidParty}
           raidSeated={boss.seated}
           run={{ region:{ id:'choef-chief-keep' }, room_type:'boss', floor:1, encounter:{ name:'The Choef Chief', resolve:boss.hp, max_resolve:boss.max_hp, phase:boss.phase } }}
-          loadout={{ hp:boss.hunter_hp?.[userId] ?? 5, max_hp:5, weapon:'Hunter’s Sword', armor:playerLook, trinket:'' }}
+          loadout={{ hp:boss.hunter_hp?.[userId] ?? 5, max_hp:5, weapon:'Hunter’s Sword', weapon_id:playerWeaponId, armor:playerLook, trinket:'' }}
           turn={combatTurn}
         />
         {raid.status === 'boss_fight' && boss.feint_pending && <div className="online-raid-feint"><span>THE SARCASM FEINT</span><h4>He claims your passing code is wrong. The checker says it passed.</h4><p>Stand by your answer to deal 1.5× damage. Withdraw it and he will tamper with <code>can_buy</code>; fix the bug before the fight continues.</p>{boss.feint_player === userId ? <div className="online-raid-actions"><button className="campaign-button" type="button" disabled={busy} onClick={() => void act(() => raidClient.resolveBossFeint(groupId, raid.raid_id, 'stand_firm'), 'You held your ground. The Chief takes 1.5× damage.')}>Stand firm · deal 1.5×</button><button className="campaign-button ghost" type="button" disabled={busy} onClick={() => void act(() => raidClient.resolveBossFeint(groupId, raid.raid_id, 'withdraw'), 'The Chief tampered with your helper. Fix the exact-price check.')}>Withdraw · inspect the bug</button></div> : <p role="status">Waiting for {nameOf(boss.feint_player)} to choose whether to stand firm.</p>}</div>}
