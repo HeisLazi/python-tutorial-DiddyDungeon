@@ -139,6 +139,8 @@ func _ready() -> void:
 			shot_pose = int(arg.trim_prefix("--pose="))
 		if arg.begins_with("--weapon="):
 			weapon_id = arg.trim_prefix("--weapon=")
+		if arg.begins_with("--look="):
+			skin_id = _skin_for_look(arg.trim_prefix("--look="))
 	if OS.has_feature("web"):
 		embedded = bool(JavaScriptBridge.eval("new URLSearchParams(window.location.search).has('embed')", true))
 	build_scene()

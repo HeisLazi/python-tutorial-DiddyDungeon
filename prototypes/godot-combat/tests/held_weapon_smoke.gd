@@ -64,8 +64,17 @@ func run_checks() -> void:
 	require(overlay_path(scene) == "" and scene.body.texture.resource_path.ends_with("tate-idle-sheet.png"), "Unknown weapon should keep the baked sheet")
 	scene._apply_live_state({"simulated": true, "style": "greatsword", "armorLook": "classic", "weaponId": "bj-the-house-cutter"})
 	require(overlay_path(scene) == "" and scene.body.texture.resource_path.ends_with("tate-greatsword-sheet.png"), "A weapon with no greatsword strips should keep the baked greatsword")
-	scene._apply_live_state({"simulated": true, "style": "sword", "armorLook": "ivory", "weaponId": "bj-the-house-cutter"})
-	require(overlay_path(scene) == "" and scene.skin_id == "ivory", "Outfits without bases should keep their baked sword")
+	# Every outfit carries every sword-style weapon as an overlay on its own weapon-less base.
+	var looks := {"classic": "tate", "ivory": "ivory", "spectral": "warden", "harvest": "harvest", "oracle": "oracle", "patchwork": "patchwork", "pilgrim": "pilgrim", "wayfarer": "wayfarer", "debugger": "debugger", "merchant-oracle": "merchant-oracle", "norse": "norse", "lanternkeeper": "lanternkeeper", "wardplate": "wardplate"}
+	var swords := ["lv-01", "lv-02", "lv-05", "bj-card-edge-dagger", "bj-ace-of-spades-blade", "bj-the-house-cutter", "dc-lantern-lit-shortsword", "merchant-vigil-sabre", "campaign-dungeon-syntax-sabre", "campaign-dungeon-loopblade", "campaign-dungeon-hollow-fang"]
+	for look in looks:
+		for weapon in swords:
+			scene._apply_live_state({"simulated": true, "style": "sword", "armorLook": look, "weaponId": weapon})
+			var shown := overlay_path(scene)
+			require(scene.skin_id == looks[look] and shown.ends_with("%s-%s-sword-idle.png" % [weapon, looks[look]]), "%s / %s should draw its overlay, got '%s' on skin %s" % [look, weapon, shown, scene.skin_id])
+			require(scene.body.texture.resource_path.contains("base-%s-sword-idle" % looks[look]), "%s should stand on its weapon-less base" % look)
+	scene._apply_live_state({"simulated": true, "style": "sword", "armorLook": "ivory", "weaponId": "not-a-weapon"})
+	require(overlay_path(scene) == "" and scene.skin_id == "ivory", "An unknown weapon should keep the baked sword on any outfit")
 	scene._apply_live_state({"simulated": true, "style": "staff", "armorLook": "classic", "weaponId": "bj-the-house-cutter", "weaponVariant": "dawn-lantern"})
 	require(overlay_path(scene) == "", "Dawn Lantern must never stack an overlay on its baked art")
 	scene._apply_live_state({"simulated": true, "style": "unarmed", "armorLook": "classic", "weaponId": "bj-the-house-cutter"})
