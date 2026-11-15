@@ -1,4 +1,5 @@
 import { hunterAppearance } from './hunterEquipment.js'
+import { combatWeaponVariant } from './combatWeaponArt.js'
 
 const OUTFITS = {
   ivory: 'ivory', spectral: 'warden-heavy', harvest: 'harvest-scout', oracle: 'arcane',
@@ -12,11 +13,12 @@ export function marketWeaponPreview(item, equippedArmor) {
   const outfit = OUTFITS[hunterAppearance(equippedArmor, '').armorLook] || ''
   const name = String(item?.name || '')
   const inferred = /scythe/i.test(name) ? 'scythe' : /whip/i.test(name) ? 'whip'
-    : /staff/i.test(name) ? 'staff' : /greatsword|greatblade/i.test(name) ? 'greatsword'
+    : /staff/i.test(name) || combatWeaponVariant(name) === 'dawn-lantern' ? 'staff' : /greatsword|greatblade/i.test(name) ? 'greatsword'
       : /casting|focus|magic/i.test(name) ? 'handmagic' : 'sword'
   const style = STYLES.has(item?.combat_style) ? item.combat_style : inferred
   const graveblade = !['norse', 'lanternkeeper', 'wardplate'].includes(outfit) && style === 'greatsword' && (item?.id === 'hunter-gravebound-greatblade' || /^gravebound greatblade$/i.test(name))
-  const actionStyle = graveblade ? 'graveblade' : (!outfit && style === 'sword') ? 'sword-v2' : (!outfit && style === 'oil') ? 'oil-pink' : style
+  const dawn = style === 'staff' && ['', 'lanternkeeper', 'wardplate'].includes(outfit) && combatWeaponVariant(name) === 'dawn-lantern'
+  const actionStyle = dawn ? 'dawn' : graveblade ? 'graveblade' : (!outfit && style === 'sword') ? 'sword-v2' : (!outfit && style === 'oil') ? 'oil-pink' : style
   const prefix = outfit ? `tate-${outfit}` : 'tate'
   const root = `${import.meta.env?.BASE_URL || '/'}campaign-art/`
   const action = `${root}weapon-preview/${prefix}-${actionStyle}-sheet.png`

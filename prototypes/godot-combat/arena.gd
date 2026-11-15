@@ -37,6 +37,11 @@ const ANIMATED_ENEMIES := {
 	"mimic-matriarch": {"action": preload("res://art/matriarch-sheet.png"), "hurt": preload("res://art/matriarch-hurt-sheet.png"), "scale": 1.9},
 	"drowned-hoard": {"action": preload("res://art/drowned-hoard-sheet.png"), "hurt": preload("res://art/drowned-hoard-hurt-sheet.png"), "scale": 1.9},
 }
+const DAWN_LANTERN_POSES := {
+	"tate": {"action": preload("res://art/tate-dawn-sheet.png"), "hurt": preload("res://art/tate-dawn-hurt-sheet.png")},
+	"lanternkeeper": {"action": preload("res://art/tate-lanternkeeper-dawn-sheet.png"), "hurt": preload("res://art/tate-lanternkeeper-dawn-hurt-sheet.png")},
+	"wardplate": {"action": preload("res://art/tate-wardplate-dawn-sheet.png"), "hurt": preload("res://art/tate-wardplate-dawn-hurt-sheet.png")},
+}
 const LANTERN_ENEMIES := {
 	"blackjack-bust-hound": {"action": preload("res://art/blackjack/bust-hound.png"), "scale": 1.5, "ground_offset": 21.0},
 	"blackjack-house-clerk": {"action": preload("res://art/blackjack/house-clerk.png"), "scale": 1.5, "ground_offset": 9.0},
@@ -657,6 +662,10 @@ func _rival_poses() -> Dictionary:
 
 func _poses_for(skin: String, style: String, variant_name: String) -> Dictionary:
 	var poses: Dictionary = skins[skin]["styles"][style]
+	if variant_name == "dawn-lantern" and style == "staff" and DAWN_LANTERN_POSES.has(skin):
+		var dawn: Dictionary = poses.duplicate()
+		dawn.merge(DAWN_LANTERN_POSES[skin], true)
+		return dawn
 	if variant_name == "graveblade" and style == "greatsword" and skin != "norse" and skin != "lanternkeeper" and skin != "wardplate":
 		if not variant_pose_cache.has(skin):
 			var suffixes := {"tate": "", "ivory": "-ivory", "warden": "-warden-heavy", "harvest": "-harvest-scout", "oracle": "-arcane", "patchwork": "-patchwork", "pilgrim": "-pilgrim", "wayfarer": "-wayfarer", "debugger": "-debugger-v2", "merchant-oracle": "-merchant-oracle"}

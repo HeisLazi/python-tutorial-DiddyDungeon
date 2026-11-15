@@ -1,5 +1,7 @@
 extends SceneTree
 
+var failures := 0
+
 func _initialize() -> void:
 	call_deferred("run_checks")
 
@@ -17,8 +19,7 @@ func sample(scene: Node, duration: float) -> Dictionary:
 func require(condition: bool, message: String) -> void:
 	if not condition:
 		push_error(message)
-		quit(1)
-		assert(condition, message)
+		failures += 1
 
 func run_checks() -> void:
 	var scene: Node = load("res://main.tscn").instantiate()
@@ -115,5 +116,19 @@ func run_checks() -> void:
 	require(scene.body.texture == scene.skins.fixture.styles.staff.hurt, "Selected skin hurt missing")
 	await sample(scene, 1.0)
 	require(scene.select_skin("tate"), "Could not restore Tate")
-	print("PASS: idle, seven weapons, skin selection, hit reactions, counters and both modes")
-	quit(0)
+	# Exercise the live bridge selection rather than just inspecting filenames.
+	scene.embedded = true
+	for look in ["classic", "lanternkeeper", "wardplate"]:
+		scene._apply_live_state({"enemy": "wraith", "region": "basics", "style": "staff", "armorLook": look, "weaponVariant": "dawn-lantern"})
+		var skin: String = "tate" if look == "classic" else look
+		require(scene.body.texture == scene.DAWN_LANTERN_POSES[skin].action, look + " Dawn Lantern idle was not selected")
+		require(scene._poses().hurt == scene.DAWN_LANTERN_POSES[skin].hurt, look + " Dawn Lantern hurt was not selected")
+		if look != "classic":
+			require(scene.CATALOG.validate_skin(scene.skins[skin]).is_empty(), look + " is missing a required style or pose")
+	var fallback: Dictionary = scene._poses_for("ivory", "staff", "dawn-lantern")
+	require(fallback.action == scene.skins.ivory.styles.staff.action, "Unsupported outfit must keep its own staff art")
+	if failures:
+		quit(1)
+	else:
+		print("PASS: idle, seven weapons, skin selection, hit reactions, counters and both modes")
+		quit(0)

@@ -31,3 +31,12 @@ test('culture-led Basics armour echoes have their own sheets and never borrow th
     assert.match(marketWeaponPreview({ name: 'Blade', combat_style: 'sword' }, equipped).idle, new RegExp(`tate-${outfit}-sword-idle-sheet\\.png$`))
   }
 })
+
+test('Dawn Lantern previews the same staff poses for supported outfits', () => {
+  for (const [equipped, prefix] of [['', 'tate'], ['Lanternkeeper’s Coat', 'tate-lanternkeeper'], ['Wayfarer’s Wardplate', 'tate-wardplate']]) {
+    const preview = marketWeaponPreview({ name: 'Dawn Lantern' }, equipped)
+    assert.equal(preview.style, 'staff')
+    assert.match(preview.action, new RegExp(`${prefix}-dawn-sheet\\.png$`))
+    assert.equal(readFileSync(new URL(`../public${preview.action}`, import.meta.url)).readUInt32BE(16), 512)
+  }
+})
