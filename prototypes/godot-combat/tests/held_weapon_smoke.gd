@@ -1,6 +1,7 @@
 extends SceneTree
-## Held-weapon overlays: the weapon-less base plus a per-weapon strip must follow the hunter, and anything
-## without a complete set of strips must keep its baked weapon.
+## Held weapons: a weapon-less base plus a per-weapon strip are drawn into one sheet, and anything without a complete
+## set of strips must keep its baked weapon. A composed sheet is an ImageTexture named `<weapon>-<skin>-<style>-<key>`
+## with no resource path; a baked sheet has a path and no name.
 
 var failures := 0
 
@@ -12,9 +13,14 @@ func require(condition: bool, message: String) -> void:
 		push_error(message)
 		failures += 1
 
-func overlay_path(scene: Node) -> String:
-	scene._sync_held()
-	return scene.held.texture.resource_path if scene.held.visible and scene.held.texture else ""
+## The name of the held-weapon sheet the hunter is drawn from right now, or "" when the weapon is baked into the art.
+func held_name(scene: Node) -> String:
+	var texture: Texture2D = scene.body.texture
+	return texture.resource_name if texture and texture.resource_path.is_empty() else ""
+
+func rival_name(scene: Node) -> String:
+	var texture: Texture2D = scene.enemy.texture
+	return texture.resource_name if texture and texture.resource_path.is_empty() else ""
 
 func run_checks() -> void:
 	var scene: Node = load("res://main.tscn").instantiate()
@@ -24,127 +30,131 @@ func run_checks() -> void:
 	scene._apply_live_state({"simulated": true, "style": "sword", "armorLook": "classic", "weaponId": "bj-the-house-cutter"})
 	await process_frame
 	require(scene.skin_id == "tate", "Classic look should be Tate")
-	require(scene.body.texture.resource_path.contains("art/held/base-tate-sword-idle"), "Overlay weapon should use the weapon-less idle base: " + scene.body.texture.resource_path)
-	var cutter := overlay_path(scene)
-	require(cutter.ends_with("bj-the-house-cutter-tate-sword-idle.png"), "House Cutter idle strip missing: " + cutter)
-	require(scene.held.texture.get_size() == scene.body.texture.get_size(), "Strip must match the base sheet size")
-	require(scene.held.frame == scene.body.frame and scene.held.offset == scene.body.offset and scene.held.scale == scene.body.scale, "Strip must mirror the hunter's frame, offset and scale")
+	var cutter := held_name(scene)
+	require(cutter == "bj-the-house-cutter-tate-sword-idle", "House Cutter should draw from its own idle sheet: '%s'" % cutter)
+
+	# The composed sheet is the weapon-less base with the weapon drawn into it: same size, every weapon pixel present.
+	var base: Texture2D = load("res://art/held/base-tate-sword-idle-sheet.png")
+	var strip: Texture2D = load("res://art/held/bj-the-house-cutter-tate-sword-idle.png")
+	var composed: Image = scene.body.texture.get_image()
+	var base_image: Image = base.get_image()
+	var strip_image: Image = strip.get_image()
+	require(composed.get_size() == base_image.get_size(), "A composed sheet must keep the base sheet's size")
+	var weapon_pixels := 0
+	var missing := 0
+	for y in range(strip_image.get_height()):
+		for x in range(strip_image.get_width()):
+			if strip_image.get_pixel(x, y).a > 0.9:
+				weapon_pixels += 1
+				if composed.get_pixel(x, y).a < 0.9:
+					missing += 1
+	require(weapon_pixels > 0, "The House Cutter strip should not be empty")
+	require(missing == 0, "%d weapon pixels are missing from the composed sheet" % missing)
 
 	scene._apply_live_state({"simulated": true, "style": "sword", "armorLook": "classic", "weaponId": "lv-01"})
-	var other := overlay_path(scene)
-	require(other.ends_with("lv-01-tate-sword-idle.png") and other != cutter, "Different weapons must show different strips")
+	var other := held_name(scene)
+	require(other == "lv-01-tate-sword-idle" and other != cutter, "Different weapons must show different sheets: " + other)
+	scene._apply_live_state({"simulated": true, "style": "sword", "armorLook": "classic", "weaponId": "bj-the-house-cutter"})
+	require(scene.body.texture == scene._poses()["idle"], "The body should show the cached composed sheet, not a fresh copy")
 
-	# The strip follows every sheet the sword style uses during a swing and a hurt.
+	# The sheet follows every texture the sword style uses during a swing and a hurt. Because the weapon is in the
+	# sheet, the hunter and the weapon cannot disagree about the frame.
 	var seen := {}
 	scene._attack()
 	for step in range(30):
 		await create_timer(0.04).timeout
-		var path := overlay_path(scene)
-		require(path != "", "Overlay vanished mid-attack at step %d (body %s)" % [step, scene.body.texture.resource_path])
-		var key: String = scene.body.texture.resource_path.get_file().replace("base-tate-sword-", "").replace("-sheet.png", "")
-		require(path.ends_with("-tate-sword-%s.png" % key), "Strip %s does not match body sheet %s" % [path, key])
-		require(scene.held.frame == scene.body.frame, "Strip frame lags the body")
-		seen[key] = true
+		var shown := held_name(scene)
+		require(shown.begins_with("bj-the-house-cutter-tate-sword-"), "The weapon vanished mid-attack at step %d (%s)" % [step, scene.body.texture.resource_path])
+		seen[shown.trim_prefix("bj-the-house-cutter-tate-sword-")] = true
 	require(seen.has("action") and seen.has("follow"), "Attack should have used both the action and follow sheets: " + str(seen.keys()))
 	await create_timer(1.0).timeout
 	scene._miss()
 	var hurt_seen := false
 	for step in range(60):
 		await create_timer(0.04).timeout
-		var path := overlay_path(scene)
-		if scene.body.texture.resource_path.contains("-hurt-"):
+		if held_name(scene).ends_with("-hurt"):
 			hurt_seen = true
-			require(path.ends_with("-tate-sword-hurt.png"), "Hurt pose should carry the strip: " + path)
 			break
-	require(hurt_seen, "The counterattack never showed the hurt sheet")
+	require(hurt_seen, "The counterattack never showed the held weapon's hurt sheet")
 	await create_timer(1.2).timeout
 
-	# Fallbacks keep the baked weapon and hide the overlay.
+	# Fallbacks keep the baked weapon.
 	scene._apply_live_state({"simulated": true, "style": "sword", "armorLook": "classic", "weaponId": "not-a-weapon"})
-	require(overlay_path(scene) == "" and scene.body.texture.resource_path.ends_with("tate-idle-sheet.png"), "Unknown weapon should keep the baked sheet")
+	require(held_name(scene) == "" and scene.body.texture.resource_path.ends_with("tate-idle-sheet.png"), "Unknown weapon should keep the baked sheet")
 	scene._apply_live_state({"simulated": true, "style": "greatsword", "armorLook": "classic", "weaponId": "bj-the-house-cutter"})
-	require(overlay_path(scene) == "" and scene.body.texture.resource_path.ends_with("tate-greatsword-sheet.png"), "A weapon with no greatsword strips should keep the baked greatsword")
-	# Every outfit carries every sword-style weapon as an overlay on its own weapon-less base.
+	require(held_name(scene) == "" and scene.body.texture.resource_path.ends_with("tate-greatsword-sheet.png"), "A weapon with no greatsword strips should keep the baked greatsword")
+	# Every outfit carries every sword-style weapon on its own weapon-less base.
 	var looks := {"classic": "tate", "ivory": "ivory", "spectral": "warden", "harvest": "harvest", "oracle": "oracle", "patchwork": "patchwork", "pilgrim": "pilgrim", "wayfarer": "wayfarer", "debugger": "debugger", "merchant-oracle": "merchant-oracle", "norse": "norse", "lanternkeeper": "lanternkeeper", "wardplate": "wardplate"}
 	var swords := ["lv-01", "lv-02", "lv-05", "bj-card-edge-dagger", "bj-ace-of-spades-blade", "bj-the-house-cutter", "dc-lantern-lit-shortsword", "merchant-vigil-sabre", "campaign-dungeon-syntax-sabre", "campaign-dungeon-loopblade", "campaign-dungeon-hollow-fang"]
 	for look in looks:
 		for weapon in swords:
 			scene._apply_live_state({"simulated": true, "style": "sword", "armorLook": look, "weaponId": weapon})
-			var shown := overlay_path(scene)
-			require(scene.skin_id == looks[look] and shown.ends_with("%s-%s-sword-idle.png" % [weapon, looks[look]]), "%s / %s should draw its overlay, got '%s' on skin %s" % [look, weapon, shown, scene.skin_id])
-			require(scene.body.texture.resource_path.contains("base-%s-sword-idle" % looks[look]), "%s should stand on its weapon-less base" % look)
-	# Greatsword-style weapons, on every outfit, in both of that style's sheets.
+			var shown := held_name(scene)
+			require(scene.skin_id == looks[look] and shown == "%s-%s-sword-idle" % [weapon, looks[look]], "%s / %s should hold its weapon, got '%s' on skin %s" % [look, weapon, shown, scene.skin_id])
+	# Greatsword-style weapons, on every outfit.
 	var heavy := ["lv-03", "bj-the-shoe-splitter", "cas-coin-roll-club", "cas-lever-arm-mace", "cas-jackpot-hammer", "dc-deepvein-warhammer", "dc-the-core-breaker", "hunter-sparring-greatsword", "merchant-nightfall-greatsword", "campaign-dungeon-iron-greatsword", "campaign-dungeon-minotaur-edge", "campaign-dungeon-clockwork-greatblade"]
 	for look in looks:
 		for weapon in heavy:
 			scene._apply_live_state({"simulated": true, "style": "greatsword", "armorLook": look, "weaponId": weapon})
-			var shown_heavy := overlay_path(scene)
-			require(shown_heavy.ends_with("%s-%s-greatsword-action.png" % [weapon, looks[look]]), "%s / %s should draw a greatsword overlay, got '%s'" % [look, weapon, shown_heavy])
-			require(scene.body.texture.resource_path.contains("base-%s-greatsword-action" % looks[look]), "%s should stand on its weapon-less greatsword base" % look)
+			var shown_heavy := held_name(scene)
+			require(shown_heavy == "%s-%s-greatsword-action" % [weapon, looks[look]], "%s / %s should hold a greatsword-style weapon, got '%s'" % [look, weapon, shown_heavy])
 	# Pole styles swap only the head, on every outfit; whips add a piece at the lash tip.
 	var pole_styles := {
-		"scythe": {"weapons": ["dc-miner-s-pickaxe", "hunter-sparring-scythe", "hunter-jack-scythe", "campaign-dungeon-grave-scythe", "campaign-dungeon-undertow-scythe"], "baked": []},
-		"handmagic": {"weapons": ["cas-reel-spinner-chakram", "cas-lady-luck-s-sceptre", "hunter-sparring-focus", "campaign-dungeon-runic-casting", "campaign-dungeon-last-page"], "baked": []},
-		"whip": {"weapons": ["bj-croupier-s-rake", "campaign-dungeon-warden-chain", "campaign-dungeon-pathfinder-whip"], "baked": []},
-		"staff": {"weapons": ["lv-04", "dc-cartographer-s-spear", "hunter-sparring-staff", "merchant-moonlit-staff", "campaign-dungeon-aether-staff", "campaign-dungeon-oracle-staff"], "baked": []},
+		"scythe": ["dc-miner-s-pickaxe", "hunter-sparring-scythe", "hunter-jack-scythe", "campaign-dungeon-grave-scythe", "campaign-dungeon-undertow-scythe"],
+		"handmagic": ["cas-reel-spinner-chakram", "cas-lady-luck-s-sceptre", "hunter-sparring-focus", "campaign-dungeon-runic-casting", "campaign-dungeon-last-page"],
+		"whip": ["bj-croupier-s-rake", "campaign-dungeon-warden-chain", "campaign-dungeon-pathfinder-whip"],
+		"staff": ["lv-04", "dc-cartographer-s-spear", "hunter-sparring-staff", "merchant-moonlit-staff", "campaign-dungeon-aether-staff", "campaign-dungeon-oracle-staff"],
 	}
 	for pole in pole_styles:
 		for look in looks:
-			var covered: bool = not (looks[look] in pole_styles[pole]["baked"])
-			for weapon in pole_styles[pole]["weapons"]:
+			for weapon in pole_styles[pole]:
 				scene._apply_live_state({"simulated": true, "style": pole, "armorLook": look, "weaponId": weapon})
-				var shown_pole := overlay_path(scene)
-				if covered:
-					require(shown_pole.ends_with("%s-%s-%s-action.png" % [weapon, looks[look], pole]), "%s / %s should draw a %s head overlay, got '%s'" % [look, weapon, pole, shown_pole])
-				else:
-					require(shown_pole == "", "%s keeps its baked %s, got '%s'" % [look, pole, shown_pole])
+				var shown_pole := held_name(scene)
+				require(shown_pole == "%s-%s-%s-action" % [weapon, looks[look], pole], "%s / %s should hold a %s weapon, got '%s'" % [look, weapon, pole, shown_pole])
 	scene._apply_live_state({"simulated": true, "style": "whip", "armorLook": "classic", "weaponId": "hunter-sparring-whip"})
-	require(overlay_path(scene) == "", "The Hunter's Whip is the plain lash and keeps the baked sheet")
+	require(held_name(scene) == "", "The Hunter's Whip is the plain lash and keeps the baked sheet")
 	scene._apply_live_state({"simulated": true, "style": "staff", "armorLook": "classic", "weaponId": "campaign-dungeon-dawn-lantern", "weaponVariant": "dawn-lantern"})
-	require(overlay_path(scene) == "", "The Dawn Lantern keeps its own baked variant")
+	require(held_name(scene) == "", "The Dawn Lantern keeps its own baked variant")
 	scene._apply_live_state({"simulated": true, "style": "greatsword", "armorLook": "classic", "weaponId": "hunter-gravebound-greatblade", "weaponVariant": "graveblade"})
-	require(overlay_path(scene) == "", "The Gravebound Greatblade keeps its own baked variant sheets")
+	require(held_name(scene) == "", "The Gravebound Greatblade keeps its own baked variant sheets")
 	scene._apply_live_state({"simulated": true, "style": "greatsword", "armorLook": "ivory", "weaponId": "hunter-gravebound-greatblade", "weaponVariant": "graveblade"})
-	require(overlay_path(scene) == "" and scene.body.texture.resource_path.contains("ivory-graveblade"), "Ivory has baked Graveblade sheets, so no overlay")
+	require(held_name(scene) == "" and scene.body.texture.resource_path.contains("ivory-graveblade"), "Ivory has baked Graveblade sheets, so it keeps them")
 	for look in ["norse", "lanternkeeper", "wardplate"]:
 		scene._apply_live_state({"simulated": true, "style": "greatsword", "armorLook": look, "weaponId": "hunter-gravebound-greatblade", "weaponVariant": "graveblade"})
-		require(overlay_path(scene).ends_with("hunter-gravebound-greatblade-%s-greatsword-action.png" % look), "%s has no baked Graveblade, so it should draw the overlay: '%s'" % [look, overlay_path(scene)])
+		require(held_name(scene) == "hunter-gravebound-greatblade-%s-greatsword-action" % look, "%s has no baked Graveblade, so it should hold the weapon: '%s'" % [look, held_name(scene)])
 	# Infinite Dungeon run weapons share the Journal echo's art.
 	scene._apply_live_state({"simulated": true, "style": "sword", "armorLook": "classic", "weaponId": "dungeon-loopblade"})
-	require(overlay_path(scene).ends_with("campaign-dungeon-loopblade-tate-sword-idle.png"), "dungeon-loopblade should use the loopblade strips: " + overlay_path(scene))
+	require(held_name(scene) == "campaign-dungeon-loopblade-tate-sword-idle", "dungeon-loopblade should use the loopblade sheets: " + held_name(scene))
 	scene._apply_live_state({"simulated": true, "style": "greatsword", "armorLook": "classic", "weaponId": "dungeon-iron-greatsword"})
-	require(overlay_path(scene).ends_with("campaign-dungeon-iron-greatsword-tate-greatsword-action.png"), "dungeon-iron-greatsword should use the faultbreaker strips")
+	require(held_name(scene) == "campaign-dungeon-iron-greatsword-tate-greatsword-action", "dungeon-iron-greatsword should use the faultbreaker sheets")
 
-	# A duel rival holds an overlay weapon too, drawn on the mirrored enemy sprite.
+	# A duel rival holds a weapon too, drawn from the enemy sprite's own sheet.
 	scene._apply_live_state({"simulated": false, "region": "duel-colosseum", "style": "sword", "armorLook": "classic", "weaponId": "lv-01", "rivalStyle": "sword", "rivalArmorLook": "wardplate", "rivalWeaponId": "bj-the-house-cutter"})
 	await process_frame
-	scene._sync_held()
 	require(scene.duel_mode and scene.enemy.flip_h, "Duel mode should mirror the rival")
-	require(scene.held_rival.visible and scene.held_rival.texture.resource_path.ends_with("bj-the-house-cutter-wardplate-sword-idle.png"), "The rival should hold the House Cutter overlay")
-	require(scene.enemy.texture.resource_path.contains("base-wardplate-sword-idle"), "The rival should stand on its weapon-less base")
-	require(scene.held_rival.flip_h == scene.enemy.flip_h and scene.held_rival.frame == scene.enemy.frame and scene.held_rival.offset == scene.enemy.offset, "The rival overlay must mirror the enemy sprite")
-	require(scene.held.visible and scene.held.texture.resource_path.ends_with("lv-01-tate-sword-idle.png"), "The hunter keeps their own overlay in a duel")
+	require(rival_name(scene) == "bj-the-house-cutter-wardplate-sword-idle", "The rival should hold the House Cutter: '%s'" % rival_name(scene))
+	require(held_name(scene) == "lv-01-tate-sword-idle", "The hunter keeps their own weapon in a duel")
 	scene._apply_live_state({"simulated": false, "region": "duel-colosseum", "style": "sword", "armorLook": "classic", "rivalStyle": "greatsword", "rivalArmorLook": "ivory", "rivalWeaponId": "hunter-gravebound-greatblade", "rivalWeaponVariant": "graveblade"})
-	scene._sync_held()
-	require(not scene.held_rival.visible, "A rival with a baked variant must not get an overlay")
+	await process_frame
+	require(rival_name(scene) == "", "A rival with a baked variant keeps it")
 	scene._apply_live_state({"simulated": false, "region": "duel-colosseum", "style": "sword", "armorLook": "classic", "rivalStyle": "greatsword", "rivalArmorLook": "wardplate", "rivalWeaponId": "hunter-gravebound-greatblade", "rivalWeaponVariant": "graveblade"})
-	scene._sync_held()
-	require(scene.held_rival.visible and scene.held_rival.texture.resource_path.ends_with("hunter-gravebound-greatblade-wardplate-greatsword-action.png"), "A rival whose outfit has no baked Graveblade wears the overlay")
+	await process_frame
+	require(rival_name(scene) == "hunter-gravebound-greatblade-wardplate-greatsword-action", "A rival whose outfit has no baked Graveblade holds the weapon: '%s'" % rival_name(scene))
 	scene._apply_live_state({"simulated": false, "region": "duel-colosseum", "style": "unarmed", "armorLook": "classic", "rivalStyle": "unarmed", "rivalArmorLook": "wardplate", "rivalWeaponId": "bj-the-house-cutter"})
-	scene._sync_held()
-	require(not scene.held_rival.visible, "A bare-handed rival must not draw a weapon")
+	await process_frame
+	require(rival_name(scene) == "", "A bare-handed rival must not draw a weapon")
 	scene._apply_live_state({"simulated": false, "region": "basics", "enemy": "wraith", "style": "sword", "armorLook": "classic", "rivalWeaponId": "bj-the-house-cutter"})
-	scene._sync_held()
-	require(not scene.held_rival.visible, "A monster must never carry the rival's weapon")
+	await process_frame
+	require(rival_name(scene) == "", "A monster must never carry the rival's weapon")
 
 	scene._apply_live_state({"simulated": true, "style": "sword", "armorLook": "ivory", "weaponId": "not-a-weapon"})
-	require(overlay_path(scene) == "" and scene.skin_id == "ivory", "An unknown weapon should keep the baked sword on any outfit")
+	require(held_name(scene) == "" and scene.skin_id == "ivory", "An unknown weapon should keep the baked sword on any outfit")
 	scene._apply_live_state({"simulated": true, "style": "staff", "armorLook": "classic", "weaponId": "bj-the-house-cutter", "weaponVariant": "dawn-lantern"})
-	require(overlay_path(scene) == "", "Dawn Lantern must never stack an overlay on its baked art")
+	require(held_name(scene) == "", "Dawn Lantern must never stack a weapon on its baked art")
 	scene._apply_live_state({"simulated": true, "style": "unarmed", "armorLook": "classic", "weaponId": "bj-the-house-cutter"})
-	require(overlay_path(scene) == "", "Bare hands must not draw a weapon")
+	require(held_name(scene) == "", "Bare hands must not draw a weapon")
 	scene._apply_live_state({"simulated": true, "style": "sword", "armorLook": "classic"})
-	require(overlay_path(scene) == "", "No weapon id means the baked sword")
+	require(held_name(scene) == "", "No weapon id means the baked sword")
 
 	print("held_weapon_smoke: %d failure(s)" % failures)
 	quit(1 if failures > 0 else 0)

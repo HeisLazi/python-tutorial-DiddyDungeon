@@ -32,7 +32,7 @@ SHEETS = {
 # head_from: share of the icon (pommel to tip) before the head starts; reach: head size relative to the baked head.
 SCYTHE_WEAPONS = {
     "dc-miner-s-pickaxe": {"grip": 0.55, "reach": 1.0},
-    "hunter-sparring-scythe": {"grip": 0.45, "reach": 1.0},
+    "hunter-sparring-scythe": {"grip": 0.72, "reach": 1.0},  # a plain pole with a small blade: take the blade end, not the pole
     "hunter-jack-scythe": {"grip": 0.45, "reach": 1.05},
     "campaign-dungeon-grave-scythe": {"grip": 0.45, "reach": 1.0},
     "campaign-dungeon-undertow-scythe": {"grip": 0.45, "reach": 1.0},
@@ -319,7 +319,7 @@ def build(skin: str, style: str, weapons: dict, force: bool, tate: dict | None):
             if icon is None:
                 print(f"skip {item_id}: no icon", file=sys.stderr)
                 continue
-            draw_overlay(blade, 128, sheet.height, icon, {**spec, "back": spec.get("back", 0.14)}, lead=0.0).save(target)
+            draw_overlay(blade, 128, sheet.height, icon, {**spec, "back": spec.get("back", 0.14)}, lead=0.0, fit=True).save(target)
     return report, out_frames
 
 

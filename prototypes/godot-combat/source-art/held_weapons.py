@@ -316,25 +316,45 @@ def horizontal_weapon(icon: Image.Image, grip: float, back: float = 0.0):
     return crop, (guard_x - start_x if back else 0.0), (centre[1] - box[1])
 
 
-def draw_overlay(base_frames, cell_w: int, height: int, icon: Image.Image, spec, lead: float = 3.5) -> Image.Image:
+FIT_MARGIN = 48  # px of room around a cell while a weapon is measured, so overflow can be seen before it is clipped
+
+
+def draw_overlay(base_frames, cell_w: int, height: int, icon: Image.Image, spec, lead: float = 3.5, fit: bool = False) -> Image.Image:
+    """Draw a weapon along each frame's axis. With `fit`, a weapon that would run past the cell is shrunk about its
+    anchor until it fits, so a raised weapon is not cut off by the top of the sheet."""
     weapon, px, py = horizontal_weapon(icon, spec["grip"], spec.get("back", 0.0))
     out = Image.new("RGBA", (cell_w * len(base_frames), height), (0, 0, 0, 0))
+    m = FIT_MARGIN
     for i, f in enumerate(base_frames):
-        reach = spec["reach"] * (f["len"] + lead)
-        scale = reach / (weapon.width - px)
-        big_w = max(2, round(weapon.width * scale * SS))
-        big_h = max(2, round(weapon.height * scale * SS))
-        sprite = weapon.resize((big_w, big_h), Image.LANCZOS)
-        angle = math.degrees(math.atan2(f["dir"][1], f["dir"][0]))  # image-space (y down)
-        pad = max(big_w, big_h) + 8
-        canvas = Image.new("RGBA", (pad * 2, pad * 2), (0, 0, 0, 0))
-        # The weapon's axis sits on y=pad and its guard on x=pad, so rotating about (pad, pad) swings it from the guard.
-        canvas.alpha_composite(sprite, (int(pad - px * scale * SS), int(pad - py * scale * SS)))
-        turned = canvas.rotate(-angle, resample=Image.BICUBIC, center=(pad, pad))
         anchor = f["start"] - f["dir"] * lead
-        full = Image.new("RGBA", (cell_w * SS, height * SS), (0, 0, 0, 0))
-        _paste_clipped(full, turned, round(anchor[0] * SS) - pad, round(anchor[1] * SS) - pad)
-        small = full.resize((cell_w, height), Image.BOX)
+        k = 1.0
+        for _ in range(5):
+            reach = spec["reach"] * (f["len"] + lead) * k
+            scale = reach / (weapon.width - px)
+            big_w = max(2, round(weapon.width * scale * SS))
+            big_h = max(2, round(weapon.height * scale * SS))
+            sprite = weapon.resize((big_w, big_h), Image.LANCZOS)
+            angle = math.degrees(math.atan2(f["dir"][1], f["dir"][0]))  # image-space (y down)
+            pad = max(big_w, big_h) + 8
+            canvas = Image.new("RGBA", (pad * 2, pad * 2), (0, 0, 0, 0))
+            # The weapon's axis sits on y=pad and its guard on x=pad, so rotating about (pad, pad) swings it from the guard.
+            canvas.alpha_composite(sprite, (int(pad - px * scale * SS), int(pad - py * scale * SS)))
+            turned = canvas.rotate(-angle, resample=Image.BICUBIC, center=(pad, pad))
+            full = Image.new("RGBA", ((cell_w + 2 * m) * SS, (height + 2 * m) * SS), (0, 0, 0, 0))
+            _paste_clipped(full, turned, round((anchor[0] + m) * SS) - pad, round((anchor[1] + m) * SS) - pad)
+            box = full.getbbox()
+            if not fit or box is None:
+                break
+            ax, ay = float(anchor[0]), float(anchor[1])
+            left, top, right, bottom = box[0] / SS - m, box[1] / SS - m, box[2] / SS - m, box[3] / SS - m
+            ratios = []
+            for extent, room in ((ay - top, ay - 2), (bottom - ay, height - 2 - ay), (ax - left, ax - 2), (right - ax, cell_w - 2 - ax)):
+                if extent > room > 0:
+                    ratios.append(room / extent)
+            if not ratios:
+                break
+            k = max(0.4, k * min(ratios) * 0.97)
+        small = full.crop((m * SS, m * SS, (m + cell_w) * SS, (m + height) * SS)).resize((cell_w, height), Image.BOX)
         a = np.array(small)
         a[:, :, 3] = np.where(a[:, :, 3] >= 110, 255, 0)
         # Icons are painted for a 128px canvas; lift them so thin blades still read against the dark coat.
@@ -377,7 +397,7 @@ def build(skin: str, style: str, weapons: dict, force: bool = False, reference: 
             if icon is None:
                 print(f"skip {item_id}: no icon", file=sys.stderr)
                 continue
-            draw_overlay(frames, cell_w, sheet.height, icon, spec).save(target)
+            draw_overlay(frames, cell_w, sheet.height, icon, spec, fit=True).save(target)
     return report, all_frames
 
 
