@@ -4098,9 +4098,37 @@ def spar_gear():
     try:
         progress, _metadata = STATE_SERVICE.snapshot_with_metadata()
         gear = STATE_SERVICE.spar_gear(progress)
+        looks = STATE_SERVICE.spar_looks(progress)
     except StateCommandError as exc:
         raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
-    return {"ok": True, "gear": gear}
+    return {"ok": True, "gear": gear, "looks": looks}
+
+
+class SparRoundRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    correct: bool
+    kind: Literal["choice", "text", "code"]
+
+
+class SparSimulateRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    weapon_id: str | None = Field(default=None, max_length=MAX_IDENTIFIER_LENGTH)
+    armor: str | None = Field(default=None, max_length=80)
+    trinket: str | None = Field(default=None, max_length=80)
+    rounds: list[SparRoundRequest] = Field(default_factory=list, max_length=5)
+
+
+@app.post("/api/spar/simulate")
+def spar_simulate(payload: SparSimulateRequest):
+    """Replay a spar's answered rounds with a tried-on loadout (read-only; nothing is saved)."""
+
+    try:
+        result = STATE_SERVICE.spar_simulate(payload.weapon_id, payload.armor, payload.trinket, [item.model_dump() for item in payload.rounds])
+    except StateCommandError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
+    return {"ok": True, **result}
 
 
 @app.post("/api/ai/spar-question")

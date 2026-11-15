@@ -16,7 +16,7 @@ import re
 import threading
 import time
 import uuid
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -29,6 +29,7 @@ from ide.server.dungeon_items import GEAR_BY_NAME, REGIONAL_ARMOURS, REGIONAL_TR
 from ide.server.home_rooms import HOME_ROOM_LABELS, HOME_ROOM_LADDERS, effective_room_levels, validate_room_levels
 from ide.server.online.shop import ONLINE_MASTERY_BY_ID, ONLINE_SHOP_GEAR
 from ide.server.weapon_signatures import SIGNATURE_CAPS, apply_signatures, signature_bonus, signature_text
+from ide.server import spar_sim
 
 MAX_EVENT_RECORDS = 100
 MAX_REASON_LENGTH = 240
@@ -7264,6 +7265,48 @@ class LocalStateService:
             gear.append(projected)
         gear.sort(key=lambda entry: (ARMORY_GEAR_SLOTS.index(entry["slot"]), tier_rank.get(entry["tier"], 99), str(entry["name"])))
         return gear
+
+    def spar_looks(self, progress: Mapping[str, Any]) -> list[dict[str, Any]]:
+        """Every Colosseum mastery look, for trying on in the Sparring Ring. `owned` says whether it is earned."""
+
+        hunter = progress.get("hunter") if isinstance(progress.get("hunter"), Mapping) else {}
+        armory = hunter.get("armory") if isinstance(hunter.get("armory"), Mapping) else {}
+        earned = {item for item in armory.get("owned_appearances", []) if isinstance(item, str)} if isinstance(armory.get("owned_appearances"), list) else set()
+        tier_rank = {"rare": 0, "legendary": 1, "ethereal": 2}
+        looks = [
+            {key: item[key] for key in ("id", "name", "tier", "style", "appearance_type", "description") if key in item} | {"owned": item["id"] in earned}
+            for item in ONLINE_MASTERY_BY_ID.values()
+        ]
+        looks.sort(key=lambda item: (item["appearance_type"] != "armor", str(item.get("style") or ""), tier_rank.get(item["tier"], 9)))
+        return looks
+
+    @classmethod
+    def spar_loadout_effects(cls, weapon_id: str | None, armor: str | None, trinket: str | None) -> dict[str, Any]:
+        """What this loadout does, resolved by the campaign's own rules with everything unlocked."""
+
+        catalog = armory_catalog()
+        by_name = armory_by_name()
+        weapon = catalog.get(weapon_id) if weapon_id else None
+        if weapon_id and (weapon is None or weapon.get("slot") != "weapon"):
+            raise StateCommandError("That is not a weapon", status_code=404)
+        armor_item = by_name.get(armor) if armor else None
+        if armor and armor_item and armor_item.get("slot") != "armor":
+            raise StateCommandError("That is not armour", status_code=404)
+        trinket_item = by_name.get(trinket) if trinket and trinket != "None" else None
+        if trinket and trinket != "None" and trinket_item and trinket_item.get("slot") != "trinket":
+            raise StateCommandError("That is not a trinket", status_code=404)
+        owned = [item["id"] for item in (weapon, armor_item, trinket_item) if item and item.get("id")]
+        progress = {
+            "equipment": {"armor": armor or "", "trinket": trinket if trinket and trinket != "None" else ""},
+            "hunter": {"armory": {"owned": owned, "weapon": weapon_id if weapon else None}},
+        }
+        return cls._gear_effects(progress)
+
+    def spar_simulate(self, weapon_id: str | None, armor: str | None, trinket: str | None, rounds: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
+        """Replay a spar's answered rounds with this gear (read-only; nothing is saved)."""
+
+        effects = self.spar_loadout_effects(weapon_id, armor, trinket)
+        return spar_sim.simulate(effects, rounds) | {"effects": spar_sim.effect_lines(effects)}
 
     def armory_projection(self, progress: Mapping[str, Any]) -> dict[str, Any]:
         """The hunter's gear, food, relics, collection and Merchant lots."""

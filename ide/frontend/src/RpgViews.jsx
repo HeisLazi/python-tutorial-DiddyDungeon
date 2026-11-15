@@ -26,7 +26,7 @@ import CastleFloorPlan from './CastleFloorPlan.jsx'
 import TutorLearningPath from './TutorLearningPath.jsx'
 import DungeonCombatArena from './DungeonCombatArena.jsx'
 import SparGearMenu from './SparGearMenu.jsx'
-import { sparDemoTurn, sparLoadout } from './sparLoadout.js'
+import { sparLoadout, sparLoadoutRequest, sparView } from './sparLoadout.js'
 import OnlineHideout from './OnlineHideout.jsx'
 import OnlineHousePanel from './OnlineHousePanel.jsx'
 import OnlinePageBoundary from './OnlinePageBoundary.jsx'
@@ -3850,18 +3850,37 @@ function SparringArena({ roster = [], actions, armory, busy }) {
   const [sparText, setSparText] = useState('')
   // "Try gear": every item is unlocked here, and picks only change what the combat scene shows.
   const [gear, setGear] = useState(null)
+  const [looks, setLooks] = useState([])
   const [gearError, setGearError] = useState('')
+  // Each answered round, and the server's replay of them with the tried-on gear (its effects decide the bars).
+  const [history, setHistory] = useState([])
+  const [sim, setSim] = useState(null)
   const [picks, setPicks] = useState({})
   const [gearOpen, setGearOpen] = useState(false)
   const [demo, setDemo] = useState(null)
   const foe = roster.find((item) => item.id === foeId)
   useEffect(() => {
     let live = true
-    Promise.resolve(actions?.gear?.()).then((items) => { if (live && items) setGear(items) }).catch((failure) => { if (live) setGearError(failure?.message || 'The armoury could not be opened.') })
+    Promise.resolve(actions?.gear?.()).then((result) => { if (live && result) { setGear(result.gear || []); setLooks(result.looks || []) } }).catch((failure) => { if (live) setGearError(failure?.message || 'The armoury could not be opened.') })
     return () => { live = false }
   }, [])
   const pick = (slot, item) => { setPicks((current) => { const next = { ...current }; if (item === undefined) delete next[slot]; else next[slot] = item; return next }); setDemo(null) }
-  const swing = (landed) => setDemo((current) => ({ count: (current?.count || 0) + 1, landed }))
+  // What the tried-on gear does is decided by the server, with the campaign's own rules (POST /api/spar/simulate).
+  const baseLoadout = sparLoadout(armory, picks)
+  const request = sparLoadoutRequest(baseLoadout)
+  const simKey = JSON.stringify([request, history])
+  useEffect(() => {
+    let live = true
+    Promise.resolve(actions?.simulate?.(request, history)).then((result) => { if (live && result) setSim({ key: simKey, data: result }) }).catch(() => { /* the plain fight stands in until the next try */ })
+    return () => { live = false }
+  }, [simKey])
+  const swing = async (landed) => {
+    const hypothetical = [...(history.length < SPAR_ROUNDS ? history : []), { correct: landed, kind: 'choice' }]
+    try {
+      const data = await actions?.simulate?.(request, hypothetical)
+      if (data) setDemo((current) => ({ count: (current?.count || 0) + 1, history: hypothetical, sim: data }))
+    } catch (failure) { setError(failure?.message || 'The ring could not play that out.') }
+  }
   const contracts = roster.filter((item) => item.kind === 'contract')
   const beasts = roster.filter((item) => item.kind === 'beast')
   const ask = async (target, number) => {
@@ -3880,6 +3899,7 @@ function SparringArena({ roster = [], actions, armory, busy }) {
   const start = (id) => {
     setGearOpen(false)
     setDemo(null)
+    setHistory([])
     setFoeId(id)
     setBoutId((value) => value + 1)
     setRound(1)
@@ -3892,6 +3912,7 @@ function SparringArena({ roster = [], actions, armory, busy }) {
     try {
       const result = await actions?.answer?.(foeId, index)
       setFeedback({ ...result, picked: index })
+      setHistory((rounds) => [...rounds, { correct: result?.verdict === 'correct', kind: 'choice' }])
       if (result?.verdict === 'correct') setScore((value) => value + 1)
     } catch (failure) {
       setError(failure?.message || 'That answer could not be checked.')
@@ -3903,6 +3924,7 @@ function SparringArena({ roster = [], actions, armory, busy }) {
     try {
       const result = await actions?.answerCode?.(foeId, sparCode)
       setFeedback(result)
+      setHistory((rounds) => [...rounds, { correct: result?.verdict === 'correct', kind: 'code' }])
       if (result?.verdict === 'correct') setScore((value) => value + 1)
     } catch (failure) { setError(failure?.message || 'The code could not be reviewed. Try again.') }
   }
@@ -3912,6 +3934,7 @@ function SparringArena({ roster = [], actions, armory, busy }) {
     try {
       const result = await actions?.answerText?.(foeId, sparText)
       setFeedback(result)
+      setHistory((rounds) => [...rounds, { correct: result?.verdict === 'correct', kind: 'text' }])
       if (result?.verdict === 'correct') setScore((value) => value + 1)
     } catch (failure) { setError(failure?.message || 'The answer could not be reviewed. Try again.') }
   }
@@ -3928,19 +3951,16 @@ function SparringArena({ roster = [], actions, armory, busy }) {
   const finished = round > SPAR_ROUNDS
   // These bars exist only for this five-round bout. The practice endpoints
   // remain responsible for sign progress; neither bar touches Dungeon state.
-  const wasCorrect = feedback?.verdict === 'correct'
-  const scoreBefore = Math.max(0, score - (wasCorrect ? 1 : 0))
-  const completedBefore = Math.min(SPAR_ROUNDS, Math.max(0, round - 1))
-  const practiceHpBefore = Math.max(0, SPAR_ROUNDS - (completedBefore - scoreBefore))
-  const practiceResolveBefore = Math.max(0, SPAR_ROUNDS - scoreBefore)
-  const practiceLoadout = sparLoadout(armory, picks, { hp: practiceHpBefore, max_hp: SPAR_ROUNDS })
-  const practiceRun = { room_type: 'elite', encounter: { name: foe?.name || 'Training hollow', resolve: foe ? practiceResolveBefore : SPAR_ROUNDS, max_resolve: SPAR_ROUNDS } }
-  const practiceTurn = !feedback && demo ? sparDemoTurn(demo.count, demo.landed, practiceHpBefore, practiceResolveBefore) : feedback ? {
-    hpAfter: Math.max(0, practiceHpBefore - (wasCorrect ? 0 : 1)),
-    result: { evidence_id: `${foeId}-${boutId}-${round}`, outcome: feedback.verdict, damage: wasCorrect ? 0 : 1,
-      fight: { chip: wasCorrect ? 1 : 0, max_resolve: SPAR_ROUNDS, resolve_before: practiceResolveBefore,
-        resolve_after: Math.max(0, practiceResolveBefore - (wasCorrect ? 1 : 0)) } },
-  } : null
+  // The bars and the combat scene come from the replay. A "test swing" plays one made-up round on top of the
+  // current state, and an answered round plays its own exchange; neither touches your hunter.
+  const showDemo = !feedback && demo
+  const view = showDemo
+    ? sparView(demo.sim, demo.history, { answered: true, evidenceId: `gear-demo-${demo.count}` })
+    : sparView(sim?.data, history, { answered: Boolean(feedback), evidenceId: `${foeId}-${boutId}-${round}`, ready: sim?.key === simKey })
+  const practiceLoadout = { ...baseLoadout, hp: view.hpBefore, max_hp: view.maxHp }
+  const practiceRun = { room_type: 'elite', encounter: { name: foe?.name || 'Training hollow', resolve: view.resolveBefore, max_resolve: view.maxResolve } }
+  const practiceTurn = view.turn
+  const effects = (showDemo ? demo.sim : sim?.data)?.effects
   return (
     <section className="spar-arena spar-dungeon-layout" aria-label="Sparring">
       <aside className="spar-fight-column" aria-label="Sparring fight">
@@ -3954,7 +3974,7 @@ function SparringArena({ roster = [], actions, armory, busy }) {
           {!roster.length && <small>Fight a campaign bounty or dungeon beast to unlock an opponent.</small>}
         </div>
         {foe ? <>
-          <div className="dungeon-brief-strip spar-strip"><span className="dungeon-brief-kind">SIMULATED · NO DAMAGE</span><span>Round {Math.min(round, SPAR_ROUNDS)} / {SPAR_ROUNDS}</span><span>Score {score}</span><button type="button" className="campaign-button ghost spar-gear-toggle" aria-pressed={gearOpen} onClick={() => setGearOpen((open) => !open)}>{gearOpen ? 'Back to the question' : 'Try gear'}</button></div>
+          <div className="dungeon-brief-strip spar-strip"><span className="dungeon-brief-kind">SIMULATED · NO DAMAGE</span><span>Round {Math.min(round, SPAR_ROUNDS)} / {SPAR_ROUNDS}</span><span>Score {score}</span>{view.guards > 0 && <span title="Free mistakes banked">Guard {view.guards}</span>}{view.turn && view.fired.length > 0 && <span className="spar-triggers" role="status">{view.fired.join(' · ')}</span>}<button type="button" className="campaign-button ghost spar-gear-toggle" aria-pressed={gearOpen} onClick={() => setGearOpen((open) => !open)}>{gearOpen ? 'Back to the question' : 'Try gear'}</button></div>
           <section className="spar-question spar-question-brief">
             <span className="dungeon-eyebrow">{finished ? 'BOUT OVER' : 'THE QUESTION'}</span>
             {finished ? <p>You answered {score} of {SPAR_ROUNDS} rounds right against {foe.name}.</p>
@@ -3965,11 +3985,12 @@ function SparringArena({ roster = [], actions, armory, busy }) {
           <DungeonCombatArena key={foe.id} run={practiceRun} loadout={practiceLoadout} turn={practiceTurn} simulated />
         </> : <>
           <div className="spar-intro"><span className="screen-kicker">THE SPARRING RING</span><h3>Train against what you have fought.</h3><p>Choose an opponent for five simulated rounds, or try on any gear first. Practice HP and Resolve reset after the bout.</p></div>
+          {view.turn && view.fired.length > 0 && <p className="spar-triggers spar-preview-triggers" role="status">{view.fired.join(' · ')}</p>}
           <DungeonCombatArena key="gear-preview" run={practiceRun} loadout={practiceLoadout} turn={practiceTurn} simulated />
         </>}
       </aside>
       <main className="spar-answer-workbench" aria-label="Sparring answer">
-        {(!foe || gearOpen) ? <SparGearMenu gear={gear} loadError={gearError} armory={armory} picks={picks} onPick={pick} onReset={() => { setPicks({}); setDemo(null) }} onSwing={swing} />
+        {(!foe || gearOpen) ? <SparGearMenu gear={gear} looks={looks} loadError={gearError} armory={armory} picks={picks} loadout={baseLoadout} effects={effects} onPick={pick} onReset={() => { setPicks({}); setDemo(null) }} onSwing={swing} />
           : finished ? <div className="spar-result"><span className="dungeon-eyebrow">BOUT OVER</span><h3>{score >= 4 ? 'A clean win.' : score >= 3 ? 'You held your own.' : 'Back to the notebook.'}</h3><p>You answered {score} of {SPAR_ROUNDS} rounds right against {foe.name}.</p><button type="button" className="campaign-button" onClick={() => start(foe.id)} disabled={busy}>Spar again</button></div>
           : question ? <>
             {question.question_type === 'code' ? <div className="spar-code-workspace"><div className="resource-editor-toolbar"><span>sparring.py · scratch workspace</span>{!feedback && <button type="button" className="campaign-button" onClick={submitCode} disabled={busy || !sparCode.trim()}>Submit for feedback</button>}</div><Editor height="100%" language="python" value={sparCode} onChange={(value) => setSparCode(value ?? '')} theme="vs-dark" options={{ minimap: { enabled: false }, fontSize: 14, automaticLayout: true, readOnly: Boolean(feedback), scrollBeyondLastLine: false }} /><p>This scratch answer is reviewed by PYR; it is not run or saved to your project.</p></div> : question.question_type === 'interview' || question.question_type === 'short_explanation' ? <div className="spar-interview-workspace"><label htmlFor="spar-interview-answer" className="dungeon-eyebrow">YOUR EXPLANATION</label><textarea id="spar-interview-answer" value={sparText} onChange={(event) => setSparText(event.target.value)} readOnly={Boolean(feedback)} maxLength={20000} placeholder="Explain your reasoning in your own words…" /><small>Your answer is reviewed by PYR and stays in this practice bout.</small>{!feedback && <button type="button" className="campaign-button" onClick={submitText} disabled={busy || !sparText.trim()}>Submit explanation</button>}</div> : ['true_false', 'multiple_choice'].includes(question.question_type) ? (!feedback && <ChoicePanel options={question.options || []} onChoose={choose} busy={busy} label="PICK ONE" />) : <p role="alert">This question format is not available. Try the round again. <button type="button" className="campaign-button ghost" onClick={() => ask(foeId, round)}>Try again</button></p>}

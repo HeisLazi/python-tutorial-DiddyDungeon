@@ -2125,3 +2125,14 @@
 .spar-gear-owned.owned { color: #4ade80; }
 .spar-gear .armory-item button[aria-pressed="true"] { opacity: 0.85; }
 .spar-gear-toggle { margin-left: auto; padding: 2px 10px; font-size: 12px; }
+.spar-gear-effects { display: grid; gap: 4px; padding: 8px; border: 1px dashed var(--line, #444); font-size: 13px; }
+.spar-gear-effects small { color: var(--muted, #999); letter-spacing: 0.04em; font-size: 11px; }
+.spar-gear-effects ul { margin: 0; padding-left: 18px; display: grid; gap: 2px; }
+.spar-gear-effects p { margin: 0; }
+.spar-gear-ignored { color: var(--muted, #999); font-size: 12px; }
+.spar-looks { display: grid; gap: 12px; }
+.spar-looks-group { display: grid; gap: 8px; }
+.spar-looks-head { display: flex; align-items: center; gap: 8px; }
+.spar-looks-head button { padding: 2px 8px; border: 1px solid var(--line, #444); background: transparent; color: inherit; font: inherit; font-size: 12px; }
+.spar-triggers { color: var(--gold, #f5c542); font-size: 12px; }
+.spar-preview-triggers { margin: 0; text-align: center; }
