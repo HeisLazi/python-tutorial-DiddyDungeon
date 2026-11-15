@@ -81,11 +81,11 @@ func run_checks() -> void:
 			var shown_heavy := overlay_path(scene)
 			require(shown_heavy.ends_with("%s-%s-greatsword-action.png" % [weapon, looks[look]]), "%s / %s should draw a greatsword overlay, got '%s'" % [look, weapon, shown_heavy])
 			require(scene.body.texture.resource_path.contains("base-%s-greatsword-action" % looks[look]), "%s should stand on its weapon-less greatsword base" % look)
-	# Pole styles swap only the head. A few outfits keep their baked pole weapon where the head could not be matched cleanly.
+	# Pole styles swap only the head, on every outfit.
 	var pole_styles := {
-		"scythe": {"weapons": ["dc-miner-s-pickaxe", "hunter-sparring-scythe", "hunter-jack-scythe", "campaign-dungeon-grave-scythe", "campaign-dungeon-undertow-scythe"], "baked": ["debugger", "merchant-oracle"]},
+		"scythe": {"weapons": ["dc-miner-s-pickaxe", "hunter-sparring-scythe", "hunter-jack-scythe", "campaign-dungeon-grave-scythe", "campaign-dungeon-undertow-scythe"], "baked": []},
 		"handmagic": {"weapons": ["cas-reel-spinner-chakram", "cas-lady-luck-s-sceptre", "hunter-sparring-focus", "campaign-dungeon-runic-casting", "campaign-dungeon-last-page"], "baked": []},
-		"staff": {"weapons": ["lv-04", "dc-cartographer-s-spear", "hunter-sparring-staff", "merchant-moonlit-staff", "campaign-dungeon-aether-staff", "campaign-dungeon-oracle-staff"], "baked": ["warden"]},
+		"staff": {"weapons": ["lv-04", "dc-cartographer-s-spear", "hunter-sparring-staff", "merchant-moonlit-staff", "campaign-dungeon-aether-staff", "campaign-dungeon-oracle-staff"], "baked": []},
 	}
 	for pole in pole_styles:
 		for look in looks:

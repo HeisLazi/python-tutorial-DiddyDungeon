@@ -47,7 +47,14 @@ STAFF_WEAPONS = {
 }
 STYLE_WEAPONS = {"scythe": SCYTHE_WEAPONS, "staff": STAFF_WEAPONS}
 # Outfits whose head could not be matched cleanly keep their baked weapon (no files means no overlay in the game).
-SKIP_OUTFITS = {"scythe": {"debugger", "merchant-oracle"}, "staff": {"warden"}}
+SKIP_OUTFITS = {"scythe": set(), "staff": set()}
+# Outfits whose weapon art is recoloured, so the exact-colour match fails: match the head's shape instead.
+# (skin, style, sheet, frame) -> Tate frame whose head pose this frame shares (the outfit poses it differently).
+POSE_ALIAS = {
+    ("debugger", "scythe", "action", 3): 1, ("debugger", "scythe", "hurt", 3): 1,
+    ("merchant-oracle", "scythe", "action", 3): 1, ("merchant-oracle", "scythe", "hurt", 3): 1,
+}
+SHAPE_MATCH = {"scythe": {"debugger", "merchant-oracle"}, "staff": {"warden"}}
 
 
 def blue_mask(cell: np.ndarray) -> np.ndarray:
@@ -83,10 +90,11 @@ def head_core(cell: np.ndarray, style: str) -> np.ndarray | None:
                 pieces.append(part)
         pts = np.concatenate(pieces)
     else:
-        parts = [p for p in components(blue_mask(cell)) if len(p) >= 3]
-        if not parts:
+        blue = np.argwhere(blue_mask(cell))[:, ::-1]  # x, y; side views split the crystal into 1-2px pieces
+        if len(blue) < 3:
             return None
-        crystal = max(parts, key=len)
+        centre = np.median(blue, axis=0)
+        crystal = blue[np.hypot(*(blue - centre).T) <= 10]
         centre = crystal.mean(0)
         pieces = [crystal]
         for part in components(gold_mask(cell)):
@@ -187,6 +195,35 @@ def match_shift(cell: np.ndarray, ref: dict, search: int = 12):
     return best[1], best[2], best[0] / max(1, len(ys))
 
 
+def match_shape(cell: np.ndarray, ref: dict, search: int = 14):
+    """Colour-blind match for recoloured heads: the head's silhouette should be solid and sit alone in open air.
+
+    Score = share of the head mask that is opaque minus share of a ring just outside it that is opaque."""
+    mask = ref["mask"]
+    ring = np.zeros_like(mask)
+    for dy in range(-3, 4):
+        for dx in range(-3, 4):
+            ring |= np.roll(np.roll(mask, dy, 0), dx, 1)
+    ring &= ~mask
+    opaque = cell[:, :, 3] > 0
+    h, w = opaque.shape
+    my, mx = np.where(mask)
+    ry, rx = np.where(ring)
+    best = (-9.0, 0, 0)
+    for dy in range(-search, search + 1):
+        for dx in range(-search, search + 1):
+            ty, tx = my + dy, mx + dx
+            ok = (ty >= 0) & (ty < h) & (tx >= 0) & (tx < w)
+            inside = opaque[ty[ok], tx[ok]].sum() / len(my)
+            qy, qx = ry + dy, rx + dx
+            ok2 = (qy >= 0) & (qy < h) & (qx >= 0) & (qx < w)
+            around = opaque[qy[ok2], qx[ok2]].sum() / max(1, len(ry))
+            score = inside - around
+            if score > best[0]:
+                best = (score, dx, dy)
+    return best[1], best[2], best[0]
+
+
 def shift_mask(mask: np.ndarray, dx: int, dy: int) -> np.ndarray:
     out = np.zeros_like(mask)
     h, w = mask.shape
@@ -248,12 +285,18 @@ def build(skin: str, style: str, weapons: dict, force: bool, tate: dict | None):
             if tate is None or prefix is None:
                 f = tate_frame(cell, style)
             else:
-                ref = tate[key][i]
-                dx, dy, score = match_shift(cell, ref) if ref is not None else (0, 0, 0.0)
+                alias = POSE_ALIAS.get((skin, style, key, i))
+                ref = tate[key][alias if alias is not None else i]
+                dx, dy, score = match_shift(cell, ref) if ref is not None and alias is None else (0, 0, 0.0)
                 if ref is None or score < 0.6:
                     print(f"  {skin}/{style}/{key} frame {i}: head match {score:.2f}", file=sys.stderr)
                     f = None
-                    if skin not in hw.LIGHT_OUTFITS:
+                    if ref is not None and skin in SHAPE_MATCH.get(style, set()):
+                        sx, sy, shape = match_shape(cell, ref, 26 if alias is not None else 14)
+                        print(f"    shape match {shape:.2f} at ({sx},{sy})", file=sys.stderr)
+                        if shape >= 0.45:
+                            f = {"mask": shift_mask(ref["mask"], sx, sy), "anchor": ref["anchor"] + [sx, sy], "fwd": ref["fwd"], "size": ref["size"], "cell": cell}
+                    if f is None and skin not in hw.LIGHT_OUTFITS and skin not in SHAPE_MATCH.get(style, set()):
                         f = tate_frame(cell, style)  # colour detection works on dark outfits
                     if f is None and ref is not None:
                         f = {"mask": shift_mask(ref["mask"], dx, dy), "anchor": ref["anchor"] + [dx, dy], "fwd": ref["fwd"], "size": ref["size"], "cell": cell}
