@@ -2110,3 +2110,18 @@
 .zen-pyr-card label, .zen-pyr-card small { color: #c4b8a7; line-height: 1.5; }
 .zen-pyr-card textarea { width: 100%; min-height: 115px; resize: vertical; padding: 12px; border: 1px solid #77624d; background: #100e16; color: #fff2d7; font: inherit; }
 .zen-pyr-card form button { justify-self: start; }
+
+/* Sparring Ring: try on any gear (SparGearMenu). Reuses the Home Armory cards. */
+.spar-gear { max-height: 100%; overflow: auto; }
+.spar-gear-note { margin: 0; color: var(--muted, #999); font-size: 13px; line-height: 1.45; }
+.spar-gear-slots > div.trying { border-color: var(--gold, #f5c542); }
+.spar-gear-slots > div.trying small { color: var(--gold, #f5c542); }
+.spar-gear-slots > div { align-content: start; }
+.spar-gear-slots button + button { margin-left: 6px; }
+.spar-gear-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.spar-gear-search { display: grid; gap: 4px; font-size: 12px; color: var(--muted, #999); }
+.spar-gear-search input { padding: 6px 8px; border: 1px solid var(--line, #444); background: transparent; color: inherit; font: inherit; }
+.spar-gear-owned { font-size: 11px; color: var(--muted, #999); }
+.spar-gear-owned.owned { color: #4ade80; }
+.spar-gear .armory-item button[aria-pressed="true"] { opacity: 0.85; }
+.spar-gear-toggle { margin-left: auto; padding: 2px 10px; font-size: 12px; }

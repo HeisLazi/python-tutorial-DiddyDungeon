@@ -1686,6 +1686,8 @@ function AppV2() {
 
   // Tutor sparring: simulated fights with foes already met (no damage).
   const sparActions = {
+    // Every weapon, armour and trinket, for trying on. Read-only: it never equips or grants anything.
+    gear: async () => (await api('/api/spar/gear')).gear,
     ask: (targetId, round) => withPyr('PYR is writing the next round…', async () => {
       const result = await api('/api/ai/spar-question', { method: 'POST', body: JSON.stringify({ target_id: targetId, round }) })
       return result.question

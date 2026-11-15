@@ -4091,6 +4091,18 @@ def _spar_foe(target_id: str) -> dict:
     return foe
 
 
+@app.get("/api/spar/gear")
+def spar_gear():
+    """Every weapon, armour and trinket, for trying on in the Sparring Ring (read-only)."""
+
+    try:
+        progress, _metadata = STATE_SERVICE.snapshot_with_metadata()
+        gear = STATE_SERVICE.spar_gear(progress)
+    except StateCommandError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
+    return {"ok": True, "gear": gear}
+
+
 @app.post("/api/ai/spar-question")
 def ai_spar_question(payload: SparQuestionRequest):
     _ensure_no_active_boss()

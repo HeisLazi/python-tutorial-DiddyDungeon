@@ -106,6 +106,24 @@ class ArmoryBehaviourTests(unittest.TestCase):
         self.service.apply("armory_unequip", {"slot": "weapon"}, "player")
         self.assertIsNone(self.service.armory_projection(self.service.snapshot())["weapon"])
 
+    def test_spar_gear_lists_every_weapon_armour_and_trinket_and_changes_nothing(self):
+        self.give("bj-ace-of-spades-blade")
+        before = self.read()
+        gear = self.service.spar_gear(before)
+        catalog = armory_catalog()
+        self.assertEqual({item["id"] for item in gear}, {item_id for item_id, item in catalog.items() if item["slot"] in ARMORY_GEAR_SLOTS})
+        self.assertEqual({item["slot"] for item in gear}, set(ARMORY_GEAR_SLOTS))
+        by_id = {item["id"]: item for item in gear}
+        self.assertTrue(by_id["bj-ace-of-spades-blade"]["owned"])
+        self.assertFalse(by_id["cas-jackpot-hammer"]["owned"])  # trying on needs no ownership
+        self.assertEqual(by_id["cas-jackpot-hammer"]["combat_style"], "greatsword")
+        self.assertTrue(all(isinstance(item["effect"], str) and item["effect"] for item in gear))
+        self.assertTrue(all("combat_style" not in item for item in gear if item["slot"] != "weapon"))
+        slots = [item["slot"] for item in gear]
+        self.assertEqual(slots, sorted(slots, key=ARMORY_GEAR_SLOTS.index))  # weapons, then armour, then trinkets
+        self.assertEqual(self.read(), before)  # read-only: no equip, no grant, no revision bump
+        self.assertIsNone(self.service.armory_projection(self.service.snapshot())["weapon"])
+
     def test_hunter_style_weapons_are_buyable_and_equippable_in_prepare(self):
         self.give(coins=1000)
         weapons = [("hunter-sparring-staff", "staff"), ("hunter-sparring-whip", "whip"), ("hunter-sparring-greatsword", "greatsword"), ("hunter-sparring-scythe", "scythe"), ("hunter-sparring-focus", "handmagic")]

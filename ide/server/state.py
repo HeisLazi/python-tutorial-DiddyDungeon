@@ -7228,16 +7228,50 @@ class LocalStateService:
             loot.append({"id": blessing["id"], "name": blessing["name"], "slot": "aid", "tier": blessing["tier"], "effect": armory_effect_text(blessing["effect"])})
         return loot
 
-    def armory_projection(self, progress: Mapping[str, Any]) -> dict[str, Any]:
-        """The hunter's gear, food, relics, collection and Merchant lots."""
+    def _owned_armory_ids(self, progress: Mapping[str, Any], catalog: Mapping[str, Any]) -> list[str]:
+        """Every catalog item this hunter owns: bought, earned from a campaign, or the Oil of Doom."""
 
-        catalog = armory_catalog()
         hunter = progress.get("hunter") if isinstance(progress.get("hunter"), Mapping) else {}
         armory = hunter.get("armory") if isinstance(hunter.get("armory"), Mapping) else {}
         owned = [item for item in armory.get("owned", []) if isinstance(item, str) and item in catalog] if isinstance(armory.get("owned"), list) else []
         owned = list(dict.fromkeys([*owned, *(item for item in sorted(self._earned_campaign_gear(progress)) if item in catalog)]))
         if self._oil_boss_already_defeated(progress) and OIL_OF_DOOM['id'] not in owned:
             owned.append(OIL_OF_DOOM['id'])
+        return owned
+
+    def spar_gear(self, progress: Mapping[str, Any]) -> list[dict[str, Any]]:
+        """Every weapon, armour and trinket in the game, for trying on in the Sparring Ring.
+
+        Sparring is a simulation, so nothing here depends on ownership: `owned` only says whether the
+        hunter has it yet. This is read-only; it never equips or grants anything."""
+
+        catalog = armory_catalog()
+        owned = set(self._owned_armory_ids(progress, catalog))
+        tier_rank = {tier: index for index, tier in enumerate(ARMORY_TIERS)}
+        gear: list[dict[str, Any]] = []
+        for item in catalog.values():
+            if item.get("slot") not in ARMORY_GEAR_SLOTS:
+                continue
+            projected = {key: item[key] for key in ("id", "name", "slot", "tier", "flavour", "campaign") if key in item}
+            projected["effect"] = armory_effect_text(item["effect"])
+            projected["owned"] = item["id"] in owned
+            group = next((group for group in HUNTER_SETS if item["id"] in group["pieces"]), None)
+            if group:
+                projected["set_name"] = group["name"]
+            if item["slot"] == "weapon":
+                style = item.get("combat_style") or ARMORY_WEAPON_COMBAT_STYLES.get(str(item["id"]))
+                projected["combat_style"] = style if isinstance(style, str) and style in ARMORY_COMBAT_STYLES else None
+            gear.append(projected)
+        gear.sort(key=lambda entry: (ARMORY_GEAR_SLOTS.index(entry["slot"]), tier_rank.get(entry["tier"], 99), str(entry["name"])))
+        return gear
+
+    def armory_projection(self, progress: Mapping[str, Any]) -> dict[str, Any]:
+        """The hunter's gear, food, relics, collection and Merchant lots."""
+
+        catalog = armory_catalog()
+        hunter = progress.get("hunter") if isinstance(progress.get("hunter"), Mapping) else {}
+        armory = hunter.get("armory") if isinstance(hunter.get("armory"), Mapping) else {}
+        owned = self._owned_armory_ids(progress, catalog)
         stack = armory.get("stack") if isinstance(armory.get("stack"), Mapping) else {}
         equipment = progress.get("equipment") if isinstance(progress.get("equipment"), Mapping) else {}
         equipped = {"weapon": armory.get("weapon"), "armor": str(equipment.get("armor") or "Apprentice Coat"), "trinket": str(equipment.get("trinket") or "None")}
