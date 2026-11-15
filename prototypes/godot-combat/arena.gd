@@ -111,6 +111,8 @@ var weapon_index := 0
 var weapon_variant := ""
 var weapon_id := ""
 var held: Sprite2D
+var rival_weapon_id := ""
+var held_rival: Sprite2D
 var variant_pose_cache := {}
 var weapons: Array = CATALOG.STYLES
 var skins: Dictionary = {"tate": CATALOG.tate(), "ivory": CATALOG.ivory(), "warden": CATALOG.warden(), "harvest": CATALOG.harvest(), "oracle": CATALOG.oracle(), "patchwork": CATALOG.patchwork(), "pilgrim": CATALOG.pilgrim(), "wayfarer": CATALOG.wayfarer(), "norse": CATALOG.norse(), "lanternkeeper": CATALOG.lanternkeeper(), "wardplate": CATALOG.wardplate(), "debugger": CATALOG.debugger(), "merchant-oracle": CATALOG.merchant_oracle()}
@@ -261,6 +263,11 @@ func build_scene() -> void:
 	enemy.position = Vector2(237, 96)
 	enemy.scale = Vector2(1.5, 1.5)
 	add_child(enemy)
+	# A duel rival can hold an overlay weapon too; it mirrors the enemy sprite the same way `held` mirrors the hunter.
+	held_rival = Sprite2D.new()
+	held_rival.hframes = 4
+	held_rival.visible = false
+	add_child(held_rival)
 	raid_status = RaidPartyStatus.new()
 	add_child(raid_status)
 	set_mode(true)
@@ -446,6 +453,7 @@ func _apply_live_state(payload: Dictionary) -> void:
 		rival_unarmed = requested_style == "unarmed"
 		rival_style = "handmagic" if rival_unarmed else requested_style if skins[rival_skin_id]["styles"].has(requested_style) else "sword"
 		rival_variant = str(payload.get("rivalWeaponVariant", ""))
+		rival_weapon_id = str(payload.get("rivalWeaponId", ""))
 		var rival_poses: Dictionary = _rival_poses()
 		enemy.texture = rival_poses.get("idle", rival_poses["action"])
 		enemy.offset = rival_poses["offset"]
@@ -611,31 +619,37 @@ func _poses() -> Dictionary:
 	# Baked weapon variants (Dawn Lantern, Graveblade) keep their own art; the rest can use a held overlay.
 	return poses if not weapon_variant.is_empty() or unarmed else HELD.apply(poses, weapon_id, skin_id, style)
 
-## Keep the held-weapon sprite on the hunter's current frame just before each draw.
+## Keep the held-weapon sprites on their fighters' current frames just before each draw.
 func _sync_held() -> void:
-	if held == null or body == null:
+	if held == null or body == null or held_rival == null or enemy == null:
 		return
 	var style := str(weapons[weapon_index]["id"])
+	_mirror_held(held, body, _poses() if weapon_variant.is_empty() and not unarmed else {}, weapon_id, skin_id, style)
+	var rival_poses := _rival_poses() if duel_mode and rival_variant.is_empty() and not rival_unarmed else {}
+	_mirror_held(held_rival, enemy, rival_poses, rival_weapon_id, rival_skin_id, rival_style)
+
+func _mirror_held(overlay: Sprite2D, target: Sprite2D, poses: Dictionary, weapon: String, skin: String, style: String) -> void:
 	var texture: Texture2D = null
-	if weapon_variant.is_empty() and not unarmed and HELD.covers(weapon_id, skin_id, style):
-		var key := HELD.key_of(_poses(), body.texture)
+	if not poses.is_empty() and HELD.covers(weapon, skin, style):
+		var key := HELD.key_of(poses, target.texture)
 		if not key.is_empty():
-			texture = HELD.strip_for(weapon_id, skin_id, style, key)
-	held.visible = texture != null and body.visible
+			texture = HELD.strip_for(weapon, skin, style, key)
+	overlay.visible = texture != null and target.visible
 	if texture == null:
 		return
-	held.texture = texture
-	held.hframes = body.hframes
-	held.frame = body.frame
-	held.offset = body.offset
-	held.position = body.position
-	held.scale = body.scale
-	held.flip_h = body.flip_h
-	held.modulate = body.modulate
-	held.material = body.material
+	overlay.texture = texture
+	overlay.hframes = target.hframes
+	overlay.frame = target.frame
+	overlay.offset = target.offset
+	overlay.position = target.position
+	overlay.scale = target.scale
+	overlay.flip_h = target.flip_h
+	overlay.modulate = target.modulate
+	overlay.material = target.material
 
 func _rival_poses() -> Dictionary:
-	return _poses_for(rival_skin_id, rival_style, rival_variant)
+	var poses := _poses_for(rival_skin_id, rival_style, rival_variant)
+	return poses if not rival_variant.is_empty() or rival_unarmed else HELD.apply(poses, rival_weapon_id, rival_skin_id, rival_style)
 
 func _poses_for(skin: String, style: String, variant_name: String) -> Dictionary:
 	var poses: Dictionary = skins[skin]["styles"][style]

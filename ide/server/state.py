@@ -5182,6 +5182,9 @@ class LocalStateService:
             if projection["loadout"].get(field) not in valid_names[kind] and not (field == "armor" and projection["loadout"].get(field) == "Apprentice Coat"):
                 projection["loadout"][field] = loadout_defaults[field]
         projection["loadout"]["weapon_style"] = DUNGEON_WEAPON_STYLES.get(str(projection["loadout"].get("weapon") or ""), "sword")
+        # The combat arena draws each weapon from its own art, so it needs the item id as well as the visual style.
+        weapon_ids = {str(item.get("name")): str(item.get("id") or "") for item in run_catalog if item.get("kind") == "weapon"}
+        projection["loadout"]["weapon_id"] = weapon_ids.get(str(projection["loadout"].get("weapon") or ""), "")
         selected_class = DUNGEON_CLASSES_BY_ID.get(str(projection["class_id"]))
         if selected_class is not None:
             projection["class"] = {

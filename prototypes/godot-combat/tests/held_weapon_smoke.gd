@@ -83,6 +83,31 @@ func run_checks() -> void:
 			require(scene.body.texture.resource_path.contains("base-%s-greatsword-action" % looks[look]), "%s should stand on its weapon-less greatsword base" % look)
 	scene._apply_live_state({"simulated": true, "style": "greatsword", "armorLook": "classic", "weaponId": "hunter-gravebound-greatblade", "weaponVariant": "graveblade"})
 	require(overlay_path(scene) == "", "The Gravebound Greatblade keeps its own baked variant sheets")
+	# Infinite Dungeon run weapons share the Journal echo's art.
+	scene._apply_live_state({"simulated": true, "style": "sword", "armorLook": "classic", "weaponId": "dungeon-loopblade"})
+	require(overlay_path(scene).ends_with("campaign-dungeon-loopblade-tate-sword-idle.png"), "dungeon-loopblade should use the loopblade strips: " + overlay_path(scene))
+	scene._apply_live_state({"simulated": true, "style": "greatsword", "armorLook": "classic", "weaponId": "dungeon-iron-greatsword"})
+	require(overlay_path(scene).ends_with("campaign-dungeon-iron-greatsword-tate-greatsword-action.png"), "dungeon-iron-greatsword should use the faultbreaker strips")
+
+	# A duel rival holds an overlay weapon too, drawn on the mirrored enemy sprite.
+	scene._apply_live_state({"simulated": false, "region": "duel-colosseum", "style": "sword", "armorLook": "classic", "weaponId": "lv-01", "rivalStyle": "sword", "rivalArmorLook": "wardplate", "rivalWeaponId": "bj-the-house-cutter"})
+	await process_frame
+	scene._sync_held()
+	require(scene.duel_mode and scene.enemy.flip_h, "Duel mode should mirror the rival")
+	require(scene.held_rival.visible and scene.held_rival.texture.resource_path.ends_with("bj-the-house-cutter-wardplate-sword-idle.png"), "The rival should hold the House Cutter overlay")
+	require(scene.enemy.texture.resource_path.contains("base-wardplate-sword-idle"), "The rival should stand on its weapon-less base")
+	require(scene.held_rival.flip_h == scene.enemy.flip_h and scene.held_rival.frame == scene.enemy.frame and scene.held_rival.offset == scene.enemy.offset, "The rival overlay must mirror the enemy sprite")
+	require(scene.held.visible and scene.held.texture.resource_path.ends_with("lv-01-tate-sword-idle.png"), "The hunter keeps their own overlay in a duel")
+	scene._apply_live_state({"simulated": false, "region": "duel-colosseum", "style": "sword", "armorLook": "classic", "rivalStyle": "sword", "rivalArmorLook": "wardplate", "rivalWeaponId": "bj-the-house-cutter", "rivalWeaponVariant": "graveblade"})
+	scene._sync_held()
+	require(not scene.held_rival.visible, "A rival with a baked variant must not get an overlay")
+	scene._apply_live_state({"simulated": false, "region": "duel-colosseum", "style": "unarmed", "armorLook": "classic", "rivalStyle": "unarmed", "rivalArmorLook": "wardplate", "rivalWeaponId": "bj-the-house-cutter"})
+	scene._sync_held()
+	require(not scene.held_rival.visible, "A bare-handed rival must not draw a weapon")
+	scene._apply_live_state({"simulated": false, "region": "basics", "enemy": "wraith", "style": "sword", "armorLook": "classic", "rivalWeaponId": "bj-the-house-cutter"})
+	scene._sync_held()
+	require(not scene.held_rival.visible, "A monster must never carry the rival's weapon")
+
 	scene._apply_live_state({"simulated": true, "style": "sword", "armorLook": "ivory", "weaponId": "not-a-weapon"})
 	require(overlay_path(scene) == "" and scene.skin_id == "ivory", "An unknown weapon should keep the baked sword on any outfit")
 	scene._apply_live_state({"simulated": true, "style": "staff", "armorLook": "classic", "weaponId": "bj-the-house-cutter", "weaponVariant": "dawn-lantern"})

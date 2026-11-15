@@ -29,10 +29,14 @@ static func base_for(skin: String, style: String) -> Dictionary:
 		_bases[id] = found
 	return _bases[id]
 
+## Infinite Dungeon run weapons (`dungeon-loopblade`) share their art with the Journal echo (`campaign-dungeon-loopblade`).
+static func canonical(weapon_id: String) -> String:
+	return "campaign-" + weapon_id if weapon_id.begins_with("dungeon-") else weapon_id
+
 static func strip_for(weapon_id: String, skin: String, style: String, key: String) -> Texture2D:
 	if weapon_id.is_empty():
 		return null
-	return _load(FOLDER + "%s-%s-%s-%s.png" % [weapon_id, skin, style, key])
+	return _load(FOLDER + "%s-%s-%s-%s.png" % [canonical(weapon_id), skin, style, key])
 
 ## True when this weapon can be drawn as an overlay for the skin and style.
 static func covers(weapon_id: String, skin: String, style: String) -> bool:

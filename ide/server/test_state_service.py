@@ -334,6 +334,7 @@ class StateServiceBehaviorTests(unittest.TestCase):
             service, _ = self.make_service()
             run = service.apply("dungeon_start_run", {"concept_id": "lists", "class_id": class_id}, "player")["result"]["run"]
             self.assertEqual((run["loadout"]["weapon"], run["loadout"]["weapon_style"]), (weapon, style))
+            self.assertEqual(run["loadout"]["weapon_id"], "dungeon-" + weapon.lower().replace(" ", "-"))
 
         service, path = self.make_service()
         run = service.apply("dungeon_start_run", {"concept_id": "lists", "class_id": "resolve-duelist"}, "player")["result"]["run"]
@@ -350,6 +351,7 @@ class StateServiceBehaviorTests(unittest.TestCase):
         for item_id, style in weapons + [("dungeon-loopblade", "sword")]:
             result = service.apply("dungeon_equip_item", {"run_id": run["run_id"], "item_id": item_id}, "player")
             self.assertEqual(result["result"]["run"]["loadout"]["weapon_style"], style)
+            self.assertEqual(result["result"]["run"]["loadout"]["weapon_id"], item_id)
         coins = service.dungeon_projection(service.snapshot())["run_coins"]
         with self.assertRaises(StateCommandError):
             service.apply("dungeon_market_purchase", {"run_id": run["run_id"], "item_id": "dungeon-aether-staff"}, "player")
@@ -358,6 +360,8 @@ class StateServiceBehaviorTests(unittest.TestCase):
         old["dungeon_run"]["loadout"]["weapon"] = "Lint Lantern"
         path.write_text(json.dumps(old), encoding="utf-8")
         self.assertEqual(service.dungeon_projection(service.snapshot())["loadout"]["weapon_style"], "sword")
+        # An unknown saved weapon falls back to the default weapon, and its id follows.
+        self.assertEqual(service.dungeon_projection(service.snapshot())["loadout"]["weapon_id"], "dungeon-loopblade")
 
     def test_dungeon_questions_reject_hidden_fields_and_active_runs_cannot_reset(self):
         service, _ = self.make_service()

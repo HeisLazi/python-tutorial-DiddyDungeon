@@ -103,9 +103,9 @@ export default function OnlineDuel({ groupId, userId, visitors, onClose, duelCli
           const ownLook = hunterAppearance(own.armor?.name, own.trinket?.name)
           const rivalLook = hunterAppearance(rival.armor?.name, rival.trinket?.name)
           sceneState.current = { ...sceneState.current, armorLook:ownLook.armorLook,
-            style:own.weapon?.combat_style || 'unarmed', weaponVariant:own.weapon?.id === 'hunter-gravebound-greatblade' ? 'graveblade' : '',
+            style:own.weapon?.combat_style || 'unarmed', weaponId:own.weapon?.id || '', weaponVariant:own.weapon?.id === 'hunter-gravebound-greatblade' ? 'graveblade' : '',
             armorMastery:own.appearances?.armor?.tier || '', weaponMastery:own.appearances?.weapon?.tier || '',
-            rivalArmorLook:rivalLook.armorLook, rivalStyle:rival.weapon?.combat_style || 'unarmed',
+            rivalArmorLook:rivalLook.armorLook, rivalStyle:rival.weapon?.combat_style || 'unarmed', rivalWeaponId:rival.weapon?.id || '',
             rivalWeaponVariant:rival.weapon?.id === 'hunter-gravebound-greatblade' ? 'graveblade' : '',
             rivalArmorMastery:rival.appearances?.armor?.tier || '', rivalWeaponMastery:rival.appearances?.weapon?.tier || '' }
           sendScene(sceneState.current)
