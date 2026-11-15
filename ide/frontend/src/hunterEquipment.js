@@ -1,3 +1,5 @@
+import { TRINKET_CHARMS, trinketSlug } from './trinketCharms.js'
+
 // Appearance is derived from equipped gear, never stored as a second loadout.
 
 // Armours with their own recoloured combat look. `look` is the look id the combat scene knows (see
@@ -41,7 +43,7 @@ export function hunterAppearance(armor, trinket) {
   const trinketLook = !charm || /^none$/i.test(charm) ? 'none' : /pink cap/i.test(charm) ? 'pink' : /jacklight|pumpkin|harvest|ember|flame|spark/i.test(charm) ? 'ember' : /soul lantern|warden|guard|ward|spectral|ash/i.test(charm) ? 'spectral' : 'arcane'
   // Only display trinkets with their own wearable artwork. A generic gem
   // floats over the hunter and falsely represents unrelated equipment.
-  const trinketIcon = /^pink cap charm$/i.test(charm) ? 'pink-cap' : /^soul lantern$/i.test(charm) ? 'soul-lantern' : /^jacklight charm$/i.test(charm) ? 'jacklight' : 'none'
+  const trinketIcon = /^pink cap charm$/i.test(charm) ? 'pink-cap' : /^soul lantern$/i.test(charm) ? 'soul-lantern' : /^jacklight charm$/i.test(charm) ? 'jacklight' : TRINKET_CHARMS.has(trinketSlug(charm)) ? trinketSlug(charm) : 'none'
   // The Home scene only has art for the original outfits, so a recolour shows as the outfit it was made from.
   const homeLook = ARMOUR_LOOKS[name] ? ARMOUR_LOOKS[name][1] : armorLook
   return { armorLook, homeLook, trinketLook, trinketIcon, pet: armorLook === 'ivory' ? 'oil' : 'none' }

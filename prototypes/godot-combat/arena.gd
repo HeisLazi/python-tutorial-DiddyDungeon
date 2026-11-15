@@ -5,6 +5,7 @@ const LOOK_SHADER = preload("res://hunter_look.gdshader")
 const HELD := preload("res://held_weapon.gd")
 const OIL_PET = preload("res://art/oil-pet.png")
 const CHARMS := {"pink-cap": preload("res://art/charm-pink-cap.png"), "soul-lantern": preload("res://art/charm-soul-lantern.png"), "jacklight": preload("res://art/charm-jacklight.png"), "generic": preload("res://art/charm-generic.png")}
+const CHARM_REGISTRY := preload("res://charms_registry.gd")
 const ATLAS: Texture2D = preload("res://art/tiles.png")
 const CATALOG = preload("res://combat_catalog.gd")
 const SIMULATION: Texture2D = preload("res://art/simulation.png")
@@ -99,6 +100,8 @@ var hunter: Node2D
 var body: Sprite2D
 var oil_pet: Sprite2D
 var trinket_gem: Sprite2D
+## Worn charms: the three hand-drawn ones plus one for every trinket (art/charm-<slug>.png, see charms_registry.gd).
+var charms: Dictionary = CHARMS.duplicate()
 var enemy: Sprite2D
 var raid_status: Node2D
 var hunter_shadow: Polygon2D
@@ -140,6 +143,8 @@ var shot_path := ""
 var shot_pose := -1
 
 func _ready() -> void:
+	for slug in CHARM_REGISTRY.SLUGS:
+		charms[slug] = load("res://art/charm-%s.png" % slug)
 	for look_id in CATALOG.LOOKS.PARENTS:
 		skins[look_id] = CATALOG.look(look_id)
 	for arg in OS.get_cmdline_user_args():
@@ -458,8 +463,8 @@ func _apply_live_state(payload: Dictionary) -> void:
 		_set_rival_look(rival_look if rival_skin_id == "tate" else "classic", str(payload.get("rivalArmorMastery", "")), str(payload.get("rivalWeaponMastery", "")))
 	oil_pet.visible = str(payload.get("pet", "none")) == "oil"
 	var charm: String = str(payload.get("trinketIcon", "none"))
-	trinket_gem.visible = CHARMS.has(charm)
-	if trinket_gem.visible: trinket_gem.texture = CHARMS[charm]
+	trinket_gem.visible = charms.has(charm)
+	if trinket_gem.visible: trinket_gem.texture = charms[charm]
 	if not acting:
 		unarmed = style == "unarmed"
 		if unarmed: style = "handmagic"

@@ -64,6 +64,16 @@ func run_checks() -> void:
 			require(scene._poses().action.resource_path.contains("tate-" + prefix + "-" + style.id) and scene._poses().hurt.resource_path.contains("tate-" + prefix + "-" + style.id), "Wrong outfit frames: " + look + "/" + style.id)
 	scene._apply_live_state({"simulated": true, "style": "sword", "armorLook": "classic", "trinketIcon": "none"})
 	require(not scene.trinket_gem.visible, "Unequipped trinket still visible")
+	# Every trinket is worn as a small charm of its own.
+	var seen := {}
+	for slug in scene.CHARM_REGISTRY.SLUGS:
+		scene._apply_live_state({"simulated": true, "style": "sword", "armorLook": "classic", "trinketIcon": slug})
+		require(scene.trinket_gem.visible and scene.trinket_gem.texture == scene.charms[slug], "Charm %s not worn" % slug)
+		var size: Vector2 = scene.trinket_gem.texture.get_size()
+		require(size.x <= 12 and size.y <= 12 and size.x >= 4 and size.y >= 4, "Charm %s should be small, not %s" % [slug, str(size)])
+		require(not seen.has(scene.trinket_gem.texture.get_image().get_data()), "Charm %s repeats another charm" % slug)
+		seen[scene.trinket_gem.texture.get_image().get_data()] = slug
+	require(scene.CHARM_REGISTRY.SLUGS.size() >= 64, "Expected a charm for every trinket, found %d" % scene.CHARM_REGISTRY.SLUGS.size())
 	if failures:
 		quit(1)
 	else:

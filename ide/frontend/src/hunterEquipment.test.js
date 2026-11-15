@@ -36,3 +36,17 @@ test('the Home scene always gets an outfit it has art for', () => {
   const known = new Set(['classic', 'ivory', 'spectral', 'harvest', 'oracle', 'patchwork', 'pilgrim', 'wayfarer', 'norse', 'lanternkeeper', 'wardplate', 'debugger', 'merchant-oracle', 'arcane', 'steel', 'ember'])
   for (const name of ARMOURS) assert.ok(known.has(hunterAppearance(name, '').homeLook), `${name} -> ${hunterAppearance(name, '').homeLook}`)
 })
+
+// Every trinket in the Home armory (docs/TRINKET_IDENTITIES.md) is worn on the hero as a charm of its own.
+const TRINKETS = ["Amber Seed", "Traveler Compass", "Little Beacon Charm", "Mira Road Badge", "Heart of the Vale", "Lucky Chip", "Marked Card", "Counting Abacus", "Mara's Pocket Watch", "The Gilded Ace", "Silver Dollar", "Weighted Die", "Auditor's Ledger", "Four-Leaf Clip", "The Probability Lens", "Canary Feather", "Compass Needle", "Ore Sniffer Charm", "Brigid's Hard Hat Badge", "The Heart of the Mine", "Pink Cap Charm", "Soul Lantern", "Jacklight Charm", "Delver's Village Lantern", "Delver's Pilgrim Knot", "Delver's Warm Ember", "Delver's Tidal Pearl", "Delver's Cave Shell", "Delver's Hoard Token", "Delver's Loop Thread", "Delver's Still Clock", "Delver's Keeper’s Ring", "Delver's Ink Seal", "Delver's Book Clasp", "Delver's Quiet Page", "Delver's Thread Spool", "Delver's Stone Eye", "Delver's Bull Ring", "Delver's Copper Spring", "Delver's Brass Gear", "Delver's Tuning Fork", "Delver's Oracle Lens", "Delver's Star Thread", "Delver's Warding Star", "Delver's Ash Talisman", "Delver's Spectral Chain", "Delver's Ember Heart", "Delver's Last Spark", "Cinder Vow", "Pale Guard Locket", "Last Laugh Charm", "Echo Knot", "Delivery Seal", "Caravan Gear", "Open Road Token", "Debt Ghoul Token", "Greed Spirit’s Coin", "Balancer’s Weight", "Front Door Key", "Seeded Maze Knot", "Star Seeker’s Lens", "Context Keeper’s Seal", "Lantern Keeper’s Wick", "Inquisitor’s Sigil"]
+
+test('every trinket is worn as its own charm in combat', () => {
+  const icons = TRINKETS.map((name) => hunterAppearance('', name).trinketIcon)
+  assert.equal(icons.filter((icon) => icon === 'none').length, 0, 'a trinket has no worn charm')
+  assert.equal(new Set(icons).size, TRINKETS.length, 'two trinkets share a worn charm')
+})
+
+test('a trinket without a worn charm shows nothing rather than a stand-in', () => {
+  assert.equal(hunterAppearance('', 'Loop Lens').trinketIcon, 'none')
+  assert.equal(hunterAppearance('', 'None').trinketIcon, 'none')
+})
