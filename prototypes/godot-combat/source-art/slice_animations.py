@@ -13,6 +13,13 @@ HERE = Path(__file__).resolve().parent
 # A horizontal anchor near the hips for each pose. Relative to 96x72 cells,
 # Tate's anchor is at x=35; the left-facing hollow's anchor is at x=55.
 SHEETS = {
+    # Dawn Lantern studies: preserve each outfit and the same staff geometry.
+    'tate-dawn': ((230, 790, 1250, 1900), 45, 128, -5),
+    'tate-dawn-hurt': ((245, 800, 1300, 1900), 45, 128, -35),
+    'tate-lanternkeeper-dawn': ((230, 790, 1250, 1900), 45, 128, -5),
+    'tate-lanternkeeper-dawn-hurt': ((245, 800, 1300, 1900), 45, 128, -35),
+    'tate-wardplate-dawn': ((230, 790, 1250, 1900), 45, 128, -5),
+    'tate-wardplate-dawn-hurt': ((245, 800, 1300, 1900), 45, 128, -35),
     # Basics elder variants: candidate art, awaiting in-game review.
     'elder-wraith': ((270, 765, 1280, 1840), 83, 128, -15),
     'elder-wraith-hurt': ((277, 801, 1310, 1843), 83, 128, -37),

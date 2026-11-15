@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { combatEnemyArt } from './combatEnemyArt.js'
+import { combatStyle, combatWeaponVariant } from './combatWeaponArt.js'
 import { raidCombatSummary } from './raidCombatUi.js'
 import './dungeonCombat.css'
 import { hunterAppearance } from './hunterEquipment.js'
@@ -14,16 +15,6 @@ function SegmentedBar({ value, max, count, label, tone }) {
     })}
   </div>
 }
-// Saved runs predating weapon_style use their known equipment name.
-const combatStyle = (name = '') => {
-  if (/hand\s*magic|runic casting/i.test(name)) return 'handmagic'
-  if (/greatsword|two.hand/i.test(name)) return 'greatsword'
-  if (/scythe/i.test(name)) return 'scythe'
-  if (/whip/i.test(name)) return 'whip'
-  if (/staff/i.test(name)) return 'staff'
-  return 'sword'
-}
-
 export default function DungeonCombatArena({ run, loadout, turn, simulated = false, campaign = false, children, raidMode = false, raidParty = [], raidSeated = true }) {
   const arenaRef = useRef(null)
   const frameRef = useRef(null)
@@ -60,7 +51,7 @@ export default function DungeonCombatArena({ run, loadout, turn, simulated = fal
   const bossArenas = { 'blackjack-house': 'blackjack-house', 'lantern-unwritten-king': 'unwritten-king', 'silver-mogul': 'silver-mogul', tozza: 'tozza' }
   const eliteArenas = { 'lantern-endless-echo': 'elite-endless-echo', 'lantern-delivery-beast': 'elite-delivery-beast', 'lantern-clockwork-caravan': 'elite-clockwork-caravan', 'lantern-unwritten-road': 'elite-unwritten-road' }
   const locationArt = isBoss && bossArenas[enemyArt] ? bossArenas[enemyArt] : campaign && eliteArenas[enemyArt] ? eliteArenas[enemyArt] : (run.region?.id || '')
-  payloadRef.current = { ...appearance, simulated, armorMastery: campaign || simulated ? (loadout.armor_mastery || '') : '', weaponMastery: campaign || simulated ? (loadout.weapon_mastery || '') : '', region: raidMode ? 'choef-chief-keep' : locationArt, enemy: raidMode ? 'the-choef-chief' : enemyArt, style: loadout.weapon_style || combatStyle(loadout.weapon), weaponVariant: /^gravebound greatblade$/i.test(loadout.weapon || '') ? 'graveblade' : '', weaponId: loadout.weapon_id || '', raid: raidMode, party: raidParty, seated: raidSeated, attack: turn?.attack || {}, turn_id: result?.evidence_id || '', outcome: result?.outcome || '' }
+  payloadRef.current = { ...appearance, simulated, armorMastery: campaign || simulated ? (loadout.armor_mastery || '') : '', weaponMastery: campaign || simulated ? (loadout.weapon_mastery || '') : '', region: raidMode ? 'choef-chief-keep' : locationArt, enemy: raidMode ? 'the-choef-chief' : enemyArt, style: loadout.weapon_style || combatStyle(loadout.weapon), weaponVariant: combatWeaponVariant(loadout.weapon), weaponId: loadout.weapon_id || '', raid: raidMode, party: raidParty, seated: raidSeated, attack: turn?.attack || {}, turn_id: result?.evidence_id || '', outcome: result?.outcome || '' }
   const send = () => {
     if (!readyRef.current) return
     try { frameRef.current?.contentWindow?.diddyCombatReceive?.(JSON.stringify(payloadRef.current)) } catch { /* scene is still loading */ }
