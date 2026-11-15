@@ -993,9 +993,9 @@
       "slot": "armor",
       "tier": "common",
       "effect": {
-        "reduction": 10
+        "heal_on_objective": 1
       },
-      "flavour": "A keepsake from the roads of Lantern Vale.",
+      "flavour": "Mended so many times that the patches heal a little with every step of the road.",
       "price": 40
     },
     {
@@ -1004,9 +1004,10 @@
       "slot": "armor",
       "tier": "uncommon",
       "effect": {
-        "reduction": 18
+        "reduction": 14,
+        "xp_bonus": 5
       },
-      "flavour": "A keepsake from the roads of Lantern Vale.",
+      "flavour": "Scuffed pilgrim leather with a shell badge. Every mile teaches you something.",
       "price": 90
     },
     {
@@ -1015,9 +1016,10 @@
       "slot": "armor",
       "tier": "rare",
       "effect": {
-        "reduction": 26
+        "reduction": 22,
+        "start_guards": 1
       },
-      "flavour": "A keepsake from the roads of Lantern Vale.",
+      "flavour": "Brass rivets over green cloth, and a lantern hook for your first stumble.",
       "price": 180
     },
     {
@@ -1026,9 +1028,12 @@
       "slot": "armor",
       "tier": "epic",
       "effect": {
-        "reduction": 35
+        "reduction": 20,
+        "heal_on_objective": 2,
+        "impact": 1,
+        "on": "explanation"
       },
-      "flavour": "A keepsake from the roads of Lantern Vale."
+      "flavour": "Every scale keeps a lantern's ember. It warms a wound and sharpens an explanation."
     },
     {
       "id": "lv-10",
@@ -1036,10 +1041,11 @@
       "slot": "armor",
       "tier": "legendary",
       "effect": {
-        "reduction": 45,
-        "first_miss_free": true
+        "reduction": 40,
+        "first_miss_free": true,
+        "revive": true
       },
-      "flavour": "A keepsake from the roads of Lantern Vale."
+      "flavour": "Gilded at the first dawn. It forgives a mistake, and it will bring you back once."
     },
     {
       "id": "lv-11",

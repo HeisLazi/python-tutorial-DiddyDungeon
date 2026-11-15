@@ -35,6 +35,12 @@ SPAR_QUESTION_TYPES_WORDS = {"code_checkpoint": "code", "prediction": "predictio
 UNAPPLIED_WEAPON_EFFECTS = (("break_coins", "+{n} coins on a Guard Break"), ("coin_clean", "+{n} coins on a clean objective"))
 
 
+def _matches(on: Any, qtype: str) -> bool:
+    """Whether an effect that applies `on` a kind of question applies to this one. A spar's code question can be
+    a code checkpoint or a bug hunt, so a bug-hunt effect counts for it too."""
+    return on == "any" or on == qtype or (qtype == "code_checkpoint" and on == "bug_diagnosis")
+
+
 def _int(value: Any) -> int:
     try:
         return max(0, int(value or 0))
@@ -64,7 +70,7 @@ def simulate(effects: Mapping[str, Any], rounds: Sequence[Mapping[str, Any]]) ->
         if entry.get("correct"):
             before = resolve
             impact = base
-            if weapon and weapon.get("on") in {"any", qtype} and _int(weapon.get("impact")):
+            if weapon and _matches(weapon.get("on"), qtype) and _int(weapon.get("impact")):
                 impact += _int(weapon.get("impact"))
                 fired.append(f"Weapon +{_int(weapon.get('impact'))}")
             if weapon and completed == 0 and _int(weapon.get("opening_impact")):
@@ -79,10 +85,13 @@ def simulate(effects: Mapping[str, Any], rounds: Sequence[Mapping[str, Any]]) ->
             )
             impact += bonus
             fired += labels
-            if effects.get("trinket_on") in {"any", qtype} and _int(effects.get("trinket_impact")):
+            if _matches(effects.get("trinket_on"), qtype) and _int(effects.get("trinket_impact")):
                 impact += _int(effects.get("trinket_impact"))
                 fired.append(f"Trinket +{_int(effects.get('trinket_impact'))}")
-            if set_bonus.get("on") in {"any", qtype} and _int(set_bonus.get("impact")):
+            if _matches(effects.get("armor_on"), qtype) and _int(effects.get("armor_impact")):
+                impact += _int(effects.get("armor_impact"))
+                fired.append(f"{effects.get('armor_name') or 'Armour'} +{_int(effects.get('armor_impact'))}")
+            if _matches(set_bonus.get("on"), qtype) and _int(set_bonus.get("impact")):
                 impact += _int(set_bonus.get("impact"))
                 fired.append(f"Set +{_int(set_bonus.get('impact'))}")
             impact = min(SPAR_IMPACT_CAP, impact)
@@ -156,6 +165,9 @@ def effect_lines(effects: Mapping[str, Any]) -> dict[str, list[str]]:
         applied.append(f"Heal {_int(weapon.get('heal_on_break'))} HP when you break a guard")
     if _int(effects.get("trinket_impact")):
         applied.append(f"+{_int(effects.get('trinket_impact'))} impact from your trinket")
+    if _int(effects.get("armor_impact")):
+        on = effects.get("armor_on", "any")
+        applied.append(f"+{_int(effects.get('armor_impact'))} impact from your armour" + ("" if on == "any" else f" on {SPAR_QUESTION_TYPES_WORDS.get(str(on), str(on))} questions"))
     applied += signature_text({key: value for key, value in weapon.items() if key not in {"coin_clean"}})
     ignored = [text.format(n=_int(effects.get(key))) for key, text in UNAPPLIED_EFFECTS if _int(effects.get(key))]
     ignored += [text.format(n=_int(weapon.get(key))) for key, text in UNAPPLIED_WEAPON_EFFECTS if _int(weapon.get(key))]

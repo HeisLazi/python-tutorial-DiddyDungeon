@@ -111,6 +111,26 @@ func run_checks() -> void:
 				scene._apply_live_state({"simulated": true, "style": pole, "armorLook": look, "weaponId": weapon})
 				var shown_pole := held_name(scene)
 				require(shown_pole == "%s-%s-%s-action" % [weapon, looks[look], pole], "%s / %s should hold a %s weapon, got '%s'" % [look, weapon, pole, shown_pole])
+	# Recoloured armour looks: their own sheets and weapon-less bases, the parent outfit's weapon strips.
+	var samples := {"sword": ["lv-01", "idle"], "greatsword": ["lv-03", "action"], "scythe": ["hunter-sparring-scythe", "action"], "staff": ["lv-04", "action"], "handmagic": ["hunter-sparring-focus", "action"], "whip": ["bj-croupier-s-rake", "action"]}
+	var recoloured := 0
+	for look in scene.CATALOG.LOOKS.PARENTS:
+		recoloured += 1
+		require(scene.skins.has(look) and scene.CATALOG.validate_skin(scene.skins[look]).is_empty(), "Recoloured look %s is not a valid skin: %s" % [look, scene.CATALOG.validate_skin(scene.skins.get(look, {}))])
+		var parent: String = scene.CATALOG.LOOKS.PARENTS[look]
+		require(scene.CATALOG.LOOKS.PARENTS[look] != look and scene.skins.has(parent), "%s should have a parent outfit" % look)
+		for style in samples:
+			scene._apply_live_state({"simulated": true, "style": style, "armorLook": look, "weaponId": samples[style][0]})
+			var shown_look := held_name(scene)
+			require(scene.skin_id == look and shown_look == "%s-%s-%s-%s" % [samples[style][0], look, style, samples[style][1]], "%s / %s should hold its weapon on its own look, got '%s' on %s" % [look, style, shown_look, scene.skin_id])
+		# A look is a different colouring of its parent, never a copy of it.
+		var own: Image = scene.skins[look]["styles"]["sword"]["idle"].get_image()
+		var parent_look: Image = scene.skins[parent]["styles"]["sword"]["idle"].get_image()
+		require(own.get_data() != parent_look.get_data(), "%s should not be identical to %s" % [look, parent])
+		# Graveblade has no baked sheets here, so the weapon is held, on this look's own base.
+		scene._apply_live_state({"simulated": true, "style": "greatsword", "armorLook": look, "weaponId": "hunter-gravebound-greatblade", "weaponVariant": "graveblade"})
+		require(held_name(scene) == "hunter-gravebound-greatblade-%s-greatsword-action" % look, "%s should hold the Gravebound Greatblade: '%s'" % [look, held_name(scene)])
+	require(recoloured >= 23, "Expected the recoloured armour looks, found %d" % recoloured)
 	scene._apply_live_state({"simulated": true, "style": "whip", "armorLook": "classic", "weaponId": "hunter-sparring-whip"})
 	require(held_name(scene) == "", "The Hunter's Whip is the plain lash and keeps the baked sheet")
 	scene._apply_live_state({"simulated": true, "style": "staff", "armorLook": "classic", "weaponId": "campaign-dungeon-dawn-lantern", "weaponVariant": "dawn-lantern"})

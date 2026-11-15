@@ -114,11 +114,11 @@ def test_boss_signature_weapon_still_unlocks_alongside_the_armour_echo(fight):
     assert {'campaign-dungeon-dawn-lantern', ARMOUR_ECHO} <= set(state['dungeon_journal']['unlocks'])
 
 
-def test_armour_echoes_are_friendly_campaign_gear_with_a_reduction(fight):
+def test_armour_echoes_are_friendly_campaign_gear_with_their_own_role(fight):
     echoes = [item for item in CAMPAIGN_DELVE_GEAR if item['slot'] == 'armor']
     assert [item['id'] for item in echoes] == [ARMOUR_ECHO, WARD_ECHO]
     for item in echoes:
-        assert item['effect']['reduction'] > 0
+        assert item['effect']  # every armour has a role of its own, not just damage reduction
         assert set(item['mode_eligibility']) == {'campaign', 'sparring', 'pvp'}
         assert item['region'] == 'basics'
         assert armory_catalog()[item['id']]['slot'] == 'armor'

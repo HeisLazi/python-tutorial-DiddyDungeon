@@ -26,11 +26,12 @@ def test_warden_set_changes_real_gear_effects():
     state = {'hunter': {'armory': {'owned': list(group['pieces']), 'weapon': weapon}},
              'equipment': {'armor': catalog[armor]['name'], 'trinket': catalog[trinket]['name']}}
     effects = LocalStateService._gear_effects(state)
-    assert effects['reduction'] == 40
+    assert effects['reduction'] == 34  # the Warden Plate's 24 plus the set's 10
     assert effects['heal_on_objective'] == 2
+    assert effects['revive'] and effects['revive_source'] == 'Gravebound Warden Plate'
     state['hunter']['armory']['weapon'] = None
     effects = LocalStateService._gear_effects(state)
-    assert effects['reduction'] == 30
+    assert effects['reduction'] == 24
     assert effects['heal_on_objective'] == 1
 
 
@@ -52,5 +53,5 @@ def test_warden_pieces_can_be_bought_equipped_and_show_the_bonus(tmp_path):
     projected = service.armory_projection(saved)
     entry = next(item for item in projected['sets'] if item['id'] == 'gravebound')
     assert entry['equipped_count'] == 3
-    assert projected['summary']['reduction'] == 40
+    assert projected['summary']['reduction'] == 34
     assert projected['summary']['heal_on_objective'] == 2
