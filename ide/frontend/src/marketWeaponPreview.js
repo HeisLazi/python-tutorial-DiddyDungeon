@@ -1,4 +1,4 @@
-import { hunterAppearance } from './hunterEquipment.js'
+import { RECOLOUR_LOOKS, hunterAppearance } from './hunterEquipment.js'
 import { combatWeaponVariant } from './combatWeaponArt.js'
 
 const OUTFITS = {
@@ -6,6 +6,8 @@ const OUTFITS = {
   patchwork: 'patchwork', pilgrim: 'pilgrim', wayfarer: 'wayfarer', norse: 'norse', lanternkeeper: 'lanternkeeper', wardplate: 'wardplate',
   debugger: 'debugger-v2', 'merchant-oracle': 'merchant-oracle',
 }
+// Recoloured armour looks have their own preview sheets, named after the look, and no baked Graveblade or Dawn Lantern.
+for (const look of RECOLOUR_LOOKS) OUTFITS[look] = look
 const STYLES = new Set(['sword', 'staff', 'whip', 'greatsword', 'scythe', 'handmagic', 'oil'])
 
 // These are the same pose sheets and special graveblade variant used in combat.
@@ -16,7 +18,7 @@ export function marketWeaponPreview(item, equippedArmor) {
     : /staff/i.test(name) || combatWeaponVariant(name) === 'dawn-lantern' ? 'staff' : /greatsword|greatblade/i.test(name) ? 'greatsword'
       : /casting|focus|magic/i.test(name) ? 'handmagic' : 'sword'
   const style = STYLES.has(item?.combat_style) ? item.combat_style : inferred
-  const graveblade = !['norse', 'lanternkeeper', 'wardplate'].includes(outfit) && style === 'greatsword' && (item?.id === 'hunter-gravebound-greatblade' || /^gravebound greatblade$/i.test(name))
+  const graveblade = !['norse', 'lanternkeeper', 'wardplate', ...RECOLOUR_LOOKS].includes(outfit) && style === 'greatsword' && (item?.id === 'hunter-gravebound-greatblade' || /^gravebound greatblade$/i.test(name))
   const dawn = style === 'staff' && ['', 'lanternkeeper', 'wardplate'].includes(outfit) && combatWeaponVariant(name) === 'dawn-lantern'
   const actionStyle = dawn ? 'dawn' : graveblade ? 'graveblade' : (!outfit && style === 'sword') ? 'sword-v2' : (!outfit && style === 'oil') ? 'oil-pink' : style
   const prefix = outfit ? `tate-${outfit}` : 'tate'

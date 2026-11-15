@@ -224,7 +224,7 @@
     {"id": "bj-velvet-felt-jacket", "name": "Velvet Felt Jacket", "slot": "armor", "tier": "uncommon", "effect": {"first_miss_free": true}, "flavour": "Cut from an old table. Blows slide off it.", "price": 90},
     {"id": "bj-pit-boss-coat", "name": "Pit Boss Coat", "slot": "armor", "tier": "rare", "effect": {"reduction": 18, "coin_bonus": 10}, "flavour": "Mara's spare. It smells of cigars and fairness.", "price": 180},
     {"id": "bj-gilded-lapel-armour", "name": "Gilded Lapel Armour", "slot": "armor", "tier": "epic", "effect": {"reduction": 24, "impact": 1, "on": "prediction", "loot_luck": 10}, "flavour": "Gold thread over steel plate."},
-    {"id": "bj-the-high-roller-s-mail", "name": "The High Roller's Mail", "slot": "armor", "tier": "legendary", "effect": {"reduction": 36, "coin_bonus": 20, "revive": true}, "flavour": "Heavy mail from the House: steady protection on every miss."},
+    {"id": "bj-the-high-roller-s-mail", "name": "The High Roller's Mail", "slot": "armor", "tier": "legendary", "effect": {"reduction": 36, "coin_bonus": 20, "revive": true}, "flavour": "Every ring is a chip the House never got back. It pays out, and it deals you in once more."},
     {"id": "bj-lucky-chip", "name": "Lucky Chip", "slot": "trinket", "tier": "common", "effect": {"coin_bonus": 10}, "flavour": "A single red chip that always comes back.", "price": 40},
     {"id": "bj-marked-card", "name": "Marked Card", "slot": "trinket", "tier": "uncommon", "effect": {"heal_on_objective": 3}, "flavour": "You did not mark it. Someone did.", "price": 90},
     {"id": "bj-counting-abacus", "name": "Counting Abacus", "slot": "trinket", "tier": "rare", "effect": {"start_guards": 1}, "flavour": "Plus one, minus one, never forget.", "price": 180},

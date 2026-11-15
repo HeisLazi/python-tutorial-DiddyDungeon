@@ -140,6 +140,8 @@ var shot_path := ""
 var shot_pose := -1
 
 func _ready() -> void:
+	for look_id in CATALOG.LOOKS.PARENTS:
+		skins[look_id] = CATALOG.look(look_id)
 	for arg in OS.get_cmdline_user_args():
 		if arg.begins_with("--shot="):
 			shot_path = arg.trim_prefix("--shot=")
@@ -544,6 +546,7 @@ func _clear_raid_party() -> void:
 		hunter.remove_meta("raid_member_id")
 
 func _skin_for_look(look: String) -> String:
+	if CATALOG.LOOKS.PARENTS.has(look): return look
 	if look == "norse" or look == "lanternkeeper" or look == "wardplate": return look
 	return "ivory" if look == "ivory" else "warden" if look == "spectral" else "harvest" if look == "harvest" else "oracle" if look == "oracle" else "patchwork" if look == "patchwork" else "pilgrim" if look == "pilgrim" else "wayfarer" if look == "wayfarer" else "debugger" if look == "debugger" else "merchant-oracle" if look == "merchant-oracle" else "tate"
 
@@ -628,9 +631,10 @@ func _poses_for(skin: String, style: String, variant_name: String) -> Dictionary
 		var dawn: Dictionary = poses.duplicate()
 		dawn.merge(DAWN_LANTERN_POSES[skin], true)
 		return dawn
-	if variant_name == "graveblade" and style == "greatsword" and skin != "norse" and skin != "lanternkeeper" and skin != "wardplate":
+	var suffixes := {"tate": "", "ivory": "-ivory", "warden": "-warden-heavy", "harvest": "-harvest-scout", "oracle": "-arcane", "patchwork": "-patchwork", "pilgrim": "-pilgrim", "wayfarer": "-wayfarer", "debugger": "-debugger-v2", "merchant-oracle": "-merchant-oracle"}
+	# Only the outfits with baked Graveblade sheets; a recoloured look has none and holds the weapon as a held weapon instead.
+	if variant_name == "graveblade" and style == "greatsword" and suffixes.has(skin):
 		if not variant_pose_cache.has(skin):
-			var suffixes := {"tate": "", "ivory": "-ivory", "warden": "-warden-heavy", "harvest": "-harvest-scout", "oracle": "-arcane", "patchwork": "-patchwork", "pilgrim": "-pilgrim", "wayfarer": "-wayfarer", "debugger": "-debugger-v2", "merchant-oracle": "-merchant-oracle"}
 			var prefix: String = "res://art/tate%s-graveblade" % suffixes.get(skin, "")
 			var action: Texture2D = load(prefix + "-sheet.png")
 			var hurt: Texture2D = load(prefix + "-hurt-sheet.png")

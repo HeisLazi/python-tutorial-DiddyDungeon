@@ -15,7 +15,7 @@ import './hunterCodex.css'
 import './settings.css'
 import './dungeonBrief.css'
 import './avatar.css'
-import { hunterAppearance } from './hunterEquipment.js'
+import { RECOLOUR_LOOKS, hunterAppearance } from './hunterEquipment.js'
 import { merchantPixelSprite } from './campaignMerchant.js'
 import { AVATAR_LABELS, AVATAR_PALETTES, AVATAR_STYLE_LABELS, AVATAR_VIEWBOX, CHARACTER_NAME, DEFAULT_APPEARANCE, avatarRects } from './avatarSprite.js'
 import { PORTRAIT_SIZE, portraitRects } from './portraitSprite.js'
@@ -2893,7 +2893,8 @@ function CoinIcon() {
 
 function MarketItemVisual({ item, animate = false, equippedArmor = '' }) {
   const looks = { ivory: 'ivory', spectral: 'warden-heavy', harvest: 'harvest-scout', oracle: 'arcane', patchwork: 'patchwork', pilgrim: 'pilgrim', wayfarer: 'wayfarer', norse: 'norse', lanternkeeper: 'lanternkeeper', wardplate: 'wardplate', debugger: 'debugger-v2', 'merchant-oracle': 'merchant-oracle' }
-  const look = looks[hunterAppearance(item.name, '').armorLook]
+  const armorLook = hunterAppearance(item.name, '').armorLook
+  const look = looks[armorLook] || (RECOLOUR_LOOKS.has(armorLook) ? armorLook : undefined)
   const sheet = look ? `tate-${look}-sword-idle-sheet.png` : 'tate-idle-sheet.png'
   const armorArt = {
     ivory: 'hunter-fashion/ivory.png',
@@ -3109,6 +3110,7 @@ function homeRoomState(progress, crt, look, homeRooms) {
     crt,
     look,
     ...hunterAppearance(progress?.equipment?.armor, progress?.equipment?.trinket),
+    armorLook: hunterAppearance(progress?.equipment?.armor, progress?.equipment?.trinket).homeLook,
     pyr_stage: homePyrStage(progress),
     levels: homeRooms?.levels || homestead.room_levels || {},
     tiers,

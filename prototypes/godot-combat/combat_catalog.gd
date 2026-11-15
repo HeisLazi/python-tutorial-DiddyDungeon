@@ -51,6 +51,12 @@ static func lanternkeeper() -> Dictionary:
 static func wardplate() -> Dictionary:
 	return _outfit("wardplate")
 
+const LOOKS := preload("res://looks_registry.gd")
+
+## A recoloured armour look: the same poses and offsets, sheets named tate-<id>-<style>[-hurt|-idle|-follow]-sheet.png.
+static func look(id: String) -> Dictionary:
+	return _outfit(id)
+
 static func debugger() -> Dictionary:
 	return _outfit("debugger-v2")
 

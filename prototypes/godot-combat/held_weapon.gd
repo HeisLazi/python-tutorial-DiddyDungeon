@@ -36,10 +36,13 @@ static func base_for(skin: String, style: String) -> Dictionary:
 static func canonical(weapon_id: String) -> String:
 	return "campaign-" + weapon_id if weapon_id.begins_with("dungeon-") else weapon_id
 
+## A recoloured armour look draws its weapons from its parent outfit's strips (only the cloth differs).
+const LOOKS := preload("res://looks_registry.gd")
+
 static func strip_for(weapon_id: String, skin: String, style: String, key: String) -> Texture2D:
 	if weapon_id.is_empty():
 		return null
-	return _load(FOLDER + "%s-%s-%s-%s.png" % [canonical(weapon_id), skin, style, key])
+	return _load(FOLDER + "%s-%s-%s-%s.png" % [canonical(weapon_id), LOOKS.PARENTS.get(skin, skin), style, key])
 
 ## True when this weapon can be drawn as a held weapon for the skin and style.
 static func covers(weapon_id: String, skin: String, style: String) -> bool:

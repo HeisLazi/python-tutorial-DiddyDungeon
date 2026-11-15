@@ -3,7 +3,8 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { marketWeaponPreview } from './marketWeaponPreview.js'
 
-const armor = ['', 'Ivory Revel Suit', 'Gravebound Warden Plate', 'Harvest Revenant Coat', 'Oracle Mantle', 'Merchant Patchwork Coat', 'Merchant Pilgrim Leather', 'Merchant Wayfarer Brigandine', 'Lanternkeeper’s Coat', 'Wayfarer’s Wardplate', 'Debugger Plate', 'Merchant Oracle Mantle']
+// Every armour in the Home armory, so every outfit and recolour a hunter can wear has complete preview sheets.
+const armor = ['', ...["Patchwork Travel Coat", "Pilgrim Leather", "Wayfarer Brigandine", "Lanternscale Vest", "First Light Plate", "Dealer's Waistcoat", "Velvet Felt Jacket", "Pit Boss Coat", "Gilded Lapel Armour", "The High Roller's Mail", "Doorman's Livery", "Silver Sequin Vest", "Auditor's Waistcoat", "Vault Guard Plate", "The Fortune Mail", "Canvas Mining Smock", "Riveted Leather", "Deepvein Brigandine", "Lamp-Lit Lamellar", "The Core-Forged Plate", "Ivory Revel Suit", "Gravebound Warden Plate", "Harvest Revenant Coat", "Merchant Patchwork Coat", "Merchant Pilgrim Leather", "Merchant Wayfarer Brigandine", "Merchant Oracle Mantle", "Lanternbound Coat", "Drowned Mail", "Flowkeeper Plate", "Norse Mail", "Lanternkeeper’s Coat", "Wayfarer’s Wardplate"]]
 const styles = ['sword', 'staff', 'whip', 'greatsword', 'scythe', 'handmagic', 'oil']
 
 test('all supported equipment previews resolve to complete four-frame sheets', () => {
@@ -19,7 +20,7 @@ test('all supported equipment previews resolve to complete four-frame sheets', (
 })
 
 test('gravebound greatblade uses its own combat pose sheet', () => {
-  const preview = marketWeaponPreview({ id: 'hunter-gravebound-greatblade', name: 'Gravebound Greatblade', combat_style: 'greatsword' }, 'Merchant Wayfarer Brigandine')
+  const preview = marketWeaponPreview({ id: 'hunter-gravebound-greatblade', name: 'Gravebound Greatblade', combat_style: 'greatsword' }, 'Wayfarer Brigandine')
   assert.match(preview.action, /tate-wayfarer-graveblade-sheet\.png$/)
   assert.equal(readFileSync(new URL(`../public${preview.action}`, import.meta.url)).readUInt32BE(16), 512)
 })
