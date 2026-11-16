@@ -19,6 +19,8 @@ default two-handed weapon. They are the quality bar. Make the same sheets with o
 - **The weapon is the Gravebound Greatblade**, held exactly where the original weapon is held: gripped by the same hand(s), at the same angle, about the same total length, pointing the same way.
   Match the original weapon's thickness and pixel density: thin clean lines and simple shading, no thick outline blobs, no oversized head, no blur. Frames where the original shows
   no weapon (if any) stay weapon-less. Keep any spell or motion effect the original has.
+- **The handle matters as much as the head.** Draw the Gravebound Greatblade's own handle or shaft from the icon (its colour, wrap and fittings), not the original weapon's. It is one
+  straight, unbroken line of constant thickness that visibly passes through the gripping fist(s) and comes out the other side, with the same length and colours in every frame.
 - The weapon stays inside the cell in every frame and is the same weapon, same colours, in every frame of every sheet.
 - No added glow, shadow or text. At most about 30 colours.
 
