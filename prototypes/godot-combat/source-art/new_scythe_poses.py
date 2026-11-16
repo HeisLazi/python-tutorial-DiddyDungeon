@@ -22,6 +22,7 @@ from PIL import Image
 from held_weapons import ART, HELD, OUTFITS, draw_overlay, load_icon
 from looks import source_stem
 from held_polearms import SCYTHE_WEAPONS
+import native_weapons
 
 REPO = Path(__file__).resolve().parents[3]
 RUNS = REPO / "docs" / "review-art" / "scythe-redo"
@@ -91,10 +92,15 @@ def build(skin: str, run: str, scale: float) -> None:
             frames.append({"start": start, "dir": direction, "len": POLE})
         out.save(HELD / f"base-{skin}-scythe-{key}-sheet.png")
         for item_id, spec in SCYTHE_WEAPONS.items():
-            icon = load_icon(item_id)
-            if icon is None:
-                continue
-            strip = draw_overlay(frames, CELL_W, CELL_H, icon, {"grip": 0.5, "back": 0.5, "reach": REACH}, lead=2.0, fit=True)
+            drawn = native_weapons.load("scythe", item_id)
+            if drawn is not None:
+                # A pixel-art sprite drawn for this weapon: turned along the pole line with its grip on the front fist.
+                strip = native_weapons.strip(drawn[0], drawn[1], frames, (CELL_W, CELL_H))
+            else:
+                icon = load_icon(item_id)
+                if icon is None:
+                    continue
+                strip = draw_overlay(frames, CELL_W, CELL_H, icon, {"grip": 0.5, "back": 0.5, "reach": REACH}, lead=2.0, fit=True)
             strip.save(HELD / f"{item_id}-{skin}-scythe-{key}.png")
         print(skin, key, "dx", round(dx, 1))
 

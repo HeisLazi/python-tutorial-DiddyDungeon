@@ -23,6 +23,7 @@ from pathlib import Path
 
 import numpy as np
 from PIL import Image
+import native_weapons
 
 HERE = Path(__file__).resolve().parent
 ART = HERE.parent / "art"
@@ -398,6 +399,11 @@ def build(skin: str, style: str, weapons: dict, force: bool = False, reference: 
         for item_id, spec in weapons.items():
             target = HELD / f"{item_id}-{skin}-{style}-{key}.png"
             if target.exists() and not force:
+                continue
+            drawn = native_weapons.load(style, item_id)
+            if drawn is not None:
+                # A pixel-art sprite drawn for this weapon: the fist closes on its grip, a few pixels behind where the blade starts.
+                native_weapons.strip(drawn[0], drawn[1], frames, (cell_w, sheet.height), push=-3.0).save(target)
                 continue
             icon = load_icon(item_id)
             if icon is None:
