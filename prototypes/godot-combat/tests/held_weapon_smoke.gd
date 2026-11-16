@@ -14,13 +14,20 @@ func require(condition: bool, message: String) -> void:
 		failures += 1
 
 ## The name of the held-weapon sheet the hunter is drawn from right now, or "" when the weapon is baked into the art.
+func sheet_name(texture: Texture2D) -> String:
+	if texture == null:
+		return ""
+	# A sheet drawn with the hero and weapon together (art/held/whole-<weapon>-<skin>-<style>-<key>.png) counts as holding that weapon.
+	var file := texture.resource_path.get_file()
+	if file.begins_with("whole-"):
+		return file.trim_prefix("whole-").trim_suffix(".png")
+	return texture.resource_name if texture.resource_path.is_empty() else ""
+
 func held_name(scene: Node) -> String:
-	var texture: Texture2D = scene.body.texture
-	return texture.resource_name if texture and texture.resource_path.is_empty() else ""
+	return sheet_name(scene.body.texture)
 
 func rival_name(scene: Node) -> String:
-	var texture: Texture2D = scene.enemy.texture
-	return texture.resource_name if texture and texture.resource_path.is_empty() else ""
+	return sheet_name(scene.enemy.texture)
 
 func run_checks() -> void:
 	var scene: Node = load("res://main.tscn").instantiate()

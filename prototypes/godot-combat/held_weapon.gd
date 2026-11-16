@@ -83,8 +83,26 @@ static func compose(weapon_id: String, skin: String, style: String, key: String,
 	_composed[id] = texture
 	return texture
 
+## Sheets in which the hero and this weapon were drawn together, or an empty dictionary.
+static func whole_for(weapon_id: String, skin: String, style: String) -> Dictionary:
+	var found := {}
+	if weapon_id.is_empty():
+		return found
+	for key in KEYS:
+		var texture := _load(FOLDER + "whole-%s-%s-%s-%s.png" % [canonical(weapon_id), skin, style, key])
+		if texture:
+			found[key] = texture
+	return found
+
 ## The pose dictionary with each sheet swapped for the same sheet holding this weapon.
 static func apply(poses: Dictionary, weapon_id: String, skin: String, style: String) -> Dictionary:
+	# A weapon drawn together with this outfit as one sprite (art/held/whole-<weapon>-<skin>-<style>-<key>.png) wins over any composited strip.
+	var whole := whole_for(weapon_id, skin, style)
+	if not whole.is_empty():
+		var drawn: Dictionary = poses.duplicate()
+		for key in whole:
+			drawn[key] = whole[key]
+		return drawn
 	if not covers(weapon_id, skin, style):
 		return poses
 	var merged: Dictionary = poses.duplicate()
