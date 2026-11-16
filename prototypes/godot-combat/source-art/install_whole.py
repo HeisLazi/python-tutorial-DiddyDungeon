@@ -17,12 +17,12 @@ DEFAULTS = {"scythe": "hunter-sparring-scythe"}
 count = 0
 for sheet in sorted(WHOLE.glob("*/*/*/*-sheet.png")):
     skin, style, item = sheet.parts[-4:-1]
-    if skin == "_ref":
+    if skin == "_ref" or (sheet.parent / "REJECTED").exists():  # a REJECTED file marks a set that was reviewed and is not good enough
         continue
     shutil.copy(sheet, hw.HELD / f"whole-{item}-{skin}-{style}-{sheet.stem.removesuffix('-sheet')}.png")
     count += 1
 for style, item in DEFAULTS.items():
-    for skin in {p.parts[-4] for p in WHOLE.glob(f"*/{style}/*/action-sheet.png")}:
+    for skin in {p.parts[-4] for p in WHOLE.glob(f"*/{style}/*/action-sheet.png") if p.parts[-4] != "_ref"}:
         for key in ("action", "hurt"):
             shutil.copy(hw.ART / f"{source_stem(style, key, hw.OUTFITS[skin] or '')}.png", hw.HELD / f"whole-{item}-{skin}-{style}-{key}.png")
             count += 1
