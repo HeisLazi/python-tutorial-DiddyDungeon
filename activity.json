@@ -1,18 +1,18 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-11-17T04:33:37.582531+00:00",
+  "generated_at": "2026-11-18T03:43:50.311725+00:00",
   "source": "github-commit-history",
   "repository": "HeisLazi/python-tutorial-DiddyDungeon",
   "player_login": "HeisLazi",
   "competition_started_at": "2026-09-14T00:00:00+02:00",
-  "current_streak": 4,
+  "current_streak": 0,
   "longest_streak": 9,
   "commits_7d": 57,
   "commits_30d": 213,
   "active_days_7d": 4,
   "active_days_30d": 15,
   "active_branches_30d": 3,
-  "activity_score": 359,
+  "activity_score": 327,
   "effective_commits_30d": 66,
   "total_unique_commits_scanned": 557,
   "last_active_day": "2026-11-16",
@@ -21,10 +21,6 @@
     "commits": 43
   },
   "daily_30d": [
-    {
-      "date": "2026-10-19",
-      "commits": 0
-    },
     {
       "date": "2026-10-20",
       "commits": 0
@@ -139,6 +135,10 @@
     },
     {
       "date": "2026-11-17",
+      "commits": 0
+    },
+    {
+      "date": "2026-11-18",
       "commits": 0
     }
   ],
