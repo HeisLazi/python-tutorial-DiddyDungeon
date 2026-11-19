@@ -2136,3 +2136,24 @@
 .spar-looks-head button { padding: 2px 8px; border: 1px solid var(--line, #444); background: transparent; color: inherit; font: inherit; font-size: 12px; }
 .spar-triggers { color: var(--gold, #f5c542); font-size: 12px; }
 .spar-preview-triggers { margin: 0; text-align: center; }
+
+/* ── Question first: the Hunt sidebar shows the question, folds the rest ──── */
+.battle-brief section.battle-brief-question { padding: 14px; gap: 10px; }
+.battle-brief-question .dungeon-prompt, .battle-brief-question > p, .battle-brief-question .choice-panel { font-size: 15px; line-height: 1.55; }
+.battle-brief .battle-steps, .battle-brief .battle-more, .battle-brief .battle-enemy-fold { border: 0; padding: 0; }
+.battle-brief details > summary { cursor: pointer; color: var(--muted, #999); font-size: 12px; list-style: none; padding: 2px 0; }
+.battle-brief details > summary::-webkit-details-marker { display: none; }
+.battle-brief details > summary::before { content: '▸ '; }
+.battle-brief details[open] > summary::before { content: '▾ '; }
+.battle-brief details > summary:hover { color: var(--text, #eee); }
+.battle-brief details > summary:focus-visible { color: var(--text, #eee); outline: 2px solid var(--gold, #f5c542); outline-offset: 2px; }
+.battle-brief .battle-graded { color: var(--muted, #999); font-size: 12px; }
+.battle-brief .battle-more { display: grid; gap: 6px; }
+.battle-brief section.battle-brief-question { display: grid; }
+.battle-brief details.battle-enemy-fold[open] { display: grid; gap: 6px; padding: 8px 10px; border: 1px solid var(--line, #444); }
+.battle-brief details.battle-enemy-fold > summary { display: flex; align-items: center; gap: 8px; }
+
+/* Folded secondary blocks (Legacy Journal starting bonuses). */
+.dungeon-journal-fold > summary { cursor: pointer; color: var(--muted, #999); font-size: 12px; padding: 4px 0; }
+.dungeon-journal-fold > summary:hover, .dungeon-journal-fold > summary:focus-visible { color: var(--text, #eee); outline: 2px solid transparent; }
+.dungeon-journal-fold > summary:focus-visible { outline-color: var(--gold, #f5c542); outline-offset: 2px; }

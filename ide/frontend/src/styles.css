@@ -65,3 +65,12 @@ button,input,select{font:inherit}button{color:inherit;background:#171b17;border:
 @media(max-width:900px){.codex-summary-grid{min-width:0;width:100%;grid-template-columns:repeat(5,minmax(54px,1fr))}.screen-hero .codex-summary-grid{align-self:stretch}.homestead-overview-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:520px){.codex-summary-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.codex-summary-grid>div:nth-child(n+4){display:none}.homestead-overview-grid{grid-template-columns:1fr}.homestead-scene-badge{left:12px;bottom:8px}.homestead-title{left:12px;top:14px}.coin-purse{right:12px;top:14px}}
 .web-preview-pane{display:flex;flex:0 1 38%;flex-direction:column;min-height:150px;max-height:48%;border-top:1px solid var(--line);background:var(--panel2)}.web-preview-heading{display:flex;flex:none;align-items:center;justify-content:space-between;min-height:28px;padding:4px 9px;color:var(--gold);font:800 9px ui-monospace,monospace;letter-spacing:.07em}.web-preview-heading button{padding:3px 7px;font-size:9px}.web-preview-pane iframe{flex:1;width:100%;min-height:0;border:0;background:#fff}
+
+/* Secondary HUD stats live behind one "Stats" button. */
+.top-more{position:relative}
+.top-more>summary{list-style:none;cursor:pointer;font:11px ui-monospace,monospace;border:1px solid var(--line);padding:5px 10px;border-radius:999px;background:var(--panel2);color:var(--muted);min-height:26px;display:inline-flex;align-items:center}
+.top-more>summary::-webkit-details-marker{display:none}
+.top-more>summary:hover,.top-more[open]>summary,.top-more>summary:focus-visible{border-color:var(--gold);color:var(--text);outline:none}
+.top-more-pop{position:absolute;right:0;top:calc(100% + 6px);z-index:60;display:grid;gap:6px;padding:10px;border:1px solid var(--line);border-radius:10px;background:var(--panel);box-shadow:0 8px 24px rgba(0,0,0,.45);min-width:150px}
+.top-more-pop>span,.top-more-pop .optional-stat{display:flex!important;align-items:center;gap:6px;font:11px ui-monospace,monospace;padding:4px 6px;border:1px solid var(--line);border-radius:8px;background:var(--panel2);white-space:nowrap}
+.top-more-pop>span[data-stat-label]:not(.activity-stat)::after{content:attr(data-stat-label);margin-left:auto;padding-left:12px;color:var(--muted);font-size:9px;letter-spacing:.08em}

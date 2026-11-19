@@ -167,9 +167,8 @@ function renderQuestBattleShell() {
   const availableObjectives = Array.isArray(projected?.available_objectives) ? projected.available_objectives : []
   const profile = THREAT_PROFILES[index] || { threat: 'I', raw: '5–8' }
   const armor = armorState(progress)
-  const trinket = trinketState(progress)
   const existing = document.querySelector('[data-battle-shell]')
-  const signature = JSON.stringify({ mob: mob?.name || project?.boss, resolve, maxResolve, status: projected?.status || mob?.status, objectives: availableObjectives, armor: armor.name, trinket: trinket.name })
+  const signature = JSON.stringify({ mob: mob?.name || project?.boss, resolve, maxResolve, status: projected?.status || mob?.status, objectives: availableObjectives, armor: armor.name })
 
   if (existing && existing.dataset.battleSignature === signature) return
   if (existing) {
@@ -183,8 +182,6 @@ function renderQuestBattleShell() {
     setText('[data-battle-resolve]', `${Math.max(0, resolve)} / ${Math.max(0, maxResolve)}`)
     setText('[data-battle-armor]', `${armor.reduction}%`)
     setText('[data-battle-armor-copy]', `${armor.name} · percentage damage reduction.`)
-    setText('[data-battle-trinket]', trinket.name)
-    setText('[data-battle-trinket-copy]', trinket.effect)
     const objectiveList = existing.querySelector('[data-battle-objectives]')
     if (objectiveList) objectiveList.innerHTML = availableObjectives.map((objective) => `<span>${escapeHtml(objective.question_type || 'verified')} · ${escapeHtml(objective.impact)} Impact</span>`).join('') || '<span>Awaiting verified objective</span>'
     return
@@ -219,11 +216,6 @@ function renderQuestBattleShell() {
         <span>${icon('shield')} ARMOR</span>
         <strong data-battle-armor>${armor.reduction}%</strong>
         <small data-battle-armor-copy>${escapeHtml(armor.name)} · percentage damage reduction.</small>
-      </div>
-      <div class="battle-meter trinket">
-        <span>${icon('relic')} TRINKET</span>
-        <strong data-battle-trinket>${escapeHtml(trinket.name)}</strong>
-        <small data-battle-trinket-copy>${escapeHtml(trinket.effect)}</small>
       </div>
     </div>
 

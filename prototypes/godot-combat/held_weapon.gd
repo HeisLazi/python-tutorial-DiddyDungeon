@@ -7,6 +7,8 @@ extends RefCounted
 ## the web build.) Anything without a base and a strip keeps the weapon baked into the normal sheet.
 const KEYS := ["idle", "action", "follow", "hurt"]
 const FOLDER := "res://art/held/"
+## Styles whose weapon is a long pole held in both hands: drawn behind the hero rather than over him.
+const UNDER := ["scythe"]
 
 static var _exists := {}
 static var _textures := {}
@@ -70,14 +72,37 @@ static func compose(weapon_id: String, skin: String, style: String, key: String,
 		return base
 	image.convert(Image.FORMAT_RGBA8)
 	weapon.convert(Image.FORMAT_RGBA8)
-	image.blend_rect(weapon, Rect2i(Vector2i.ZERO, weapon.get_size()), Vector2i.ZERO)
+	if UNDER.has(style):
+		# A pole is gripped, not laid on top: the hero is drawn over it, so his fists close round the shaft and his body hides the part behind him.
+		weapon.blend_rect(image, Rect2i(Vector2i.ZERO, image.get_size()), Vector2i.ZERO)
+		image = weapon
+	else:
+		image.blend_rect(weapon, Rect2i(Vector2i.ZERO, weapon.get_size()), Vector2i.ZERO)
 	var texture := ImageTexture.create_from_image(image)
 	texture.resource_name = id
 	_composed[id] = texture
 	return texture
 
+## Sheets in which the hero and this weapon were drawn together, or an empty dictionary.
+static func whole_for(weapon_id: String, skin: String, style: String) -> Dictionary:
+	var found := {}
+	if weapon_id.is_empty():
+		return found
+	for key in KEYS:
+		var texture := _load(FOLDER + "whole-%s-%s-%s-%s.png" % [canonical(weapon_id), skin, style, key])
+		if texture:
+			found[key] = texture
+	return found
+
 ## The pose dictionary with each sheet swapped for the same sheet holding this weapon.
 static func apply(poses: Dictionary, weapon_id: String, skin: String, style: String) -> Dictionary:
+	# A weapon drawn together with this outfit as one sprite (art/held/whole-<weapon>-<skin>-<style>-<key>.png) wins over any composited strip.
+	var whole := whole_for(weapon_id, skin, style)
+	if not whole.is_empty():
+		var drawn: Dictionary = poses.duplicate()
+		for key in whole:
+			drawn[key] = whole[key]
+		return drawn
 	if not covers(weapon_id, skin, style):
 		return poses
 	var merged: Dictionary = poses.duplicate()

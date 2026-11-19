@@ -24,6 +24,7 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from ide.server import primers
 from ide.server.beginner_codex import BEGINNER_CODEX
 from ide.server.dungeon_items import GEAR_BY_NAME, REGIONAL_ARMOURS, REGIONAL_TRINKETS, SIGNATURE_WEAPONS
 from ide.server.home_rooms import HOME_ROOM_LABELS, HOME_ROOM_LADDERS, effective_room_levels, validate_room_levels
@@ -564,6 +565,7 @@ ACTION_DEFINITIONS: dict[str, ActionDefinition] = {
     "armory_appearance_equip": ActionDefinition(frozenset({"player"})),
     "set_avatar": ActionDefinition(frozenset({"player"})),
     "select_campaign": ActionDefinition(frozenset({"player"})),
+    "today_check_passed": ActionDefinition(frozenset({"player"})),
     "hunter_spend_point": ActionDefinition(frozenset({"player"})),
     "record_learning_event": ActionDefinition(frozenset({"pyr"})),
     "record_reference_mode": ActionDefinition(frozenset({"pyr"})),
@@ -6782,6 +6784,7 @@ class LocalStateService:
             "armory_appearance_equip": self._armory_appearance_equip,
             "set_avatar": self._set_avatar,
             "select_campaign": self._select_campaign,
+            "today_check_passed": self._today_check_passed,
             "hunter_spend_point": self._hunter_spend_point,
             "record_learning_event": self._record_learning_event,
             "record_reference_mode": self._record_reference_mode,
@@ -9738,6 +9741,86 @@ class LocalStateService:
         if previous is not None:
             event["previous_project_id"] = self._project_id(previous)
         return Mutation(True, {"project": summary}, event)
+
+    def _today_check_passed(self, payload: Mapping[str, Any], progress: dict[str, Any]) -> Mutation:
+        """Record a passed Start Today teach-back check (PROVISIONAL, TODAY-001).
+
+        The server grades the answer itself, so the browser cannot claim a pass.
+        The first pass of a local day logs that day on the learning streak, counts
+        one answer in the activity graph and completes the authored
+        ``learn-before-forge`` daily contract (paying that contract's own reward
+        once). Later passes the same day, and wrong answers, change nothing.
+        """
+
+        data = self._payload(payload, {"sign", "choice"}, {"sign", "choice"})
+        sign = self._text(data["sign"], "sign", max_length=MAX_IDENTIFIER_LENGTH, identifier=True)
+        choice = self._integer(data["choice"], "choice", minimum=0, maximum=9)
+        graded = primers.grade_check(sign, choice)
+        if graded is None:
+            raise StateCommandError("No primer for that concept", status_code=404)
+        result: dict[str, Any] = {"correct": graded["correct"], "explain": graded["explain"], "recorded": False}
+        if not graded["correct"]:
+            return Mutation(False, result)
+
+        today = time.strftime("%Y-%m-%d")
+        streak = self._dict(progress, "streak")
+        raw_days = streak.get("days_logged")
+        days = [item for item in raw_days if isinstance(item, str)] if isinstance(raw_days, list) else []
+        if today in days or streak.get("last_active") == today:
+            result.update({"already_recorded": True, "streak": self._counter(streak, "current")})
+            return Mutation(False, result)
+
+        last = None
+        raw_last = streak.get("last_active")
+        if isinstance(raw_last, str):
+            try:
+                last = datetime.strptime(raw_last, "%Y-%m-%d")
+            except ValueError:
+                last = None
+        gap = (datetime.strptime(today, "%Y-%m-%d") - last).days if last else None
+        current = self._counter(streak, "current")
+        ward_used = False
+        if gap == 1:
+            current += 1
+        elif gap == 2 and self._counter(streak, "freeze_tokens") > 0:
+            # One missed day is protected by a stored Streak Ward.
+            streak["freeze_tokens"] = self._counter(streak, "freeze_tokens") - 1
+            current += 1
+            ward_used = True
+        elif gap is not None and gap <= 0:
+            current = max(current, 1)
+        else:
+            current = 1
+        streak["current"] = current
+        streak["longest"] = max(self._counter(streak, "longest"), current)
+        streak["last_active"] = today
+        streak["days_logged"] = [*days, today][-MAX_SYNC_LIST_ITEMS:]
+        self._log_activity(progress, "answers")
+
+        reward: dict[str, int] | None = None
+        goals = progress.get("goals")
+        daily = goals.get("daily") if isinstance(goals, dict) else None
+        contract = next(
+            (item for item in daily or [] if isinstance(item, dict) and item.get("id") == "learn-before-forge"),
+            None,
+        )
+        if contract is not None and contract.get("done") is not True:
+            contract["done"] = True
+            xp = min(MAX_REWARD_XP, max(0, self._counter(contract, "reward_xp")))
+            coins = min(MAX_REWARD_COINS, max(0, self._counter(contract, "reward_coins")))
+            reward = self._grant_reward(self._dict(progress, "player"), xp, coins)
+            reward.update({"reward_xp": xp, "reward_coins": coins})
+
+        result.update(
+            {
+                "recorded": True,
+                "streak": current,
+                "streak_ward_used": ward_used,
+                "contract_completed": contract is not None and reward is not None,
+                "reward": reward,
+            }
+        )
+        return Mutation(True, result, {"reason": "today_check_passed", "sign": sign, "streak": current})
 
     @staticmethod
     def _boss_is_active(progress: Mapping[str, Any]) -> bool:

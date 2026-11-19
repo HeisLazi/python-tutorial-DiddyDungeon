@@ -902,7 +902,7 @@ export function PyrChatPanel({ log = [], ready, thinking, model, onAsk, onOpenSe
         <button type="button" onClick={onOpenSettings} title="AI Tutor settings">{model || 'Auto'}</button>
       </div>
       <div className="pyr-chat-log" ref={listRef} aria-live="polite">
-        {log.length === 0 && <p className="pyr-chat-empty">Submit run and PYR grades it here. Ask for a hint any time; PYR nudges, it won't write your project.</p>}
+        {log.length === 0 && <p className="pyr-chat-empty">Submit run to be graded. Ask for a hint any time.</p>}
         {log.map((entry) => (
           <div key={entry.id} className={`pyr-chat-entry ${entry.role}${entry.verdict ? ` ${entry.verdict}` : ''}`}>
             <span>{entry.role === 'you' ? 'YOU' : entry.role === 'verdict' ? (entry.verdict === 'correct' ? '✔ VERDICT' : '✘ VERDICT') : 'PYR'}</span>
@@ -2228,7 +2228,7 @@ function ResourceTutorScreen({ pyr, hunter, sparRoster = [], sparActions, armory
   }
   return (
     <div className="resource-tutor-screen" data-study-surface={surface} data-testid="resource-tutor" data-campaign-revision={revision}>
-      <header className="resource-tutor-header"><div><span className="screen-kicker">HUNTER’S STUDY</span><h2>{huntView ? 'Study the beast. Train the sign. Hunt.' : 'Learn it, then make it yours.'}</h2><p>{huntView ? 'Explore the beasts and signs, then read a concept or practise it.' : 'Reference pages, a writable tutor.py and bounded PYR guidance share one calm workspace.'}</p></div><div className="resource-tutor-header-actions"><button type="button" onClick={() => onNavigate?.('forge')}>Resume Hunt</button><span>REV {revision ?? 0}</span></div></header>
+      <header className="resource-tutor-header"><div><span className="screen-kicker">HUNTER’S STUDY</span><h2>{huntView ? 'Study the beast. Train the sign. Hunt.' : 'Learn it, then make it yours.'}</h2></div><div className="resource-tutor-header-actions"><button type="button" onClick={() => onNavigate?.('forge')}>Resume Hunt</button><span>REV {revision ?? 0}</span></div></header>
       <nav className="resource-tutor-tabs" aria-label="Hunter’s Study sections"><button type="button" className={surface === 'learn' ? 'active' : ''} onClick={() => setSurface('learn')}>Codex</button><button type="button" className={surface === 'bestiary' ? 'active' : ''} onClick={() => setSurface('bestiary')}>Bestiary</button><button type="button" className={surface === 'signs' ? 'active' : ''} onClick={() => setSurface('signs')}>Signs</button><button type="button" className={surface === 'ide' || surface === 'notes' ? 'active' : ''} disabled={practiceLocked} title={practiceLocked ? 'Unavailable during a boss fight' : undefined} onClick={() => setSurface('ide')}>↗ IDE practice</button><button type="button" className={surface === 'spar' ? 'active' : ''} disabled={practiceLocked} title={practiceLocked ? 'Unavailable during a boss fight' : undefined} onClick={() => setSurface('spar')}>⚔ Sparring</button></nav>
       {practiceLocked && <p className="resource-boss-lock" role="status">Boss fight active · The codex and bestiary are open. Practice and sparring unlock after the fight or retreat.</p>}
       {surface === 'learn' && <TutorLearningPath practiceLocked={practiceLocked} pages={pages} selectedPage={selectedPage} onSelect={setSelectedId} onPractice={(mode) => { setPracticeMode(mode); setPracticeFormat('code'); setPracticeQuestion(null); setSurface('ide') }} reference={<><ResourceCodexExamples page={selectedPage} /><ResourceCodexMistakes page={selectedPage} entries={selectedEntries} /><ResourceEncounterRecords entries={selectedEntries} /><StudiedAtHome concept={selectedPage?.title} /><StudyAtHomeButton topic={selectedPage?.title} context="studying a concept between bounties" label="Study more at home" /></>} onResume={() => onNavigate?.('forge')} encounter={encounter} studyObjective={studyObjective} />}
@@ -2743,9 +2743,8 @@ function CampaignMapRail({ place, onSelect, collapsed, onToggle, progress, onSel
         <button type="button" className="map-rail-toggle" onClick={onToggle} aria-expanded={!collapsed} title={collapsed ? 'Expand project map' : 'Collapse project map'} aria-label={collapsed ? 'Expand project map' : 'Collapse project map'}><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d={collapsed ? 'm9 5 7 7-7 7' : 'm15 5-7 7 7 7'} /><path d="M20 5v14" /></svg></button>
       </div>
       {!collapsed && <>
-        <p className="campaign-panel-copy">A small campaign board. Choose where to prepare or which work to take next; there is no route tree to decode.</p>
         <div className="poi-list">
-          {CAMPAIGN_POIS.map((poi) => <button key={poi.id} className={`poi-card ${place === poi.id ? 'active' : ''}`} type="button" onClick={() => onSelect(poi.id)}><span className={`poi-icon poi-${poi.id}`}>{poi.icon}</span><span className="poi-copy"><strong>{poi.label}</strong><small>{poi.kicker}</small><em>{poi.summary}</em></span><span className="poi-arrow"><RouteIcon id="arrow" /></span></button>)}
+          {CAMPAIGN_POIS.map((poi) => <button key={poi.id} className={`poi-card ${place === poi.id ? 'active' : ''}`} type="button" onClick={() => onSelect(poi.id)} title={`${poi.kicker} · ${poi.summary}`} aria-current={place === poi.id ? 'page' : undefined}><span className={`poi-icon poi-${poi.id}`}>{poi.icon}</span><span className="poi-copy"><strong>{poi.label}</strong></span></button>)}
         </div>
         <div className="project-progress"><div><span>PROJECT PROGRESS</span><strong>Chapter {String(chapter).padStart(2, '0')}</strong></div><div className="campaign-progress-track"><i style={{ width: `${total ? Math.round((completed / total) * 100) : 0}%` }} /></div><p>{total ? `${completed}/${total} ${completed === 1 ? 'bounty' : 'bounties'} cleared.` : 'Boss remains locked until the project bounties are cleared.'}</p></div>
       </>}
@@ -2932,7 +2931,7 @@ function ArmouryLots({ armory, coins, actions, legacyPurchases, purchaseMarketIt
   const names = Object.fromEntries((armory?.collection || []).map((entry) => [entry.branch, entry.name]))
   const slots = ['all', ...new Set(stock.map((lot) => lot.slot))]
   return <div className="alchemy-bench armoury-lots">
-    <div className="market-browser-head"><div><span className="campaign-eyebrow">THE MERCHANT · SHOP</span><h3>Find your next piece of kit.</h3><p>Browse the Merchant’s own equipment and supplies. Elite and boss rewards are earned in battle.</p></div><div className="market-browser-actions"><span className="market-purse-pill"><CoinIcon /> {coins}</span><button type="button" className="campaign-button ghost" onClick={onBack}>← Back to The Merchant</button></div></div>
+    <div className="market-browser-head"><div><span className="campaign-eyebrow">THE MERCHANT · SHOP</span><h3>Find your next piece of kit.</h3></div><div className="market-browser-actions"><span className="market-purse-pill"><CoinIcon /> {coins}</span><button type="button" className="campaign-button ghost" onClick={onBack}>← Back to The Merchant</button></div></div>
     <div className="armoury-controls"><div className="bench-tabs" role="group" aria-label="Lot availability"><button type="button" className={filter === 'open' ? 'active' : ''} aria-pressed={filter === 'open'} onClick={() => setFilter('open')}>Open lots</button><button type="button" className={filter === 'all' ? 'active' : ''} aria-pressed={filter === 'all'} onClick={() => setFilter('all')}>All lots</button></div><div className="bench-tabs" role="group" aria-label="Item type">{slots.map((kind) => <button type="button" key={kind} className={slot === kind ? 'active' : ''} aria-pressed={slot === kind} onClick={() => setSlot(kind)}>{kind === 'all' ? 'All items' : kind === 'supply' ? 'Supplies' : SLOT_WORDS[kind] || kind}</button>)}</div></div>
     <div className="armoury-lots-layout"><section className="armoury-lot-catalog" aria-label="Shop items">{lots.length ? lots.map((lot) => <button type="button" key={lot.id} className={`armoury-lot-card ${selected?.id === lot.id ? 'active' : ''} ${lot.locked ? 'locked' : ''}`} aria-pressed={selected?.id === lot.id} onClick={() => setSelectedId(lot.id)}><MarketItemVisual item={lot} /><span className="armoury-lot-copy"><strong>{lot.name}</strong><small>{String(lot.tier).toUpperCase()} · {SLOT_WORDS[lot.slot] || lot.slot}</small><span className="armoury-lot-price"><CoinIcon /> {lot.price}{lot.owned ? ' · OWNED' : lot.locked ? ' · LOCKED' : ''}</span></span></button>) : <p className="alchemy-empty">No lots in this selection.</p>}</section>
     <aside className="armoury-lot-detail" aria-label="Selected shop item">{selected ? <><span className="campaign-eyebrow">SELECTED · {String(selected.tier).toUpperCase()} {SLOT_WORDS[selected.slot] || selected.slot}</span><MarketItemVisual key={selected.id} item={selected} animate equippedArmor={armory?.equipped?.armor} /><h3>{selected.name}</h3><p>{selected.effect}</p>{selected.set_name && <p className="armoury-lot-flavour"><strong>{selected.set_name} set · 3 pieces:</strong> {selected.set_description}</p>}{selected.flavour && <p className="armoury-lot-flavour">{selected.flavour}</p>}<small>{selected.campaign === 'hunter' ? 'Merchant’s equipment' : selected.campaign === 'aid' ? 'Merchant’s aid' : selected.campaign === 'merchant' ? 'Merchant’s stock' : names[selected.campaign] || selected.campaign}</small><div className="armoury-detail-price"><span>PRICE</span><strong><CoinIcon /> {selected.price}</strong></div>{selected.locked && <p className="alchemy-reason">{selected.locked} to unlock</p>}{!selected.owned && !selected.locked && !selected.affordable && <p className="alchemy-reason">Need {Math.max(1, selected.price - (coins || 0))} more coins.</p>}<button type="button" className="campaign-button" onClick={() => selected.source === 'merchant' ? purchaseMarketItem?.(selected.id) : actions?.buy?.(selected.id)} disabled={busy || selected.owned || !(selected.source === 'merchant' ? purchaseMarketItem : actions?.buy) || !selected.affordable || Boolean(selected.locked)}>{selected.owned ? 'Owned' : <>Buy · <CoinIcon /> {selected.price}</>}</button></> : <p className="alchemy-empty">Choose another item type to browse.</p>}</aside></div>
@@ -2980,10 +2979,10 @@ function CampaignMarket({ progress, armory, armoryActions, onBackHome, purchaseM
   const purchased = Array.isArray(progress?.homestead?.market_purchases) ? progress.homestead.market_purchases : []
   const stockCount = merchantLots(armory?.market, CAMPAIGN_MARKET_STOCK, purchased, coins).filter((lot) => !lot.locked).length
   return <>
-    <div className="campaign-place-heading"><div><span className="campaign-eyebrow">MARKET · THE MERCHANT</span><h2>The Merchant has a case for you.</h2><p>Browse equipment and supplies, including meals for Pyr.</p></div><span className="campaign-place-seal market">◇</span></div>
+    <div className="campaign-place-heading"><div><span className="campaign-eyebrow">MARKET · THE MERCHANT</span><h2>The Merchant</h2></div><span className="campaign-place-seal market">◇</span></div>
     {shop ? <ArmouryLots armory={armory} coins={coins} actions={armoryActions} legacyPurchases={purchased} purchaseMarketItem={purchaseMarketItem} busy={busy} onBack={() => setShop(false)} /> : <section className="market-greeting">
       <div className="market-vendor-scene"><div className="vendor-lantern">✦</div><div className="vendor-portrait merchant-pixel-sprite" aria-hidden="true" dangerouslySetInnerHTML={{ __html: merchantPixelSprite() }} /><div className="vendor-counter" /><div className="vendor-nameplate"><span className="campaign-eyebrow">SHOPKEEPER NPC</span><strong>The Merchant</strong></div></div>
-      <div className="market-greeting-copy"><span className="campaign-eyebrow">WELCOME, TRAVELLER</span><h3>“Coins open the case. Knowledge keeps you alive.”</h3><p>Browse the Merchant’s own equipment and supplies. Elite and boss gear is earned on the hunt; equip your finds at Home.</p><div className="market-greeting-doors"><button type="button" className="campaign-button" onClick={() => setShop(true)}>Browse the shop <span>→</span></button></div></div>
+      <div className="market-greeting-copy"><span className="campaign-eyebrow">WELCOME, TRAVELLER</span><h3>“Coins open the case. Knowledge keeps you alive.”</h3><div className="market-greeting-doors"><button type="button" className="campaign-button" onClick={() => setShop(true)}>Browse the shop <span>→</span></button></div></div>
       <aside className="market-greeting-purse"><span className="campaign-eyebrow">YOUR PURSE</span><strong><CoinIcon /> {coins}</strong><small>{stockCount} items available to browse</small></aside>
     </section>}
     <div className="market-bottom"><div className="campaign-stat-row"><span><small>COINS</small><strong><CoinIcon /> {coins}</strong></span><span><small>SHOP</small><strong>{stockCount} available</strong></span><span><small>PREP</small><strong>{purchased.length + (armory?.items?.length || 0)} owned</strong></span></div>{onBackHome && <button type="button" className="campaign-button ghost market-home-button" onClick={onBackHome}>Open Home loadout →</button>}</div>
@@ -3037,14 +3036,18 @@ function CampaignOffice({ progress, board, onEnter }) {
   const boards = actBoards.length
     ? actBoards.map((item) => item.entries)
     : Array.from({ length: Math.max(1, Math.ceil(entries.length / boardSize)) }, (_, index) => entries.slice(index * boardSize, (index + 1) * boardSize))
-  const openBoard = Math.max(0, boards.findIndex((items) => items.some((entry) => entry.status === 'available')))
+  const availableBoard = boards.findIndex((items) => items.some((entry) => entry.status === 'available'))
+  // A finished campaign opens on its last act rather than snapping back to the first.
+  const openBoard = availableBoard >= 0 ? availableBoard : Math.max(0, boards.length - 1)
   const [boardIndex, setBoardIndex] = useState(openBoard)
   // Switching campaign opens the new board on the act you are playing.
   const projectKey = activeProject.branch || activeProject.name || ''
+  const availableId = entries.find((entry) => entry.status === 'available')?.id
   useEffect(() => {
     setBoardIndex(openBoard)
-    setSelectedId(boards[openBoard]?.[0]?.id || '')
-  }, [projectKey])
+    const openPage = boards[openBoard] || []
+    setSelectedId(availableId || [...openPage].reverse().find((entry) => entry.status !== 'locked')?.id || openPage[0]?.id || '')
+  }, [projectKey, availableId])
   const currentAct = actBoards[boardIndex]?.act
   const boardEntries = boards[boardIndex] || boards[0]
   const [selectedId, setSelectedId] = useState(boardEntries[0]?.id || '')
@@ -3054,17 +3057,91 @@ function CampaignOffice({ progress, board, onEnter }) {
   const selectBoard = (nextIndex) => {
     const next = Math.min(boards.length - 1, Math.max(0, nextIndex))
     setBoardIndex(next)
-    setSelectedId(boards[next]?.[0]?.id || '')
+    const page = boards[next] || []
+    setSelectedId((page.find((entry) => entry.status === 'available') || [...page].reverse().find((entry) => entry.status !== 'locked') || page[0])?.id || '')
   }
+  // Map view: the open act is one path. Cleared stops, the current stop and the
+  // next sealed stop are shown; everything further along collapses to "+N sealed".
+  const firstLocked = boardEntries.findIndex((entry) => entry.status === 'locked')
+  const pathEntries = firstLocked === -1 ? boardEntries : boardEntries.slice(0, firstLocked + 1)
+  const sealedCount = firstLocked === -1 ? 0 : boardEntries.length - pathEntries.length
+  const clearedCount = mobs.filter((mob) => isMobDefeated(mob.status)).length
+  const cleared = isMobDefeated(selected?.status)
+  const onPathKey = (event) => {
+    const keys = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 }
+    if (!keys[event.key]) return
+    const nodes = [...event.currentTarget.querySelectorAll('button:not(:disabled)')]
+    const at = nodes.indexOf(document.activeElement)
+    const next = nodes[Math.min(nodes.length - 1, Math.max(0, at + keys[event.key]))]
+    if (next) { event.preventDefault(); next.focus(); next.click() }
+  }
+  const warmUp = () => window.dispatchEvent(new CustomEvent('questlab:start-today', { detail: { name: selected?.name } }))
+  // The path wraps, so hide the connector on the last stop of each row.
+  const pathRef = useRef(null)
+  useEffect(() => {
+    const list = pathRef.current
+    if (!list) return undefined
+    const mark = () => {
+      const stops = [...list.children]
+      stops.forEach((stop, index) => stop.classList.toggle('row-end', Boolean(stops[index + 1]) && stops[index + 1].offsetTop > stop.offsetTop + 4))
+    }
+    mark()
+    if (typeof ResizeObserver === 'undefined') return undefined
+    const observer = new ResizeObserver(mark)
+    observer.observe(list)
+    return () => observer.disconnect()
+  }, [boardIndex, pathEntries.length, sealedCount])
   return (
-    <>
-      <div className="campaign-place-heading"><div><span className="campaign-eyebrow">BOUNTY OFFICE · {story.client ? `CONTRACT FOR ${story.client.toUpperCase()}` : 'CONTRACT BOARD'}</span><h2>{story.title || 'Choose the work that moves you.'}</h2><p>{story.hook || 'Every bounty is a learning task. Read the weakness, prepare at Home, then enter the Hunt when you are ready to write.'}</p>{board?.entry_file && <small className="office-entry-file">You build this in <code>{board.entry_file}</code> in the Hunt.</small>}</div><span className="campaign-place-seal office">✦</span></div>
-      {currentAct && <div className="office-act-banner"><span className="campaign-eyebrow">{currentAct.title}</span><p>{currentAct.goal}</p></div>}
-      <div className="office-toolbar"><div className="office-tabs"><button type="button" className="office-tab active">MAIN BOUNTIES</button><button type="button" className="office-tab" disabled>VILLAGE · NEXT</button></div><div className="board-switcher"><button type="button" className="board-switch" onClick={() => selectBoard(boardIndex - 1)} disabled={boardIndex === 0}>← {currentAct ? `PREVIOUS ${boardUnit}` : 'PREVIOUS BOARD'}</button><span className="board-page-label">{currentAct ? `${boardUnit} ${boardIndex + 1} / ${boards.length}` : `BOARD ${boardIndex + 1} / ${boards.length}`}<small>{boardEntries.length} contracts{currentAct ? '' : ` · max ${boardSize}`}</small></span><button type="button" className="board-switch" onClick={() => selectBoard(boardIndex + 1)} disabled={boardIndex >= boards.length - 1}>{currentAct ? `NEXT ${boardUnit}` : 'NEXT BOARD'} →</button></div></div>
-      <section className="office-board" aria-label="Bounty board"><div className="office-board-header"><strong>{String(activeProject.name || 'Campaign').toUpperCase()} · COMMUNITY BOUNTIES</strong><span className="campaign-eyebrow">{entries.length} POSTERS · {mobs.filter((mob) => isMobDefeated(mob.status)).length} CLEARED</span></div><div className="bounty-posters">{boardEntries.map((entry) => <button type="button" key={entry.id} className={`bounty-poster poster-size-${entry.rank} ${entry.status === 'locked' ? 'locked' : ''} ${selected?.id === entry.id ? 'active' : ''}`} onClick={() => entry.status !== 'locked' && setSelectedId(entry.id)} disabled={entry.status === 'locked'}><span className="poster-pin" /><div className="poster-art"><BountyPosterArt projectId={activeProject.branch} entry={entry} /><span className="poster-rank">{(entry.tier || entry.rank).toUpperCase()}</span>{isMobDefeated(entry.status) && <b className="poster-captured-stamp">CAPTURED</b>}</div><span className="poster-signal">{entry.signal}</span>{entry.kind && entry.status !== 'locked' && <span className={`poster-kind kind-${entry.kind}`}>{CONTRACT_KIND_LABELS[entry.kind]}</span>}<h3>{entry.status === 'locked' ? 'HIDDEN' : entry.name}</h3><p>{entry.status === 'locked' ? 'Complete the previous bounty to reveal this poster.' : entry.category}</p><small>{entry.reward}</small></button>)}</div></section>
-      {selected && <section className="office-detail"><div><span className="campaign-eyebrow">{unlocked ? 'SELECTED BOUNTY' : 'LOCKED BOUNTY'}</span><h3>{unlocked ? selected.name : 'Hidden'}</h3><p>{selected.detail}</p>{unlocked && selected.task && selected.task !== selected.detail && <p className="office-detail-task"><b>The job:</b> {selected.task}</p>}<div className="office-detail-facts"><span>{selected.category}</span>{selected.sign && <span className="office-sign"><HuntSigil pageId={selected.sign} size={14} /> Sign of the {HUNT_BEASTS[selected.sign]?.sign || selected.sign}{selected.beast ? ` · ${selected.beast}` : ''}</span>}<span>{selected.reward}</span></div>{unlocked && objectives.length > 0 && <ol className="office-objectives">{objectives.map((objective) => <li key={objective.id}><b className={`kind-${objective.question_type}`}>{OBJECTIVE_KIND[objective.question_type] || 'TASK'}</b>{objective.label}</li>)}</ol>}{unlocked && Array.isArray(selected.resources) && selected.resources.length > 0 && <div className="office-learning-resources"><strong>STUDY BEFORE THE FIGHT</strong><ul>{selected.resources.map((resource) => <li key={resource.url}><a href={resource.url} target="_blank" rel="noreferrer">{resource.label}</a><span>{resource.why}</span></li>)}</ul></div>}</div><button type="button" className="campaign-button" onClick={onEnter} disabled={!unlocked}>{unlocked ? 'Study this work →' : 'Complete the previous bounty'}</button></section>}
-      <div className="campaign-stat-row"><span><small>CHAPTER</small><strong>{activeProject.name || '01'}</strong></span><span><small>CLEARED</small><strong>{mobs.filter((mob) => isMobDefeated(mob.status)).length}</strong></span><span><small>REWARDS</small><strong>COINS + TOKENS</strong></span></div>
-    </>
+    <section className="office-map" aria-label="Bounty map">
+      <header className="office-map-head">
+        <div>
+          <span className="campaign-eyebrow">{currentAct ? currentAct.title : 'BOUNTY MAP'}</span>
+          <h2>{story.title || activeProject.name || 'Choose the work that moves you.'}</h2>
+        </div>
+        <div className="office-map-nav" role="group" aria-label="Act">
+          <button type="button" className="board-switch" onClick={() => selectBoard(boardIndex - 1)} disabled={boardIndex === 0} aria-label="Previous act">←</button>
+          <span className="board-page-label">{currentAct ? `ACT ${boardIndex + 1} / ${boards.length}` : `PAGE ${boardIndex + 1} / ${boards.length}`}<small>{clearedCount}/{entries.length} cleared</small></span>
+          <button type="button" className="board-switch" onClick={() => selectBoard(boardIndex + 1)} disabled={boardIndex >= boards.length - 1} aria-label="Next act">→</button>
+        </div>
+      </header>
+      {currentAct?.goal && <p className="office-map-goal">{currentAct.goal}</p>}
+      <div className="office-map-body">
+        <ol className="office-path" ref={pathRef} aria-label="Bounties in this act" onKeyDown={onPathKey}>
+          {pathEntries.map((entry) => {
+            const locked = entry.status === 'locked'
+            const done = isMobDefeated(entry.status)
+            const state = locked ? 'locked' : done ? 'cleared' : 'current'
+            return (
+              <li key={entry.id} className={`map-stop ${state} rank-${entry.rank} ${selected?.id === entry.id ? 'selected' : ''}`}>
+                <button type="button" className="map-node" disabled={locked} aria-pressed={selected?.id === entry.id} aria-label={`${locked ? 'Sealed bounty' : entry.name}, ${state}${entry.tier ? `, ${entry.tier}` : ''}`} onClick={() => setSelectedId(entry.id)}>
+                  <span className="map-node-art"><BountyPosterArt projectId={activeProject.branch} entry={entry} /></span>
+                  {done && <b className="map-node-check" aria-hidden="true">✓</b>}
+                  {locked && <b className="map-node-lock" aria-hidden="true">?</b>}
+                </button>
+                <span className="map-stop-name">{locked ? 'Sealed' : entry.name}</span>
+              </li>
+            )
+          })}
+          {sealedCount > 0 && <li className="map-stop more"><span className="map-more">+{sealedCount} sealed</span></li>}
+        </ol>
+        {selected && (
+          <aside className="office-detail-panel" aria-live="polite">
+            <span className="campaign-eyebrow">{cleared ? 'CLEARED' : unlocked ? (selected.tier || selected.rank).toUpperCase() : 'SEALED'}{selected.kind && unlocked ? ` · ${CONTRACT_KIND_LABELS[selected.kind]}` : ''}</span>
+            <h3>{unlocked ? selected.name : 'Sealed bounty'}</h3>
+            <p className="office-detail-copy">{unlocked ? (selected.task || selected.detail) : 'Clear the bounty before it to reveal this one.'}</p>
+            {unlocked && selected.sign && <span className="office-sign"><HuntSigil pageId={selected.sign} size={14} /> Sign of the {HUNT_BEASTS[selected.sign]?.sign || selected.sign}</span>}
+            {unlocked && objectives.length > 0 && <ol className="office-objectives">{objectives.map((objective) => <li key={objective.id}><b className={`kind-${objective.question_type}`}>{OBJECTIVE_KIND[objective.question_type] || 'TASK'}</b>{objective.label}</li>)}</ol>}
+            {unlocked && Array.isArray(selected.resources) && selected.resources.length > 0 && <details className="office-learning-resources"><summary>Study before the fight</summary><ul>{selected.resources.map((resource) => <li key={resource.url}><a href={resource.url} target="_blank" rel="noreferrer">{resource.label}</a><span>{resource.why}</span></li>)}</ul></details>}
+            <div className="office-detail-actions">
+              <button type="button" className="campaign-button" onClick={onEnter} disabled={!unlocked || cleared}>{cleared ? 'Already cleared' : unlocked ? 'Take bounty →' : 'Sealed'}</button>
+              {unlocked && !cleared && <button type="button" className="office-warmup" onClick={warmUp}>Warm up first</button>}
+            </div>
+            <small className="office-detail-reward">{unlocked ? selected.reward : ''}</small>
+            {(story.hook || board?.entry_file) && <details className="office-story"><summary>Story and where you build</summary>{story.hook && <p>{story.hook}</p>}{board?.entry_file && <p>You build this in <code>{board.entry_file}</code> in the Hunt.</p>}</details>}
+          </aside>
+        )}
+      </div>
+    </section>
   )
 }
 
@@ -3349,8 +3426,7 @@ function HomeRoom({ progress, homeRooms, purchaseHomeRoom, buildRoomUpgrade, arm
         </div>}
         {homeStatus === 'ready' && homeHelp && <section className="home-guide" aria-label="Welcome home">
           <span className="screen-kicker">WELCOME HOME</span><h3>Your place between runs</h3>
-          <p>Rest at the hearth, prepare equipment and improve your hunter. Visit Pyr through the left door; the right door leads to the Still and your Legacy Journal.</p>
-          <p>Walk with WASD or the arrow keys; hold Shift to move faster. Press E near an object or Pyr. Use the navigation above to reach the Hunt, Tutor and Dungeon.</p>
+          <p>Rest, gear up and visit Pyr. Walk with WASD or arrows, press E to use things.</p>
           <button type="button" onClick={() => { try { window.localStorage.setItem('questlab.homeGuideSeen', 'true') } catch { /* storage unavailable */ } setHomeHelp(false); focusRoom() }}>Explore Home →</button>
         </section>}
         {homeStatus !== 'ready' && <div className="home-loading" role="status" aria-live="polite">
@@ -3422,7 +3498,7 @@ function CampaignSurface({ progress, homeRooms, purchaseHomeRoom, revision, equi
     else onNavigate?.(next)
   }
   return (
-    <div className={`campaign-v1 game-screen-scroll ${place === 'home' ? 'home-active' : ''}`} data-testid="campaign-surface" data-campaign-revision={revision}>
+    <div className={`campaign-v1 game-screen-scroll ${place === 'home' ? 'home-active' : ''} ${place === 'office' ? 'office-active' : ''}`} data-testid="campaign-surface" data-campaign-revision={revision}>
       <div className={`campaign-layout ${mapCollapsed ? 'map-rail-is-collapsed' : ''}`}>
         <CampaignMapRail progress={progress} place={place} onSelect={selectPlace} onSelectCampaign={selectCampaign} busy={busy} collapsed={mapCollapsed} onToggle={toggleMapRail} />
         <main className="campaign-place-panel" data-place={place}>
@@ -3660,6 +3736,8 @@ export function DungeonLegacyJournal({ journal, compact = false }) {
   return (
     <section id="dungeon-legacy-journal" className={`dungeon-legacy-journal ${compact ? 'compact' : ''}`} aria-label="Legacy Journal">
       <div className="dungeon-journal-heading"><div><span className="dungeon-eyebrow">PERMANENT PROGRESS</span><h3>Legacy Journal</h3></div><span>{totals.bosses} / {totals.bosses_total} BOSSES{totals.echoes_total ? ` · ${totals.echoes} / ${totals.echoes_total} ECHOES` : ''}</span></div>
+      <details className="dungeon-journal-fold" open={!compact}>
+        <summary>Starting bonuses and boss perks</summary>
       <div className="dungeon-journal-bonuses" aria-label="Future run bonuses">
         <span><strong>+{bonuses.starting_hp || 0} HP</strong><small>starting vitality</small></span>
         <span><strong>+{bonuses.starting_bandages || 0}</strong><small>starting bandages</small></span>
@@ -3667,7 +3745,8 @@ export function DungeonLegacyJournal({ journal, compact = false }) {
       </div>
       {perks.length > 0 && <ol className="dungeon-journal-perks" aria-label="Perks from each boss clear">{perks.map((perk) => <li key={`${perk.boss}-${perk.label}`} className={perk.earned ? 'earned' : ''}><b>Boss {perk.boss}</b><span>{perk.label}</span><small>{perk.earned ? 'Earned' : 'Locked'}</small></li>)}</ol>}
       {journal?.title && <p className="dungeon-journal-rule"><strong>Title earned:</strong> {journal.title}</p>}
-      <p className="dungeon-journal-rule">Gear from elites and bosses stays in the run. Each one also leaves a permanent echo here that you keep and can use in campaign, sparring and PvP. Boss clears add the starting bonuses above to every future run.</p>
+      <p className="dungeon-journal-rule">Elite and boss gear leaves a permanent echo you keep. Boss clears add starting bonuses to every run.</p>
+      </details>
       {checklist.length > 0 ? (
         <details className="dungeon-journal-all" open={!compact}>
           <summary>{compact ? 'See every echo and boss' : 'Every echo and boss'} · {totals.echoes} / {totals.echoes_total} earned</summary>
@@ -4036,20 +4115,23 @@ function BattleBrief({ player, armory, encounter, board, charges = {}, questions
     <div className="battle-brief" data-testid="forge-contract">
       <section className="battle-brief-question">
         <span className="battle-eyebrow">THE QUESTION{current ? ` · ${OBJECTIVE_KIND[current.question_type] || 'TASK'}` : ''}</span>
-      <ol className="battle-brief-objectives">
-        {allObjectives.map((objective) => (
-          <li key={objective.id} className={done.has(objective.id) ? 'done' : current?.id === objective.id ? 'current' : ''}>
-            <b className={`kind-${objective.question_type}`}>{done.has(objective.id) ? '✔' : OBJECTIVE_KIND[objective.question_type] || 'TASK'}</b>
-            <span>{objective.label}</span>
-          </li>
-        ))}
-      </ol>
+      <details className="battle-steps">
+        <summary>{current ? `Step ${Math.min(allObjectives.length, done.size + 1)} of ${allObjectives.length}` : `All ${allObjectives.length} done`}</summary>
+        <ol className="battle-brief-objectives">
+          {allObjectives.map((objective) => (
+            <li key={objective.id} className={done.has(objective.id) ? 'done' : current?.id === objective.id ? 'current' : ''}>
+              <b className={`kind-${objective.question_type}`}>{done.has(objective.id) ? '✔' : OBJECTIVE_KIND[objective.question_type] || 'TASK'}</b>
+              <span>{objective.label}</span>
+            </li>
+          ))}
+        </ol>
+      </details>
         {!current ? <p>Every objective is done.</p> : setup ? (
           <>
             <strong>{current.label}</strong>
             <DungeonPromptText text={current.brief} />
             <button type="button" className="campaign-button battle-setup-check" onClick={() => onCheckSetup?.(current.id)} disabled={busy || !onCheckSetup}>Check</button>
-            <small>The game looks in your project folder itself: no PYR call, and not done yet costs nothing.</small>
+            <details className="battle-more"><summary>How this works</summary><small>The game looks in your project folder itself: no PYR call, and not done yet costs nothing.</small></details>
             {feedback?.objectiveId === current.id && feedback.output && <pre className="battle-setup-output">{feedback.output}</pre>}
           </>
         ) : choice ? (
@@ -4063,24 +4145,25 @@ function BattleBrief({ player, armory, encounter, board, charges = {}, questions
           <>
             <strong>{current.label}</strong>
             <DungeonPromptText text={current.brief} />
-            <small>Graded on <code>{gradedOn}</code>: open it in the Hunt, then press <b>Submit run</b>.</small>
           </>
         )}
         {feedback && !String(feedback.objectiveId || '').startsWith('boss:') && <div className={`battle-feedback ${feedback.verdict}`} role="status">{feedback.verdict === 'correct' ? '✔ ' : feedback.verdict === 'not_yet' ? 'Not yet. ' : '✘ '}{feedback.reason}</div>}
-        {choice && codeLeft.length > 0 && <small className="battle-brief-also">Also open: {codeLeft.map((item) => item.label).join(', ')} (Submit run).</small>}
-        {current && <button type="button" className="campaign-button ghost" onClick={() => onStudy?.(current, contract?.sign)}>Study this in Tutor →</button>}
-        {current && <StudyAtHomeButton topic={encounter.mob?.concept || contract?.concept || current.label} context={`fighting ${encounter.mob_name}: ${current.label.toLowerCase()} in ${entry}`} />}
+        {current && !setup && !choice && <small className="battle-graded">Graded on <code>{gradedOn}</code> · press <b>Submit run</b>.</small>}
+        {current && <details className="battle-more"><summary>Help and details</summary>
+          {choice && codeLeft.length > 0 && <small className="battle-brief-also">Also open: {codeLeft.map((item) => item.label).join(', ')} (Submit run).</small>}
+          <button type="button" className="campaign-button ghost" onClick={() => onStudy?.(current, contract?.sign)}>Study this in Tutor →</button>
+          <StudyAtHomeButton topic={encounter.mob?.concept || contract?.concept || current.label} context={`fighting ${encounter.mob_name}: ${current.label.toLowerCase()} in ${entry}`} />
+        </details>}
       </section>
-      <section className="battle-brief-enemy">
-        <span className="battle-eyebrow">WHAT YOU'RE FIGHTING</span>
-        <strong>{encounter.mob_name}</strong>
+        {(charges?.free_asks > 0 || charges?.wards > 0) && <small className="battle-brief-aid" data-testid="battle-aid">Armed: {[charges.free_asks ? `${charges.free_asks} free PYR ask${charges.free_asks === 1 ? '' : 's'}` : '', charges.wards ? `${charges.wards} ward${charges.wards === 1 ? '' : 's'}` : ''].filter(Boolean).join(' · ')}</small>}
+        {encounter.pyr_assists > 0 && <small className="battle-brief-pyr" data-testid="battle-pyr-cost">PYR helped {encounter.pyr_assists}× · {encounter.help_free ? 'rewards unchanged' : `this fight pays ${encounter.reward_scale}% XP and coins`}{encounter.pyr_assists >= 2 && !encounter.loot_protected ? ' · no loot' : ''}</small>}
+      <details className="battle-brief-enemy battle-enemy-fold">
+        <summary><span className="battle-eyebrow">VS</span> <strong>{encounter.mob_name}</strong> <small>{encounter.resolve ?? 0}/{encounter.max_resolve ?? 0}</small></summary>
         <ForgeCombatScene encounter={encounter} player={player} armory={armory} />
         {contract?.sign && <small className="battle-brief-sign"><HuntSigil pageId={contract.sign} size={14} /> {contract.beast || 'Beast'} · Sign of the {HUNT_BEASTS[contract.sign]?.sign || contract.sign}</small>}
         <small>{encounter.guards ? `${encounter.guards} free mistake${encounter.guards === 1 ? '' : 's'} banked · ` : ''}{done.size} of {allObjectives.length} objectives done</small>
-        {(charges?.free_asks > 0 || charges?.wards > 0) && <small className="battle-brief-aid" data-testid="battle-aid">Armed: {[charges.free_asks ? `${charges.free_asks} free PYR ask${charges.free_asks === 1 ? '' : 's'}` : '', charges.wards ? `${charges.wards} ward${charges.wards === 1 ? '' : 's'}` : ''].filter(Boolean).join(' · ')}</small>}
-        {encounter.pyr_assists > 0 && <small className="battle-brief-pyr" data-testid="battle-pyr-cost">PYR helped {encounter.pyr_assists}× · {encounter.help_free ? 'rewards unchanged' : `this fight pays ${encounter.reward_scale}% XP and coins`}{encounter.pyr_assists >= 2 && !encounter.loot_protected ? ' · no loot' : ''}</small>}
         {encounter.mob?.lore && <p className="battle-brief-lore">{encounter.mob.lore}</p>}
-      </section>
+      </details>
 
     </div>
   )
@@ -4251,14 +4334,17 @@ function BossBrief({ player, armory, encounter, board, questions = {}, feedback,
     <div className="battle-brief boss-brief" data-testid="forge-boss-brief">
       <section className="battle-brief-question">
         <span className="battle-eyebrow">THE QUESTION{current ? ` · ${OBJECTIVE_KIND[current.question_type] || 'TASK'}` : ''}</span>
-      <ol className="battle-brief-objectives">
-        {phases.map((phase) => (
-          <li key={phase.id} className={phase.status === 'verified' ? 'done' : phase.status === 'current' ? 'current' : ''}>
-            <b className={`kind-${phase.question_type}`}>{phase.status === 'verified' ? '✔' : OBJECTIVE_KIND[phase.question_type] || 'TASK'}</b>
-            <span>{phase.label}</span>
-          </li>
-        ))}
-      </ol>
+      <details className="battle-steps">
+        <summary>{phases.filter((phase) => phase.status === 'verified').length} of {phases.length} verified</summary>
+        <ol className="battle-brief-objectives">
+          {phases.map((phase) => (
+            <li key={phase.id} className={phase.status === 'verified' ? 'done' : phase.status === 'current' ? 'current' : ''}>
+              <b className={`kind-${phase.question_type}`}>{phase.status === 'verified' ? '✔' : OBJECTIVE_KIND[phase.question_type] || 'TASK'}</b>
+              <span>{phase.label}</span>
+            </li>
+          ))}
+        </ol>
+      </details>
         {!current ? <p>Every goal is verified. The boss falls.</p> : choice ? (
           question ? (
             <>
@@ -4270,18 +4356,17 @@ function BossBrief({ player, armory, encounter, board, questions = {}, feedback,
           <>
             <strong>{current.label}</strong>
             <p>{current.quest || current.brief}</p>
-            <small>Build it in <code>{entry}</code>, then press <b>Submit run</b>.</small>
+            <small className="battle-graded">Build it in <code>{entry}</code> · press <b>Submit run</b>.</small>
           </>
         )}
         {shownFeedback && <div className={`battle-feedback ${shownFeedback.verdict}`} role="status">{shownFeedback.verdict === 'correct' ? '✔ ' : '✘ '}{shownFeedback.reason}</div>}
         {current && <StudyAtHomeButton topic={current.label} context={`fighting the boss ${encounter.boss || ''}: ${String(current.quest || current.brief || '').slice(0, 200)}`} />}
       </section>
-      <section className="battle-brief-enemy">
-        <span className="battle-eyebrow">WHAT YOU'RE FIGHTING</span>
-        <strong>{encounter.boss || 'The boss'}</strong>
+      <details className="battle-brief-enemy battle-enemy-fold">
+        <summary><span className="battle-eyebrow">VS</span> <strong>{encounter.boss || 'The boss'}</strong></summary>
         <ForgeCombatScene encounter={encounter} player={player} armory={armory} boss />
         {encounter.boss_lore && <p className="battle-brief-lore">{encounter.boss_lore}</p>}
-      </section>
+      </details>
 
     </div>
   )

@@ -7,6 +7,7 @@ import { buildQuestDocument, ContextPanel, GameScreen, projectDirOf, PyrChatPane
 import { syncEngine } from './cloud/syncEngine.js'
 import { cloudConfig } from './cloud/config.js'
 import { pyrClientId } from './cloud/pyrClient.js'
+import StartToday from './StartToday.jsx'
 
 const FRONTEND_BUILD_SHA = typeof __QUESTLAB_BUILD_SHA__ === 'string' ? __QUESTLAB_BUILD_SHA__ : ''
 
@@ -549,6 +550,13 @@ function AppV2() {
   const [animations, setAnimations] = usePersistentState('questlab.animations', true)
   const [showAiTerminal, setShowAiTerminal] = usePersistentState('questlab.showAiTerminal', true)
   const [zenMode, setZenMode] = usePersistentState('questlab.zenMode', false)
+  const [todayOpen, setTodayOpen] = useState(false)
+  const [todayFocus, setTodayFocus] = useState('')
+  useEffect(() => {
+    const open = (event) => { setTodayFocus(typeof event?.detail?.name === 'string' ? event.detail.name : ''); setTodayOpen(true) }
+    window.addEventListener('questlab:start-today', open)
+    return () => window.removeEventListener('questlab:start-today', open)
+  }, [])
   const [zenPyr, setZenPyr] = useState(null)
   const [zenQuestion, setZenQuestion] = useState('')
   const zenActiveRef = useRef(false)
@@ -3218,9 +3226,11 @@ function AppV2() {
           <span className="hp-stat" data-stat-label="HP" data-stat-tooltip={campaignReady ? `Health · ${player.hp ?? 100}/${player.max_hp ?? 100}` : 'Health · waiting for campaign'} title={campaignReady ? `HP · ${player.hp ?? 100}/${player.max_hp ?? 100}` : 'HP · waiting for campaign'} data-react-stat="true" data-campaign-stat="hp" data-campaign-stat-value={campaignReady ? (player.hp ?? 100) : '—'}><StatIcon name="heart" /><span data-stat-value>{campaignReady ? (player.hp ?? 100) : '—'}</span></span>
           <span data-stat-label="GOLD" data-stat-tooltip={campaignReady ? `Gold · ${player.coins ?? 0} coins available for validated purchases` : 'Gold · waiting for campaign'} title={campaignReady ? `Gold · ${player.coins ?? 0} coins` : 'Gold · waiting for campaign'} data-react-stat="true" data-campaign-stat="coins" data-campaign-stat-value={campaignReady ? (player.coins ?? 0) : '—'}><StatIcon name="coin" /><span data-stat-value>{campaignReady ? `${player.coins ?? 0}c` : '—'}</span></span>
           <span data-stat-label="STREAK" data-stat-tooltip={campaignReady ? `Learning streak · ${streak.current ?? 0} consecutive validated days` : 'Learning streak · waiting for campaign'} title={campaignReady ? `Learning streak · ${streak.current ?? 0} days` : 'Learning streak · waiting for campaign'} data-react-stat="true" data-campaign-stat="streak" data-campaign-stat-value={campaignReady ? (streak.current ?? 0) : '—'}><StatIcon name="flame" /><span data-stat-value>{campaignReady ? (streak.current ?? 0) : '—'}</span></span>
+          <details className="top-more"><summary title="More stats" aria-label="More stats">Stats</summary><div className="top-more-pop">
           <span className="optional-stat" data-stat-label="SHIELDS" data-stat-tooltip={campaignReady ? `Mastery shields · ${shields} earned protection charges` : 'Mastery shields · waiting for campaign'} title={campaignReady ? `Mastery shields · ${shields} earned` : 'Mastery shields · waiting for campaign'} data-react-stat="true" data-campaign-stat="shields" data-campaign-stat-value={campaignReady ? shields : '—'}><StatIcon name="shield" /><span data-stat-value>{campaignReady ? shields : '—'}</span></span>
           <span className="optional-stat" data-stat-label="BOSSES" data-stat-tooltip={campaignReady ? `Boss clears · ${stats.bosses_defeated ?? 0} validated victories` : 'Boss clears · waiting for campaign'} title={campaignReady ? `Boss clears · ${stats.bosses_defeated ?? 0}` : 'Boss clears · waiting for campaign'} data-react-stat="true" data-campaign-stat="bosses" data-campaign-stat-value={campaignReady ? (stats.bosses_defeated ?? 0) : '—'}><StatIcon name="sword" /><span data-stat-value>{campaignReady ? (stats.bosses_defeated ?? 0) : '—'}</span></span>
           <span className="optional-stat activity-stat" data-stat-label="ACTIVITY" data-stat-tooltip={campaignReady ? `Activity score · ${activity.activity_score ?? 0} validated learning actions` : 'Activity score · waiting for campaign'} title={campaignReady ? `Activity score · ${activity.activity_score ?? 0} validated actions` : 'Activity score · waiting for campaign'}>ACTIVITY {campaignReady ? (activity.activity_score ?? 0) : '—'}</span>
+          </div></details>
           <button
             type="button"
             className={`cloud-pill ${cloudState.error || cloudState.syncStatus === 'conflict' ? 'error' : cloudState.configured ? 'ready' : 'local'}`}
@@ -3249,10 +3259,12 @@ function AppV2() {
       </header>
 
       <div className="quest-banner">
-        <div><strong>{campaignReady ? (companion.name || 'PYR') : 'PYR'}</strong> · {campaignReady ? (companion.form || 'Tiny Code-Flame') : 'waiting for campaign'}</div>
+        <div title={campaignReady ? (companion.form || 'Tiny Code-Flame') : 'waiting for campaign'}><strong>{campaignReady ? (companion.name || 'PYR') : 'PYR'}</strong></div>
+        <button type="button" className="today-btn" onClick={() => { setTodayFocus(''); setTodayOpen(true) }} disabled={!campaignReady} data-start-today>START TODAY</button>
         <div className="quest-text">{campaignReady ? questLine(progress) : 'Syncing campaign state…'}</div>
-        <div className="git-pill">{campaignReady ? `${git.branch || 'no branch'} · ${git.dirty_count ?? 0} changes` : 'campaign unavailable'}</div>
       </div>
+
+      {todayOpen && <StartToday focusName={todayFocus} onClose={() => setTodayOpen(false)} onRecorded={() => { void refreshCampaign({ silent: true }) }} onBegin={() => { setTodayOpen(false); setActiveView('forge') }} />}
 
       <SurfaceNavigation activeView={activeView} onNavigate={setActiveView} showSettings={['forge', 'dungeon'].includes(activeView)} showAiToggle={['forge', 'dungeon'].includes(activeView) && showAiTerminal && aiRouteHidden} aiOpen={aiPopoverOpen} onToggleAi={() => setAiPopoverOpen((open) => !open)} zenMode={zenActive} onExitZen={() => setZenMode(false)} />
 

@@ -15,6 +15,7 @@ import numpy as np
 from PIL import Image
 
 import held_weapons as hw
+import native_weapons
 from held_weapons import ART, HELD, OUTFITS, components, load_icon
 
 SIZE = 15  # longest side of the drawn item, in pixels
@@ -63,8 +64,24 @@ def build(skin: str, force: bool) -> dict:
             if icon is None:
                 print(f"skip {item_id}: no icon", file=sys.stderr)
                 continue
-            item = draw_item(icon, SIZE)
+            drawn = native_weapons.load("handmagic", item_id)
             out = Image.new("RGBA", sheet.size, (0, 0, 0, 0))
+            if drawn is not None:
+                # The pixel-art sprite drawn for this item. A long one (a sceptre or focus) is held tilted up, a round one (a chakram, a page) upright.
+                sprite, grip = drawn
+                long = sprite.width / sprite.height > 1.6
+                for i, c in enumerate(centres):
+                    if c is None:
+                        continue
+                    if long:
+                        cell = native_weapons.place(sprite, grip, (float(c[0]), float(c[1])), -50.0, (128, sheet.height))
+                    else:
+                        cell = Image.new("RGBA", (128, sheet.height), (0, 0, 0, 0))
+                        cell.alpha_composite(sprite, (int(round(c[0] - sprite.width / 2)), int(round(c[1] - sprite.height / 2))))
+                    out.alpha_composite(cell, (i * 128, 0))
+                out.save(target)
+                continue
+            item = draw_item(icon, SIZE)
             for i, c in enumerate(centres):
                 if c is not None:
                     out.alpha_composite(item, (int(round(i * 128 + c[0] - item.width / 2)), int(round(c[1] - item.height / 2))))

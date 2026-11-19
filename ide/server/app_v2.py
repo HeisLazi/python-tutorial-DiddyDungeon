@@ -34,7 +34,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
-from ide.server import ai_tutor, learnharness
+from ide.server import ai_tutor, learnharness, primers
 from ide.server.context_bridge import (
     ContextValueError,
     bounded_file,
@@ -45,6 +45,7 @@ from ide.server.context_bridge import (
 from ide.server.security import allowed_hosts, allowed_origins, is_allowed_origin
 from ide.server.state import (
     BOSS_CHOICE_TYPES,
+    campaign_contract,
     load_campaign_bounties,
     project_dir_name,
     project_file_name,
@@ -1342,6 +1343,38 @@ def start_practice_session(payload: PracticeStartRequest):
     result = _flatten_state_result(envelope)
     result.update({"practice": projection, "revision": metadata["revision"]})
     return result
+
+
+class TodayCheck(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    sign: str = Field(min_length=1, max_length=MAX_IDENTIFIER_LENGTH)
+    choice: int = Field(ge=0, le=9)
+
+
+@app.get("/api/today")
+def today():
+    """Start Today: the next few bounties with a calm primer for each.
+
+    Read-only. Primers are static teaching material; nothing here changes the
+    save, awards XP, or reveals a campaign objective's answer.
+    """
+
+    try:
+        progress = STATE_SERVICE.campaign_view(STATE_SERVICE.snapshot_with_metadata()[0])
+    except StateCommandError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
+    return primers.today_plan(progress, campaign_contract)
+
+
+@app.post("/api/today/check")
+def today_check(payload: TodayCheck):
+    """Grade a primer check. A first pass each day also records the learning
+    streak day and the learn-before-forge contract (state action
+    ``today_check_passed``); wrong answers and repeats change nothing."""
+
+    envelope = _apply_state_or_http("today_check_passed", payload.model_dump(), "player")
+    return _flatten_state_result(envelope)
 
 
 @app.get("/api/state/revision")

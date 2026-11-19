@@ -1,0 +1,27 @@
+.today-btn{font:700 11px ui-monospace,monospace;letter-spacing:.06em;border:1px solid color-mix(in srgb,var(--gold) 55%,var(--line));color:var(--gold);background:color-mix(in srgb,var(--gold) 8%,var(--panel2));padding:5px 12px;border-radius:999px;cursor:pointer;white-space:nowrap}
+.today-btn:hover,.today-btn:focus-visible{background:color-mix(in srgb,var(--gold) 16%,var(--panel2))}
+.today-backdrop{position:fixed;inset:0;z-index:80;display:grid;place-items:center;padding:16px;background:rgba(5,7,12,.66)}
+.today-dialog{width:min(640px,100%);max-height:calc(100vh - 32px);overflow:auto;display:grid;gap:14px;padding:18px;border:1px solid var(--line);border-radius:14px;background:var(--panel);color:var(--text);outline:none}
+.today-dialog header{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+.today-dialog header small,.today-card>small,.today-upnext>small{font:800 9px ui-monospace,monospace;letter-spacing:.1em;color:var(--gold);text-transform:uppercase}
+.today-dialog h2{margin:4px 0 0;font:800 17px/1.25 ui-monospace,monospace}
+.today-dialog h3{margin:6px 0;font-size:15px}
+.today-task,.today-note{margin:0;font-size:12px;line-height:1.55;color:var(--muted)}
+.today-task b{color:var(--text)}
+.today-card{display:grid;gap:8px;border:1px solid var(--line);border-radius:12px;padding:14px;background:var(--panel2)}
+.today-card p{margin:0;font-size:13px;line-height:1.6}
+.today-card pre,.today-options pre{margin:0;padding:10px 12px;border-radius:8px;background:var(--panel3);border:1px solid var(--line);font:12px/1.5 ui-monospace,monospace;overflow:auto;white-space:pre}
+.today-options{display:grid;gap:6px}
+.today-options label{display:flex;align-items:center;gap:10px;cursor:pointer}
+.today-options label pre{flex:1;border-color:var(--line)}
+.today-options label.chosen pre{border-color:var(--gold)}
+.today-verdict{color:var(--muted)}
+.today-verdict.good{color:var(--green)}
+.today-actions,.today-upnext,.today-dialog footer{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.today-actions{justify-content:flex-end}
+.today-dialog button{font:700 12px ui-monospace,monospace;padding:7px 12px;border-radius:8px;border:1px solid var(--gold);background:color-mix(in srgb,var(--gold) 14%,var(--panel2));color:var(--text);cursor:pointer}
+.today-dialog button.ghost{border-color:var(--line);background:transparent;color:var(--muted)}
+.today-dialog button.chosen{border-color:var(--gold)}
+.today-dialog button:disabled{opacity:.45;cursor:default}
+.today-dialog button:focus-visible,.today-options input:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+@media (max-width:600px){.today-dialog{padding:14px}.today-actions{justify-content:stretch}.today-actions button{flex:1}}

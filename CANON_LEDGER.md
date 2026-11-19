@@ -132,6 +132,7 @@ Use this section for ideas that sound fun but still need tuning.
 | COMBAT-001 | Exact HP recovery cadence between encounters/days | PROVISIONAL | Downed must never block learning; tune after first real Battle tests. |
 | COMBAT-002 | Exact trinket catalog/rarity/economy | PROVISIONAL | Effect classes are approved, individual power levels still need playtesting. |
 | RAID-001 | Weekly online/shared raid transport and party persistence | PROVISIONAL | Core raid philosophy is canon; networking/storage implementation is not yet selected. |
+| TODAY-001 | Start Today: the first passed primer check (server-graded) each local day logs a learning-streak day, counts one answer in the activity log and completes the `learn-before-forge` daily contract once (its own authored reward). Wrong answers and repeats change nothing. A stored Streak Ward covers one missed day. | PROVISIONAL | Approved to build by Lazi on 2026-11-19; a three-option check is light evidence, so tune after playtesting. |
 
 PYR may add rows here, but **must not silently activate them**.
 
