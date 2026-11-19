@@ -902,7 +902,7 @@ export function PyrChatPanel({ log = [], ready, thinking, model, onAsk, onOpenSe
         <button type="button" onClick={onOpenSettings} title="AI Tutor settings">{model || 'Auto'}</button>
       </div>
       <div className="pyr-chat-log" ref={listRef} aria-live="polite">
-        {log.length === 0 && <p className="pyr-chat-empty">Submit run and PYR grades it here. Ask for a hint any time; PYR nudges, it won't write your project.</p>}
+        {log.length === 0 && <p className="pyr-chat-empty">Submit run to be graded. Ask for a hint any time.</p>}
         {log.map((entry) => (
           <div key={entry.id} className={`pyr-chat-entry ${entry.role}${entry.verdict ? ` ${entry.verdict}` : ''}`}>
             <span>{entry.role === 'you' ? 'YOU' : entry.role === 'verdict' ? (entry.verdict === 'correct' ? '✔ VERDICT' : '✘ VERDICT') : 'PYR'}</span>
@@ -4111,20 +4111,23 @@ function BattleBrief({ player, armory, encounter, board, charges = {}, questions
     <div className="battle-brief" data-testid="forge-contract">
       <section className="battle-brief-question">
         <span className="battle-eyebrow">THE QUESTION{current ? ` · ${OBJECTIVE_KIND[current.question_type] || 'TASK'}` : ''}</span>
-      <ol className="battle-brief-objectives">
-        {allObjectives.map((objective) => (
-          <li key={objective.id} className={done.has(objective.id) ? 'done' : current?.id === objective.id ? 'current' : ''}>
-            <b className={`kind-${objective.question_type}`}>{done.has(objective.id) ? '✔' : OBJECTIVE_KIND[objective.question_type] || 'TASK'}</b>
-            <span>{objective.label}</span>
-          </li>
-        ))}
-      </ol>
+      <details className="battle-steps">
+        <summary>{current ? `Step ${Math.min(allObjectives.length, done.size + 1)} of ${allObjectives.length}` : `All ${allObjectives.length} done`}</summary>
+        <ol className="battle-brief-objectives">
+          {allObjectives.map((objective) => (
+            <li key={objective.id} className={done.has(objective.id) ? 'done' : current?.id === objective.id ? 'current' : ''}>
+              <b className={`kind-${objective.question_type}`}>{done.has(objective.id) ? '✔' : OBJECTIVE_KIND[objective.question_type] || 'TASK'}</b>
+              <span>{objective.label}</span>
+            </li>
+          ))}
+        </ol>
+      </details>
         {!current ? <p>Every objective is done.</p> : setup ? (
           <>
             <strong>{current.label}</strong>
             <DungeonPromptText text={current.brief} />
             <button type="button" className="campaign-button battle-setup-check" onClick={() => onCheckSetup?.(current.id)} disabled={busy || !onCheckSetup}>Check</button>
-            <small>The game looks in your project folder itself: no PYR call, and not done yet costs nothing.</small>
+            <details className="battle-more"><summary>How this works</summary><small>The game looks in your project folder itself: no PYR call, and not done yet costs nothing.</small></details>
             {feedback?.objectiveId === current.id && feedback.output && <pre className="battle-setup-output">{feedback.output}</pre>}
           </>
         ) : choice ? (
@@ -4138,24 +4141,25 @@ function BattleBrief({ player, armory, encounter, board, charges = {}, questions
           <>
             <strong>{current.label}</strong>
             <DungeonPromptText text={current.brief} />
-            <small>Graded on <code>{gradedOn}</code>: open it in the Hunt, then press <b>Submit run</b>.</small>
           </>
         )}
         {feedback && !String(feedback.objectiveId || '').startsWith('boss:') && <div className={`battle-feedback ${feedback.verdict}`} role="status">{feedback.verdict === 'correct' ? '✔ ' : feedback.verdict === 'not_yet' ? 'Not yet. ' : '✘ '}{feedback.reason}</div>}
-        {choice && codeLeft.length > 0 && <small className="battle-brief-also">Also open: {codeLeft.map((item) => item.label).join(', ')} (Submit run).</small>}
-        {current && <button type="button" className="campaign-button ghost" onClick={() => onStudy?.(current, contract?.sign)}>Study this in Tutor →</button>}
-        {current && <StudyAtHomeButton topic={encounter.mob?.concept || contract?.concept || current.label} context={`fighting ${encounter.mob_name}: ${current.label.toLowerCase()} in ${entry}`} />}
+        {current && !setup && !choice && <small className="battle-graded">Graded on <code>{gradedOn}</code> · press <b>Submit run</b>.</small>}
+        {current && <details className="battle-more"><summary>Help and details</summary>
+          {choice && codeLeft.length > 0 && <small className="battle-brief-also">Also open: {codeLeft.map((item) => item.label).join(', ')} (Submit run).</small>}
+          <button type="button" className="campaign-button ghost" onClick={() => onStudy?.(current, contract?.sign)}>Study this in Tutor →</button>
+          <StudyAtHomeButton topic={encounter.mob?.concept || contract?.concept || current.label} context={`fighting ${encounter.mob_name}: ${current.label.toLowerCase()} in ${entry}`} />
+        </details>}
       </section>
-      <section className="battle-brief-enemy">
-        <span className="battle-eyebrow">WHAT YOU'RE FIGHTING</span>
-        <strong>{encounter.mob_name}</strong>
+        {(charges?.free_asks > 0 || charges?.wards > 0) && <small className="battle-brief-aid" data-testid="battle-aid">Armed: {[charges.free_asks ? `${charges.free_asks} free PYR ask${charges.free_asks === 1 ? '' : 's'}` : '', charges.wards ? `${charges.wards} ward${charges.wards === 1 ? '' : 's'}` : ''].filter(Boolean).join(' · ')}</small>}
+        {encounter.pyr_assists > 0 && <small className="battle-brief-pyr" data-testid="battle-pyr-cost">PYR helped {encounter.pyr_assists}× · {encounter.help_free ? 'rewards unchanged' : `this fight pays ${encounter.reward_scale}% XP and coins`}{encounter.pyr_assists >= 2 && !encounter.loot_protected ? ' · no loot' : ''}</small>}
+      <details className="battle-brief-enemy battle-enemy-fold">
+        <summary><span className="battle-eyebrow">VS</span> <strong>{encounter.mob_name}</strong> <small>{encounter.resolve ?? 0}/{encounter.max_resolve ?? 0}</small></summary>
         <ForgeCombatScene encounter={encounter} player={player} armory={armory} />
         {contract?.sign && <small className="battle-brief-sign"><HuntSigil pageId={contract.sign} size={14} /> {contract.beast || 'Beast'} · Sign of the {HUNT_BEASTS[contract.sign]?.sign || contract.sign}</small>}
         <small>{encounter.guards ? `${encounter.guards} free mistake${encounter.guards === 1 ? '' : 's'} banked · ` : ''}{done.size} of {allObjectives.length} objectives done</small>
-        {(charges?.free_asks > 0 || charges?.wards > 0) && <small className="battle-brief-aid" data-testid="battle-aid">Armed: {[charges.free_asks ? `${charges.free_asks} free PYR ask${charges.free_asks === 1 ? '' : 's'}` : '', charges.wards ? `${charges.wards} ward${charges.wards === 1 ? '' : 's'}` : ''].filter(Boolean).join(' · ')}</small>}
-        {encounter.pyr_assists > 0 && <small className="battle-brief-pyr" data-testid="battle-pyr-cost">PYR helped {encounter.pyr_assists}× · {encounter.help_free ? 'rewards unchanged' : `this fight pays ${encounter.reward_scale}% XP and coins`}{encounter.pyr_assists >= 2 && !encounter.loot_protected ? ' · no loot' : ''}</small>}
         {encounter.mob?.lore && <p className="battle-brief-lore">{encounter.mob.lore}</p>}
-      </section>
+      </details>
 
     </div>
   )
@@ -4326,14 +4330,17 @@ function BossBrief({ player, armory, encounter, board, questions = {}, feedback,
     <div className="battle-brief boss-brief" data-testid="forge-boss-brief">
       <section className="battle-brief-question">
         <span className="battle-eyebrow">THE QUESTION{current ? ` · ${OBJECTIVE_KIND[current.question_type] || 'TASK'}` : ''}</span>
-      <ol className="battle-brief-objectives">
-        {phases.map((phase) => (
-          <li key={phase.id} className={phase.status === 'verified' ? 'done' : phase.status === 'current' ? 'current' : ''}>
-            <b className={`kind-${phase.question_type}`}>{phase.status === 'verified' ? '✔' : OBJECTIVE_KIND[phase.question_type] || 'TASK'}</b>
-            <span>{phase.label}</span>
-          </li>
-        ))}
-      </ol>
+      <details className="battle-steps">
+        <summary>{phases.filter((phase) => phase.status === 'verified').length} of {phases.length} verified</summary>
+        <ol className="battle-brief-objectives">
+          {phases.map((phase) => (
+            <li key={phase.id} className={phase.status === 'verified' ? 'done' : phase.status === 'current' ? 'current' : ''}>
+              <b className={`kind-${phase.question_type}`}>{phase.status === 'verified' ? '✔' : OBJECTIVE_KIND[phase.question_type] || 'TASK'}</b>
+              <span>{phase.label}</span>
+            </li>
+          ))}
+        </ol>
+      </details>
         {!current ? <p>Every goal is verified. The boss falls.</p> : choice ? (
           question ? (
             <>
@@ -4345,18 +4352,17 @@ function BossBrief({ player, armory, encounter, board, questions = {}, feedback,
           <>
             <strong>{current.label}</strong>
             <p>{current.quest || current.brief}</p>
-            <small>Build it in <code>{entry}</code>, then press <b>Submit run</b>.</small>
+            <small className="battle-graded">Build it in <code>{entry}</code> · press <b>Submit run</b>.</small>
           </>
         )}
         {shownFeedback && <div className={`battle-feedback ${shownFeedback.verdict}`} role="status">{shownFeedback.verdict === 'correct' ? '✔ ' : '✘ '}{shownFeedback.reason}</div>}
         {current && <StudyAtHomeButton topic={current.label} context={`fighting the boss ${encounter.boss || ''}: ${String(current.quest || current.brief || '').slice(0, 200)}`} />}
       </section>
-      <section className="battle-brief-enemy">
-        <span className="battle-eyebrow">WHAT YOU'RE FIGHTING</span>
-        <strong>{encounter.boss || 'The boss'}</strong>
+      <details className="battle-brief-enemy battle-enemy-fold">
+        <summary><span className="battle-eyebrow">VS</span> <strong>{encounter.boss || 'The boss'}</strong></summary>
         <ForgeCombatScene encounter={encounter} player={player} armory={armory} boss />
         {encounter.boss_lore && <p className="battle-brief-lore">{encounter.boss_lore}</p>}
-      </section>
+      </details>
 
     </div>
   )
