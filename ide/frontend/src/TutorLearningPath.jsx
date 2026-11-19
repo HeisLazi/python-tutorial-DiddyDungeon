@@ -12,7 +12,6 @@ export default function TutorLearningPath({ pages, selectedPage, onSelect, onPra
   return <div className="tutor-path">
     <aside className="tutor-path-index" aria-label="Choose a learning topic">
       <span className="screen-kicker">YOUR FIELD GUIDE</span><h3>Choose a topic</h3>
-      <p>Start with the idea, then try it somewhere new.</p>
       <label className="tutor-topic-search">Search topics<input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search concepts" /></label>
       <div className="tutor-path-list">{visiblePages.map((page) => <button type="button" key={page.id} className={page.id === selectedPage.id ? 'active' : ''} aria-current={page.id === selectedPage.id ? 'true' : undefined} onClick={() => onSelect(page.id)}>{page.title}</button>)}</div>{visiblePages.length === 0 && <p>No matching topics.</p>}
     </aside>

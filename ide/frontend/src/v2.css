@@ -2152,3 +2152,8 @@
 .battle-brief section.battle-brief-question { display: grid; }
 .battle-brief details.battle-enemy-fold[open] { display: grid; gap: 6px; padding: 8px 10px; border: 1px solid var(--line, #444); }
 .battle-brief details.battle-enemy-fold > summary { display: flex; align-items: center; gap: 8px; }
+
+/* Folded secondary blocks (Legacy Journal starting bonuses). */
+.dungeon-journal-fold > summary { cursor: pointer; color: var(--muted, #999); font-size: 12px; padding: 4px 0; }
+.dungeon-journal-fold > summary:hover, .dungeon-journal-fold > summary:focus-visible { color: var(--text, #eee); outline: 2px solid transparent; }
+.dungeon-journal-fold > summary:focus-visible { outline-color: var(--gold, #f5c542); outline-offset: 2px; }

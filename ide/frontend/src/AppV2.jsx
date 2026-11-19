@@ -3182,10 +3182,9 @@ function AppV2() {
       </header>
 
       <div className="quest-banner">
-        <div><strong>{campaignReady ? (companion.name || 'PYR') : 'PYR'}</strong> · {campaignReady ? (companion.form || 'Tiny Code-Flame') : 'waiting for campaign'}</div>
+        <div title={campaignReady ? (companion.form || 'Tiny Code-Flame') : 'waiting for campaign'}><strong>{campaignReady ? (companion.name || 'PYR') : 'PYR'}</strong></div>
         <button type="button" className="today-btn" onClick={() => { setTodayFocus(''); setTodayOpen(true) }} disabled={!campaignReady} data-start-today>START TODAY</button>
         <div className="quest-text">{campaignReady ? questLine(progress) : 'Syncing campaign state…'}</div>
-        <div className="git-pill">{campaignReady ? `${git.branch || 'no branch'} · ${git.dirty_count ?? 0} changes` : 'campaign unavailable'}</div>
       </div>
 
       {todayOpen && <StartToday focusName={todayFocus} onClose={() => setTodayOpen(false)} onRecorded={() => { void refreshCampaign({ silent: true }) }} onBegin={() => { setTodayOpen(false); setActiveView('forge') }} />}
