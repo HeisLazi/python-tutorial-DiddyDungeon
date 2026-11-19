@@ -2,10 +2,13 @@ from __future__ import annotations
 
 import contextlib
 import io
+import json
+import threading
+from unittest.mock import patch
 
 import pytest
 
-from ide.server import beginner_codex, primers
+from ide.server import beginner_codex, primers, state
 from ide.server.state import campaign_contract
 from ide.server.test_campaign_content import use_real_content
 
@@ -66,6 +69,78 @@ def test_today_endpoints(tmp_path):
     from ide.server import app_v2
 
     client = TestClient(app_v2.app, base_url="http://127.0.0.1:8000")
-    assert client.post("/api/today/check", json={"sign": "loops", "choice": 1}).json()["correct"] is True
+    # A wrong answer is graded but never writes the real save.
+    wrong = client.post("/api/today/check", json={"sign": "loops", "choice": 0}).json()
+    assert wrong["correct"] is False and wrong["recorded"] is False and wrong["changed"] is False
     assert client.post("/api/today/check", json={"sign": "zzz", "choice": 1}).status_code == 404
     assert client.post("/api/today/check", json={"sign": "loops", "choice": 1, "x": 1}).status_code == 422
+
+
+def _service(tmp_path, streak, daily=None):
+    use_real_content()
+    from ide.server.test_campaign_content import user_like_progress
+
+    progress = user_like_progress()
+    progress["streak"] = streak
+    progress["goals"] = {"daily": daily if daily is not None else [
+        {"id": "learn-before-forge", "text": "t", "reward_xp": 10, "reward_coins": 5, "done": False},
+    ], "weekly": [], "long_term": []}
+    progress.setdefault("player", {}).update({"xp": 0, "xp_next": 100, "level": 1, "coins": 0, "lifetime_xp": 0})
+    path = tmp_path / "save.json"
+    path.write_text(json.dumps(progress))
+    return state.LocalStateService(path, threading.RLock()), path
+
+
+def _check(service, day, choice=1):
+    with patch.object(state.time, "strftime", return_value=day):
+        return service.apply("today_check_passed", {"sign": "loops", "choice": choice}, "player")
+
+
+def test_first_pass_logs_streak_activity_and_pays_the_contract_once(tmp_path):
+    service, path = _service(tmp_path, {"current": 0, "longest": 0, "freeze_tokens": 0, "days_logged": []})
+    out = _check(service, "2026-11-19")
+    assert out["changed"] is True and out["result"]["recorded"] and out["result"]["streak"] == 1
+    saved = json.loads(path.read_text())
+    assert saved["streak"]["days_logged"] == ["2026-11-19"] and saved["streak"]["last_active"] == "2026-11-19"
+    assert saved["goals"]["daily"][0]["done"] is True
+    assert (saved["player"]["xp"], saved["player"]["coins"]) == (10, 5)
+    assert saved["activity_log"]["days"]["2026-11-19"]["answers"] == 1
+    again = _check(service, "2026-11-19")
+    assert again["changed"] is False and again["result"]["already_recorded"] is True
+    assert json.loads(path.read_text())["player"]["xp"] == 10
+
+
+def test_wrong_answer_records_nothing(tmp_path):
+    service, path = _service(tmp_path, {"current": 0, "longest": 0, "freeze_tokens": 0, "days_logged": []})
+    before = path.read_text()
+    out = _check(service, "2026-11-19", choice=0)
+    assert out["changed"] is False and out["result"]["correct"] is False and out["result"]["recorded"] is False
+    assert path.read_text() == before
+
+
+def test_streak_continues_wards_one_missed_day_and_otherwise_restarts(tmp_path):
+    base = {"current": 4, "longest": 9, "last_active": "2026-11-18", "freeze_tokens": 0, "days_logged": ["2026-11-18"]}
+    service, path = _service(tmp_path, dict(base))
+    assert _check(service, "2026-11-19")["result"]["streak"] == 5
+
+    service, path = _service(tmp_path, {**base, "freeze_tokens": 1})
+    out = _check(service, "2026-11-20")
+    assert out["result"]["streak"] == 5 and out["result"]["streak_ward_used"] is True
+    assert json.loads(path.read_text())["streak"]["freeze_tokens"] == 0
+
+    service, path = _service(tmp_path, dict(base))
+    assert _check(service, "2026-11-25")["result"]["streak"] == 1
+    assert json.loads(path.read_text())["streak"]["longest"] == 9
+
+
+def test_missing_contract_still_records_the_day(tmp_path):
+    service, path = _service(tmp_path, {"current": 0, "longest": 0, "freeze_tokens": 0, "days_logged": []}, daily=[])
+    out = _check(service, "2026-11-19")
+    assert out["result"]["recorded"] and out["result"]["contract_completed"] is False
+    assert json.loads(path.read_text())["player"]["xp"] == 0
+
+
+def test_unknown_primer_is_rejected(tmp_path):
+    service, _ = _service(tmp_path, {"current": 0})
+    with pytest.raises(state.StateCommandError):
+        service.apply("today_check_passed", {"sign": "zzz", "choice": 0}, "player")

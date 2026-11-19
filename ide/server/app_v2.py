@@ -1369,10 +1369,12 @@ def today():
 
 @app.post("/api/today/check")
 def today_check(payload: TodayCheck):
-    result = primers.grade_check(payload.sign, payload.choice)
-    if result is None:
-        raise HTTPException(status_code=404, detail="No primer for that concept")
-    return result
+    """Grade a primer check. A first pass each day also records the learning
+    streak day and the learn-before-forge contract (state action
+    ``today_check_passed``); wrong answers and repeats change nothing."""
+
+    envelope = _apply_state_or_http("today_check_passed", payload.model_dump(), "player")
+    return _flatten_state_result(envelope)
 
 
 @app.get("/api/state/revision")

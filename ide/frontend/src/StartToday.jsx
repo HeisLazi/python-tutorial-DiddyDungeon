@@ -11,7 +11,7 @@ async function getJson(url, options) {
   return response.json()
 }
 
-export default function StartToday({ onClose, onBegin }) {
+export default function StartToday({ onClose, onBegin, onRecorded }) {
   const [plan, setPlan] = useState(null)
   const [error, setError] = useState('')
   const [picked, setPicked] = useState(0)
@@ -46,11 +46,13 @@ export default function StartToday({ onClose, onBegin }) {
   const submit = async () => {
     if (choice === null || !primer) return
     try {
-      setVerdict(await getJson('/api/today/check', {
+      const result = await getJson('/api/today/check', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ sign: primer.sign, choice }),
-      }))
+      })
+      setVerdict(result)
+      if (result.recorded) onRecorded?.(result)
     } catch (reason) {
       setError(reason.message)
     }
@@ -94,6 +96,12 @@ export default function StartToday({ onClose, onBegin }) {
               ))}
             </div>
             {verdict && <p className={`today-verdict ${verdict.correct ? 'good' : ''}`}>{verdict.correct ? 'Right. ' : 'Not quite. '}{verdict.explain}</p>}
+            {verdict?.recorded && (
+              <p className="today-verdict good">
+                Day logged: streak {verdict.streak}{verdict.streak_ward_used ? ' (a Streak Ward covered a missed day)' : ''}.
+                {verdict.contract_completed && ` Daily contract done: +${verdict.reward?.reward_xp ?? 0} XP, +${verdict.reward?.reward_coins ?? 0}c.`}
+              </p>
+            )}
             <div className="today-actions">
               <button type="button" className="ghost" onClick={() => { setStep(0); setVerdict(null) }}>Re-read</button>
               {verdict?.correct

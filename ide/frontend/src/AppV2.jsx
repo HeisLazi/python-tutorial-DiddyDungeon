@@ -3180,7 +3180,7 @@ function AppV2() {
         <div className="git-pill">{campaignReady ? `${git.branch || 'no branch'} · ${git.dirty_count ?? 0} changes` : 'campaign unavailable'}</div>
       </div>
 
-      {todayOpen && <StartToday onClose={() => setTodayOpen(false)} onBegin={() => { setTodayOpen(false); setActiveView('forge') }} />}
+      {todayOpen && <StartToday onClose={() => setTodayOpen(false)} onRecorded={() => { void refreshCampaign({ silent: true }) }} onBegin={() => { setTodayOpen(false); setActiveView('forge') }} />}
 
       <SurfaceNavigation activeView={activeView} onNavigate={setActiveView} showSettings={['forge', 'dungeon'].includes(activeView)} showAiToggle={['forge', 'dungeon'].includes(activeView) && showAiTerminal && aiRouteHidden} aiOpen={aiPopoverOpen} onToggleAi={() => setAiPopoverOpen((open) => !open)} zenMode={zenActive} onExitZen={() => setZenMode(false)} />
 
