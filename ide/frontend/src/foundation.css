@@ -2157,3 +2157,7 @@
 .launch-splash .launch-mode:focus-visible { box-shadow: 0 0 0 3px color-mix(in srgb, var(--gold) 40%, transparent); }
 .launch-hint { color: var(--dim); font-size: 11px; }
 @media (max-width: 560px) { .launch-modes { grid-template-columns: 1fr; } }
+.surface-nav-mode { display: inline-flex; border: 1px solid var(--line); border-radius: 999px; overflow: hidden; margin-right: 12px; flex: none; }
+.surface-nav-mode button { padding: 6px 14px; border: 0; background: transparent; color: var(--muted); font: 800 11px ui-monospace, monospace; letter-spacing: .06em; cursor: pointer; }
+.surface-nav-mode button.active { background: var(--gold); color: #1d1240; }
+.surface-nav-mode button:focus-visible { outline: 2px solid var(--gold); outline-offset: -2px; }
