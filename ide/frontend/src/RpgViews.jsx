@@ -2764,6 +2764,7 @@ function CampaignMapRail({ place, onSelect, collapsed, onToggle, progress, onSel
         <div className="poi-list">
           {CAMPAIGN_POIS.map((poi) => <button key={poi.id} className={`poi-card ${place === poi.id ? 'active' : ''}`} type="button" onClick={() => onSelect(poi.id)} title={`${poi.kicker} · ${poi.summary}`} aria-current={place === poi.id ? 'page' : undefined}><span className={`poi-icon poi-${poi.id}`}>{poi.icon}</span><span className="poi-copy"><strong>{poi.label}</strong></span></button>)}
         </div>
+        <figure className="tutor-study-scene rail-scene" aria-hidden="true"><div className="tutor-study-animation" /></figure>
         <div className="project-progress"><div><span>PROJECT PROGRESS</span><strong>Chapter {String(chapter).padStart(2, '0')}</strong></div><div className="campaign-progress-track"><i style={{ width: `${total ? Math.round((completed / total) * 100) : 0}%` }} /></div><p>{total ? `${completed}/${total} ${completed === 1 ? 'bounty' : 'bounties'} cleared.` : 'Boss remains locked until the project bounties are cleared.'}</p></div>
       </>}
       {collapsed && <nav className="collapsed-poi-list" aria-label="Campaign destinations">
@@ -3094,51 +3095,18 @@ function CampaignOffice({ progress, board, onEnter }) {
     if (next) { event.preventDefault(); next.focus(); next.click() }
   }
   const warmUp = () => window.dispatchEvent(new CustomEvent('questlab:start-today', { detail: { name: selected?.name } }))
-  // The stage is the act's painted region. Authored encounters sit on named
-  // places inside it; other campaigns fall back to a path across a plain stage.
-  const stageRef = useRef(null)
-  const fieldRef = useRef(null)
-  const [stageSize, setStageSize] = useState({ w: 1000, h: 520 })
+  // The map follows the Infinite Dungeon's route grid: places are tiles on a
+  // small grid over the act's painted region, joined by lines. Authored
+  // encounters carry a place name; others show the bounty name.
   const [detailsOpen, setDetailsOpen] = useState(false)
-  const stageWidth = stageSize.w
-  const stageWide = stageWidth >= 900
-  useEffect(() => {
-    const stage = stageRef.current
-    const field = fieldRef.current
-    if (!stage || !field || typeof ResizeObserver === 'undefined') return undefined
-    const measure = () => setStageSize({ w: stage.clientWidth, h: field.clientHeight })
-    const observer = new ResizeObserver(measure)
-    observer.observe(stage)
-    observer.observe(field)
-    measure()
-    return () => observer.disconnect()
-  }, [])
-  const narrow = !stageWide
   const spots = boardEntries.map((entry) => lanternEncounterSpot(activeProject.branch, entry.name))
   const spotted = boardEntries.length > 0 && spots.every(Boolean)
   const mapEntries = spotted ? boardEntries : pathEntries
-  const stagePoints = spotted ? mapEntries.map((entry) => entry.id) : [...pathEntries.map((entry) => entry.id), ...(sealedCount > 0 ? ['sealed'] : [])]
-  const fieldWidth = narrow ? Math.max(stageWidth, (spotted ? 900 : stagePoints.length * 120 + 140)) : stageWidth
-  const fieldHeight = narrow ? 380 : stageSize.h
-  const pinPoint = (index) => {
-    if (spotted) {
-      // Same math as background-size: cover, so pins stay on their places.
-      const scale = Math.max(fieldWidth / 320, fieldHeight / 180)
-      const ox = (fieldWidth - 320 * scale) / 2
-      const oy = (fieldHeight - 180 * scale) / 2
-      const half = ({ boss: 57, elite: 49 }[mapEntries[index]?.rank] || 42) + 8
-      const clamp = (value, low, high) => Math.min(Math.max(value, low), Math.max(low, high))
-      return {
-        x: clamp(ox + (spots[index].x / 100) * 320 * scale, half, fieldWidth - half),
-        y: clamp(oy + (spots[index].y / 100) * 180 * scale, half + 26, fieldHeight - half - 34),
-      }
-    }
-    const total = stagePoints.length
-    const t = total <= 1 ? 0.5 : index / (total - 1)
-    const spanPx = narrow ? fieldWidth - 140 : fieldWidth * 0.56
-    const x = narrow ? 70 + spanPx * t : fieldWidth * 0.07 + spanPx * t
-    return { x, y: fieldHeight * (0.5 + (index % 2 === 0 ? -0.16 : 0.16)) }
-  }
+  const showFog = !spotted && sealedCount > 0
+  const nodeCount = mapEntries.length + (showFog ? 1 : 0)
+  const GRID_ROWS = [2, 1, 2, 3, 2]
+  const nodeRow = (index) => GRID_ROWS[index % GRID_ROWS.length]
+  const nodePoint = (index) => ({ x: (index + 0.5) * (100 / Math.max(1, nodeCount)), y: (nodeRow(index) - 0.5) * (100 / 3) })
   const regionName = spotted ? spots[0].region : (currentAct?.title || '')
   const stageArt = lanternEncounterLocation(activeProject.branch, (boardEntries[0] || {}).name)
   const zoneArt = (page) => lanternEncounterLocation(activeProject.branch, (page[0] || {}).name)
@@ -3165,40 +3133,36 @@ function CampaignOffice({ progress, board, onEnter }) {
           })}
         </nav>
       </header>
-      <div className={`office-stage ${narrow ? 'narrow' : ''}`} ref={stageRef}>
-        <div className="office-stage-field" ref={fieldRef} style={{ ...(narrow ? { width: fieldWidth } : {}), ...(stageArt ? { '--stage-art': `url("${stageArt}")` } : {}) }}>
+      <div className="office-stage">
+        <div className="office-stage-field" style={stageArt ? { '--stage-art': `url("${stageArt}")` } : undefined}>
           {regionName && <span className="office-region-name">{regionName}</span>}
-          <svg className="office-stage-path" viewBox={`0 0 ${fieldWidth} ${fieldHeight}`} preserveAspectRatio="none" aria-hidden="true">
-            {stagePoints.slice(1).map((id, index) => {
-              const from = pinPoint(index)
-              const to = pinPoint(index + 1)
-              const lit = isMobDefeated(mapEntries[index]?.status)
-              const mid = (from.x + to.x) / 2
-              return <path key={id} className={lit ? 'lit' : ''} d={`M ${from.x} ${from.y} C ${mid} ${from.y}, ${mid} ${to.y}, ${to.x} ${to.y}`} />
-            })}
-          </svg>
-          <ol className="office-pins" aria-label="Places in this region" onKeyDown={onPathKey}>
-            {mapEntries.map((entry, index) => {
-              const locked = entry.status === 'locked'
-              const done = isMobDefeated(entry.status)
-              const state = locked ? 'locked' : done ? 'cleared' : 'current'
-              const point = pinPoint(index)
-              const place = spotted ? spots[index].place : null
-              return (
-                <li key={entry.id} className={`map-pin-wrap ${state} rank-${entry.rank} ${selected?.id === entry.id ? 'selected' : ''}`} style={{ left: point.x, top: point.y }}>
-                  {state === 'current' && <span className="pin-you" aria-hidden="true">YOU ▾</span>}
-                  <button type="button" className="map-pin" disabled={locked} aria-pressed={selected?.id === entry.id} aria-label={`${locked ? 'Unexplored place' : `${place ? `${place}: ` : ''}${entry.name}`}, ${state}${entry.tier ? `, ${entry.tier}` : ''}`} onClick={() => setSelectedId(entry.id)}>
-                    <span className="map-pin-art"><BountyPosterArt projectId={activeProject.branch} entry={entry} /></span>
-                    {done && <b className="map-node-check" aria-hidden="true">✓</b>}
-                    {locked && <b className="map-node-lock" aria-hidden="true">?</b>}
+          <div className="bounty-legend" aria-hidden="true"><span><i className="legend-dot cleared" />cleared</span><span><i className="legend-dot current" />next</span><span><i className="legend-dot elite" />elite</span><span><i className="legend-dot sealed" />sealed</span></div>
+          <div className="bounty-grid-wrap">
+            <div className="bounty-grid" role="group" aria-label="Places in this region" style={{ gridTemplateColumns: `repeat(${nodeCount}, minmax(150px, 1fr))` }} onKeyDown={onPathKey}>
+              <svg className="bounty-grid-edges" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+                {Array.from({ length: Math.max(0, nodeCount - 1) }, (_, index) => {
+                  const from = nodePoint(index)
+                  const to = nodePoint(index + 1)
+                  return <line key={index} className={isMobDefeated(mapEntries[index]?.status) ? 'active' : ''} x1={from.x} y1={from.y} x2={to.x} y2={to.y} />
+                })}
+              </svg>
+              {mapEntries.map((entry, index) => {
+                const locked = entry.status === 'locked'
+                const done = isMobDefeated(entry.status)
+                const state = locked ? 'locked' : done ? 'cleared' : 'current'
+                const place = spotted ? spots[index].place : null
+                const note = done ? 'cleared' : locked ? 'sealed' : 'you are here'
+                return (
+                  <button key={entry.id} type="button" className={`bounty-node ${state} rank-${entry.rank} ${selected?.id === entry.id ? 'selected' : ''}`} style={{ gridColumn: index + 1, gridRow: nodeRow(index) }} disabled={locked} aria-pressed={selected?.id === entry.id} aria-label={`${locked ? 'Unexplored place' : `${place ? `${place}: ` : ''}${entry.name}`}, ${state}${entry.tier ? `, ${entry.tier}` : ''}`} onClick={() => setSelectedId(entry.id)} title={locked ? 'Unexplored' : `${entry.name} · ${entry.category}`}>
+                    <span className="bounty-node-art"><BountyPosterArt projectId={activeProject.branch} entry={entry} /></span>
+                    <strong>{locked ? (spotted ? 'Unexplored' : 'Sealed') : (place || entry.name)}</strong>
+                    <small>{note}</small>
                   </button>
-                  <span className="map-pin-name">{locked ? (spotted ? 'Unexplored' : 'Sealed') : (place || entry.name)}</span>
-                  {!locked && <span className="pin-tip" role="tooltip">{place ? `${entry.name} · ` : ''}{entry.category}{entry.reward ? ` · ${entry.reward}` : ''}</span>}
-                </li>
-              )
-            })}
-            {!spotted && sealedCount > 0 && (() => { const point = pinPoint(stagePoints.length - 1); return <li className="map-pin-wrap more" style={{ left: point.x, top: point.y }}><span className="map-fog">+{sealedCount}<small>sealed</small></span></li> })()}
-          </ol>
+                )
+              })}
+              {showFog && <span className="bounty-node fog" aria-hidden="true" style={{ gridColumn: nodeCount, gridRow: nodeRow(nodeCount - 1) }}><strong>+{sealedCount}</strong><small>sealed</small></span>}
+            </div>
+          </div>
         </div>
         {selected && (
           <aside className={`office-detail-card ${detailsOpen ? 'open' : ''}`} aria-live="polite">
