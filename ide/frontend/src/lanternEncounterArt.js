@@ -49,3 +49,36 @@ export function lanternEncounterSpot(projectId, name) {
   const region = LANTERN_LOCATIONS.find(([, encounters]) => encounters.includes(slug))?.[0]
   return { place: spot[0], x: spot[1], y: spot[2], region: LANTERN_REGION_NAMES[region] || '' }
 }
+
+// The campaign map is the painted world map (campaign-art/maps/dungeon-world.png).
+// Each act is a region of it; each encounter is a named place there (x, y as % of
+// the map). `focus` is where the camera sits when that region is open.
+const WORLD_REGIONS = {
+  'first-light': { name: 'First Light Town', fx: 17, fy: 69, zoom: 2.7, w: 24, h: 26 },
+  'vale-road': { name: 'The Vale Road', fx: 43, fy: 69, zoom: 2.0, w: 38, h: 26 },
+  workshop: { name: 'The Workshop', fx: 83, fy: 78, zoom: 2.7, w: 34, h: 26 },
+  'living-vale': { name: 'The Living Vale', fx: 63, fy: 36, zoom: 1.35, w: 48, h: 56 },
+}
+const WORLD_SPOTS = {
+  'first-spark': ['The Alley', 10, 69], 'nameless-wraith': ['The Noticeboard', 14.5, 64], 'whispering-gate': ['The Well Gate', 19, 69],
+  'forked-path': ['The Crossroads', 23.5, 74], 'endless-echo': ['The Echoing Arcade', 16, 75],
+  'little-lantern': ['The Lamplighter\u2019s Post', 27, 66], 'inventory-drowner': ['The Riverbank', 32, 72], 'counting-moth': ['The Moth Lamps', 37, 62],
+  'mapkeeper': ['The Waystone', 47, 70], 'delivery-beast': ['The Old Bridge', 60, 77],
+  'broken-number': ['The Smouldering Forge', 72, 80], 'test-lantern': ['The Lantern Rack', 77, 74], 'module-mason': ['The Workbench', 82, 81],
+  'selfless-golem': ['The Golem Alcove', 88, 74], 'clockwork-caravan': ['The Parts Shelves', 93, 82],
+  'memory-keeper': ['The Archive Arch', 69, 55], 'quiet-flame': ['The Stone Lantern', 62, 45], 'transformation-sprite': ['The Garden Path', 54, 38],
+  'remembering-shade': ['The Ruined Terrace', 50, 17], 'unwritten-road': ['The Moonlit Stair', 82, 24],
+}
+export const WORLD_MAP_ART = 'campaign-art/maps/dungeon-world.png'
+export const WORLD_FOCUS = { fx: 50, fy: 50, zoom: 1 }
+
+export function lanternWorldSpot(projectId, name) {
+  if (projectId !== '00-lantern-vale' || !name) return null
+  const slug = name.toLowerCase().replace(/^the\s+/, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
+  const spot = WORLD_SPOTS[slug]
+  if (!spot) return null
+  const key = LANTERN_LOCATIONS.find(([, encounters]) => encounters.includes(slug))?.[0]
+  const region = WORLD_REGIONS[key]
+  return region ? { place: spot[0], x: spot[1], y: spot[2], region: region.name, regionKey: key, focus: region } : null
+}
+export const worldRegions = () => Object.entries(WORLD_REGIONS).map(([key, region]) => ({ key, ...region }))

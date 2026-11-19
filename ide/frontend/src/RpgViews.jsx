@@ -1,7 +1,7 @@
 import { merchantItemArt } from './merchantItemArt.js'
 import { merchantLots } from './merchantShop.js'
 import { marketWeaponPreview } from './marketWeaponPreview.js'
-import { lanternEncounterArt, lanternEncounterLocation, lanternEncounterSpot } from './lanternEncounterArt'
+import { lanternEncounterArt, lanternEncounterLocation, lanternEncounterSpot, lanternWorldSpot, worldRegions, WORLD_FOCUS, WORLD_MAP_ART } from './lanternEncounterArt'
 import { lanternItemArt } from './lanternItemArt'
 import { Fragment, useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
@@ -3092,7 +3092,7 @@ function CampaignOffice({ progress, board, onEnter }) {
     const nodes = [...event.currentTarget.querySelectorAll('button:not(:disabled)')]
     const at = nodes.indexOf(document.activeElement)
     const next = nodes[Math.min(nodes.length - 1, Math.max(0, at + keys[event.key]))]
-    if (next) { event.preventDefault(); next.focus(); next.click() }
+    if (next) { event.preventDefault(); next.focus({ preventScroll: true }); next.click() }
   }
   const warmUp = () => window.dispatchEvent(new CustomEvent('questlab:start-today', { detail: { name: selected?.name } }))
   // The map follows the Infinite Dungeon's route grid: places are tiles on a
@@ -3108,6 +3108,56 @@ function CampaignOffice({ progress, board, onEnter }) {
   const nodeRow = (index) => GRID_ROWS[index % GRID_ROWS.length]
   const nodePoint = (index) => ({ x: (index + 0.5) * (100 / Math.max(1, nodeCount)), y: (nodeRow(index) - 0.5) * (100 / 3) })
   const regionName = spotted ? spots[0].region : (currentAct?.title || '')
+
+  // World map: the whole campaign on one painted map; the camera focuses on the
+  // open act (or the whole world) and sealed acts sit under fog.
+  const worldSpots = entries.map((entry) => lanternWorldSpot(activeProject.branch, entry.name))
+  const [mapImageOk, setMapImageOk] = useState(true)
+  const worldMap = mapImageOk && entries.length > 0 && worldSpots.every(Boolean)
+  const [worldView, setWorldView] = useState(false)
+  const [worldReady, setWorldReady] = useState(false)
+  useEffect(() => {
+    const image = new Image()
+    image.onerror = () => setMapImageOk(false)
+    image.src = `${import.meta.env?.BASE_URL || '/'}${WORLD_MAP_ART}`
+  }, [])
+  useEffect(() => { setWorldView(false) }, [projectKey])
+  const worldRef = useRef(null)
+  const [worldSize, setWorldSize] = useState({ w: 1000, h: 440 })
+  useEffect(() => {
+    const node = worldRef.current
+    if (!worldMap || !node || typeof ResizeObserver === 'undefined') return undefined
+    const measure = () => {
+      setWorldSize((current) => (current.w === node.clientWidth && current.h === node.clientHeight ? current : { w: node.clientWidth, h: node.clientHeight }))
+      setWorldReady(true)
+    }
+    const observer = new ResizeObserver(measure)
+    observer.observe(node)
+    measure()
+    return () => observer.disconnect()
+  }, [worldMap])
+  const firstOfBoard = worldSpots[entries.findIndex((entry) => entry.id === (boardEntries[0] || {}).id)]
+  const focus = worldView || !firstOfBoard ? WORLD_FOCUS : firstOfBoard.focus
+  // One transform drives the camera: the painting is laid out to cover the frame
+  // and scaled about its top-left corner, so zooming animates smoothly. The whole
+  // map view scales it down to fit; nodes and labels counter-scale to stay legible.
+  const baseW = Math.max(worldSize.w, (worldSize.h * 16) / 9)
+  const baseH = (baseW * 9) / 16
+  const fitScale = Math.min(worldSize.w, (worldSize.h * 16) / 9) / baseW
+  const cameraScale = worldView ? fitScale : focus.zoom
+  const placeLayer = (size, view, center) => (size <= view ? (view - size) / 2 : Math.min(0, Math.max(view - size, view / 2 - center * size)))
+  const layerX = placeLayer(baseW * cameraScale, worldSize.w, focus.fx / 100)
+  const layerY = placeLayer(baseH * cameraScale, worldSize.h, focus.fy / 100)
+  const pickNode = (entry) => {
+    setSelectedId(entry.id)
+    const index = boards.findIndex((page) => page.some((item) => item.id === entry.id))
+    if (index >= 0 && index !== boardIndex) setBoardIndex(index)
+    setWorldView(false)
+  }
+  const sealedRegionKeys = new Set(worldRegions().map((region) => region.key).filter((key) => {
+    const inRegion = entries.filter((entry, index) => worldSpots[index]?.regionKey === key)
+    return inRegion.length > 0 && inRegion.every((entry) => entry.status === 'locked')
+  }))
   const stageArt = lanternEncounterLocation(activeProject.branch, (boardEntries[0] || {}).name)
   const zoneArt = (page) => lanternEncounterLocation(activeProject.branch, (page[0] || {}).name)
   return (
@@ -3118,13 +3168,14 @@ function CampaignOffice({ progress, board, onEnter }) {
           <h2>{story.title || activeProject.name || 'Choose the work that moves you.'}</h2>
         </div>
         <nav className="office-zones" aria-label="Regions">
+          {worldMap && <button type="button" className={`office-zone ${worldView ? 'active' : ''}`} aria-pressed={worldView} onClick={() => setWorldView(true)} title="See the whole map"><span className="zone-art" style={{ backgroundImage: `url("${import.meta.env?.BASE_URL || '/'}${WORLD_MAP_ART}")` }} aria-hidden="true" /><b>The whole map</b><small>{entries.filter((entry) => isMobDefeated(entry.status)).length}/{entries.length}</small></button>}
           {boards.map((page, index) => {
             const done = page.filter((entry) => isMobDefeated(entry.status)).length
             const sealed = page.every((entry) => entry.status === 'locked')
             const label = actBoards[index]?.act?.title || `Page ${index + 1}`
             const region = lanternEncounterSpot(activeProject.branch, (page[0] || {}).name)?.region
             return (
-              <button key={label + index} type="button" className={`office-zone ${index === boardIndex ? 'active' : ''} ${sealed ? 'sealed' : ''}`} aria-pressed={index === boardIndex} onClick={() => selectBoard(index)} title={actBoards[index]?.act?.goal || label}>
+              <button key={label + index} type="button" className={`office-zone ${index === boardIndex && !worldView ? 'active' : ''} ${sealed ? 'sealed' : ''}`} aria-pressed={index === boardIndex && !worldView} onClick={() => { if (index !== boardIndex) selectBoard(index); setWorldView(false) }} title={actBoards[index]?.act?.goal || label}>
                 <span className="zone-art" style={zoneArt(page) ? { backgroundImage: `url("${zoneArt(page)}")` } : undefined} aria-hidden="true" />
                 <b>{region || label.replace(/^ACT\s+/i, 'Act ')}</b>
                 <small>{sealed ? 'sealed' : `${done}/${page.length}`}</small>
@@ -3134,6 +3185,42 @@ function CampaignOffice({ progress, board, onEnter }) {
         </nav>
       </header>
       <div className="office-stage">
+        {worldMap ? (
+          <div className="world-map" ref={worldRef}>
+            <div className={`world-layer ${worldReady ? 'ready' : ''}`} style={{ width: baseW, height: baseH, transform: `translate(${layerX}px, ${layerY}px) scale(${cameraScale})`, '--s': cameraScale, '--ns': worldView ? 0.6 : 1, backgroundImage: `url("${(import.meta.env?.BASE_URL || '/')}${WORLD_MAP_ART}")` }}>
+              <svg className="world-route" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+                {worldSpots.slice(1).map((spot, index) => {
+                  const from = worldSpots[index]
+                  const mx = (from.x + spot.x) / 2
+                  const my = Math.min(from.y, spot.y) - 3
+                  return <path key={entries[index + 1].id} className={isMobDefeated(entries[index].status) ? 'lit' : ''} d={`M ${from.x} ${from.y} Q ${mx} ${my} ${spot.x} ${spot.y}`} />
+                })}
+              </svg>
+              {worldRegions().map((region) => <span key={region.key} className="world-region-name" style={{ left: `${region.fx}%`, top: `${region.fy - 9}%` }}>{region.name}</span>)}
+              <ol className="world-nodes" aria-label="Places on the map" onKeyDown={onPathKey}>
+                {entries.map((entry, index) => {
+                  const spot = worldSpots[index]
+                  const locked = entry.status === 'locked'
+                  const done = isMobDefeated(entry.status)
+                  const state = locked ? 'locked' : done ? 'cleared' : 'current'
+                  const inView = !worldView && boardEntries.some((item) => item.id === entry.id)
+                  return (
+                    <li key={entry.id} className={`world-node-wrap ${state} rank-${entry.rank} ${selected?.id === entry.id ? 'selected' : ''} ${inView ? 'in-view' : ''}`} style={{ left: `${spot.x}%`, top: `${spot.y}%` }}>
+                      {state === 'current' && <span className="pin-you" aria-hidden="true">YOU ▾</span>}
+                      <button type="button" className="world-node" tabIndex={inView || worldView ? 0 : -1} disabled={locked} aria-pressed={selected?.id === entry.id} aria-label={`${locked ? 'Unexplored place' : `${spot.place}: ${entry.name}`}, ${state}${entry.tier ? `, ${entry.tier}` : ''}`} onClick={() => pickNode(entry)} title={locked ? 'Unexplored' : `${spot.place} · ${entry.name}`}>
+                        <span className="world-node-art"><BountyPosterArt projectId={activeProject.branch} entry={entry} /></span>
+                        {done && <b className="map-node-check" aria-hidden="true">✓</b>}
+                      </button>
+                      <span className="world-node-name">{locked ? 'Unexplored' : spot.place}</span>
+                    </li>
+                  )
+                })}
+              </ol>
+              {worldRegions().map((region) => sealedRegionKeys.has(region.key) ? <span key={region.key} className="world-fog" style={{ left: `${region.fx}%`, top: `${region.fy}%`, width: `${region.w}%`, height: `${region.h}%` }} aria-hidden="true"><b>Sealed</b></span> : null)}
+            </div>
+            <div className="bounty-legend" aria-hidden="true"><span><i className="legend-dot cleared" />cleared</span><span><i className="legend-dot current" />next</span><span><i className="legend-dot elite" />elite</span><span><i className="legend-dot sealed" />sealed</span></div>
+          </div>
+        ) : (
         <div className="office-stage-field" style={stageArt ? { '--stage-art': `url("${stageArt}")` } : undefined}>
           {regionName && <span className="office-region-name">{regionName}</span>}
           <div className="bounty-legend" aria-hidden="true"><span><i className="legend-dot cleared" />cleared</span><span><i className="legend-dot current" />next</span><span><i className="legend-dot elite" />elite</span><span><i className="legend-dot sealed" />sealed</span></div>
@@ -3164,6 +3251,7 @@ function CampaignOffice({ progress, board, onEnter }) {
             </div>
           </div>
         </div>
+        )}
         {selected && (
           <aside className={`office-detail-card ${detailsOpen ? 'open' : ''}`} aria-live="polite">
             {detailsOpen && (
