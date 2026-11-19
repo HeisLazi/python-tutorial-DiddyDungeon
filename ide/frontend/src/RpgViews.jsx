@@ -1,7 +1,7 @@
 import { merchantItemArt } from './merchantItemArt.js'
 import { merchantLots } from './merchantShop.js'
 import { marketWeaponPreview } from './marketWeaponPreview.js'
-import { lanternEncounterArt } from './lanternEncounterArt'
+import { lanternEncounterArt, lanternEncounterLocation } from './lanternEncounterArt'
 import { lanternItemArt } from './lanternItemArt'
 import { Fragment, useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
@@ -3076,21 +3076,33 @@ function CampaignOffice({ progress, board, onEnter }) {
     if (next) { event.preventDefault(); next.focus(); next.click() }
   }
   const warmUp = () => window.dispatchEvent(new CustomEvent('questlab:start-today', { detail: { name: selected?.name } }))
-  // The path wraps, so hide the connector on the last stop of each row.
-  const pathRef = useRef(null)
+  // The stage is a painted zone with the path drawn across it. Narrow stages
+  // spread the pins over the full width because the detail card drops below.
+  const stageRef = useRef(null)
+  const [stageWidth, setStageWidth] = useState(1000)
+  const stageWide = stageWidth >= 900
   useEffect(() => {
-    const list = pathRef.current
-    if (!list) return undefined
-    const mark = () => {
-      const stops = [...list.children]
-      stops.forEach((stop, index) => stop.classList.toggle('row-end', Boolean(stops[index + 1]) && stops[index + 1].offsetTop > stop.offsetTop + 4))
-    }
-    mark()
-    if (typeof ResizeObserver === 'undefined') return undefined
-    const observer = new ResizeObserver(mark)
-    observer.observe(list)
+    const stage = stageRef.current
+    if (!stage || typeof ResizeObserver === 'undefined') return undefined
+    const observer = new ResizeObserver(() => setStageWidth(stage.clientWidth))
+    observer.observe(stage)
     return () => observer.disconnect()
-  }, [boardIndex, pathEntries.length, sealedCount])
+  }, [])
+  const stagePoints = [...pathEntries.map((entry) => entry.id), ...(sealedCount > 0 ? ['sealed'] : [])]
+  // Wide stages keep every pin clear of the floating detail card; narrow stages
+  // use a fixed pixel pitch inside a horizontally scrolling field.
+  const narrow = !stageWide
+  const cardPercent = ((Math.min(340, stageWidth * 0.38) + 28) / stageWidth) * 100
+  const spanX = Math.max(30, 100 - cardPercent - 16)
+  const fieldWidth = narrow ? Math.max(stageWidth, stagePoints.length * 120 + 140) : stageWidth
+  const pinPoint = (index) => {
+    const total = stagePoints.length
+    const t = total <= 1 ? 0.5 : index / (total - 1)
+    const x = narrow ? ((70 + (fieldWidth - 140) * t) / fieldWidth) * 100 : 7 + (total <= 1 ? spanX / 2 : spanX * t)
+    return { x, y: 50 + (index % 2 === 0 ? -16 : 16) }
+  }
+  const stageArt = lanternEncounterLocation(activeProject.branch, (boardEntries[0] || {}).name)
+  const zoneArt = (page) => lanternEncounterLocation(activeProject.branch, (page[0] || {}).name)
   return (
     <section className="office-map" aria-label="Bounty map">
       <header className="office-map-head">
@@ -3098,34 +3110,56 @@ function CampaignOffice({ progress, board, onEnter }) {
           <span className="campaign-eyebrow">{currentAct ? currentAct.title : 'BOUNTY MAP'}</span>
           <h2>{story.title || activeProject.name || 'Choose the work that moves you.'}</h2>
         </div>
-        <div className="office-map-nav" role="group" aria-label="Act">
-          <button type="button" className="board-switch" onClick={() => selectBoard(boardIndex - 1)} disabled={boardIndex === 0} aria-label="Previous act">←</button>
-          <span className="board-page-label">{currentAct ? `ACT ${boardIndex + 1} / ${boards.length}` : `PAGE ${boardIndex + 1} / ${boards.length}`}<small>{clearedCount}/{entries.length} cleared</small></span>
-          <button type="button" className="board-switch" onClick={() => selectBoard(boardIndex + 1)} disabled={boardIndex >= boards.length - 1} aria-label="Next act">→</button>
-        </div>
+        <nav className="office-zones" aria-label="Zones">
+          {boards.map((page, index) => {
+            const done = page.filter((entry) => isMobDefeated(entry.status)).length
+            const sealed = page.every((entry) => entry.status === 'locked')
+            const label = actBoards[index]?.act?.title || `Page ${index + 1}`
+            return (
+              <button key={label + index} type="button" className={`office-zone ${index === boardIndex ? 'active' : ''} ${sealed ? 'sealed' : ''}`} aria-pressed={index === boardIndex} onClick={() => selectBoard(index)} title={actBoards[index]?.act?.goal || label}>
+                <span className="zone-art" style={zoneArt(page) ? { backgroundImage: `url("${zoneArt(page)}")` } : undefined} aria-hidden="true" />
+                <b>{label.replace(/^ACT\s+/i, 'Act ')}</b>
+                <small>{sealed ? 'sealed' : `${done}/${page.length}`}</small>
+              </button>
+            )
+          })}
+        </nav>
       </header>
-      {currentAct?.goal && <p className="office-map-goal">{currentAct.goal}</p>}
-      <div className="office-map-body">
-        <ol className="office-path" ref={pathRef} aria-label="Bounties in this act" onKeyDown={onPathKey}>
-          {pathEntries.map((entry) => {
+      <div className={`office-stage ${narrow ? 'narrow' : ''}`} ref={stageRef} style={stageArt ? { '--stage-art': `url("${stageArt}")` } : undefined}>
+        <div className="office-stage-field" style={narrow ? { width: fieldWidth } : undefined}>
+        <svg className="office-stage-path" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+          {stagePoints.slice(1).map((id, index) => {
+            const from = pinPoint(index)
+            const to = pinPoint(index + 1)
+            const lit = isMobDefeated(pathEntries[index]?.status)
+            const mid = (from.x + to.x) / 2
+            return <path key={id} className={lit ? 'lit' : ''} d={`M ${from.x} ${from.y} C ${mid} ${from.y}, ${mid} ${to.y}, ${to.x} ${to.y}`} />
+          })}
+        </svg>
+        <ol className="office-pins" aria-label="Bounties in this zone" onKeyDown={onPathKey}>
+          {pathEntries.map((entry, index) => {
             const locked = entry.status === 'locked'
             const done = isMobDefeated(entry.status)
             const state = locked ? 'locked' : done ? 'cleared' : 'current'
+            const point = pinPoint(index)
             return (
-              <li key={entry.id} className={`map-stop ${state} rank-${entry.rank} ${selected?.id === entry.id ? 'selected' : ''}`}>
-                <button type="button" className="map-node" disabled={locked} aria-pressed={selected?.id === entry.id} aria-label={`${locked ? 'Sealed bounty' : entry.name}, ${state}${entry.tier ? `, ${entry.tier}` : ''}`} onClick={() => setSelectedId(entry.id)}>
-                  <span className="map-node-art"><BountyPosterArt projectId={activeProject.branch} entry={entry} /></span>
+              <li key={entry.id} className={`map-pin-wrap ${state} rank-${entry.rank} ${selected?.id === entry.id ? 'selected' : ''}`} style={{ left: `${point.x}%`, top: `${point.y}%` }}>
+                {state === 'current' && <span className="pin-you" aria-hidden="true">YOU ▾</span>}
+                <button type="button" className="map-pin" disabled={locked} aria-pressed={selected?.id === entry.id} aria-label={`${locked ? 'Sealed bounty' : entry.name}, ${state}${entry.tier ? `, ${entry.tier}` : ''}`} onClick={() => setSelectedId(entry.id)}>
+                  <span className="map-pin-art"><BountyPosterArt projectId={activeProject.branch} entry={entry} /></span>
                   {done && <b className="map-node-check" aria-hidden="true">✓</b>}
                   {locked && <b className="map-node-lock" aria-hidden="true">?</b>}
                 </button>
-                <span className="map-stop-name">{locked ? 'Sealed' : entry.name}</span>
+                <span className="map-pin-name">{locked ? 'Sealed' : entry.name}</span>
+                {!locked && <span className="pin-tip" role="tooltip">{entry.category}{entry.reward ? ` · ${entry.reward}` : ''}</span>}
               </li>
             )
           })}
-          {sealedCount > 0 && <li className="map-stop more"><span className="map-more">+{sealedCount} sealed</span></li>}
+          {sealedCount > 0 && (() => { const point = pinPoint(stagePoints.length - 1); return <li className="map-pin-wrap more" style={{ left: `${point.x}%`, top: `${point.y}%` }}><span className="map-fog">+{sealedCount}<small>sealed</small></span></li> })()}
         </ol>
+        </div>
         {selected && (
-          <aside className="office-detail-panel" aria-live="polite">
+          <aside className="office-detail-card" aria-live="polite">
             <span className="campaign-eyebrow">{cleared ? 'CLEARED' : unlocked ? (selected.tier || selected.rank).toUpperCase() : 'SEALED'}{selected.kind && unlocked ? ` · ${CONTRACT_KIND_LABELS[selected.kind]}` : ''}</span>
             <h3>{unlocked ? selected.name : 'Sealed bounty'}</h3>
             <p className="office-detail-copy">{unlocked ? (selected.task || selected.detail) : 'Clear the bounty before it to reveal this one.'}</p>

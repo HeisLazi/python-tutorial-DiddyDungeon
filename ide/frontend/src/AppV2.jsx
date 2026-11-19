@@ -119,12 +119,17 @@ function launchContext() {
   try {
     const lastSeen = Number(window.localStorage.getItem('questlab.lastSeenAt') || 0)
     const hasLaunched = window.localStorage.getItem('questlab.hasLaunched') === '1'
-    const returning = hasLaunched && lastSeen > 0 && Date.now() - lastSeen > LAUNCH_IDLE_MS
-    return { show: !hasLaunched || returning, returning }
+    const returning = hasLaunched && lastSeen > 0
+    // The boot screen is the mode picker: shown once per app session (a window
+    // refresh does not bring it back), and it waits for a choice.
+    let booted = false
+    try { booted = window.sessionStorage.getItem('questlab.bootDone') === '1' } catch { /* session storage unavailable */ }
+    const lastMode = window.localStorage.getItem('questlab.bootMode') === 'online' ? 'online' : 'campaign'
+    return { show: !booted, returning, lastMode }
   } catch {
     // A storage-blocked browser should still be usable; show the lightweight
     // splash once for this mount rather than failing the IDE boot.
-    return { show: true, returning: false }
+    return { show: true, returning: false, lastMode: 'campaign' }
   }
 }
 
@@ -576,11 +581,26 @@ function AppV2() {
   const [showSplash, setShowSplash] = useState(() => initialLaunch.show)
   const [splashClosing, setSplashClosing] = useState(false)
 
+  // The boot screen waits for a choice: 1 or 2 pick a mode, Enter or Escape
+  // continue with the last one.
   useEffect(() => {
-    if (!showSplash) return
-    const timer = setTimeout(() => dismissSplash(), 2500)
-    return () => clearTimeout(timer)
-  }, [showSplash])
+    if (!showSplash) return undefined
+    const onKey = (event) => {
+      if (event.ctrlKey || event.metaKey || event.altKey) return
+      const onModeButton = Boolean(event.target?.closest?.('.launch-mode'))
+      let mode = null
+      if (event.key === '1') mode = 'campaign'
+      else if (event.key === '2') mode = 'online'
+      else if (event.key === 'Escape' || (event.key === 'Enter' && !onModeButton)) mode = initialLaunch.lastMode
+      if (!mode) return
+      // Capture phase: the terminals and editor behind the splash never see it.
+      event.preventDefault()
+      event.stopPropagation()
+      dismissSplash(mode)
+    }
+    window.addEventListener('keydown', onKey, true)
+    return () => window.removeEventListener('keydown', onKey, true)
+  }, [showSplash, splashClosing])
   const [aiPopoverOpen, setAiPopoverOpen] = useState(false)
   const [levelUp, setLevelUp] = useState(false)
   const [confetti, setConfetti] = useState([])
@@ -2982,9 +3002,15 @@ function AppV2() {
     setNotice('Hunt panel layout reset.')
   }
 
-  const dismissSplash = () => {
+  const dismissSplash = (mode = 'campaign') => {
     if (splashClosing) return
     setSplashClosing(true)
+    if (mode === 'online') setActiveView('online')
+    else if (activeView === 'online') setActiveView('hub')
+    try {
+      window.sessionStorage.setItem('questlab.bootDone', '1')
+      window.localStorage.setItem('questlab.bootMode', mode)
+    } catch { /* storage unavailable */ }
     window.setTimeout(() => {
       setShowSplash(false)
       setSplashClosing(false)
@@ -3172,13 +3198,25 @@ function AppV2() {
       data-runtime-build-mismatch={runtimeBuildMismatch ? 'true' : 'false'}
     >
       {showSplash && (
-        <div className={`launch-splash ${splashClosing ? 'is-closing' : ''}`} role="dialog" aria-modal="true" aria-label="Welcome to Python Quest Lab">
+        <div className={`launch-splash ${splashClosing ? 'is-closing' : ''}`} role="dialog" aria-modal="true" aria-label="Choose how to play">
           <div className="launch-splash-card">
-          <div className="launch-splash-mark" aria-hidden="true"><StatIcon name="flame" /></div>
-          <span className="screen-kicker">PYTHON QUEST LAB</span>
-          <h2>{initialLaunch.returning ? `Welcome back, ${welcomeName}` : 'Welcome to the Hunt'}</h2>
-          <p>{initialLaunch.returning ? 'Your campaign, notes and checkpoint are waiting. Resume exactly where you left off.' : 'Your campaign, notes and checkpoint are ready. The shell and AI sessions stay connected while this welcome screen is open.'}</p>
-          <button className="primary" type="button" onClick={dismissSplash} disabled={splashClosing}>{splashClosing ? 'Opening…' : 'Enter Hunt'}</button>
+            <div className="launch-splash-mark" aria-hidden="true"><StatIcon name="flame" /></div>
+            <span className="screen-kicker">PYTHON QUEST LAB</span>
+            <h2>{initialLaunch.returning ? `Welcome back, ${welcomeName}` : 'Welcome to the Hunt'}</h2>
+            <p>Pick a mode. Nothing starts until you do.</p>
+            <div className="launch-modes">
+              <button type="button" className={`launch-mode ${initialLaunch.lastMode === 'campaign' ? 'last' : ''}`} onClick={() => dismissSplash('campaign')} disabled={splashClosing} autoFocus={initialLaunch.lastMode === 'campaign'}>
+                <b>1 · Campaign</b>
+                <span>Your own hunt, notes and dungeon. Everything stays on this computer.</span>
+                {initialLaunch.lastMode === 'campaign' && <small>Last time</small>}
+              </button>
+              <button type="button" className={`launch-mode ${initialLaunch.lastMode === 'online' ? 'last' : ''}`} onClick={() => dismissSplash('online')} disabled={splashClosing} autoFocus={initialLaunch.lastMode === 'online'}>
+                <b>2 · Online</b>
+                <span>Colosseum, shared hideout and friends. {cloudState.user ? 'You are signed in.' : 'You will be asked to sign in.'}</span>
+                {initialLaunch.lastMode === 'online' && <small>Last time</small>}
+              </button>
+            </div>
+            <small className="launch-hint">Press 1 or 2, or Enter to continue with the last mode.</small>
           </div>
         </div>
       )}

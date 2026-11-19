@@ -2148,3 +2148,12 @@
 .dungeon-journal-mark { display: inline-grid; place-items: center; width: 12px; height: 12px; }
 .dungeon-journal-mark svg { width: 12px; height: 12px; fill: none; stroke: currentColor; stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; }
 .dungeon-journal-echoes li.locked .dungeon-journal-mark::before { content: ""; width: 4px; height: 4px; border-radius: 50%; background: currentColor; opacity: .45; }
+.launch-modes { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; width: 100%; margin: 8px 0 4px; }
+.launch-splash .launch-mode { display: grid; gap: 6px; align-content: start; text-align: left; min-width: 0; padding: 16px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel2); color: var(--text); cursor: pointer; }
+.launch-splash .launch-mode b { font: 800 15px ui-monospace, monospace; color: var(--gold); }
+.launch-splash .launch-mode span { color: var(--muted); font-size: 12px; line-height: 1.5; }
+.launch-splash .launch-mode small { color: var(--dim); font-size: 10px; letter-spacing: .08em; text-transform: uppercase; }
+.launch-splash .launch-mode:hover, .launch-splash .launch-mode:focus-visible, .launch-splash .launch-mode.last { border-color: var(--gold); outline: none; }
+.launch-splash .launch-mode:focus-visible { box-shadow: 0 0 0 3px color-mix(in srgb, var(--gold) 40%, transparent); }
+.launch-hint { color: var(--dim); font-size: 11px; }
+@media (max-width: 560px) { .launch-modes { grid-template-columns: 1fr; } }
