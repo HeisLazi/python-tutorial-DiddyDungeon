@@ -547,6 +547,12 @@ function AppV2() {
   const [showAiTerminal, setShowAiTerminal] = usePersistentState('questlab.showAiTerminal', true)
   const [zenMode, setZenMode] = usePersistentState('questlab.zenMode', false)
   const [todayOpen, setTodayOpen] = useState(false)
+  const [todayFocus, setTodayFocus] = useState('')
+  useEffect(() => {
+    const open = (event) => { setTodayFocus(typeof event?.detail?.name === 'string' ? event.detail.name : ''); setTodayOpen(true) }
+    window.addEventListener('questlab:start-today', open)
+    return () => window.removeEventListener('questlab:start-today', open)
+  }, [])
   const [zenPyr, setZenPyr] = useState(null)
   const [zenQuestion, setZenQuestion] = useState('')
   const zenActiveRef = useRef(false)
@@ -3175,12 +3181,12 @@ function AppV2() {
 
       <div className="quest-banner">
         <div><strong>{campaignReady ? (companion.name || 'PYR') : 'PYR'}</strong> · {campaignReady ? (companion.form || 'Tiny Code-Flame') : 'waiting for campaign'}</div>
-        <button type="button" className="today-btn" onClick={() => setTodayOpen(true)} disabled={!campaignReady} data-start-today>START TODAY</button>
+        <button type="button" className="today-btn" onClick={() => { setTodayFocus(''); setTodayOpen(true) }} disabled={!campaignReady} data-start-today>START TODAY</button>
         <div className="quest-text">{campaignReady ? questLine(progress) : 'Syncing campaign state…'}</div>
         <div className="git-pill">{campaignReady ? `${git.branch || 'no branch'} · ${git.dirty_count ?? 0} changes` : 'campaign unavailable'}</div>
       </div>
 
-      {todayOpen && <StartToday onClose={() => setTodayOpen(false)} onRecorded={() => { void refreshCampaign({ silent: true }) }} onBegin={() => { setTodayOpen(false); setActiveView('forge') }} />}
+      {todayOpen && <StartToday focusName={todayFocus} onClose={() => setTodayOpen(false)} onRecorded={() => { void refreshCampaign({ silent: true }) }} onBegin={() => { setTodayOpen(false); setActiveView('forge') }} />}
 
       <SurfaceNavigation activeView={activeView} onNavigate={setActiveView} showSettings={['forge', 'dungeon'].includes(activeView)} showAiToggle={['forge', 'dungeon'].includes(activeView) && showAiTerminal && aiRouteHidden} aiOpen={aiPopoverOpen} onToggleAi={() => setAiPopoverOpen((open) => !open)} zenMode={zenActive} onExitZen={() => setZenMode(false)} />
 

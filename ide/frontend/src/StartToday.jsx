@@ -11,7 +11,7 @@ async function getJson(url, options) {
   return response.json()
 }
 
-export default function StartToday({ onClose, onBegin, onRecorded }) {
+export default function StartToday({ onClose, onBegin, onRecorded, focusName = '' }) {
   const [plan, setPlan] = useState(null)
   const [error, setError] = useState('')
   const [picked, setPicked] = useState(0)
@@ -23,7 +23,12 @@ export default function StartToday({ onClose, onBegin, onRecorded }) {
   useEffect(() => {
     let live = true
     getJson('/api/today')
-      .then((data) => { if (live) setPlan(data) })
+      .then((data) => {
+        if (!live) return
+        setPlan(data)
+        const at = (data.bounties || []).findIndex((item) => item.name === focusName)
+        if (at > 0) setPicked(at)
+      })
       .catch((reason) => { if (live) setError(reason.message) })
     return () => { live = false }
   }, [])

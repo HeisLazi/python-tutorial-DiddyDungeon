@@ -3036,14 +3036,18 @@ function CampaignOffice({ progress, board, onEnter }) {
   const boards = actBoards.length
     ? actBoards.map((item) => item.entries)
     : Array.from({ length: Math.max(1, Math.ceil(entries.length / boardSize)) }, (_, index) => entries.slice(index * boardSize, (index + 1) * boardSize))
-  const openBoard = Math.max(0, boards.findIndex((items) => items.some((entry) => entry.status === 'available')))
+  const availableBoard = boards.findIndex((items) => items.some((entry) => entry.status === 'available'))
+  // A finished campaign opens on its last act rather than snapping back to the first.
+  const openBoard = availableBoard >= 0 ? availableBoard : Math.max(0, boards.length - 1)
   const [boardIndex, setBoardIndex] = useState(openBoard)
   // Switching campaign opens the new board on the act you are playing.
   const projectKey = activeProject.branch || activeProject.name || ''
+  const availableId = entries.find((entry) => entry.status === 'available')?.id
   useEffect(() => {
     setBoardIndex(openBoard)
-    setSelectedId(boards[openBoard]?.[0]?.id || '')
-  }, [projectKey])
+    const openPage = boards[openBoard] || []
+    setSelectedId(availableId || [...openPage].reverse().find((entry) => entry.status !== 'locked')?.id || openPage[0]?.id || '')
+  }, [projectKey, availableId])
   const currentAct = actBoards[boardIndex]?.act
   const boardEntries = boards[boardIndex] || boards[0]
   const [selectedId, setSelectedId] = useState(boardEntries[0]?.id || '')
@@ -3053,17 +3057,90 @@ function CampaignOffice({ progress, board, onEnter }) {
   const selectBoard = (nextIndex) => {
     const next = Math.min(boards.length - 1, Math.max(0, nextIndex))
     setBoardIndex(next)
-    setSelectedId(boards[next]?.[0]?.id || '')
+    const page = boards[next] || []
+    setSelectedId((page.find((entry) => entry.status === 'available') || [...page].reverse().find((entry) => entry.status !== 'locked') || page[0])?.id || '')
   }
+  // Map view: the open act is one path. Cleared stops, the current stop and the
+  // next sealed stop are shown; everything further along collapses to "+N sealed".
+  const firstLocked = boardEntries.findIndex((entry) => entry.status === 'locked')
+  const pathEntries = firstLocked === -1 ? boardEntries : boardEntries.slice(0, firstLocked + 1)
+  const sealedCount = firstLocked === -1 ? 0 : boardEntries.length - pathEntries.length
+  const clearedCount = mobs.filter((mob) => isMobDefeated(mob.status)).length
+  const cleared = isMobDefeated(selected?.status)
+  const onPathKey = (event) => {
+    const keys = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 }
+    if (!keys[event.key]) return
+    const nodes = [...event.currentTarget.querySelectorAll('button:not(:disabled)')]
+    const at = nodes.indexOf(document.activeElement)
+    const next = nodes[Math.min(nodes.length - 1, Math.max(0, at + keys[event.key]))]
+    if (next) { event.preventDefault(); next.focus(); next.click() }
+  }
+  const warmUp = () => window.dispatchEvent(new CustomEvent('questlab:start-today', { detail: { name: selected?.name } }))
+  // The path wraps, so hide the connector on the last stop of each row.
+  const pathRef = useRef(null)
+  useEffect(() => {
+    const list = pathRef.current
+    if (!list) return undefined
+    const mark = () => {
+      const stops = [...list.children]
+      stops.forEach((stop, index) => stop.classList.toggle('row-end', Boolean(stops[index + 1]) && stops[index + 1].offsetTop > stop.offsetTop + 4))
+    }
+    mark()
+    if (typeof ResizeObserver === 'undefined') return undefined
+    const observer = new ResizeObserver(mark)
+    observer.observe(list)
+    return () => observer.disconnect()
+  }, [boardIndex, pathEntries.length, sealedCount])
   return (
-    <>
-      <div className="campaign-place-heading"><div><span className="campaign-eyebrow">BOUNTY OFFICE · {story.client ? `CONTRACT FOR ${story.client.toUpperCase()}` : 'CONTRACT BOARD'}</span><h2>{story.title || 'Choose the work that moves you.'}</h2><p>{story.hook || 'Every bounty is a learning task. Read the weakness, prepare at Home, then enter the Hunt when you are ready to write.'}</p>{board?.entry_file && <small className="office-entry-file">You build this in <code>{board.entry_file}</code> in the Hunt.</small>}</div><span className="campaign-place-seal office">✦</span></div>
-      {currentAct && <div className="office-act-banner"><span className="campaign-eyebrow">{currentAct.title}</span><p>{currentAct.goal}</p></div>}
-      <div className="office-toolbar"><div className="office-tabs"><button type="button" className="office-tab active">MAIN BOUNTIES</button><button type="button" className="office-tab" disabled>VILLAGE · NEXT</button></div><div className="board-switcher"><button type="button" className="board-switch" onClick={() => selectBoard(boardIndex - 1)} disabled={boardIndex === 0}>← {currentAct ? 'PREVIOUS ACT' : 'PREVIOUS BOARD'}</button><span className="board-page-label">{currentAct ? `ACT ${boardIndex + 1} / ${boards.length}` : `BOARD ${boardIndex + 1} / ${boards.length}`}<small>{boardEntries.length} contracts{currentAct ? '' : ` · max ${boardSize}`}</small></span><button type="button" className="board-switch" onClick={() => selectBoard(boardIndex + 1)} disabled={boardIndex >= boards.length - 1}>{currentAct ? 'NEXT ACT' : 'NEXT BOARD'} →</button></div></div>
-      <section className="office-board" aria-label="Bounty board"><div className="office-board-header"><strong>{String(activeProject.name || 'Campaign').toUpperCase()} · COMMUNITY BOUNTIES</strong><span className="campaign-eyebrow">{entries.length} POSTERS · {mobs.filter((mob) => isMobDefeated(mob.status)).length} CLEARED</span></div><div className="bounty-posters">{boardEntries.map((entry) => <button type="button" key={entry.id} className={`bounty-poster poster-size-${entry.rank} ${entry.status === 'locked' ? 'locked' : ''} ${selected?.id === entry.id ? 'active' : ''}`} onClick={() => entry.status !== 'locked' && setSelectedId(entry.id)} disabled={entry.status === 'locked'}><span className="poster-pin" /><div className="poster-art"><BountyPosterArt projectId={activeProject.branch} entry={entry} /><span className="poster-rank">{(entry.tier || entry.rank).toUpperCase()}</span>{isMobDefeated(entry.status) && <b className="poster-captured-stamp">CAPTURED</b>}</div><span className="poster-signal">{entry.signal}</span>{entry.kind && entry.status !== 'locked' && <span className={`poster-kind kind-${entry.kind}`}>{CONTRACT_KIND_LABELS[entry.kind]}</span>}<h3>{entry.status === 'locked' ? 'HIDDEN' : entry.name}</h3><p>{entry.status === 'locked' ? 'Complete the previous bounty to reveal this poster.' : entry.category}</p><small>{entry.reward}</small></button>)}</div></section>
-      {selected && <section className="office-detail"><div><span className="campaign-eyebrow">{unlocked ? 'SELECTED BOUNTY' : 'LOCKED BOUNTY'}</span><h3>{unlocked ? selected.name : 'Hidden'}</h3><p>{selected.detail}</p>{unlocked && selected.task && selected.task !== selected.detail && <p className="office-detail-task"><b>The job:</b> {selected.task}</p>}<div className="office-detail-facts"><span>{selected.category}</span>{selected.sign && <span className="office-sign"><HuntSigil pageId={selected.sign} size={14} /> Sign of the {HUNT_BEASTS[selected.sign]?.sign || selected.sign}{selected.beast ? ` · ${selected.beast}` : ''}</span>}<span>{selected.reward}</span></div>{unlocked && objectives.length > 0 && <ol className="office-objectives">{objectives.map((objective) => <li key={objective.id}><b className={`kind-${objective.question_type}`}>{OBJECTIVE_KIND[objective.question_type] || 'TASK'}</b>{objective.label}</li>)}</ol>}</div><button type="button" className="campaign-button" onClick={onEnter} disabled={!unlocked}>{unlocked ? 'Study this work →' : 'Complete the previous bounty'}</button></section>}
-      <div className="campaign-stat-row"><span><small>CHAPTER</small><strong>{activeProject.name || '01'}</strong></span><span><small>CLEARED</small><strong>{mobs.filter((mob) => isMobDefeated(mob.status)).length}</strong></span><span><small>REWARDS</small><strong>COINS + TOKENS</strong></span></div>
-    </>
+    <section className="office-map" aria-label="Bounty map">
+      <header className="office-map-head">
+        <div>
+          <span className="campaign-eyebrow">{currentAct ? currentAct.title : 'BOUNTY MAP'}</span>
+          <h2>{story.title || activeProject.name || 'Choose the work that moves you.'}</h2>
+        </div>
+        <div className="office-map-nav" role="group" aria-label="Act">
+          <button type="button" className="board-switch" onClick={() => selectBoard(boardIndex - 1)} disabled={boardIndex === 0} aria-label="Previous act">←</button>
+          <span className="board-page-label">{currentAct ? `ACT ${boardIndex + 1} / ${boards.length}` : `PAGE ${boardIndex + 1} / ${boards.length}`}<small>{clearedCount}/{entries.length} cleared</small></span>
+          <button type="button" className="board-switch" onClick={() => selectBoard(boardIndex + 1)} disabled={boardIndex >= boards.length - 1} aria-label="Next act">→</button>
+        </div>
+      </header>
+      {currentAct?.goal && <p className="office-map-goal">{currentAct.goal}</p>}
+      <div className="office-map-body">
+        <ol className="office-path" ref={pathRef} aria-label="Bounties in this act" onKeyDown={onPathKey}>
+          {pathEntries.map((entry) => {
+            const locked = entry.status === 'locked'
+            const done = isMobDefeated(entry.status)
+            const state = locked ? 'locked' : done ? 'cleared' : 'current'
+            return (
+              <li key={entry.id} className={`map-stop ${state} rank-${entry.rank} ${selected?.id === entry.id ? 'selected' : ''}`}>
+                <button type="button" className="map-node" disabled={locked} aria-pressed={selected?.id === entry.id} aria-label={`${locked ? 'Sealed bounty' : entry.name}, ${state}${entry.tier ? `, ${entry.tier}` : ''}`} onClick={() => setSelectedId(entry.id)}>
+                  <span className="map-node-art"><BountyPosterArt projectId={activeProject.branch} entry={entry} /></span>
+                  {done && <b className="map-node-check" aria-hidden="true">✓</b>}
+                  {locked && <b className="map-node-lock" aria-hidden="true">?</b>}
+                </button>
+                <span className="map-stop-name">{locked ? 'Sealed' : entry.name}</span>
+              </li>
+            )
+          })}
+          {sealedCount > 0 && <li className="map-stop more"><span className="map-more">+{sealedCount} sealed</span></li>}
+        </ol>
+        {selected && (
+          <aside className="office-detail-panel" aria-live="polite">
+            <span className="campaign-eyebrow">{cleared ? 'CLEARED' : unlocked ? (selected.tier || selected.rank).toUpperCase() : 'SEALED'}{selected.kind && unlocked ? ` · ${CONTRACT_KIND_LABELS[selected.kind]}` : ''}</span>
+            <h3>{unlocked ? selected.name : 'Sealed bounty'}</h3>
+            <p className="office-detail-copy">{unlocked ? (selected.task || selected.detail) : 'Clear the bounty before it to reveal this one.'}</p>
+            {unlocked && selected.sign && <span className="office-sign"><HuntSigil pageId={selected.sign} size={14} /> Sign of the {HUNT_BEASTS[selected.sign]?.sign || selected.sign}</span>}
+            {unlocked && objectives.length > 0 && <ol className="office-objectives">{objectives.map((objective) => <li key={objective.id}><b className={`kind-${objective.question_type}`}>{OBJECTIVE_KIND[objective.question_type] || 'TASK'}</b>{objective.label}</li>)}</ol>}
+            <div className="office-detail-actions">
+              <button type="button" className="campaign-button" onClick={onEnter} disabled={!unlocked || cleared}>{cleared ? 'Already cleared' : unlocked ? 'Take bounty →' : 'Sealed'}</button>
+              {unlocked && !cleared && <button type="button" className="office-warmup" onClick={warmUp}>Warm up first</button>}
+            </div>
+            <small className="office-detail-reward">{unlocked ? selected.reward : ''}</small>
+            {(story.hook || board?.entry_file) && <details className="office-story"><summary>Story and where you build</summary>{story.hook && <p>{story.hook}</p>}{board?.entry_file && <p>You build this in <code>{board.entry_file}</code> in the Hunt.</p>}</details>}
+          </aside>
+        )}
+      </div>
+    </section>
   )
 }
 
@@ -3421,7 +3498,7 @@ function CampaignSurface({ progress, homeRooms, purchaseHomeRoom, revision, equi
     else onNavigate?.(next)
   }
   return (
-    <div className={`campaign-v1 game-screen-scroll ${place === 'home' ? 'home-active' : ''}`} data-testid="campaign-surface" data-campaign-revision={revision}>
+    <div className={`campaign-v1 game-screen-scroll ${place === 'home' ? 'home-active' : ''} ${place === 'office' ? 'office-active' : ''}`} data-testid="campaign-surface" data-campaign-revision={revision}>
       <div className={`campaign-layout ${mapCollapsed ? 'map-rail-is-collapsed' : ''}`}>
         <CampaignMapRail progress={progress} place={place} onSelect={selectPlace} onSelectCampaign={selectCampaign} busy={busy} collapsed={mapCollapsed} onToggle={toggleMapRail} />
         <main className="campaign-place-panel" data-place={place}>
