@@ -929,13 +929,31 @@ export function SurfaceNavigation({ activeView, onNavigate, showSettings = false
   // gear in the top-right HUD. Codex is now a folio inside Tutor Notebook: its
   // legacy route stays addressable for saved links but is not a duplicate
   // top-level destination.
-  const destinationItems = [
-    { id: 'hub', label: 'Home' },
-    { id: 'forge', label: 'Hunt' },
-    ...viewItems.filter((item) => !['hub', 'codex', 'settings'].includes(item.id)),
-  ]
+  const online = activeView === 'online'
+  // Campaign and Online are two modes; the nav only lists the active mode's
+  // destinations. The last campaign screen is remembered for the way back.
+  useEffect(() => {
+    if (online) return
+    try { window.localStorage.setItem('questlab.lastCampaignView', activeView) } catch { /* storage unavailable */ }
+  }, [activeView, online])
+  const backToCampaign = () => {
+    let last = 'hub'
+    try { last = window.localStorage.getItem('questlab.lastCampaignView') || 'hub' } catch { /* storage unavailable */ }
+    onNavigate?.(['hub', 'forge', 'tutor', 'dungeon'].includes(last) ? last : 'hub')
+  }
+  const destinationItems = online
+    ? viewItems.filter((item) => item.id === 'online')
+    : [
+      { id: 'hub', label: 'Home' },
+      { id: 'forge', label: 'Hunt' },
+      ...viewItems.filter((item) => !['hub', 'codex', 'settings', 'online'].includes(item.id)),
+    ]
   return (
     <nav className="surface-nav" data-testid="wide-route-nav" aria-label="Wide route navigation">
+      <div className="surface-nav-mode" role="group" aria-label="Mode">
+        <button type="button" className={!online ? 'active' : ''} aria-pressed={!online} onClick={() => { if (online) backToCampaign() }}>Campaign</button>
+        <button type="button" className={online ? 'active' : ''} aria-pressed={online} onClick={() => { if (!online) onNavigate?.('online') }}>Online</button>
+      </div>
       <div className="surface-nav-links">
         {destinationItems.map((item) => (
           <button
