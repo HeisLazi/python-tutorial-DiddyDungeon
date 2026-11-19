@@ -2743,9 +2743,8 @@ function CampaignMapRail({ place, onSelect, collapsed, onToggle, progress, onSel
         <button type="button" className="map-rail-toggle" onClick={onToggle} aria-expanded={!collapsed} title={collapsed ? 'Expand project map' : 'Collapse project map'} aria-label={collapsed ? 'Expand project map' : 'Collapse project map'}><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d={collapsed ? 'm9 5 7 7-7 7' : 'm15 5-7 7 7 7'} /><path d="M20 5v14" /></svg></button>
       </div>
       {!collapsed && <>
-        <p className="campaign-panel-copy">A small campaign board. Choose where to prepare or which work to take next; there is no route tree to decode.</p>
         <div className="poi-list">
-          {CAMPAIGN_POIS.map((poi) => <button key={poi.id} className={`poi-card ${place === poi.id ? 'active' : ''}`} type="button" onClick={() => onSelect(poi.id)}><span className={`poi-icon poi-${poi.id}`}>{poi.icon}</span><span className="poi-copy"><strong>{poi.label}</strong><small>{poi.kicker}</small><em>{poi.summary}</em></span><span className="poi-arrow"><RouteIcon id="arrow" /></span></button>)}
+          {CAMPAIGN_POIS.map((poi) => <button key={poi.id} className={`poi-card ${place === poi.id ? 'active' : ''}`} type="button" onClick={() => onSelect(poi.id)} title={`${poi.kicker} · ${poi.summary}`} aria-current={place === poi.id ? 'page' : undefined}><span className={`poi-icon poi-${poi.id}`}>{poi.icon}</span><span className="poi-copy"><strong>{poi.label}</strong></span></button>)}
         </div>
         <div className="project-progress"><div><span>PROJECT PROGRESS</span><strong>Chapter {String(chapter).padStart(2, '0')}</strong></div><div className="campaign-progress-track"><i style={{ width: `${total ? Math.round((completed / total) * 100) : 0}%` }} /></div><p>{total ? `${completed}/${total} ${completed === 1 ? 'bounty' : 'bounties'} cleared.` : 'Boss remains locked until the project bounties are cleared.'}</p></div>
       </>}

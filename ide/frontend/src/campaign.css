@@ -208,3 +208,9 @@
   .campaign-v1 .office-map-body { grid-template-columns: 1fr; }
   .campaign-v1 .office-path, .campaign-v1 .office-detail-panel { overflow: visible; }
 }
+
+/* ── Calmer project-map rail ───────────────────────────────────────────────── */
+.campaign-v1 .poi-rail .panel-heading h2 { font-size: clamp(16px, 1.5vw, 20px); line-height: 1.2; }
+.campaign-v1 .poi-rail .poi-card { grid-template-columns: 30px minmax(0, 1fr); padding: 9px 11px; }
+.campaign-v1 .poi-rail .poi-copy strong { font-size: 12px; }
+.campaign-v1 .poi-rail .project-progress p { margin: 6px 0 0; }
