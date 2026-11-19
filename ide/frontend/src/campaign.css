@@ -154,3 +154,11 @@
 /* Keep the full campaign map reachable when the workspace is short. */
 .campaign-v1 .poi-rail { min-height: 0; overflow-y: auto; overflow-x: hidden; scrollbar-width: thin; scrollbar-color: #8d704f #17142a; }
 .campaign-v1 .poi-rail > * { flex-shrink: 0; }
+
+/* Official, focused reading links travel with each campaign bounty. */
+.campaign-v1 .office-learning-resources { display: grid; gap: 7px; margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--campaign-line); }
+.campaign-v1 .office-learning-resources > strong { color: var(--campaign-gold); font: 900 8px ui-monospace, monospace; letter-spacing: .1em; }
+.campaign-v1 .office-learning-resources ul { display: grid; gap: 7px; margin: 0; padding: 0; list-style: none; }
+.campaign-v1 .office-learning-resources li { display: grid; gap: 2px; }
+.campaign-v1 .office-learning-resources a { width: fit-content; color: var(--campaign-blue); font: 800 10px ui-monospace, monospace; }
+.campaign-v1 .office-learning-resources li span { color: var(--campaign-muted); font-size: 10px; line-height: 1.4; }

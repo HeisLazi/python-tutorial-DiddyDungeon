@@ -51,13 +51,47 @@ DEFAULT_SETTINGS: dict[str, Any] = {
 }
 
 TUTOR_RULES = (
-    "You are PYR, a Socratic Python tutor inside a learning game called Quest Lab. "
+    "You are PYR, a Socratic programming tutor inside a learning game called Quest Lab. "
     "The learner writes every line of project code themselves. Never write the solution "
     "for the current project, never paste a finished function, and never reveal hidden "
     "future questions or answer keys. Prefer one precise question, a hint, or short "
-    "pseudocode in a different context from the project. Do not use tools, do not read or "
+    "pseudocode in a different context from the project. Follow the programming language "
+    "named in the active objective or submitted file. Do not use tools, do not read or "
     "edit files, and do not run commands: everything you need is in this message."
 )
+
+_LANGUAGE_BY_SUFFIX = {
+    ".py": "Python", ".js": "JavaScript", ".jsx": "JavaScript with JSX",
+    ".ts": "TypeScript", ".tsx": "TypeScript with JSX", ".html": "HTML",
+    ".css": "CSS", ".scss": "SCSS", ".sql": "PostgreSQL SQL",
+    ".md": "Markdown", ".json": "JSON", ".toml": "TOML", ".txt": "Plain text",
+    ".yaml": "YAML", ".yml": "YAML",
+}
+
+
+def language_for_path(path: Any) -> str:
+    """Infer the lesson language from a bounded, server-owned workspace path."""
+
+    suffix = Path(str(path or "")).suffix.lower()
+    return _LANGUAGE_BY_SUFFIX.get(suffix, "Python")
+
+
+_GRADING_GUIDANCE = {
+    "Python": "Judge Python syntax and runtime semantics.",
+    "JavaScript": "Judge modern JavaScript syntax, browser/runtime semantics, and the stated objective.",
+    "JavaScript with JSX": "Judge JavaScript and JSX syntax and React/browser semantics when relevant.",
+    "TypeScript": "Judge TypeScript types and JavaScript runtime behavior separately; do not accept a type assertion as runtime validation.",
+    "TypeScript with JSX": "Judge TypeScript and JSX syntax, React semantics, and whether runtime inputs are actually validated.",
+    "HTML": "Judge semantic HTML structure, labels, links, and accessible relationships; do not require visual styling unless requested.",
+    "CSS": "Judge selector matching, cascade, layout, responsive behavior, and the requested visual constraints.",
+    "SCSS": "Judge SCSS syntax and the resulting CSS intent, while respecting the stated objective.",
+    "PostgreSQL SQL": "Judge PostgreSQL SQL semantics, constraints, migration safety, and security claims. For row security, require a specific ownership or membership predicate; authentication alone is not authorization.",
+    "Markdown": "Judge the requested documentation for accuracy, completeness, clarity and whether its commands and file paths match the project. Do not judge prose as source code.",
+    "JSON": "Judge JSON syntax, structure and the requested data contract; JSON has no comments or executable behavior.",
+    "TOML": "Judge TOML syntax and configuration semantics for the requested tool.",
+    "Plain text": "Judge whether the required explanation or evidence is present and accurate.",
+    "YAML": "Judge YAML syntax, indentation-sensitive structure and the requested configuration semantics.",
+}
 
 # One model call at a time: each one holds a model request open for tens of
 # seconds and the app targets machines with little spare RAM.
@@ -519,10 +553,13 @@ def judge(kind: str, *, context: Any, answer: str, question: str = "") -> dict[s
 
     if kind not in JUDGE_TASKS:
         raise AiTutorError(f"Unsupported grading kind: {kind}", kind="invalid", status_code=422)
+    language = context.get("language") if isinstance(context, dict) else "Python"
+    language = language if language in _GRADING_GUIDANCE else "Python"
     prompt = "\n\n".join(
         part
         for part in (
             TUTOR_RULES,
+            f"Active project language: {language}. {_GRADING_GUIDANCE[language]}",
             (
                 f"Task: decide whether the learner's submission satisfies {JUDGE_TASKS[kind]}. "
                 "Be fair to beginners: correct-but-unpolished work passes; work that misses the "
@@ -649,7 +686,7 @@ def _studied_part(studied: list[str] | tuple[str, ...]) -> str:
     return "The learner has studied these ideas at home; when one fits, build the question on it:\n" + "\n".join(f"- {idea}" for idea in ideas)
 
 
-def write_battle_question(*, concept: str, project: str, contract: str, objective: str, brief: str, code: str = "", studied: list[str] | tuple[str, ...] = ()) -> dict[str, Any]:
+def write_battle_question(*, concept: str, project: str, contract: str, objective: str, brief: str, code: str = "", language: str = "Python", studied: list[str] | tuple[str, ...] = ()) -> dict[str, Any]:
     """A clickable campaign question: practical code reading tied to the
     contract (and the learner's own project file when there is one)."""
 
@@ -657,7 +694,7 @@ def write_battle_question(*, concept: str, project: str, contract: str, objectiv
         part
         for part in (
             TUTOR_RULES,
-            "Task: write one multiple-choice question for a campaign battle in a Python learning game.",
+            f"Task: write one multiple-choice question for a campaign battle in a {language} learning game.",
             f"Project: {project}\nContract: {contract}\nConcept: {concept}\nObjective: {objective} ({brief})",
             (
                 "Assess the exact objective and its brief. Ask a conceptual question when the objective is conceptual; "
@@ -665,7 +702,7 @@ def write_battle_question(*, concept: str, project: str, contract: str, objectiv
                 "whether the answer is the complete output or a named line, include any inputs, and make the options "
                 "consistent with all visible output. Give 4 short SINGLE-LINE options with exactly one correct."
             ),
-            f"The learner's current project file:\n```python\n{code[:6000]}\n```" if code.strip() else "",
+            f"The learner's current project file:\n```{language.lower().replace(' with jsx', '')}\n{code[:6000]}\n```" if code.strip() else "",
             _studied_part(studied),
             "Never put the answer in the prompt.",
             (

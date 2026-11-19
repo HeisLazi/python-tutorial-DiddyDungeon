@@ -1,0 +1,72 @@
+{
+  "act": {
+    "id": 6,
+    "title": "Chapter VI: Secure Release",
+    "goal": "Add Supabase to the application without treating a client key as permission. Use migrations, authentication, row-level security and Edge Functions deliberately, then deploy through preview and production with an operations plan."
+  },
+  "mobs": [
+    {
+      "name": "The Local Stack",
+      "concept": "Supabase CLI, local Postgres, migrations, seed data and environment setup",
+      "encounter": "Make the database reproducible from files in the project instead of relying on undocumented dashboard clicks.",
+      "act": 6,
+      "sign": "state-management",
+      "kind": "workshop",
+      "contract": "The Stack Keeper wants a database every teammate can recreate. The schema, data fixtures and local configuration belong in the repository; a running local service is a separate process from the source files that describe it.",
+      "resources": [
+        {"label": "Supabase: Local development and CLI", "url": "https://supabase.com/docs/guides/local-development", "why": "Follow the current CLI workflow and check the required local runtime before starting services."},
+        {"label": "Supabase: CLI workflows", "url": "https://supabase.com/docs/guides/local-development/cli-workflows", "why": "Learn how migrations and seed data make a project reproducible."}
+      ],
+      "objectives": [
+        {"id": "config_setup", "label": "Create the local project config", "question_type": "setup_check", "impact": 1, "check": {"file": "supabase/config.toml"}, "brief": "Create supabase/config.toml and record the CLI version and local ports you use in README.md. The Supabase CLI can run a local stack, but its services require a compatible container runtime by default; inspect the official prerequisites first. Do not start services automatically. If your computer is memory-limited, keep local startup optional and use a disposable remote development project instead."},
+        {"id": "seed_file", "label": "Create safe local seed data", "question_type": "setup_check", "impact": 1, "check": {"file": "supabase/seed.sql"}, "brief": "Create supabase/seed.sql with a few fictional offices and requests that help a developer test empty, open, and closed queues. Keep seed data separate from schema migrations. It must contain no real names, personal information, passwords, access tokens, or service secrets."},
+        {"id": "reproducible_db", "label": "Recreate the schema from migrations", "question_type": "code_checkpoint", "impact": 3, "file": "supabase/migrations/20261117000100_create_requests.sql", "brief": "Turn the request schema into an ordered migration and add small non-sensitive seed data for local development. Document how a teammate initializes the CLI, applies migrations, and resets a disposable local database. Never put passwords, access tokens or real customer data in seed files."},
+        {"id": "environment_boundary", "label": "Separate local and deployed config", "question_type": "bug_diagnosis", "impact": 3, "file": "README.md", "brief": "A teammate committed a production database URL and service-role secret beside the public frontend key. Remove secret values, describe which configuration is safe to expose and which must remain server-side, and explain why `.env.example` documents names without containing real credentials."},
+        {"id": "local_vs_remote", "label": "Explain the environment choice", "question_type": "explanation", "impact": 2, "file": "README.md", "brief": "Compare a local Supabase stack, a disposable remote development project, and production. Explain which has real user data, which is safe to reset, and why migrations should be the shared source of schema truth."}
+      ]
+    },
+    {
+      "name": "The Row Warden",
+      "concept": "Authentication, authorization, Row Level Security and server-only secrets",
+      "encounter": "Ensure a signed-in user can only access requests permitted by the desk's ownership and office membership rules.",
+      "act": 6,
+      "sign": "validation",
+      "kind": "debug",
+      "contract": "The Warden catches a dangerous assumption: knowing who a user is does not automatically mean they can read every row. Authorization must be a database rule that matches the product's ownership model.",
+      "resources": [
+        {"label": "Supabase: Row Level Security", "url": "https://supabase.com/docs/guides/database/postgres/row-level-security", "why": "Learn how policies restrict rows and how they interact with grants and roles."},
+        {"label": "Supabase: Securing your data", "url": "https://supabase.com/docs/guides/database/secure-data", "why": "Review exposed table, policy and client-key security guidance."},
+        {"label": "Supabase: Edge Functions", "url": "https://supabase.com/docs/guides/functions", "why": "Study where trusted server-side logic and secrets belong."}
+      ],
+      "objectives": [
+        {"id": "function_file", "label": "Create the Edge Function file", "question_type": "setup_check", "impact": 1, "check": {"file": "supabase/functions/create-request/index.ts"}, "brief": "Create supabase/functions/create-request/index.ts. This path follows the Supabase Edge Function directory layout. Do not put a project service-role secret in the file or the browser bundle."},
+        {"id": "policy_migration_file", "label": "Create the policy migration", "question_type": "setup_check", "impact": 1, "check": {"file": "supabase/migrations/20261117000200_request_access.sql"}, "brief": "Create the second versioned migration file for the owner column and row-access policies. Keep the original schema migration intact; this is an additional forward change."},
+        {"id": "rls_enable", "label": "Enable row security", "question_type": "code_checkpoint", "impact": 3, "file": "supabase/migrations/20261117000200_request_access.sql", "brief": "Add an owner id to requests, enable row-level security, and create a SELECT policy for authenticated users whose auth.uid() matches that owner id. Explicitly name the authenticated role. Explain why RLS and SQL grants answer different access questions."},
+        {"id": "unsafe_policy", "label": "Repair the everyone policy", "question_type": "bug_diagnosis", "impact": 3, "file": "supabase/migrations/20261117000200_request_access.sql", "brief": "The draft says `to authenticated using (true)`. That means every authenticated user can read every matching row. Replace it with the actual owner or authorized office-member predicate. For UPDATE, include both USING and WITH CHECK so an attacker cannot reassign a row to another owner."},
+        {"id": "edge_boundary", "label": "Place trusted work on the server", "question_type": "code_checkpoint", "impact": 3, "file": "supabase/functions/create-request/index.ts", "brief": "Create an Edge Function boundary for creating a request when trusted server-side checks are needed. Validate the method and body, authenticate the caller, use the caller's identity rather than a client-supplied owner id, and return controlled status codes. Keep service-role secrets server-only and use the caller's authorization context for user-scoped data."},
+        {"id": "authz_reasoning", "label": "Explain identity versus permission", "question_type": "explanation", "impact": 2, "file": "supabase/migrations/20261117000200_request_access.sql", "brief": "Explain why `TO authenticated` alone does not authorize access to another person's row. Describe how an ownership or office-membership predicate changes the decision, and name the policy you would test for a user who is signed in but belongs to another office."}
+      ]
+    },
+    {
+      "name": "The Release Auditor",
+      "concept": "Vercel deployments, environment separation, logs, migrations, rollback and capstone review",
+      "encounter": "Ship the service desk through a preview, check the production boundary, and prepare to operate the application after release.",
+      "act": 6,
+      "sign": "testing",
+      "tier": "elite",
+      "kind": "creative",
+      "contract": "The Auditor will not approve a release based only on a green build. Show the working path, inspect configuration and policies, and explain how you would investigate and recover from a failure.",
+      "resources": [
+        {"label": "Vercel: Getting started", "url": "https://vercel.com/docs/getting-started-with-vercel", "why": "Learn the project and deployment workflow before connecting a repository."},
+        {"label": "Vercel: Deployments", "url": "https://vercel.com/docs/deployments", "why": "Understand preview URLs, production deployments and redeployments."},
+        {"label": "Supabase: Local development workflow", "url": "https://supabase.com/docs/guides/local-development/cli-workflows", "why": "Review how to promote schema changes with tracked migrations."}
+      ],
+      "objectives": [
+        {"id": "deployment_notes", "label": "Document preview and production", "question_type": "code_checkpoint", "impact": 3, "file": "README.md", "brief": "Write a release guide covering repository connection, preview deployment, production promotion, required environment variables, database migration order, and how to tell which environment a URL targets. State which secrets are server-only and never paste their values into the README."},
+        {"id": "production_bug", "label": "Catch the production mismatch", "question_type": "bug_diagnosis", "impact": 3, "file": "README.md", "brief": "A preview deployment points at the production database, and its migration adds a non-null column with no default. Identify the data-loss or outage risks. Propose a staged, backward-compatible migration and a separate preview environment before promoting the change."},
+        {"id": "capstone_trace", "label": "Trace one request end to end", "question_type": "code_checkpoint", "impact": 4, "file": "README.md", "brief": "Document one request from the user's labelled form through React state, API call, server validation, authenticated identity, PostgreSQL constraints and RLS policy, then back to a success or error message. Link each step to the file that owns it and describe one test for each boundary."},
+        {"id": "operation_interview", "label": "Defend the release", "question_type": "explanation", "impact": 3, "file": "README.md", "brief": "Explain how you would investigate a failed deployment, a slow request query, and a report that one user saw another office's data. Name which logs or database evidence you would inspect, what rollback does and does not undo, and how you would communicate the incident."}
+      ]
+    }
+  ]
+}

@@ -1888,8 +1888,8 @@ def _validate_forge_submission_source(
         raise HTTPException(status_code=409, detail="Forge file changed; capture the active Forge context again")
     if not expected_digest or (file_digest or "").lower() != expected_digest:
         raise HTTPException(status_code=409, detail="Forge file digest changed; capture the active Forge context again")
-    if not normalized.lower().endswith((".py", ".md")) or filename in {"tutor.py", "dungeon.py"}:
-        raise HTTPException(status_code=422, detail="Forge submissions must use an active campaign .py or .md file")
+    if not normalized.lower().endswith((".py", ".md", ".json", ".txt", ".toml", ".cfg", ".ini", ".js", ".jsx", ".ts", ".tsx", ".html", ".css", ".scss", ".sql")) or filename in {"tutor.py", "dungeon.py"}:
+        raise HTTPException(status_code=422, detail="Forge submissions must use an active campaign source or project file")
     if not answer.strip():
         raise HTTPException(status_code=422, detail="Active Forge file is empty")
     if hashlib.sha256(answer.encode("utf-8")).hexdigest() != expected_digest:
@@ -3550,6 +3550,7 @@ def _grading_context(kind: str, context: dict) -> dict:
         "quest": context.get("quest"),
         "encounter": {key: encounter[key] for key in encounter_keys if key in encounter},
         "submitted_file": active.get("path"),
+        "language": ai_tutor.language_for_path(active.get("path")),
         "recent_terminal_output": str(terminal.get("tail") or "")[-2_000:],
     }
 
@@ -3723,7 +3724,8 @@ def ai_boss_question():
         return {"ok": True, "question": {"requirement_id": goal["id"], **cached}}
     code = ""
     entry = project.get("entry_file")
-    if isinstance(entry, str) and entry.endswith(".py"):
+    language = ai_tutor.language_for_path(entry)
+    if isinstance(entry, str) and entry.lower().endswith((".py", ".md", ".json", ".js", ".jsx", ".ts", ".tsx", ".html", ".css", ".scss", ".sql")):
         path = (WORKSPACE / entry).resolve()
         if path.is_file() and WORKSPACE.resolve() in path.parents:
             code = path.read_text(encoding="utf-8", errors="replace")[:6000]
@@ -3736,6 +3738,7 @@ def ai_boss_question():
         objective=label,
         brief=style,
         code=code,
+        language=language,
         studied=_studied_ideas(f"{project.get('name') or ''} {encounter.get('boss') or ''} {goal.get('label') or ''}"),
     )
     with PROGRESS_LOCK:
@@ -3917,7 +3920,8 @@ def ai_battle_question(payload: BattleQuestionRequest):
     target = project_file_name(objective.get("file"))
     if folder and target:
         entry = f"{folder}/{target}"
-    if isinstance(entry, str) and entry.endswith(".py"):
+    language = ai_tutor.language_for_path(entry)
+    if isinstance(entry, str) and entry.lower().endswith((".py", ".md", ".json", ".txt", ".toml", ".cfg", ".ini", ".js", ".jsx", ".ts", ".tsx", ".html", ".css", ".scss", ".sql")):
         path = (WORKSPACE / entry).resolve()
         if path.is_file() and WORKSPACE.resolve() in path.parents:
             code = path.read_text(encoding="utf-8", errors="replace")[:6000]
@@ -3930,6 +3934,7 @@ def ai_battle_question(payload: BattleQuestionRequest):
         objective=str(objective.get("label") or payload.objective_id),
         brief=str(objective.get("brief") or ""),
         code=code,
+        language=language,
         studied=_studied_ideas(f"{mob.get('concept') or ''} {objective.get('label') or ''} {objective.get('brief') or ''}"),
     )
     BATTLE_QUESTIONS[key] = {"prompt": written["prompt"], "options": written["options"]}

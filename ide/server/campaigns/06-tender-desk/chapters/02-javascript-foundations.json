@@ -1,0 +1,88 @@
+{
+  "act": {
+    "id": 2,
+    "title": "Chapter II: JavaScript with Intent",
+    "goal": "Build a dependable mental model for values, functions, collections, decisions, errors and tests. Change examples and predict outcomes before relying on the browser."
+  },
+  "mobs": [
+    {
+      "name": "The Type Chameleon",
+      "concept": "JavaScript values, primitive types, coercion and nullish values",
+      "encounter": "Stop a request form from treating empty, missing and zero-valued data as the same thing.",
+      "act": 2,
+      "sign": "types",
+      "kind": "workshop",
+      "contract": "The Chameleon swaps values while nobody is looking. JavaScript values have types; truthiness is not the same as validity; and a conversion must be deliberate when data arrives as text.",
+      "resources": [
+        {"label": "MDN: JavaScript data types", "url": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures", "why": "Review primitive values, objects, undefined and null."},
+        {"label": "MDN: Equality comparisons", "url": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Equality_comparisons_and_sameness", "why": "Understand strict equality and why implicit coercion can surprise you."}
+      ],
+      "objectives": [
+        {"id": "typed_values", "label": "Model request fields", "question_type": "code_checkpoint", "impact": 3, "file": "app.js", "brief": "Create a small request object with a string title, a string description, a numeric priority and an explicit status. Inspect each value with typeof. Use const for the object binding you do not reassign and explain why const does not freeze the object's properties."},
+        {"id": "empty_zero", "label": "Separate empty from zero", "question_type": "bug_diagnosis", "impact": 3, "file": "app.js", "brief": "The rival clerk writes `const priority = Number(formValue) || 3`. When the user intentionally enters 0, the fallback replaces it; when the value is invalid, the same fallback hides the error. Explain the truthiness bug and rewrite the flow so empty, invalid, and valid zero have distinct outcomes."},
+        {"id": "coercion_trace", "label": "Predict conversion", "question_type": "prediction", "impact": 2, "file": "app.js", "brief": "Predict the results and types of `\"4\" + 2`, `Number(\"4\") + 2`, `Boolean(\"false\")`, and `\"\" || \"untitled\"`. Explain which operation coerces a value and why the text `false` is truthy."},
+        {"id": "undefined_null", "label": "Explain missing values", "question_type": "explanation", "impact": 2, "file": "app.js", "brief": "Explain the difference between a property that is absent, a property whose value is undefined, and an intentional null. Give one request-desk example where the difference changes how the interface should behave."}
+      ]
+    },
+    {
+      "name": "The Functionwright",
+      "concept": "Functions, parameters, return values, scope and pure logic",
+      "encounter": "Move request validation into small functions with explicit inputs and outputs.",
+      "act": 2,
+      "sign": "functions",
+      "kind": "workshop",
+      "contract": "The Functionwright refuses to work from hidden global state. A function receives inputs, performs one job, and either returns a value or causes an intentional side effect.",
+      "resources": [
+        {"label": "MDN: Functions", "url": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Functions", "why": "Review parameters, return values, scope and function expressions."},
+        {"label": "MDN: Function scope", "url": "https://developer.mozilla.org/en-US/docs/Glossary/Scope", "why": "Understand where a name is visible and why local variables reduce accidental coupling."}
+      ],
+      "objectives": [
+        {"id": "module_file", "label": "Create the rules module", "question_type": "setup_check", "impact": 1, "check": {"file": "src/requests.js"}, "brief": "Create the src folder and src/requests.js. Keep pure request rules in this module so they can be tested without a browser. The Forge file check expects this exact project-relative path."},
+        {"id": "test_file", "label": "Create a test file", "question_type": "setup_check", "impact": 1, "check": {"file": "tests/requests.test.js"}, "brief": "Create the tests folder and tests/requests.test.js. Node includes a built-in test runner, so these focused JavaScript checks need no third-party test package."},
+        {"id": "validate_fn", "label": "Return a validation result", "question_type": "code_checkpoint", "impact": 3, "file": "src/requests.js", "brief": "Create `validateRequest(input)` that returns a result describing whether a title and description are usable. Do not read the DOM or display a message inside this function. Pass values in, return the decision, and have the caller choose what to show."},
+        {"id": "print_return", "label": "Repair a missing return", "question_type": "bug_diagnosis", "impact": 3, "file": "src/requests.js", "brief": "This helper calls console.log('valid') but returns nothing, so its caller receives undefined and cannot branch on the result. Change its contract to return data, update the caller, and explain the difference between reporting to a person and giving a value to another part of the program."},
+        {"id": "pure_test_cases", "label": "Check function behavior", "question_type": "code_checkpoint", "impact": 3, "file": "tests/requests.test.js", "brief": "Write at least four checks for validateRequest: valid input, a blank title, whitespace-only text, and a missing description. State the expected result beside each case. Keep these checks focused on returned values rather than DOM rendering."},
+        {"id": "scope_prediction", "label": "Trace scope and return", "question_type": "prediction", "impact": 2, "file": "src/requests.js", "brief": "Predict what the caller receives when a function reaches its closing brace without a return. Then predict whether a const declared inside that function can be read from outside. Explain how a function's boundary makes dependencies easier to find."}
+      ]
+    },
+    {
+      "name": "The Satchel Mimic",
+      "concept": "Arrays, objects, references, map/filter/reduce and immutability",
+      "encounter": "Store request records, derive useful views, and update one record without mutating shared state unexpectedly.",
+      "act": 2,
+      "sign": "collections",
+      "kind": "workshop",
+      "contract": "The Mimic duplicates a label but secretly keeps the same satchel. Objects and arrays are references; transformations can create new data without changing the source.",
+      "resources": [
+        {"label": "MDN: Indexed collections", "url": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Indexed_collections", "why": "Study arrays, iteration, and collection methods."},
+        {"label": "MDN: Working with objects", "url": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Working_with_objects", "why": "Review object properties, copying and references."}
+      ],
+      "objectives": [
+        {"id": "request_array", "label": "Build the request satchel", "question_type": "code_checkpoint", "impact": 3, "file": "src/requests.js", "brief": "Represent several requests as an array of objects with stable id, title, status, priority and createdAt fields. Add one function using filter to return open requests and another using map to produce display labels. Keep the original array unchanged."},
+        {"id": "shared_reference", "label": "Find the shared satchel", "question_type": "bug_diagnosis", "impact": 3, "file": "src/requests.js", "brief": "A helper assigns `const next = requests` and then changes next[0].status. The original list also changes because both names refer to the same array. Explain the aliasing bug, then return a new list with a copied changed record; preserve every unrelated record."},
+        {"id": "reduce_summary", "label": "Summarize the queue", "question_type": "code_checkpoint", "impact": 3, "file": "src/requests.js", "brief": "Use reduce to count open requests and total their priorities. Start from an explicit accumulator object so an empty list still returns a useful summary. Compare this with a loop and explain why the initial accumulator matters."},
+        {"id": "map_filter_trace", "label": "Predict a pipeline", "question_type": "prediction", "impact": 2, "file": "src/requests.js", "brief": "Given requests with mixed statuses and priorities, trace a filter that keeps open records followed by a map that extracts titles. State the exact output and whether the original records are modified. Explain which method selects items and which transforms them."}
+      ]
+    },
+    {
+      "name": "The Boundary Hound",
+      "concept": "Control flow, loops, validation boundaries and error handling",
+      "encounter": "Reject malformed request data without crashing or silently accepting impossible states.",
+      "act": 2,
+      "sign": "control-flow",
+      "tier": "elite",
+      "kind": "debug",
+      "contract": "The Hound attacks at the edges: empty arrays, unexpected types, duplicate identifiers, and failures that were assumed impossible.",
+      "resources": [
+        {"label": "MDN: Control flow and error handling", "url": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Control_flow_and_error_handling", "why": "Review branches, loops, thrown errors and try/catch."},
+        {"label": "Node.js: Test runner", "url": "https://nodejs.org/api/test.html", "why": "Preview Node's built-in test runner before the project begins using a package toolchain."}
+      ],
+      "objectives": [
+        {"id": "guard_input", "label": "Guard the input boundary", "question_type": "code_checkpoint", "impact": 3, "file": "src/requests.js", "brief": "Write a function that checks unknown request input before using it: require a non-null object, a trimmed non-empty title, and a known status. Return a clear validation result. Do not trust a value just because the browser form normally sends a string."},
+        {"id": "empty_edge", "label": "Defeat the empty queue bug", "question_type": "bug_diagnosis", "impact": 3, "file": "src/requests.js", "brief": "A loop starts at index 0 and uses `i <= requests.length`, then reads requests[i]. Find the off-by-one path, fix the boundary, and explain why a zero-length array is a useful test case."},
+        {"id": "throw_or_result", "label": "Choose a failure contract", "question_type": "explanation", "impact": 2, "file": "src/requests.js", "brief": "Compare returning `{ ok: false, error }` with throwing an exception for invalid user input. Choose one contract for ordinary form validation and explain which failures should be handled locally versus allowed to reach an error boundary."},
+        {"id": "edge_suite", "label": "Prove the edges", "question_type": "code_checkpoint", "impact": 3, "file": "tests/requests.test.js", "brief": "Add cases for an empty list, an unknown status, a number where text is expected, a whitespace title, and duplicate ids. Each test should assert the expected result and should not rely on a live server."}
+      ]
+    }
+  ]
+}

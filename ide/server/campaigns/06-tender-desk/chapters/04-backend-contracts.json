@@ -1,0 +1,67 @@
+{
+  "act": {
+    "id": 4,
+    "title": "Chapter IV: The Backend Contract",
+    "goal": "Understand what a server does and how browser and server communicate. Build explicit HTTP routes, validate untrusted input, return meaningful status codes, and test the boundary without involving a real database yet."
+  },
+  "mobs": [
+    {
+      "name": "The Portcullis",
+      "concept": "Client/server model, HTTP requests, routes and JSON responses",
+      "encounter": "Create a small local API that can return a request list and accept one request.",
+      "act": 4,
+      "sign": "input-output",
+      "kind": "workshop",
+      "contract": "The Portcullis does not know who is asking or what they need. A browser is a client; the backend receives a request, decides what it means, and sends a response with a status, headers and body.",
+      "resources": [
+        {"label": "MDN: HTTP overview", "url": "https://developer.mozilla.org/en-US/docs/Web/HTTP/Overview", "why": "Understand request/response, methods, status codes and headers."},
+        {"label": "Node.js: HTTP module", "url": "https://nodejs.org/api/http.html", "why": "Create a minimal server without introducing a framework first."}
+      ],
+      "objectives": [
+        {"id": "server_file", "label": "Create server.js", "question_type": "setup_check", "impact": 1, "check": {"file": "server.js"}, "brief": "Create server.js in the project root. A server is a program waiting for requests; a route is a rule that matches an HTTP method and path. You will use Node's built-in http module first so the request lifecycle is visible before adding a framework."},
+        {"id": "health_route", "label": "Open a health route", "question_type": "code_checkpoint", "impact": 3, "file": "server.js", "brief": "Use Node's built-in http module to listen on a documented local port and return a JSON health response for GET /health. Set the JSON content type and a success status. Start the server with Node, request the route from a second terminal or browser, and explain which process is client and which is server."},
+        {"id": "route_bug", "label": "Match method and path", "question_type": "bug_diagnosis", "impact": 3, "file": "server.js", "brief": "The draft handles every request whose URL starts with `/request`, including `/requests-archive` and POST requests. Tighten the route match to the intended exact method and path, and return a not-found status for other paths. Explain why route matching is part of the API contract."},
+        {"id": "http_trace", "label": "Read a response", "question_type": "prediction", "impact": 2, "file": "server.js", "brief": "Given a response with status 201, Content-Type application/json, and a JSON body, explain what each part tells a client. Compare 200, 201, 400, 401, 403, 404 and 500 without treating status codes as arbitrary numbers."}
+      ]
+    },
+    {
+      "name": "The Input Sentinel",
+      "concept": "Server-side validation, HTTP errors, trust boundaries and safe output",
+      "encounter": "Refuse malformed request bodies and return consistent errors instead of trusting the UI.",
+      "act": 4,
+      "sign": "validation",
+      "kind": "debug",
+      "contract": "The Sentinel sends requests that never came from your form. Every browser is under the user's control; validate again at the server boundary and make the server's failure contract predictable.",
+      "resources": [
+        {"label": "OWASP: Input Validation Cheat Sheet", "url": "https://cheatsheetseries.owasp.org/cheatsheets/Input_Validation_Cheat_Sheet.html", "why": "Use allowlists, length limits and server-side validation at trust boundaries."},
+        {"label": "MDN: HTTP response status codes", "url": "https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Status", "why": "Choose response codes by the meaning of the outcome."}
+      ],
+      "objectives": [
+        {"id": "body_parse", "label": "Parse the request body safely", "question_type": "code_checkpoint", "impact": 3, "file": "server.js", "brief": "Read a POST body with a reasonable byte limit, parse JSON inside an error boundary, and validate that title and description are strings with useful trimmed content. Return 400 for malformed or invalid input and do not store it. Explain why the server must repeat validation even when the form validates too."},
+        {"id": "leak_error", "label": "Stop leaking internals", "question_type": "bug_diagnosis", "impact": 3, "file": "server.js", "brief": "A catch block returns the full exception stack and file path to the browser. Replace it with a generic 500 response and a server-side log that is useful for a developer. Do not echo secrets or raw SQL to the client. Explain how the response can be safe without hiding diagnostic evidence from the operator."},
+        {"id": "validation_tests", "label": "Test the trust boundary", "question_type": "code_checkpoint", "impact": 3, "file": "tests/requests.test.js", "brief": "Add tests for malformed JSON, a missing title, a title longer than the documented limit, a valid request, and a method the route does not support. Assert status and response shape. Keep validation logic callable so tests can check it without starting a network listener."},
+        {"id": "client_server_validation", "label": "Explain duplicate validation", "question_type": "explanation", "impact": 2, "file": "server.js", "brief": "Explain why validating in the browser improves feedback but cannot enforce business rules. Describe one way a malicious or buggy client could bypass the interface and why the backend remains authoritative."}
+      ]
+    },
+    {
+      "name": "The Contract Weaver",
+      "concept": "REST resources, request methods, idempotency, CORS and API-client boundaries",
+      "encounter": "Connect the UI to a documented API while keeping transport details out of display components.",
+      "act": 4,
+      "sign": "functions",
+      "tier": "elite",
+      "kind": "workshop",
+      "contract": "The Weaver knots endpoints together until neither client nor server can tell what a request means. Define a resource contract first, then keep one API boundary responsible for transport and errors.",
+      "resources": [
+        {"label": "MDN: HTTP methods", "url": "https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Methods", "why": "Review the intended semantics of GET, POST, PUT, PATCH and DELETE."},
+        {"label": "MDN: CORS", "url": "https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/CORS", "why": "Understand why a browser may block cross-origin requests and why CORS is not authorization."}
+      ],
+      "objectives": [
+        {"id": "resource_contract", "label": "Write the route table", "question_type": "code_checkpoint", "impact": 3, "file": "README.md", "brief": "Document the request API as a small table: method, path, purpose, input, success status, and failure statuses for listing, creating, updating status, and deleting. Use resource-oriented paths and explain why GET should not change server data."},
+        {"id": "client_api", "label": "Connect through one API module", "question_type": "code_checkpoint", "impact": 3, "file": "src/api.js", "brief": "Create functions such as listRequests() and createRequest(data) that own fetch, JSON parsing, status checks and normalized errors. Have the UI call those functions; it should not construct endpoints or parse raw Response objects itself."},
+        {"id": "retry_duplicate", "label": "Reason about a repeated POST", "question_type": "prediction", "impact": 2, "file": "src/api.js", "brief": "A network timeout occurs after the server creates a request but before the browser receives the response. Predict what happens if the client retries the POST. Explain why POST is not automatically idempotent and name one design that prevents accidental duplicates."},
+        {"id": "cors_reason", "label": "Separate CORS from access", "question_type": "explanation", "impact": 2, "file": "README.md", "brief": "Explain what CORS controls in a browser, why it is not a substitute for authentication or authorization, and why a command-line client may reach an endpoint that a browser page cannot."}
+      ]
+    }
+  ]
+}

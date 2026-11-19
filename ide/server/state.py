@@ -72,7 +72,12 @@ def boss_gauntlet(project: Mapping[str, Any]) -> tuple[str, ...]:
 def load_campaign_bounties() -> dict[str, Any]:
     base = CAMPAIGN_BOUNTIES_PATH
     stories = sorted(CAMPAIGN_CONTENT_DIR.glob("*.json")) if CAMPAIGN_CONTENT_DIR.is_dir() else []
-    paths = [*([base] if base is not None else []), *stories]
+    bundled = sorted(CAMPAIGN_CONTENT_DIR.glob("*/manifest.json")) if CAMPAIGN_CONTENT_DIR.is_dir() else []
+    # Bundled campaigns keep the authored story in small, reviewable chapter
+    # files. Include every JSON file in the cache key so adding/editing a
+    # chapter invalidates the assembled campaign without restarting the app.
+    content_files = sorted(CAMPAIGN_CONTENT_DIR.rglob("*.json")) if CAMPAIGN_CONTENT_DIR.is_dir() else []
+    paths = [*([base] if base is not None else []), *content_files]
     try:
         key = tuple((str(path), path.stat().st_mtime_ns) for path in paths if path.exists())
     except OSError:
@@ -91,12 +96,43 @@ def load_campaign_bounties() -> dict[str, Any]:
             continue
         if isinstance(entry, dict) and isinstance(entry.get("branch"), str):
             data[entry["branch"]] = entry
+    for manifest_path in bundled:
+        try:
+            entry = json.loads(manifest_path.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            continue
+        if not isinstance(entry, dict) or not isinstance(entry.get("branch"), str):
+            continue
+        chapter_dir = manifest_path.parent / "chapters"
+        acts: list[dict[str, Any]] = []
+        mobs: list[dict[str, Any]] = []
+        for chapter_path in (sorted(chapter_dir.glob("*.json")) if chapter_dir.is_dir() else []):
+            try:
+                chapter = json.loads(chapter_path.read_text(encoding="utf-8"))
+            except (OSError, ValueError):
+                continue
+            if not isinstance(chapter, dict):
+                continue
+            act = chapter.get("act")
+            act_id = act.get("id") if isinstance(act, dict) else None
+            if isinstance(act, dict):
+                acts.append(act)
+            chapter_mobs = chapter.get("mobs")
+            if isinstance(chapter_mobs, list):
+                for mob in chapter_mobs:
+                    if isinstance(mob, dict):
+                        if isinstance(act_id, int):
+                            mob = {**mob, "act": act_id}
+                        mobs.append(mob)
+        data[entry["branch"]] = {**entry, "acts": acts, "mobs": mobs}
     _CAMPAIGN_CACHE.update(key=key, data=data)
     return data
 
 
-# A project file, at most one folder deep (crawler/world.py, tests/test_world.py).
-PROJECT_FILE_NAME = re.compile(r"^[A-Za-z0-9_][A-Za-z0-9_.-]{0,40}(?:/[A-Za-z0-9_][A-Za-z0-9_.-]{0,80})?\.(?:py|md|json|txt|toml|cfg|ini)$")
+# A bounded workspace path, up to three folders deep (for example
+# supabase/functions/submit/index.ts). Every segment must start with a safe
+# filename character, so traversal components like `..` cannot match.
+PROJECT_FILE_NAME = re.compile(r"^[A-Za-z0-9_][A-Za-z0-9_.-]{0,40}(?:/[A-Za-z0-9_][A-Za-z0-9_.-]{0,80}){0,3}\.(?:py|md|json|txt|toml|cfg|ini|js|jsx|ts|tsx|html|css|scss|sql)$")
 # The kinds of bounty a campaign can author, shown on its poster.
 CONTRACT_KINDS = frozenset({"workshop", "debug", "memory", "creative"})
 
@@ -111,7 +147,7 @@ def project_dir_name(value: object) -> str:
 
 
 def project_file_name(value: object) -> str | None:
-    """A plain project file name (no folders) a goal can be graded on."""
+    """A bounded project-relative file path a goal can be graded on."""
 
     return value if isinstance(value, str) and PROJECT_FILE_NAME.match(value) and value not in {"tutor.py", "dungeon.py"} else None
 
@@ -8790,6 +8826,18 @@ class LocalStateService:
                 "encounter": mob.get("encounter"),
                 "act": contract.get("act", 1) if isinstance(contract.get("act"), int) else 1,
                 "contract": contract.get("contract") if isinstance(contract.get("contract"), str) else None,
+                "resources": [
+                    {
+                        "label": item.get("label", "Official guide"),
+                        "url": item.get("url"),
+                        "why": item.get("why", "Read this section before the encounter."),
+                    }
+                    for item in contract.get("resources", [])[:4]
+                    if isinstance(item, Mapping)
+                    and isinstance(item.get("url"), str)
+                    and item["url"].startswith("https://")
+                    and len(item.get("url", "")) <= 500
+                ] if isinstance(contract.get("resources"), list) else [],
                 "sign": sign,
                 "beast": HUNTER_BEASTS[sign]["beast"] if sign in HUNTER_BEASTS else None,
                 # light (one code task, two questions), quick (two goals) or elite (four or five).
@@ -8805,7 +8853,7 @@ class LocalStateService:
             "boss": project.get("boss"),
             "entry_file": project.get("entry_file") or entry.get("entry_file"),
             "project_dir": project_dir_name(entry.get("project_dir")),
-            "story": {key: story[key] for key in ("title", "client", "hook") if isinstance(story.get(key), str)},
+            "story": {key: story[key] for key in ("title", "client", "hook", "unit_label") if isinstance(story.get(key), str)},
             "acts": acts,
             "boss_brief": entry.get("boss_brief") if isinstance(entry.get("boss_brief"), str) else None,
             "contracts": contracts,

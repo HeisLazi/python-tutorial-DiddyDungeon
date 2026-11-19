@@ -1,0 +1,74 @@
+{
+  "act": {
+    "id": 3,
+    "title": "Chapter III: The Working App",
+    "goal": "Turn a static page into an interactive application. Learn forms and browser state first, then async network behavior, then the component model and package toolchain used by modern interfaces."
+  },
+  "mobs": [
+    {
+      "name": "The Event Broker",
+      "concept": "Forms, event flow, validation, accessibility and browser state",
+      "encounter": "Keep user input when validation fails and report errors where keyboard and screen-reader users can find them.",
+      "act": 3,
+      "sign": "events",
+      "kind": "workshop",
+      "contract": "The Broker duplicates requests when the browser reloads and hides errors inside a color change. Handle the form event deliberately, keep the input, and provide feedback as text with a clear relationship to the fields.",
+      "resources": [
+        {"label": "MDN: Form validation", "url": "https://developer.mozilla.org/en-US/docs/Learn_web_development/Extensions/Forms/Form_validation", "why": "Compare built-in browser validation with application-specific validation."},
+        {"label": "MDN: Event bubbling", "url": "https://developer.mozilla.org/en-US/docs/Learn_web_development/Core/Scripting/Event_bubbling", "why": "Trace how events travel through nested DOM elements."}
+      ],
+      "objectives": [
+        {"id": "preserve_input", "label": "Keep the user's draft", "question_type": "code_checkpoint", "impact": 3, "file": "app.js", "brief": "Make invalid submissions show a nearby text explanation and preserve every typed value. On valid submission, show a clear confirmation and reset only after success. Associate any inline error with its field using accessible markup and do not rely on color alone."},
+        {"id": "duplicate_submit", "label": "Stop duplicate requests", "question_type": "bug_diagnosis", "impact": 3, "file": "app.js", "brief": "The same code listens to both the submit event on the form and the click event on its submit button, so one action runs twice. Remove the duplicate path and explain why the form submit event also covers pressing Enter in a field."},
+        {"id": "delegation", "label": "Choose an event boundary", "question_type": "explanation", "impact": 2, "file": "app.js", "brief": "A request list gets new rows after each submission. Explain why a listener attached only to the first row's button misses later rows, and when a listener on the stable parent with event delegation is appropriate."},
+        {"id": "browser_state", "label": "Separate draft from saved data", "question_type": "prediction", "impact": 2, "file": "app.js", "brief": "Predict what survives a full page reload when data is held only in a JavaScript variable. Contrast transient component or page state with persisted database state, and name one deliberate browser storage choice and its limitation."}
+      ]
+    },
+    {
+      "name": "The Async Courier",
+      "concept": "Promises, async/await, fetch, JSON and network failure states",
+      "encounter": "Load requests from an API and keep the interface honest during loading, success and failure.",
+      "act": 3,
+      "sign": "asynchronous-work",
+      "kind": "workshop",
+      "contract": "The Courier returns whenever the network is ready. A request can be slow, rejected, or return an HTTP error; an awaited fetch does not mean the server succeeded.",
+      "resources": [
+        {"label": "MDN: Using Fetch", "url": "https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API/Using_Fetch", "why": "Study requests, response bodies, status handling and network errors."},
+        {"label": "MDN: Promise", "url": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise", "why": "Build a precise model of pending, fulfilled and rejected work."}
+      ],
+      "objectives": [
+        {"id": "api_file", "label": "Create the API module", "question_type": "setup_check", "impact": 1, "check": {"file": "src/api.js"}, "brief": "Create src/api.js for the network boundary. This file will own fetch and response parsing so components do not each invent their own HTTP behavior."},
+        {"id": "loading_states", "label": "Model the request lifecycle", "question_type": "code_checkpoint", "impact": 3, "file": "app.js", "brief": "Add explicit loading, success and error states while requests load. Disable duplicate submission while saving, restore the control afterward, and show a retry path on failure. A spinner alone is not a state model: explain what data the user can see in each state."},
+        {"id": "fetch_status", "label": "Handle HTTP errors", "question_type": "bug_diagnosis", "impact": 3, "file": "src/api.js", "brief": "The helper awaits fetch and immediately calls response.json(). A 404 response still fulfills the fetch promise, and an HTML error page may not be JSON. Check the status before parsing, give the caller a useful error, and explain the difference between a network rejection and an HTTP error response."},
+        {"id": "await_trace", "label": "Trace async order", "question_type": "prediction", "impact": 2, "file": "src/api.js", "brief": "Trace a function that logs `start`, awaits a request, logs `after`, while its caller logs `caller`. State what runs before the awaited result and what resumes later. Explain why adding async does not make CPU-heavy work run on another thread."},
+        {"id": "request_boundary", "label": "Keep the API boundary small", "question_type": "explanation", "impact": 2, "file": "src/api.js", "brief": "Explain why fetch details belong behind a small API function rather than repeated in every component. Include how one place can normalize errors, response parsing and endpoint paths without hiding important behavior."}
+      ]
+    },
+    {
+      "name": "The Component Smith",
+      "concept": "React components, props, state, lists, keys and project tooling",
+      "encounter": "Refactor the request desk into components whose data flow is visible and whose state changes predictably.",
+      "act": 3,
+      "sign": "composition",
+      "tier": "elite",
+      "kind": "workshop",
+      "contract": "The Smith can build a component but cannot explain where its data comes from. Give each component a clear responsibility and trace props downward and events upward.",
+      "resources": [
+        {"label": "React: Quick Start", "url": "https://react.dev/learn", "why": "Follow the official path through components, JSX, data and interactivity."},
+        {"label": "React: Managing state", "url": "https://react.dev/learn/managing-state", "why": "Study how to group, share and avoid redundant state."},
+        {"label": "Vite: Getting started", "url": "https://vite.dev/guide/", "why": "Set up a small React development server and production build with the current official guide."},
+        {"label": "Node.js: Getting started", "url": "https://nodejs.org/en/learn/getting-started/introduction-to-nodejs", "why": "Install and understand the JavaScript runtime needed for local project commands."}
+      ],
+      "objectives": [
+        {"id": "package_setup", "label": "Create the app manifest", "question_type": "setup_check", "impact": 1, "check": {"file": "package.json"}, "brief": "Create package.json in tender_desk. This manifest records project scripts and dependencies so another developer can recreate the toolchain. Install Node.js for your operating system, then inspect `node --version` and `npm --version` in the terminal; write down both versions in README.md. Add scripts for a Vite development server, a production build, and Node's built-in test runner. Use ES modules deliberately and follow the current Vite guide for compatible versions rather than copying an old version number."},
+        {"id": "react_entry", "label": "Create the React component", "question_type": "setup_check", "impact": 1, "check": {"file": "src/App.jsx"}, "brief": "Create src/App.jsx and open it in the editor. This file will export the page component; the next setup step creates the browser entry that mounts it. Keep the component file focused on the request desk instead of moving setup commands into the browser."},
+        {"id": "mount_entry", "label": "Create the browser entry", "question_type": "setup_check", "impact": 1, "check": {"file": "src/main.jsx"}, "brief": "Create src/main.jsx. It should import React, the DOM mounting API, App.jsx and the page stylesheet, then mount the app into a root element. Compare the import path, the HTML root element, and the script path you are about to configure; each must agree."},
+        {"id": "vite_config", "label": "Create the Vite configuration", "question_type": "setup_check", "impact": 1, "check": {"file": "vite.config.js"}, "brief": "Create vite.config.js and configure the React plugin using the current Vite guide. Keep the configuration small; explain which part enables the JSX development workflow and which parts are ordinary JavaScript configuration."},
+        {"id": "vite_entry", "label": "Switch the page to Vite", "question_type": "code_checkpoint", "impact": 3, "file": "index.html", "brief": "Adapt index.html from the earlier standalone script to Vite's module entry: provide one root element and load src/main.jsx as a module. Remove the old app.js script so the same form is not mounted twice. Add the Vite scripts and only the dependencies needed by the page, start the dev server from tender_desk, and explain what the development server does for JSX imports."},
+        {"id": "component_tree", "label": "Build a component tree", "question_type": "code_checkpoint", "impact": 3, "file": "src/App.jsx", "brief": "Create a request page from focused components such as RequestForm, RequestList and RequestRow. Pass request data and callbacks through props. Keep one owner for the request list; child components tell the owner what happened instead of mutating a prop."},
+        {"id": "state_design", "label": "Keep state minimal", "question_type": "bug_diagnosis", "impact": 3, "file": "src/App.jsx", "brief": "A component stores requests, openCount, filteredRequests and a copied selectedRequest in separate state variables. They disagree after one update. Identify which values can be derived from the source list, remove redundant state, and explain why one source of truth reduces synchronization bugs."},
+        {"id": "list_keys", "label": "Keep request identity stable", "question_type": "explanation", "impact": 2, "file": "src/App.jsx", "brief": "Explain why each rendered request row needs a stable key tied to the record id. Predict what can go wrong when an array index is used as a key and a row is inserted at the top."}
+      ]
+    }
+  ]
+}

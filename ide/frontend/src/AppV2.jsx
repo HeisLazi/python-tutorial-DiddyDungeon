@@ -51,6 +51,7 @@ const languageFor = (path = '') => {
   if (path.endsWith('.js') || path.endsWith('.jsx')) return 'javascript'
   if (path.endsWith('.html')) return 'html'
   if (path.endsWith('.css') || path.endsWith('.scss')) return 'css'
+  if (path.endsWith('.sql')) return 'sql'
   if (path.endsWith('.yaml') || path.endsWith('.yml')) return 'yaml'
   return 'plaintext'
 }
@@ -440,14 +441,14 @@ const DUNGEON_RISK_OUTCOMES = {
 // Campaign objectives answered by clicking an option rather than submitting a file.
 const BATTLE_CHOICE_TYPES = new Set(['prediction', 'explanation'])
 
-// `cd "<workspace>/<folder>" && python3 "<file>"`, or the plain relative
-// command while the workspace path is still loading.
-function runInFolderCommand(workspace, path) {
+// Run supported source files from their own folder so relative file access
+// remains predictable across campaign projects.
+function runInFolderCommand(workspace, path, runner = 'python3') {
   const parts = String(path || '').replaceAll('\\', '/').split('/').filter(Boolean)
   const file = parts.pop() || ''
-  if (!workspace) return `python3 ${JSON.stringify(String(path || ''))}`
+  if (!workspace) return `${runner} ${JSON.stringify(String(path || ''))}`
   const folder = [String(workspace).replace(/\/+$/, ''), ...parts].join('/')
-  return `cd ${JSON.stringify(folder)} && python3 ${JSON.stringify(file)}`
+  return `cd ${JSON.stringify(folder)} && ${runner} ${JSON.stringify(file)}`
 }
 const BOSS_PHASE_NAMES = { required_behavior: 'Required behaviour', explanation: 'Read your code', edge_cases: 'The boss twist', twist_2: "The boss's second phase", twist_3: "The boss's third phase", twist_4: "The boss's final phase", read_2: 'Read your code again', interview: 'Code interview' }
 // Boss goals answered by clicking: a question about the player's own file.
@@ -476,6 +477,9 @@ function AppV2() {
     setCode(value)
   }
   const [dirty, setDirty] = useState(false)
+  const [webPreviewOpen, setWebPreviewOpen] = useState(false)
+  const [webPreviewDoc, setWebPreviewDoc] = useState('')
+  const [webPreviewBusy, setWebPreviewBusy] = useState(false)
   const fileDirtyRef = useRef(false)
   const fileRevisionRef = useRef(null)
   const fileConflictRef = useRef(null)
@@ -1487,8 +1491,8 @@ function AppV2() {
   const forgeSubmission = () => {
     const path = String(activePath || '').replaceAll('\\', '/')
     const filename = path.split('/').at(-1)?.toLowerCase() || ''
-    if (!/\.(py|md)$/i.test(path) || filename === 'tutor.py' || filename === 'dungeon.py') {
-      throw new Error('Open the campaign .py or README .md file this goal is graded on, then submit it.')
+    if (!/\.(py|md|json|txt|toml|cfg|ini|js|jsx|ts|tsx|html|css|scss|sql)$/i.test(path) || filename === 'tutor.py' || filename === 'dungeon.py') {
+      throw new Error('Open the campaign source or project file this goal is graded on, then submit it.')
     }
     if (!String(code || '').trim()) throw new Error('Save or write evidence in the active Hunt file before submitting it.')
     return { path, answer: String(code) }
@@ -2080,7 +2084,7 @@ function AppV2() {
         event.preventDefault()
         event.stopPropagation()
         if (tutorSurface) void runTutor()
-        else if (activeView === 'forge') void runCurrent()
+        else if (activeView === 'forge') void (activePath?.toLowerCase().endsWith('.html') ? previewHtmlFile() : runCurrent())
         else if (activeView === 'dungeon') document.querySelector('[data-dungeon-run]')?.click()
         else if (activeView === 'tutor' || activeView === 'practice') document.querySelector('[data-tutor-run]')?.click()
         return
@@ -2162,6 +2166,7 @@ function AppV2() {
       const result = await api(`/api/file?path=${encodeURIComponent(path)}`)
       setEditorMode('file')
       setActivePath(path)
+      setWebPreviewOpen(false)
       editorSelectionRef.current = ''
       setEditorCode(result.content ?? '')
       fileRevisionRef.current = result.revision
@@ -2211,6 +2216,68 @@ function AppV2() {
       return false
     } finally {
       setBusy(false)
+    }
+  }
+
+  const previewHtmlFile = async () => {
+    if (!activePath?.toLowerCase().endsWith('.html')) return
+    if (dirty && !(await saveFile())) return
+    const projectDir = campaign?.campaign_board?.project_dir
+    const htmlFolder = activePath.slice(0, activePath.lastIndexOf('/') + 1)
+    if (!projectDir || !activePath.startsWith(`${projectDir}/`)) {
+      setNotice('Open an HTML file inside the active campaign project to preview it.')
+      return
+    }
+    setWebPreviewBusy(true)
+    try {
+      let documentText = codeRef.current
+      const resolveLocalAsset = (reference) => {
+        const url = new URL(reference, `http://questlab.local/${htmlFolder}`)
+        if (url.origin !== 'http://questlab.local') return null
+        const path = url.pathname.replace(/^\/+/, '')
+        if (!path.startsWith(`${projectDir}/`)) throw new Error('Preview assets must stay inside the active campaign project.')
+        return path
+      }
+      const readAsset = async (reference) => {
+        const path = resolveLocalAsset(reference)
+        if (!path) return null
+        const result = await api(`/api/file?path=${encodeURIComponent(path)}`)
+        return result.content
+      }
+      const styleLinks = [...documentText.matchAll(/<link\b[^>]*>/gi)]
+      for (const [tag] of styleLinks) {
+        const rel = tag.match(/\brel\s*=\s*(["'])(.*?)\1/i)?.[2]?.toLowerCase() || ''
+        const href = tag.match(/\bhref\s*=\s*(["'])(.*?)\1/i)?.[2]
+        if (!href || !rel.split(/\s+/).includes('stylesheet')) continue
+        try {
+          const css = await readAsset(href)
+          if (css !== null) documentText = documentText.replace(tag, `<style>\n${css.replace(/<\/style/gi, '<\\/style')}\n</style>`)
+        } catch (error) {
+          if (resolveLocalAsset(href)) throw error
+        }
+      }
+      const scripts = [...documentText.matchAll(/<script\b[^>]*\bsrc\s*=\s*(["'])(.*?)\1[^>]*>\s*<\/script>/gi)]
+      for (const [tag, _quote, src] of scripts) {
+        try {
+          const script = await readAsset(src)
+          if (script !== null) {
+            const isModule = /\btype\s*=\s*(["'])module\1/i.test(tag)
+            const isDeferred = /\bdefer\b/i.test(tag) || isModule
+            const executable = isDeferred && !isModule ? `document.addEventListener('DOMContentLoaded',()=>{\n${script}\n})` : script
+            const typeAttribute = isModule ? ' type="module"' : ''
+            documentText = documentText.replace(tag, `<script${typeAttribute}>\n${executable.replace(/<\/script/gi, '<\\/script')}\n</script>`)
+          }
+        } catch (error) {
+          if (resolveLocalAsset(src)) throw error
+        }
+      }
+      setWebPreviewDoc(documentText)
+      setWebPreviewOpen(true)
+      setNotice('Sandboxed page preview ready. Linked local CSS and classic JavaScript files are included; build-tool imports come later.')
+    } catch (error) {
+      setNotice(`Preview failed: ${error.message}`)
+    } finally {
+      setWebPreviewBusy(false)
     }
   }
 
@@ -2613,11 +2680,21 @@ function AppV2() {
   const runCurrent = async () => {
     if (!activePath || editorMode === 'quest') return
     if (dirty && !(await saveFile())) return
+    const suffix = activePath.split('.').at(-1)?.toLowerCase()
+    const isTestFile = activePath.toLowerCase().endsWith('.test.js')
+    const isBrowserEntry = activePath.toLowerCase().endsWith('/app.js') || activePath.toLowerCase() === 'app.js'
+    const runner = suffix === 'py' ? 'python3' : suffix === 'js' && isTestFile ? 'node --test' : suffix === 'js' && !isBrowserEntry ? 'node' : null
+    if (!runner) {
+      setNotice(suffix === 'sql'
+        ? 'Run SQL through the database tool for this chapter (for example, the local Supabase database after setup).'
+        : 'This file needs its project preview or the tool introduced in its chapter.')
+      return
+    }
     setActiveView('forge')
     // Run it the way the quests teach: from inside the file's own folder.
     // The terminal may already be in another folder (cd silver_reels), so
     // go there by absolute path instead of trusting the current one.
-    shellTerminalRef.current?.send(`${runInFolderCommand(campaign?.workspace, activePath)}\n`)
+    shellTerminalRef.current?.send(`${runInFolderCommand(campaign?.workspace, activePath, runner)}\n`)
     shellTerminalRef.current?.focus()
   }
 
@@ -3240,7 +3317,8 @@ function AppV2() {
                 <>
                   <button className="zen-normal-action" onClick={saveFile} disabled={!activePath || busy}>Save</button>
                   <button className="zen-normal-action" onClick={formatCurrent} disabled={!activePath || busy}>Pretty</button>
-                  <button className="primary zen-normal-action" onClick={runCurrent} disabled={!activePath || !activePath.endsWith('.py')}>▶ Run</button>
+                  {activePath?.toLowerCase().endsWith('.html') && <button className="zen-normal-action" onClick={previewHtmlFile} disabled={busy || webPreviewBusy}>{webPreviewBusy ? 'Building preview…' : webPreviewOpen ? 'Refresh preview' : 'Preview page'}</button>}
+                  <button className="primary zen-normal-action" onClick={runCurrent} disabled={!activePath || (!/\.py$/i.test(activePath) && (!/\.js$/i.test(activePath) || activePath.toLowerCase().endsWith('/app.js')))}>▶ Run</button>
                 </>
               )}
             </div>
@@ -3310,6 +3388,7 @@ function AppV2() {
               }}
             />
           </div>
+          {webPreviewOpen && <div className="web-preview-pane"><div className="web-preview-heading"><span>PAGE PREVIEW · SANDBOXED</span><button type="button" onClick={() => setWebPreviewOpen(false)}>Close preview</button></div><iframe title="Campaign HTML preview" sandbox="allow-scripts" referrerPolicy="no-referrer" srcDoc={webPreviewDoc} />}</div>}
           {zenActive && zenPyr && (
             <div className="zen-pyr-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget && zenPyr.type !== 'loading') { setZenPyr(null); editorInstanceRef.current?.focus() } }}>
               <div className={`zen-pyr-card ${zenPyr.verdict || zenPyr.type}`} role="dialog" aria-modal="true" aria-labelledby="zen-pyr-title">

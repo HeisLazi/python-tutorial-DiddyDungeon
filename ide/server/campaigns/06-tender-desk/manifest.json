@@ -1,0 +1,48 @@
+{
+  "branch": "06-tender-desk",
+  "name": "Tender Desk: The First Build",
+  "boss": "The Release Auditor",
+  "order": 4,
+  "catalog": true,
+  "entry_file": "tender_desk/index.html",
+  "project_dir": "tender_desk",
+  "multi_file": true,
+  "project_files": [
+    "index.html",
+    "styles.css",
+    "app.js",
+    "README.md",
+    "package.json",
+    "server.js",
+    "vite.config.js",
+    "src/App.jsx",
+    "src/main.jsx",
+    "src/api.js",
+    "src/requests.js",
+    "tests/requests.test.js",
+    "supabase/config.toml",
+    "supabase/schema.sql",
+    "supabase/seed.sql",
+    "supabase/migrations/20261117000100_create_requests.sql",
+    "supabase/migrations/20261117000200_request_access.sql",
+    "supabase/functions/create-request/index.ts"
+  ],
+  "concept_focus": "Build a service-request app from its first folder through browser UI, JavaScript, React, HTTP, PostgreSQL, Supabase security, deployment and maintenance.",
+  "story": {
+    "title": "Tender Desk: The First Build",
+    "unit_label": "CHAPTER",
+    "client": "Mira, the service clerk",
+    "hook": "Mira has lost track of incoming requests. Build her a small, accessible request desk from a blank folder. Each chapter adds one real layer: web pages, behavior, a maintainable app, a backend contract, relational data, secure access, and a careful release. You will explain and change the system yourself; PYR grades your work through Quest Lab's existing fights."
+  },
+  "boss_lore": "The Release Auditor does not care that the page looks finished. They check what happens when a field is missing, a network request fails, or one user tries to read another user's record.",
+  "boss_brief": "Present a working request desk with semantic HTML, responsive styling, tested JavaScript/React behavior, a documented HTTP contract, a relational PostgreSQL schema with constraints and migrations, user-scoped access policies, and a deployment/maintenance README. Explain the journey of one request from form input to database row and back to the screen.",
+  "boss_twist": "A second office joins the service desk. Change the data model so requests belong to an office and an authenticated owner. Show how a user can see only requests allowed by the product rules, while an office member can collaborate safely. Add the migration and policy changes, describe one denied access attempt, and explain how you would roll back a bad deployment without losing valid data.",
+  "boss_gauntlet": [
+    "required_behavior",
+    "explanation",
+    "edge_cases",
+    "twist_2",
+    "twist_3",
+    "interview"
+  ]
+}

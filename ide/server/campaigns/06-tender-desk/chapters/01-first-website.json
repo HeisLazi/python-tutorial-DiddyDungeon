@@ -1,0 +1,89 @@
+{
+  "act": {
+    "id": 1,
+    "title": "Chapter I: A Desk on the Web",
+    "goal": "Start in a new project folder. Learn what a browser reads, give the page meaningful HTML, style it with CSS, and make one small interaction."
+  },
+  "mobs": [
+    {
+      "name": "The Blank Clipboard",
+      "concept": "Project folders, files, the browser and HTML",
+      "encounter": "Create tender_desk/index.html and build a small request-desk page that the browser can open.",
+      "act": 1,
+      "sign": "input-output",
+      "kind": "workshop",
+      "contract": "Mira has a blank desk. Start with a folder that keeps the project together, then create the page the browser will read. HTML describes content and its meaning; it is not the styling or the interaction layer.",
+      "resources": [
+        {"label": "MDN: Your first website", "url": "https://developer.mozilla.org/en-US/docs/Learn_web_development/Getting_started/Your_first_website", "why": "Read the planning and building sequence before writing the first page."},
+        {"label": "MDN: HTML basics", "url": "https://developer.mozilla.org/en-US/docs/Learn_web_development/Core/Structuring_content", "why": "Use this to understand elements, attributes, nesting and document structure."}
+      ],
+      "objectives": [
+        {"id": "project_folder", "label": "Create the project folder", "question_type": "setup_check", "impact": 1, "check": {"dir": "."}, "brief": "In the Forge terminal create and enter the tender_desk folder. A project folder groups files that change together; the shell's current directory affects relative paths. Use `mkdir tender_desk`, then `cd tender_desk`. Press Check when the project folder exists."},
+        {"id": "html_file", "label": "Create index.html", "question_type": "setup_check", "impact": 1, "check": {"file": "index.html"}, "brief": "Create index.html in tender_desk and open it in the editor. `index.html` is a conventional browser entry page. The file is only text until the browser parses it; saving changes the file, while opening it asks a browser to interpret it."},
+        {"id": "readme_file", "label": "Create the project notes", "question_type": "setup_check", "impact": 1, "check": {"file": "README.md"}, "brief": "Create README.md in tender_desk. This is a plain-text Markdown document for humans, not a program the browser runs. You will use it later to record how another developer can install, start, test, and deploy the project."},
+        {"id": "first_page", "label": "Build Mira's first page", "question_type": "code_checkpoint", "impact": 3, "file": "index.html", "brief": "Write a complete HTML document with a doctype, language, character encoding, viewport metadata, a descriptive title, and a visible heading welcoming the clerk. Add a short paragraph explaining what the request desk does. Keep the content in HTML and do not add CSS yet."},
+        {"id": "browser_trace", "label": "Trace the browser", "question_type": "prediction", "impact": 2, "file": "index.html", "brief": "A browser receives the saved text in index.html and parses it from top to bottom. Predict which text becomes the tab title and which becomes visible page content. Explain why a heading element and the title element appear in different places."}
+      ]
+    },
+    {
+      "name": "The Semantic Scribe",
+      "concept": "Semantic HTML, links, forms and accessibility",
+      "encounter": "Shape a readable request form with labels, useful input types, and semantic page regions.",
+      "act": 1,
+      "sign": "input-output",
+      "kind": "workshop",
+      "contract": "The Scribe can read the words but not the page's structure. Use elements that tell browsers and assistive technology what the page regions and controls mean.",
+      "resources": [
+        {"label": "MDN: HTML forms", "url": "https://developer.mozilla.org/en-US/docs/Learn_web_development/Extensions/Forms", "why": "Study labels, controls, built-in validation and form submission."},
+        {"label": "MDN: Semantic HTML", "url": "https://developer.mozilla.org/en-US/docs/Glossary/Semantics#semantics_in_html", "why": "Review why meaning-bearing elements help people, browsers and maintainers."}
+      ],
+      "objectives": [
+        {"id": "semantic_regions", "label": "Give the page structure", "question_type": "code_checkpoint", "impact": 3, "file": "index.html", "brief": "Organize the page with header, main, and a section for a new service request. Use a heading hierarchy that does not skip levels. Add a navigation link only if it takes the user somewhere real; a button performs an action, while an anchor navigates."},
+        {"id": "labelled_controls", "label": "Make a usable request form", "question_type": "code_checkpoint", "impact": 3, "file": "index.html", "brief": "Add a request form with a person's name, a short request title, a description, and a submit button. Give every control a visible label connected by matching for/id values; choose input types that fit the data, and make the submit button's purpose clear."},
+        {"id": "labels_bug", "label": "Repair the unlabeled form", "question_type": "bug_diagnosis", "impact": 3, "file": "index.html", "brief": "Mira's draft uses placeholder text as the only name for each input and repeats the same id twice. Find both accessibility and browser-behavior problems. Repair the markup so each control has a unique id and a persistent label, then explain why placeholder text is not a replacement for a label."},
+        {"id": "semantic_explain", "label": "Explain the structure", "question_type": "explanation", "impact": 2, "file": "index.html", "brief": "Explain how semantic HTML helps a screen-reader user and a future developer. Give one example from this page where choosing a meaningful element communicates more than choosing a generic div."}
+      ]
+    },
+    {
+      "name": "The Cascade Moth",
+      "concept": "CSS rules, cascade, box model and responsive layout",
+      "encounter": "Move the request form from a raw document into a clear, responsive desk layout.",
+      "act": 1,
+      "sign": "composition",
+      "kind": "workshop",
+      "contract": "The Moth buries the form under conflicting styles. CSS rules match elements, the cascade resolves conflicts, and the box model explains the space each element occupies.",
+      "resources": [
+        {"label": "MDN: CSS styling basics", "url": "https://developer.mozilla.org/en-US/docs/Learn_web_development/Core/Styling_basics", "why": "Read selectors, cascade, box model and layout before changing the stylesheet."},
+        {"label": "MDN: Responsive design", "url": "https://developer.mozilla.org/en-US/docs/Learn_web_development/Core/CSS_layout/Responsive_Design", "why": "Study how a page can adapt to narrow and wide viewports."}
+      ],
+      "objectives": [
+        {"id": "stylesheet_file", "label": "Create styles.css", "question_type": "setup_check", "impact": 1, "check": {"file": "styles.css"}, "brief": "Create styles.css beside index.html and open it in the editor. The next step will link this file using a relative path and add the page's visual rules."},
+        {"id": "stylesheet", "label": "Connect a stylesheet", "question_type": "code_checkpoint", "impact": 2, "file": "index.html", "brief": "Link styles.css from the document head using a relative path. Give the page a readable background, a centered content width, consistent spacing, and visible focus styles for keyboard users. Keep structural content in HTML and visual rules in CSS."},
+        {"id": "form_layout", "label": "Lay out the desk", "question_type": "code_checkpoint", "impact": 3, "file": "styles.css", "brief": "Style the request form as a calm card using spacing, borders, and a legible type scale. Use box-sizing: border-box and a layout method such as grid or flexbox. Make controls fill the card without overflowing; do not position every element with fixed coordinates."},
+        {"id": "cascade_bug", "label": "Find the cascade conflict", "question_type": "bug_diagnosis", "impact": 3, "file": "styles.css", "brief": "A broad `input { width: 500px }` rule makes the form overflow on a phone, while a later selector adds a different width. Identify which rule wins and why. Replace fixed sizing with a max-width or flexible width, then describe how source order, specificity and importance participate in the cascade."},
+        {"id": "responsive_predict", "label": "Predict a narrow screen", "question_type": "prediction", "impact": 2, "file": "styles.css", "brief": "Predict what happens when a fixed-width card is wider than the viewport, then inspect your own rules for the same risk. Add a narrow-screen adjustment and explain which layout property changes and which content order stays the same."}
+      ]
+    },
+    {
+      "name": "The Click Wisp",
+      "concept": "JavaScript values, DOM selection and browser events",
+      "encounter": "Load JavaScript in the page and display a useful confirmation when a request form is submitted.",
+      "act": 1,
+      "sign": "events",
+      "tier": "elite",
+      "kind": "workshop",
+      "contract": "A button cannot change the page by wishing. JavaScript runs behavior in the browser, selects DOM elements, and responds to events. Keep the browser behavior in app.js rather than mixing it into markup.",
+      "resources": [
+        {"label": "MDN: JavaScript first steps", "url": "https://developer.mozilla.org/en-US/docs/Learn_web_development/Core/Scripting", "why": "Follow the first scripting path from linking a file through DOM interaction."},
+        {"label": "MDN: Introduction to events", "url": "https://developer.mozilla.org/en-US/docs/Learn_web_development/Core/Scripting/Events", "why": "Study how event listeners respond to user actions."}
+      ],
+      "objectives": [
+        {"id": "app_script_file", "label": "Create app.js", "question_type": "setup_check", "impact": 1, "check": {"file": "app.js"}, "brief": "Create app.js beside index.html and styles.css. It will contain browser behavior; the HTML preview will load it in a sandbox."},
+        {"id": "script_file", "label": "Connect app.js", "question_type": "code_checkpoint", "impact": 2, "file": "index.html", "brief": "Load app.js with a script tag using defer. Explain why the browser must load the document before code that queries its elements can safely run. Keep the script in its own file rather than using inline onclick attributes."},
+        {"id": "submit_event", "label": "Handle a submit event", "question_type": "code_checkpoint", "impact": 3, "file": "app.js", "brief": "Select the form and add a submit-event listener. Prevent the browser's default page reload, read the request title from the form, and place a confirmation message in a status region. Use textContent for user-entered text so it is treated as text, not interpreted as HTML."},
+        {"id": "missing_listener", "label": "Debug a silent button", "question_type": "bug_diagnosis", "impact": 3, "file": "app.js", "brief": "Mira's listener is attached to a selector that matches no element, so submitting reloads the page. Compare the selector to the HTML id, check when the script runs, and fix the mismatch. Explain how the browser console helps separate a missing element from a JavaScript syntax error."},
+        {"id": "event_reasoning", "label": "Trace the form interaction", "question_type": "explanation", "impact": 2, "file": "app.js", "brief": "Describe what happens from the user clicking Submit through the event listener changing the page. Include the event, the default browser behavior you cancelled, where the entered value comes from, and how the status message is displayed."}
+      ]
+    }
+  ]
+}

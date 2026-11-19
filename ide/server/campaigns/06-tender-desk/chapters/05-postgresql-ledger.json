@@ -1,0 +1,70 @@
+{
+  "act": {
+    "id": 5,
+    "title": "Chapter V: The PostgreSQL Ledger",
+    "goal": "Model the request desk as relational data. Practice schema design, keys, queries, joins, constraints, transactions, indexes and versioned migrations before asking an application to rely on the database."
+  },
+  "mobs": [
+    {
+      "name": "The Schema Architect",
+      "concept": "Relational modeling, tables, primary keys, foreign keys and normalization",
+      "encounter": "Move the temporary in-memory list into a relational schema that can represent offices and their requests.",
+      "act": 5,
+      "sign": "data-structures",
+      "kind": "workshop",
+      "contract": "The Architect has stored every request, office name, and owner in one wide table. Fix the model so facts have a clear home and relationships are represented by keys rather than repeated guesses.",
+      "resources": [
+        {"label": "PostgreSQL: Tutorial", "url": "https://www.postgresql.org/docs/current/tutorial.html", "why": "Use the official introduction for relational concepts, table creation and querying."},
+        {"label": "PostgreSQL: Data definition", "url": "https://www.postgresql.org/docs/current/ddl.html", "why": "Read how PostgreSQL represents tables, constraints and schemas."}
+      ],
+      "objectives": [
+        {"id": "schema_file", "label": "Create the schema file", "question_type": "setup_check", "impact": 1, "check": {"file": "supabase/schema.sql"}, "brief": "Create the supabase folder and schema.sql. SQL describes data changes as statements; a migration keeps those statements in version control. At first, this file will define ordinary PostgreSQL tables and constraints, not connect to a live database."},
+        {"id": "normalized_tables", "label": "Separate office and request facts", "question_type": "code_checkpoint", "impact": 3, "file": "supabase/schema.sql", "brief": "Create offices and requests tables. Give each a primary key; put office-specific facts on offices and a foreign key on requests. Include title, description, status, priority and a timezone-aware creation timestamp. Explain why repeating office names on every request can produce conflicting updates."},
+        {"id": "key_mistake", "label": "Repair the weak relationship", "question_type": "bug_diagnosis", "impact": 3, "file": "supabase/schema.sql", "brief": "The draft stores office_name as free text on each request, so a spelling change creates multiple versions and no database rule prevents a request pointing at a real office. Replace that relationship with a stable foreign key and explain what the database guarantees when an office is deleted."},
+        {"id": "key_reasoning", "label": "Explain identity and relationships", "question_type": "explanation", "impact": 2, "file": "supabase/schema.sql", "brief": "Explain what a primary key identifies, what a foreign key protects, and why an auto-generated id is often safer than using a person's name as identity. Give one example of a fact that should live in its own table."}
+      ]
+    },
+    {
+      "name": "The Query Sphinx",
+      "concept": "SELECT, filtering, ordering, joins, aggregates and parameterized queries",
+      "encounter": "Answer operational questions from the ledger without loading the whole database into the browser.",
+      "act": 5,
+      "sign": "search",
+      "kind": "workshop",
+      "contract": "The Sphinx asks questions in SQL. A query selects a useful slice of data; a join follows a declared relationship; aggregation summarizes many rows.",
+      "resources": [
+        {"label": "PostgreSQL: Querying a table", "url": "https://www.postgresql.org/docs/current/tutorial-select.html", "why": "Practice SELECT, WHERE, ORDER BY and limiting result sets."},
+        {"label": "PostgreSQL: Joins between tables", "url": "https://www.postgresql.org/docs/current/tutorial-join.html", "why": "Follow a foreign-key relationship to combine related rows."},
+        {"label": "PostgreSQL: Aggregate functions", "url": "https://www.postgresql.org/docs/current/tutorial-agg.html", "why": "Use counts and grouped summaries to answer desk questions."}
+      ],
+      "objectives": [
+        {"id": "open_queue", "label": "Query the open queue", "question_type": "code_checkpoint", "impact": 3, "file": "supabase/schema.sql", "brief": "Write a query that returns only open requests for one office, newest first, with a bounded result count. Select only the columns the screen needs. Use placeholders in application SQL rather than concatenating a user-provided office id into the query text."},
+        {"id": "office_join", "label": "Join the office name", "question_type": "code_checkpoint", "impact": 3, "file": "supabase/schema.sql", "brief": "Join requests to offices through their foreign key and return the request title beside the office name. Keep the join condition explicit. Add a second query that counts open requests per office and sorts the busiest office first."},
+        {"id": "join_bug", "label": "Find the accidental cross join", "question_type": "bug_diagnosis", "impact": 3, "file": "supabase/schema.sql", "brief": "The rival query selects from requests and offices without a join condition, multiplying every request by every office. Add the correct relationship predicate and explain why the row count changed from the product of both table sizes to only matching pairs."},
+        {"id": "query_plan", "label": "Explain query shape", "question_type": "prediction", "impact": 2, "file": "supabase/schema.sql", "brief": "Predict the difference between WHERE status = 'open' before aggregation and HAVING COUNT(*) > 3 after grouping. Explain which one filters individual rows and which one filters grouped results."}
+      ]
+    },
+    {
+      "name": "The Transaction Keeper",
+      "concept": "Constraints, atomic transactions, indexes and migration discipline",
+      "encounter": "Protect valid states when requests are edited, and evolve a real schema without losing existing data.",
+      "act": 5,
+      "sign": "state-management",
+      "tier": "elite",
+      "kind": "debug",
+      "contract": "The Keeper does not trust comments to protect data. Constraints reject invalid states at the database boundary; transactions group changes; migrations explain how a deployed schema evolves.",
+      "resources": [
+        {"label": "PostgreSQL: Constraints", "url": "https://www.postgresql.org/docs/current/ddl-constraints.html", "why": "Review NOT NULL, CHECK, UNIQUE, primary and foreign key constraints."},
+        {"label": "PostgreSQL: Transactions", "url": "https://www.postgresql.org/docs/current/tutorial-transactions.html", "why": "Understand all-or-nothing groups of database operations."},
+        {"label": "PostgreSQL: Indexes", "url": "https://www.postgresql.org/docs/current/indexes.html", "why": "Learn what an index can accelerate and what it costs to maintain."}
+      ],
+      "objectives": [
+        {"id": "first_migration_file", "label": "Create the migration file", "question_type": "setup_check", "impact": 1, "check": {"file": "supabase/migrations/20261117000100_create_requests.sql"}, "brief": "Create the supabase/migrations folder and the versioned SQL file shown in the project tree. In a real Supabase project the CLI can generate a timestamped filename; this guided project uses a fixed path so PYR can review it."},
+        {"id": "constraints", "label": "Make invalid states hard to store", "question_type": "code_checkpoint", "impact": 3, "file": "supabase/schema.sql", "brief": "Add NOT NULL constraints for required fields, a CHECK for the allowed request statuses, and a CHECK for priority bounds. Add a unique constraint only where the product truly requires uniqueness. Explain why database constraints protect writes from every client, not only this form."},
+        {"id": "atomic_transition", "label": "Keep a status change atomic", "question_type": "bug_diagnosis", "impact": 3, "file": "supabase/migrations/20261117000100_create_requests.sql", "brief": "A status change updates a request, then writes an audit row; the second statement can fail after the first succeeds. Put both statements in a transaction and ensure an error rolls both back. Describe the invariant that should hold when the transaction commits."},
+        {"id": "migration_file", "label": "Write a forward migration", "question_type": "code_checkpoint", "impact": 3, "file": "supabase/migrations/20261117000100_create_requests.sql", "brief": "Write the first versioned migration for the schema and add an optional due_at column only if your product model includes a real due-date rule. Include a rollback note in README.md and explain why editing an already-applied migration is unsafe for teammates."},
+        {"id": "index_tradeoff", "label": "Choose an index deliberately", "question_type": "explanation", "impact": 2, "file": "supabase/schema.sql", "brief": "Propose an index for the common open-queue query and describe which filter/order it supports. Explain the costs: extra storage and slower writes. Do not add an index just because a column exists."}
+      ]
+    }
+  ]
+}
