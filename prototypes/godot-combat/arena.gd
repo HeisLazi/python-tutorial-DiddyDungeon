@@ -462,9 +462,8 @@ func _apply_live_state(payload: Dictionary) -> void:
 		enemy.frame = 0
 		_set_rival_look(rival_look if rival_skin_id == "tate" else "classic", str(payload.get("rivalArmorMastery", "")), str(payload.get("rivalWeaponMastery", "")))
 	oil_pet.visible = str(payload.get("pet", "none")) == "oil"
-	var charm: String = str(payload.get("trinketIcon", "none"))
-	trinket_gem.visible = charms.has(charm)
-	if trinket_gem.visible: trinket_gem.texture = charms[charm]
+	# Trinkets are not drawn in the combat scene (the charm art is kept for later).
+	trinket_gem.visible = false
 	if not acting:
 		unarmed = style == "unarmed"
 		if unarmed: style = "handmagic"
