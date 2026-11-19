@@ -1,0 +1,263 @@
+{
+ "lanternscale": {
+  "armour": "Lanternscale Vest",
+  "id": "lv-09",
+  "effect": {
+   "reduction": 20,
+   "heal_on_objective": 2,
+   "impact": 1,
+   "on": "explanation"
+  },
+  "icon": "ide/frontend/public/campaign-art/items/armor-lv-09.png",
+  "icon_exists": true,
+  "parent": "lanternkeeper"
+ },
+ "firstlight": {
+  "armour": "First Light Plate",
+  "id": "lv-10",
+  "effect": {
+   "reduction": 40,
+   "first_miss_free": true,
+   "revive": true
+  },
+  "icon": "ide/frontend/public/campaign-art/items/armor-lv-10.png",
+  "icon_exists": true,
+  "parent": "wardplate"
+ },
+ "dealer": {
+  "armour": "Dealer's Waistcoat",
+  "id": "bj-dealer-s-waistcoat",
+  "effect": {
+   "coin_bonus": 6
+  },
+  "icon": "ide/frontend/public/campaign-art/items/armor-bj-dealer-s-waistcoat.png",
+  "icon_exists": true,
+  "parent": "classic"
+ },
+ "velvet": {
+  "armour": "Velvet Felt Jacket",
+  "id": "bj-velvet-felt-jacket",
+  "effect": {
+   "first_miss_free": true
+  },
+  "icon": "ide/frontend/public/campaign-art/items/armor-bj-velvet-felt-jacket.png",
+  "icon_exists": true,
+  "parent": "classic"
+ },
+ "pitboss": {
+  "armour": "Pit Boss Coat",
+  "id": "bj-pit-boss-coat",
+  "effect": {
+   "reduction": 18,
+   "coin_bonus": 10
+  },
+  "icon": "ide/frontend/public/campaign-art/items/armor-bj-pit-boss-coat.png",
+  "icon_exists": true,
+  "parent": "harvest"
+ },
+ "gilded": {
+  "armour": "Gilded Lapel Armour",
+  "id": "bj-gilded-lapel-armour",
+  "effect": {
+   "reduction": 24,
+   "impact": 1,
+   "on": "prediction",
+   "loot_luck": 10
+  },
+  "icon": "ide/frontend/public/campaign-art/items/armor-bj-gilded-lapel-armour.png",
+  "icon_exists": true,
+  "parent": "classic"
+ },
+ "highroller": {
+  "armour": "The High Roller's Mail",
+  "id": "bj-the-high-roller-s-mail",
+  "effect": {
+   "reduction": 36,
+   "coin_bonus": 20,
+   "revive": true
+  },
+  "icon": "ide/frontend/public/campaign-art/items/armor-bj-the-high-roller-s-mail.png",
+  "icon_exists": true,
+  "parent": "ivory"
+ },
+ "doorman": {
+  "armour": "Doorman's Livery",
+  "id": "cas-doorman-s-livery",
+  "effect": {
+   "reduction": 12
+  },
+  "icon": "ide/frontend/public/campaign-art/items/armor-cas-doorman-s-livery.png",
+  "icon_exists": true,
+  "parent": "classic"
+ },
+ "sequin": {
+  "armour": "Silver Sequin Vest",
+  "id": "cas-silver-sequin-vest",
+  "effect": {
+   "loot_luck": 10,
+   "coin_bonus": 5
+  },
+  "icon": "ide/frontend/public/campaign-art/items/armor-cas-silver-sequin-vest.png",
+  "icon_exists": true,
+  "parent": "classic"
+ },
+ "auditor": {
+  "armour": "Auditor's Waistcoat",
+  "id": "cas-auditor-s-waistcoat",
+  "effect": {
+   "xp_bonus": 12,
+   "impact": 1,
+   "on": "bug_diagnosis"
+  },
+  "icon": "ide/frontend/public/campaign-art/items/armor-cas-auditor-s-waistcoat.png",
+  "icon_exists": true,
+  "parent": "patchwork"
+ },
+ "vault": {
+  "armour": "Vault Guard Plate",
+  "id": "cas-vault-guard-plate",
+  "effect": {
+   "reduction": 32,
+   "start_guards": 1
+  },
+  "icon": "ide/frontend/public/campaign-art/items/armor-cas-vault-guard-plate.png",
+  "icon_exists": true,
+  "parent": "debugger"
+ },
+ "fortune": {
+  "armour": "The Fortune Mail",
+  "id": "cas-the-fortune-mail",
+  "effect": {
+   "reduction": 30,
+   "loot_luck": 20,
+   "first_miss_free": true
+  },
+  "icon": "ide/frontend/public/campaign-art/items/armor-cas-the-fortune-mail.png",
+  "icon_exists": true,
+  "parent": "debugger"
+ },
+ "canvas": {
+  "armour": "Canvas Mining Smock",
+  "id": "dc-canvas-mining-smock",
+  "effect": {
+   "xp_bonus": 8
+  },
+  "icon": "ide/frontend/public/campaign-art/items/armor-dc-canvas-mining-smock.png",
+  "icon_exists": true,
+  "parent": "pilgrim"
+ },
+ "riveted": {
+  "armour": "Riveted Leather",
+  "id": "dc-riveted-leather",
+  "effect": {
+   "reduction": 16
+  },
+  "icon": "ide/frontend/public/campaign-art/items/armor-dc-riveted-leather.png",
+  "icon_exists": true,
+  "parent": "wayfarer"
+ },
+ "deepvein": {
+  "armour": "Deepvein Brigandine",
+  "id": "dc-deepvein-brigandine",
+  "effect": {
+   "reduction": 20,
+   "heal_on_objective": 1
+  },
+  "icon": "ide/frontend/public/campaign-art/items/armor-dc-deepvein-brigandine.png",
+  "icon_exists": true,
+  "parent": "spectral"
+ },
+ "lamellar": {
+  "armour": "Lamp-Lit Lamellar",
+  "id": "dc-lamp-lit-lamellar",
+  "effect": {
+   "reduction": 26,
+   "impact": 1,
+   "on": "code_checkpoint",
+   "start_guards": 1
+  },
+  "icon": "ide/frontend/public/campaign-art/items/armor-dc-lamp-lit-lamellar.png",
+  "icon_exists": true,
+  "parent": "norse"
+ },
+ "coreforged": {
+  "armour": "The Core-Forged Plate",
+  "id": "dc-the-core-forged-plate",
+  "effect": {
+   "reduction": 42,
+   "heal_on_objective": 2,
+   "revive": true
+  },
+  "icon": "ide/frontend/public/campaign-art/items/armor-dc-the-core-forged-plate.png",
+  "icon_exists": true,
+  "parent": "wardplate"
+ },
+ "merchantpatchwork": {
+  "armour": "Merchant Patchwork Coat",
+  "id": "merchant-patchwork-coat",
+  "effect": {
+   "reduction": 10,
+   "coin_bonus": 4
+  },
+  "icon": "ide/frontend/public/campaign-art/items/armor-merchant-patchwork-coat.png",
+  "icon_exists": true,
+  "parent": "patchwork"
+ },
+ "merchantpilgrim": {
+  "armour": "Merchant Pilgrim Leather",
+  "id": "merchant-pilgrim-leather",
+  "effect": {
+   "reduction": 12,
+   "heal_on_objective": 1
+  },
+  "icon": "ide/frontend/public/campaign-art/items/armor-merchant-pilgrim-leather.png",
+  "icon_exists": true,
+  "parent": "pilgrim"
+ },
+ "merchantwayfarer": {
+  "armour": "Merchant Wayfarer Brigandine",
+  "id": "merchant-wayfarer-brigandine",
+  "effect": {
+   "reduction": 18,
+   "impact": 1,
+   "on": "code_checkpoint"
+  },
+  "icon": "ide/frontend/public/campaign-art/items/armor-merchant-wayfarer-brigandine.png",
+  "icon_exists": true,
+  "parent": "wayfarer"
+ },
+ "lanternbound": {
+  "armour": "Lanternbound Coat",
+  "id": "forged-lantern-coat",
+  "effect": {
+   "reduction": 10,
+   "start_guards": 1
+  },
+  "icon": "ide/frontend/public/campaign-art/items/armor-forged-lantern-coat.png",
+  "icon_exists": true,
+  "parent": "lanternkeeper"
+ },
+ "drowned": {
+  "armour": "Drowned Mail",
+  "id": "forged-divers-mail",
+  "effect": {
+   "reduction": 30,
+   "heal_on_objective": 1
+  },
+  "icon": "ide/frontend/public/campaign-art/items/armor-forged-divers-mail.png",
+  "icon_exists": true,
+  "parent": "spectral"
+ },
+ "flowkeeper": {
+  "armour": "Flowkeeper Plate",
+  "id": "forged-keeper-plate",
+  "effect": {
+   "reduction": 20,
+   "impact": 1,
+   "on": "any"
+  },
+  "icon": "ide/frontend/public/campaign-art/items/armor-forged-keeper-plate.png",
+  "icon_exists": true,
+  "parent": "oracle"
+ }
+}

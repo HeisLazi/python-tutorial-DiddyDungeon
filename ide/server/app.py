@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import fcntl
+import hashlib
 import json
 import os
 import pty
@@ -10,16 +11,48 @@ import struct
 import subprocess
 import sys
 import termios
-from datetime import datetime, timezone
+import threading
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+from starlette.middleware.trustedhost import TrustedHostMiddleware
+
+from ide.server.security import allowed_hosts, allowed_origins, is_allowed_origin
+from ide.server.state import (
+    LocalStateService,
+    StateApplyRequest,
+    StateCommandError,
+    StateSyncApplyRequest,
+    legacy_state_report,
+    opaque_device_id,
+    state_authority_info,
+)
 
 REPO_ROOT = Path(os.getenv("QUESTLAB_REPO_ROOT", Path(__file__).resolve().parents[2])).resolve()
 WORKSPACE = Path(os.getenv("QUESTLAB_WORKSPACE", REPO_ROOT)).resolve()
-PROGRESS_PATH = REPO_ROOT / "progress.json"
+
+
+def configured_progress_path() -> Path:
+    """Resolve the one canonical state path from server configuration.
+
+    Relative overrides are anchored to ``REPO_ROOT`` rather than the process
+    cwd, so a CLI launched from the quest workspace cannot silently create a
+    second live save.  The normal launcher leaves this unset and uses the
+    platform repository's ``progress.json``.
+    """
+
+    raw = os.getenv("QUESTLAB_STATE_PATH", "").strip()
+    if not raw:
+        return (REPO_ROOT / "progress.json").resolve()
+    candidate = Path(raw).expanduser()
+    if not candidate.is_absolute():
+        candidate = REPO_ROOT / candidate
+    return candidate.resolve()
+
+
+PROGRESS_PATH = configured_progress_path()
 TUTOR_PATH = WORKSPACE / "tutor.py"
 MAX_TEXT_BYTES = 2_000_000
 IGNORED_DIRS = {
@@ -47,10 +80,15 @@ current project.
 
 '''
 
+ALLOWED_ORIGINS = allowed_origins()
+PROGRESS_LOCK = threading.RLock()
+STATE_SERVICE = LocalStateService(lambda: PROGRESS_PATH, PROGRESS_LOCK)
+
 app = FastAPI(title="Python Quest Lab Local Server", version="0.3.0")
+app.add_middleware(TrustedHostMiddleware, allowed_hosts=list(allowed_hosts()))
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://127.0.0.1:5173", "http://localhost:5173"],
+    allow_origins=list(ALLOWED_ORIGINS),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -98,11 +136,42 @@ def read_json(path: Path, fallback):
         return fallback
 
 
-def write_json_atomic(path: Path, value: dict) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    temp = path.with_suffix(path.suffix + ".tmp")
-    temp.write_text(json.dumps(value, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
-    temp.replace(path)
+def legacy_progress_path() -> Path:
+    return (WORKSPACE / "progress.json").resolve()
+
+
+def state_path_kind(target: Path) -> str | None:
+    canonical = PROGRESS_PATH.resolve()
+    if target.resolve() == canonical:
+        return "canonical"
+    if target.resolve() == legacy_progress_path() and target.resolve() != canonical:
+        return "legacy"
+    return None
+
+
+def reject_state_file_access(target: Path) -> None:
+    kind = state_path_kind(target)
+    if kind:
+        if kind == "legacy":
+            raise HTTPException(
+                status_code=403,
+                detail="workspace progress.json is legacy data; use the local state service and canonical repo state",
+            )
+        raise HTTPException(status_code=403, detail="progress.json is managed by the local state service")
+
+
+def local_device_id() -> str:
+    return opaque_device_id()
+
+
+def tutor_revision(content: str) -> str:
+    """Return a deterministic local revision for external tutor-file polling."""
+
+    return hashlib.sha256(content.encode("utf-8")).hexdigest()
+
+
+def write_progress_atomic(progress: dict) -> dict:
+    return STATE_SERVICE.persist(progress)
 
 
 def load_progress() -> dict:
@@ -121,15 +190,6 @@ def ensure_tutor_file() -> Path:
     if not TUTOR_PATH.exists():
         TUTOR_PATH.write_text(TUTOR_TEMPLATE, encoding="utf-8")
     return TUTOR_PATH
-
-
-def homestead_catalog(progress: dict) -> dict[str, dict]:
-    homestead = progress.get("homestead") or {}
-    return {
-        str(item.get("id")): item
-        for item in homestead.get("catalog", [])
-        if isinstance(item, dict) and item.get("id")
-    }
 
 
 def git_info() -> dict:
@@ -208,15 +268,56 @@ def health():
 
 @app.get("/api/campaign")
 def campaign():
-    progress = read_json(PROGRESS_PATH, {})
+    try:
+        progress, metadata = STATE_SERVICE.snapshot_with_metadata()
+    except StateCommandError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
     activity = read_json(REPO_ROOT / "activity.json", {})
     return {
         "progress": progress,
+        "revision": metadata["revision"],
+        "encounter": STATE_SERVICE.encounter_projection(progress),
         "activity": activity,
         "git": git_info(),
         "workspace": str(WORKSPACE),
         "repo_root": str(REPO_ROOT),
+        "state_authority": state_authority_info(PROGRESS_PATH, WORKSPACE),
     }
+
+
+@app.get("/api/state/revision")
+def state_revision():
+    try:
+        metadata = STATE_SERVICE.metadata()
+    except StateCommandError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
+    return {**metadata, "state_authority": state_authority_info(PROGRESS_PATH, WORKSPACE)}
+
+
+@app.get("/api/state/sync")
+def state_sync_snapshot():
+    try:
+        projection, metadata = STATE_SERVICE.sync_snapshot()
+    except StateCommandError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
+    return {"projection": projection, "revision": metadata["revision"], "metadata": metadata}
+
+
+@app.post("/api/state/sync/apply")
+def apply_cloud_state(payload: StateSyncApplyRequest):
+    try:
+        return STATE_SERVICE.apply_cloud_projection(
+            payload.projection,
+            expected_revision=payload.expected_revision,
+            cloud_revision=payload.cloud_revision,
+        )
+    except StateCommandError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
+
+
+@app.get("/api/state/legacy")
+def state_legacy_report():
+    return legacy_state_report(PROGRESS_PATH, legacy_progress_path())
 
 
 @app.get("/api/tutor")
@@ -224,7 +325,8 @@ def read_tutor_notebook():
     target = ensure_tutor_file()
     if target.stat().st_size > MAX_TEXT_BYTES:
         raise HTTPException(status_code=413, detail="Tutor notebook is too large")
-    return {"path": "tutor.py", "content": target.read_text(encoding="utf-8")}
+    content = target.read_text(encoding="utf-8")
+    return {"path": "tutor.py", "content": content, "revision": tutor_revision(content)}
 
 
 @app.put("/api/tutor")
@@ -234,92 +336,19 @@ def write_tutor_notebook(payload: TutorWrite):
         raise HTTPException(status_code=413, detail="Tutor notebook is too large")
     target = ensure_tutor_file()
     target.write_text(payload.content, encoding="utf-8")
-    return {"ok": True, "path": "tutor.py", "bytes": len(encoded)}
+    return {"ok": True, "path": "tutor.py", "bytes": len(encoded), "revision": tutor_revision(payload.content)}
 
 
 @app.post("/api/homestead/purchase")
 def purchase_homestead_item(payload: HomesteadPurchase):
-    progress = load_progress()
-    homestead = progress.get("homestead")
-    if not isinstance(homestead, dict):
-        raise HTTPException(status_code=409, detail="Homestead state is not initialized")
-
-    catalog = homestead_catalog(progress)
-    item = catalog.get(payload.item_id)
-    if not item:
-        raise HTTPException(status_code=404, detail="Unknown Homestead item")
-
-    owned = homestead.setdefault("owned_cosmetics", [])
-    if payload.item_id in owned:
-        return {
-            "ok": True,
-            "already_owned": True,
-            "item": item,
-            "coins": int((progress.get("player") or {}).get("coins", 0)),
-        }
-
-    try:
-        price = max(0, int(item.get("price", 0)))
-    except (TypeError, ValueError) as exc:
-        raise HTTPException(status_code=500, detail="Invalid Homestead item price") from exc
-
-    player = progress.setdefault("player", {})
-    try:
-        coins = int(player.get("coins", 0))
-    except (TypeError, ValueError):
-        coins = 0
-
-    if coins < price:
-        raise HTTPException(
-            status_code=409,
-            detail=f"Not enough coins. {item.get('name', 'This item')} costs {price}c and you have {coins}c.",
-        )
-
-    player["coins"] = coins - price
-    owned.append(payload.item_id)
-    homestead.setdefault("purchase_history", []).append(
-        {
-            "item_id": payload.item_id,
-            "name": item.get("name", payload.item_id),
-            "price": price,
-            "purchased_at": datetime.now(timezone.utc).isoformat(),
-        }
-    )
-    write_json_atomic(PROGRESS_PATH, progress)
-
-    return {
-        "ok": True,
-        "item": item,
-        "coins": player["coins"],
-        "owned_cosmetics": owned,
-    }
+    envelope = _apply_state_or_http("homestead_purchase", payload.model_dump(), "player")
+    return _flatten_state_result(envelope)
 
 
 @app.post("/api/homestead/equip")
 def equip_homestead_item(payload: HomesteadEquip):
-    progress = load_progress()
-    homestead = progress.get("homestead")
-    if not isinstance(homestead, dict):
-        raise HTTPException(status_code=409, detail="Homestead state is not initialized")
-
-    catalog = homestead_catalog(progress)
-    item = catalog.get(payload.item_id)
-    if not item:
-        raise HTTPException(status_code=404, detail="Unknown Homestead item")
-
-    owned = homestead.setdefault("owned_cosmetics", [])
-    if payload.item_id not in owned:
-        raise HTTPException(status_code=409, detail="Buy or unlock this cosmetic before equipping it")
-
-    kind = str(item.get("kind", ""))
-    if kind not in {"theme", "cursor", "hud", "terminal"}:
-        raise HTTPException(status_code=409, detail="This Homestead item cannot be equipped")
-
-    equipped = homestead.setdefault("equipped", {})
-    equipped[kind] = payload.item_id
-    write_json_atomic(PROGRESS_PATH, progress)
-
-    return {"ok": True, "item": item, "equipped": equipped}
+    envelope = _apply_state_or_http("homestead_equip", payload.model_dump(), "player")
+    return _flatten_state_result(envelope)
 
 
 @app.get("/api/tree")
@@ -330,6 +359,7 @@ def tree():
 @app.get("/api/file")
 def read_file(path: str):
     target = safe_path(path)
+    reject_state_file_access(target)
     if not target.exists() or not target.is_file():
         raise HTTPException(status_code=404, detail="File not found")
     if target.stat().st_size > MAX_TEXT_BYTES:
@@ -344,6 +374,7 @@ def read_file(path: str):
 @app.put("/api/file")
 def write_file(payload: FileWrite):
     target = safe_path(payload.path)
+    reject_state_file_access(target)
     encoded = payload.content.encode("utf-8")
     if len(encoded) > MAX_TEXT_BYTES:
         raise HTTPException(status_code=413, detail="File is too large for the learning editor")
@@ -352,9 +383,37 @@ def write_file(payload: FileWrite):
     return {"ok": True, "path": target.relative_to(WORKSPACE).as_posix(), "bytes": len(encoded)}
 
 
+def _apply_state_or_http(action: str, payload: dict, actor: str, *, internal: bool = False) -> dict:
+    try:
+        return STATE_SERVICE.apply(action, payload, actor, internal=internal)
+    except StateCommandError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
+
+
+def _flatten_state_result(envelope: dict) -> dict:
+    result = dict(envelope.get("result") or {})
+    result.update(
+        {
+            "ok": envelope.get("ok", True),
+            "action": envelope.get("action"),
+            "changed": envelope.get("changed", False),
+            "revision": envelope.get("revision"),
+        }
+    )
+    if envelope.get("event") is not None:
+        result["event"] = envelope["event"]
+    return result
+
+
+@app.post("/api/state/apply")
+def apply_state_command(payload: StateApplyRequest):
+    return _apply_state_or_http(payload.action, payload.payload, payload.actor)
+
+
 @app.post("/api/format")
 def format_file(payload: FormatRequest):
     target = safe_path(payload.path)
+    reject_state_file_access(target)
     encoded = payload.content.encode("utf-8")
     if len(encoded) > MAX_TEXT_BYTES:
         raise HTTPException(status_code=413, detail="File is too large for the learning editor")
@@ -404,14 +463,41 @@ def format_file(payload: FormatRequest):
     }
 
 
-@app.websocket("/ws/terminal")
-async def terminal(websocket: WebSocket):
-    await websocket.accept()
-    shell = os.getenv("SHELL", "/bin/bash")
+def terminal_environment(role: str = "shell") -> dict[str, str]:
+    """Expose the canonical state gateway to a PTY without changing its cwd."""
+
     env = os.environ.copy()
     env["TERM"] = "xterm-256color"
     env["COLORTERM"] = "truecolor"
     env["QUESTLAB_WORKSPACE"] = str(WORKSPACE)
+    env["QUESTLAB_REPO_ROOT"] = str(REPO_ROOT)
+    env["QUESTLAB_STATE_PATH"] = str(PROGRESS_PATH)
+    env["QUESTLAB_CANONICAL_STATE_PATH"] = str(PROGRESS_PATH)
+    env["QUESTLAB_LEGACY_STATE_PATH"] = str(legacy_progress_path())
+    env["QUESTLAB_BACKEND_PORT"] = os.getenv("QUESTLAB_BACKEND_PORT", "7331")
+    env["QUESTLAB_FRONTEND_PORT"] = os.getenv("QUESTLAB_FRONTEND_PORT", "5173")
+    env["QUESTLAB_TERMINAL_ROLE"] = role
+    env["QUESTLAB_PYTHON"] = sys.executable
+    env["PYTHONPATH"] = os.pathsep.join(
+        item for item in (str(REPO_ROOT), env.get("PYTHONPATH", "")) if item
+    )
+    # Keep inherited tools ahead of repository files so an editable workspace
+    # cannot shadow `python`, `git`, or another command by filename.  The
+    # repository wrapper remains discoverable at the end of PATH.
+    env["PATH"] = os.pathsep.join(
+        item for item in (env.get("PATH", ""), str(REPO_ROOT)) if item
+    )
+    return env
+
+
+@app.websocket("/ws/terminal")
+async def terminal(websocket: WebSocket):
+    if not is_allowed_origin(websocket.headers.get("origin")):
+        await websocket.close(code=1008, reason="Origin not allowed")
+        return
+    await websocket.accept()
+    shell = os.getenv("SHELL", "/bin/bash")
+    env = terminal_environment()
 
     try:
         pid, master_fd = pty.fork()
@@ -451,13 +537,21 @@ async def terminal(websocket: WebSocket):
         while True:
             text = await websocket.receive_text()
             message = None
+            json_object = False
             if text.startswith("{"):
                 try:
                     candidate = json.loads(text)
-                    if isinstance(candidate, dict) and candidate.get("type") in {"input", "resize"}:
-                        message = candidate
+                    if isinstance(candidate, dict):
+                        json_object = True
+                        if candidate.get("type") in {"input", "resize"}:
+                            message = candidate
                 except json.JSONDecodeError:
                     pass
+
+            # JSON control envelopes are an internal protocol.  Never echo an
+            # unknown envelope into the user's shell as literal input.
+            if json_object and message is None:
+                continue
 
             if message and message.get("type") == "resize":
                 try:
@@ -466,7 +560,12 @@ async def terminal(websocket: WebSocket):
                     pass
                 continue
 
-            payload = message.get("data", "") if message and message.get("type") == "input" else text
+            if message:
+                if message.get("type") != "input":
+                    continue
+                payload = message.get("data", "")
+            else:
+                payload = text
             if payload:
                 await asyncio.to_thread(os.write, master_fd, payload.encode("utf-8"))
 
@@ -492,6 +591,9 @@ async def terminal(websocket: WebSocket):
             if not task.done():
                 task.cancel()
 
+        # Unblock an output worker that is still waiting in os.read before
+        # waiting for the child process. Immediate websocket closes should not
+        # leave the server route hanging during PTY cleanup.
         try:
             os.close(master_fd)
         except OSError:

@@ -1,0 +1,451 @@
+from __future__ import annotations
+
+import json
+import os
+import sys
+import tempfile
+import unittest
+from pathlib import Path
+
+from starlette.testclient import TestClient
+
+from ide.server import ai_tutor, app_v2
+from ide.server.test_context_bridge import context_progress
+
+# A fake `opencode` CLI. Behaviour is chosen per test through STUB_MODE and
+# STUB_REPLY; every argv is appended to STUB_LOG so tests can assert exactly
+# what Quest Lab asked OpenCode to do.
+STUB = """#!{python}
+import json, os, sys
+with open(os.environ["STUB_LOG"], "a", encoding="utf-8") as log:
+    log.write(json.dumps(sys.argv[1:]) + "\\n")
+args = sys.argv[1:]
+if args[:1] == ["--version"]:
+    print("opencode v9.9.9")
+elif args[:2] == ["auth", "list"]:
+    print("OpenCode Go     OpenCode Go                 stored")
+    print("Google          API key                     stored")
+elif args[:1] == ["models"]:
+    print("google/fast-model")
+    print("opencode-go/big-model")
+    print("opencode-go/claude-haiku-5-5")
+    print("opencode-go/beam-free")
+    print("opencode/beam-free")
+elif args[:1] == ["run"]:
+    mode = os.environ.get("STUB_MODE", "json")
+    print(json.dumps({{"type": "step_start", "part": {{"type": "step-start"}}}}))
+    if mode == "error":
+        print(json.dumps({{"type": "error", "error": {{"message": "The requested model is not supported."}}}}))
+        sys.exit(1)
+    text = os.environ.get("STUB_REPLY", "") if mode == "json" else "I think it is fine!"
+    print(json.dumps({{"type": "text", "part": {{"type": "text", "text": text}}}}))
+"""
+
+
+class AiTutorTestCase(unittest.TestCase):
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        root = Path(self.temp.name)
+        self.stub = root / "opencode"
+        self.stub.write_text(STUB.format(python=sys.executable), encoding="utf-8")
+        self.stub.chmod(0o755)
+        self.log = root / "argv.log"
+        self.env = {
+            "QUESTLAB_OPENCODE_BIN": str(self.stub),
+            "QUESTLAB_AI_STATE_DIR": str(root / "state"),
+            "STUB_LOG": str(self.log),
+            "STUB_MODE": "json",
+            "STUB_REPLY": "",
+        }
+        self.saved_env = {key: os.environ.get(key) for key in self.env}
+        os.environ.update(self.env)
+        ai_tutor._MODELS_CACHE.update({"at": 0.0, "models": []})
+
+    def tearDown(self):
+        for key, value in self.saved_env.items():
+            if value is None:
+                os.environ.pop(key, None)
+            else:
+                os.environ[key] = value
+        self.temp.cleanup()
+
+    def reply(self, value):
+        os.environ["STUB_MODE"] = "json"
+        os.environ["STUB_REPLY"] = value if isinstance(value, str) else json.dumps(value)
+
+    def calls(self):
+        return [json.loads(line) for line in self.log.read_text(encoding="utf-8").splitlines()] if self.log.exists() else []
+
+
+class AiTutorModuleTests(AiTutorTestCase):
+    def test_status_lists_integration_names_without_exporting_credentials(self):
+        report = ai_tutor.status()
+        self.assertTrue(report["installed"])
+        self.assertTrue(report["ready"])
+        self.assertEqual(report["integrations"], ["OpenCode Go", "Google"])
+        self.assertEqual(report["version"], "opencode v9.9.9")
+        self.assertNotIn("export", [arg for call in self.calls() for arg in call])
+
+    def test_settings_are_device_local_and_validated(self):
+        self.assertEqual(ai_tutor.load_settings()["model"], "")
+        saved = ai_tutor.save_settings({"model": "google/fast-model", "auto_grade": False})
+        self.assertEqual(saved["model"], "google/fast-model")
+        self.assertFalse(ai_tutor.load_settings()["auto_grade"])
+        self.assertTrue(ai_tutor.settings_path().is_file())
+        with self.assertRaises(ai_tutor.AiTutorError):
+            ai_tutor.save_settings({"model": "google/x; rm -rf /"})
+
+    def test_run_prompt_uses_plan_agent_scratch_dir_and_selected_model(self):
+        ai_tutor.save_settings({"model": "google/fast-model"})
+        self.reply({"verdict": "correct", "reason": "Nice."})
+        ai_tutor.judge("practice", context=None, answer="print(1)", question="Print one.")
+        run = next(call for call in self.calls() if call[:1] == ["run"])
+        self.assertEqual(run[1:5], ["--agent", ai_tutor.AGENT_NAME, "--format", "json"])
+        agent = json.loads((ai_tutor.prepare_scratch() / "opencode.json").read_text(encoding="utf-8"))["agent"][ai_tutor.AGENT_NAME]
+        self.assertFalse(any(agent["tools"].values()))
+        self.assertEqual(set(agent["permission"].values()), {"deny"})
+        self.assertIn("--model", run)
+        self.assertEqual(run[run.index("--model") + 1], "google/fast-model")
+        self.assertIn("print(1)", run[-1])
+
+    def test_auto_model_picks_first_signed_in_preference(self):
+        self.reply({"ok": True})
+        self.assertEqual(ai_tutor.test_connection()["model"], "opencode-go/beam-free")
+        run = [call for call in self.calls() if call[:1] == ["run"]][-1]
+        self.assertEqual(run[run.index("--model") + 1], "opencode-go/beam-free")
+
+    def test_free_tier_models_are_hidden_because_they_reject_custom_agents(self):
+        models = ai_tutor.list_models()
+        self.assertIn("opencode-go/beam-free", models)
+        self.assertNotIn("opencode/beam-free", models)
+
+    def test_mode_defaults_to_opencode_and_is_validated(self):
+        self.assertEqual(ai_tutor.load_settings()["mode"], "opencode")
+        self.assertEqual(ai_tutor.save_settings({"mode": "classic"})["mode"], "classic")
+        with self.assertRaises(ai_tutor.AiTutorError):
+            ai_tutor.save_settings({"mode": "telepathy"})
+
+    def test_judge_accepts_only_strict_verdict_json(self):
+        self.reply('```json\n{"verdict": "incorrect", "reason": "What happens when the hand is empty?"}\n```')
+        self.assertEqual(ai_tutor.judge("battle", context={}, answer="x")["verdict"], "incorrect")
+
+        # Prose around the object is tolerated; the object's shape is still strict.
+        self.reply('Looking at the code now.\n{"verdict": "correct", "reason": "Totals add up."}\nHope that helps!')
+        self.assertEqual(ai_tutor.judge("battle", context={}, answer="x")["verdict"], "correct")
+
+        for bad in ({"verdict": "maybe", "reason": "?"}, {"verdict": "correct"}, {"verdict": "correct", "reason": "ok", "xp": 500}):
+            self.reply(bad)
+            with self.assertRaises(ai_tutor.AiTutorError):
+                ai_tutor.judge("battle", context={}, answer="x")
+
+        os.environ["STUB_MODE"] = "garbage"
+        with self.assertRaises(ai_tutor.AiTutorError) as garbage:
+            ai_tutor.judge("battle", context={}, answer="x")
+        self.assertEqual(garbage.exception.kind, "unparseable")
+
+        os.environ["STUB_MODE"] = "error"
+        with self.assertRaises(ai_tutor.AiTutorError) as provider:
+            ai_tutor.judge("battle", context={}, answer="x")
+        self.assertEqual(provider.exception.kind, "provider")
+
+    def test_dungeon_question_and_lens_shapes(self):
+        self.reply({"prompt": "True or false: range(3) yields 3 numbers.", "options": ["yes", "no"]})
+        question = ai_tutor.write_dungeon_question(concept="loops", question_type="true_false", difficulty=1, room_type="encounter", floor=1)
+        self.assertEqual(question["options"], ["True", "False"])
+
+        # Real models put two-line code in options; game state needs single-line text.
+        self.reply({"prompt": "Which loop prints 0, 1, 2?", "options": ["for i in range(3):\n    print(i)", "while True: pass", "print(3)"]})
+        question = ai_tutor.write_dungeon_question(concept="loops", question_type="multiple_choice", difficulty=1, room_type="encounter", floor=1)
+        self.assertEqual(question["options"][0], "for i in range(3): print(i)")
+
+        self.reply({"lens_id": "trace", "question": "Trace total in this loop…", "why": "Totals are shaky."})
+        lens = ai_tutor.choose_practice_lens(concept="loops", lenses=[{"id": "trace", "label": "Trace", "prompt": "Trace it"}], learner={})
+        self.assertEqual(lens["lens_id"], "trace")
+        self.reply({"lens_id": "invented", "question": "?"})
+        with self.assertRaises(ai_tutor.AiTutorError):
+            ai_tutor.choose_practice_lens(concept="loops", lenses=[{"id": "trace", "label": "Trace", "prompt": "Trace it"}], learner={})
+
+
+class AiTutorEndpointTests(AiTutorTestCase):
+    def setUp(self):
+        super().setUp()
+        self.originals = (app_v2.WORKSPACE, app_v2.PROGRESS_PATH, app_v2.DUNGEON_PATH, app_v2.PYR_DUNGEON_CHALLENGE)
+        root = Path(self.temp.name)
+        workspace = root / "quest"
+        workspace.mkdir()
+        self.canonical = root / "platform" / "progress.json"
+        self.canonical.parent.mkdir()
+        self.canonical.write_text(json.dumps(context_progress()), encoding="utf-8")
+        app_v2.WORKSPACE = workspace
+        app_v2.PROGRESS_PATH = self.canonical
+        app_v2.DUNGEON_PATH = workspace / "dungeon.py"
+        app_v2.PYR_DUNGEON_CHALLENGE = None
+        app_v2.AI_ISSUED_DUNGEON_QUESTIONS.clear()
+        app_v2.CHOICE_ANSWER_KEYS.clear()
+        app_v2.BATTLE_QUESTIONS.clear()
+        app_v2.SPAR_QUESTIONS.clear()
+        self.client = TestClient(app_v2.app, base_url="http://127.0.0.1")
+        self.headers = {"host": "127.0.0.1"}
+
+    def tearDown(self):
+        app_v2.WORKSPACE, app_v2.PROGRESS_PATH, app_v2.DUNGEON_PATH, app_v2.PYR_DUNGEON_CHALLENGE = self.originals
+        super().tearDown()
+
+    def enter_room(self):
+        run = self.client.post("/api/dungeon/start", headers=self.headers, json={"concept_id": "lists", "seed": "bridge"}).json()["dungeon"]
+        choice = next(c["id"] for c in run["room_choices"] if c["kind"] in {"encounter", "elite"})
+        return self.client.post("/api/dungeon/choose", headers=self.headers, json={"run_id": run["run_id"], "choice_id": choice}).json()["dungeon"]
+
+    def bind(self, run, answer):
+        challenge = self.client.post("/api/pyr/context", headers=self.headers, json={"active_path": "dungeon.py"}).json()["context"]["dungeon_verdict"]
+        bound = self.client.post(
+            "/api/pyr/dungeon-submission",
+            headers=self.headers,
+            json={"nonce": challenge["nonce"], "run_id": run["run_id"], "question_id": run["question"]["id"], "answer": answer},
+        )
+        self.assertEqual(bound.status_code, 200, bound.text)
+        return bound.json()["submission"]
+
+    def test_status_endpoint(self):
+        body = self.client.get("/api/ai/status", headers=self.headers).json()
+        self.assertTrue(body["opencode"]["ready"])
+        self.assertEqual(body["settings"]["provider"], "opencode")
+
+    def test_judge_applies_dungeon_verdict_through_gateway(self):
+        run = self.enter_room()
+        submission = self.bind(run, "items = ['red']")
+        # Real models ran past the gateway's 240-char reason limit (422); it must be clamped.
+        self.reply({"verdict": "correct", "reason": "You built the list the question asked for. " * 12})
+        judged = self.client.post(
+            "/api/ai/judge",
+            headers=self.headers,
+            json={"kind": "dungeon", "submission": submission, "answer": "items = ['red']"},
+        )
+        self.assertEqual(judged.status_code, 200, judged.text)
+        self.assertEqual(judged.json()["verdict"], "correct")
+        self.assertEqual(judged.json()["applied"]["mutation"]["result"]["run"]["room"], 2)
+
+    def test_judge_reason_with_code_characters_still_applies(self):
+        run = self.enter_room()
+        submission = self.bind(run, "items = ['red']")
+        # Real reasons quote code ("Correct: a/b") and span lines; the gateway
+        # rejects / \\ : and control characters, so the verdict was lost (422).
+        self.reply({"verdict": "correct", "reason": "Correct: items[0] / len(items)\nworks on C:\\\\ too."})
+        judged = self.client.post(
+            "/api/ai/judge",
+            headers=self.headers,
+            json={"kind": "dungeon", "submission": submission, "answer": "items = ['red']"},
+        )
+        self.assertEqual(judged.status_code, 200, judged.text)
+        self.assertEqual(judged.json()["applied"]["mutation"]["result"]["run"]["room"], 2)
+        self.assertNotRegex(judged.json()["reason"], r"[/\\:\n]")
+
+    def test_judge_failure_leaves_challenge_pending_and_costs_nothing(self):
+        run = self.enter_room()
+        hp_before = json.loads(self.canonical.read_text(encoding="utf-8"))["dungeon_run"].get("hp")
+        submission = self.bind(run, "items = ['red']")
+        os.environ["STUB_MODE"] = "garbage"
+        failed = self.client.post("/api/ai/judge", headers=self.headers, json={"kind": "dungeon", "submission": submission, "answer": "items = ['red']"})
+        self.assertEqual(failed.status_code, 502)
+        self.assertEqual(failed.json()["detail"]["kind"], "unparseable")
+        self.assertEqual(json.loads(self.canonical.read_text(encoding="utf-8"))["dungeon_run"].get("hp"), hp_before)
+
+        self.reply({"verdict": "correct", "reason": "Retry worked."})
+        retried = self.client.post("/api/ai/judge", headers=self.headers, json={"kind": "dungeon", "submission": submission, "answer": "items = ['red']"})
+        self.assertEqual(retried.status_code, 200, retried.text)
+
+    def test_judge_rejects_an_answer_that_was_not_bound(self):
+        run = self.enter_room()
+        submission = self.bind(run, "items = ['red']")
+        swapped = self.client.post("/api/ai/judge", headers=self.headers, json={"kind": "dungeon", "submission": submission, "answer": "something else"})
+        self.assertEqual(swapped.status_code, 409)
+        self.assertFalse(any(call[:1] == ["run"] for call in self.calls()))
+
+    def test_dungeon_question_is_rewritten_once_per_room(self):
+        run = self.enter_room()
+        self.reply({"prompt": "Write a list holding two colours, then print its length.\n```python\ncolours = []\n```", "options": ["len(x)", "x.size", "count(x)"]})
+        first = self.client.post("/api/ai/dungeon-question", headers=self.headers, json={"run_id": run["run_id"]})
+        self.assertEqual(first.status_code, 200, first.text)
+        self.assertTrue(first.json()["changed"])
+        self.assertEqual(first.json()["dungeon"]["question"]["id"], run["question"]["id"])
+        self.assertIn("two colours", first.json()["dungeon"]["question"]["prompt"])
+        again = self.client.post("/api/ai/dungeon-question", headers=self.headers, json={"run_id": run["run_id"]})
+        self.assertFalse(again.json()["changed"])
+        # After an app restart the in-memory set is empty; the save still says PYR wrote it.
+        app_v2.AI_ISSUED_DUNGEON_QUESTIONS.clear()
+        restarted = self.client.post("/api/ai/dungeon-question", headers=self.headers, json={"run_id": run["run_id"]})
+        self.assertFalse(restarted.json()["changed"])
+        # Multiline AI questions must survive the cloud-sync projection too.
+        snapshot, _metadata = app_v2.STATE_SERVICE.sync_snapshot()
+        self.assertIn("```python", snapshot["campaign"]["dungeon_run"]["question"]["prompt"])
+
+    def test_dungeon_question_never_rewrites_a_started_answer(self):
+        run = self.enter_room()
+        saved = self.client.put(
+            "/api/dungeon/editor",
+            headers=self.headers,
+            json={"run_id": run["run_id"], "question_id": run["question"]["id"], "content": "colours = ['red']"},
+        )
+        self.assertEqual(saved.status_code, 200, saved.text)
+        result = self.client.post("/api/ai/dungeon-question", headers=self.headers, json={"run_id": run["run_id"]})
+        self.assertFalse(result.json()["changed"])
+        self.assertFalse(any(call[:1] == ["run"] for call in self.calls()))
+
+    def choice_room(self):
+        """Enter a room and make its question a multiple-choice one PYR writes."""
+
+        run = self.enter_room()
+        state = json.loads(self.canonical.read_text(encoding="utf-8"))
+        state["dungeon_run"]["question"]["question_type"] = "multiple_choice"
+        self.canonical.write_text(json.dumps(state), encoding="utf-8")
+        self.reply({"prompt": "What does print(len([1, 2, 3])) show?", "options": ["2", "3", "4"], "answer": 1, "why": "len counts all three items."})
+        written = self.client.post("/api/ai/dungeon-question", headers=self.headers, json={"run_id": run["run_id"]}).json()["dungeon"]
+        return written
+
+    def test_a_clicked_option_is_graded_instantly_and_the_key_never_leaks(self):
+        run = self.choice_room()
+        self.assertEqual(run["question"]["options"], ["2", "3", "4"])
+        self.assertNotIn("len counts", self.canonical.read_text(encoding="utf-8"))
+        campaign = self.client.get("/api/campaign", headers=self.headers).json()
+        self.assertNotIn('"answer"', json.dumps(campaign["dungeon"]))
+        right = self.client.post("/api/dungeon/answer-option", headers=self.headers, json={"run_id": run["run_id"], "question_id": run["question"]["id"], "option_index": 1}).json()
+        self.assertTrue(right["graded"])
+        self.assertEqual(right["verdict"], "correct")
+        self.assertEqual(right["dungeon"]["last_result"]["outcome"], "correct")
+        again = self.client.post("/api/dungeon/answer-option", headers=self.headers, json={"run_id": run["run_id"], "question_id": run["question"]["id"], "option_index": 1})
+        self.assertEqual(again.status_code, 409)  # a double click never scores twice
+
+    def test_a_wrong_click_shows_the_answer_and_deals_a_new_question(self):
+        run = self.choice_room()
+        wrong = self.client.post("/api/dungeon/answer-option", headers=self.headers, json={"run_id": run["run_id"], "question_id": run["question"]["id"], "option_index": 0}).json()
+        self.assertEqual(wrong["verdict"], "incorrect")
+        self.assertIn("The answer was 3", wrong["reason"])
+        self.assertEqual(wrong["correct_index"], 1)
+        self.assertNotEqual(wrong["dungeon"]["question"]["id"], run["question"]["id"])
+        self.assertLess(wrong["dungeon"]["loadout"]["hp"], run["loadout"]["hp"])
+
+    def test_a_click_without_a_key_falls_back_to_pyr(self):
+        run = self.enter_room()
+        state = json.loads(self.canonical.read_text(encoding="utf-8"))
+        state["dungeon_run"]["question"].update(question_type="multiple_choice", options=["a", "b", "c"])
+        self.canonical.write_text(json.dumps(state), encoding="utf-8")
+        result = self.client.post("/api/dungeon/answer-option", headers=self.headers, json={"run_id": run["run_id"], "question_id": run["question"]["id"], "option_index": 2}).json()
+        self.assertFalse(result["graded"])
+
+    def test_pyr_answer_keys_are_validated(self):
+        self.reply({"prompt": "Pick one", "options": ["a", "b"], "answer": 5})
+        question = ai_tutor.write_dungeon_question(concept="loops", question_type="multiple_choice", difficulty=1, room_type="encounter", floor=1)
+        self.assertNotIn("answer", question)  # an out-of-range key is dropped, not trusted
+        self.reply({"prompt": "True or false?", "options": ["True", "False"], "answer": "False", "why": "Because."})
+        question = ai_tutor.write_dungeon_question(concept="loops", question_type="true_false", difficulty=1, room_type="encounter", floor=1)
+        self.assertEqual((question["answer"], question["why"]), (1, "Because."))
+
+    def test_campaign_questions_are_clicked_and_graded_against_a_hidden_key(self):
+        state = json.loads(self.canonical.read_text(encoding="utf-8"))
+        mobs = state["projects"][0]["mobs"]
+        mobs[3]["status"], mobs[4]["status"] = "defeated", "available"  # on to a bounty with PREDICT / EXPLAIN objectives
+        state.pop("encounter_state", None)
+        self.canonical.write_text(json.dumps(state), encoding="utf-8")
+        encounter = self.client.get("/api/campaign", headers=self.headers).json()["encounter"]
+        objective = next(item for item in encounter["available_objectives"] if item["question_type"] in {"prediction", "explanation"})
+        self.reply({"prompt": "What does print(sum([10, 7])) show?", "options": ["107", "17", "10", "7"], "answer": 1, "why": "sum adds the numbers."})
+        asked = self.client.post("/api/ai/battle-question", headers=self.headers, json={"objective_id": objective["id"]})
+        self.assertEqual(asked.status_code, 200, asked.text)
+        question = asked.json()["question"]
+        self.assertEqual(question["options"], ["107", "17", "10", "7"])
+        self.assertNotIn("answer", question)
+        again = self.client.post("/api/ai/battle-question", headers=self.headers, json={"objective_id": objective["id"]}).json()["question"]
+        self.assertEqual(again["prompt"], question["prompt"])  # cached until answered
+        hp_before = json.loads(self.canonical.read_text(encoding="utf-8"))["player"]["hp"]
+        wrong = self.client.post("/api/battle/answer-option", headers=self.headers, json={"objective_id": objective["id"], "option_index": 0}).json()
+        self.assertEqual(wrong["verdict"], "incorrect")
+        self.assertIn("The answer was 17", wrong["reason"])
+        self.assertLess(json.loads(self.canonical.read_text(encoding="utf-8"))["player"]["hp"], hp_before)
+        stale = self.client.post("/api/battle/answer-option", headers=self.headers, json={"objective_id": objective["id"], "option_index": 1})
+        self.assertEqual(stale.status_code, 409)  # a missed question is gone; PYR writes a fresh one
+        self.reply({"prompt": "What does len('ace') return?", "options": ["2", "3", "4"], "answer": 1, "why": "Three letters."})
+        self.client.post("/api/ai/battle-question", headers=self.headers, json={"objective_id": objective["id"]})
+        right = self.client.post("/api/battle/answer-option", headers=self.headers, json={"objective_id": objective["id"], "option_index": 1}).json()
+        self.assertEqual(right["verdict"], "correct")
+        after = self.client.get("/api/campaign", headers=self.headers).json()["encounter"]
+        self.assertIn(objective["id"], after["completed_objectives"])
+
+    def test_code_objectives_have_no_clickable_question(self):
+        # The Hitman's objectives are BUILD and FIX: answered with the project file, not a click.
+        for objective_id in ("choice_flow", "stop_condition", "no_such_objective"):
+            result = self.client.post("/api/ai/battle-question", headers=self.headers, json={"objective_id": objective_id})
+            self.assertEqual(result.status_code, 409, objective_id)
+
+    def test_tutor_sparring_fights_only_met_foes_and_never_hurts(self):
+        roster = self.client.get("/api/campaign", headers=self.headers).json()["spar_roster"]
+        names = [foe["name"] for foe in roster]
+        self.assertIn("The Empty Table", names)  # a cleared bounty
+        self.assertNotIn("The Bust Hound", names)  # never met
+        foe = roster[0]
+        missing = self.client.post("/api/ai/spar-question", headers=self.headers, json={"target_id": "c-9-9", "round": 1})
+        self.assertEqual(missing.status_code, 404)
+        hp_before = json.loads(self.canonical.read_text(encoding="utf-8"))["player"]["hp"]
+        self.reply({"prompt": "Which keyword makes a variable hold a value?", "options": ["=", "==", "is", "in"], "answer": 0, "why": "= assigns."})
+        question = self.client.post("/api/ai/spar-question", headers=self.headers, json={"target_id": foe["id"], "round": 1}).json()["question"]
+        self.assertNotIn("answer", question)
+        right = self.client.post("/api/spar/answer-option", headers=self.headers, json={"target_id": foe["id"], "option_index": 0}).json()
+        self.assertEqual(right["verdict"], "correct")
+        self.assertTrue(right["hunter_gain"]["signs"])
+        again = self.client.post("/api/spar/answer-option", headers=self.headers, json={"target_id": foe["id"], "option_index": 0})
+        self.assertEqual(again.status_code, 409)
+        self.reply({"prompt": "True or false: == assigns.", "options": ["True", "False"], "answer": 1, "why": "== compares."})
+        tf = self.client.post("/api/ai/spar-question", headers=self.headers, json={"target_id": foe["id"], "round": 3}).json()["question"]
+        self.assertEqual(tf["options"], ["True", "False"])
+        wrong = self.client.post("/api/spar/answer-option", headers=self.headers, json={"target_id": foe["id"], "option_index": 0}).json()
+        self.assertEqual(wrong["verdict"], "incorrect")
+        self.assertFalse((wrong["hunter_gain"] or {}).get("signs"))
+        self.assertEqual(json.loads(self.canonical.read_text(encoding="utf-8"))["player"]["hp"], hp_before)  # sparring never hurts
+
+    def test_sparring_code_round_is_bound_to_question_and_preserves_health(self):
+        foe = self.client.get("/api/campaign", headers=self.headers).json()["spar_roster"][0]
+        before = json.loads(self.canonical.read_text(encoding="utf-8"))["player"]["hp"]
+        self.reply({"prompt": "Write double(n) that returns twice n.", "starter_code": "def double(n):\n    pass"})
+        generated = self.client.post("/api/ai/spar-question", headers=self.headers, json={"target_id": foe["id"], "round": 4})
+        self.assertEqual(generated.status_code, 200, generated.text)
+        self.assertEqual(generated.json()["question"]["question_type"], "code")
+        wrong_route = self.client.post("/api/spar/answer-option", headers=self.headers, json={"target_id": foe["id"], "option_index": 0})
+        self.assertEqual(wrong_route.status_code, 409)
+        empty = self.client.post("/api/spar/answer-code", headers=self.headers, json={"target_id": foe["id"], "code": "   "})
+        self.assertEqual(empty.status_code, 422)
+        self.reply({"verdict": "uncertain", "reason": "No result."})
+        failed = self.client.post("/api/spar/answer-code", headers=self.headers, json={"target_id": foe["id"], "code": "def double(n):\n    return n * 2"})
+        self.assertEqual(failed.status_code, 502)
+        self.reply({"verdict": "correct", "reason": "Your function returns twice the input."})
+        answer = self.client.post("/api/spar/answer-code", headers=self.headers, json={"target_id": foe["id"], "code": "def double(n):\n    return n * 2"})
+        self.assertEqual(answer.status_code, 200, answer.text)
+        self.assertEqual(answer.json()["verdict"], "correct")
+        replay = self.client.post("/api/spar/answer-code", headers=self.headers, json={"target_id": foe["id"], "code": "return 2"})
+        self.assertEqual(replay.status_code, 409)
+        self.assertEqual(json.loads(self.canonical.read_text(encoding="utf-8"))["player"]["hp"], before)
+
+
+    def test_sparring_interview_uses_written_answer_and_rejects_replay(self):
+        foe = self.client.get("/api/campaign", headers=self.headers).json()["spar_roster"][0]
+        before = json.loads(self.canonical.read_text(encoding="utf-8"))["player"]["hp"]
+        self.reply({"prompt": "Why would you use a loop to process a list?"})
+        response = self.client.post("/api/ai/spar-question", headers=self.headers, json={"target_id": foe["id"], "round": 5})
+        self.assertEqual(response.status_code, 200, response.text)
+        question = response.json()["question"]
+        self.assertEqual(question["question_type"], "interview")
+        self.assertNotIn("answer", question)
+        self.assertEqual(self.client.post("/api/spar/answer-option", headers=self.headers, json={"target_id": foe["id"], "option_index": 0}).status_code, 409)
+        self.assertEqual(self.client.post("/api/spar/answer-code", headers=self.headers, json={"target_id": foe["id"], "code": "pass"}).status_code, 409)
+        self.assertEqual(self.client.post("/api/spar/answer-text", headers=self.headers, json={"target_id": foe["id"], "answer": "   "}).status_code, 422)
+        self.reply({"verdict": "uncertain", "reason": "No result."})
+        self.assertEqual(self.client.post("/api/spar/answer-text", headers=self.headers, json={"target_id": foe["id"], "answer": "A loop handles each item."}).status_code, 502)
+        self.reply({"verdict": "correct", "reason": "A loop handles each item."})
+        answer = self.client.post("/api/spar/answer-text", headers=self.headers, json={"target_id": foe["id"], "answer": "A loop handles each item."})
+        self.assertEqual(answer.status_code, 200, answer.text)
+        self.assertEqual(answer.json()["verdict"], "correct")
+        self.assertEqual(self.client.post("/api/spar/answer-text", headers=self.headers, json={"target_id": foe["id"], "answer": "Again"}).status_code, 409)
+        self.assertEqual(json.loads(self.canonical.read_text(encoding="utf-8"))["player"]["hp"], before)
+
+
+
+if __name__ == "__main__":
+    unittest.main()

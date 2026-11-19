@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+# Terminal-safe state gateway helper. The Forge PTY supplies QUESTLAB_PYTHON
+# and PYTHONPATH so this command always reaches the backend-owned package even
+# though the terminal cwd is the player quest workspace.
+set -euo pipefail
+
+if [[ -n "${QUESTLAB_PYTHON:-}" ]]; then
+  exec "$QUESTLAB_PYTHON" -m ide.state_cli "$@"
+fi
+
+exec python3 -m ide.state_cli "$@"

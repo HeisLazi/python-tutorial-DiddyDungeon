@@ -1,0 +1,5 @@
+# Connection-only lobby prototype
+
+Run `python3 server.py` and visit `http://127.0.0.1:8902/`. Open two tabs, create a room in one and paste its invitation into the other. Each player can toggle ready and leave. No project files, Python code or save data are sent to this service. Rooms live in memory and expire after an hour of inactivity.
+
+This is a standalone HTTP service, not the existing local duel runner. It uses only Python 3.10+ standard library and is suitable for a shared host serving browsers on Windows, macOS and Linux. For remote use it must run behind an HTTPS reverse proxy on a host you control; do not expose the local duel runner. Bind with `--host 0.0.0.0` only in an environment configured for that proxy. The service has no accounts, persistent group membership, recovery after server restart, rate limiting, or deployment configured. Invitation codes act as bearer access to an open seat; share them privately. A production system needs proper authentication, invitation revocation, abuse controls, reconnection, and durable state before handling matches or rewards.

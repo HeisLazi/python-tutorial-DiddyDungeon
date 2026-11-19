@@ -1,0 +1,315 @@
+/* Infinite Dungeon room brief (DungeonQuestionBrief): boot.dev-style lesson
+   column — question first, an answer-layout sample, then the fight. Uses the
+   dungeon tokens so it follows every theme. */
+
+.dungeon-screen-shell .dungeon-ide-layout { grid-template-columns: minmax(380px, 1fr) minmax(480px, 1.25fr); }
+@media (max-width: 1100px) { .dungeon-screen-shell .dungeon-ide-layout { grid-template-columns: 1fr; } }
+
+.dungeon-brief-v2 {
+  gap: 12px;
+  font-size: 16px;
+  line-height: 1.5;
+  color: var(--dungeon-text);
+}
+.dungeon-brief-v2 > section,
+.dungeon-brief-v2 > details {
+  padding: 12px 14px;
+  border: 1px solid var(--dungeon-line);
+  background: var(--dungeon-panel-2);
+}
+
+.dungeon-brief-strip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  color: var(--dungeon-muted);
+  font-size: 13px;
+}
+.dungeon-brief-strip > span { padding: 3px 8px; border: 1px solid var(--dungeon-line); }
+.dungeon-brief-kind { color: var(--dungeon-gold); border-color: var(--dungeon-gold) !important; }
+.room-elite .dungeon-brief-kind { color: var(--dungeon-blue); border-color: var(--dungeon-blue) !important; }
+.room-boss .dungeon-brief-kind { color: var(--dungeon-danger); border-color: var(--dungeon-danger) !important; }
+.dungeon-difficulty { display: inline-flex; align-items: center; gap: 2px; border: 0 !important; padding: 0 !important; }
+.dungeon-difficulty i { color: var(--dungeon-line-bright); font-style: normal; }
+.dungeon-difficulty i.on { color: var(--dungeon-gold); }
+.dungeon-difficulty b { margin-left: 6px; color: var(--dungeon-muted); font-weight: 400; }
+
+.dungeon-brief-question { border-color: var(--dungeon-gold) !important; }
+.dungeon-prompt-text p { margin: 8px 0 0; font-size: 18px; line-height: 1.5; color: var(--dungeon-text); white-space: pre-wrap; }
+.dungeon-prompt-text pre,
+.dungeon-brief-sample {
+  margin: 10px 0 0;
+  padding: 10px 12px;
+  overflow-x: auto;
+  border: 1px solid var(--dungeon-line);
+  background: var(--dungeon-panel-3);
+  color: var(--dungeon-gold-soft);
+  font: 14px/1.5 "JetBrains Mono", ui-monospace, monospace;
+}
+.dungeon-prompt-text pre code,
+.dungeon-brief-sample code { font: inherit; white-space: pre; }
+.dungeon-brief-empty { color: var(--dungeon-muted); }
+.dungeon-brief-options { display: grid; gap: 6px; margin: 12px 0 0; padding: 0; list-style: none; }
+.dungeon-brief-options li { display: grid; grid-template-columns: 28px 1fr; gap: 8px; align-items: start; padding: 7px 9px; border: 1px solid var(--dungeon-line); background: var(--dungeon-panel); }
+.dungeon-brief-options b { color: var(--dungeon-gold); text-align: center; }
+.dungeon-brief-options span { font-family: "JetBrains Mono", ui-monospace, monospace; font-size: 14px; overflow-wrap: anywhere; }
+
+.dungeon-brief-how p { margin: 6px 0 0; color: var(--dungeon-muted); }
+.dungeon-brief-how code { color: var(--dungeon-gold-soft); }
+.dungeon-brief-how small { display: block; margin-top: 6px; color: var(--dungeon-dim); font-size: 12px; }
+
+.dungeon-brief-enemy-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+.dungeon-brief-enemy-head strong { display: block; color: var(--dungeon-text); font-size: 18px; }
+.dungeon-brief-enemy-head small { color: var(--dungeon-muted); }
+.dungeon-brief-resolve { text-align: right; }
+.dungeon-brief-resolve small { display: block; color: var(--dungeon-muted); font-size: 11px; }
+.dungeon-brief-resolve strong { color: var(--dungeon-danger); font-size: 20px; }
+.dungeon-resolve-bar { display: flex; gap: 3px; margin: 10px 0 8px; }
+.dungeon-resolve-bar i { flex: 1; height: 10px; border: 1px solid var(--dungeon-line); background: var(--dungeon-panel-3); }
+.dungeon-resolve-bar i.on { border-color: var(--dungeon-danger); background: var(--dungeon-danger); }
+.dungeon-brief-facts { display: grid; gap: 4px; margin: 0; padding: 0; list-style: none; font-size: 14px; }
+.dungeon-brief-facts li { display: grid; grid-template-columns: 110px 1fr; gap: 8px; }
+.dungeon-brief-facts span { color: var(--dungeon-muted); }
+.dungeon-brief-facts b { font-weight: 400; color: var(--dungeon-text); }
+
+.dungeon-brief-hp { display: flex; justify-content: space-between; color: var(--dungeon-muted); font-size: 13px; }
+.dungeon-brief-hp strong { color: var(--dungeon-green); font-size: 16px; }
+.dungeon-hp-bar { display: block; height: 10px; margin: 6px 0; border: 1px solid var(--dungeon-line); background: var(--dungeon-panel-3); }
+.dungeon-hp-bar i { display: block; height: 100%; background: var(--dungeon-green); }
+.dungeon-brief-you small { display: block; color: var(--dungeon-muted); font-size: 13px; }
+.dungeon-brief-passive { margin-top: 2px; color: var(--dungeon-dim) !important; }
+
+
+/* Verdict card: pops over the Dungeon after every graded submission. */
+.dungeon-verdict-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: rgb(5 4 12 / 0.72);
+}
+.dungeon-verdict-card {
+  display: grid;
+  gap: 10px;
+  width: min(520px, 100%);
+  padding: 20px 22px;
+  border: 3px solid var(--dungeon-line-bright);
+  background: var(--dungeon-panel);
+  color: var(--dungeon-text);
+  box-shadow: 6px 6px 0 rgb(0 0 0 / 0.6);
+}
+/* The arcade theme gives every "*-card" an !important border; this chain
+   outranks it so the verdict colour shows. */
+.app-shell[data-theme] .dungeon-screen-shell .dungeon-verdict-backdrop .dungeon-verdict-card.correct { border-color: var(--dungeon-green) !important; }
+.app-shell[data-theme] .dungeon-screen-shell .dungeon-verdict-backdrop .dungeon-verdict-card.incorrect,
+.app-shell[data-theme] .dungeon-screen-shell .dungeon-verdict-backdrop .dungeon-verdict-card.error { border-color: var(--dungeon-danger) !important; }
+.dungeon-verdict-card h2 { margin: 0; font-size: 20px; line-height: 1.4; }
+.dungeon-verdict-card.correct h2 { color: var(--dungeon-green); }
+.dungeon-verdict-card.incorrect h2,
+.dungeon-verdict-card.error h2 { color: var(--dungeon-danger); }
+.dungeon-verdict-reason {
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--dungeon-line);
+  background: var(--dungeon-panel-2);
+  font-size: 18px;
+  line-height: 1.45;
+}
+.dungeon-verdict-stats { display: flex; flex-wrap: wrap; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.dungeon-verdict-stats li { padding: 3px 8px; border: 1px solid var(--dungeon-line); background: var(--dungeon-panel-3); font-size: 15px; }
+.dungeon-verdict-hint { margin: 0; color: var(--dungeon-muted); font-size: 16px; }
+.dungeon-verdict-actions { display: flex; justify-content: flex-end; }
+
+/* Verdict fight strip: the player and the mob trade one hit. */
+.verdict-arena { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: end; gap: 10px; padding: 12px; border: 1px solid var(--dungeon-line); background: var(--dungeon-panel-2); }
+.verdict-fighter { position: relative; display: grid; justify-items: center; gap: 6px; min-width: 0; }
+.verdict-fighter small { color: var(--dungeon-muted); font-size: 14px; text-align: center; }
+.verdict-sprite { display: grid; place-items: end center; height: 92px; }
+.verdict-mob { width: 78px; height: 78px; place-items: center; border: 3px solid var(--dungeon-danger); background: var(--dungeon-panel-3); color: var(--dungeon-danger); }
+.verdict-mob svg { width: 54px; height: 54px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.verdict-clash { align-self: center; color: var(--dungeon-gold); }
+.verdict-clash svg { width: 26px; height: 26px; fill: none; stroke: currentColor; stroke-width: 1.8; }
+.verdict-bar { width: 100%; max-width: 160px; height: 10px; border: 2px solid var(--dungeon-line); background: var(--dungeon-bg); }
+.verdict-bar i { display: block; height: 100%; transition: width 0.6s steps(6); }
+.verdict-bar.hp i { background: var(--dungeon-green); }
+.verdict-bar.resolve i { background: var(--dungeon-danger); }
+.verdict-float { position: absolute; top: 10px; left: 50%; translate: -50% 0; opacity: 0; font-size: 22px; font-weight: 700; white-space: nowrap; text-shadow: 2px 2px 0 #000; pointer-events: none; }
+.verdict-float.dealt { color: var(--dungeon-gold); }
+.verdict-float.taken { color: var(--dungeon-danger); }
+.verdict-arena.hit .verdict-float { animation: verdict-float 1.2s steps(10) forwards; }
+.verdict-arena.player-wins .player .verdict-sprite { animation: verdict-lunge-right 0.35s steps(3); }
+.verdict-arena.mob-wins .mob .verdict-sprite { animation: verdict-lunge-left 0.35s steps(3); }
+.verdict-arena.hit.player-wins .verdict-mob { animation: verdict-shake 0.4s steps(4); }
+.verdict-arena.hit.defeated .verdict-mob { animation: verdict-shake 0.4s steps(4), verdict-defeat 0.5s 0.6s steps(5) forwards; }
+.verdict-arena.hit.mob-wins .player .verdict-sprite { animation: verdict-shake 0.4s steps(4); }
+.dungeon-verdict-summary { margin: 0; font-size: 18px; }
+.dungeon-verdict-stats li.reward { border-color: var(--dungeon-gold); color: var(--dungeon-gold); }
+.dungeon-verdict-stats li.penalty { border-color: var(--dungeon-danger); color: var(--dungeon-danger); }
+@keyframes verdict-float { 0% { opacity: 0; translate: -50% 6px; } 15% { opacity: 1; } 100% { opacity: 0; translate: -50% -34px; } }
+@keyframes verdict-shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-6px); } 50% { transform: translateX(6px); } 75% { transform: translateX(-3px); } }
+@keyframes verdict-lunge-right { 50% { transform: translateX(14px); } }
+@keyframes verdict-lunge-left { 50% { transform: translateX(-14px); } }
+@keyframes verdict-defeat { to { opacity: 0.25; filter: grayscale(1); } }
+@media (prefers-reduced-motion: reduce) {
+  .verdict-arena *, .verdict-arena .verdict-float { animation: none !important; transition: none !important; }
+  .verdict-arena.hit .verdict-float { opacity: 1; }
+}
+.dungeon-verdict-stats li.growth { border-color: var(--dungeon-blue); color: var(--dungeon-blue); }
+
+.verdict-float.blast { top: 40px; color: var(--dungeon-ember, var(--dungeon-danger)); }
+.verdict-float.guarded { color: var(--dungeon-blue); }
+.verdict-float.broke { top: 40px; color: var(--dungeon-green); }
+
+/* Fight strip in the room brief: progress, free mistakes, the mechanic. */
+.dungeon-fight-strip { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px; margin: 8px 0; }
+.dungeon-fight-cell { display: grid; gap: 3px; align-content: start; padding: 8px 10px; border: 1px solid var(--dungeon-line); background: var(--dungeon-panel-3); }
+.dungeon-fight-cell strong { font-size: 18px; color: var(--dungeon-text); }
+.dungeon-fight-cell small { color: var(--dungeon-muted); font-size: 14px; line-height: 1.3; }
+.dungeon-fight-cell.mechanic { grid-column: 1 / -1; border-color: var(--dungeon-ember, var(--dungeon-danger)); }
+.dungeon-fight-cell.mechanic.enraged { border-color: var(--dungeon-danger); background: color-mix(in srgb, var(--dungeon-danger) 14%, var(--dungeon-panel-3)); }
+.dungeon-fight-pips { display: flex; gap: 4px; }
+.dungeon-fight-pips i { width: 14px; height: 8px; border: 1px solid var(--dungeon-line); }
+.dungeon-fight-pips i.done { background: var(--dungeon-green); border-color: var(--dungeon-green); }
+.dungeon-fight-pips i.now { border-color: var(--dungeon-gold); }
+.dungeon-brief-fightchip { padding: 2px 8px; border: 1px solid var(--dungeon-gold); color: var(--dungeon-gold); white-space: nowrap; }
+.dungeon-brief-fightchip.enraged { border-color: var(--dungeon-danger); color: var(--dungeon-danger); }
+
+/* Delves and loot: region picker, pack tab, camp banking, verdict drops. */
+.dungeon-verdict-stats li.loot { border-color: var(--dungeon-green); color: var(--dungeon-green); }
+.dungeon-verdict-lost { margin: 0; color: var(--dungeon-danger); font-weight: 700; }
+.delve-picker { display: grid; gap: 10px; width: min(1100px, 100%); margin: 18px auto 0; }
+.delve-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; }
+.delve-card { display: grid; gap: 8px; align-content: start; padding: 12px; border: 2px solid var(--dungeon-line); background: var(--dungeon-panel); color: var(--dungeon-text); font: inherit; text-align: left; cursor: pointer; }
+.delve-picker .delve-card.selected { border-color: var(--dungeon-gold) !important; background: color-mix(in srgb, var(--dungeon-gold) 10%, var(--dungeon-panel)) !important; box-shadow: 0 0 0 2px color-mix(in srgb, var(--dungeon-gold) 35%, transparent); }
+.delve-card:disabled { cursor: default; opacity: 0.7; }
+.delve-head { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
+.delve-head small { color: var(--dungeon-gold); letter-spacing: 2px; }
+.delve-card ul { display: grid; gap: 4px; margin: 0; padding: 0; list-style: none; }
+.delve-card li { display: flex; justify-content: space-between; align-items: baseline; gap: 6px; font-size: 14px; }
+.delve-card li small { flex: none; white-space: nowrap; }
+.delve-card li small, .delve-card p, .delve-boss { color: var(--dungeon-muted); font-size: 13px; margin: 0; }
+.delve-card li.weak span { color: var(--dungeon-ember, var(--dungeon-gold)); }
+.delve-rule, .delve-last-run { margin: 0; color: var(--dungeon-muted); font-size: 14px; }
+.delve-last-run { color: var(--dungeon-gold); }
+.dungeon-pack-list { display: grid; gap: 6px; }
+.dungeon-pack-list > div { display: flex; justify-content: space-between; padding: 6px 8px; border: 1px solid var(--dungeon-line); }
+.dungeon-pack-list b { color: var(--dungeon-green); }
+.dungeon-pack-list small { color: var(--dungeon-muted); }
+.dungeon-camp-banked { display: grid; gap: 4px; padding: 10px; border: 2px solid var(--dungeon-green); }
+.dungeon-camp-banked strong { color: var(--dungeon-green); }
+.dungeon-camp-banked span:last-child { color: var(--dungeon-muted); font-size: 13px; }
+
+/* Beast oils in a fight. */
+.dungeon-oils { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 4px 0 8px; padding: 8px; border: 1px dashed var(--dungeon-line); }
+.dungeon-oils.applied { border: 1px solid var(--dungeon-green); display: grid; gap: 2px; }
+.dungeon-oils.applied strong { color: var(--dungeon-green); }
+.dungeon-oils small { color: var(--dungeon-muted); font-size: 13px; }
+.dungeon-oils button { display: grid; gap: 2px; padding: 6px 10px; border: 1px solid var(--dungeon-green); background: transparent; color: var(--dungeon-green); font: inherit; text-align: left; cursor: pointer; }
+.dungeon-oils button:disabled { opacity: 0.6; cursor: default; }
+
+/* Grid floors (C3). Higher specificity than the lane map's fixed 8 rows. */
+.dungeon-screen-shell .dungeon-proto-map.grid-floor { min-height: 360px; gap: 10px; }
+.dungeon-proto-map.grid-floor .dungeon-map-node { min-height: 70px; }
+.dungeon-proto-map.grid-floor .dungeon-map-node strong { font-size: 11px; text-align: center; }
+.dungeon-proto-map.grid-floor .dungeon-map-node small { font-size: 9px; text-align: center; }
+.dungeon-proto-map.grid-floor .dungeon-map-node.frontier { border-style: dashed; border-color: color-mix(in srgb, var(--dungeon-green) 45%, var(--dungeon-line)); color: var(--dungeon-text); }
+.dungeon-proto-map.grid-floor .dungeon-map-node.lair { border-color: var(--dungeon-danger); color: var(--dungeon-danger); opacity: 0.85; }
+.dungeon-proto-map.grid-floor .dungeon-map-node:not(.visited):not(.reachable):not(.frontier):not(.lair) { opacity: 0.75; }
+.dungeon-stairs { display: grid; gap: 8px; margin-top: 10px; }
+.dungeon-stairs button { display: grid; grid-template-columns: 1fr auto; gap: 2px 10px; padding: 10px 12px; border: 2px solid var(--dungeon-gold); background: transparent; color: var(--dungeon-text); font: inherit; text-align: left; cursor: pointer; }
+.dungeon-stairs button small { grid-column: 1; color: var(--dungeon-muted); }
+.dungeon-stairs button b { grid-column: 2; grid-row: 1 / span 2; align-self: center; color: var(--dungeon-gold); font-size: 20px; }
+
+.dungeon-proto-map.grid-floor .dungeon-map-node { grid-template-columns: 1fr; grid-template-rows: auto auto auto; justify-items: center; align-content: center; gap: 3px; padding: 4px 2px; }
+.dungeon-proto-map.grid-floor .dungeon-map-node > span { grid-row: auto; }
+.dungeon-screen-shell .dungeon-proto-map.grid-floor .dungeon-map-node strong { white-space: normal; overflow: visible; text-overflow: clip; font-size: 10px; }
+.dungeon-proto-map.grid-floor .dungeon-map-node.current:disabled > span, .dungeon-proto-map.grid-floor .dungeon-map-node.current:disabled strong, .dungeon-proto-map.grid-floor .dungeon-map-node.current:disabled small { opacity: 1; }
+.dungeon-proto-map.grid-floor .dungeon-map-node.current { color: var(--dungeon-gold); }
+.dungeon-proto-map.grid-floor .dungeon-map-node.current { background: color-mix(in srgb, var(--dungeon-gold) 16%, #171e17); border-width: 2px; }
+.dungeon-proto-map.grid-floor .dungeon-map-edges line { stroke-width: 4; opacity: 0.6; }
+.dungeon-proto-map.grid-floor .dungeon-map-edges line.active { opacity: 1; }
+
+/* Clickable answers (multiple choice, true/false). */
+.choice-panel { display: grid; align-content: start; gap: 12px; height: 100%; padding: 18px; overflow-y: auto; }
+.choice-options { display: grid; gap: 10px; }
+.choice-option { display: grid; grid-template-columns: 40px minmax(0, 1fr); align-items: center; gap: 12px; min-height: 56px; padding: 10px 14px; border: 2px solid var(--dungeon-line); background: var(--dungeon-panel); color: var(--dungeon-text); font: inherit; font-size: 16px; text-align: left; cursor: pointer; }
+.choice-option b { display: grid; place-items: center; width: 34px; height: 34px; border: 2px solid var(--dungeon-gold); color: var(--dungeon-gold); }
+.choice-option span { overflow-wrap: anywhere; font-family: 'JetBrains Mono', ui-monospace, monospace; }
+.choice-option:hover:not(:disabled), .choice-option:focus-visible { border-color: var(--dungeon-gold); background: color-mix(in srgb, var(--dungeon-gold) 10%, var(--dungeon-panel)); outline: none; }
+.choice-option:disabled { opacity: 0.6; cursor: default; }
+.choice-panel > small { color: var(--dungeon-muted); }
+
+/* Loadout cards: the Equip button gets its own row, never over the text. */
+.dungeon-screen-shell .dungeon-loadout-item { grid-template-columns: 34px minmax(0, 1fr); }
+.dungeon-screen-shell .dungeon-loadout-item > button { grid-column: 1 / -1; justify-self: start; }
+/* The vision scroll button keeps its label on one line. */
+.dungeon-risk-card { flex-wrap: wrap; }
+.dungeon-risk-card > div:not(.dungeon-risk-actions) { flex: 1 1 0; min-width: 0; }
+.dungeon-risk-card > .dungeon-risk-actions { flex: 1 1 100%; display: flex; flex-wrap: wrap; gap: 8px; }
+.dungeon-risk-actions button { white-space: nowrap; font-size: 12px; flex: 1 1 auto; width: auto; }
+/* Lane map nodes: short words that fit. */
+.dungeon-proto-map:not(.grid-floor) .dungeon-map-node strong { white-space: normal; overflow: visible; text-overflow: clip; font-size: 9px; text-align: center; }
+/* Lane map nodes stack the icon over the word so labels never split. */
+.dungeon-screen-shell .dungeon-proto-map:not(.grid-floor) .dungeon-map-node { grid-template-columns: 1fr; grid-template-rows: auto auto auto; justify-items: center; gap: 1px; padding: 4px 2px; }
+.dungeon-screen-shell .dungeon-proto-map:not(.grid-floor) .dungeon-map-node > span { grid-row: auto; width: 20px; height: 20px; }
+.dungeon-screen-shell .dungeon-proto-map:not(.grid-floor) .dungeon-map-node strong { overflow-wrap: normal; word-break: keep-all; }
+/* Dungeon market: item descriptions wrap instead of being cut off. */
+.dungeon-screen-shell .dungeon-market-item small { white-space: normal; overflow: visible; text-overflow: clip; display: block; }
+.dungeon-screen-shell .dungeon-market-item > span { min-width: 0; flex: 1 1 auto; }
+/* The shell column never grows to a child's min-content (Monaco keeps a pixel width). */
+.app-shell { grid-template-columns: minmax(0, 1fr); }
+.app-shell > .workspace-grid { min-width: 0; }
+
+/* A hunter's chart: select the destination on the map, inspect it alongside. */
+.delve-map-screen { width: min(1320px, calc(100% - 32px)); margin: 20px auto; gap: 16px; }
+.delve-map-heading { display: flex; align-items: end; justify-content: space-between; gap: 20px; }
+.delve-map-heading h2 { margin: 8px 0; color: var(--dungeon-text); font-size: 25px; }
+.delve-map-heading p { color: var(--dungeon-muted); margin: 0; }
+.delve-map-layout { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 14px; align-items: stretch; }
+.delve-world-map { position: relative; min-height: 480px; overflow: hidden; border: 3px solid #7e653d; box-shadow: inset 0 0 0 3px #241b1a, 4px 4px 0 #100e18; background: #242738; }
+.delve-map-terrain { position: absolute; inset: 0; width: 100%; height: 100%; }
+.delve-land { fill: #514b3f; stroke: #92805a; stroke-width: 4; }
+.delve-water { fill: none; stroke: #363d4a; stroke-width: 5; opacity: .7; }
+.delve-roads { fill: none; stroke: #b7a174; stroke-width: 3; stroke-dasharray: 7 7; opacity: .65; }
+.delve-map-caption { position: absolute; z-index: 1; top: 14px; left: 17px; display: grid; gap: 5px; color: #f1d493; font: 9px/1.5 'Press Start 2P', monospace; text-shadow: 2px 2px #171319; }
+.delve-map-caption small { color: #bcb19a; font: 14px var(--font-body, monospace); }
+.delve-map-node { position: absolute; z-index: 1; display: grid; justify-items: center; gap: 4px; max-width: 125px; padding: 2px; transform: translate(-50%, -50%); border: 0; background: transparent; color: #f2e3bd; font: 13px/1.05 var(--font-body, monospace); text-shadow: 2px 2px #171319, -1px -1px #171319; cursor: pointer; }
+.delve-map-marker { display: grid; place-items: center; width: 28px; height: 28px; border: 2px solid #bba06c; background: #2c2530; color: #eed08c; box-shadow: 2px 2px #16121a; font-size: 17px; }
+.delve-map-node:hover .delve-map-marker, .delve-map-node.selected .delve-map-marker, .delve-map-node:focus-visible .delve-map-marker { border-color: #fff0ae; background: #805538; color: #fff6c6; box-shadow: 0 0 0 3px #dfad52, 2px 2px #16121a; }
+.delve-map-node:focus-visible, .delve-open-route:focus-visible { outline: 2px solid #fff0ae; outline-offset: 4px; }
+.delve-open-route { position: absolute; right: 12px; bottom: 12px; padding: 8px 11px; border: 2px solid #9e8555; background: #201b25; color: #f2d69a; font: inherit; cursor: pointer; }
+.delve-open-route.selected { border-color: #ffdc74; background: #57402d; }
+.delve-map-detail { display: flex; flex-direction: column; gap: 13px; padding: 20px; border: 2px solid var(--dungeon-line-bright); background: var(--dungeon-panel); color: var(--dungeon-text); }
+.delve-map-detail h3 { margin: 0; font-size: 22px; }
+.delve-map-detail p { margin: 0; color: var(--dungeon-muted); line-height: 1.4; }
+.delve-danger { display: flex; justify-content: space-between; border-block: 1px solid var(--dungeon-line); padding: 10px 0; }
+.delve-danger strong { color: var(--dungeon-gold); letter-spacing: 3px; }
+.delve-detail-label { color: var(--dungeon-muted); font-size: 11px; letter-spacing: .08em; }
+.delve-map-detail ul { display: grid; gap: 9px; margin: 0; padding: 0; list-style: none; }
+.delve-map-detail li { display: flex; justify-content: space-between; gap: 8px; }
+.delve-map-detail li strong { flex: none; color: var(--dungeon-gold); font-size: 12px; }
+.delve-detail-boss { display: grid; gap: 5px; padding-top: 12px; border-top: 1px solid var(--dungeon-line); }
+.delve-detail-footer { display: grid; gap: 10px; margin-top: auto; padding-top: 16px; border-top: 1px solid var(--dungeon-line); }
+.delve-detail-footer small { color: var(--dungeon-gold); }
+.delve-detail-footer p { font-size: 13px; }
+@media (max-width: 800px) { .delve-map-layout { grid-template-columns: 1fr; } .delve-world-map { min-height: 400px; } .delve-map-detail { min-height: 280px; } }
+@media (max-width: 520px) { .delve-map-heading { align-items: start; flex-direction: column; } .delve-world-map { min-height: 360px; } .delve-map-node { font-size: 10px; max-width: 68px; } .delve-map-marker { width: 24px; height: 24px; } }
+
+/* Keep long inventories inside the character panel while tabs stay in place. */
+.dungeon-screen-shell .dungeon-inventory-list {
+  max-height: clamp(240px, 43vh, 540px);
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+  align-content: start;
+  padding-right: 8px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--dungeon-line-bright) var(--dungeon-panel-3);
+}
+.dungeon-screen-shell .dungeon-inventory-list:focus-visible { outline: 2px solid var(--dungeon-gold); outline-offset: 2px; }
+.dungeon-screen-shell .dungeon-inventory-list::-webkit-scrollbar { width: 9px; }
+.dungeon-screen-shell .dungeon-inventory-list::-webkit-scrollbar-track { background: var(--dungeon-panel-3); }
+.dungeon-screen-shell .dungeon-inventory-list::-webkit-scrollbar-thumb { background: var(--dungeon-line-bright); border: 2px solid var(--dungeon-panel-3); }

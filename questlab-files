@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+# Explicit allowlisted Quest Lab workspace-file transfer helper.
+# This is intentionally separate from questlab-state: it never transfers or
+# edits progress.json and never infers player-state storage from the cwd.
+set -euo pipefail
+
+script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+if [[ -n "${QUESTLAB_PYTHON:-}" ]]; then
+  export PYTHONPATH="$script_dir${PYTHONPATH:+:$PYTHONPATH}"
+  exec "$QUESTLAB_PYTHON" -m ide.workspace_transfer "$@"
+fi
+
+export PYTHONPATH="$script_dir${PYTHONPATH:+:$PYTHONPATH}"
+exec python3 -m ide.workspace_transfer "$@"

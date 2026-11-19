@@ -1,0 +1,236 @@
+{
+  "branch": "04-casino-slots",
+  "name": "Casino / Slots",
+  "boss": "Ekse Ouens P Diddy",
+  "order": 2,
+  "catalog": true,
+  "entry_file": "silver_reels/casino.py",
+  "project_dir": "silver_reels",
+  "multi_file": true,
+  "project_files": ["casino.py", "reels.py", "payouts.py", "test_casino.py", "README.md", "casino_save.json", "memory_check.py", "roulette.py", "audit_report.md"],
+  "concept_focus": "Building a complete program: files, functions, modules, tests, simulation, classes, saves and a README",
+  "story": {"title": "The Silver Reels", "client": "Auditor Pell of the Gaming Guild", "hook": "Ekse Ouens P Diddy has bought the Silver Reels and swears every machine is fair. Pell has been sent to prove otherwise, and needs someone who can build a slot machine from an empty file, grow it into a real project, test it, measure it a million spins deep, and hand over a README anyone can follow."},
+  "acts": [
+    {"id": 1, "title": "Act I: The Machine", "goal": "One file, one machine: create casino.py, run it, read its errors, and build a round that pays honestly."},
+    {"id": 2, "title": "Act II: The Session", "goal": "Functions, a main() and your first modules: the machine becomes a program you can read."},
+    {"id": 3, "title": "Act III: The Audit", "goal": "Weighted reels, a million spins, tests that prove the maths, and the bugs the numbers expose."},
+    {"id": 4, "title": "Act IV: The House", "goal": "A Machine class, saved bankrolls, a menu, a README anyone can follow, and a machine that is yours."}
+  ],
+  "boss_lore": "Ekse Ouens P Diddy bought the Silver Reels with cash and confidence. Every reel is re-weighted, every jackpot sign is lit, and his hype men shout about wins nobody ever sees. He swears the house is fair. Pell wants proof.",
+  "boss_brief": "Bring the finished Silver Reels project: casino.py with a menu, a Machine class in its own module, weighted reels, a payout table checked best first, validated bets, a session summary, simulate() and theoretical_rtp() that agree, tests that pass, saves that survive a broken file, and a README that gets a stranger playing.",
+  "boss_twist": "Diddy brings his own machine and swears it returns 97%. Write audit(machine, spins=100000, seed=None) that returns the measured return, the hit frequency and the largest drawdown of a 100-coin bankroll; compute the machine's theoretical return from its weights; and make Machine refuse (raise ValueError) any table whose theoretical return is above 100%. Print both returns for his machine and for yours.",
+  "boss_gauntlet": ["required_behavior", "explanation", "edge_cases", "twist_2", "twist_3", "interview"],
+  "boss_phases": {"edge_cases": {"label": "Phase 1: Diddy's own machine"}, "twist_2": {"label": "Phase 2: Diddy opens the roulette table", "quest": "Diddy moves you to his roulette table on the same bankroll. Build roulette in its own module, roulette.py, with red/black, odd/even and single-number bets, a Bet class that knows its own payout, and the zero that gives the house its edge. Add it to the menu, and add tests for every bet type's payout."}, "twist_3": {"label": "Phase 3: The audit report", "quest": "Pell needs a report Diddy cannot argue with. Add a report command that audits every machine and the roulette table and writes audit_report.md: each game's theoretical and measured return, hit rate and drawdown in a table. Explain in the README how to produce the report, and keep every test passing."}},
+  "mobs": [
+    {
+      "name": "The Coin Rat", "concept": "Project folders, files and running Python", "encounter": "Set the project up the way real developers do: make the silver_reels folder and casino.py in the terminal, then run it and see your bankroll printed.", "act": 1, "sign": "input-output", "tier": "light", "kind": "workshop",
+      "contract": "Pell's first rule: a machine that does not run does not exist. Make the file, run it, and show the Rat your purse.",
+      "objectives": [
+        {"id": "make_folder", "label": "Make the project folder", "question_type": "setup_check", "impact": 1, "check": {"dir": "."}, "brief": "Every real project lives in its own folder. Click into the terminal under the editor and type:\n\nmkdir silver_reels\n\nPress Enter (mkdir means make directory). Then type ls and press Enter: silver_reels is in the list. Press Check when it is there."},
+        {"id": "make_file", "label": "Create casino.py", "question_type": "setup_check", "impact": 1, "check": {"file": "casino.py"}, "brief": "Step into the folder and make the machine's file:\n\ncd silver_reels\ntouch casino.py\n\ncd means change directory; touch makes an empty file. Type ls again to see it. Press Check, and the Forge opens silver_reels/casino.py for you."},
+        {"id": "first_run", "label": "Make it run", "question_type": "setup_check", "impact": 3, "check": {"run": "casino.py", "expect": ["100"]}, "brief": "In casino.py, store a starting bankroll of 100 coins in a variable and print a welcome line that shows it. Save with Ctrl+S. Then run it yourself in the terminal, from inside silver_reels:\n\npython casino.py\n\nWhen your welcome line prints, press Check: the game runs casino.py once and looks for your 100."},
+        {"id": "what_ran", "label": "Explain the run", "question_type": "explanation", "impact": 2, "brief": "Explain what happens when you type python casino.py inside silver_reels: which file runs, why the folder you are in matters, and in what order its lines execute."},
+        {"id": "bankroll_trace", "label": "Predict the purse", "question_type": "prediction", "impact": 2, "brief": "Predict what prints if you subtract a bet of 15 from the bankroll before the welcome line, then check it."}
+      ]
+    },
+    {
+      "name": "The Spin Imp", "concept": "Lists and random selection", "encounter": "Spin three reels from a list of symbols and show the line.", "act": 1, "sign": "random-selection",
+      "contract": "Three reels, chosen fresh each spin. The Imp wants proof you know how many lines are possible.",
+      "objectives": [
+        {"id": "reels", "label": "Spin three reels", "question_type": "code_checkpoint", "impact": 3, "brief": "Keep the symbols in a list and pick one at random for each of three reels, then print the line like | CHERRY | BELL | SEVEN |."},
+        {"id": "independent_reels", "label": "Unstick the reels", "question_type": "bug_diagnosis", "impact": 3, "brief": "A rival machine spins like this:\n```python\nline = [random.choice(symbols)] * 3\n```\nExplain in a comment why it always shows three of a kind, and make sure your three reels spin independently."},
+        {"id": "outcome_count", "label": "Count the lines", "question_type": "prediction", "impact": 2, "brief": "Predict how many different lines three reels of five symbols can make, then compute it in code."}
+      ]
+    },
+    {
+      "name": "The Payout Mimic", "concept": "Dictionaries and checking conditions in order", "encounter": "Pay each winning line from a payout table, best win first.", "act": 1, "sign": "dictionaries",
+      "contract": "The Mimic pays a jackpot like a cherry. Build a payout table and check it from the most valuable win down.",
+      "objectives": [
+        {"id": "payout_table", "label": "Build the table", "question_type": "code_checkpoint", "impact": 3, "brief": "Store the payouts in a dictionary (for example three sevens, three bells, any two cherries) and write payout_for(line, bet) that returns the winnings."},
+        {"id": "check_order", "label": "Best win first", "question_type": "code_checkpoint", "impact": 3, "brief": "Check combinations from most to least valuable so three sevens never pays as a smaller win, and show one line of each kind paying correctly."},
+        {"id": "order_reason", "label": "Explain the order", "question_type": "explanation", "impact": 2, "brief": "Explain what goes wrong if you check any two cherries before three cherries."}
+      ]
+    },
+    {
+      "name": "The Broken Bet", "concept": "Reading tracebacks and validating input", "encounter": "Fix a bet prompt that crashes on words and accepts impossible bets.", "act": 1, "sign": "exceptions", "kind": "debug",
+      "contract": "Someone wrote the bet prompt in a hurry. It crashes when you type ten, and it lets you bet coins you do not have.",
+      "objectives": [
+        {"id": "fix_bet", "label": "Fix the prompt", "question_type": "bug_diagnosis", "impact": 4, "brief": "This is the rival machine's bet prompt. Put it in casino.py, run it and type ten:\n```python\nbet = int(input('Bet: '))\nbankroll = bankroll - bet\n```\nFix it so words and numbers below 1 ask again instead of crashing, and a bet bigger than the bankroll is refused."},
+        {"id": "read_traceback", "label": "Read the traceback", "question_type": "explanation", "impact": 2, "brief": "When int('ten') crashes, which line does the traceback point at, and what is ValueError: invalid literal for int() telling you?"},
+        {"id": "bad_inputs", "label": "Survive bad bets", "question_type": "code_checkpoint", "impact": 2, "brief": "Show your prompt handling a word, 0 and more than the bankroll in a row, then accepting a good bet."}
+      ]
+    },
+    {
+      "name": "The Debt Ghoul", "concept": "One honest round, start to finish", "encounter": "Join bet, spin, pay and bankroll into one round that repeats until you quit or go broke.", "act": 1, "sign": "loops", "tier": "elite",
+      "contract": "The Ghoul feeds on bankrolls that go below zero. Put the whole round together and starve it.",
+      "objectives": [
+        {"id": "full_round", "label": "Play one round", "question_type": "code_checkpoint", "impact": 3, "brief": "Write one full round: ask for a bet, spin, pay from your table, update the bankroll and print what happened."},
+        {"id": "round_loop", "label": "Keep playing", "question_type": "code_checkpoint", "impact": 3, "brief": "Repeat rounds until the player types quit or the bankroll cannot cover the smallest bet."},
+        {"id": "never_negative", "label": "Starve the Ghoul", "question_type": "bug_diagnosis", "impact": 3, "brief": "Prove the bankroll can never go below zero: find the path where it could, fix it, and show a session that ends exactly at 0."},
+        {"id": "session_log", "label": "Keep the evidence", "question_type": "code_checkpoint", "impact": 2, "brief": "Run a five-round session from the terminal and paste its output as a comment at the bottom of casino.py."}
+      ]
+    },
+    {
+      "name": "The House Edge", "concept": "Writing functions that return values", "encounter": "Turn the spin into a function that returns its line.", "act": 2, "sign": "functions", "tier": "light",
+      "contract": "Pell cannot audit logic smeared across a file. Start with one clean function.",
+      "objectives": [
+        {"id": "spin_fn", "label": "Write spin()", "question_type": "code_checkpoint", "impact": 4, "brief": "Write spin(symbols) that returns a list of three symbols, and use it in your round instead of the inline code."},
+        {"id": "return_trace", "label": "Predict the return", "question_type": "prediction", "impact": 2, "brief": "Predict what print(spin(['A'])) shows, and what print(spin) shows without the brackets."},
+        {"id": "why_return", "label": "Return, not print", "question_type": "explanation", "impact": 2, "brief": "Explain the difference between a function that prints its line and one that returns it, and why your payout code needs the return."}
+      ]
+    },
+    {
+      "name": "The Croupier", "concept": "Organising a program: functions, docstrings and main()", "encounter": "Give casino.py a shape: small functions, docstrings and a main() behind the __name__ guard.", "act": 2, "sign": "functions", "kind": "workshop",
+      "contract": "The Croupier only deals at a tidy table. No loose code at the bottom of the file.",
+      "objectives": [
+        {"id": "small_functions", "label": "Small functions", "question_type": "code_checkpoint", "impact": 3, "brief": "Split casino.py into small functions (ask_bet, spin, payout_for, play_round), each with a one-line docstring saying what it returns."},
+        {"id": "main_guard", "label": "Add main()", "question_type": "code_checkpoint", "impact": 3, "brief": "Put the session in main() and call it under if __name__ == \"__main__\": so importing casino.py never starts a game."},
+        {"id": "guard_reason", "label": "Explain the guard", "question_type": "explanation", "impact": 2, "brief": "Explain what if __name__ == \"__main__\": does when you run casino.py, and when another file imports it."}
+      ]
+    },
+    {
+      "name": "The Tally Ghost", "concept": "Session statistics in a dictionary", "encounter": "Track the session's spins, wins and money, then summarise it.", "act": 2, "sign": "dictionaries", "tier": "quick",
+      "contract": "The Ghost keeps the books nobody else wants to keep. Every spin, every win, and the truth at the end of the night.",
+      "objectives": [
+        {"id": "session_books", "label": "Keep the books", "question_type": "code_checkpoint", "impact": 5, "brief": "Track spins, wins, the biggest win, total bet and total won in one dictionary, and print a clear summary with net change and win rate when the session ends."},
+        {"id": "summary_trace", "label": "Check the maths", "question_type": "prediction", "impact": 2, "brief": "Predict the summary for a short scripted session (fix the random seed), then check it."}
+      ]
+    },
+    {
+      "name": "The File Splitter", "concept": "Modules and imports", "encounter": "Move the reels and the payout table into their own files and import them.", "act": 2, "sign": "functions", "kind": "workshop",
+      "contract": "One file is fine for one machine. Pell is auditing a whole floor. Split the machine so each file has one job.",
+      "objectives": [
+        {"id": "reels_module", "label": "Make reels.py", "question_type": "code_checkpoint", "impact": 3, "brief": "Create reels.py holding the symbol list and spin(). Nothing else.", "file": "reels.py"},
+        {"id": "payouts_module", "label": "Make payouts.py", "question_type": "code_checkpoint", "impact": 3, "brief": "Create payouts.py holding the payout table and payout_for().", "file": "payouts.py"},
+        {"id": "imports_run", "label": "Import them", "question_type": "code_checkpoint", "impact": 2, "brief": "Import both modules in casino.py, delete the old copies, and show python casino.py still plays a full session.", "file": "casino.py", "see": ["reels.py", "payouts.py"]},
+        {"id": "shadow_trap", "label": "The name trap", "question_type": "explanation", "impact": 2, "brief": "Explain why naming one of your own files random.py would break import random everywhere in this project."}
+      ]
+    },
+    {
+      "name": "The Greed Spirit", "concept": "Limits, loops and refactoring", "encounter": "Add a loss limit and a play-again loop, and remove the duplicated code your session grew.", "act": 2, "sign": "loops", "tier": "elite",
+      "contract": "Greed never stops on its own. Give the player limits, and give the code a clean-up.",
+      "objectives": [
+        {"id": "loss_limit", "label": "Set a loss limit", "question_type": "code_checkpoint", "impact": 3, "brief": "Let the player set a loss limit at the start and end the session the moment it is reached."},
+        {"id": "play_again", "label": "Play again", "question_type": "code_checkpoint", "impact": 2, "brief": "When a session ends, offer a new one with a fresh bankroll without restarting the program."},
+        {"id": "dry", "label": "Say it once", "question_type": "code_checkpoint", "impact": 3, "brief": "Find code you have written twice (printing the line, checking the bet) and replace each pair with one function used in both places."},
+        {"id": "spin_count", "label": "Count true", "question_type": "bug_diagnosis", "impact": 3, "brief": "The summary says 11 spins after 10. Make sure your spin counter counts each spin exactly once and starts at the right value."}
+      ]
+    },
+    {
+      "name": "The Weighted Reel", "concept": "Weighted random choices", "encounter": "Make some symbols rarer than others with weights.", "act": 3, "sign": "random-selection", "tier": "light",
+      "contract": "Real machines are not fair dice. Every symbol has a weight, and the weights are the secret.",
+      "objectives": [
+        {"id": "weights", "label": "Weigh the reels", "question_type": "code_checkpoint", "impact": 4, "brief": "Give every symbol a weight and spin with random.choices(symbols, weights) so sevens are rare and cherries common.", "file": "reels.py"},
+        {"id": "weight_predict", "label": "Predict the counts", "question_type": "prediction", "impact": 2, "brief": "With weights 1, 3 and 6 for three symbols, predict roughly how often each appears in 1,000 spins."},
+        {"id": "weight_reason", "label": "Weights and payouts", "question_type": "explanation", "impact": 2, "brief": "Explain why the payout table has to change when the weights change."}
+      ]
+    },
+    {
+      "name": "The Million Spins", "concept": "Simulation", "encounter": "Simulate many spins and measure the real return to player.", "act": 3, "sign": "simulation",
+      "contract": "Pell does not trust a machine until it has spun a million times without a human pressing a button.",
+      "objectives": [
+        {"id": "simulate", "label": "Simulate", "question_type": "code_checkpoint", "impact": 4, "brief": "Write simulate(spins, seed=None) that plays automated spins at a fixed bet and returns the total bet, the total won and the return to player (won divided by bet)."},
+        {"id": "hit_rate", "label": "Hit frequency", "question_type": "code_checkpoint", "impact": 2, "brief": "Also return the hit frequency: the share of spins that paid anything."},
+        {"id": "seed_trace", "label": "Seeds", "question_type": "prediction", "impact": 2, "brief": "Predict what happens if you run simulate(1000, seed=7) twice, and then twice without a seed."}
+      ]
+    },
+    {
+      "name": "The Test Witch", "concept": "Testing with assert", "encounter": "Write tests that prove the payouts and the bankroll rules.", "act": 3, "sign": "testing", "kind": "workshop",
+      "contract": "The Witch believes nothing she has not tested. Neither should you.",
+      "objectives": [
+        {"id": "payout_tests", "label": "Test the payouts", "question_type": "code_checkpoint", "impact": 3, "brief": "Create test_casino.py with test functions that assert payout_for pays every row of your table correctly and pays 0 for a losing line.", "file": "test_casino.py", "see": ["payouts.py"]},
+        {"id": "bankroll_tests", "label": "Test the bankroll", "question_type": "code_checkpoint", "impact": 3, "brief": "Add tests that a bet bigger than the bankroll is refused and the bankroll never goes below zero.", "file": "test_casino.py", "see": ["casino.py"]},
+        {"id": "read_failure", "label": "Read a failure", "question_type": "explanation", "impact": 2, "brief": "Run your tests from the terminal and break one on purpose. What does a failing assert print, and how do you find which test failed?"}
+      ]
+    },
+    {
+      "name": "The Rigged Reel", "concept": "Debugging a simulation", "encounter": "Find the bug that makes a rigged simulation report an impossible return.", "act": 3, "sign": "testing", "kind": "debug",
+      "contract": "A rival auditor's simulation says a rigged machine returns thousands of percent. Find out why before Diddy quotes it.",
+      "objectives": [
+        {"id": "fix_rtp", "label": "Fix the audit", "question_type": "bug_diagnosis", "impact": 4, "brief": "This is the rival's simulation:\n```python\ndef rtp(spins):\n    bet, won = 0, 0\n    for _ in range(spins):\n        bet = 1\n        won += payout_for(spin(SYMBOLS), 1)\n    return won / bet\n```\nFind the bug, make sure your own simulate() does not share it, and explain the fix in a comment."},
+        {"id": "catch_test", "label": "Catch it next time", "question_type": "code_checkpoint", "impact": 3, "brief": "Write a test that would have caught this bug: simulate a machine whose return you can work out by hand and assert the result matches.", "file": "test_casino.py"},
+        {"id": "bug_reason", "label": "Why it lied", "question_type": "explanation", "impact": 2, "brief": "Explain in one or two sentences why the bug inflated the result."}
+      ]
+    },
+    {
+      "name": "The Balancer", "concept": "Expected value and tuning", "encounter": "Work out the theoretical return from the weights and tune the table to a target.", "act": 3, "sign": "simulation", "tier": "elite",
+      "contract": "Pell wants a machine that returns 95% in theory and in practice. Prove both.",
+      "objectives": [
+        {"id": "theory_rtp", "label": "Exact return", "question_type": "code_checkpoint", "impact": 4, "brief": "Write theoretical_rtp() that computes the exact expected return from the reel weights and the payout table, without spinning.", "see": ["reels.py", "payouts.py"]},
+        {"id": "tune", "label": "Tune the table", "question_type": "code_checkpoint", "impact": 3, "brief": "Adjust the payout table until the theoretical return is between 94% and 96%.", "see": ["payouts.py"]},
+        {"id": "agree_test", "label": "Theory meets practice", "question_type": "code_checkpoint", "impact": 3, "brief": "Add a test that simulate(200_000, seed=1) lands within 1% of theoretical_rtp().", "file": "test_casino.py"},
+        {"id": "variance", "label": "Same return, more risk", "question_type": "explanation", "impact": 2, "brief": "Two machines both return 95%. Explain how one can still feel much riskier to play."}
+      ]
+    },
+    {
+      "name": "The Machine Smith", "concept": "Classes and objects", "encounter": "Turn the machine into a Machine class you can make many of.", "act": 4, "sign": "classes",
+      "contract": "Diddy's floor has forty machines. Nobody copies the code forty times.",
+      "objectives": [
+        {"id": "machine_class", "label": "Build the class", "question_type": "code_checkpoint", "impact": 4, "brief": "Write a Machine class holding its reels, weights and payout table, with spin() and payout_for() methods."},
+        {"id": "two_machines", "label": "Two machines", "question_type": "code_checkpoint", "impact": 3, "brief": "Create two machines with different symbols and tables that share one player bankroll, and play a round on each."},
+        {"id": "self_explain", "label": "Explain self", "question_type": "explanation", "impact": 2, "brief": "Explain what self refers to when you call machine_a.spin(), and why machine_b is not affected."}
+      ]
+    },
+    {
+      "name": "The Ledger", "concept": "Saving and loading JSON", "encounter": "Save the bankroll and lifetime stats, and load them next time.", "act": 4, "sign": "files-json",
+      "contract": "The house remembers every coin. So should you.",
+      "objectives": [
+        {"id": "save_load", "label": "Save and load", "question_type": "code_checkpoint", "impact": 3, "brief": "Save the bankroll and lifetime stats to casino_save.json next to casino.py when the program ends, and load them when it starts. Build the path from Path(__file__).parent so it works whichever folder you run from."},
+        {"id": "broken_save", "label": "Survive a broken save", "question_type": "bug_diagnosis", "impact": 3, "brief": "If casino_save.json is missing or broken, start fresh with a clear message instead of crashing. Test it by deleting a bracket from the file."},
+        {"id": "file_predict", "label": "Predict the file", "question_type": "prediction", "impact": 2, "brief": "Predict what casino_save.json contains after a session that ends on 87 coins after 12 spins, then open it and check."}
+      ]
+    },
+    {
+      "name": "The Memory Thief", "concept": "Rebuilding from memory", "encounter": "Rebuild your payout checker from memory in a blank file.", "act": 4, "sign": "functions", "kind": "memory",
+      "contract": "The Thief stole your notes. Prove the knowledge was yours, not the file's.",
+      "objectives": [
+        {"id": "rebuild", "label": "Rebuild it", "question_type": "code_checkpoint", "impact": 4, "brief": "Close payouts.py and casino.py. In a new file memory_check.py, rebuild payout_for and its table from memory, checking the most valuable wins first.", "file": "memory_check.py"},
+        {"id": "rebuild_test", "label": "Prove it", "question_type": "code_checkpoint", "impact": 3, "brief": "Under it, write asserts for a top win, a small win and a loss, and run the file until they pass.", "file": "memory_check.py"},
+        {"id": "compare", "label": "Compare", "question_type": "explanation", "impact": 2, "brief": "Compare your rebuild with the original: what did you remember, and what did you do differently?"}
+      ]
+    },
+    {
+      "name": "The Front Door", "concept": "A finished program: a menu and a README", "encounter": "Give the casino a menu and a README anyone can follow.", "act": 4, "sign": "loops", "tier": "elite", "kind": "workshop",
+      "contract": "Pell's report goes to people who have never seen your code. They need a front door and instructions.",
+      "objectives": [
+        {"id": "menu", "label": "Open the front door", "question_type": "code_checkpoint", "impact": 3, "brief": "Add a main menu: play slots, choose a machine, run an audit (a simulation), show lifetime stats, or quit. A bad choice asks again.", "file": "casino.py"},
+        {"id": "readme", "label": "Write the README", "question_type": "code_checkpoint", "impact": 3, "brief": "Write README.md in silver_reels: what the project is, how to run it (cd silver_reels, then python casino.py), how to run the tests, and one line on what each file does.", "file": "README.md", "see": ["casino.py", "reels.py", "payouts.py", "test_casino.py"]},
+        {"id": "fresh_run", "label": "Follow it yourself", "question_type": "code_checkpoint", "impact": 2, "brief": "Follow your README step by step from a fresh terminal and add a Known issues section with anything that tripped you up.", "file": "README.md"},
+        {"id": "playtest", "label": "Play-test it", "question_type": "code_checkpoint", "impact": 3, "brief": "Have someone else (or a scripted run) play five rounds, note two things that confused them in README.md, and fix one of them in the code.", "see": ["README.md"]}
+      ]
+    },
+    {
+      "name": "The Showman", "concept": "Designing your own machine", "encounter": "Design a machine that is yours: a theme, symbols and a bonus round.", "act": 4, "sign": "random-selection", "kind": "creative",
+      "contract": "Diddy only books acts nobody has seen before. Build a machine that is unmistakably yours.",
+      "objectives": [
+        {"id": "theme_machine", "label": "Your machine", "question_type": "code_checkpoint", "impact": 3, "brief": "Create your own themed Machine (your symbols, weights and payout table) and add it to the menu."},
+        {"id": "bonus_round", "label": "Your bonus round", "question_type": "code_checkpoint", "impact": 4, "brief": "Design and build a bonus round triggered by a special line (free spins, pick-a-box, a multiplier wheel...) with its own rules."},
+        {"id": "design_notes", "label": "Defend the design", "question_type": "explanation", "impact": 2, "brief": "Explain one design decision you made for your machine and whether it is fair to the player."}
+      ]
+    }
+  ],
+  "armory": [
+    {"id": "cas-coin-roll-club", "name": "Coin Roll Club", "slot": "weapon", "tier": "common", "effect": {"impact": 1, "on": "prediction"}, "flavour": "Fifty silver coins in paper. Heavy.", "price": 40},
+    {"id": "cas-lever-arm-mace", "name": "Lever Arm Mace", "slot": "weapon", "tier": "uncommon", "effect": {"impact": 1, "on": "any"}, "flavour": "Torn off a rigged machine.", "price": 90},
+    {"id": "cas-reel-spinner-chakram", "name": "Reel Spinner Chakram", "slot": "weapon", "tier": "rare", "effect": {"impact": 2, "on": "code_checkpoint"}, "flavour": "Spins, lands, pays out pain.", "price": 180},
+    {"id": "cas-jackpot-hammer", "name": "Jackpot Hammer", "slot": "weapon", "tier": "epic", "effect": {"impact": 2, "on": "any", "break_coins": 3}, "flavour": "Rings a bell every time it hits."},
+    {"id": "cas-lady-luck-s-sceptre", "name": "Lady Luck's Sceptre", "slot": "weapon", "tier": "legendary", "effect": {"impact": 3, "on": "any", "break_coins": 6}, "flavour": "Fortune obeys whoever holds it."},
+    {"id": "cas-doorman-s-livery", "name": "Doorman's Livery", "slot": "armor", "tier": "common", "effect": {"reduction": 12}, "flavour": "Red, gold and padded.", "price": 40},
+    {"id": "cas-silver-sequin-vest", "name": "Silver Sequin Vest", "slot": "armor", "tier": "uncommon", "effect": {"loot_luck": 10, "coin_bonus": 5}, "flavour": "Dazzles more than it protects. Mostly.", "price": 90},
+    {"id": "cas-auditor-s-waistcoat", "name": "Auditor's Waistcoat", "slot": "armor", "tier": "rare", "effect": {"xp_bonus": 12, "impact": 1, "on": "bug_diagnosis"}, "flavour": "Pell's spare. Buttoned to the top.", "price": 180},
+    {"id": "cas-vault-guard-plate", "name": "Vault Guard Plate", "slot": "armor", "tier": "epic", "effect": {"reduction": 32, "start_guards": 1}, "flavour": "Forged from an old safe door."},
+    {"id": "cas-the-fortune-mail", "name": "The Fortune Mail", "slot": "armor", "tier": "legendary", "effect": {"reduction": 30, "loot_luck": 20, "first_miss_free": true}, "flavour": "Every link a lucky coin."},
+    {"id": "cas-silver-dollar", "name": "Silver Dollar", "slot": "trinket", "tier": "common", "effect": {"coin_clean": 1}, "flavour": "A coin for every answer you get right first time.", "price": 40},
+    {"id": "cas-weighted-die", "name": "Weighted Die", "slot": "trinket", "tier": "uncommon", "effect": {"chip_switch": 1}, "flavour": "It lands differently every time the question changes.", "price": 90},
+    {"id": "cas-auditor-s-ledger", "name": "Auditor's Ledger", "slot": "trinket", "tier": "rare", "effect": {"xp_bonus": 8, "impact": 1, "on": "bug_diagnosis"}, "flavour": "Every error is entered, and every error is found.", "price": 180},
+    {"id": "cas-four-leaf-clip", "name": "Four-Leaf Clip", "slot": "trinket", "tier": "epic", "effect": {"block_first_miss": true, "loot_luck": 15, "coin_bonus": 8}, "flavour": "Pinned over the heart. The first blow glances off."},
+    {"id": "cas-the-probability-lens", "name": "The Probability Lens", "slot": "trinket", "tier": "legendary", "effect": {"revive": true, "chip_chain": 1, "loot_luck": 20, "xp_bonus": 10}, "flavour": "It shows the odds, and the odds favour the stubborn."},
+    {"id": "cas-buffet-shrimp", "name": "Buffet Shrimp", "slot": "food", "tier": "common", "effect": {"heal": 20}, "flavour": "All you can eat. Questionable.", "price": 15},
+    {"id": "cas-lucky-fortune-cookie", "name": "Lucky Fortune Cookie", "slot": "food", "tier": "uncommon", "effect": {"next_battle": {"reduction": 20}}, "flavour": "Your numbers are inside.", "price": 30},
+    {"id": "cas-all-night-breakfast", "name": "All-Night Breakfast", "slot": "food", "tier": "rare", "effect": {"next_battle": {"guards": 1}}, "flavour": "Served at four in the morning to the brave.", "price": 60},
+    {"id": "cas-jackpot-platter", "name": "Jackpot Platter", "slot": "food", "tier": "epic", "effect": {"heal": 30, "next_battle": {"xp_bonus": 30}}, "flavour": "Delivered when the bells ring.", "price": 100},
+    {"id": "cas-neon-fizz-tonic", "name": "Neon Fizz Tonic", "slot": "tonic", "tier": "uncommon", "effect": {"heal": 45}, "flavour": "Glows faintly in the glass.", "price": 50},
+    {"id": "cas-auditor-s-black-tea", "name": "Auditor's Black Tea", "slot": "tonic", "tier": "rare", "effect": {"heal": 100}, "flavour": "No sugar, no nonsense.", "price": 90},
+    {"id": "cas-lady-luck-s-loaded-coin", "name": "Lady Luck's Loaded Coin", "slot": "relic", "tier": "legendary", "effect": {"xp_bonus": 5, "coin_bonus": 5}, "flavour": "It always landed her way. Now it lands yours."}
+  ]
+}

@@ -1,0 +1,96 @@
+.dungeon-combat-panel { min-width: 0; padding: 0; overflow: hidden; border: 2px solid #8d704f; background: #100d19; }
+.dungeon-brief-v2 > .dungeon-combat-panel { flex: 0 0 auto; padding: 0; }
+.spar-bout-layout { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(275px, .85fr); gap: 12px; align-items: start; }
+@media (max-width: 1050px) { .spar-bout-layout { grid-template-columns: 1fr; } }
+.combat-panel-title { display: flex; justify-content: space-between; gap: 5px; padding: 7px 8px; background: #322339; border-bottom: 1px solid #8d704f; color: #eac788; font: 7px/1.4 'Press Start 2P', monospace; }
+.combat-panel-title span:last-child { color: #cbb9b7; font-size: 6px; }
+.combat-scene { position: relative; isolation: isolate; overflow: hidden; width: 100%; aspect-ratio: 1.73; min-height: 165px; background-position: center 70%; background-size: cover; image-rendering: pixelated; }
+.combat-scene-shade { position: absolute; inset: 0; background: linear-gradient(#090a1655, #0e0c1d0a 45%, #08091555); }
+.combat-scene[data-simulated=true]::after { content: ''; position: absolute; z-index: 4; inset: 0; pointer-events: none; background: repeating-linear-gradient(to bottom, transparent 0 3px, #86e4ff0a 3px 4px); }
+.combat-scene[data-simulated=true] .combat-enemy img { opacity: .88; filter: drop-shadow(0 0 4px #5bc7e8); }
+.combat-vitals { position: absolute; top: 8px; z-index: 5; width: 43%; color: #f7e8ca; text-shadow: 1px 1px #000; font: 7px/1.4 'Press Start 2P', monospace; }
+.combat-vitals.hunter-vitals { left: 8px; } .combat-vitals.enemy-vitals { right: 8px; text-align: right; }
+.combat-vitals > div:first-child { display: flex; justify-content: space-between; gap: 4px; } .combat-vitals span { max-width: 64%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .combat-vitals b { white-space: nowrap; }
+.combat-vitals small { font-size: 6px; } .combat-bar { height: 8px; margin-top: 5px; background: #130e17; border: 1px solid #a38e7c; } .combat-bar i { display: block; height: 100%; background: #e76056; transition: width .5s steps(10,end); } .combat-bar.enemy-bar i { background: #ae78db; }
+.combat-fighter { position: absolute; z-index: 3; bottom: 14%; image-rendering: pixelated; filter: drop-shadow(2px 3px 1px #09060c); }
+.combat-hunter { left: 11%; width: 31%; height: 54%; } .combat-hunter-sprite { width: 100%; height: 100%; background-position: 72.727% 0; background-size: 1200% 100%; background-repeat: no-repeat; transform: scaleX(-1); image-rendering: pixelated; }
+.combat-weapon { position: absolute; inset: 0; width: 100%; height: 100%; transform-origin: 60.5% 58%; filter: drop-shadow(1px 1px #100b10); }
+.combat-enemy { right: 8%; width: 38%; height: 76%; display: flex; align-items: end; } .combat-enemy img { width: 100%; height: 100%; object-fit: contain; object-position: bottom; image-rendering: pixelated; }
+.combat-scene[data-kind=encounter] .combat-enemy { width: 31%; height: 61%; right: 11%; } .combat-scene[data-kind=boss] .combat-enemy { width: 48%; height: 90%; right: 4%; }
+.combat-scene[data-enemy=string-mimic] .combat-enemy { width: 34%; height: 43%; right: 9%; }
+.combat-scene[data-enemy=forked-path] .combat-enemy { width: 31%; height: 66%; right: 10%; }
+.combat-scene[data-enemy=mimic-matriarch] .combat-enemy { width: 48%; height: 83%; right: 4%; }
+.combat-shadow { position: absolute; z-index: 1; bottom: 12%; height: 6%; border-radius: 50%; background: #09070caa; filter: blur(2px); } .hunter-shadow { left: 12%; width: 28%; } .enemy-shadow { right: 9%; width: 36%; }
+.combat-scene-footer { position: absolute; z-index: 5; bottom: 0; left: 0; right: 0; display: flex; justify-content: space-between; padding: 5px 8px; background: #0b0a13dd; color: #e7ca9d; font: 6px 'Press Start 2P', monospace; }
+.combat-strike { position: absolute; z-index: 6; left: 49%; top: 39%; width: 20%; height: 3px; background: #fff5c5; box-shadow: 0 0 7px #ffbd57; opacity: 0; transform: rotate(-35deg); }
+.combat-damage { position: absolute; z-index: 8; top: 32%; color: #ffe6a7; font: 12px 'Press Start 2P', monospace; text-shadow: 2px 2px #2c1010; opacity: 0; } .combat-damage.enemy-hit { left: 65%; } .combat-damage.hunter-hit { left: 23%; color: #ffb1a7; }
+.combat-equipment { display: grid; gap: 4px; padding: 8px; background: #241c2c; } .combat-equipment span { color: #b8a4a5; font: 6px 'Press Start 2P', monospace; } .combat-equipment strong { color: #ffe0a1; font: 9px/1.4 'Press Start 2P', monospace; } .combat-equipment small { color: #c8b8b3; }
+.combat-status { min-height: 26px; margin: 0; padding: 6px 8px; border-top: 1px solid #554451; color: #d8c7b6; font-size: 13px; }
+.combat-scene.attack[data-weapon=blade] .combat-hunter { animation: combat-lunge .75s ease-in-out; } .combat-scene.attack .combat-enemy { animation: combat-hurt .75s ease; } .combat-scene.attack[data-weapon=blade] .combat-weapon { animation: combat-swing .75s ease; } .combat-scene.retaliate .combat-enemy { animation: combat-counter .75s ease-in-out; } .combat-scene.retaliate .combat-hunter { animation: combat-hurt .75s ease; } .combat-scene.attack[data-weapon=blade] .combat-strike, .combat-scene.retaliate .combat-strike { animation: combat-slash .75s ease; } .combat-scene .combat-damage { animation: combat-float 1s ease-out; }
+.combat-weapon.lantern, .combat-weapon.compass { transform: rotate(0); }
+.combat-scene.attack[data-weapon=lantern] .combat-hunter, .combat-scene.attack[data-weapon=compass] .combat-hunter { animation: combat-cast .75s steps(3,end); }
+.combat-scene.attack[data-weapon=lantern] .combat-weapon { animation: combat-raise .75s steps(3,end); }
+.combat-scene.attack[data-weapon=compass] .combat-weapon { animation: combat-spin .75s steps(6,end); }
+.combat-projectile { position: absolute; z-index: 5; top: 58%; left: 32%; width: 12px; height: 12px; opacity: 0; }
+.combat-scene.attack[data-weapon=lantern] .combat-projectile { background: #ffcd60; box-shadow: 0 0 0 3px #e67831, 0 0 13px 5px #f88b44; animation: combat-cast-shot .75s steps(7,end); }
+.combat-scene.attack[data-weapon=compass] .combat-projectile { background: #9bdfe8; border: 2px solid #f3d48d; box-shadow: 0 0 0 2px #7657a3, 0 0 12px #99dcea; transform: rotate(45deg); animation: combat-cast-shot .75s steps(7,end); }
+@keyframes combat-cast { 0%,100% { transform:translateX(0) } 35% { transform:translateX(4px) } }
+@keyframes combat-raise { 0%,100% { transform:rotate(0) } 35%,60% { transform:rotate(-35deg) } }
+@keyframes combat-spin { 0%,100% { transform:rotate(0) } 60% { transform:rotate(360deg) } }
+@keyframes combat-cast-shot { 0%,20%,65%,100% { opacity:0 } 25% { opacity:1; left:32% } 40% { opacity:1; left:70% } }
+@keyframes combat-lunge { 0%,100% { transform:translateX(0) } 38% { transform:translateX(38px) } } @keyframes combat-counter { 0%,100% { transform:translateX(0) } 38% { transform:translateX(-38px) } } @keyframes combat-hurt { 0%,36%,100% { filter:drop-shadow(2px 3px 1px #09060c) } 42%,55% { filter:brightness(2) } } @keyframes combat-swing { 0%,100% { transform:rotate(0) } 30% { transform:rotate(-35deg) } 48% { transform:rotate(50deg) } } @keyframes combat-slash { 0%,32%,65%,100% { opacity:0 } 39%,54% { opacity:1 } } @keyframes combat-float { 0%,34% { opacity:0; transform:translateY(0) } 42% { opacity:1 } 100% { opacity:0; transform:translateY(-32px) } }
+@media (prefers-reduced-motion: reduce) { .combat-scene *, .combat-bar i { animation: none !important; transition: none !important; } }
+
+.combat-godot-scene iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; pointer-events: none; }
+.combat-loading { position: absolute; z-index: 4; inset: 0; display: grid; place-items: center; background: #100d19; color: #eac788; font: 8px/1.6 'Press Start 2P', monospace; text-align: center; }
+
+/* Fight information belongs with the scene, not in a second enemy card. */
+.combat-encounter-info { padding: 6px 8px; background: #1b1522; }
+.combat-encounter-info .dungeon-fight-strip { display: flex; flex-wrap: wrap; gap: 5px 12px; margin: 0; }
+.combat-encounter-info .dungeon-fight-cell { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px; padding: 0; border: 0; background: transparent; }
+.combat-encounter-info .dungeon-fight-cell strong { font-size: 13px; }
+.combat-encounter-info .dungeon-fight-cell small { flex-basis: 100%; font-size: 12px; }
+.combat-encounter-info .dungeon-fight-pips { display: none; }
+.combat-mob-details { margin-top: 6px; color: #d8c7b6; font-size: 13px; }
+.combat-mob-details summary { cursor: pointer; color: #eac788; }
+.combat-mob-details .dungeon-brief-facts { margin-top: 6px; font-size: 13px; }
+.combat-mob-category { display: block; margin-bottom: 4px; color: #c8b8b3; }
+.combat-segments { display: flex; gap: 2px; height: 15px; margin-top: 5px; }
+.combat-segments > span { flex: 1 1 0; min-width: 0; overflow: hidden; border: 1px solid #b89b87; background: #211326; box-shadow: 0 1px #080609; }
+.combat-segments i { display: block; height: 100%; background: linear-gradient(#e5a4df 0 18%, #b66ad3 18% 75%, #80428e 75%); transition: width .35s steps(4, end); }
+@media (prefers-reduced-motion: reduce) { .combat-segments i { transition: none; } }
+
+.combat-segments.hp > span { border-color: #c79581; background: #2a151c; }
+.combat-segments.hp i { background: linear-gradient(#ffc2a2 0 18%, #e76056 18% 75%, #a83942 75%); }
+
+/* Raid vitals sit over each fighter, like Hunt's fighter-first HUD. */
+.raid-character-vitals { position:absolute; top:35%; transform:translateX(-50%); z-index:5; width:9.6%; min-width:66px; max-width:132px; padding:3px 4px 4px; border:1px solid #8b6b4c; background:#100d19db; box-shadow:2px 2px #08060c; color:#f7e8ca; text-align:center; text-shadow:1px 1px #000; font:clamp(5px,.65vw,8px)/1.3 'Press Start 2P',monospace; }
+.raid-character-vitals>span { display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.raid-character-vitals .combat-segments { height:11px; margin-top:3px; gap:2px; }
+.raid-character-vitals .combat-segments>span { border-color:#c79581; }
+.raid-character-vitals.you { border-color:#dfbd72; box-shadow:2px 2px #08060c,0 0 7px #dfbd7255; }
+.raid-character-vitals.down { border-color:#9a5751; opacity:.65; }
+.raid-character-vitals.down .combat-segments.hp i { background:linear-gradient(#7b6870,#46323f); }
+
+/* Boss resolve frame tracks state-owned phases and active mechanics. */
+.combat-vitals.enemy-vitals.boss-vitals { --boss-frame: #d9b875; top: 5px; right: 5px; padding: 5px; border: 2px solid var(--boss-frame); background: #120e19e8; box-shadow: inset 0 0 0 1px #463224, 2px 2px 0 #08070c; }
+.combat-vitals.enemy-vitals.boss-vitals.raid-boss-vitals { top:27%; right:5%; width:31%; }
+.combat-vitals.enemy-vitals.boss-vitals::before, .combat-vitals.enemy-vitals.boss-vitals::after { content: '◆'; position: absolute; top: -5px; color: var(--boss-frame); text-shadow: 1px 1px #160c11; font-size: 8px; }
+.combat-vitals.enemy-vitals.boss-vitals::before { left: -4px; }
+.combat-vitals.enemy-vitals.boss-vitals::after { right: -4px; }
+.combat-vitals.enemy-vitals.boss-vitals small { display: block; margin-top: 3px; color: var(--boss-frame); overflow-wrap: anywhere; }
+
+/* Boss phase is communicated through the Resolve fill and scene frame. */
+.dungeon-combat-panel.boss-scene { --phase-light: #f1dda9; --phase-fill: #b99a5f; --phase-shadow: #765b38; --phase-frame: #b79a67; border-color: var(--phase-frame); }
+.dungeon-combat-panel.boss-scene.phase-arcane { --phase-light: #ffe0a0; --phase-fill: #df9c42; --phase-shadow: #92501f; --phase-frame: #e4a24e; }
+.dungeon-combat-panel.boss-scene.phase-ember { --phase-light: #ffc196; --phase-fill: #ed6a36; --phase-shadow: #9e3322; --phase-frame: #ef713e; }
+.dungeon-combat-panel.boss-scene.phase-crown { --phase-light: #ffb19a; --phase-fill: #e63838; --phase-shadow: #841a27; --phase-frame: #e6453c; }
+.dungeon-combat-panel.boss-scene .enemy-vitals .combat-segments.resolve i { background: linear-gradient(var(--phase-light) 0 18%, var(--phase-fill) 18% 75%, var(--phase-shadow) 75%); }
+.dungeon-combat-panel.boss-scene .combat-godot-scene::after { content: ''; position: absolute; inset: 0; z-index: 6; border: 3px solid var(--phase-frame); box-shadow: inset 0 0 0 2px #160e18; pointer-events: none; }
+
+/* The Resolve frame follows the phase; the final phase has a restrained pulse. */
+.dungeon-combat-panel.boss-scene .combat-vitals.enemy-vitals.boss-vitals { --boss-frame: var(--phase-frame); }
+.dungeon-combat-panel.boss-scene.phase-crown .enemy-vitals .combat-segments.resolve { animation: boss-final-pulse 1.8s ease-in-out infinite; }
+@keyframes boss-final-pulse { 0%, 100% { filter: brightness(1); } 50% { filter: brightness(1.3); } }
+@media (prefers-reduced-motion: reduce) { .dungeon-combat-panel.boss-scene.phase-crown .enemy-vitals .combat-segments.resolve { animation: none; } }
+@media(max-width:750px){.raid-character-vitals{top:34%;width:10.8%;min-width:0;padding:2px 2px 3px;font-size:5px}.raid-character-vitals .combat-segments{height:9px;gap:1px}.combat-vitals.enemy-vitals.boss-vitals.raid-boss-vitals{top:26%;right:3%;width:34%}}

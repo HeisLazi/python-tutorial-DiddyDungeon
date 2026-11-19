@@ -8,7 +8,9 @@ The public dashboard still lives on `main`. The IDE is **local-first**: your bro
 
 The first usable slice now contains:
 
-- RPG / character stats loaded from `progress.json` and `activity.json`;
+- RPG / character stats loaded from the local `progress.json` cache (or
+  synchronized state through the local sync service after sign-in) and
+  `activity.json`;
 - Monaco editor (the editor core used by VS Code);
 - file explorer scoped to one workspace;
 - save + `Ctrl+S`;
@@ -64,7 +66,7 @@ If that worktree already exists, skip those commands and use its existing path.
 Then launch:
 
 ```bash
-.venv/bin/python ide/quest.py --workspace ../questlab-blackjack
+PYTHONPATH=. .venv/bin/python -m ide.quest --workspace ../questlab-blackjack
 ```
 
 Quest Lab opens at:
@@ -180,9 +182,12 @@ The **terminals are different**: they are intentionally real shells. They have t
 
 # Next milestones
 
-## Milestone 2 — PYR context bridge
+## Milestone 2 — PYR context bridge (implemented)
 
-Give PYR structured context without copy/paste:
+The local Forge now exposes a bounded, read-only context bridge at
+`GET/POST /api/pyr/context`. The editor publishes the current selection and
+the Submit Run enhancement captures the terminal tail through that bridge.
+The response includes:
 
 - active file;
 - selected code;
@@ -191,7 +196,10 @@ Give PYR structured context without copy/paste:
 - current quest/mob/concept;
 - assistance mode / Clean Clear state.
 
-The AI must still follow `TUTOR_CONTRACT.md` and `LEARNING_PROTOCOL.md`.
+State files and secret-looking paths are excluded from git context, payloads are
+bounded and ANSI-cleaned, and the bridge never mutates campaign state. The AI
+must still follow `TUTOR_CONTRACT.md` and `LEARNING_PROTOCOL.md`; any reward or
+combat mutation remains behind the controlled state service.
 
 ## Milestone 3 — in-app PYR chat
 

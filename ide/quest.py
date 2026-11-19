@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import shutil
 import signal
@@ -20,12 +21,27 @@ def parse_args():
     parser = argparse.ArgumentParser(description="Launch the local Python Quest Lab IDE")
     parser.add_argument(
         "--workspace",
-        default=str(REPO_ROOT),
+        default=os.environ.get("QUESTLAB_WORKSPACE") or str(REPO_ROOT),
         help="Folder the editor/terminal may access. A git worktree for the active quest is recommended.",
     )
     parser.add_argument("--no-browser", action="store_true", help="Do not automatically open the browser")
+    parser.add_argument(
+        "--use-local-state",
+        action="store_true",
+        help="review and explicitly migrate to this checkout's per-device local state before launching",
+    )
+    parser.add_argument(
+        "--confirm-local-state",
+        action="store_true",
+        help="accept the reviewed custody migration without an interactive token prompt",
+    )
     parser.add_argument("--backend-port", type=int, default=7331, help="Preferred backend port (auto-falls forward if busy)")
     parser.add_argument("--frontend-port", type=int, default=5173, help="Preferred frontend port (auto-falls forward if busy)")
+    parser.add_argument(
+        "--app",
+        action="store_true",
+        help="App mode: build the frontend once and serve it from the backend on a single port (used by the desktop app).",
+    )
     parser.add_argument(
         "--reload-backend",
         action="store_true",
@@ -44,12 +60,80 @@ def port_available(port: int) -> bool:
     return True
 
 
+def checkout_head_sha(root: Path) -> str:
+    """Return the exact checkout revision used to launch both child processes."""
+
+    try:
+        result = subprocess.run(
+            ["git", "-C", str(root), "rev-parse", "--verify", "HEAD"],
+            check=True,
+            capture_output=True,
+            text=True,
+            timeout=2,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return ""
+    return result.stdout.strip()
+
+
 def choose_port(preferred: int, *, avoid: set[int] | None = None) -> int:
     avoid = avoid or set()
     for port in range(preferred, preferred + 100):
         if port not in avoid and port_available(port):
             return port
     raise SystemExit(f"Could not find a free localhost port near {preferred}")
+
+
+DIST_MARKER = ".questlab-build-sha"
+
+
+def ensure_frontend_dist(build_sha: str, env: dict[str, str]) -> Path:
+    """Build ide/frontend/dist unless it already matches this checkout.
+
+    The marker records the revision baked into the bundle, so the stale-frontend
+    banner stays quiet and a launch after `git pull` picks up the new UI.
+    """
+
+    dist = FRONTEND / "dist"
+    marker = dist / DIST_MARKER
+    current = marker.read_text(encoding="utf-8").strip() if marker.is_file() else None
+    if (dist / "index.html").is_file() and build_sha and current == build_sha:
+        return dist
+    print("   building:  frontend bundle (first launch after an update takes a few seconds)…", flush=True)
+    subprocess.run(["npm", "run", "build"], cwd=FRONTEND, env=env, check=True, stdout=subprocess.DEVNULL)
+    marker.write_text(build_sha, encoding="utf-8")
+    return dist
+
+
+def packaged_frontend_dist(env: dict[str, str], *, app_mode: bool) -> Path | None:
+    """Resolve an explicitly supplied built UI for an installed desktop app.
+
+    The developer launcher continues to build from source. Packaged releases
+    provide a prebuilt directory and must never invoke npm on a player's PC.
+    """
+    raw = env.get("QUESTLAB_BUNDLED_DIST", "").strip()
+    if not raw:
+        return None
+    if not app_mode:
+        raise SystemExit("A bundled frontend can only be used in app mode")
+    dist = Path(raw).expanduser()
+    if not dist.is_absolute() or not (dist / "index.html").is_file():
+        raise SystemExit("The packaged frontend is missing or its path is not absolute")
+    return dist.resolve()
+
+
+def current_branch(root: Path) -> str:
+    try:
+        result = subprocess.run(
+            ["git", "-C", str(root), "branch", "--show-current"],
+            check=True,
+            capture_output=True,
+            text=True,
+            timeout=2,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return ""
+    return result.stdout.strip()
 
 
 def wait_for_port(port: int, timeout: float = 8.0) -> bool:
@@ -70,6 +154,111 @@ def running_under_wsl() -> bool:
         return "microsoft" in Path("/proc/version").read_text(encoding="utf-8").lower()
     except OSError:
         return False
+
+
+def linux_rollup_optional_dependency_ready(frontend: Path) -> bool:
+    """Return whether a WSL frontend has a native Rollup optional package."""
+
+    if not running_under_wsl():
+        return True
+    rollup_root = frontend / "node_modules" / "@rollup"
+    return any(
+        (rollup_root / package / "package.json").is_file()
+        for package in (
+            "rollup-linux-arm-gnueabihf",
+            "rollup-linux-arm-musleabihf",
+            "rollup-linux-x64-gnu",
+            "rollup-linux-x64-musl",
+            "rollup-linux-arm64-gnu",
+            "rollup-linux-arm64-musl",
+            "rollup-linux-loong64-gnu",
+            "rollup-linux-loong64-musl",
+            "rollup-linux-ppc64-gnu",
+            "rollup-linux-ppc64-musl",
+            "rollup-linux-riscv64-gnu",
+            "rollup-linux-riscv64-musl",
+            "rollup-linux-s390x-gnu",
+        )
+    )
+
+
+def frontend_dependencies_ready(frontend: Path) -> bool:
+    """Return whether the managed frontend dependency tree is importable.
+
+    A mounted OneDrive tree can survive an interrupted install with directories
+    present but package metadata missing. Checking the package manifests here
+    keeps the launcher from starting Vite only to fail later with an opaque
+    ESM/Rollup error. The check is intentionally read-only.
+    """
+
+    node_modules = frontend / "node_modules"
+    required_manifests = (
+        node_modules / "vite" / "package.json",
+        node_modules / "@supabase" / "supabase-js" / "package.json",
+        node_modules / "@supabase" / "functions-js" / "package.json",
+    )
+    return all(path.is_file() for path in required_manifests) and linux_rollup_optional_dependency_ready(
+        frontend
+    )
+
+
+def prepare_local_state(workspace: Path, *, use_local_state: bool, confirm_local_state: bool) -> Path:
+    """Review and, only when explicitly requested, switch to local custody."""
+
+    canonical = REPO_ROOT / "progress.json"
+    if not use_local_state:
+        return canonical
+
+    # Importing the server here keeps the normal launcher path lightweight and
+    # lets this preflight use exactly the same destination derivation and state
+    # service as the running backend, without starting a second server.
+    from ide.server import app_v2
+    from ide.server.state import CUSTODY_CONFIRMATION_TOKEN, StateCommandError
+
+    original_root = app_v2.REPO_ROOT
+    original_workspace = app_v2.WORKSPACE
+    original_progress = app_v2.PROGRESS_PATH
+    app_v2.REPO_ROOT = REPO_ROOT
+    app_v2.WORKSPACE = workspace
+    app_v2.PROGRESS_PATH = canonical
+    try:
+        report = app_v2.local_state_custody_report()
+        print("\nLocal state custody preview:")
+        print(json.dumps(report, indent=2, ensure_ascii=False))
+        status = report.get("status")
+        if status in {"no-source-found", "conflict"}:
+            raise SystemExit(f"Local custody cannot proceed while preview status is '{status}'.")
+        if status == "current":
+            return canonical
+        if status != "already-local":
+            approved = confirm_local_state
+            if not approved and sys.stdin.isatty():
+                response = input(f"Type {CUSTODY_CONFIRMATION_TOKEN} to copy this snapshot: ").strip()
+                approved = response == CUSTODY_CONFIRMATION_TOKEN
+            if not approved:
+                raise SystemExit(
+                    "Custody migration was not confirmed. Review the preview and rerun with "
+                    "--confirm-local-state or an interactive token prompt."
+                )
+            expected_revision = report.get("source_revision")
+            if not isinstance(expected_revision, int) or expected_revision < 0:
+                raise SystemExit("Custody preview did not contain a valid source revision.")
+            try:
+                result = app_v2.STATE_SERVICE.migrate_local_state(
+                    app_v2.proposed_local_state_path(),
+                    expected_source_revision=expected_revision,
+                    confirmation_token=CUSTODY_CONFIRMATION_TOKEN,
+                    forbidden_paths=(app_v2.PROGRESS_PATH, app_v2.legacy_progress_path()),
+                )
+            except StateCommandError as exc:
+                raise SystemExit(f"Custody migration rejected: {exc.detail}") from exc
+            print("Local state custody result:")
+            print(json.dumps(result, indent=2, ensure_ascii=False))
+        return app_v2.proposed_local_state_path()
+    finally:
+        app_v2.REPO_ROOT = original_root
+        app_v2.WORKSPACE = original_workspace
+        app_v2.PROGRESS_PATH = original_progress
 
 
 def open_local_browser(url: str) -> bool:
@@ -106,22 +295,69 @@ def open_local_browser(url: str) -> bool:
 
 def main():
     args = parse_args()
+    if args.confirm_local_state and not args.use_local_state:
+        raise SystemExit("--confirm-local-state requires --use-local-state")
     workspace = Path(args.workspace).expanduser().resolve()
     if not workspace.exists() or not workspace.is_dir():
         raise SystemExit(f"Workspace does not exist: {workspace}")
-    if not (FRONTEND / "node_modules").exists():
-        raise SystemExit("Frontend dependencies are missing. Run: cd ide/frontend && npm install")
-    if not shutil.which("npm"):
-        raise SystemExit("npm is not on PATH")
+    bundled_dist = packaged_frontend_dist(os.environ, app_mode=args.app)
+    if bundled_dist is None:
+        if not (FRONTEND / "node_modules").exists():
+            raise SystemExit("Frontend dependencies are missing. Run: cd ide/frontend && npm install")
+        if not frontend_dependencies_ready(FRONTEND):
+            if running_under_wsl():
+                raise SystemExit(
+                    "WSL frontend dependencies are incomplete or were installed for Windows (missing Vite/Supabase "
+                    "metadata or a native Linux Rollup package). Run npm ci inside this WSL checkout or use a clean "
+                    "Linux filesystem before launching Forge."
+                )
+            raise SystemExit(
+                "Frontend dependencies are incomplete (missing Vite/Supabase package metadata). "
+                "Run npm ci from a stopped native Windows Forge process before launching."
+            )
+        if not shutil.which("npm"):
+            raise SystemExit("npm is not on PATH")
 
     backend_port = choose_port(args.backend_port)
-    frontend_port = choose_port(args.frontend_port, avoid={backend_port})
+    # In app mode the backend serves the bundle itself, so the browser origin
+    # is the backend origin and the CORS/WebSocket allow-list must match it.
+    frontend_port = backend_port if args.app else choose_port(args.frontend_port, avoid={backend_port})
 
     env = os.environ.copy()
     env["QUESTLAB_REPO_ROOT"] = str(REPO_ROOT)
+    # An explicit absolute override lets a desktop launcher retain its existing
+    # save while the application code lives in another checkout.
+    configured_state = os.environ.get("QUESTLAB_STATE_PATH", "").strip()
+    state_path = Path(configured_state).expanduser() if configured_state else REPO_ROOT / "progress.json"
+    env["QUESTLAB_STATE_PATH"] = str(state_path if state_path.is_absolute() else REPO_ROOT / state_path)
+    if os.environ.get("QUESTLAB_INITIALIZE_SAVE") == "1":
+        if bundled_dist is None or not configured_state or not state_path.is_absolute():
+            raise SystemExit("New-save initialization requires a bundled app and an explicit absolute save path")
+        if os.environ.get("QUESTLAB_TEST_SAVE") == "1":
+            # Desktop test mode (`Quest Lab.exe --test`): a separate everything-unlocked save.
+            from ide.server.unlocked_save import initialize_test_save
+            initialize_test_save(state_path)
+        else:
+            from ide.server.new_game import initialize_new_save
+            initialize_new_save(state_path)
     env["QUESTLAB_WORKSPACE"] = str(workspace)
     env["QUESTLAB_BACKEND_PORT"] = str(backend_port)
     env["QUESTLAB_FRONTEND_PORT"] = str(frontend_port)
+    env["QUESTLAB_EXPECTED_BRANCH"] = os.environ.get("QUESTLAB_EXPECTED_BRANCH") or (
+        current_branch(REPO_ROOT) if args.app else ""
+    ) or "feature/cloud-sync-desktop"
+    # Vite embeds this marker into the frontend bundle so a stale frontend
+    # paired with a newer backend can identify itself instead of silently
+    # presenting an older UI. Manual `npm run dev` remains supported but has
+    # no authoritative marker and falls back to the branch/runtime checks.
+    env["QUESTLAB_BUILD_SHA"] = checkout_head_sha(REPO_ROOT)
+    if args.use_local_state:
+        local_state_path = prepare_local_state(
+            workspace,
+            use_local_state=True,
+            confirm_local_state=args.confirm_local_state,
+        )
+        env["QUESTLAB_STATE_PATH"] = str(local_state_path)
 
     backend_cmd = [
         sys.executable,
@@ -135,6 +371,8 @@ def main():
     ]
     if args.reload_backend:
         backend_cmd.append("--reload")
+    if args.app:
+        env["QUESTLAB_SERVE_DIST"] = str(bundled_dist or ensure_frontend_dist(env["QUESTLAB_BUILD_SHA"], env))
 
     frontend_cmd = [
         "npm",
@@ -157,13 +395,14 @@ def main():
     print(f"   web:       {url}")
     if backend_port != args.backend_port:
         print(f"   note:      port {args.backend_port} was busy, so Forge moved the backend to {backend_port}")
-    if frontend_port != args.frontend_port:
+    if frontend_port != args.frontend_port and not args.app:
         print(f"   note:      port {args.frontend_port} was busy, so Forge moved the UI to {frontend_port}")
     print("   terminals: stable PTY mode (backend reload off)\n")
 
     backend = subprocess.Popen(backend_cmd, cwd=REPO_ROOT, env=env)
-    frontend = subprocess.Popen(frontend_cmd, cwd=FRONTEND, env=env)
-    processes = [backend, frontend]
+    processes = [backend]
+    if not args.app:
+        processes.append(subprocess.Popen(frontend_cmd, cwd=FRONTEND, env=env))
 
     stopping = False
 
@@ -185,6 +424,13 @@ def main():
     signal.signal(signal.SIGINT, stop)
     signal.signal(signal.SIGTERM, stop)
 
+    if args.app:
+        # The desktop shell waits for this exact line before showing the game.
+        if wait_for_port(backend_port, timeout=30):
+            print(f"QUESTLAB_READY {url}", flush=True)
+        else:
+            print("QUESTLAB_FAILED backend did not start", flush=True)
+
     if not args.no_browser:
         if wait_for_port(frontend_port):
             if not open_local_browser(url):
@@ -192,18 +438,22 @@ def main():
         else:
             print(f"   browser:   frontend was not ready yet; open manually when it starts: {url}")
 
+    exit_code = 0
     try:
         while not stopping:
             for proc in processes:
                 code = proc.poll()
                 if code is not None:
                     print(f"A Quest Lab process exited with code {code}.")
+                    if code != 0:
+                        exit_code = code
                     stop()
                     break
             time.sleep(0.5)
     finally:
         stop()
+    return exit_code
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())

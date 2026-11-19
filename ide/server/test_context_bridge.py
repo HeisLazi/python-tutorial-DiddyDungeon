@@ -1,0 +1,1283 @@
+from __future__ import annotations
+
+import json
+import hashlib
+import tempfile
+import unittest
+from pathlib import Path
+
+from fastapi.testclient import TestClient
+
+from ide.server import app_v2
+
+
+def context_progress() -> dict:
+    return {
+        "meta": {"revision": 7, "updated_at": "2026-09-15T00:00:00+00:00", "device_id": "local-forge"},
+        "player": {"level": 2, "xp": 50, "xp_next": 100, "lifetime_xp": 150, "coins": 55, "hp": 100, "max_hp": 100},
+        "learning_state": {
+            "project": "01-blackjack",
+            "concept": "Input loops and control flow",
+            "phase": "forge",
+            "reference_mode": False,
+            "clean_clear_eligible": True,
+        },
+        "assist": {"mode": "clean", "reference_mode_uses": 0, "guided_milestones": 0},
+        "projects": [
+            {
+                "branch": "01-blackjack",
+                "name": "Blackjack",
+                "status": "active",
+                "progress": 38,
+                "boss": "The House",
+                "mobs": [
+                    {"name": "The Empty Table", "status": "defeated", "concept": "Variables"},
+                    {"name": "The Dealer's Hand", "status": "defeated", "concept": "Lists"},
+                    {"name": "The Count Keeper", "status": "defeated", "concept": "Loops"},
+                    {
+                        "name": "The Hitman",
+                        "status": "available",
+                        "concept": "Input loops and control flow",
+                        "encounter": "Reason about repeated player choices.",
+                        "max_resolve": 8,
+                        "resolve": 8,
+                    },
+                    {"name": "The Bust Hound", "status": "locked", "concept": "Conditionals"},
+                ],
+            }
+        ],
+        "encounter_state": {
+            "project_id": "01-blackjack",
+            "mob_name": "The Hitman",
+            "status": "active",
+            "resolve": 8,
+            "max_resolve": 8,
+            "completed_objectives": [],
+            "attempts": 0,
+            "question_types": [],
+        },
+        "state_events": [],
+    }
+
+
+class PyrContextBridgeTests(unittest.TestCase):
+    def test_dungeon_checkpoint_uses_state_gateway_and_context_projection(self):
+        original_workspace = app_v2.WORKSPACE
+        original_progress = app_v2.PROGRESS_PATH
+        original_dungeon = app_v2.DUNGEON_PATH
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            workspace = root / "quest"
+            workspace.mkdir()
+            (workspace / "main.py").write_text("print('hello')\n", encoding="utf-8")
+            (workspace / "progress.json").write_text('{"player":{"level":99}}', encoding="utf-8")
+            (workspace / "tutor.py").write_text("print('legacy')\n", encoding="utf-8")
+            (workspace / "dungeon.py.tmp").write_text("stale\n", encoding="utf-8")
+            canonical = root / "platform" / "progress.json"
+            canonical.parent.mkdir()
+            canonical.write_text(json.dumps(context_progress()), encoding="utf-8")
+            app_v2.WORKSPACE = workspace
+            app_v2.PROGRESS_PATH = canonical
+            app_v2.DUNGEON_PATH = workspace / "dungeon.py"
+            try:
+                client = TestClient(app_v2.app, base_url="http://127.0.0.1")
+                tree = client.get("/api/tree", headers={"host": "127.0.0.1"})
+                self.assertEqual(tree.status_code, 200)
+                self.assertNotIn("tutor.py", {item["path"] for item in tree.json()["items"]})
+                self.assertNotIn("progress.json", {item["path"] for item in tree.json()["items"]})
+                self.assertNotIn("dungeon.py.tmp", {item["path"] for item in tree.json()["items"]})
+                tutor_context = client.post(
+                    "/api/pyr/context",
+                    headers={"host": "127.0.0.1"},
+                    json={"active_path": "tutor.py"},
+                )
+                self.assertEqual(tutor_context.status_code, 200, tutor_context.text)
+                self.assertEqual(tutor_context.json()["context"]["active_file"]["content"], "print('legacy')\n")
+                idle = client.get("/api/dungeon", headers={"host": "127.0.0.1"})
+                self.assertEqual(idle.status_code, 200)
+                self.assertEqual(idle.json()["dungeon"]["status"], "idle")
+                self.assertTrue((workspace / "dungeon.py").exists())
+                self.assertEqual((workspace / "dungeon.py").read_text(encoding="utf-8"), "")
+
+                started = client.post(
+                    "/api/dungeon/start",
+                    headers={"host": "127.0.0.1"},
+                    json={"concept_id": "lists", "seed": "bridge-seed"},
+                )
+                self.assertEqual(started.status_code, 200)
+                run = started.json()["dungeon"]
+                self.assertTrue(run["active"])
+                self.assertEqual(run["floor"], 1)
+                self.assertEqual(run["loadout"]["armor"], "Apprentice Coat")
+                self.assertEqual(run["loadout"]["heals"], 1)
+                self.assertEqual(run["inventory"][0]["id"], "dungeon-starter-armor")
+                self.assertTrue(run["inventory"][0]["equipped"])
+                self.assertEqual(run["editor_content"], "")
+                chosen = client.post(
+                    "/api/dungeon/choose",
+                    headers={"host": "127.0.0.1"},
+                    json={"run_id": run["run_id"], "choice_id": next(c["id"] for c in run["room_choices"] if c["kind"] in {"encounter", "elite"})},
+                )
+                self.assertEqual(chosen.status_code, 200, chosen.text)
+                run = chosen.json()["dungeon"]
+
+                saved = client.put(
+                    "/api/dungeon/editor",
+                    headers={"host": "127.0.0.1"},
+                    json={"run_id": run["run_id"], "question_id": run["question"]["id"], "content": "items = []\n"},
+                )
+                self.assertEqual(saved.status_code, 200)
+                self.assertEqual(saved.json()["dungeon"]["editor_content"], "items = []\n")
+                self.assertEqual((workspace / "dungeon.py").read_text(encoding="utf-8"), "items = []\n")
+
+                context = client.post(
+                    "/api/pyr/context",
+                    headers={"host": "127.0.0.1"},
+                    json={"active_path": "dungeon.py"},
+                )
+                self.assertEqual(context.status_code, 200)
+                self.assertEqual(context.json()["context"]["active_file"]["content"], "items = []\n")
+
+                direct_read = client.get("/api/file?path=dungeon.py", headers={"host": "127.0.0.1"})
+                self.assertEqual(direct_read.status_code, 403)
+                direct_write = client.put(
+                    "/api/file",
+                    headers={"host": "127.0.0.1"},
+                    json={"path": "dungeon.py", "content": "tips = 'leak'\n"},
+                )
+                self.assertEqual(direct_write.status_code, 403)
+                legacy_read = client.get("/api/file?path=tutor.py", headers={"host": "127.0.0.1"})
+                self.assertEqual(legacy_read.status_code, 403)
+                legacy_format = client.post(
+                    "/api/format",
+                    headers={"host": "127.0.0.1"},
+                    json={"path": "tutor.py", "content": "print('legacy')\n"},
+                )
+                self.assertEqual(legacy_format.status_code, 403)
+
+                next_question = app_v2.STATE_SERVICE.apply_internal(
+                    "dungeon_issue_question",
+                    {
+                        "run_id": run["run_id"],
+                        "floor": 1,
+                        "room": 2,
+                        "question": {
+                            "id": f"{run['run_id']}-q2",
+                            "question_type": "true_false",
+                            "concept_id": "lists",
+                            "difficulty": 2,
+                            "prompt": "Is indexing zero-based?",
+                            "options": ["True", "False"],
+                        },
+                    },
+                )
+                self.assertTrue(next_question["changed"])
+                stale_save = client.put(
+                    "/api/dungeon/editor",
+                    headers={"host": "127.0.0.1"},
+                    json={"run_id": run["run_id"], "question_id": run["question"]["id"], "content": "late = 'old'\n"},
+                )
+                self.assertEqual(stale_save.status_code, 409)
+                refreshed = client.get("/api/dungeon", headers={"host": "127.0.0.1"})
+                self.assertEqual(refreshed.status_code, 200)
+                self.assertEqual(refreshed.json()["dungeon"]["room"], 2)
+                self.assertEqual(refreshed.json()["dungeon"]["editor_content"], "")
+                self.assertEqual((workspace / "dungeon.py").read_text(encoding="utf-8"), "")
+            finally:
+                app_v2.WORKSPACE = original_workspace
+                app_v2.PROGRESS_PATH = original_progress
+                app_v2.DUNGEON_PATH = original_dungeon
+
+    def test_campaign_polling_survives_invalid_dungeon_projection(self):
+        original_workspace = app_v2.WORKSPACE
+        original_progress = app_v2.PROGRESS_PATH
+        original_dungeon = app_v2.DUNGEON_PATH
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            workspace = root / "quest"
+            workspace.mkdir()
+            canonical = root / "platform" / "progress.json"
+            canonical.parent.mkdir()
+            state = context_progress()
+            state["dungeon_run"] = {"status": "corrupt", "run_id": "bad-run"}
+            canonical.write_text(json.dumps(state), encoding="utf-8")
+            app_v2.WORKSPACE = workspace
+            app_v2.PROGRESS_PATH = canonical
+            app_v2.DUNGEON_PATH = workspace / "dungeon.py"
+            try:
+                client = TestClient(app_v2.app, base_url="http://127.0.0.1")
+                response = client.get("/api/campaign", headers={"host": "127.0.0.1"})
+                self.assertEqual(response.status_code, 200)
+                self.assertEqual(response.json()["dungeon"]["status"], "invalid")
+                self.assertEqual(response.json()["progress"]["player"]["level"], 2)
+            finally:
+                app_v2.WORKSPACE = original_workspace
+                app_v2.PROGRESS_PATH = original_progress
+                app_v2.DUNGEON_PATH = original_dungeon
+
+    def test_dungeon_provider_bridge_binds_answer_and_rotates_only_after_verdict(self):
+        original_workspace = app_v2.WORKSPACE
+        original_progress = app_v2.PROGRESS_PATH
+        original_dungeon = app_v2.DUNGEON_PATH
+        original_challenge = app_v2.PYR_DUNGEON_CHALLENGE
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            workspace = root / "quest"
+            workspace.mkdir()
+            canonical = root / "platform" / "progress.json"
+            canonical.parent.mkdir()
+            canonical.write_text(json.dumps(context_progress()), encoding="utf-8")
+            app_v2.WORKSPACE = workspace
+            app_v2.PROGRESS_PATH = canonical
+            app_v2.DUNGEON_PATH = workspace / "dungeon.py"
+            app_v2.PYR_DUNGEON_CHALLENGE = None
+            try:
+                client = TestClient(app_v2.app, base_url="http://127.0.0.1")
+                started = client.post("/api/dungeon/start", headers={"host": "127.0.0.1"}, json={"concept_id": "lists", "seed": "bridge"})
+                self.assertEqual(started.status_code, 200)
+                run = started.json()["dungeon"]
+                chosen = client.post("/api/dungeon/choose", headers={"host": "127.0.0.1"}, json={"run_id": run["run_id"], "choice_id": next(c["id"] for c in run["room_choices"] if c["kind"] in {"encounter", "elite"})})
+                self.assertEqual(chosen.status_code, 200, chosen.text)
+                run = chosen.json()["dungeon"]
+                context = client.post("/api/pyr/context", headers={"host": "127.0.0.1"}, json={"active_path": "dungeon.py"})
+                self.assertEqual(context.status_code, 200, context.text)
+                challenge = context.json()["context"]["dungeon_verdict"]
+                self.assertEqual(challenge["run_id"], run["run_id"])
+                bound = client.post(
+                    "/api/pyr/dungeon-submission",
+                    headers={"host": "127.0.0.1"},
+                    json={"nonce": challenge["nonce"], "run_id": run["run_id"], "question_id": run["question"]["id"], "answer": "items = ['red']"},
+                )
+                self.assertEqual(bound.status_code, 200, bound.text)
+                submission = bound.json()["submission"]
+                verdict = client.post(
+                    "/api/pyr/dungeon-verdict",
+                    headers={"host": "127.0.0.1"},
+                    json={
+                        "nonce": submission["nonce"],
+                        "submission_id": submission["submission_id"],
+                        "answer_digest": submission["answer_digest"],
+                        "verdict": "correct",
+                        "run_id": run["run_id"],
+                        "question_id": run["question"]["id"],
+                        "evidence_id": submission["evidence_id"],
+                        "reason": "Provider validated the current Dungeon answer.",
+                    },
+                )
+                self.assertEqual(verdict.status_code, 200, verdict.text)
+                self.assertEqual(verdict.json()["mutation"]["result"]["run"]["room"], 2)
+                self.assertEqual(verdict.json()["mutation"]["event"]["action"], "dungeon_record_verdict")
+                self.assertEqual(json.loads(canonical.read_text(encoding="utf-8"))["player"]["coins"], 55)
+                replay = client.post(
+                    "/api/pyr/dungeon-verdict",
+                    headers={"host": "127.0.0.1"},
+                    json={
+                        "nonce": submission["nonce"],
+                        "submission_id": submission["submission_id"],
+                        "answer_digest": submission["answer_digest"],
+                        "verdict": "correct",
+                        "run_id": run["run_id"],
+                        "question_id": run["question"]["id"],
+                        "evidence_id": submission["evidence_id"],
+                        "reason": "Replay must fail.",
+                    },
+                )
+                self.assertEqual(replay.status_code, 409)
+            finally:
+                app_v2.WORKSPACE = original_workspace
+                app_v2.PROGRESS_PATH = original_progress
+                app_v2.DUNGEON_PATH = original_dungeon
+                app_v2.PYR_DUNGEON_CHALLENGE = original_challenge
+
+    def test_dungeon_elite_rooms_accept_provider_submissions(self):
+        # The state service adjudicates encounter, elite and boss rooms; the
+        # gateway used to accept only "encounter", stranding elite gates.
+        original_workspace = app_v2.WORKSPACE
+        original_progress = app_v2.PROGRESS_PATH
+        original_dungeon = app_v2.DUNGEON_PATH
+        original_challenge = app_v2.PYR_DUNGEON_CHALLENGE
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            workspace = root / "quest"
+            workspace.mkdir()
+            canonical = root / "platform" / "progress.json"
+            canonical.parent.mkdir()
+            canonical.write_text(json.dumps(context_progress()), encoding="utf-8")
+            app_v2.WORKSPACE = workspace
+            app_v2.PROGRESS_PATH = canonical
+            app_v2.DUNGEON_PATH = workspace / "dungeon.py"
+            app_v2.PYR_DUNGEON_CHALLENGE = None
+            try:
+                client = TestClient(app_v2.app, base_url="http://127.0.0.1")
+                headers = {"host": "127.0.0.1"}
+                run = client.post("/api/dungeon/start", headers=headers, json={"concept_id": "lists", "seed": "bridge"}).json()["dungeon"]
+                choice = next(c["id"] for c in run["room_choices"] if c["kind"] in {"encounter", "elite"})
+                run = client.post("/api/dungeon/choose", headers=headers, json={"run_id": run["run_id"], "choice_id": choice}).json()["dungeon"]
+                state = json.loads(canonical.read_text(encoding="utf-8"))
+                state["dungeon_run"]["room_type"] = "elite"
+                canonical.write_text(json.dumps(state), encoding="utf-8")
+
+                context = client.post("/api/pyr/context", headers=headers, json={"active_path": "dungeon.py"})
+                self.assertEqual(context.status_code, 200, context.text)
+                challenge = context.json()["context"]["dungeon_verdict"]
+                self.assertIsNotNone(challenge)
+                bound = client.post(
+                    "/api/pyr/dungeon-submission",
+                    headers=headers,
+                    json={"nonce": challenge["nonce"], "run_id": run["run_id"], "question_id": run["question"]["id"], "answer": "items = ['red']"},
+                )
+                self.assertEqual(bound.status_code, 200, bound.text)
+            finally:
+                app_v2.WORKSPACE = original_workspace
+                app_v2.PROGRESS_PATH = original_progress
+                app_v2.DUNGEON_PATH = original_dungeon
+                app_v2.PYR_DUNGEON_CHALLENGE = original_challenge
+
+    def test_forge_submission_is_bound_to_the_active_campaign_file(self):
+        original_workspace = app_v2.WORKSPACE
+        original_progress = app_v2.PROGRESS_PATH
+        original_challenge = app_v2.PYR_CONTEXT_CHALLENGE
+        original_challenges = dict(app_v2.PYR_CONTEXT_CHALLENGES)
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            workspace = root / "quest"
+            workspace.mkdir()
+            (workspace / "main.py").write_text("print('campaign')\n", encoding="utf-8")
+            canonical = root / "platform" / "progress.json"
+            canonical.parent.mkdir()
+            canonical.write_text(json.dumps(context_progress()), encoding="utf-8")
+            app_v2.WORKSPACE = workspace
+            app_v2.PROGRESS_PATH = canonical
+            app_v2.PYR_CONTEXT_CHALLENGE = None
+            app_v2.PYR_CONTEXT_CHALLENGES.clear()
+            try:
+                client = TestClient(app_v2.app, base_url="http://127.0.0.1")
+                context = client.post(
+                    "/api/pyr/context",
+                    headers={"host": "127.0.0.1"},
+                    json={"active_path": "main.py"},
+                )
+                self.assertEqual(context.status_code, 200, context.text)
+                challenge = context.json()["context"]["verdict"]
+                self.assertEqual(challenge["active_path"], "main.py")
+                expected_digest = hashlib.sha256(b"print('campaign')\n").hexdigest()
+                self.assertEqual(challenge["file_digest"], expected_digest)
+
+                stale_file = client.post(
+                    "/api/pyr/battle-submission",
+                    headers={"host": "127.0.0.1"},
+                    json={
+                        "nonce": challenge["nonce"],
+                        "objective_id": "choice_flow",
+                        "answer": "print('stale')",
+                        "answer_source": "forge_active_file",
+                        "source_path": "other.py",
+                        "file_digest": expected_digest,
+                    },
+                )
+                self.assertEqual(stale_file.status_code, 409)
+
+                stale_digest = client.post(
+                    "/api/pyr/battle-submission",
+                    headers={"host": "127.0.0.1"},
+                    json={
+                        "nonce": challenge["nonce"],
+                        "objective_id": "choice_flow",
+                        "answer": "print('campaign')\n",
+                        "answer_source": "forge_active_file",
+                        "source_path": "main.py",
+                        "file_digest": "0" * 64,
+                    },
+                )
+                self.assertEqual(stale_digest.status_code, 409)
+
+                (workspace / "main.py").write_text("print('changed')\n", encoding="utf-8")
+                stale_disk = client.post(
+                    "/api/pyr/battle-submission",
+                    headers={"host": "127.0.0.1"},
+                    json={
+                        "nonce": challenge["nonce"],
+                        "objective_id": "choice_flow",
+                        "answer": "print('campaign')\n",
+                        "answer_source": "forge_active_file",
+                        "source_path": "main.py",
+                        "file_digest": expected_digest,
+                    },
+                )
+                self.assertEqual(stale_disk.status_code, 409)
+                (workspace / "main.py").write_text("print('campaign')\n", encoding="utf-8")
+
+                accepted = client.post(
+                    "/api/pyr/battle-submission",
+                    headers={"host": "127.0.0.1"},
+                    json={
+                        "nonce": challenge["nonce"],
+                        "objective_id": "choice_flow",
+                        "answer": "print('campaign')\n",
+                        "answer_source": "forge_active_file",
+                        "source_path": "main.py",
+                        "file_digest": expected_digest,
+                    },
+                )
+                self.assertEqual(accepted.status_code, 200, accepted.text)
+                submission = accepted.json()["submission"]
+                self.assertEqual(submission["answer_source"], "forge_active_file")
+                self.assertEqual(submission["source_path"], "main.py")
+                self.assertEqual(submission["file_digest"], expected_digest)
+                self.assertEqual(json.loads(canonical.read_text(encoding="utf-8"))["meta"]["revision"], 7)
+            finally:
+                app_v2.WORKSPACE = original_workspace
+                app_v2.PROGRESS_PATH = original_progress
+                app_v2.PYR_CONTEXT_CHALLENGE = original_challenge
+                app_v2.PYR_CONTEXT_CHALLENGES.clear()
+                app_v2.PYR_CONTEXT_CHALLENGES.update(original_challenges)
+
+    def test_context_is_bounded_live_and_does_not_mutate_player_state(self):
+        original_workspace = app_v2.WORKSPACE
+        original_progress = app_v2.PROGRESS_PATH
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            workspace = root / "quest"
+            workspace.mkdir()
+            (workspace / "main.py").write_text("print('hello')\n", encoding="utf-8")
+            canonical = root / "platform" / "progress.json"
+            canonical.parent.mkdir()
+            canonical.write_text(json.dumps(context_progress()), encoding="utf-8")
+            app_v2.WORKSPACE = workspace
+            app_v2.PROGRESS_PATH = canonical
+            app_v2.PYR_CONTEXT_INPUT.update({"active_path": None, "selection": "", "terminal_tail": ""})
+            try:
+                client = TestClient(app_v2.app, base_url="http://127.0.0.1")
+                response = client.post(
+                    "/api/pyr/context",
+                    headers={"host": "127.0.0.1"},
+                    json={
+                        "active_path": "main.py",
+                        "selection": "\x1b[31mwhile\x1b[0m choice:\n    print(choice)",
+                        "terminal_tail": "\x1b[2KTraceback\r\nValueError: bad input\r\n",
+                    },
+                )
+                self.assertEqual(response.status_code, 200)
+                context = response.json()["context"]
+                self.assertEqual(context["revision"], 7)
+                nonce = context["verdict"]["nonce"]
+                self.assertEqual(context["verdict"]["mob_name"], "The Hitman")
+                self.assertEqual(context["active_file"]["path"], "main.py")
+                self.assertEqual(context["active_file"]["content"], "print('hello')\n")
+                self.assertEqual(context["selection"]["text"], "while choice:\n    print(choice)")
+                self.assertEqual(context["terminal"]["tail"], "Traceback\nValueError: bad input\n")
+                self.assertEqual(context["quest"]["mob"]["name"], "The Hitman")
+                self.assertEqual(context["quest"]["mob"]["concept"], "Input loops and control flow")
+                self.assertEqual(context["quest"]["mob"]["current_quest"]["id"], "choice_flow")
+                self.assertEqual([item["id"] for item in context["quest"]["mob"]["mechanics"]], ["execution_gate", "bug_feedback", "verified_goal"])
+                self.assertEqual(context["quest"]["assistance"]["mode"], "clean")
+                self.assertNotIn("The Bust Hound", json.dumps(context["quest"]["mob"]))
+
+                persisted = json.loads(canonical.read_text(encoding="utf-8"))
+                self.assertEqual(persisted["meta"]["revision"], 7)
+                self.assertEqual(persisted["state_events"], [])
+
+                submission_response = client.post(
+                    "/api/pyr/battle-submission",
+                    headers={"host": "127.0.0.1"},
+                    json={
+                        "nonce": nonce,
+                        "objective_id": "choice_flow",
+                        "answer": "I would stop asking for cards when the choice is no longer true.",
+                    },
+                )
+                self.assertEqual(submission_response.status_code, 200)
+                submission = submission_response.json()["submission"]
+                self.assertEqual(submission["objective_id"], "choice_flow")
+                self.assertEqual(submission["question_type"], "code_checkpoint")
+                self.assertEqual(submission["impact"], 4)
+                self.assertEqual(submission["evidence_id"], submission["submission_id"])
+                self.assertEqual(len(submission["answer_digest"]), 64)
+                self.assertEqual(json.loads(canonical.read_text(encoding="utf-8"))["meta"]["revision"], 7)
+                pending_context = client.get("/api/pyr/context", headers={"host": "127.0.0.1"})
+                self.assertEqual(pending_context.status_code, 200)
+                self.assertEqual(pending_context.json()["context"]["verdict"]["nonce"], nonce)
+                self.assertEqual(pending_context.json()["context"]["verdict"]["submission_id"], submission["submission_id"])
+
+                mismatched_verdict = client.post(
+                    "/api/pyr/verdict",
+                    headers={"host": "127.0.0.1"},
+                    json={
+                        "nonce": nonce,
+                        "submission_id": submission["submission_id"],
+                        "answer_digest": "0" * 64,
+                        "verdict": "correct",
+                        "objective_id": "choice_flow",
+                        "evidence_id": submission["evidence_id"],
+                        "reason": "The digest does not match the submitted answer.",
+                    },
+                )
+                self.assertEqual(mismatched_verdict.status_code, 409)
+
+                verdict = client.post(
+                    "/api/pyr/verdict",
+                    headers={"host": "127.0.0.1"},
+                    json={
+                        "nonce": nonce,
+                        "submission_id": submission["submission_id"],
+                        "answer_digest": submission["answer_digest"],
+                        "verdict": "correct",
+                        "objective_id": "choice_flow",
+                        "evidence_id": submission["evidence_id"],
+                        "reason": "PYR verified the stop and continue explanation.",
+                    },
+                )
+                self.assertEqual(verdict.status_code, 200)
+                mutation = verdict.json()["mutation"]
+                self.assertEqual(mutation["result"]["resolve_after"], 4)
+                self.assertEqual(mutation["event"]["action"], "record_battle_objective")
+                self.assertEqual(mutation["revision"], 8)
+
+                replay = client.post(
+                    "/api/pyr/verdict",
+                    headers={"host": "127.0.0.1"},
+                    json={
+                        "nonce": nonce,
+                        "submission_id": submission["submission_id"],
+                        "answer_digest": submission["answer_digest"],
+                        "verdict": "correct",
+                        "objective_id": "stop_condition",
+                        "evidence_id": submission["evidence_id"],
+                        "reason": "Replay must be rejected.",
+                    },
+                )
+                self.assertEqual(replay.status_code, 409)
+
+                fetched = client.get("/api/pyr/context", headers={"host": "127.0.0.1"})
+                self.assertEqual(fetched.status_code, 200)
+                refreshed_context = fetched.json()["context"]
+                self.assertEqual(refreshed_context["active_file"]["path"], "main.py")
+                self.assertNotEqual(refreshed_context["verdict"]["nonce"], nonce)
+
+                miss_submission_response = client.post(
+                    "/api/pyr/battle-submission",
+                    headers={"host": "127.0.0.1"},
+                    json={
+                        "nonce": refreshed_context["verdict"]["nonce"],
+                        "objective_id": "stop_condition",
+                        "answer": "I would keep looping without checking whether the player wants another card.",
+                    },
+                )
+                self.assertEqual(miss_submission_response.status_code, 200)
+                miss_submission = miss_submission_response.json()["submission"]
+
+                miss = client.post(
+                    "/api/pyr/verdict",
+                    headers={"host": "127.0.0.1"},
+                    json={
+                        "nonce": refreshed_context["verdict"]["nonce"],
+                        "submission_id": miss_submission["submission_id"],
+                        "answer_digest": miss_submission["answer_digest"],
+                        "verdict": "incorrect",
+                        "objective_id": "stop_condition",
+                        "evidence_id": miss_submission["evidence_id"],
+                        "reason": "PYR marked the submitted explanation incomplete.",
+                    },
+                )
+                self.assertEqual(miss.status_code, 200)
+                miss_mutation = miss.json()["mutation"]
+                self.assertEqual(miss_mutation["event"]["action"], "record_battle_miss")
+                self.assertEqual(miss_mutation["result"]["damage"], 18)
+                self.assertEqual(miss_mutation["event"]["evidence_id"], miss_submission["evidence_id"])
+                self.assertEqual(miss_mutation["result"]["mob_name"], "The Hitman")
+                self.assertEqual(miss_mutation["result"]["objective_id"], "stop_condition")
+                self.assertEqual(miss_mutation["result"]["question_type"], "bug_diagnosis")
+
+                reconciled = json.loads(canonical.read_text(encoding="utf-8"))
+                encounter = reconciled["encounter_state"]
+                self.assertEqual(encounter["attempts"], 2)
+                self.assertEqual(encounter["question_types"], ["code_checkpoint", "bug_diagnosis"])
+                codex_entry = reconciled["codex"]["encounters"][0]
+                self.assertEqual(codex_entry["attempts"], 2)
+                self.assertEqual(codex_entry["question_types"], ["code_checkpoint", "bug_diagnosis"])
+                self.assertEqual([item["outcome"] for item in codex_entry["results"]], ["verified", "incorrect"])
+                self.assertEqual(codex_entry["mastery"]["evidence"], 1)
+            finally:
+                app_v2.WORKSPACE = original_workspace
+                app_v2.PROGRESS_PATH = original_progress
+
+    def test_battle_and_dungeon_challenges_are_isolated_per_tab(self):
+        original_workspace = app_v2.WORKSPACE
+        original_progress = app_v2.PROGRESS_PATH
+        original_dungeon = app_v2.DUNGEON_PATH
+        original_context_challenge = app_v2.PYR_CONTEXT_CHALLENGE
+        original_dungeon_challenge = app_v2.PYR_DUNGEON_CHALLENGE
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            workspace = root / "quest"
+            workspace.mkdir()
+            canonical = root / "platform" / "progress.json"
+            canonical.parent.mkdir()
+            canonical.write_text(json.dumps(context_progress()), encoding="utf-8")
+            app_v2.WORKSPACE = workspace
+            app_v2.PROGRESS_PATH = canonical
+            app_v2.DUNGEON_PATH = workspace / "dungeon.py"
+            app_v2.PYR_CONTEXT_CHALLENGE = None
+            app_v2.PYR_DUNGEON_CHALLENGE = None
+            app_v2.PYR_CONTEXT_CHALLENGES.clear()
+            app_v2.PYR_DUNGEON_CHALLENGES.clear()
+            try:
+                client = TestClient(app_v2.app, base_url="http://127.0.0.1")
+                tab_a = client.post(
+                    "/api/pyr/context",
+                    headers={"host": "127.0.0.1"},
+                    json={"client_id": "tab-a"},
+                ).json()["context"]["verdict"]
+                tab_b = client.post(
+                    "/api/pyr/context",
+                    headers={"host": "127.0.0.1"},
+                    json={"client_id": "tab-b"},
+                ).json()["context"]["verdict"]
+                self.assertNotEqual(tab_a["nonce"], tab_b["nonce"])
+
+                # Issuing a challenge in tab B must not invalidate tab A's
+                # pending answer, which was the old process-global-slot bug.
+                bound = client.post(
+                    "/api/pyr/battle-submission",
+                    headers={"host": "127.0.0.1"},
+                    json={
+                        "nonce": tab_a["nonce"],
+                        "objective_id": "choice_flow",
+                        "answer": "I stop when the player's choice is no longer true.",
+                    },
+                )
+                self.assertEqual(bound.status_code, 200, bound.text)
+
+                started = client.post(
+                    "/api/dungeon/start",
+                    headers={"host": "127.0.0.1"},
+                    json={"concept_id": "lists", "seed": "tab-isolation"},
+                )
+                self.assertEqual(started.status_code, 200, started.text)
+                run = started.json()["dungeon"]
+                chosen = client.post(
+                    "/api/dungeon/choose",
+                    headers={"host": "127.0.0.1"},
+                    json={"run_id": run["run_id"], "choice_id": next(c["id"] for c in run["room_choices"] if c["kind"] in {"encounter", "elite"})},
+                )
+                self.assertEqual(chosen.status_code, 200, chosen.text)
+                run = chosen.json()["dungeon"]
+                dungeon_a = client.post(
+                    "/api/pyr/context",
+                    headers={"host": "127.0.0.1"},
+                    json={"client_id": "tab-a", "active_path": "dungeon.py"},
+                ).json()["context"]["dungeon_verdict"]
+                dungeon_b = client.post(
+                    "/api/pyr/context",
+                    headers={"host": "127.0.0.1"},
+                    json={"client_id": "tab-b", "active_path": "dungeon.py"},
+                ).json()["context"]["dungeon_verdict"]
+                self.assertNotEqual(dungeon_a["nonce"], dungeon_b["nonce"])
+                dungeon_bound = client.post(
+                    "/api/pyr/dungeon-submission",
+                    headers={"host": "127.0.0.1"},
+                    json={
+                        "nonce": dungeon_a["nonce"],
+                        "run_id": run["run_id"],
+                        "question_id": run["question"]["id"],
+                        "answer": "items = []",
+                    },
+                )
+                self.assertEqual(dungeon_bound.status_code, 200, dungeon_bound.text)
+            finally:
+                app_v2.WORKSPACE = original_workspace
+                app_v2.PROGRESS_PATH = original_progress
+                app_v2.DUNGEON_PATH = original_dungeon
+                app_v2.PYR_CONTEXT_CHALLENGE = original_context_challenge
+                app_v2.PYR_DUNGEON_CHALLENGE = original_dungeon_challenge
+                app_v2.PYR_CONTEXT_CHALLENGES.clear()
+                app_v2.PYR_DUNGEON_CHALLENGES.clear()
+
+    def test_context_reads_are_isolated_per_tab(self):
+        original_workspace = app_v2.WORKSPACE
+        original_progress = app_v2.PROGRESS_PATH
+        original_context_input = dict(app_v2.PYR_CONTEXT_INPUT)
+        original_context_inputs = {
+            key: dict(value) for key, value in app_v2.PYR_CONTEXT_INPUTS.items()
+        }
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            workspace = root / "quest"
+            workspace.mkdir()
+            canonical = root / "platform" / "progress.json"
+            canonical.parent.mkdir()
+            canonical.write_text(json.dumps(context_progress()), encoding="utf-8")
+            app_v2.WORKSPACE = workspace
+            app_v2.PROGRESS_PATH = canonical
+            with app_v2.PYR_CONTEXT_LOCK:
+                app_v2.PYR_CONTEXT_INPUTS.clear()
+                app_v2.PYR_CONTEXT_INPUT.update(
+                    {"active_path": None, "selection": "", "terminal_tail": "", "client_id": "default"}
+                )
+            try:
+                client = TestClient(app_v2.app, base_url="http://127.0.0.1")
+                posted_a = client.post(
+                    "/api/pyr/context",
+                    headers={"host": "127.0.0.1"},
+                    json={"client_id": "tab-a", "selection": "marker-A", "terminal_tail": "tail-A"},
+                )
+                posted_b = client.post(
+                    "/api/pyr/context",
+                    headers={"host": "127.0.0.1"},
+                    json={"client_id": "tab-b", "selection": "marker-B", "terminal_tail": "tail-B"},
+                )
+                self.assertEqual(posted_a.status_code, 200, posted_a.text)
+                self.assertEqual(posted_b.status_code, 200, posted_b.text)
+
+                read_a = client.get(
+                    "/api/pyr/context",
+                    params={"client_id": "tab-a"},
+                    headers={"host": "127.0.0.1"},
+                )
+                read_b = client.get(
+                    "/api/pyr/context",
+                    params={"client_id": "tab-b"},
+                    headers={"host": "127.0.0.1"},
+                )
+                self.assertEqual(read_a.status_code, 200, read_a.text)
+                self.assertEqual(read_b.status_code, 200, read_b.text)
+                self.assertEqual(read_a.json()["context"]["selection"]["text"], "marker-A")
+                self.assertEqual(read_a.json()["context"]["terminal"]["tail"], "tail-A")
+                self.assertEqual(read_b.json()["context"]["selection"]["text"], "marker-B")
+                self.assertEqual(read_b.json()["context"]["terminal"]["tail"], "tail-B")
+
+                default = client.get(
+                    "/api/pyr/context", headers={"host": "127.0.0.1"}
+                )
+                self.assertEqual(default.status_code, 200, default.text)
+                self.assertNotIn("marker-A", json.dumps(default.json()["context"]))
+                self.assertNotIn("marker-B", json.dumps(default.json()["context"]))
+            finally:
+                app_v2.WORKSPACE = original_workspace
+                app_v2.PROGRESS_PATH = original_progress
+                with app_v2.PYR_CONTEXT_LOCK:
+                    app_v2.PYR_CONTEXT_INPUTS.clear()
+                    app_v2.PYR_CONTEXT_INPUTS.update(original_context_inputs)
+                    app_v2.PYR_CONTEXT_INPUT.clear()
+                    app_v2.PYR_CONTEXT_INPUT.update(original_context_input)
+
+    def test_boss_challenges_are_isolated_and_default_slot_stays_compatible(self):
+        original_workspace = app_v2.WORKSPACE
+        original_progress = app_v2.PROGRESS_PATH
+        original_context_challenge = app_v2.PYR_CONTEXT_CHALLENGE
+        original_context_input = dict(app_v2.PYR_CONTEXT_INPUT)
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            workspace = root / "quest"
+            workspace.mkdir()
+            canonical = root / "platform" / "progress.json"
+            canonical.parent.mkdir()
+            state = context_progress()
+            project = state["projects"][0]
+            project.update({"progress": 100, "boss_status": "available", "mob_sequence_complete": True})
+            for mob in project["mobs"]:
+                mob.update({"status": "defeated", "resolve": 0})
+            state["stats"] = {"mobs_defeated": len(project["mobs"])}
+            state["achievements"] = [
+                {"name": "Housebreaker", "unlocked": False},
+                {"name": "Clean Clear", "unlocked": False},
+            ]
+            canonical.write_text(json.dumps(state), encoding="utf-8")
+            app_v2.WORKSPACE = workspace
+            app_v2.PROGRESS_PATH = canonical
+            app_v2.PYR_CONTEXT_CHALLENGE = None
+            app_v2.PYR_CONTEXT_CHALLENGES.clear()
+            try:
+                client = TestClient(app_v2.app, base_url="http://127.0.0.1")
+                default_context = client.post(
+                    "/api/pyr/context",
+                    headers={"host": "127.0.0.1"},
+                    json={},
+                ).json()["context"]
+                default = default_context["verdict"]
+                self.assertEqual(default["challenge_type"], "boss")
+                self.assertEqual(default_context["quest"]["boss"]["current_requirement"]["id"], "required_behavior")
+                self.assertEqual([item["id"] for item in default_context["quest"]["boss"]["mechanics"]], ["execution_gate", "bug_feedback", "verified_goal"])
+                self.assertIs(app_v2.PYR_CONTEXT_CHALLENGES["default"], app_v2.PYR_CONTEXT_CHALLENGE)
+
+                tab_a = client.post(
+                    "/api/pyr/context",
+                    headers={"host": "127.0.0.1"},
+                    json={"client_id": "boss-tab-a"},
+                ).json()["context"]["verdict"]
+                tab_b = client.post(
+                    "/api/pyr/context",
+                    headers={"host": "127.0.0.1"},
+                    json={"client_id": "boss-tab-b"},
+                ).json()["context"]["verdict"]
+                self.assertNotEqual(default["nonce"], tab_a["nonce"])
+                self.assertNotEqual(tab_a["nonce"], tab_b["nonce"])
+
+                submission = client.post(
+                    "/api/pyr/boss-submission",
+                    headers={"host": "127.0.0.1"},
+                    json={
+                        "nonce": tab_a["nonce"],
+                        "requirement_id": "required_behavior",
+                        "answer": "I stop when the required behaviour is satisfied.",
+                    },
+                )
+                self.assertEqual(submission.status_code, 200, submission.text)
+                body = submission.json()["submission"]
+                verdict = client.post(
+                    "/api/pyr/boss-verdict",
+                    headers={"host": "127.0.0.1"},
+                    json={
+                        "nonce": tab_a["nonce"],
+                        "submission_id": body["submission_id"],
+                        "answer_digest": body["answer_digest"],
+                        "verdict": "correct",
+                        "requirement_id": "required_behavior",
+                        "evidence_id": body["evidence_id"],
+                        "reason": "The bounded behaviour evidence is present.",
+                    },
+                )
+                self.assertEqual(verdict.status_code, 200, verdict.text)
+                self.assertEqual(verdict.json()["verified_requirements"], ["required_behavior"])
+            finally:
+                app_v2.WORKSPACE = original_workspace
+                app_v2.PROGRESS_PATH = original_progress
+                app_v2.PYR_CONTEXT_CHALLENGE = original_context_challenge
+                app_v2.PYR_CONTEXT_INPUT.clear()
+                app_v2.PYR_CONTEXT_INPUT.update(original_context_input)
+                app_v2.PYR_CONTEXT_CHALLENGES.clear()
+
+    def test_context_rejects_state_file_and_bounds_large_text(self):
+        original_workspace = app_v2.WORKSPACE
+        original_progress = app_v2.PROGRESS_PATH
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            workspace = root / "quest"
+            workspace.mkdir()
+            (workspace / "progress.json").write_text("{}", encoding="utf-8")
+            canonical = root / "progress.json"
+            canonical.write_text(json.dumps(context_progress()), encoding="utf-8")
+            app_v2.WORKSPACE = workspace
+            app_v2.PROGRESS_PATH = canonical
+            app_v2.PYR_CONTEXT_INPUT.update({"active_path": None, "selection": "", "terminal_tail": ""})
+            try:
+                client = TestClient(app_v2.app, base_url="http://127.0.0.1")
+                rejected = client.post(
+                    "/api/pyr/context",
+                    headers={"host": "127.0.0.1"},
+                    json={"active_path": "progress.json"},
+                )
+                self.assertEqual(rejected.status_code, 403)
+
+                (workspace / ".env").write_text("SECRET=do-not-forward\n", encoding="utf-8")
+                secret_rejected = client.post(
+                    "/api/pyr/context",
+                    headers={"host": "127.0.0.1"},
+                    json={"active_path": ".env"},
+                )
+                self.assertEqual(secret_rejected.status_code, 403)
+
+                large_file = workspace / "large.py"
+                large_file.write_text("# bounded\n" + ("x" * 50_000), encoding="utf-8")
+                large_context = client.post(
+                    "/api/pyr/context",
+                    headers={"host": "127.0.0.1"},
+                    json={"active_path": "large.py"},
+                )
+                self.assertEqual(large_context.status_code, 200)
+                large_active_file = large_context.json()["context"]["active_file"]
+                self.assertTrue(large_active_file["truncated"])
+                self.assertEqual(large_active_file["bytes"], large_file.stat().st_size)
+                self.assertLessEqual(len(large_active_file["content"].encode()), 40_000)
+
+                bounded = client.post(
+                    "/api/pyr/context",
+                    headers={"host": "127.0.0.1"},
+                    json={"selection": "x" * 25_000, "terminal_tail": "y" * 25_000},
+                )
+                self.assertEqual(bounded.status_code, 200)
+                context = bounded.json()["context"]
+                self.assertTrue(context["selection"]["truncated"])
+                self.assertTrue(context["terminal"]["truncated"])
+                self.assertLessEqual(len(context["selection"]["text"].encode()), 20_000)
+                self.assertLessEqual(len(context["terminal"]["tail"].encode()), 20_000)
+
+                missing_submission = client.post(
+                    "/api/pyr/verdict",
+                    headers={"host": "127.0.0.1"},
+                    json={
+                        "nonce": context["verdict"]["nonce"],
+                        "submission_id": "battle-missing",
+                        "answer_digest": "0" * 64,
+                        "verdict": "incorrect",
+                        "objective_id": "choice_flow",
+                        "evidence_id": "battle-missing",
+                        "reason": "No submission exists.",
+                    },
+                )
+                self.assertEqual(missing_submission.status_code, 409)
+
+                forbidden = client.post(
+                    "/api/pyr/verdict",
+                    headers={"host": "127.0.0.1"},
+                    json={
+                        "nonce": context["verdict"]["nonce"],
+                        "verdict": "incorrect",
+                        "objective_id": "choice_flow",
+                        "evidence_id": "wrong-001",
+                        "reason": "The answer was incomplete.",
+                        "raw_damage": 1,
+                    },
+                )
+                self.assertEqual(forbidden.status_code, 422)
+            finally:
+                app_v2.WORKSPACE = original_workspace
+                app_v2.PROGRESS_PATH = original_progress
+
+    def test_a_multi_file_goal_is_graded_on_its_own_file_and_sees_the_project(self):
+        from ide.server.test_campaign_content import use_real_content, user_like_progress
+
+        use_real_content()
+        original_workspace, original_progress = app_v2.WORKSPACE, app_v2.PROGRESS_PATH
+        app_v2.PYR_CONTEXT_CHALLENGE = None
+        app_v2.PYR_CONTEXT_CHALLENGES.clear()
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            workspace = root / "quest"
+            workspace.mkdir()
+            project_dir = workspace / "silver_reels"
+            project_dir.mkdir()
+            (project_dir / "casino.py").write_text("import reels\n", encoding="utf-8")
+            (project_dir / "reels.py").write_text("SYMBOLS = ['A', 'B']\n", encoding="utf-8")
+            (project_dir / "README.md").write_text("# Silver Reels\nRun python casino.py\n", encoding="utf-8")
+            canonical = root / "platform" / "progress.json"
+            canonical.parent.mkdir()
+            state = user_like_progress()
+            state["projects"] = [{"branch": "04-casino-slots", "name": "Casino / Slots", "status": "active", "boss": "Ekse Ouens P Diddy", "order": 4, "entry_file": "silver_reels/casino.py", "multi_file": True,
+                                  "mobs": [{"name": "The File Splitter", "concept": "Modules and imports", "encounter": "Split it.", "status": "available"}]}]
+            canonical.write_text(json.dumps(state), encoding="utf-8")
+            app_v2.WORKSPACE, app_v2.PROGRESS_PATH = workspace, canonical
+            try:
+                client = TestClient(app_v2.app, base_url="http://127.0.0.1")
+                host = {"host": "127.0.0.1"}
+
+                def submit(active, objective):
+                    app_v2.PYR_CONTEXT_CHALLENGES.clear()
+                    app_v2.PYR_CONTEXT_CHALLENGE = None
+                    verdict = client.post("/api/pyr/context", headers=host, json={"active_path": active}).json()["context"]["verdict"]
+                    text = (workspace / active).read_text(encoding="utf-8")
+                    return client.post("/api/pyr/battle-submission", headers=host, json={
+                        "nonce": verdict["nonce"], "objective_id": objective, "answer": text, "answer_source": "forge_active_file",
+                        "source_path": active, "file_digest": verdict["file_digest"],
+                    })
+
+                wrong = submit("silver_reels/reels.py", "payouts_module")
+                self.assertEqual(wrong.status_code, 409)
+                self.assertIn("silver_reels/payouts.py", wrong.json()["detail"])
+                right = submit("silver_reels/reels.py", "reels_module")
+                self.assertEqual(right.status_code, 200, right.text)
+                readme = submit("silver_reels/README.md", "reels_module")
+                self.assertEqual(readme.status_code, 409)  # a README is accepted as a file, just not for this goal
+                self.assertIn("silver_reels/reels.py", readme.json()["detail"])
+
+                files = app_v2._grading_files("battle", {"objective_id": "imports_run", "source_path": "silver_reels/casino.py"})
+                listing = {item["file"]: item["exists"] for item in files["project_files"]}
+                self.assertTrue(listing["reels.py"] and listing["README.md"])
+                self.assertFalse(listing["payouts.py"])
+                self.assertEqual(set(files["related_files"]), {"reels.py"})  # the submitted file is not repeated
+            finally:
+                app_v2.WORKSPACE, app_v2.PROGRESS_PATH = original_workspace, original_progress
+                app_v2.PYR_CONTEXT_CHALLENGE = None
+                app_v2.PYR_CONTEXT_CHALLENGES.clear()
+
+    def test_the_casino_opens_with_setup_steps_the_game_checks_on_disk(self):
+        from ide.server.test_campaign_content import use_real_content, user_like_progress
+
+        use_real_content()
+        original_workspace, original_progress = app_v2.WORKSPACE, app_v2.PROGRESS_PATH
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            workspace = root / "quest"
+            workspace.mkdir()
+            canonical = root / "platform" / "progress.json"
+            canonical.parent.mkdir()
+            state = user_like_progress()
+            state["projects"] = [{"branch": "04-casino-slots", "name": "Casino / Slots", "status": "active", "boss": "Ekse Ouens P Diddy", "order": 2, "entry_file": "silver_reels/casino.py", "multi_file": True,
+                                  "mobs": [{"name": "The Coin Rat", "concept": "Project folders, files and running Python", "encounter": "Set it up.", "status": "available"}]}]
+            canonical.write_text(json.dumps(state), encoding="utf-8")
+            app_v2.WORKSPACE, app_v2.PROGRESS_PATH = workspace, canonical
+            try:
+                client = TestClient(app_v2.app, base_url="http://127.0.0.1")
+
+                def check(objective):
+                    return client.post("/api/battle/setup-check", headers={"host": "127.0.0.1"}, json={"objective_id": objective})
+
+                def resolve():
+                    return json.loads(canonical.read_text(encoding="utf-8"))
+
+                hp = resolve()["player"]["hp"]
+                early = check("make_folder").json()
+                self.assertEqual(early["verdict"], "not_yet")  # nothing on disk yet, and no miss
+                self.assertIn("silver_reels/", early["reason"])
+                self.assertEqual(check("what_ran").status_code, 409)  # a question is not a setup step
+                (workspace / "silver_reels").mkdir()
+                made = check("make_folder")
+                self.assertEqual(made.json().get("verdict"), "correct", made.text)
+                self.assertEqual(check("make_file").json()["verdict"], "not_yet")
+                (workspace / "silver_reels" / "casino.py").write_text("bankroll = 100\n", encoding="utf-8")
+                self.assertEqual(check("make_file").json()["verdict"], "correct")
+                silent = check("first_run").json()
+                self.assertEqual(silent["verdict"], "not_yet")  # runs, but prints nothing yet
+                (workspace / "silver_reels" / "casino.py").write_text("bankroll = 100\nprint(bankroll +)\n", encoding="utf-8")
+                broken = check("first_run").json()
+                self.assertEqual(broken["verdict"], "not_yet")
+                self.assertIn("SyntaxError", broken["output"])
+                (workspace / "silver_reels" / "casino.py").write_text("bankroll = 100\nprint(f'Welcome to the Silver Reels. Purse: {bankroll}')\n", encoding="utf-8")
+                ran = check("first_run").json()
+                self.assertEqual(ran["verdict"], "correct")
+                self.assertIn("Purse: 100", ran["output"])
+                self.assertEqual(check("first_run").status_code, 409)  # done objectives stay done
+                encounter = client.get("/api/campaign", headers={"host": "127.0.0.1"}).json()["encounter"]
+                self.assertEqual([item["id"] for item in encounter["available_objectives"]], ["what_ran", "bankroll_trace"])
+                self.assertEqual(encounter["resolve"], encounter["max_resolve"] - 5)
+                self.assertEqual(resolve()["player"]["hp"], hp)  # not done yet never hurt
+            finally:
+                app_v2.WORKSPACE, app_v2.PROGRESS_PATH = original_workspace, original_progress
+
+    def test_the_explorer_creates_files_and_folders_but_never_overwrites(self):
+        original_workspace = app_v2.WORKSPACE
+        with tempfile.TemporaryDirectory() as directory:
+            workspace = Path(directory).resolve()
+            app_v2.WORKSPACE = workspace
+            try:
+                client = TestClient(app_v2.app, base_url="http://127.0.0.1")
+
+                def new(path, kind):
+                    return client.post("/api/workspace/new", headers={"host": "127.0.0.1"}, json={"path": path, "type": kind})
+
+                self.assertEqual(new("silver_reels", "dir").json()["path"], "silver_reels")
+                self.assertTrue((workspace / "silver_reels").is_dir())
+                self.assertEqual(new("silver_reels/tests/test_casino.py", "file").status_code, 200)  # parents are made too
+                self.assertEqual((workspace / "silver_reels/tests/test_casino.py").read_text(), "")
+                (workspace / "silver_reels/casino.py").write_text("bankroll = 100\n", encoding="utf-8")
+                taken = new("silver_reels/casino.py", "file")
+                self.assertEqual(taken.status_code, 409)
+                self.assertEqual((workspace / "silver_reels/casino.py").read_text(), "bankroll = 100\n")  # work is never wiped
+                self.assertEqual(new("silver_reels", "dir").status_code, 409)
+                self.assertEqual(new("silver_reels/casino.py/inner.py", "file").status_code, 409)  # a file is in the way
+                for bad in (".hidden", "silver_reels/.git", "node_modules", "../escape", "silver_reels/../../escape"):
+                    self.assertIn(new(bad, "dir").status_code, {403, 422}, bad)
+                self.assertGreaterEqual(new("progress.json", "file").status_code, 400)
+                self.assertFalse((workspace / "progress.json").exists())
+                self.assertEqual(new("x", "link").status_code, 422)
+            finally:
+                app_v2.WORKSPACE = original_workspace
+
+    def test_the_explorer_deletes_only_game_files_and_keeps_them_in_the_trash(self):
+        from ide.server.test_campaign_content import use_real_content
+
+        use_real_content()
+        original_workspace = app_v2.WORKSPACE
+        with tempfile.TemporaryDirectory() as directory:
+            workspace = Path(directory).resolve()
+            (workspace / "silver_reels" / "tests").mkdir(parents=True)
+            (workspace / "silver_reels" / "casino.py").write_text("bankroll = 100\n", encoding="utf-8")
+            (workspace / "silver_reels" / "tests" / "test_casino.py").write_text("", encoding="utf-8")
+            (workspace / "blackjack.py").write_text("print('hit')\n", encoding="utf-8")
+            (workspace / "tutor.py").write_text("", encoding="utf-8")
+            (workspace / "README.md").write_text("# repo\n", encoding="utf-8")
+            (workspace / "ide").mkdir()
+            (workspace / "ide" / "app.py").write_text("", encoding="utf-8")
+            app_v2.WORKSPACE = workspace
+            try:
+                client = TestClient(app_v2.app, base_url="http://127.0.0.1")
+
+                def delete(path):
+                    return client.post("/api/workspace/delete", headers={"host": "127.0.0.1"}, json={"path": path})
+
+                gone = delete("silver_reels/casino.py")
+                self.assertEqual(gone.status_code, 200, gone.text)
+                self.assertFalse((workspace / "silver_reels" / "casino.py").exists())
+                kept = workspace / gone.json()["trash"]
+                self.assertEqual(kept.read_text(encoding="utf-8"), "bankroll = 100\n")  # recoverable
+                self.assertEqual(delete("silver_reels/tests").status_code, 200)  # a folder inside the project
+                self.assertEqual(delete("blackjack.py").status_code, 200)  # a root-level game file
+                for protected in ("silver_reels", "tutor.py", "README.md", "ide/app.py", "ide", ".questlab-trash"):
+                    self.assertIn(delete(protected).status_code, {403, 404}, protected)
+                self.assertTrue((workspace / "silver_reels").is_dir() and (workspace / "tutor.py").exists() and (workspace / "ide" / "app.py").exists())
+                self.assertEqual(delete("silver_reels/nope.py").status_code, 404)
+                self.assertEqual(delete("../outside.py").status_code, 403)
+                self.assertNotIn(".questlab-trash", {item["name"] for item in app_v2.build_tree()})  # never shown
+            finally:
+                app_v2.WORKSPACE = original_workspace
+
+    def test_only_a_battle_ask_that_gets_a_reply_costs_the_fight(self):
+        from ide.server.test_campaign_content import use_real_content, user_like_progress
+
+        use_real_content()
+        original_progress, original_call = app_v2.PROGRESS_PATH, app_v2._ai_call
+        with tempfile.TemporaryDirectory() as directory:
+            canonical = Path(directory) / "progress.json"
+            canonical.write_text(json.dumps(user_like_progress()), encoding="utf-8")
+            app_v2.PROGRESS_PATH = canonical
+            try:
+                client = TestClient(app_v2.app, base_url="http://127.0.0.1")
+                app_v2.STATE_SERVICE.apply_internal("campaign_extend", {})
+
+                def ask(battle):
+                    return client.post("/api/ai/ask", headers={"host": "127.0.0.1"}, json={"question": "a hint?", "battle": battle})
+
+                app_v2._ai_call = lambda fn, **kwargs: "Think about what an ace is worth."  # no real PYR call
+                free = ask(False).json()
+                self.assertIsNone(free["assist"])  # the Codex and Tutor notebook ask for free
+                paid = ask(True).json()
+                self.assertEqual((paid["assist"]["pyr_assists"], paid["assist"]["reward_scale"]), (1, 80))
+
+                def broken(fn, **kwargs):
+                    raise app_v2.HTTPException(status_code=503, detail="PYR is offline")
+
+                app_v2._ai_call = broken
+                self.assertEqual(ask(True).status_code, 503)
+                encounter = client.get("/api/campaign", headers={"host": "127.0.0.1"}).json()["encounter"]
+                self.assertEqual(encounter["pyr_assists"], 1)  # no reply, no cost
+            finally:
+                app_v2.PROGRESS_PATH, app_v2._ai_call = original_progress, original_call
+
+    def test_the_tree_hides_platform_names_only_at_the_workspace_root(self):
+        original_workspace = app_v2.WORKSPACE
+        with tempfile.TemporaryDirectory() as directory:
+            workspace = Path(directory).resolve()
+            (workspace / "notes").mkdir()
+            (workspace / "tutor.py").write_text("", encoding="utf-8")
+            (workspace / "silver_reels" / "notes").mkdir(parents=True)
+            (workspace / "silver_reels" / "notes" / "ideas.md").write_text("", encoding="utf-8")
+            (workspace / "silver_reels" / "notes.md").write_text("", encoding="utf-8")
+            (workspace / "silver_reels" / "tutor.py").write_text("", encoding="utf-8")
+            app_v2.WORKSPACE = workspace
+            try:
+                paths = {item["path"] for item in app_v2.build_tree()}
+            finally:
+                app_v2.WORKSPACE = original_workspace
+        self.assertNotIn("notes", paths)  # the concept-notes folder at the root
+        self.assertNotIn("tutor.py", paths)
+        self.assertLessEqual({"silver_reels/notes", "silver_reels/notes/ideas.md", "silver_reels/notes.md", "silver_reels/tutor.py"}, paths)
+
+    def test_saving_code_feeds_the_activity_graph(self):
+        import time as clock
+
+        from ide.server.test_campaign_content import user_like_progress
+
+        self.assertEqual(app_v2.added_code_lines("", "a = 1\n\nb = 2\n"), 2)  # blank lines don't count
+        self.assertEqual(app_v2.added_code_lines("a = 1\nb = 2\n", "a = 1\nb = 3\nc = 4\n"), 2)  # a rewrite and a new line
+        self.assertEqual(app_v2.added_code_lines("a = 1\nb = 2\n", "b = 2\n"), 0)  # deleting is not writing
+        self.assertEqual(app_v2.added_code_lines("a = 1  \n", "a = 1\n"), 0)  # trailing spaces only
+        original_workspace, original_progress = app_v2.WORKSPACE, app_v2.PROGRESS_PATH
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            workspace = root / "quest"
+            workspace.mkdir()
+            canonical = root / "progress.json"
+            canonical.write_text(json.dumps(user_like_progress()), encoding="utf-8")
+            app_v2.WORKSPACE, app_v2.PROGRESS_PATH = workspace, canonical
+            try:
+                client = TestClient(app_v2.app, base_url="http://127.0.0.1")
+                save = lambda content: client.put("/api/file", headers={"host": "127.0.0.1"}, json={"path": "silver_reels/casino.py", "content": content})
+                self.assertEqual(save("bankroll = 100\nprint(bankroll)\n").status_code, 200)
+                self.assertEqual(save("bankroll = 100\nprint(bankroll)\n").status_code, 200)  # an unchanged save adds nothing
+                self.assertEqual(save("bankroll = 100\nbet = 5\nprint(bankroll)\n").status_code, 200)
+                saved = json.loads(canonical.read_text(encoding="utf-8"))
+            finally:
+                app_v2.WORKSPACE, app_v2.PROGRESS_PATH = original_workspace, original_progress
+        today = clock.strftime("%Y-%m-%d")
+        self.assertEqual(saved["activity_log"]["days"][today]["lines"], 3)
+        self.assertEqual(saved["records"]["lines_written"], 3)
+
+    def test_boss_gate_mixes_code_and_click_goals_and_clears_from_saved_state(self):
+        original_workspace = app_v2.WORKSPACE
+        original_progress = app_v2.PROGRESS_PATH
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            workspace = root / "quest"
+            workspace.mkdir()
+            canonical = root / "platform" / "progress.json"
+            canonical.parent.mkdir()
+            state = context_progress()
+            project = state["projects"][0]
+            project["progress"] = 100
+            project["boss"] = "The House"
+            project["boss_status"] = "available"
+            project["mob_sequence_complete"] = True
+            for mob in project["mobs"]:
+                mob["status"] = "defeated"
+                mob["resolve"] = 0
+            state["stats"] = {"mobs_defeated": len(project["mobs"])}
+            state["achievements"] = [{"name": "Housebreaker", "unlocked": False}, {"name": "Clean Clear", "unlocked": False}]
+            canonical.write_text(json.dumps(state), encoding="utf-8")
+            app_v2.WORKSPACE = workspace
+            app_v2.PROGRESS_PATH = canonical
+            app_v2.PYR_CONTEXT_CHALLENGE = None
+            try:
+                client = TestClient(app_v2.app, base_url="http://127.0.0.1")
+                host = {"host": "127.0.0.1"}
+
+                def capture():
+                    context = client.post("/api/pyr/context", headers=host, json={}).json()["context"]
+                    self.assertEqual(context["verdict"]["challenge_type"], "boss")
+                    return context["verdict"]["nonce"]
+
+                def code_goal(requirement):
+                    nonce = capture()
+                    body = client.post("/api/pyr/boss-submission", headers=host, json={"nonce": nonce, "requirement_id": requirement, "answer": f"Evidence for {requirement}"})
+                    self.assertEqual(body.status_code, 200, body.text)
+                    body = body.json()["submission"]
+                    return client.post("/api/pyr/boss-verdict", headers=host, json={
+                        "nonce": nonce, "submission_id": body["submission_id"], "answer_digest": body["answer_digest"], "verdict": "correct",
+                        "requirement_id": requirement, "evidence_id": body["evidence_id"], "reason": f"Validated {requirement}",
+                    })
+
+                def click_goal(requirement, pick):
+                    key = f"boss:{app_v2.STATE_SERVICE.encounter_projection(json.loads(canonical.read_text(encoding='utf-8')))['project_id']}:{requirement}"
+                    app_v2.BOSS_QUESTIONS[key] = {"prompt": "What does deal() return?", "options": ["A card", "A list", "None"]}
+                    app_v2.CHOICE_ANSWER_KEYS[key] = {"answer": 0, "why": "deal pops one card.", "options": ["A card", "A list", "None"]}
+                    return client.post("/api/boss/answer-option", headers=host, json={"requirement_id": requirement, "option_index": pick})
+
+                self.assertTrue(capture())
+                first = code_goal("required_behavior")
+                self.assertEqual(first.status_code, 200, first.text)
+                self.assertFalse(first.json()["complete"])
+
+                # The snippet check is clicked: a Forge submission for it is refused.
+                nonce = capture()
+                refused = client.post("/api/pyr/boss-submission", headers=host, json={"nonce": nonce, "requirement_id": "explanation", "answer": "an essay"})
+                self.assertEqual(refused.status_code, 409)
+                wrong = click_goal("explanation", 2)
+                self.assertEqual(wrong.json()["verdict"], "incorrect")
+                self.assertEqual(json.loads(canonical.read_text(encoding="utf-8"))["player"].get("hp"), state["player"].get("hp"))
+                right = click_goal("explanation", 0)
+                self.assertEqual(right.json()["verdict"], "correct")
+                self.assertFalse(right.json()["complete"])
+
+                twist = code_goal("edge_cases")
+                self.assertEqual(twist.status_code, 200, twist.text)
+                self.assertFalse(twist.json()["complete"])
+
+                last = click_goal("interview", 0)
+                self.assertEqual(last.json()["verdict"], "correct")
+                self.assertTrue(last.json()["complete"])
+
+                final = json.loads(canonical.read_text(encoding="utf-8"))
+                self.assertTrue(final["projects"][0]["completed"])
+                self.assertEqual(final["projects"][0]["boss_status"], "defeated")
+                self.assertEqual(final["projects"][0]["boss_validation"]["verified"], ["required_behavior", "explanation", "edge_cases", "interview"])
+                self.assertEqual(final["player"]["xp"], 50)
+                self.assertEqual(final["player"]["level"], 3)
+                self.assertEqual(final["player"]["lifetime_xp"], 250)
+                self.assertEqual(final["stats"]["bosses_defeated"], 1)
+            finally:
+                app_v2.WORKSPACE = original_workspace
+                app_v2.PROGRESS_PATH = original_progress
+                app_v2.PYR_CONTEXT_CHALLENGE = None
+
+
+if __name__ == "__main__":
+    unittest.main()

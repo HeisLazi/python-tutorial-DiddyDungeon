@@ -4,14 +4,21 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
+    "predev": "node scripts/copy-monaco.mjs",
     "dev": "vite",
+    "prebuild": "node scripts/copy-monaco.mjs",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "node --test src/cloud/*.test.js src/OnlineHideout.test.js src/OnlineLeaderboard.test.js src/DungeonLegacyJournal.test.js src/raidCombatUi.test.js src/sparLoadout.test.js src/combatEnemyArt.test.js src/combatWeaponArt.test.js src/hunterEquipment.test.js src/merchantItemArt.test.js src/marketWeaponPreview.test.js"
   },
   "dependencies": {
+    "@fontsource/press-start-2p": "^5.3.0",
+    "@fontsource/vt323": "^5.3.0",
     "@monaco-editor/react": "^4.7.0",
+    "@supabase/supabase-js": "^2.116.0",
     "@xterm/addon-fit": "^0.10.0",
     "@xterm/xterm": "^5.5.0",
+    "monaco-editor": "^0.56.0",
     "prettier": "^3.6.2",
     "react": "^19.1.0",
     "react-dom": "^19.1.0"

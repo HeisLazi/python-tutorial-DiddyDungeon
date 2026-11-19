@@ -1,0 +1,10 @@
+{
+  "name": "questlab-campaign-v1-prototype",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node ../../ide/frontend/node_modules/vite/bin/vite.js --config ../../ide/frontend/vite.config.js --host 127.0.0.1 --port 5207 --strictPort",
+    "build": "node ../../ide/frontend/node_modules/vite/bin/vite.js build --config ../../ide/frontend/vite.config.js --outDir dist",
+    "test": "node --test test/*.test.js"
+  }
+}

@@ -2,6 +2,35 @@
 
 You are not here to speedrun Python. You are here to make the basics feel automatic.
 
+## Start Quest Lab
+
+**Linux desktop app (recommended):** open **Diddy Dungeon** from your app
+launcher, or run `quest-lab`. First time on a machine:
+`bash ide/tauri-app/install-desktop.sh`. Details: [`docs/DESKTOP_APP.md`](docs/DESKTOP_APP.md).
+
+**AI tutor:** PYR grades, writes Dungeon questions and answers questions
+through your OpenCode install. Set it up in Settings → AI Tutor; see
+[`docs/AI_TUTOR.md`](docs/AI_TUTOR.md).
+
+From the repository root on Windows, run or double-click:
+
+```powershell
+.\start-questlab.cmd
+```
+
+That starts the guarded WSL backend and frontend and opens Forge in your
+browser. From WSL, use the matching shortcut:
+
+```bash
+bash ./start-questlab.sh
+```
+
+The shortcuts keep the normal branch, canonical-state, dependency and stable
+PTY checks. Add `-NoBrowser` when you want to open the printed URL yourself.
+If you are intentionally working from an offline or locally ahead checkout,
+add `-AllowStaleCheckout`; do not use that switch to hide an unexpected
+checkout mismatch.
+
 ## Your current level
 
 You already know the idea of loops, functions, lists and dictionaries, but recall is shaky. That means the right move is repetition through small projects, not piling advanced concepts on top.
@@ -50,9 +79,11 @@ Avoid searches that hand you the architecture or finished answer:
 
 Tell any AI tutor:
 
-> Read `TUTOR_CONTRACT.md`, `progress.json`, and the current branch `HANDOFF.md`. Act as PYR. Use the Socratic hint ladder. Do not write the project for me.
+> Read `TUTOR_CONTRACT.md`, the local `progress.json` cache (or synchronized state supplied by the local sync service after sign-in), and the current branch `HANDOFF.md`. Act as PYR. Use the Socratic hint ladder. Do not write the project for me.
 
-The AI may explain concepts, ask questions, give pseudocode, review your code and update campaign progress. It should not become your implementation engine.
+The AI may explain concepts, ask questions, give pseudocode, review your code
+and request campaign updates through the local state/sync service. It should
+not become your implementation engine or write a cloud-authoritative snapshot.
 
 ## When to move on from fundamentals
 

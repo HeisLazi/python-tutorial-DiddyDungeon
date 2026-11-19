@@ -52,7 +52,10 @@ Python Quest Lab has two separate streaks:
 
 ### Learning streak
 
-Stored in `progress.json` and verified by PYR. A day counts when meaningful learning happened: implementation, debugging with understanding, interviews, mobs, etc.
+Stored through the local state/sync service (in the local `progress.json`
+cache while offline/anonymous) and verified by PYR. A day counts when
+meaningful learning happened: implementation, debugging with understanding,
+interviews, mobs, etc.
 
 ### Dev streak
 
@@ -77,7 +80,8 @@ If someone wants to make 12 real commits in a day because they built 12 meaningf
 
 A rival entry can expose both:
 
-- `progress.json` — verified learning/RPG state;
+- `progress.json` — verified offline/local learning/RPG cache (signed-in
+  synchronized state comes from the local sync service);
 - `activity.json` — machine-derived Git activity.
 
 Recommended rival fields:

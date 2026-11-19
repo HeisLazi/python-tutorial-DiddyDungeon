@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Norse-inspired armour — combat preview</title>
+<style>
+:root{color-scheme:dark}*{box-sizing:border-box}body{margin:0;background:#100e1b;color:#f1e7cf;font:16px system-ui,sans-serif}main{max-width:900px;margin:auto;padding:24px}h1{font-size:22px;margin:0 0 8px}p{color:#c9bfd6;line-height:1.5;margin:8px 0 14px}.controls{display:flex;gap:8px;margin:0 0 14px}button{background:#302935;color:#f0dfb4;border:1px solid #ac8b52;padding:9px 14px;font:inherit;cursor:pointer}select{background:#302935;color:#f0dfb4;border:1px solid #ac8b52;padding:9px 14px;font:inherit}button:disabled{opacity:.5}button:focus-visible{outline:2px solid #fff;outline-offset:3px}.stage{position:relative;overflow:hidden;aspect-ratio:16/9;border:3px solid #ad8846;background:linear-gradient(#17122275,#17122265),url('art/basics-village.png') center/cover}.hunter{position:absolute;bottom:8%;left:24%;width:40%;aspect-ratio:4/3;background:url('art/tate-norse-sword-idle-sheet.png') 0 0 / 400% 100% no-repeat;image-rendering:pixelated;filter:drop-shadow(0 5px 2px #0009)}.hunter.staff{left:19.8%;width:53.333%;aspect-ratio:16/9}small{display:block;margin-top:12px;color:#c9bfd6}@media(prefers-reduced-motion:reduce){.hunter{animation:none}}
+</style>
+<main><h1>Norse-inspired armour · combat preview</h1><p>A first look at Tate in mail and a pinned cloak. Choose a weapon and try the attack and hit poses. Home movement artwork is prepared; the desktop build still needs an update.</p><div class="controls"><label for="weapon">Weapon</label><select id="weapon"><option value="sword">Sword</option><option value="staff">Staff</option><option value="whip">Whip</option><option value="greatsword">Greatsword</option><option value="handmagic">Hand magic</option><option value="scythe">Scythe</option><option value="oil">Oil bottle</option></select><button id="attack" type="button">Attack</button><button id="hurt" type="button">Take a hit</button></div><div class="stage" role="img" aria-label="Norse-inspired hunter in a Dungeon scene"><div class="hunter" id="hunter"></div></div><small>Art preview only; this armour is not yet available in the game.</small></main>
+<script>
+const hunter = document.getElementById('hunter')
+const weaponSelector = document.getElementById('weapon')
+const hurtButton = document.getElementById('hurt')
+let frame = 0, motion = 'idle', ticks = 0, weapon = 'sword'
+function show() {
+  const suffix = motion === 'hurt' ? '-hurt' : motion === 'idle' && weapon === 'sword' ? '-idle' : ''
+  hunter.classList.toggle('staff', weapon !== 'sword')
+  hunter.style.backgroundImage = `url('art/tate-norse-${weapon}${suffix}-sheet.png')`
+  hunter.style.backgroundPosition = `${frame * 100 / 3}% 0`
+}
+function play(next){ motion = next; frame = 0; ticks = 0; show() }
+weaponSelector.addEventListener('change', () => { weapon = weaponSelector.value; play('idle') })
+document.getElementById('attack').addEventListener('click', () => play('attack'))
+hurtButton.addEventListener('click', () => play('hurt'))
+setInterval(() => {
+  if (motion === 'idle') {
+    if (weapon === 'sword' && !matchMedia('(prefers-reduced-motion: reduce)').matches && ++ticks % 3 === 0) frame = (frame + 1) % 4
+  } else if (++frame > 3) { motion = 'idle'; frame = 0; ticks = 0 }
+  show()
+}, 180)
+show()
+</script>
+</html>

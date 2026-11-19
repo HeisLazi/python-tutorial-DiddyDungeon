@@ -6,7 +6,7 @@ PYR is allowed to be creative, but the campaign should not slowly mutate into co
 
 ## Ruleset
 
-**Current ruleset:** `1.4.0`
+**Current ruleset:** `1.5.0`
 
 ## Source priority
 
@@ -64,6 +64,7 @@ A branch may make a challenge stricter, but it should not silently weaken global
 | SYS-032 | Competitive learning contribution must distinguish verified Impact from any combat-only bonus Impact created by trinkets or encounter modifiers. | CANON |
 | SYS-033 | 0 HP means Downed, not locked out of learning. Recovery/reteach/revive paths must remain available. | CANON |
 | SYS-034 | Future weekly bosses are shared software-project raids: party objectives have predefined verified Impact and the primary outcome is a party clear, not DPS farming. | CANON |
+| SYS-035 | Before a signed-in cloud sync exists, `progress.json` is local canonical player state. After signed-in cloud sync is enabled, Supabase is synchronized account/game-state authority; `progress.json` is the local/offline cache and device working copy, and progression mutations go through the local state/sync service. | CANON |
 
 ---
 
@@ -131,12 +132,20 @@ Use this section for ideas that sound fun but still need tuning.
 | COMBAT-001 | Exact HP recovery cadence between encounters/days | PROVISIONAL | Downed must never block learning; tune after first real Battle tests. |
 | COMBAT-002 | Exact trinket catalog/rarity/economy | PROVISIONAL | Effect classes are approved, individual power levels still need playtesting. |
 | RAID-001 | Weekly online/shared raid transport and party persistence | PROVISIONAL | Core raid philosophy is canon; networking/storage implementation is not yet selected. |
+| TODAY-001 | Start Today: the first passed primer check (server-graded) each local day logs a learning-streak day, counts one answer in the activity log and completes the `learn-before-forge` daily contract once (its own authored reward). Wrong answers and repeats change nothing. A stored Streak Ward covers one missed day. | PROVISIONAL | Approved to build by Lazi on 2026-11-19; a three-option check is light evidence, so tune after playtesting. |
 
 PYR may add rows here, but **must not silently activate them**.
 
 ---
 
 # Ruleset changelog
+
+## 1.5.0 — Cloud state authority transition
+
+- made the local-first authority transition explicit: anonymous/offline Forge uses `progress.json` as local canonical state;
+- made signed-in Supabase the synchronized account/game-state authority while retaining `progress.json` as the offline cache/device working copy;
+- required progression mutations to pass through the local state/sync service rather than an independent PYR write or a direct UI/cloud call;
+- kept GitHub as source-code authority and explicitly excluded it as multiplayer/game-state transport.
 
 ## 1.4.0 — Impact / Armor / Trinket Combat Foundation
 

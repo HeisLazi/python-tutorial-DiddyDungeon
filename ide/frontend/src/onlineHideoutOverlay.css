@@ -1,0 +1,12 @@
+.online-feature-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10003;
+  overflow: auto;
+  background: #100d1b;
+}
+
+.online-feature-overlay > * {
+  min-height: 100%;
+  box-sizing: border-box;
+}

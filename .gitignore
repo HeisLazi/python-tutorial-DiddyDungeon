@@ -1,0 +1,47 @@
+# Local secrets and environment overrides
+.env
+.env.*
+!.env.example
+ide/frontend/.env
+ide/frontend/.env.*
+!ide/frontend/.env.example
+
+# Python
+.venv
+venv
+__pycache__/
+*.py[cod]
+
+# Frontend
+node_modules/
+dist/
+.vite/
+ide/frontend/node_modules/
+ide/frontend/dist/
+
+# Future desktop packaging output
+src-tauri/target/
+.build/
+
+# Supabase CLI local state
+supabase/.temp/
+
+# Editor and OS metadata
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Forge explorer deletes (recoverable)
+.questlab-trash/
+
+# Home (Godot): built web output, editor cache, test screenshots
+ide/frontend/public/home/
+ide/home-godot/.godot/
+ide/home-godot/shot_*
+
+# Large AI reference renders (kept local; the converted sprite sources are in tools/home_art/assets)
+ide/home-godot/reference/
+
+# Godot editor cache
+.godot/
