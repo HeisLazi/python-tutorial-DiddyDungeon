@@ -58,10 +58,10 @@ Before signed-in cloud sync, `progress.json` is the canonical local learning/pla
 
 | Dev activity | Current |
 |---|---:|
-| Activity score | **222** |
+| Activity score | **200** |
 | Commit streak | **0 days** — best: 9 |
-| Commits | **0** / 7d · **117** / 30d |
-| Active dev days | **0** / 7d · **10** / 30d |
+| Commits | **0** / 7d · **100** / 30d |
+| Active dev days | **0** / 7d · **9** / 30d |
 | Active branches (30d) | **4** |
 | Last commit day | **2026-11-19** |
 
